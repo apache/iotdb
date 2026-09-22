@@ -40,7 +40,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
       final String name,
       final long memoryUsageInBytes,
       final DynamicMemoryAllocationStrategy allocationStrategy) {
-    super(name, memoryUsageInBytes);
+    super(name, memoryUsageInBytes, Math.max(0, memoryUsageInBytes));
     this.memoryAllocatedInBytes = 0;
     this.allocationStrategy = allocationStrategy;
   }
@@ -52,8 +52,16 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
       final DynamicMemoryAllocationStrategy allocationStrategy,
       final PipeMemoryBlockCategory category,
       final String assigner,
-      final PipeMemoryBlock parent) {
-    super(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent);
+      final PipeMemoryBlock parent,
+      final long maxMemorySizeInBytes) {
+    super(
+        pipeMemoryManager,
+        name,
+        memoryUsageInBytes,
+        category,
+        assigner,
+        parent,
+        maxMemorySizeInBytes);
     this.memoryAllocatedInBytes = 0;
     this.allocationStrategy = allocationStrategy;
   }

@@ -313,6 +313,7 @@ public class ColumnHeaderConstant {
   public static final String BLOCK_ID_TABLE_MODEL = "block_id";
   public static final String CATEGORY_TABLE_MODEL = "category";
   public static final String MEMORY_USAGE_IN_BYTES_TABLE_MODEL = "memory_usage_in_bytes";
+  public static final String PEAK_MEMORY_SIZE_IN_BYTES_TABLE_MODEL = "peak_memory_size_in_bytes";
   public static final String MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL = "max_memory_size_in_bytes";
   public static final String ALLOCATION_TIME_TABLE_MODEL = "allocation_time";
   public static final String ASSIGNER_TABLE_MODEL = "assigner";

@@ -753,22 +753,23 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[1].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getName()));
       columnBuilders[2].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getCategory()));
       columnBuilders[3].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
-      columnBuilders[4].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
-      columnBuilders[5].writeLong(
+      columnBuilders[4].writeLong(memoryBlockInfo.getPeakMemorySizeInBytes());
+      columnBuilders[5].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
+      columnBuilders[6].writeLong(
           TimestampPrecisionUtils.convertToCurrPrecision(
               memoryBlockInfo.getAllocationTime(), TimeUnit.MILLISECONDS));
       if (memoryBlockInfo.getAssigner() == null) {
-        columnBuilders[6].appendNull();
-      } else {
-        columnBuilders[6].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getAssigner()));
-      }
-      if (memoryBlockInfo.getParentBlockId() == null) {
         columnBuilders[7].appendNull();
       } else {
-        columnBuilders[7].writeLong(memoryBlockInfo.getParentBlockId());
+        columnBuilders[7].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getAssigner()));
       }
-      columnBuilders[8].writeInt(memoryBlockInfo.getHierarchyLevel());
-      columnBuilders[9].writeLong(memoryBlockInfo.getAccountedMemoryUsageInBytes());
+      if (memoryBlockInfo.getParentBlockId() == null) {
+        columnBuilders[8].appendNull();
+      } else {
+        columnBuilders[8].writeLong(memoryBlockInfo.getParentBlockId());
+      }
+      columnBuilders[9].writeInt(memoryBlockInfo.getHierarchyLevel());
+      columnBuilders[10].writeLong(memoryBlockInfo.getAccountedMemoryUsageInBytes());
       resultBuilder.declarePosition();
     }
 

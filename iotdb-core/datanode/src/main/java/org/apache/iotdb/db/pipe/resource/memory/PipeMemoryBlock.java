@@ -63,8 +63,8 @@ public class PipeMemoryBlock implements AutoCloseable {
   private final AtomicReference<String> assigner = new AtomicReference<>();
 
   private final AtomicLong memoryUsageInBytes = new AtomicLong(0);
-  // This is a high-water mark for observability, not a hard allocation limit.
-  private final AtomicLong maxMemorySizeInBytes = new AtomicLong(0);
+  private final long maxMemorySizeInBytes;
+  private final AtomicLong peakMemorySizeInBytes = new AtomicLong(0);
 
   private final AtomicReference<LongUnaryOperator> shrinkMethod = new AtomicReference<>();
   private final AtomicReference<BiConsumer<Long, Long>> shrinkCallback = new AtomicReference<>();
@@ -80,7 +80,20 @@ public class PipeMemoryBlock implements AutoCloseable {
         memoryUsageInBytes,
         PipeMemoryBlockCategory.OTHER,
         null,
-        null);
+        null,
+        -1);
+  }
+
+  PipeMemoryBlock(
+      final String name, final long memoryUsageInBytes, final long maxMemorySizeInBytes) {
+    this(
+        PipeDataNodeResourceManager.memory(),
+        name,
+        memoryUsageInBytes,
+        PipeMemoryBlockCategory.OTHER,
+        null,
+        null,
+        maxMemorySizeInBytes);
   }
 
   PipeMemoryBlock(
@@ -90,6 +103,17 @@ public class PipeMemoryBlock implements AutoCloseable {
       final PipeMemoryBlockCategory category,
       final String assigner,
       final PipeMemoryBlock parent) {
+    this(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent, -1);
+  }
+
+  PipeMemoryBlock(
+      final PipeMemoryManager pipeMemoryManager,
+      final String name,
+      final long memoryUsageInBytes,
+      final PipeMemoryBlockCategory category,
+      final String assigner,
+      final PipeMemoryBlock parent,
+      final long maxMemorySizeInBytes) {
     this.pipeMemoryManager = Objects.requireNonNull(pipeMemoryManager);
     this.blockId = NEXT_BLOCK_ID.getAndIncrement();
     this.name = Objects.requireNonNull(name);
@@ -104,7 +128,8 @@ public class PipeMemoryBlock implements AutoCloseable {
     this.allocationTime = System.currentTimeMillis();
     this.assigner.set(truncateAssigner(assigner));
     this.memoryUsageInBytes.set(Math.max(0, memoryUsageInBytes));
-    this.maxMemorySizeInBytes.set(Math.max(0, memoryUsageInBytes));
+    this.maxMemorySizeInBytes = Math.max(-1, maxMemorySizeInBytes);
+    this.peakMemorySizeInBytes.set(Math.max(0, memoryUsageInBytes));
   }
 
   /** Returns the globally unique identifier of this block instance. */
@@ -229,11 +254,17 @@ public class PipeMemoryBlock implements AutoCloseable {
   public void setMemoryUsageInBytes(final long memoryUsageInBytes) {
     final long normalizedMemoryUsageInBytes = Math.max(0, memoryUsageInBytes);
     this.memoryUsageInBytes.set(normalizedMemoryUsageInBytes);
-    maxMemorySizeInBytes.accumulateAndGet(normalizedMemoryUsageInBytes, Math::max);
+    peakMemorySizeInBytes.accumulateAndGet(normalizedMemoryUsageInBytes, Math::max);
   }
 
+  /** Returns the lifetime high-water memory usage of this block. */
+  public long getPeakMemorySizeInBytes() {
+    return peakMemorySizeInBytes.get();
+  }
+
+  /** Returns the fixed allocation capacity, or {@code -1} when this block is not fixed-size. */
   public long getMaxMemorySizeInBytes() {
-    return maxMemorySizeInBytes.get();
+    return maxMemorySizeInBytes;
   }
 
   public PipeMemoryBlock setShrinkMethod(final LongUnaryOperator shrinkMethod) {
@@ -354,8 +385,10 @@ public class PipeMemoryBlock implements AutoCloseable {
         + '\''
         + ", usedMemoryInBytes="
         + memoryUsageInBytes.get()
+        + ", peakMemorySizeInBytes="
+        + peakMemorySizeInBytes.get()
         + ", maxMemorySizeInBytes="
-        + maxMemorySizeInBytes.get()
+        + maxMemorySizeInBytes
         + ", parentBlockId="
         + getParentBlockId()
         + ", assigner='"

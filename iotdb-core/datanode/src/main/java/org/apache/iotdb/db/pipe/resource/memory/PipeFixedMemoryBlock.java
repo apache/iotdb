@@ -31,13 +31,36 @@ public abstract class PipeFixedMemoryBlock extends PipeMemoryBlock {
   }
 
   PipeFixedMemoryBlock(
+      final String name, final long memoryUsageInBytes, final long maxMemorySizeInBytes) {
+    super(name, memoryUsageInBytes, maxMemorySizeInBytes);
+  }
+
+  PipeFixedMemoryBlock(
       final PipeMemoryManager pipeMemoryManager,
       final String name,
       final long memoryUsageInBytes,
       final PipeMemoryBlockCategory category,
       final String assigner,
       final PipeMemoryBlock parent) {
-    super(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent);
+    this(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent, -1);
+  }
+
+  PipeFixedMemoryBlock(
+      final PipeMemoryManager pipeMemoryManager,
+      final String name,
+      final long memoryUsageInBytes,
+      final PipeMemoryBlockCategory category,
+      final String assigner,
+      final PipeMemoryBlock parent,
+      final long maxMemorySizeInBytes) {
+    super(
+        pipeMemoryManager,
+        name,
+        memoryUsageInBytes,
+        category,
+        assigner,
+        parent,
+        maxMemorySizeInBytes);
   }
 
   @Override

@@ -627,6 +627,7 @@ public class IoTDBDatabaseIT {
                   "name,STRING,TAG,",
                   "category,STRING,TAG,",
                   "memory_usage_in_bytes,INT64,ATTRIBUTE,",
+                  "peak_memory_size_in_bytes,INT64,ATTRIBUTE,",
                   "max_memory_size_in_bytes,INT64,ATTRIBUTE,",
                   "allocation_time,TIMESTAMP,ATTRIBUTE,",
                   "assigner,STRING,ATTRIBUTE,",
@@ -804,17 +805,18 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW PIPE MEMORY")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(10, metaData.getColumnCount());
+        assertEquals(11, metaData.getColumnCount());
         assertEquals("block_id", metaData.getColumnName(1));
         assertEquals("name", metaData.getColumnName(2));
         assertEquals("category", metaData.getColumnName(3));
         assertEquals("memory_usage_in_bytes", metaData.getColumnName(4));
-        assertEquals("max_memory_size_in_bytes", metaData.getColumnName(5));
-        assertEquals("allocation_time", metaData.getColumnName(6));
-        assertEquals("assigner", metaData.getColumnName(7));
-        assertEquals("parent_block_id", metaData.getColumnName(8));
-        assertEquals("hierarchy_level", metaData.getColumnName(9));
-        assertEquals("accounted_memory_usage_in_bytes", metaData.getColumnName(10));
+        assertEquals("peak_memory_size_in_bytes", metaData.getColumnName(5));
+        assertEquals("max_memory_size_in_bytes", metaData.getColumnName(6));
+        assertEquals("allocation_time", metaData.getColumnName(7));
+        assertEquals("assigner", metaData.getColumnName(8));
+        assertEquals("parent_block_id", metaData.getColumnName(9));
+        assertEquals("hierarchy_level", metaData.getColumnName(10));
+        assertEquals("accounted_memory_usage_in_bytes", metaData.getColumnName(11));
         boolean hasFloatingMemory = false;
         while (resultSet.next()) {
           if ("FloatingMemory".equals(resultSet.getString(2))) {

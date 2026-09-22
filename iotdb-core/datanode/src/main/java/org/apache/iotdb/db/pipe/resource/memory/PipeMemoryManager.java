@@ -534,7 +534,8 @@ public class PipeMemoryManager {
 
   /**
    * Allocate a named block with explicit diagnostic metadata. The maximum size recorded for the
-   * block is its lifetime high-water mark; it is not a new hard limit.
+   * block is exposed separately from the lifetime peak. Blocks without a fixed capacity report
+   * {@code -1} for the maximum size.
    */
   public synchronized PipeMemoryBlock forceAllocate(
       final String name,
@@ -1212,7 +1213,8 @@ public class PipeMemoryManager {
                 new ThresholdAllocationStrategy(),
                 normalizedCategory,
                 PipeMemoryBlock.snapshotAssigner(assigner),
-                normalizedParent);
+                normalizedParent,
+                sizeInBytes == Long.MAX_VALUE ? -1 : Math.max(0, sizeInBytes));
         break;
       default:
         returnedMemoryBlock =
@@ -1531,6 +1533,7 @@ public class PipeMemoryManager {
                     block.getName(),
                     block.getCategory().name(),
                     block.getMemoryUsageInBytes(),
+                    block.getPeakMemorySizeInBytes(),
                     block.getMaxMemorySizeInBytes(),
                     block.getAllocationTimeInMillis(),
                     block.getAssigner(),
@@ -1547,6 +1550,7 @@ public class PipeMemoryManager {
             PipeMemoryBlockCategory.FLOATING.name(),
             floatingMemoryUsageInBytes,
             floatingMemoryMaxUsageInBytes,
+            -1,
             floatingMemoryAllocationTime,
             "PipeMemoryManager",
             null,
@@ -1565,6 +1569,7 @@ public class PipeMemoryManager {
     private final String name;
     private final String category;
     private final long memoryUsageInBytes;
+    private final long peakMemorySizeInBytes;
     private final long maxMemorySizeInBytes;
     private final long allocationTime;
     private final String assigner;
@@ -1577,6 +1582,7 @@ public class PipeMemoryManager {
         final String name,
         final String category,
         final long memoryUsageInBytes,
+        final long peakMemorySizeInBytes,
         final long maxMemorySizeInBytes,
         final long allocationTime,
         final String assigner,
@@ -1587,6 +1593,7 @@ public class PipeMemoryManager {
       this.name = name;
       this.category = category;
       this.memoryUsageInBytes = memoryUsageInBytes;
+      this.peakMemorySizeInBytes = peakMemorySizeInBytes;
       this.maxMemorySizeInBytes = maxMemorySizeInBytes;
       this.allocationTime = allocationTime;
       this.assigner = assigner;
@@ -1602,6 +1609,7 @@ public class PipeMemoryManager {
           PipeMemoryBlockCategory.OTHER.name(),
           memoryUsageInBytes,
           memoryUsageInBytes,
+          -1,
           System.currentTimeMillis(),
           null,
           null,
@@ -1623,6 +1631,10 @@ public class PipeMemoryManager {
 
     public long getMemoryUsageInBytes() {
       return memoryUsageInBytes;
+    }
+
+    public long getPeakMemorySizeInBytes() {
+      return peakMemorySizeInBytes;
     }
 
     public long getMaxMemorySizeInBytes() {

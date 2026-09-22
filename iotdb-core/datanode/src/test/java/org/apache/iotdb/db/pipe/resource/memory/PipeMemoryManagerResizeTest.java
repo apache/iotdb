@@ -282,6 +282,32 @@ public class PipeMemoryManagerResizeTest {
   }
 
   @Test
+  public void testFixedModelBlockReportsCapacitySeparatelyFromPeak() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerFixedBlockTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeModelFixedMemoryBlock fixedBlock =
+        manager.forceAllocateForModelFixedMemoryBlock("fixed", 100, PipeMemoryBlockType.BATCH);
+
+    try {
+      final PipeMemoryManager.PipeMemoryBlockInfo fixedInfo =
+          manager.getPipeMemoryBlockInfoList().stream()
+              .filter(info -> "fixed".equals(info.getName()))
+              .findFirst()
+              .orElseThrow();
+      Assert.assertEquals(100, fixedInfo.getMemoryUsageInBytes());
+      Assert.assertEquals(100, fixedInfo.getPeakMemorySizeInBytes());
+      Assert.assertEquals(100, fixedInfo.getMaxMemorySizeInBytes());
+    } finally {
+      manager.release(fixedBlock);
+    }
+  }
+
+  @Test
   public void testHierarchicalAccountingMetadataAndCascadeRelease() {
     final PipeMemoryManager manager =
         new PipeMemoryManager(
@@ -315,16 +341,18 @@ public class PipeMemoryManagerResizeTest {
       Assert.assertEquals(100, parserBlock.getMemoryUsageInBytes());
       Assert.assertEquals(100, eventBlock.getAccountedMemoryUsageInBytes());
       Assert.assertEquals(0, parserBlock.getAccountedMemoryUsageInBytes());
-      Assert.assertEquals(100, eventBlock.getMaxMemorySizeInBytes());
-      Assert.assertEquals(100, parserBlock.getMaxMemorySizeInBytes());
+      Assert.assertEquals(100, eventBlock.getPeakMemorySizeInBytes());
+      Assert.assertEquals(100, parserBlock.getPeakMemorySizeInBytes());
+      Assert.assertEquals(-1, eventBlock.getMaxMemorySizeInBytes());
+      Assert.assertEquals(-1, parserBlock.getMaxMemorySizeInBytes());
 
       manager.forceResize(parserBlock, 160);
       manager.forceResize(parserBlock, 40);
       Assert.assertEquals(40, manager.getUsedMemorySizeInBytes());
       Assert.assertEquals(40, eventBlock.getMemoryUsageInBytes());
       Assert.assertEquals(40, parserBlock.getMemoryUsageInBytes());
-      Assert.assertEquals(160, eventBlock.getMaxMemorySizeInBytes());
-      Assert.assertEquals(160, parserBlock.getMaxMemorySizeInBytes());
+      Assert.assertEquals(160, eventBlock.getPeakMemorySizeInBytes());
+      Assert.assertEquals(160, parserBlock.getPeakMemorySizeInBytes());
 
       // A parent resize cannot release bytes still owned by a live child.
       manager.forceResize(eventBlock, 0);
@@ -378,7 +406,8 @@ public class PipeMemoryManagerResizeTest {
       Assert.assertEquals(0, floatingInfo.getBlockId());
       Assert.assertEquals("FLOATING", floatingInfo.getCategory());
       Assert.assertEquals(300, floatingInfo.getMemoryUsageInBytes());
-      Assert.assertEquals(300, floatingInfo.getMaxMemorySizeInBytes());
+      Assert.assertEquals(300, floatingInfo.getPeakMemorySizeInBytes());
+      Assert.assertEquals(-1, floatingInfo.getMaxMemorySizeInBytes());
       Assert.assertTrue(floatingInfo.getAllocationTime() > 0);
       Assert.assertEquals("PipeMemoryManager", floatingInfo.getAssigner());
 
@@ -389,7 +418,8 @@ public class PipeMemoryManagerResizeTest {
               .findFirst()
               .orElseThrow();
       Assert.assertEquals(10, floatingInfo.getMemoryUsageInBytes());
-      Assert.assertEquals(300, floatingInfo.getMaxMemorySizeInBytes());
+      Assert.assertEquals(300, floatingInfo.getPeakMemorySizeInBytes());
+      Assert.assertEquals(-1, floatingInfo.getMaxMemorySizeInBytes());
     } finally {
       block.close();
     }

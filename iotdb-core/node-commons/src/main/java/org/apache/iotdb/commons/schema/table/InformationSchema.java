@@ -255,6 +255,9 @@ public class InformationSchema {
             ColumnHeaderConstant.MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
     pipeMemoryTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.PEAK_MEMORY_SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
     pipeMemoryTable.addColumnSchema(
         new AttributeColumnSchema(
