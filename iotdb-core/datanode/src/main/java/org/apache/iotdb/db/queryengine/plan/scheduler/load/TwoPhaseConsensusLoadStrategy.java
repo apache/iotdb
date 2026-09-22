@@ -30,6 +30,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -195,17 +196,41 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   }
 
   /**
-   * Submits a LOAD consensus request with a bounded number of attempts. Only transient failures are
-   * retried; permanent rejections are returned to the caller immediately so the scheduler can
-   * abort.
+   * Submits a LOAD piece with a bounded number of attempts. Only transient failures are retried;
+   * permanent rejections are returned to the caller immediately so the scheduler can abort.
    */
   private TSStatus submitConsensusWithRetry(
       TRegionReplicaSet replicaSet, LoadTsFileConsensusNode node) {
+    return submitWithRetry(replicaSet, node, false);
+  }
+
+  /**
+   * Submits a terminal command of the commit protocol (COMMIT or ABORT) with the same bounded
+   * number of attempts.
+   *
+   * <p>A terminal command is the last thing the coordinator sends about a task, so a submission
+   * that failed leaves the region with staged data that only a scan of the staging directories
+   * could reclaim: it is repeated instead of being given up after one attempt. An ABORT is repeated
+   * for every kind of failure, because dropping staged data is idempotent - an ABORT of a task this
+   * region no longer holds is acknowledged as success. A COMMIT is repeated for transient failures
+   * only: a permanent rejection means either that the task was already imported, in which case a
+   * repetition is refused again, or that the import failed half way, and repeating that one could
+   * import a partition of the staged file twice.
+   */
+  private TSStatus submitTerminalCommandWithRetry(
+      final TRegionReplicaSet replicaSet, final LoadTsFileConsensusNode node) {
+    return submitWithRetry(replicaSet, node, node.getOp() == LoadTsFileConsensusOp.ABORT);
+  }
+
+  private TSStatus submitWithRetry(
+      final TRegionReplicaSet replicaSet,
+      final LoadTsFileConsensusNode node,
+      final boolean retryEveryFailure) {
     TSStatus status = null;
     for (int attempt = 1; attempt <= LOAD_CONSENSUS_SUBMIT_MAX_RETRIES; attempt++) {
       status = consensusSubmitter.submit(replicaSet, node);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || !isTransientConsensusFailure(status)
+          || (!retryEveryFailure && !isTransientConsensusFailure(status))
           || attempt == LOAD_CONSENSUS_SUBMIT_MAX_RETRIES) {
         break;
       }
@@ -310,7 +335,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
       final LoadTsFileConsensusNode abort =
           LoadTsFileConsensusNode.abort(
               new PlanNodeId("load-abort-" + loadId), loadId, null, isGeneratedByPipe);
-      final TSStatus status = consensusSubmitter.submit(replicaSet, abort);
+      final TSStatus status = submitTerminalCommandWithRetry(replicaSet, abort);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             DataNodeQueryMessages
@@ -395,7 +420,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
               isGeneratedByPipe,
               node.isDeleteAfterLoad(),
               timePartition2ProgressIndex);
-      final TSStatus commitStatus = consensusSubmitter.submit(replicaSet, commit);
+      final TSStatus commitStatus = submitTerminalCommandWithRetry(replicaSet, commit);
       if (commitStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             DataNodeQueryMessages

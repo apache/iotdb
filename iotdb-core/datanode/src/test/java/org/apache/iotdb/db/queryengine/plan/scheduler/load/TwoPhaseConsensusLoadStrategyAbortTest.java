@@ -63,11 +63,27 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
   private static final TConsensusGroupId REGION_2 =
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
 
-  /** Fails the given operation for the given region, and accepts everything else. */
+  /** Fails the given operation for the given region with a permanent error, accepts the rest. */
   private static LoadConsensusSubmitter submitterFailingOn(
       final LoadTsFileConsensusOp op,
       final TConsensusGroupId regionId,
       final List<String> submitted) {
+    return submitterFailingWith(op, regionId, submitted, TSStatusCode.LOAD_FILE_ERROR);
+  }
+
+  /** Fails the given operation for the given region with a retryable error, accepts the rest. */
+  private static LoadConsensusSubmitter submitterFailingTransientlyOn(
+      final LoadTsFileConsensusOp op,
+      final TConsensusGroupId regionId,
+      final List<String> submitted) {
+    return submitterFailingWith(op, regionId, submitted, TSStatusCode.DISPATCH_ERROR);
+  }
+
+  private static LoadConsensusSubmitter submitterFailingWith(
+      final LoadTsFileConsensusOp op,
+      final TConsensusGroupId regionId,
+      final List<String> submitted,
+      final TSStatusCode failure) {
     final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
     when(submitter.submit(any(), any()))
         .thenAnswer(
@@ -76,7 +92,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
               final LoadTsFileConsensusNode node = invocation.getArgument(1);
               submitted.add(node.getOp().name() + "@" + replicaSet.getRegionId().getId());
               if (node.getOp() == op && replicaSet.getRegionId().equals(regionId)) {
-                return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+                return RpcUtils.getStatus(failure);
               }
               return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
             });
@@ -208,8 +224,33 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@2"), submitted);
   }
 
+  /**
+   * A COMMIT that failed transiently is repeated: the decision was taken, so a region that did not
+   * answer yet must still receive it instead of keeping staged data nobody commits.
+   */
   @Test
-  public void testAbortIsNotRetriedOnFailure() throws Exception {
+  public void testCommitIsRetriedOnTransientFailure() throws Exception {
+    final List<String> submitted = new ArrayList<>();
+    final TwoPhaseConsensusLoadStrategy strategy =
+        strategy(
+            submitterFailingTransientlyOn(LoadTsFileConsensusOp.COMMIT, REGION_1, submitted),
+            twoRegionsInOrder(),
+            loadIds(),
+            pieceCounts());
+
+    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertEquals(
+        Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@1", "COMMIT@1", "COMMIT@2"),
+        submitted);
+  }
+
+  /**
+   * An ABORT is repeated before it is given up, whatever kind of failure it hit, because dropping
+   * staged data is idempotent: an ABORT of a task this region no longer holds succeeds. What a
+   * region still keeps after the last attempt is reclaimed by the cleaner.
+   */
+  @Test
+  public void testAbortIsRetriedOnFailure() throws Exception {
     // Two regions, both unable to prepare: each of them must be told to drop its staged data.
     final List<String> submitted = Collections.synchronizedList(new ArrayList<>());
     final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
@@ -225,6 +266,9 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
         strategy(submitter, twoRegionsInOrder(), loadIds(), pieceCounts());
 
     assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
-    assertEquals(Arrays.asList("PREPARE@1", "ABORT@1", "ABORT@2"), submitted);
+    assertEquals(
+        Arrays.asList(
+            "PREPARE@1", "ABORT@1", "ABORT@1", "ABORT@1", "ABORT@2", "ABORT@2", "ABORT@2"),
+        submitted);
   }
 }
