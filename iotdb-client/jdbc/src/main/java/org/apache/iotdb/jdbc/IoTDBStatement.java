@@ -356,6 +356,7 @@ public class IoTDBStatement implements Statement {
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
+    warningChain = null;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     int rows = fetchSize;
     if (maxRows != 0 && fetchSize > maxRows) {
@@ -382,6 +383,7 @@ public class IoTDBStatement implements Statement {
     } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
+    setExecutionWarning(execResp.getStatus());
 
     if (execResp.isSetDatabase()) {
       connection.changeDefaultDatabase(execResp.getDatabase());
@@ -439,6 +441,7 @@ public class IoTDBStatement implements Statement {
 
   private int[] executeBatchSQL() throws TException, BatchUpdateException, SQLException {
     isCancelled = false;
+    warningChain = null;
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
     TSStatus execResp =
         callWithRetryAndReconnect(
@@ -509,6 +512,7 @@ public class IoTDBStatement implements Statement {
 
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
     isCancelled = false;
+    warningChain = null;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     int rows = fetchSize;
     if (maxRows != 0 && fetchSize > maxRows) {
@@ -600,6 +604,7 @@ public class IoTDBStatement implements Statement {
 
   private int executeUpdateSQL(final String sql)
       throws TException, IoTDBSQLException, SQLException {
+    warningChain = null;
     final TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     final TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
@@ -619,7 +624,13 @@ public class IoTDBStatement implements Statement {
     } catch (final StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
+    setExecutionWarning(execResp.getStatus());
     return 0;
+  }
+
+  private void setExecutionWarning(TSStatus status) {
+    final String message = status.getMessage();
+    warningChain = message == null || message.isEmpty() ? null : new SQLWarning(message);
   }
 
   @Override

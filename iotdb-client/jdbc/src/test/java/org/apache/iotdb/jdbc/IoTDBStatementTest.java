@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 
@@ -33,6 +36,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
@@ -105,5 +109,24 @@ public class IoTDBStatementTest {
     Assert.assertEquals(60, statement.getQueryTimeout());
     statement.setQueryTimeout(100);
     Assert.assertEquals(100, statement.getQueryTimeout());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void executionStatusMessageIsExposedAsWarningAndClearedOnNextExecution() throws Exception {
+    TSExecuteStatementResp response = new TSExecuteStatementResp();
+    response.setStatus(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("submission result"));
+    when(client.executeStatementV2(any())).thenReturn(response);
+
+    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
+    Assert.assertFalse(statement.execute("MIGRATE REGION 1 FROM 2 TO 3"));
+    SQLWarning warning = statement.getWarnings();
+    Assert.assertNotNull(warning);
+    Assert.assertEquals("submission result", warning.getMessage());
+
+    response.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    Assert.assertFalse(statement.execute("FLUSH"));
+    Assert.assertNull(statement.getWarnings());
   }
 }

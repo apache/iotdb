@@ -46,6 +46,7 @@ import java.io.InputStreamReader;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -704,7 +705,10 @@ public abstract class AbstractCli {
           }
         }
       } else {
-        ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE);
+        // Config statements may return a detailed submission result through JDBC warnings.
+        SQLWarning warning = statement.getWarnings();
+        ctx.getPrinter()
+            .println("Msg: " + (warning == null ? SUCCESS_MESSAGE : warning.getMessage()));
       }
     } catch (Exception e) {
       ctx.getPrinter().println("Msg: " + e);

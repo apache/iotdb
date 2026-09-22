@@ -3909,7 +3909,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(status));
         return future;
       } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.set(new ConfigTaskResult(status));
       }
     } catch (Exception e) {
       future.setException(e);
@@ -4097,7 +4097,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(status));
         return future;
       } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.set(new ConfigTaskResult(status));
       }
     } catch (Exception e) {
       future.setException(e);
@@ -4120,7 +4120,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(status));
         return future;
       } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.set(new ConfigTaskResult(status));
       }
     } catch (Exception e) {
       future.setException(e);
@@ -4143,7 +4143,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(status));
         return future;
       } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.set(new ConfigTaskResult(status));
       }
     } catch (Exception e) {
       future.setException(e);

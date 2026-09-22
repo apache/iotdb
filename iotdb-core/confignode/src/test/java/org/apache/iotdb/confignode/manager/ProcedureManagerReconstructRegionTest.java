@@ -139,8 +139,11 @@ public class ProcedureManagerReconstructRegionTest {
     TReconstructRegionReq request =
         new TReconstructRegionReq(Arrays.asList(12, 99, 14, 12, 99, 14), 7, Model.TREE);
 
-    assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), manager.reconstructRegion(request).getCode());
+    TSStatus status = manager.reconstructRegion(request);
+    assertEquals(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode(), status.getCode());
+    assertTrue(status.getMessage().contains("Total regions: 3"));
+    assertTrue(status.getMessage().contains("successfully submitted: 2"));
+    assertTrue(status.getMessage().contains("failed to submit: 1"));
 
     ArgumentCaptor<ReconstructRegionProcedure> captor =
         ArgumentCaptor.forClass(ReconstructRegionProcedure.class);
@@ -153,11 +156,24 @@ public class ProcedureManagerReconstructRegionTest {
   }
 
   @Test
-  public void testRequestWithNoUsableRegionIdsSucceedsWithoutSubmittingProcedure() {
+  public void testRequestWithNoUsableRegionIdsFailsWithoutSubmittingProcedure() {
     TReconstructRegionReq request = new TReconstructRegionReq(Arrays.asList(99, 99), 7, Model.TREE);
 
-    assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), manager.reconstructRegion(request).getCode());
+    TSStatus status = manager.reconstructRegion(request);
+    assertEquals(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode(), status.getCode());
+    assertTrue(status.getMessage().contains("Total regions: 1"));
+    assertTrue(status.getMessage().contains("failed to submit: 1"));
+    verify(executor, times(0)).submitProcedure(any());
+  }
+
+  @Test
+  public void testRequestWithNoRegionIdsFailsWithoutSubmittingProcedure() {
+    TReconstructRegionReq request =
+        new TReconstructRegionReq(Collections.emptyList(), 7, Model.TREE);
+
+    TSStatus status = manager.reconstructRegion(request);
+    assertEquals(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode(), status.getCode());
+    assertTrue(status.getMessage().contains("Total regions: 0"));
     verify(executor, times(0)).submitProcedure(any());
   }
 
