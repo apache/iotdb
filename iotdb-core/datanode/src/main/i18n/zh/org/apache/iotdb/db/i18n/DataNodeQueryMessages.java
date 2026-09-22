@@ -4647,7 +4647,4 @@ public final class DataNodeQueryMessages {
       "没有更多可用的 DeviceEntry 记录";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
-
-  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3 =
-      "集群所有节点支持 duration encoding version 1 后才能创建 CQ 日历 duration";
 }

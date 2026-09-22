@@ -157,7 +157,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
@@ -4187,13 +4186,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           createContinuousQueryStatement.getEveryDuration().monthDuration != 0
               || createContinuousQueryStatement.getStartTimeOffsetDuration().monthDuration != 0
               || createContinuousQueryStatement.getEndTimeOffsetDuration().monthDuration != 0;
-      if (hasCalendarDuration && !allClusterNodesSupportCQDurationEncoding(client.showCluster())) {
-        future.setException(
-            new SemanticException(
-                DataNodeQueryMessages
-                    .MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3));
-        return future;
-      }
       // The legacy fields are still required on the wire. If any structured component contains a
       // calendar month, none of the legacy fields has a valid representation and all three use the
       // zero sentinel. This prevents an old reader from interpreting a mixed request as a partially
@@ -4240,35 +4232,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
-  }
-
-  private boolean allClusterNodesSupportCQDurationEncoding(TShowClusterResp response) {
-    if (response == null
-        || response.getConfigNodeList() == null
-        || response.getDataNodeList() == null
-        || response.getNodeVersionInfo() == null) {
-      return false;
-    }
-    if (response.getConfigNodeList().isEmpty() && response.getDataNodeList().isEmpty()) {
-      return false;
-    }
-    for (TConfigNodeLocation node : response.getConfigNodeList()) {
-      if (!supportsCQDurationEncoding(response.getNodeVersionInfo().get(node.getConfigNodeId()))) {
-        return false;
-      }
-    }
-    for (TDataNodeLocation node : response.getDataNodeList()) {
-      if (!supportsCQDurationEncoding(response.getNodeVersionInfo().get(node.getDataNodeId()))) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private boolean supportsCQDurationEncoding(TNodeVersionInfo info) {
-    return info != null
-        && info.isSetSupportedCQDurationEncodingVersions()
-        && info.getSupportedCQDurationEncodingVersions().contains((short) 1);
   }
 
   @Override

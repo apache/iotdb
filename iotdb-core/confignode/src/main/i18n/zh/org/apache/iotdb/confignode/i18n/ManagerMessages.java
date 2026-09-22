@@ -702,8 +702,6 @@ public final class ManagerMessages {
   public static final String
       MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67 =
           "CQ legacy duration fields 与结构化 duration 字段冲突";
-  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072 =
-      "CQ 日历 duration 要求集群所有节点支持 duration encoding version 1";
   public static final String MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A =
       "新建 CQ 请求必须包含 duration encoding marker";
   public static final String MESSAGE_CQ_DOES_NOT_HAVE_OCCURRENCE_INDEX_METADATA_929A7F0C =

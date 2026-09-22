@@ -561,9 +561,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     req.setPreCheck(isPreCheck);
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     req.setClusterName(config.getClusterName());
-    req.setVersionInfo(
-        new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO)
-            .setSupportedCQDurationEncodingVersions(Collections.singleton((short) 1)));
+    req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
@@ -739,9 +737,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     req.setClusterName(
         config.getClusterName() == null ? DEFAULT_CLUSTER_NAME : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
-    req.setVersionInfo(
-        new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO)
-            .setSupportedCQDurationEncodingVersions(Collections.singleton((short) 1)));
+    req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
     req.setClusterId(config.getClusterId());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {

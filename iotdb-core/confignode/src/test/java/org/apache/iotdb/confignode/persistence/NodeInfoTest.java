@@ -26,10 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -40,7 +38,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -74,35 +71,6 @@ public class NodeInfoTest {
     NodeInfo nodeInfo1 = new NodeInfo();
     nodeInfo1.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(nodeInfo, nodeInfo1);
-  }
-
-  @Test
-  public void testSnapshotPreservesDurationEncodingCapabilities() throws TException, IOException {
-    File capabilitySnapshotDir = new File(BASE_OUTPUT_PATH, "snapshot-node-capabilities");
-    if (capabilitySnapshotDir.exists()) {
-      FileUtils.deleteDirectory(capabilitySnapshotDir);
-    }
-    capabilitySnapshotDir.mkdirs();
-    try {
-      registerConfigNodes();
-      registerDataNodes();
-      TNodeVersionInfo versionInfo =
-          new TNodeVersionInfo("2.0.0", "build")
-              .setSupportedCQDurationEncodingVersions(Collections.singleton((short) 1));
-      nodeInfo.updateVersionInfo(new UpdateVersionInfoPlan(versionInfo, 10000));
-      Assert.assertTrue(nodeInfo.processTakeSnapshot(capabilitySnapshotDir));
-
-      NodeInfo restored = new NodeInfo();
-      restored.processLoadSnapshot(capabilitySnapshotDir);
-      Assert.assertEquals(nodeInfo, restored);
-      Assert.assertTrue(
-          restored
-              .getVersionInfo(10000)
-              .getSupportedCQDurationEncodingVersions()
-              .contains((short) 1));
-    } finally {
-      FileUtils.deleteDirectory(capabilitySnapshotDir);
-    }
   }
 
   private void registerConfigNodes() {

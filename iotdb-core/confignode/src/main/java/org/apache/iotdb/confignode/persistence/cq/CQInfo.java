@@ -687,12 +687,6 @@ public class CQInfo implements SnapshotProcessor {
       return boundaryExplicit;
     }
 
-    public boolean hasCalendarDuration() {
-      return everyDuration.monthDuration != 0
-          || startTimeOffsetDuration.monthDuration != 0
-          || endTimeOffsetDuration.monthDuration != 0;
-    }
-
     private static org.apache.tsfile.utils.TimeDuration durationFromReq(
         TCreateCQReq req, TCQDuration d, long legacy) {
       if (req.isSetDurationEncodingVersion()
