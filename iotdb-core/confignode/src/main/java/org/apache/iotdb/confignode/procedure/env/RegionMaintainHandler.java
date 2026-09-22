@@ -843,7 +843,8 @@ public class RegionMaintainHandler {
           (CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()
                   + CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs())
               / 2;
-      Integer leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
+      final int leaderId =
+          configManager.getLoadManager().getRegionLeaderMap().getOrDefault(regionId, -1);
 
       if (leaderId != -1) {
         // The migrated node is not leader, so we don't need to transfer temporarily
@@ -936,7 +937,9 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-    final int leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
+    // A procedure can resume before the leader cache is rebuilt after a ConfigNode leader switch.
+    final int leaderId =
+        configManager.getLoadManager().getRegionLeaderMap().getOrDefault(regionId, -1);
     Collections.shuffle(aliveDataNodes);
     Optional<TDataNodeLocation> bestChoice = Optional.empty();
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
