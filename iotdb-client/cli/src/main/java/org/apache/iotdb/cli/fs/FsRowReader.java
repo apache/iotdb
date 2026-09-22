@@ -82,10 +82,10 @@ public final class FsRowReader {
     }
     List<FsColumn> schema = provider.columns(path);
     List<FsColumn> projected = selectColumns(schema, options.getColumns());
-    List<TagPredicate> predicates = new ArrayList<>();
-    for (String filter : options.getTagFilters()) predicates.add(new TagPredicate(filter, schema));
     boolean filtered =
-        options.getStart() != null || options.getEnd() != null || !predicates.isEmpty();
+        options.getStart() != null
+            || options.getEnd() != null
+            || !options.getTagFilters().isEmpty();
     long requested =
         options.getLimit() < 0 || filtered
             ? -1
@@ -94,6 +94,18 @@ public final class FsRowReader {
                 options.getLimit() + Math.min(Integer.MAX_VALUE, options.getOffset()));
     List<SqlRow> rows =
         tail ? provider.tail(path, (int) requested) : provider.read(path, (int) requested);
+    return new Result(projected, filterRows(rows, schema, options, tail));
+  }
+
+  public static List<SqlRow> filterRows(
+      List<SqlRow> rows, List<FsColumn> schema, ReadOptions options) {
+    return filterRows(rows, schema, options, false);
+  }
+
+  private static List<SqlRow> filterRows(
+      List<SqlRow> rows, List<FsColumn> schema, ReadOptions options, boolean tail) {
+    List<TagPredicate> predicates = new ArrayList<>();
+    for (String filter : options.getTagFilters()) predicates.add(new TagPredicate(filter, schema));
     List<SqlRow> matching = new ArrayList<>();
     for (SqlRow row : rows) {
       if (options.getStart() != null || options.getEnd() != null) {
@@ -118,7 +130,7 @@ public final class FsRowReader {
       if (tail) from = (int) Math.max(0, end - options.getLimit());
       else end = (int) Math.min(end, (long) from + options.getLimit());
     }
-    return new Result(projected, new ArrayList<>(matching.subList(from, end)));
+    return new ArrayList<>(matching.subList(from, end));
   }
 
   public static void validateTextOptions(ReadOptions options) {

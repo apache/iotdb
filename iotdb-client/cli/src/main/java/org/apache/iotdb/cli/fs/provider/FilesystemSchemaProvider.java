@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
+import org.apache.iotdb.cli.fs.command.ReadOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
@@ -60,6 +61,11 @@ public interface FilesystemSchemaProvider {
   /** Return field value statistics for a table or timeseries path. */
   default List<SqlRow> stats(FsPath path) throws SQLException {
     throw new SQLException("Statistics are not supported for path: " + path);
+  }
+
+  /** Return field value statistics after applying typed row filters. */
+  default List<SqlRow> stats(FsPath path, ReadOptions options) throws SQLException {
+    return stats(path);
   }
 
   /** Return logical row/entity/column counts for a table or timeseries path. */

@@ -27,7 +27,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tool_adapter import cli_args, run_cli, table_rows, validate_command
+from tool_adapter import (
+    build_typed_filesystem_command,
+    cli_args,
+    filesystem_help,
+    run_cli,
+    table_rows,
+    validate_command,
+)
 
 
 DATABASE = "llm_benchmark_test"
@@ -46,6 +53,7 @@ class CommandValidationTest(unittest.TestCase):
             f"SELECT device,COUNT(temperature),MIN(temperature),MAX(temperature),SUM(temperature),AVG(temperature) FROM {TABLE} GROUP BY device ORDER BY device",
             f"SELECT device,SUM(CASE WHEN status=true THEN 1 ELSE 0 END),SUM(CASE WHEN status=false THEN 1 ELSE 0 END),SUM(CASE WHEN status IS NULL THEN 1 ELSE 0 END) FROM {TABLE} GROUP BY device ORDER BY device",
             f"SELECT COUNT(humidity),MIN(humidity),MAX(humidity),SUM(humidity),AVG(humidity) FROM {TABLE}",
+            f"SELECT ROUND(PERCENTILE(temperature,0.5),3) FROM {TABLE}",
             f"SHOW TABLES FROM {DATABASE}",
             f"SHOW TABLES DETAILS FROM {DATABASE}",
             f"DESC {TABLE}",
@@ -129,6 +137,121 @@ class CommandValidationTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_command(command, "filesystem", DATABASE)
 
+    def test_typed_filesystem_parameters_render_a_scoped_command(self):
+        command = build_typed_filesystem_command(
+            {
+                "command": "cat",
+                "startMs": 1609459200000,
+                "endMs": 1609545599999,
+                "measurement": "temperature",
+                "limit": 500,
+                "offset": 1000,
+                "tagName": "device",
+                "tagOperator": "eq",
+                "tagValue": "device 2",
+            },
+            PATH,
+            DATABASE,
+        )
+        self.assertEqual(
+            command,
+            "cat --format csv --measurements temperature --start 1609459200000 "
+            "--end 1609545599999 --limit 500 --offset 1000 --tag-filter device "
+            f"eq 'device 2' {PATH}",
+        )
+        validate_command(command, "filesystem", DATABASE)
+
+    def test_typed_filesystem_parameters_reject_invalid_combinations(self):
+        invalid = [
+            {"command": "stats", "startMs": 0},
+            {"command": "tail", "startMs": 0},
+            {"command": "tail", "measurement": "temperature"},
+            {"command": "tail", "offset": 1},
+            {"command": "cat", "startMs": "0"},
+            {"command": "cat", "startMs": 2, "endMs": 1},
+            {"command": "cat", "limit": 0},
+            {"command": "cat", "limit": 501},
+            {"command": "cat", "offset": -1},
+            {"command": "cat", "tagName": "device"},
+            {"command": "cat", "tagOperator": "eq", "tagValue": "device_2"},
+            {"command": "cat", "tagName": "device", "tagOperator": "eq"},
+            {
+                "command": "cat",
+                "tagName": "device",
+                "tagOperator": "is-null",
+                "tagValue": "unexpected",
+            },
+            {"command": "help", "limit": 1},
+            {"command": "cat", "path": PATH},
+        ]
+        for parameters in invalid:
+            with self.subTest(parameters=parameters):
+                with self.assertRaises(ValueError):
+                    build_typed_filesystem_command(parameters, PATH, DATABASE)
+        with self.assertRaises(ValueError):
+            build_typed_filesystem_command(
+                {"command": "cat"}, "/other_database/sample.csv", DATABASE
+            )
+        self.assertEqual(
+            build_typed_filesystem_command(
+                {"command": "tail", "limit": 5}, PATH, DATABASE
+            ),
+            f"tail --format csv -n 5 {PATH}",
+        )
+
+    def test_filtered_stats_renders_controlled_filters_and_aggregates(self):
+        parameters = {
+            "command": "stats",
+            "startMs": 1609459200000,
+            "endMs": 1640995199999,
+            "measurement": "temperature",
+            "tagName": "device",
+            "tagOperator": "eq",
+            "tagValue": "device_2",
+            "aggregates": ["min", "max", "avg", "median"],
+        }
+        command = build_typed_filesystem_command(
+            parameters, PATH, DATABASE, filtered_stats=True
+        )
+        self.assertEqual(
+            command,
+            "stats --format csv --measurements temperature --start 1609459200000 "
+            "--end 1640995199999 --tag-filter device eq device_2 --aggregates "
+            f"min,max,avg,median {PATH}",
+        )
+        with self.assertRaises(ValueError):
+            build_typed_filesystem_command(parameters, PATH, DATABASE)
+        for aggregates in ([], ["range"], ["min", "min"], "min"):
+            with self.subTest(aggregates=aggregates):
+                with self.assertRaises(ValueError):
+                    build_typed_filesystem_command(
+                        {"command": "stats", "aggregates": aggregates},
+                        PATH,
+                        DATABASE,
+                        filtered_stats=True,
+                    )
+
+    def test_help_documents_every_typed_parameter_and_fixed_path(self):
+        output = filesystem_help(PATH)
+        self.assertIn(f"Fixed object path: {PATH}", output)
+        for parameter in (
+            "command",
+            "startMs",
+            "endMs",
+            "measurement",
+            "limit",
+            "offset",
+            "tagName",
+            "tagOperator",
+            "tagValue",
+        ):
+            self.assertIn(f"- {parameter} ", output)
+        self.assertIn("inclusive UTC epoch-millisecond", output)
+        self.assertIn("next_offset", output)
+        filtered = filesystem_help(PATH, filtered_stats=True)
+        self.assertIn("- aggregates ", filtered)
+        self.assertIn("filters before computing", filtered)
+
 
 class ToolProcessTest(unittest.TestCase):
     def setUp(self):
@@ -209,7 +332,12 @@ class ToolProcessTest(unittest.TestCase):
             pid = int(child_pid.read_text())
             process_status = Path(f"/proc/{pid}/status")
             if process_status.exists():
-                self.assertRegex(process_status.read_text(), r"State:\s+Z")
+                try:
+                    status = process_status.read_text()
+                except (FileNotFoundError, ProcessLookupError):
+                    status = None
+                if status is not None:
+                    self.assertRegex(status, r"State:\s+Z")
 
     def test_table_parser_accepts_paginated_headers_but_rejects_missing_rows(self):
         output = (

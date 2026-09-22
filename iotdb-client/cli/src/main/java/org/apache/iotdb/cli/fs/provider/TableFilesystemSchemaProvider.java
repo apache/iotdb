@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
+import org.apache.iotdb.cli.fs.FsRowReader;
 import org.apache.iotdb.cli.fs.FsRowRenderer;
+import org.apache.iotdb.cli.fs.command.ReadOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
@@ -162,6 +164,14 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     TableFileRef file = tableFile(path);
     List<FsColumn> columns = columns(file);
     return FsStatistics.stats(model(), file.table, columns, read(file, columns, -1, false));
+  }
+
+  @Override
+  public List<SqlRow> stats(FsPath path, ReadOptions options) throws SQLException {
+    TableFileRef file = tableFile(path);
+    List<FsColumn> columns = columns(file);
+    List<SqlRow> rows = new FsRowReader(this).read(path, options, false).getRows();
+    return FsStatistics.stats(model(), file.table, columns, rows);
   }
 
   @Override

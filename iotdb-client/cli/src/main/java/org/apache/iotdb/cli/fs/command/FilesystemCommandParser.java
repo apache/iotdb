@@ -151,6 +151,9 @@ public class FilesystemCommandParser {
       case STATS:
       case COUNT:
         validateScope(args);
+        if (type == FilesystemCommand.Type.STATS && args.has("--aggregates")) {
+          validateAggregates(args.value("--aggregates"));
+        }
         return withReadOptions(FilesystemCommand.path(type, args.path(false)), args, "-f");
       case SKETCH:
         if (args.has("--force") && !args.has("-o")) {
@@ -459,6 +462,22 @@ public class FilesystemCommandParser {
     }
   }
 
+  private static void validateAggregates(String value) {
+    List<String> seen = new ArrayList<>();
+    for (String aggregate : value.split(",", -1)) {
+      if (!("count".equals(aggregate)
+              || "min".equals(aggregate)
+              || "max".equals(aggregate)
+              || "sum".equals(aggregate)
+              || "avg".equals(aggregate)
+              || "median".equals(aggregate))
+          || seen.contains(aggregate)) {
+        throw invalid(CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F, "stats", value);
+      }
+      seen.add(aggregate);
+    }
+  }
+
   private static long parseLong(String command, String option, String value, boolean positive) {
     try {
       if (value == null || value.isEmpty() || value.charAt(0) == '-')
@@ -702,7 +721,6 @@ public class FilesystemCommandParser {
         case "ll":
           return "-f".equals(flag) || "--format".equals(flag);
         case "schema":
-        case "stats":
         case "count":
           return "-f".equals(flag)
               || "--format".equals(flag)
@@ -712,6 +730,20 @@ public class FilesystemCommandParser {
               || "--table".equals(flag)
               || "-m".equals(flag)
               || "--measurements".equals(flag);
+        case "stats":
+          return "-f".equals(flag)
+              || "--format".equals(flag)
+              || "-d".equals(flag)
+              || "--device".equals(flag)
+              || "-t".equals(flag)
+              || "--table".equals(flag)
+              || "-m".equals(flag)
+              || "--measurements".equals(flag)
+              || "--start".equals(flag)
+              || "--end".equals(flag)
+              || "--tag-filter".equals(flag)
+              || "--tag-match".equals(flag)
+              || "--aggregates".equals(flag);
         case "sketch":
           return "-o".equals(flag) || "--output".equals(flag);
         case "export":

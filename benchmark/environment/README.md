@@ -99,8 +99,9 @@ ssh -N -L 32867:127.0.0.1:32867 root@192.168.99.49
 ```
 
 The CLI wrappers accept `IOTDB_USERNAME` and `IOTDB_PASSWORD`; their defaults are
-the fresh installation's administrative account. Formal agent evaluation needs
-dedicated read-only accounts and the benchmark's SQL/FS tool restrictions.
+the fresh installation's administrative account. The controlled runner below
+enforces the SQL/FS restrictions. Provision dedicated read-only credentials before
+formal evaluation as a second database-side boundary.
 
 ## Agent entry point
 
@@ -110,28 +111,52 @@ answer to stdout and diagnostics to stderr, with durable logs in `DSH_HOME`.
 Do not assume the newer development branch's `headless --json` flag is available
 in this release. Framework code and its dependency lock are available locally.
 
-Configure an appropriate DeepSeek-compatible endpoint before a real model run:
+The current server stores the model selection and endpoint in
+`runtime/dsh-home/settings.yaml`, while `runtime/dsh-home/.credentials.yaml`
+stores the API-key value under the reference named by `apiKeyEnv`. Both files
+are owner-only (`0600`) and remain outside the agent workspace. Run a task with:
 
 ```bash
-export EXP_LLM_MODEL='<model-id>'
-export EXP_LLM_BASE_URL='<compatible-api-base-url>'
-# Populate EXP_LLM_API_KEY securely from the chosen server-side credential.
 run-agent 'Your installation test question'
 ```
 
-`EXP_AGENT_WORKSPACE` can select another working directory. The wrapper requires
-all three model variables; no real credentials or model were installed. The
+`EXP_AGENT_WORKSPACE` can select another working directory. `EXP_LLM_MODEL`,
+`EXP_LLM_BASE_URL`, and `EXP_LLM_API_KEY` remain optional per-run overrides;
+inherited environment values take precedence over the stored files. The
 patch disables telemetry, session-log upload, plugin inventory upload and the
 auxiliary title-generation model call. Each headless invocation creates a new
 session. Full session logs, rather than final stdout alone, are needed for tool
 calls and token/cost analysis.
 
-This entry point retains the general-purpose headless toolset. It is **not yet
-the controlled SQL/FS benchmark adapter**. Before paper experiments, use identical
-model settings and budgets, expose only the assigned interface, prevent access to
-answers/evaluator/source data through local files, and retain the official scoring
-and task identifiers. The existing runner in `llm-sql-fs-comparison` still targets
-Codex; installing Harness does not replace that runner automatically.
+The DSH measurement adapter is installed from
+`benchmark/llm-sql-fs-comparison/dsh_client.py`. It creates one isolated canonical
+session log per trial and derives wall time, provider token/cache usage, tool calls,
+tool errors and provider retries. Formal trials must use its controlled baseline;
+the convenience `run-agent` entry point retains the general-purpose headless tools
+and is only for installation checks.
+
+Run a measured SQL or filesystem trial with a fresh output directory:
+
+```bash
+python3 /data_01/iotdb-fs-exp/src/iotdb/benchmark/llm-sql-fs-comparison/dsh_client.py \
+  --dsh /data_01/iotdb-fs-exp/bin/dsh-exp \
+  --patch /data_01/iotdb-fs-exp/config/agent.patch.yml \
+  --workspace /data_01/iotdb-fs-exp/runtime/agent-workspace \
+  --prompt-file /absolute/path/to/prompt.txt \
+  --output /data_01/iotdb-fs-exp/results/trials/sql-example \
+  --baseline sql \
+  --database '<task-database>'
+
+# For the filesystem arm, use a different fresh output path:
+#   --baseline filesystem --database '<task-database>'
+```
+
+The final baseline patch disables every installed default tool provider and
+registers exactly one tool: `iotdb_sql` for SQL or `iotdb_fs` for filesystem.
+The Python runner validates the command, starts the matching wrapper without a
+shell, scopes access to the selected database, and passes no model API credentials
+to the CLI process. The adapter audits every canonical `request/header` and fails
+the trial if another tool is exposed or invoked.
 
 ## Verification and remaining work
 
@@ -150,6 +175,17 @@ Codex; installing Harness does not replace that runner automatically.
   actual Harness startup, Bash tool execution of both IoTDB CLI interfaces, and
   final-answer handling. Both interfaces returned the expected 200-row count.
   Its result is explicitly marked `local_mock_not_model_evaluation`.
+- `results/dsh-adapter-smoke-v1` records a real-model adapter smoke trial. It
+  completed with the exact requested answer, one successful Bash tool call, two
+  model requests, zero provider retries, and provider-reported token/cache usage.
+  This result validates collection and remains outside the formal benchmark.
+- `results/dsh-baseline-sql-smoke-v7` and
+  `results/dsh-baseline-fs-smoke-v3` are real-model controlled-tool smoke trials.
+  Their request headers expose only `iotdb_sql` and `iotdb_fs`, respectively,
+  and both returned the expected 200-row count with one successful tool call.
+  `results/dsh-baseline-fs-smoke-v2` separately records a disallowed `wc` command
+  being rejected as a tool error before the CLI started. These results are setup
+  checks, not benchmark samples.
 - `results/selection-initial` preserves selection before data arrival;
   `results/selection-with-data` records the full static scan after upload.
   All 274 L1 CSVs passed the static data checks. That historical scan records
@@ -178,14 +214,13 @@ configuration, dependency versions and evidence hashes. Server evidence lives
 under `results/migration-v1`, including each task's `tsfile/raw_data0.tsfile`.
 All 24 selector/verification unit tests and the verification environment's
 `pip check` passed. After a successful `FLUSH`, both cluster nodes were `Running`.
-Formal agent evaluation remains pending semantic review and controlled tool setup.
+Formal agent evaluation remains pending semantic review and trial scheduling.
 
-Real-model connectivity and answers remain untested pending model/endpoint/
-credential selection. The L1 CSVs have not been bulk-imported into IoTDB, and
-SQL/FS oracle equivalence has not been established. Those are the next migration
-steps; neither static CSV checks nor the 200-row installation fixture establishes
-benchmark readiness. The server also hosts other workloads, so formal latency
+Real-model connectivity and stored credentials were verified with minimal exact-answer
+smoke calls; these are connectivity checks, not benchmark results. The server also
+hosts other workloads, so formal latency
 experiments need recorded background load or a reserved measurement window.
 The native Harness sandbox reported partial enforcement on the host's older
-Landlock ABI; it is not evidence of complete filesystem isolation. The formal
-evaluation's restricted runner must be validated separately.
+Landlock ABI. Controlled trials therefore rely on removal of the general-purpose
+tools plus the command validator and restricted child-process environment; the
+canonical tool inventory is audited in every trial.

@@ -21,6 +21,8 @@
 后续的数据导入、TsFile 准备和确定性答案核验见 [MIGRATION.md](MIGRATION.md)。
 完整执行结果见 [EQUIVALENCE.md](EQUIVALENCE.md)，逐题证据索引见
 [equivalence-summary.json](equivalence-summary.json)。
+受控 DSH 首轮 1–10 题的 FS 调用诊断见
+[FS_OPTIMIZATION_ANALYSIS.md](FS_OPTIMIZATION_ANALYSIS.md)。
 以下记录保留第一阶段静态筛选的状态；`execution=not_verified` 等字段描述筛选器
 本身的输出，实际执行证据由迁移报告单独记录，不覆盖历史筛选结果。
 
@@ -184,6 +186,10 @@ FsRowReader 当前先读取再做部分过滤；stats/countRows 读取全部数�
    oracle 核对后，才由下一阶段生成真正的实验 ready manifest。
 5. 接入模型实验，对同一问题设置 SQL 单条、SQL 分步和 FS 分步；需要时增加一次生成
    完整 FS 序列的消融。至少报告预算内正确率、端到端时间、token、调用数、读出数据量。
+
+FS 受控接口的 1–10 题诊断结果见
+[FS_ABLATION_1_10.md](FS_ABLATION_1_10.md)，字符串到原生 JSON 标量的紧凑分页消融见
+[FS_COMPACT_ABLATION_1_10.md](FS_COMPACT_ABLATION_1_10.md)。
 
 当前静态筛选结果不能提前声称 274 题全部可覆盖，也不能因数据缺失声称 NLQTSBench 不适用。
 

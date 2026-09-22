@@ -1,0 +1,10 @@
+{
+  "name": "@iotdb/dsh-controlled-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
+  }
+}

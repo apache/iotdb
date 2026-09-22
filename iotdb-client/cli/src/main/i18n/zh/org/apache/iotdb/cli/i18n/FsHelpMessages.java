@@ -51,8 +51,8 @@ public final class FsHelpMessages {
   };
   public static final String[] META = {"输出可用数据库对象元数据；描述远端对象，不代表本地 TsFile。", CURRENT};
   public static final String[] STATS = {
-    "按设备输出类型相关的 FIELD 统计、TAG 值、真实空值数和非空时间范围；stats_source 为 scan。",
-    "默认当前范围的全部 FIELD；BOOLEAN 的 sum 为 true 数量，INT64/TIMESTAMP/DATE 的 sum 为 NULL。"
+    "按设备输出类型相关的 FIELD 统计、TAG 值、真实空值数和非空时间范围；聚合前应用时间/TAG 过滤，stats_source 为 scan。",
+    "默认当前范围的全部 FIELD 和统计项；--aggregates 接受 count、min、max、sum、avg 和 median。BOOLEAN 的 sum 为 true 数量，非数值 avg/median 为 NULL。"
   };
   public static final String[] COUNT = {
     "输出 TAG 和 FIELD 的行数、设备数、非空数、空值数及时间范围；排除 TIME 和 ATTRIBUTE。",

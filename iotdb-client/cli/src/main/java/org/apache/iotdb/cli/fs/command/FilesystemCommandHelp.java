@@ -54,9 +54,14 @@ public final class FilesystemCommandHelp {
     add("meta", "meta " + FORMAT + " [path]", FsHelpMessages.META, "meta /db1/table1.csv");
     add(
         "stats",
-        "stats " + SCOPE + " " + FORMAT + " [path]",
+        "stats "
+            + SCOPE
+            + " "
+            + FORMAT
+            + " [--start time] [--end time] [--tag-filter tag op [value]]"
+            + " [--tag-match all|any] [--aggregates count,min,max,sum,avg,median] [path]",
         FsHelpMessages.STATS,
-        "stats /db1/table1.csv -m temperature");
+        "stats /db1/table1.csv -m temperature --start 0 --end 1000 --aggregates avg,median");
     add(
         "count",
         "count " + SCOPE + " " + FORMAT + " [path]",
@@ -182,7 +187,10 @@ public final class FilesystemCommandHelp {
             entry.result,
             entry.defaults,
             entry.examples));
-    if ("head".equals(name) || "cat".equals(name) || "export".equals(name)) {
+    if ("head".equals(name)
+        || "cat".equals(name)
+        || "stats".equals(name)
+        || "export".equals(name)) {
       out.println(FsHelpMessages.READ_OPTIONS);
     }
   }

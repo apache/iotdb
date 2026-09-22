@@ -31,6 +31,9 @@
 | `run_benchmark.py`、`prepare.py` | 基础任务执行与数据准备 |
 | `run_application_benchmark.py`、`prepare_application.py` | 应用场景执行与数据准备 |
 | `codex_client.py` | Codex 会话、工具回调、流断开重试及事件记录 |
+| `dsh_client.py` | DSH 独立 trial、受控基线审计、canonical session 解析及指标采集 |
+| `dsh-baseline.patch.yml`、`dsh-controlled-tool/` | 关闭 DSH 默认工具并只注册指定 IoTDB 接口 |
+| `dsh_tool_runner.py` | 在隔离环境中校验并执行一条 SQL 或 FS 命令 |
 | `tool_adapter.py` | SQL/fs 命令校验、CLI 调用与耗时记录 |
 | `fixture.py`、`application_fixture.py` | 确定性数据与独立答案计算 |
 | `tasks.json`、`application_tasks.json` | 任务目标、公开规则和答案结构 |
@@ -54,6 +57,55 @@ A3 楼宇能耗异常；具体时间窗口、去重、排序和数据质量规�
 
 在本目录运行下列命令。将 CLI 路径和端口替换为实际值。
 连接文件包含认证信息，保存在忽略的 `results/` 下，文件权限为 0600。
+
+## DSH trial adapter
+
+服务器上的 DeepSeek Harness 可通过 adapter 执行单个受控 trial。SQL 组只注册
+`iotdb_sql`，filesystem 组只注册 `iotdb_fs`：
+
+```bash
+python3 dsh_client.py \
+  --dsh /data_01/iotdb-fs-exp/bin/dsh-exp \
+  --patch /data_01/iotdb-fs-exp/config/agent.patch.yml \
+  --workspace /data_01/iotdb-fs-exp/runtime/agent-workspace \
+  --prompt-file /absolute/path/to/prompt.txt \
+  --output /data_01/iotdb-fs-exp/results/trials/sql-example \
+  --baseline sql \
+  --database nlqts_001
+
+python3 dsh_client.py \
+  --dsh /data_01/iotdb-fs-exp/bin/dsh-exp \
+  --patch /data_01/iotdb-fs-exp/config/agent.patch.yml \
+  --workspace /data_01/iotdb-fs-exp/runtime/agent-workspace \
+  --prompt-file /absolute/path/to/prompt.txt \
+  --output /data_01/iotdb-fs-exp/results/trials/fs-example \
+  --baseline filesystem \
+  --database nlqts_001 \
+  --filesystem-path /nlqts_001/raw_data.csv
+```
+
+受控补丁关闭 Bash、文件读写/搜索、Web、skill、subagent、workflow、todo、goal、
+plan-mode 等默认插件。工具进程不经过 shell，并只继承运行 CLI 所需的环境变量；模型
+API 凭据不会传给工具进程。SQL 校验器只接受选定数据库内的一条只读
+`SELECT`/`SHOW TABLES`/`DESCRIBE`。FS 工具将对象路径固定在 trial 配置中，模型只能
+选择枚举只读操作并填写带类型的 epoch 毫秒时间范围、measurement、分页和 TAG
+过滤参数。`cat`、`head` 和 `tail` 返回有界结构化页面；`cat`/`head` 通过
+`next_offset` 连续读取，原始 CLI 输出仅保留在审计目录。`help` 由 adapter 返回完整
+接口说明，不启动 CLI。模型可见结果受 40,000-byte 上限约束，不包含审计或 spill 路径。
+使用 `--fs-output-mode raw` 可运行 typed-raw 消融：保留固定路径与类型化参数，但让
+数据读取返回原始 CSV 并恢复 DSH 的默认 spill 行为；默认 `page` 使用结构化分页。
+使用 `--fs-output-mode compact` 可运行 typed-page-compact 消融：分页字段与预算保持
+不变，时间戳和选定的数值 measurement 使用 JSON number，TAG 仍使用 string，NULL
+使用 JSON null。
+
+adapter 为每个 trial 覆盖独立的未压缩 session persistence 目录，避免通过全局目录
+mtime 猜测会话归属。`dsh_result.json` 包含 wall time、LLM time、TTFT、decode time、
+token/cache 用量、工具调用/错误和 provider retry。原始证据保存在
+`dsh-session/**/session.v3.jsonl`；`events-summary.jsonl` 仅保留事件元数据和用量，
+不复制提示词、工具参数、工具输出或 reasoning 正文。每个受控 trial 还会从所有
+`request/header` 审计工具清单；缺少清单、暴露额外工具或调用额外工具都会把 trial
+标记为 `infrastructure_error`。未指定 `--baseline` 的调用不会获得上述隔离保证，不能
+用于正式 SQL/FS 对比实验。
 
 ## 基础任务
 
@@ -97,6 +149,11 @@ python3 run_application_benchmark.py --connections results/setup-application/con
 `cli_process_ms` 是其中的 CLI 部分。
 `non_tool_wall_ms` 包含模型、网络、排队和 Codex 编排。
 本地接口没有独立的 API 请求计时，`model_api_ms` 为 null。
+
+DSH adapter 的 `task_wall_ms` 从子进程启动计至退出；`model_api_ms` 与 DSH
+`sessionStats.llmMs` 的定义一致，从 `step/start` 计至 `assistant/message`，包含同一步骤
+中的 provider retry 等待。`tool_wall_ms` 是匹配的 `tool/call` 至 `tool/result` 区间之和；
+`cache_hit_ratio` 是 cache-read token 占全部 prompt-side token traffic 的比例。
 
 基础任务通过 `review_evidence.py` 审核观察证据后再生成报告。
 应用任务由运行器直接比较完整 oracle。成功、答案错误、超时和基础设施错误分别记录。

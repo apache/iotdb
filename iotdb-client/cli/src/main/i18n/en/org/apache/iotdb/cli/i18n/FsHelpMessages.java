@@ -77,8 +77,9 @@ public final class FsHelpMessages {
   };
   public static final String[] STATS = {
     "Print typed FIELD statistics per device, with TAG values, real null counts and non-null time"
-        + " ranges; stats_source is scan.",
-    "Current scope; all FIELD columns. BOOLEAN sum counts true; INT64/TIMESTAMP/DATE sum is NULL."
+        + " ranges; time/TAG filters are applied before aggregation and stats_source is scan.",
+    "Current scope; all FIELD columns and statistics. --aggregates accepts count, min, max, sum,"
+        + " avg and median. BOOLEAN sum counts true; non-numeric avg/median are NULL."
   };
   public static final String[] COUNT = {
     "Print row/entity/non-null/null counts and time ranges for TAG and FIELD columns. TIME and"
