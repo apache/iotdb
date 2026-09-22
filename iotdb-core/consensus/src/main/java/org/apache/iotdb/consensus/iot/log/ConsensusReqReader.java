@@ -39,6 +39,14 @@ public interface ConsensusReqReader {
   void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex);
 
   /**
+   * @return the search index before which insert nodes can be deleted safely, or {@link
+   *     #DEFAULT_SAFELY_DELETED_SEARCH_INDEX} if the consensus layer never reported a watermark.
+   */
+  default long getSafelyDeletedSearchIndex() {
+    return DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  }
+
+  /**
    * Gets the consensus requests iterator from the specified start position.
    *
    * @param startIndex index of the start consensus request

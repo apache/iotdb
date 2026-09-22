@@ -29,6 +29,8 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadPieceConsensusRequest;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -89,6 +91,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -118,6 +121,8 @@ public class WALNode implements IWALNode {
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  // notified whenever the value above advances, see setSafeDeletedSearchIndexListener
+  private volatile LongConsumer safeDeletedSearchIndexListener;
   // WAL files with versionId >= this value are retained for subscription consumers
   private volatile long subscriptionRetainedMinVersionId = Long.MAX_VALUE;
 
@@ -287,6 +292,11 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(long memTableId, ObjectNode objectNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, objectNode);
     return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, LoadTsFileConsensusNode node) {
+    return log(new WALInfoEntry(memTableId, node));
   }
 
   private WALFlushListener log(WALEntry walEntry) {
@@ -683,6 +693,20 @@ public class WALNode implements IWALNode {
   @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    final LongConsumer listener = this.safeDeletedSearchIndexListener;
+    if (listener != null) {
+      listener.accept(safelyDeletedSearchIndex);
+    }
+  }
+
+  @Override
+  public long getSafelyDeletedSearchIndex() {
+    return safelyDeletedSearchIndex;
+  }
+
+  @Override
+  public void setSafeDeletedSearchIndexListener(final LongConsumer listener) {
+    this.safeDeletedSearchIndexListener = listener;
   }
 
   @Override
@@ -824,19 +848,18 @@ public class WALNode implements IWALNode {
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
-                if (type == WALEntryType.OBJECT_FILE_NODE) {
-                  WALEntry walEntry =
+                if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                  final WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                  // The WAL only stores the piece references. For downstream V1 sync, forward a
+                  // request that reads the referenced payloads back when it is sent, so that the
+                  // replication queues keep only the piece metadata instead of a copy of every
+                  // chunk.
+                  final LoadPieceConsensusRequest loadRequest =
+                      new LoadPieceConsensusRequest((LoadTsFileConsensusNode) walEntry.getValue());
+                  tmpNodes.get().add(loadRequest);
+                  memorySize += loadRequest.getSerializedSize();
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                   memorySize += buffer.remaining();
@@ -861,19 +884,18 @@ public class WALNode implements IWALNode {
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
-                if (type == WALEntryType.OBJECT_FILE_NODE) {
-                  WALEntry walEntry =
+                if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                  final WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                  // The WAL only stores the piece references. For downstream V1 sync, forward a
+                  // request that reads the referenced payloads back when it is sent, so that the
+                  // replication queues keep only the piece metadata instead of a copy of every
+                  // chunk.
+                  final LoadPieceConsensusRequest loadRequest =
+                      new LoadPieceConsensusRequest((LoadTsFileConsensusNode) walEntry.getValue());
+                  tmpNodes.get().add(loadRequest);
+                  memorySize += loadRequest.getSerializedSize();
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                   memorySize += buffer.remaining();

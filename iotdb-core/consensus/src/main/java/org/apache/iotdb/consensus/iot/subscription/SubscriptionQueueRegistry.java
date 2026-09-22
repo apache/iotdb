@@ -115,8 +115,12 @@ public class SubscriptionQueueRegistry {
       return false;
     }
 
-    // Subscription queues reserve request memory, including the serialized buffers.
-    indexedConsensusRequest.buildSerializedRequests();
+    // Subscription queues reserve request memory, including the serialized buffers. A request that
+    // deferred its serialization keeps only its source objects until it is sent, and subscription
+    // delivery reads those objects, so nothing is materialized here.
+    if (!indexedConsensusRequest.hasDeferredRequests()) {
+      indexedConsensusRequest.buildSerializedRequests();
+    }
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(

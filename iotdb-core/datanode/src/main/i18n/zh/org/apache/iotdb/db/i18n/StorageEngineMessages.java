@@ -46,6 +46,78 @@ public final class StorageEngineMessages {
   // ======================== StorageEngine ========================
 
   public static final String FAIL_TO_RECOVER_WAL = "WAL 恢复失败。";
+  public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
+      "通过协议 {} 向 Region {} 写入 LOAD 共识节点";
+  public static final String LOG_LOAD_CONSENSUS_REFRESH_REPLICA_SET_FAILED_7C244C63 =
+      "刷新 Region {} 的 LOAD 共识副本集失败，使用缓存的副本集：{}";
+  public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
+      "LOAD 共识分片校验和不一致，loadId: %s，pieceIndex: %d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
+      "读取已暂存的分片 %s 时意外到达文件末尾，offset: %s。";
+  public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
+      "已暂存的分片文件 %s 不存在，无法回读。";
+  public static final String EXCEPTION_FAILED_TO_READ_BACK_THE_STAGED_PIECE_FILE_ARG_ARG_3F54CB90 =
+      "回读已暂存的分片文件 %s 失败：%s";
+  public static final String
+      EXCEPTION_STAGED_PIECE_FILE_ARG_IS_OUTSIDE_THE_CONFIGURED_LOAD_DIRECTORIES_ARG_322721A9 =
+          "已暂存的分片文件 %s 不在配置的 LOAD 目录 %s 内。";
+  public static final String
+      LOG_FAILED_TO_READ_BACK_THE_STAGED_CONTENT_OF_LOAD_PIECE_LOAD_ARG_PIECE_INDEX_ARG_SENDING_THE_REFERENCE_ONLY_D054333F =
+          "回读 LOAD 分片的已暂存内容失败（load {}，分片序号 {}），本次仅发送引用。";
+  public static final String MESSAGE_LOAD_CONSENSUS_PIECE_DATA_MISSING_AFTER_PULL_8269CB0B =
+      "LOAD 分片 %d（load %s）的数据在向写节点回补后仍然缺失。";
+  public static final String MESSAGE_LOAD_CONSENSUS_PULL_PIECE_NOT_SUPPORTED_71EC4B46 =
+      "已不支持向 Leader 回补 LOAD 分片。";
+  public static final String EXCEPTION_LOAD_CONSENSUS_PIECE_DATA_MISSING_OR_CHECKSUM_MISMATCH_AFTER_PULL_35F4972E =
+      "回补后 LOAD 任务 %s 的分片 %d 数据仍缺失或校验和不一致。";
+  public static final String LOG_LOAD_CONSENSUS_RETAINED_PIECE_READ_FAILED_0659D19B =
+      "读取保留的 LOAD 分片 {}（load {}）失败，文件：{}，原因：{}";
+  public static final String LOG_LOAD_CONSENSUS_RETAINED_PIECE_WRITE_FAILED_99697608 =
+      "写入保留的 LOAD 分片 {}（load {}）失败，文件：{}，原因：{}";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19 =
+      "load %s 的暂存文件 %s 不连续：期望偏移 %d，但当前文件长度为 %d。";
+  public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_WITHOUT_STAGED_DATA_FE8ADC37 =
+      "无法准备（PREPARE）load %s，因为该节点上不存在暂存数据。";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_RESUMED_WRITER_176BEE0F =
+      "已续写 LOAD 任务 {} 的暂存 writer，续写偏移为 {}。";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_RESTORED_MODIFICATION_5F4D7D89 =
+      "已从磁盘恢复 LOAD 任务 {} 的修改文件 {}。";
+
+  public static final String EXCEPTION_LOAD_PIECE_OF_THE_TASK_ARG_ARRIVED_WITHOUT_ITS_CHUNK_PAYLOAD_ARG_04664404 =
+      "写入 LOAD 任务 %s 的 piece 失败：该 chunk 的 payload 仅在 %s 处被引用，尚未读回。";
+  public static final String LOG_LOAD_CONSENSUS_RECOVERED_TASK_02824CE6 =
+      "已从磁盘恢复进行中的 LOAD 任务 {}；暂存数据将保留至 COMMIT 或 ABORT。";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB =
+      "恢复 LOAD 任务 {} 的任务元数据失败：{}";
+  public static final String LOG_LOAD_CONSENSUS_TASK_META_WRITE_FAILED_5D2420BF =
+      "持久化 LOAD 任务 {} 的任务元数据到 {} 失败：{}";
+  public static final String LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433 =
+      "写入 LOAD 任务 {} 的终止标记到 {} 失败：{}";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_ARG_FROM_STAGED_FILE_ARG_3AF462A6 =
+      "无法从磁盘恢复 LOAD 任务 {}（staged 文件 {}）：其持久化任务元数据缺失或损坏，下一条命令将重新创建该任务。";
+  public static final String
+      LOG_KEEPING_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_UNTIL_THE_SAFE_DELETION_SEARCH_INDEX_ARG_IS_REACHED_AFE2BC88 =
+          "保留暂存目录 {}（LOAD 任务 {}），直到安全删除位点 {} 到达。";
+  public static final String
+      LOG_RELEASED_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_BECAUSE_THE_SAFE_DELETION_SEARCH_INDEX_ARG_IS_REACHED_0CF83F8A =
+          "释放暂存目录 {}（LOAD 任务 {}），安全删除位点 {} 已到达。";
+  public static final String
+      LOG_DELETING_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_WHICH_ALREADY_REACHED_COMMIT_OR_ABORT_EAB095CA =
+          "删除暂存目录 {}（LOAD 任务 {}），该任务已到达 COMMIT 或 ABORT。";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_SHORT_WRITE_E7392FAD =
+      "load %s 的暂存文件 %s 未完整写入：偏移 %d 处期望 %d 字节，实际写入 %d 字节";
+  public static final String EXCEPTION_LOAD_CONSENSUS_PROGRESS_SERIALIZE_FAILED_28EFD091 =
+      "时间分区 %d 的 LOAD 进度索引序列化失败";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B =
+      "load %s 的暂存文件 %s 不完整，无法提交（COMMIT）。";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C =
+      "已将 %d 个进行中的 LOAD 任务（共 %d 个暂存文件）纳入 region %s 的快照 %s。";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_90ABC1BF =
+      "已恢复 %d 个进行中的 LOAD 任务（共 %d 个暂存文件），来自快照 %s。";
+  public static final String EXCEPTION_LOAD_CONSENSUS_SNAPSHOT_RESTORE_FAILED_F8C29C64 =
+      "从 %s 恢复 LOAD 快照失败：%s";
+  public static final String EXCEPTION_LOAD_TSFILE_ALIGNED_VALUE_CHUNK_TIME_CHUNK_EEB00760 =
+      "无法将测量 %s 的值 Chunk 挂载到文件 %s：预期恰好一个已缓冲的 Aligned 时间 Chunk，实际发现 %d 个。";
   public static final String STORAGE_ENGINE_FAILED_TO_SET_UP = "存储引擎启动失败。";
   public static final String SEQ_MEMTABLE_FLUSH_CHECK_THREAD_STARTED = "顺序 memtable 定时 flush 检查线程启动成功。";
   public static final String UNSEQ_MEMTABLE_FLUSH_CHECK_THREAD_STARTED = "乱序 memtable 定时 flush 检查线程启动成功。";
@@ -497,6 +569,16 @@ public final class StorageEngineMessages {
   public static final String CANNOT_CREATE_TSFILE_FOR_WRITING = "无法创建 TsFile {} 用于写入。";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "关闭 TsFileIOWriter {} 出错。";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "关闭修改文件 {} 出错。";
+  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =
+      "正在准备 LOAD TsFile {}：封存暂存资源。";
+  public static final String LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335 =
+      "正在提交 LOAD TsFile {}：将已准备资源加载到 DataRegion。";
+  public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_ARG_C36E832B =
+      "接收 LOAD TsFile 节点：{}。";
+  public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6 =
+      "接收 LOAD TsFile 节点成功：{}。";
+  public static final String EXCEPTION_TABLE_ARG_ARG_DOES_NOT_EXIST_WHEN_APPLYING_LOAD_CHUNK_DATA_IT_MAY_HAVE_BEEN_DROPPED_AFTER_THE_LOAD_WAS_ANALYZED_DDB35F93 =
+      "应用 LOAD chunk 数据时表 '%s.%s' 不存在，可能在 LOAD 分析之后被删除了。";
   public static final String TASK_DIR_NOT_EMPTY_SKIP_DELETE = "任务目录 {} 非空，跳过删除。";
   public static final String LOAD_CLEANUP_TASK_CANCELED = "加载清理任务 {} 已取消。";
   public static final String LOAD_CLEANUP_TASK_STARTS = "加载清理任务 {} 开始。";
@@ -1445,4 +1527,35 @@ public final class StorageEngineMessages {
   public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "在快照中未找到 {} 关联的资源文件";
   public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "淘汰的不存在/已存在时间序列数量：{}/{}({})，总请求数：{}";
 
+  public static final String EXCEPTION_CHUNK_LAYOUT_IS_MISSING_E87C71C0 = "缺少 Chunk layout";
+  public static final String EXCEPTION_CHUNK_HEADER_LIST_IS_EMPTY_5DE68C78 = "Chunk header 列表为空。";
+  public static final String EXCEPTION_FAILED_TO_ENCODE_CHUNK_USING_ALIGNEDCHUNKWRITERIMPL_5AAF9AA8 =
+      "使用 AlignedChunkWriterImpl 编码 chunk 失败";
+  public static final String EXCEPTION_FAILED_TO_ENCODE_CHUNK_USING_CHUNKWRITERIMPL_260BF917 =
+      "使用 ChunkWriterImpl 编码 chunk 失败";
+  public static final String LOG_RECOVERED_LOAD_WRITER_MANAGER_FOR_UUID_ARG_E0430FB8 =
+      "已恢复 uuid {} 的 LOAD writer manager";
+  public static final String LOG_FAILED_TO_RECOVER_LOAD_WRITER_MANAGER_FOR_UUID_ARG_CBB34D4B =
+      "恢复 uuid {} 的 LOAD writer manager 失败";
+  public static final String EXCEPTION_INVALID_LOAD_PROGRESS_FILE_ARG_15643A3E =
+      "非法的 load progress 文件：%s";
+  public static final String EXCEPTION_INVALID_PROGRESS_ENTRY_LENGTH_ARG_E9A96035 =
+      "非法的 progress 条目长度：%d";
+  public static final String LOG_SKIPPING_UNSUPPORTED_LOAD_PROGRESS_ENTRY_VERSION_ARG_IN_ARG_7AAA404C =
+      "跳过 {} 中不支持的 load progress 条目版本 {}";
+  public static final String EXCEPTION_UNEXPECTED_CHUNK_HEADER_SIZE_OF_ARG_SERIALIZED_ARG_BYTE_S_BODY_ARG_0A3F7B17 =
+      "意外的 chunk header 大小 %s：序列化 %d 字节，body %d 字节";
+  public static final String EXCEPTION_NEGATIVE_BYTE_ARRAY_LENGTH_IN_PROGRESS_FILE_C397A4DC =
+      "progress 文件中出现负的字节数组长度";
+  public static final String LOG_FILLED_PHYSICAL_HOLE_BEFORE_WRITING_CHUNK_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_FILLBYTES_ARG_9EDA3EB6 =
+      "写入 chunk 前填充物理空洞：file={}，device={}，measurement={}，expectedOffset={}，actualOffset={}，fillBytes={}";
+  public static final String LOG_PRECALCULATED_OFFSET_IS_BEHIND_ACTUAL_FILE_POSITION_USING_ACTUAL_POSITION_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_DELTA_ARG_F05C873F =
+      "预计算偏移落后于实际文件位置，改用实际位置：file={}，device={}，measurement={}，expectedOffset={}，actualOffset={}，delta={}";
+  public static final String EXCEPTION_THIS_WRITER_IS_NOT_BACKED_BY_A_FILE_7103C187 =
+      "该 writer 未关联文件";
+  public static final String LOG_SKIPPING_THE_CHUNKS_OF_ARG_BECAUSE_THEIR_PAYLOAD_IS_ALREADY_STAGED_IN_ARG_OF_THE_LOAD_TASK_ARG_BAFEEE84 =
+      "跳过 {} 的 chunk：其 payload 已暂存于 LOAD 任务 {} 的 {} 中";
+
+  public static final String LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D =
+      "扫描已完成的 LOAD 任务暂存目录失败。";
 }

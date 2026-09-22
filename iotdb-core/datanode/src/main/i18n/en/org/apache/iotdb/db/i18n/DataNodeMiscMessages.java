@@ -1036,6 +1036,10 @@ public final class DataNodeMiscMessages {
   // --- DataNodeInternalRPCServiceImpl ---
   public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
       "Load command requires time partition to progress index map";
+  public static final String LOG_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_THE_REQUEST_OF_TASK_ARG_IS_REJECTED_76937A9C =
+      "The LOAD command protocol was removed; the request of task {} is rejected.";
+  public static final String MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16 =
+      "The LOAD command protocol was removed, LOAD travels through consensus now.";
   public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
       "Topology probing timed out after %sms";
   public static final String NO_SUCH_QUERY = "No such query";
@@ -1374,8 +1378,7 @@ public final class DataNodeMiscMessages {
           + "should be an integer, which is %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
       "Illegal defaultDatabaseLevel: %d, should >= 1";
-  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
-      "loadTsFileSpiltPartitionMaxSize should be greater than or equal to 0";
+  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192 = "loadTsFileSpiltPartitionMaxSize should be greater than 0";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId: %sdoesn't exist in this session %s";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =

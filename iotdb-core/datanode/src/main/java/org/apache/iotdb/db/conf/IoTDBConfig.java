@@ -1701,6 +1701,11 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     return this.loadTsFileDirs;
   }
 
+  public void setLoadTsFileDirs(final String[] loadTsFileDirs) {
+    this.loadTsFileDirs = loadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+  }
+
   public String[] getLoadTsFileAllowedDirs() {
     return this.loadTsFileAllowedDirs.length == 0
         ? getLoadTsFileDirs()
@@ -4470,10 +4475,12 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   }
 
   public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
+    // A cap of 0 would reject every LOAD whose source file spans at least one time partition,
+    // i.e. every LOAD, so the smallest usable value is 1.
     if (loadTsFileSpiltPartitionMaxSize <= 0) {
       throw new IllegalArgumentException(
           DataNodeMiscMessages
-              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23);
+              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192);
     }
 
     if (this.loadTsFileSpiltPartitionMaxSize == loadTsFileSpiltPartitionMaxSize) {

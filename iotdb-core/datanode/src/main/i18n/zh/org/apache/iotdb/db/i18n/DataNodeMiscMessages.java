@@ -1036,6 +1036,10 @@ public final class DataNodeMiscMessages {
   // --- DataNodeInternalRPCServiceImpl ---
   public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
       "Load 命令需要时间分区到进度索引的映射";
+  public static final String LOG_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_THE_REQUEST_OF_TASK_ARG_IS_REJECTED_76937A9C =
+      "Load 命令协议已被移除，任务 {} 的请求被拒绝。";
+  public static final String MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16 =
+      "Load 命令协议已被移除，LOAD 现在通过共识完成。";
   public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
       "拓扑探测在 %s 毫秒后超时";
   public static final String NO_SUCH_QUERY = "查询不存在";
@@ -1345,8 +1349,7 @@ public final class DataNodeMiscMessages {
       "配置项 chunkmeta_chunk_timeseriesmeta_free_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
       "非法的 defaultDatabaseLevel：%d，应 >= 1";
-  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
-      "loadTsFileSpiltPartitionMaxSize 应大于或等于 0";
+  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192 = "loadTsFileSpiltPartitionMaxSize 应大于 0";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId：%s 在会话 %s 中不存在";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =
