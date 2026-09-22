@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -144,6 +145,11 @@ public class CQManager {
     if (semanticValidation != null) {
       return semanticValidation;
     }
+    if (hasCalendarDuration && !allClusterNodesSupportDurationEncodingV1()) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(
+              ManagerMessages.MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072);
+    }
     return null;
   }
 
@@ -189,6 +195,67 @@ public class CQManager {
         && (!strict
             || left.getMonthPart() != right.getMonthPart()
             || left.getNonMonthDuration() != right.getNonMonthDuration());
+  }
+
+  /** Returns true when any persisted CQ requires the structured calendar-duration reader. */
+  public boolean hasCalendarDurationCQ() {
+    try {
+      DataSet response = configManager.getConsensusManager().read(new ShowCQPlan());
+      if (!(response instanceof ShowCQResp)) {
+        // Do not allow a node with unknown metadata to join while the reader barrier is active.
+        return true;
+      }
+      if (((ShowCQResp) response).getCqList() == null) {
+        // A malformed response is just as unsafe as an unavailable response for this barrier.
+        return true;
+      }
+      return ((ShowCQResp) response)
+          .getCqList().stream().anyMatch(CQInfo.CQEntry::hasCalendarDuration);
+    } catch (ConsensusException e) {
+      // A failed metadata read must fail closed: an old reader must never be admitted blindly.
+      LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_FETCHING_CQ_LIST, e);
+      return true;
+    }
+  }
+
+  private boolean allClusterNodesSupportDurationEncodingV1() {
+    java.util.Map<Integer, TNodeVersionInfo> versionInfo =
+        configManager.getNodeManager().getNodeVersionInfo();
+    if (versionInfo == null || versionInfo.isEmpty()) {
+      return false;
+    }
+    boolean hasRegisteredNode = false;
+    // Check every registered node explicitly. A missing heartbeat/version entry must not allow a
+    // calendar CQ to be created during a rolling upgrade.
+    List<org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation> configNodes =
+        configManager.getNodeManager().getRegisteredConfigNodes();
+    List<org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration> dataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes();
+    if (configNodes == null || dataNodes == null) {
+      return false;
+    }
+    for (org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation node : configNodes) {
+      hasRegisteredNode = true;
+      if (!supportsDurationEncodingV1(versionInfo.get(node.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    for (org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration node : dataNodes) {
+      hasRegisteredNode = true;
+      if (!supportsDurationEncodingV1(versionInfo.get(node.getLocation().getDataNodeId()))) {
+        return false;
+      }
+    }
+    return hasRegisteredNode;
+  }
+
+  private boolean supportsDurationEncodingV1(TNodeVersionInfo info) {
+    if (info == null
+        || !info.isSetSupportedCQDurationEncodingVersions()
+        || !info.getSupportedCQDurationEncodingVersions().contains((short) 1)) {
+      return false;
+    }
+    return true;
   }
 
   public TSStatus dropCQ(TDropCQReq req) {

@@ -3888,4 +3888,7 @@ public final class DataNodeQueryMessages {
       "No more DeviceEntry records are available";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
+
+  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3 =
+      "CQ calendar duration cannot be created until all cluster nodes support duration encoding version 1";
 }

@@ -653,6 +653,8 @@ struct TGetClusterIdResp {
 struct TNodeVersionInfo {
   1: required string version;
   2: required string buildInfo;
+  // Capabilities are optional so older nodes can still register. Missing means unsupported.
+  3: optional set<i16> supportedCQDurationEncodingVersions;
 }
 
 struct TNodeActivateInfo {
