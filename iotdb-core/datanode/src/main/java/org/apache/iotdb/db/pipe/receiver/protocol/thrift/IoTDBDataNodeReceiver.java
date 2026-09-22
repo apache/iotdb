@@ -529,7 +529,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
-            : executeStatementAndClassifyExceptions(statement));
+            : executeStatementAndAddRedirectInfo(statement));
   }
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
@@ -537,7 +537,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
-            : executeStatementAndClassifyExceptions(statement));
+            : executeStatementAndAddRedirectInfo(statement));
   }
 
   private TPipeTransferResp handleTransferTabletRaw(final PipeTransferTabletRawReq req) {
@@ -1285,8 +1285,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
    * device path to each redirected sub-status.
    */
   private TSStatus executeBatchStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
-    final TSStatus result = executeStatementAndClassifyExceptions(statement, 5);
-    return addRedirectInfoForBatch(statement, result, receiverId.get());
+    return addRedirectInfoForBatch(
+        statement, executeStatementAndClassifyExceptions(statement, 5), receiverId.get());
+  }
+
+  private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    return addRedirectInfoForBatch(
+        statement, executeStatementAndClassifyExceptions(statement), receiverId.get());
   }
 
   static TSStatus addRedirectInfoForBatch(
