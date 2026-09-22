@@ -125,6 +125,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -1836,6 +1837,10 @@ public class ConfigManager implements IManager {
       long previousHeartbeatIntervalInMs = CONF.getHeartbeatIntervalInMs();
       int previousSchemaRegionPerDataNode = CONF.getSchemaRegionPerDataNode();
       int previousDataRegionPerDataNode = CONF.getDataRegionPerDataNode();
+      RegionGroupExtensionPolicy previousSchemaRegionGroupExtensionPolicy =
+          CONF.getSchemaRegionGroupExtensionPolicy();
+      RegionGroupExtensionPolicy previousDataRegionGroupExtensionPolicy =
+          CONF.getDataRegionGroupExtensionPolicy();
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       int previousProcedureCompletedCleanInterval = CONF.getProcedureCompletedCleanInterval();
       int previousProcedureCompletedEvictTTL = CONF.getProcedureCompletedEvictTTL();
@@ -1866,8 +1871,11 @@ public class ConfigManager implements IManager {
         return tsStatus;
       }
       handleHeartbeatIntervalHotReload(previousHeartbeatIntervalInMs);
-      handleRegionPerDataNodeHotReload(
-          previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
+      handleRegionGroupConfigHotReload(
+          previousSchemaRegionPerDataNode,
+          previousDataRegionPerDataNode,
+          previousSchemaRegionGroupExtensionPolicy,
+          previousDataRegionGroupExtensionPolicy);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
       handleProcedureCleanerHotReload(
           previousProcedureCompletedCleanInterval, previousProcedureCompletedEvictTTL);
@@ -1914,16 +1922,31 @@ public class ConfigManager implements IManager {
     getRetryFailedTasksThread().reloadHeartbeatInterval();
   }
 
-  private void handleRegionPerDataNodeHotReload(
-      int previousSchemaRegionPerDataNode, int previousDataRegionPerDataNode) {
+  private void handleRegionGroupConfigHotReload(
+      int previousSchemaRegionPerDataNode,
+      int previousDataRegionPerDataNode,
+      RegionGroupExtensionPolicy previousSchemaRegionGroupExtensionPolicy,
+      RegionGroupExtensionPolicy previousDataRegionGroupExtensionPolicy) {
     if (previousSchemaRegionPerDataNode == CONF.getSchemaRegionPerDataNode()
-        && previousDataRegionPerDataNode == CONF.getDataRegionPerDataNode()) {
+        && previousDataRegionPerDataNode == CONF.getDataRegionPerDataNode()
+        && previousSchemaRegionGroupExtensionPolicy == CONF.getSchemaRegionGroupExtensionPolicy()
+        && previousDataRegionGroupExtensionPolicy == CONF.getDataRegionGroupExtensionPolicy()) {
       return;
     }
     if (!getConsensusManager().isLeader()) {
       return;
     }
+    // Leaving CUSTOM must replace its stored cap with the resource-derived cap, even when
+    // per-node quotas are unchanged. This preserves existing groups and skips types still CUSTOM.
     getClusterSchemaManager().adjustMaxRegionGroupNum();
+    if (previousDataRegionGroupExtensionPolicy != RegionGroupExtensionPolicy.PROACTIVE
+        && CONF.getDataRegionGroupExtensionPolicy() == RegionGroupExtensionPolicy.PROACTIVE) {
+      // Existing groups may already meet the new target, so no creation procedure would rebalance
+      // their slot assignments. Refresh the policy table for future time partitions on this leader.
+      getClusterSchemaManager()
+          .getDatabaseNames(null)
+          .forEach(database -> getLoadManager().reBalanceDataPartitionPolicy(database));
+    }
   }
 
   private void handleTopologyProbingHotReload(boolean wasEnabled) {
