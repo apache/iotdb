@@ -59,6 +59,7 @@ import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -132,6 +133,7 @@ public class RegionMaintainHandlerTest {
         Optional.of(otherReplica),
         handler.filterDataNodeWithOtherRegionReplica(
             regionId, Arrays.asList(original, coordinator)));
+    verify(loadManager).waitForRegionGroupReady(Collections.singletonList(regionId));
   }
 
   @Test
@@ -141,6 +143,7 @@ public class RegionMaintainHandlerTest {
         Optional.of(otherReplica),
         handler.filterDataNodeWithOtherRegionReplica(
             regionId, Arrays.asList(original, coordinator)));
+    verify(loadManager).waitForRegionGroupReady(Collections.singletonList(regionId));
   }
 
   @Test
@@ -150,6 +153,7 @@ public class RegionMaintainHandlerTest {
     assertEquals(
         Optional.of(otherReplica),
         handler.filterDataNodeWithOtherRegionReplica(regionId, original));
+    verify(loadManager, never()).waitForRegionGroupReady(Collections.singletonList(regionId));
   }
 
   @Test
@@ -170,6 +174,17 @@ public class RegionMaintainHandlerTest {
   public void testTransferLeaderWithUnknownLeader() throws Exception {
     when(loadManager.getRegionLeaderMap()).thenReturn(Collections.singletonMap(regionId, -1));
     assertLeaderTransfer();
+  }
+
+  @Test
+  public void testTransferLeaderWaitsForLeaderElection() throws Exception {
+    // The filter has a known leader, while the transfer lookup observes a stale cache first.
+    when(loadManager.getRegionLeaderMap())
+        .thenReturn(Collections.singletonMap(regionId, otherReplica.getDataNodeId()))
+        .thenReturn(Collections.emptyMap())
+        .thenReturn(Collections.singletonMap(regionId, original.getDataNodeId()));
+    assertLeaderTransfer();
+    verify(loadManager).waitForRegionGroupReady(Collections.singletonList(regionId));
   }
 
   @Test

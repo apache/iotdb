@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegio
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -843,8 +844,7 @@ public class RegionMaintainHandler {
           (CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()
                   + CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs())
               / 2;
-      final int leaderId =
-          configManager.getLoadManager().getRegionLeaderMap().getOrDefault(regionId, -1);
+      final int leaderId = getRegionLeaderId(regionId);
 
       if (leaderId != -1) {
         // The migrated node is not leader, so we don't need to transfer temporarily
@@ -937,9 +937,7 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-    // A procedure can resume before the leader cache is rebuilt after a ConfigNode leader switch.
-    final int leaderId =
-        configManager.getLoadManager().getRegionLeaderMap().getOrDefault(regionId, -1);
+    final int leaderId = getRegionLeaderId(regionId);
     Collections.shuffle(aliveDataNodes);
     Optional<TDataNodeLocation> bestChoice = Optional.empty();
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
@@ -953,5 +951,22 @@ public class RegionMaintainHandler {
       }
     }
     return bestChoice;
+  }
+
+  /**
+   * Get the leader of a RegionGroup, waiting for leader election if the current cache is unknown.
+   *
+   * <p>A procedure can resume before the leader cache is rebuilt after a ConfigNode leader switch.
+   * Waiting here gives the heartbeat cache a chance to observe the newly elected leader while
+   * retaining the unknown-leader fallback when the election does not finish in time.
+   */
+  private int getRegionLeaderId(TConsensusGroupId regionId) {
+    final LoadManager loadManager = configManager.getLoadManager();
+    Integer leaderId = loadManager.getRegionLeaderMap().get(regionId);
+    if (leaderId == null || leaderId == -1) {
+      loadManager.waitForRegionGroupReady(Collections.singletonList(regionId));
+      leaderId = loadManager.getRegionLeaderMap().get(regionId);
+    }
+    return leaderId == null ? -1 : leaderId;
   }
 }
