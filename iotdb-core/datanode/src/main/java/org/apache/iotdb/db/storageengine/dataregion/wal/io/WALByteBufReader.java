@@ -56,7 +56,9 @@ public class WALByteBufReader implements Closeable {
   }
 
   public WALByteBufReader(File logFile, WALMetaData metaDataSnapshot) throws IOException {
-    WALInputStream walInputStream = new WALInputStream(logFile);
+    // A snapshot supplies the entry boundary for active files and recovered prefixes, whose footer
+    // may be absent or damaged.
+    WALInputStream walInputStream = new WALInputStream(logFile, true);
     try {
       this.walInputStream = walInputStream;
       this.logStream = new DataInputStream(walInputStream);
