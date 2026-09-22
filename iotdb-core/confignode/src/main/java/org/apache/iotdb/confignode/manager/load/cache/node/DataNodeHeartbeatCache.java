@@ -78,6 +78,22 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
       }
     }
 
+    if (NodeStatus.Removing.equals(getNodeStatus())) {
+      // Removing is the highest-priority sticky status: neither a heartbeat-driven Unknown (e.g.
+      // the onError path of a broken connection) nor the Stopped report may refresh it. Explicit
+      // management status changes (e.g. Running on rollback) still apply.
+      if (NodeStatus.Unknown.equals(status) || NodeStatus.Stopped.equals(status)) {
+        status = NodeStatus.Removing;
+        statusReason = null;
+      }
+    } else if (NodeStatus.Stopped.equals(getNodeStatus()) && NodeStatus.Unknown.equals(status)) {
+      // The Stopped status is sticky: heartbeat-driven updates (heartbeat failure, failure
+      // detection) must not refresh a gracefully stopped node back to Unknown. A live status
+      // reported by a heartbeat (e.g. Running after the node restarts) still revives it.
+      status = NodeStatus.Stopped;
+      statusReason = null;
+    }
+
     /* Update loadScore */
     // Only consider Running DataNode as available currently
     // TODO: Construct load score module

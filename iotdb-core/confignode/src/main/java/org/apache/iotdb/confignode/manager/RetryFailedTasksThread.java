@@ -140,7 +140,8 @@ public class RetryFailedTasksThread {
               if (nodeStatus == NodeStatus.Running) {
                 oldUnknownNodes.remove(dataNodeLocation);
               } else if (!oldUnknownNodes.contains(dataNodeLocation)
-                  && nodeStatus == NodeStatus.Unknown) {
+                  // A Stopped node is handled like Unknown: its regions need transfer too
+                  && (nodeStatus == NodeStatus.Unknown || nodeStatus == NodeStatus.Stopped)) {
                 newUnknownNodes.add(dataNodeLocation);
               }
             });

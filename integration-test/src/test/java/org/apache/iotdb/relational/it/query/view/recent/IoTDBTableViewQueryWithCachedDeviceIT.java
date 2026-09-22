@@ -97,7 +97,7 @@ public class IoTDBTableViewQueryWithCachedDeviceIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(dataNodeWrapper),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(NodeStatus.Stopped));
     }
     EnvFactory.getEnv().startAllDataNodes();
     for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {

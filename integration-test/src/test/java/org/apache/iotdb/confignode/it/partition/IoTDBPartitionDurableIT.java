@@ -285,49 +285,47 @@ public class IoTDBPartitionDurableIT {
   }
 
   @Test
-  public void testUnknownDataNode() throws Exception {
+  public void testStoppedDataNode() throws Exception {
     // Shutdown a DataNode, the ConfigNode should still be able to create RegionGroup
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
     EnvFactory.getEnv()
         .ensureNodeStatus(
             Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId)),
-            Collections.singletonList(NodeStatus.Unknown));
+            Collections.singletonList(NodeStatus.Stopped));
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Wait for shutdown check
       TShowClusterResp showClusterResp;
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
+      boolean isShutdownDetected = false;
+      for (int retry = 0; retry < 60; retry++) {
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (containUnknown.get()) {
+        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          if (NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
+            isShutdownDetected = true;
+            break;
+          }
+        }
+        if (isShutdownDetected) {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      Assert.assertTrue(isShutdownDetected);
       int runningCnt = 0;
-      int unknownCnt = 0;
+      int stoppedCnt = 0;
       showClusterResp = client.showCluster();
       for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
         if (NodeStatus.Running.getStatus()
             .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
           runningCnt += 1;
-        } else if (NodeStatus.Unknown.getStatus()
+        } else if (NodeStatus.Stopped.getStatus()
             .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
-          unknownCnt += 1;
+          stoppedCnt += 1;
         }
       }
       Assert.assertEquals(2, runningCnt);
-      Assert.assertEquals(1, unknownCnt);
+      Assert.assertEquals(1, stoppedCnt);
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
@@ -369,7 +367,7 @@ public class IoTDBPartitionDurableIT {
 
       // Check Region count
       runningCnt = 0;
-      unknownCnt = 0;
+      int regionUnknownCnt = 0;
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
       showRegionResp
           .getRegionInfoList()
@@ -383,12 +381,12 @@ public class IoTDBPartitionDurableIT {
         if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
           runningCnt += 1;
         } else if (RegionStatus.Unknown.getStatus().equals(regionInfo.getStatus())) {
-          unknownCnt += 1;
+          regionUnknownCnt += 1;
         }
       }
       // The runningCnt should be exactly twice as the unknownCnt
       // since there exists one DataNode is shutdown
-      Assert.assertEquals(unknownCnt * 2, runningCnt);
+      Assert.assertEquals(regionUnknownCnt * 2, runningCnt);
 
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       partitionSlotsMap =
@@ -430,7 +428,7 @@ public class IoTDBPartitionDurableIT {
 
       // Check Region count and status
       runningCnt = 0;
-      unknownCnt = 0;
+      regionUnknownCnt = 0;
       showRegionResp = client.showRegion(new TShowRegionReq());
       showRegionResp
           .getRegionInfoList()
@@ -444,12 +442,12 @@ public class IoTDBPartitionDurableIT {
         if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
           runningCnt += 1;
         } else if (RegionStatus.Unknown.getStatus().equals(regionInfo.getStatus())) {
-          unknownCnt += 1;
+          regionUnknownCnt += 1;
         }
       }
       // The runningCnt should be exactly twice as the unknownCnt
       // since there exists one DataNode is shutdown
-      Assert.assertEquals(unknownCnt * 2, runningCnt);
+      Assert.assertEquals(regionUnknownCnt * 2, runningCnt);
 
       EnvFactory.getEnv().startDataNode(testDataNodeId);
       EnvFactory.getEnv()

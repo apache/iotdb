@@ -1218,6 +1218,9 @@ public final class ProcedureMessages {
       + " cache status is {}";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B = "Remove ConfigNode failed because update ConsensusGroup peer information failed.";
   public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 = "Can't remove datanode due to the limit of replication factor, ";
+  public static final String
+      MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6 =
+          "Submit RemoveDataNodesProcedure failed, because when there are other unknown, stopped or readonly nodes in the consensus group that are not remove nodes, the remove operation cannot be performed for security reasons. Please check the status of the node %s and ensure it is running.";
   public static final String MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C = "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s";
   public static final String EXCEPTION_NOT_SUPPORTED_0A83F963 = " is not supported";
   public static final String LOG_START_ADD_TRIGGER_ARG_TRIGGERTABLE_CONFIG_NODES_NEEDTOSAVEJAR_ARG_0C23D81E = "Start to add trigger [{}] in TriggerTable on Config Nodes, needToSaveJar[{}]";

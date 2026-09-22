@@ -167,7 +167,7 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(dataNodeWrapper),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(NodeStatus.Stopped));
     }
 
     List<String> otherNodes = new ArrayList<>();
@@ -209,7 +209,7 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(dataNodeWrapper),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(NodeStatus.Stopped));
     }
 
     List<String> otherNodes = new ArrayList<>();
