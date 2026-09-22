@@ -401,9 +401,9 @@ public class CQScheduleTask implements Runnable {
   }
 
   private long occurrenceAt(long index) {
-    if (occurrenceIndex < 0) {
-      return executionTime + (index - occurrenceIndex) * everyInterval;
-    }
+    // All current call sites only invoke this once occurrenceIndex has been established
+    // as non-negative (see the constructors and the persistProgress legacy-path guard),
+    // so this always resolves through calendar-aware arithmetic.
     return CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone);
   }
 

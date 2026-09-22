@@ -44,12 +44,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -374,11 +375,12 @@ public class CQInfo implements SnapshotProcessor {
       return;
     }
     lock.writeLock().lock();
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
+    try (ByteArrayInputStream inputStream =
+        new ByteArrayInputStream(Files.readAllBytes(snapshotFile.toPath()))) {
 
       clear();
 
-      deserialize(fileInputStream);
+      deserialize(inputStream);
 
     } finally {
       lock.writeLock().unlock();
