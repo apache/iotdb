@@ -160,6 +160,24 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseFilteredStatsAggregates() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse(
+            "stats -m value --start 10 --end 20 --tag-filter channel_id eq 147 "
+                + "--aggregates min,max,avg,median /db/raw_data.csv");
+
+    assertEquals(FilesystemCommand.Type.STATS, command.getType());
+    assertEquals("10", command.getStart());
+    assertEquals("20", command.getEnd());
+    assertEquals("channel_id eq 147", command.getTagFilters().get(0));
+    assertEquals("min,max,avg,median", command.optionValue("--aggregates", ""));
+    assertInvalid(
+        "stats --aggregates range /db/raw_data.csv",
+        "stats --aggregates min,min /db/raw_data.csv",
+        "count --aggregates min /db/raw_data.csv");
+  }
+
+  @Test
   public void rejectInvalidTagFilterCombinations() {
     assertInvalid(
         "cat --tag-filter site contains north data.tsfile",

@@ -107,4 +107,28 @@ public class FsStatisticsTest {
     assertEquals("-10", rows.get(0).get("min_time"));
     assertEquals("0", rows.get(0).get("max_time"));
   }
+
+  @Test
+  public void numericStatisticsIncludeAverageAndMedian() {
+    List<FsColumn> columns =
+        Arrays.asList(
+            new FsColumn("long_value", "FIELD", "INT64"),
+            new FsColumn("double_value", "FIELD", "DOUBLE"));
+    List<SqlRow> stats =
+        FsStatistics.stats(
+            "tree",
+            "root.db.d",
+            columns,
+            SqlRow.list(
+                SqlRow.of("time", "1", "long_value", "1", "double_value", "1.5"),
+                SqlRow.of("time", "2", "long_value", "2", "double_value", null),
+                SqlRow.of("time", "3", "long_value", "9", "double_value", "3.5"),
+                SqlRow.of("time", "4", "long_value", "10", "double_value", "8.5")));
+
+    assertNull(stats.get(0).get("sum"));
+    assertEquals("5.5", stats.get(0).get("avg"));
+    assertEquals("5.5", stats.get(0).get("median"));
+    assertEquals("4.5", stats.get(1).get("avg"));
+    assertEquals("3.5", stats.get(1).get("median"));
+  }
 }

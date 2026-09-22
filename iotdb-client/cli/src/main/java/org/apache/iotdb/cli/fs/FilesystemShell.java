@@ -58,6 +58,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -741,7 +742,7 @@ public class FilesystemShell {
         rows = provider.meta(path);
         break;
       case STATS:
-        rows = provider.stats(path);
+        rows = provider.stats(path, command.getReadOptions());
         break;
       default:
         rows = provider.countRows(path);
@@ -766,6 +767,9 @@ public class FilesystemShell {
           selected.add(row);
       }
       rows = selected;
+    }
+    if (command.getType() == FilesystemCommand.Type.STATS && command.hasOption("--aggregates")) {
+      rows = selectStatsAggregates(rows, command.optionValue("--aggregates", ""));
     }
     List<FsColumn> columns = rows.isEmpty() ? metadataColumns(command, path) : resultColumns(rows);
     FsRowRenderer.print(ctx.getOut(), columns, rows, command.getFormat());
@@ -801,20 +805,26 @@ public class FilesystemShell {
         for (FsColumn column : provider.columns(path)) {
           if ("TAG".equalsIgnoreCase(column.getCategory())) names.add("tag." + column.getName());
         }
-        names.addAll(
-            Arrays.asList(
-                "field",
-                "data_type",
-                "non_null_count",
-                "null_count",
-                "min_time",
-                "max_time",
-                "min",
-                "max",
-                "first",
-                "last",
-                "sum",
-                "stats_source"));
+        names.add("field");
+        names.add("data_type");
+        if (command.hasOption("--aggregates")) {
+          names.addAll(Arrays.asList(command.optionValue("--aggregates", "").split(",")));
+        } else {
+          names.addAll(
+              Arrays.asList(
+                  "non_null_count",
+                  "null_count",
+                  "min_time",
+                  "max_time",
+                  "min",
+                  "max",
+                  "first",
+                  "last",
+                  "sum",
+                  "avg",
+                  "median"));
+        }
+        names.add("stats_source");
         break;
       default:
         break;
@@ -822,6 +832,33 @@ public class FilesystemShell {
     List<FsColumn> columns = new ArrayList<>();
     for (String name : names) columns.add(new FsColumn(name, "FIELD", "STRING"));
     return columns;
+  }
+
+  private static List<SqlRow> selectStatsAggregates(List<SqlRow> rows, String aggregates) {
+    List<SqlRow> selected = new ArrayList<>();
+    for (SqlRow row : rows) {
+      Map<String, String> cells = new LinkedHashMap<>();
+      Map<String, String> types = new LinkedHashMap<>();
+      for (String name : row.asMap().keySet()) {
+        if ("model".equals(name)
+            || "object".equals(name)
+            || name.startsWith("tag.")
+            || "field".equals(name)
+            || "data_type".equals(name)) {
+          cells.put(name, row.get(name));
+          types.put(name, row.getDataType(name));
+        }
+      }
+      for (String aggregate : aggregates.split(",")) {
+        String source = "count".equals(aggregate) ? "non_null_count" : aggregate;
+        cells.put(aggregate, row.get(source));
+        types.put(aggregate, row.getDataType(source));
+      }
+      cells.put("stats_source", row.get("stats_source"));
+      types.put("stats_source", row.getDataType("stats_source"));
+      selected.add(new SqlRow(cells, types));
+    }
+    return selected;
   }
 
   private static List<FsColumn> resultColumns(List<SqlRow> rows) {

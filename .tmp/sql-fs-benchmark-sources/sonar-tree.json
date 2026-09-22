@@ -1,0 +1,743 @@
+{
+  "sha": "99866c43cd7ceb91a929de745e9f49cea92962e5",
+  "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/99866c43cd7ceb91a929de745e9f49cea92962e5",
+  "tree": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a10bc41623aefb1148c152810b6c63da72d72962",
+      "size": 1799,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/a10bc41623aefb1148c152810b6c63da72d72962"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7d3ba72f908017c1ffdb1b6dc8c28630b093efb9",
+      "size": 11342,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/7d3ba72f908017c1ffdb1b6dc8c28630b093efb9"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0ec65510b4694dab3f9ca989b1d61829889f36a3",
+      "size": 9954,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/0ec65510b4694dab3f9ca989b1d61829889f36a3"
+    },
+    {
+      "path": "cold_start",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "77b58a32e44816b925c3c330cebc75f62f9d2124",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/77b58a32e44816b925c3c330cebc75f62f9d2124"
+    },
+    {
+      "path": "cold_start/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83dc6db120a084d4a244232054c9a4428a7dd0e8",
+      "size": 796,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/83dc6db120a084d4a244232054c9a4428a7dd0e8"
+    },
+    {
+      "path": "cold_start/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a830492b7a30b572adb952d8d46a0b9bf4a1924",
+      "size": 47,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/1a830492b7a30b572adb952d8d46a0b9bf4a1924"
+    },
+    {
+      "path": "cold_start/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e0876ddf9d26e79a4c0c81c6ff14269665ebbbb6",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/e0876ddf9d26e79a4c0c81c6ff14269665ebbbb6"
+    },
+    {
+      "path": "cold_start/agents/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f25efacc8c321bc1cc7c664e7503647b21f0034",
+      "size": 165,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/8f25efacc8c321bc1cc7c664e7503647b21f0034"
+    },
+    {
+      "path": "cold_start/agents/critic.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2a68848cc24629a94beb0d9031664d5fb0ff0bab",
+      "size": 3241,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/2a68848cc24629a94beb0d9031664d5fb0ff0bab"
+    },
+    {
+      "path": "cold_start/agents/drafter.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7767b2e74d298ca55acf072f7ca3055ba8065c21",
+      "size": 4705,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/7767b2e74d298ca55acf072f7ca3055ba8065c21"
+    },
+    {
+      "path": "cold_start/agents/reflector.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d7542236c5179e9a937a4ed7e44c9a3f7aace80",
+      "size": 2539,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/8d7542236c5179e9a937a4ed7e44c9a3f7aace80"
+    },
+    {
+      "path": "cold_start/download_train_data.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b2ae821e2a1c70a37a84e4d20e4b00b8d91a522",
+      "size": 6460,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/2b2ae821e2a1c70a37a84e4d20e4b00b8d91a522"
+    },
+    {
+      "path": "cold_start/orchestrator.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d79f1f5494bcb57397c9373aeb3c8e88200176b",
+      "size": 7920,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/3d79f1f5494bcb57397c9373aeb3c8e88200176b"
+    },
+    {
+      "path": "cold_start/run_cold_start.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66cdd0e7185c84d8ddc615f1d9e5b9e26f4fa1ac",
+      "size": 5582,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/66cdd0e7185c84d8ddc615f1d9e5b9e26f4fa1ac"
+    },
+    {
+      "path": "configs",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "93bc2c97e259c5605a4428e25021fc277d2a3e9a",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/93bc2c97e259c5605a4428e25021fc277d2a3e9a"
+    },
+    {
+      "path": "configs/deepseek_api-key.txt.example",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e41afdd0962b2014d77b18e06216fd61f22720d",
+      "size": 880,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/8e41afdd0962b2014d77b18e06216fd61f22720d"
+    },
+    {
+      "path": "configs/offline.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1633f38f166ba3eb0d762ce7fa1d35faf1541592",
+      "size": 784,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/1633f38f166ba3eb0d762ce7fa1d35faf1541592"
+    },
+    {
+      "path": "configs/online.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c2070effb5858d9720cead0fb47d2bddd4d0e415",
+      "size": 1742,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/c2070effb5858d9720cead0fb47d2bddd4d0e415"
+    },
+    {
+      "path": "docs",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ca7ecf873cb157eb072534a85fa6fa359c4f4161",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/ca7ecf873cb157eb072534a85fa6fa359c4f4161"
+    },
+    {
+      "path": "docs/figures",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c9a193948609048f1321e0c8feaf342909ed1014",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/c9a193948609048f1321e0c8feaf342909ed1014"
+    },
+    {
+      "path": "docs/figures/figure_nlq4tsdb.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9214207949a8d6215bde5da0a0b6db40d2b4c5e",
+      "size": 398865,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/b9214207949a8d6215bde5da0a0b6db40d2b4c5e"
+    },
+    {
+      "path": "docs/figures/figure_nlqtsbench.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2e0b795623ec6f36c6252d2c9f3d6ed143cd4bf5",
+      "size": 2331848,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/2e0b795623ec6f36c6252d2c9f3d6ed143cd4bf5"
+    },
+    {
+      "path": "docs/figures/figure_sonar-ts.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d8584e8149c2cfe30f5456a9a0f30a28e14fed3",
+      "size": 688851,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/4d8584e8149c2cfe30f5456a9a0f30a28e14fed3"
+    },
+    {
+      "path": "docs/figures/logos",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d86364e9753bc695a45813416fcb02a2c666478e",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/d86364e9753bc695a45813416fcb02a2c666478e"
+    },
+    {
+      "path": "docs/figures/logos/bytedance.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae87fbcf074c91fb48f64db9f51bdfd1bcb94dad",
+      "size": 5802,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/ae87fbcf074c91fb48f64db9f51bdfd1bcb94dad"
+    },
+    {
+      "path": "docs/figures/logos/griffith.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7be578b713373b925291588f0fd7fb4bc4285902",
+      "size": 12549,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/7be578b713373b925291588f0fd7fb4bc4285902"
+    },
+    {
+      "path": "docs/figures/logos/hkust-gz.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "638f092e31f1c1cd5f99eefcdfb34eead193a43f",
+      "size": 19140,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/638f092e31f1c1cd5f99eefcdfb34eead193a43f"
+    },
+    {
+      "path": "docs/figures/logos/jufe.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bbc320bafbb2d7c97fb5eba932394443a74ceaf4",
+      "size": 14149,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/bbc320bafbb2d7c97fb5eba932394443a74ceaf4"
+    },
+    {
+      "path": "docs/figures/logos/microsoft-research.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0f24a0295231f3e845d826ef8deeeeeed647c51f",
+      "size": 20395,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/0f24a0295231f3e845d826ef8deeeeeed647c51f"
+    },
+    {
+      "path": "docs/figures/logos/ynu.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39de048c118a21576d7a69a0efc0c2aa8f439014",
+      "size": 72557,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/39de048c118a21576d7a69a0efc0c2aa8f439014"
+    },
+    {
+      "path": "docs/promo_teaser.gif",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "237d6967b7d220781d8c6e574cb852a6cf052202",
+      "size": 1913097,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/237d6967b7d220781d8c6e574cb852a6cf052202"
+    },
+    {
+      "path": "docs/sonar-ts_promo.mp4",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a67d261e84a34db9fe920cb01832821645490dab",
+      "size": 5032199,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/a67d261e84a34db9fe920cb01832821645490dab"
+    },
+    {
+      "path": "main.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a9c1b1a8090f2e8cf0517b49bf952b4be2febac9",
+      "size": 15134,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/a9c1b1a8090f2e8cf0517b49bf952b4be2febac9"
+    },
+    {
+      "path": "nlqtsbench",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "448460aeb40ac0feb9c47b409e2ad9a5a82e1302",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/448460aeb40ac0feb9c47b409e2ad9a5a82e1302"
+    },
+    {
+      "path": "nlqtsbench/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06cd0e99795996f3ef78d900e5ae9a88484b61a9",
+      "size": 4863,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/06cd0e99795996f3ef78d900e5ae9a88484b61a9"
+    },
+    {
+      "path": "nlqtsbench/predict_perfect.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea0140a5d4ad8935fea734e84563f95166d8d322",
+      "size": 129557,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/ea0140a5d4ad8935fea734e84563f95166d8d322"
+    },
+    {
+      "path": "nlqtsbench/tasks.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74243da9c572d7db3fac3146ca79d595822b821f",
+      "size": 2655967,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/74243da9c572d7db3fac3146ca79d595822b821f"
+    },
+    {
+      "path": "output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d500d66b5b08bfdd532e2dc0f0137366d82c8c5c",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/d500d66b5b08bfdd532e2dc0f0137366d82c8c5c"
+    },
+    {
+      "path": "output/figures",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6e14a53e2d9cb394ef1c2445d41f3cd3f46bc7f9",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/6e14a53e2d9cb394ef1c2445d41f3cd3f46bc7f9"
+    },
+    {
+      "path": "output/figures/examples",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "aa7b78237dd7b4fc94a40fb47248066dca0c763f",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/aa7b78237dd7b4fc94a40fb47248066dca0c763f"
+    },
+    {
+      "path": "output/figures/examples/L1_T1_Global_Aggregation_00009.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2593fe0958e3170ed0616f81b0e79fdb8e610e73",
+      "size": 112781,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/2593fe0958e3170ed0616f81b0e79fdb8e610e73"
+    },
+    {
+      "path": "output/figures/examples/L1_T2_Temporal_Localization_00259.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93f6ed52529d0dada27f9f6e611a8fd1448fc3a2",
+      "size": 95946,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/93f6ed52529d0dada27f9f6e611a8fd1448fc3a2"
+    },
+    {
+      "path": "output/figures/examples/L1_T3_Interval_Discovery_00352.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da07f2f517c2042a8327f06efec929cf92798f9f",
+      "size": 71435,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/da07f2f517c2042a8327f06efec929cf92798f9f"
+    },
+    {
+      "path": "output/figures/examples/L1_T4_Sliding_Window_00643.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe6a593e6e4177812e6941d16f0bccc148c99693",
+      "size": 76137,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/fe6a593e6e4177812e6941d16f0bccc148c99693"
+    },
+    {
+      "path": "output/figures/examples/L2_T1_Shape_Identification_00111.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50f21276ccf4621bd78ceee165458712e345a485",
+      "size": 50132,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/50f21276ccf4621bd78ceee165458712e345a485"
+    },
+    {
+      "path": "output/figures/examples/L2_T2_Periodicity_Detection_00300.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1fa9eb728da7ee17744b1726b9d219bfb030a269",
+      "size": 96960,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/1fa9eb728da7ee17744b1726b9d219bfb030a269"
+    },
+    {
+      "path": "output/figures/examples/L2_T3_Subsequence_Matching_00335.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a69e17c3e76dfe52e7c5ff4bdb220bcd78a1647",
+      "size": 61681,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/6a69e17c3e76dfe52e7c5ff4bdb220bcd78a1647"
+    },
+    {
+      "path": "output/figures/examples/L3_T1_Composite_Trend_00178.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2871aa6195c6803a52ccb40631e5698873a96238",
+      "size": 82824,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/2871aa6195c6803a52ccb40631e5698873a96238"
+    },
+    {
+      "path": "output/figures/examples/L3_T2_Contextual_Anomaly_00311.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cbfa7cbfbda9e9960de82e2d7a197f265c1f98e8",
+      "size": 68672,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/cbfa7cbfbda9e9960de82e2d7a197f265c1f98e8"
+    },
+    {
+      "path": "output/figures/examples/L3_T3_Causal_Anomaly_00414.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac22697247926ceed1b4d1299955c27b84caa125",
+      "size": 87730,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/ac22697247926ceed1b4d1299955c27b84caa125"
+    },
+    {
+      "path": "output/figures/examples/L4_T1_Insight_Synthesis_00061.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a73473bcb9a20afb0263ec4656c95eb85c9aee50",
+      "size": 56982,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/a73473bcb9a20afb0263ec4656c95eb85c9aee50"
+    },
+    {
+      "path": "output/per_task.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd6e86dbd121e23513377837435f864e87d5d5a5",
+      "size": 499537,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/cd6e86dbd121e23513377837435f864e87d5d5a5"
+    },
+    {
+      "path": "output/predict.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d42805060e32beba9a23ac476dcfb25ad7481060",
+      "size": 131757,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/d42805060e32beba9a23ac476dcfb25ad7481060"
+    },
+    {
+      "path": "output/summary.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9dbaf16b896b78215096dd026678f11555d29a6e",
+      "size": 2679,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/9dbaf16b896b78215096dd026678f11555d29a6e"
+    },
+    {
+      "path": "requirements.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e038ba4ad1ead3680bdca1f2057bd920361c9626",
+      "size": 331,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/e038ba4ad1ead3680bdca1f2057bd920361c9626"
+    },
+    {
+      "path": "scripts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ea72799e51576242e7f6f846ac1312345c156cb1",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/ea72799e51576242e7f6f846ac1312345c156cb1"
+    },
+    {
+      "path": "scripts/build_index.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ecf378e959c0d4f9a93736bc3f191959a8be398",
+      "size": 4140,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/9ecf378e959c0d4f9a93736bc3f191959a8be398"
+    },
+    {
+      "path": "scripts/download_dataset.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b2181b52de4b47eabce1fb5986752c31e606dc5",
+      "size": 1877,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/4b2181b52de4b47eabce1fb5986752c31e606dc5"
+    },
+    {
+      "path": "scripts/load_benchmark.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "72e337e0052a9895c70264fd32214d25a539b1d2",
+      "size": 3044,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/72e337e0052a9895c70264fd32214d25a539b1d2"
+    },
+    {
+      "path": "scripts/render_samples.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c91886ca5fd9dfd3927309f06531388634d7b147",
+      "size": 5552,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/c91886ca5fd9dfd3927309f06531388634d7b147"
+    },
+    {
+      "path": "scripts/run_benchmark.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8c375a145bae3636b8f38f3fd7d388e2554f4ad6",
+      "size": 8503,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/8c375a145bae3636b8f38f3fd7d388e2554f4ad6"
+    },
+    {
+      "path": "sonar_ts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4c2141c17ac6233f3ebb79b3d7f03e4e17a0a310",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/4c2141c17ac6233f3ebb79b3d7f03e4e17a0a310"
+    },
+    {
+      "path": "sonar_ts/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f5acaed6db37fafd2e5ed5bd973d867b3d858d8",
+      "size": 39,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/8f5acaed6db37fafd2e5ed5bd973d867b3d858d8"
+    },
+    {
+      "path": "sonar_ts/_paths.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ec572062592efb61b2ddba465800145993b37d1",
+      "size": 680,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/7ec572062592efb61b2ddba465800145993b37d1"
+    },
+    {
+      "path": "sonar_ts/_runner.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e97a9da7a11d40728e825c34e0c9b73198d1f3da",
+      "size": 1691,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/e97a9da7a11d40728e825c34e0c9b73198d1f3da"
+    },
+    {
+      "path": "sonar_ts/evaluator.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a2063a45399bce95e238eaf95dc202924765b56",
+      "size": 14617,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/9a2063a45399bce95e238eaf95dc202924765b56"
+    },
+    {
+      "path": "sonar_ts/executor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8d8fc5751054491987d3fe23264b9c2e5933bc4",
+      "size": 5446,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/f8d8fc5751054491987d3fe23264b9c2e5933bc4"
+    },
+    {
+      "path": "sonar_ts/generator.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fd4b42e0ea077cab84604e8d821e6d2751b699af",
+      "size": 1571,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/fd4b42e0ea077cab84604e8d821e6d2751b699af"
+    },
+    {
+      "path": "sonar_ts/llm.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e10a528b2e4d7166063982818959cbdf38af652f",
+      "size": 3068,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/e10a528b2e4d7166063982818959cbdf38af652f"
+    },
+    {
+      "path": "sonar_ts/offline.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8ac2b9fcc5d47aeef7259de09e616688ff66dc1",
+      "size": 4169,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/e8ac2b9fcc5d47aeef7259de09e616688ff66dc1"
+    },
+    {
+      "path": "sonar_ts/pipeline.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d6c4c973e7263cf438a148472431042caeb00b5c",
+      "size": 3721,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/d6c4c973e7263cf438a148472431042caeb00b5c"
+    },
+    {
+      "path": "sonar_ts/planner.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d9885152cebabf33656f4fe564bec9d6d313323",
+      "size": 1307,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/0d9885152cebabf33656f4fe564bec9d6d313323"
+    },
+    {
+      "path": "sonar_ts/postprocess",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4ecf5b6ae34717ba690c08480c434530ce22d116",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/4ecf5b6ae34717ba690c08480c434530ce22d116"
+    },
+    {
+      "path": "sonar_ts/postprocess/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f02a56632cd72b76f255f40b8cc6126f2f9d2a6",
+      "size": 1989,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/4f02a56632cd72b76f255f40b8cc6126f2f9d2a6"
+    },
+    {
+      "path": "sonar_ts/postprocess/formatters.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0924c4dd160b48b22b827e68e4b76c3ebddf65ff",
+      "size": 5098,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/0924c4dd160b48b22b827e68e4b76c3ebddf65ff"
+    },
+    {
+      "path": "sonar_ts/postprocess/visualize.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22a44d71f2638e9d4ab86d4368c3833a20b76e2b",
+      "size": 21442,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/22a44d71f2638e9d4ab86d4368c3833a20b76e2b"
+    },
+    {
+      "path": "sonar_ts/prompts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "12dbbff80d991ecddf055e1d6dfd550e35728227",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/12dbbff80d991ecddf055e1d6dfd550e35728227"
+    },
+    {
+      "path": "sonar_ts/prompts/code_generator.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8af2b33eeba11d8884865ddf22f7c980b7819be",
+      "size": 3289,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/e8af2b33eeba11d8884865ddf22f7c980b7819be"
+    },
+    {
+      "path": "sonar_ts/prompts/code_generator_fix.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09c908733616aaf8348fe54580c0079713d5114c",
+      "size": 1714,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/09c908733616aaf8348fe54580c0079713d5114c"
+    },
+    {
+      "path": "sonar_ts/prompts/task_planner.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "930d27f2aa07fa462dd418576f814187bc5e3195",
+      "size": 3517,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/930d27f2aa07fa462dd418576f814187bc5e3195"
+    },
+    {
+      "path": "sonar_ts/schema.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "73bef1a0b12b91368fa53d39e314669021bb78ce",
+      "size": 916,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/73bef1a0b12b91368fa53d39e314669021bb78ce"
+    },
+    {
+      "path": "sonar_ts/skills",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1cd44b5b8f36c2e441abc76d4ef2a28488d6c944",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/1cd44b5b8f36c2e441abc76d4ef2a28488d6c944"
+    },
+    {
+      "path": "sonar_ts/skills/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "49707d157ce220d1c12f96cf1c0e5285d2b112d1",
+      "size": 114,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/49707d157ce220d1c12f96cf1c0e5285d2b112d1"
+    },
+    {
+      "path": "sonar_ts/skills/_loader.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "172bae15c0fa89942d4999d44cbfcf2d9c656669",
+      "size": 1977,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/172bae15c0fa89942d4999d44cbfcf2d9c656669"
+    },
+    {
+      "path": "sonar_ts/skills/library",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "00de0966fee073c3608c27bc400a88ff08b4ec68",
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/trees/00de0966fee073c3608c27bc400a88ff08b4ec68"
+    },
+    {
+      "path": "sonar_ts/skills/library/causal-anomaly-correlation.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3bc1d4253f81ef2a28255469d39a27b131bcc188",
+      "size": 5458,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/3bc1d4253f81ef2a28255469d39a27b131bcc188"
+    },
+    {
+      "path": "sonar_ts/skills/library/composite-trend-topk.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ef1fb3873f55477aaf79236bb222754b4a13c61",
+      "size": 6663,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/5ef1fb3873f55477aaf79236bb222754b4a13c61"
+    },
+    {
+      "path": "sonar_ts/skills/library/contextual-anomaly-residual.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8fea243dbc188fdda9c3221921641a8ebd226c87",
+      "size": 5197,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/8fea243dbc188fdda9c3221921641a8ebd226c87"
+    },
+    {
+      "path": "sonar_ts/skills/library/insight-synthesis.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b4b2170071660d083afb227433d48944f846ea0b",
+      "size": 7713,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/b4b2170071660d083afb227433d48944f846ea0b"
+    },
+    {
+      "path": "sonar_ts/skills/library/periodicity-detection.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eade40873724ce01964886500458e1c84816d289",
+      "size": 3575,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/eade40873724ce01964886500458e1c84816d289"
+    },
+    {
+      "path": "sonar_ts/skills/library/shape-identification.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eef48ff8cb0a4d3843e3dc32fc6f2d8625877144",
+      "size": 5096,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/eef48ff8cb0a4d3843e3dc32fc6f2d8625877144"
+    },
+    {
+      "path": "sonar_ts/skills/library/sliding-window-scan.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bc2ec1d3f2b791075b6b3b688ebe9127f7b01555",
+      "size": 2734,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/bc2ec1d3f2b791075b6b3b688ebe9127f7b01555"
+    },
+    {
+      "path": "sonar_ts/skills/library/subsequence-matching.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "88a72faf22d0ae0472e9bf2e8f1bf2c44bec5e50",
+      "size": 3286,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/88a72faf22d0ae0472e9bf2e8f1bf2c44bec5e50"
+    },
+    {
+      "path": "sonar_ts/storage.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "85736ebab6382a053b419cc37d7befff03675525",
+      "size": 7001,
+      "url": "https://api.github.com/repos/Atlamtiz/Sonar-TS/git/blobs/85736ebab6382a053b419cc37d7befff03675525"
+    }
+  ],
+  "truncated": false
+}

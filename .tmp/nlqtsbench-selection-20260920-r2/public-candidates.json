@@ -1,0 +1,1372 @@
+[
+  {
+    "task_id": "L1_T1_Global_Aggregation_00007",
+    "source_index": 0,
+    "question": "What is the median value of channel 147 in 2020-05-20 to 2020-05-31? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00009",
+    "source_index": 1,
+    "question": "What is the minimum value of channel 154 in 2019-06? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00010",
+    "source_index": 2,
+    "question": "What is the range value of channel 155 in 2023-01? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00011",
+    "source_index": 3,
+    "question": "What is the average value of channel 166 in 2021-06? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00013",
+    "source_index": 4,
+    "question": "What is the range value of channel 170 in 2023-08-04 to 2023-09-02? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00015",
+    "source_index": 5,
+    "question": "What is the median value of channel 173 in 2023? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00022",
+    "source_index": 6,
+    "question": "What is the average value of channel 495 in 2021-04? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00023",
+    "source_index": 7,
+    "question": "What is the median value of channel 496 in 2019? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00025",
+    "source_index": 8,
+    "question": "What is the minimum value of channel 578 in 2023-01? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00030",
+    "source_index": 9,
+    "question": "What is the maximum value of channel 625 in 2022? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00033",
+    "source_index": 10,
+    "question": "What is the maximum value of channel 647 in 2022-10-08 to 2022-10-30? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00038",
+    "source_index": 11,
+    "question": "What is the median value of channel 729 in 2023-01-28 to 2023-02-25? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00045",
+    "source_index": 12,
+    "question": "What is the minimum value of channel 894 in 2023-11? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00051",
+    "source_index": 13,
+    "question": "What is the minimum value of channel MUFL in 2017-09? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00054",
+    "source_index": 14,
+    "question": "What is the range value of channel m_09 in 2020? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00055",
+    "source_index": 15,
+    "question": "What is the range value of channel m_21 in 2020-01-13 to 2020-02-08? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00057",
+    "source_index": 16,
+    "question": "What is the maximum value of channel 67 in 2022? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00058",
+    "source_index": 17,
+    "question": "What is the average value of channel 71 in 2022-09-17 to 2022-09-30? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00059",
+    "source_index": 18,
+    "question": "What is the average value of channel 99 in 2022-09-29 to 2022-10-23? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00060",
+    "source_index": 19,
+    "question": "What is the average value of channel 123 in 2019-12? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00062",
+    "source_index": 20,
+    "question": "What is the median value of channel 146 in 2022-09-29 to 2022-10-10? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00065",
+    "source_index": 21,
+    "question": "What is the average value of channel 154 in 2023-12? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00067",
+    "source_index": 22,
+    "question": "What is the average value of channel 166 in 2021-02? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00070",
+    "source_index": 23,
+    "question": "What is the range value of channel 172 in 2020-02-10 to 2020-02-25? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00071",
+    "source_index": 24,
+    "question": "What is the average value of channel 173 in 2019? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00074",
+    "source_index": 25,
+    "question": "What is the median value of channel 245 in 2023-12? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00077",
+    "source_index": 26,
+    "question": "What is the median value of channel 441 in 2023? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00078",
+    "source_index": 27,
+    "question": "What is the maximum value of channel 495 in 2023? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00079",
+    "source_index": 28,
+    "question": "What is the maximum value of channel 496 in 2022? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00080",
+    "source_index": 29,
+    "question": "What is the average value of channel 501 in 2021-12-10 to 2022-01-01? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00082",
+    "source_index": 30,
+    "question": "What is the median value of channel 580 in 2022-11-26 to 2022-12-23? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00085",
+    "source_index": 31,
+    "question": "What is the minimum value of channel 595 in 2022-03? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00086",
+    "source_index": 32,
+    "question": "What is the minimum value of channel 625 in 2020-08-17 to 2020-09-14? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00088",
+    "source_index": 33,
+    "question": "What is the average value of channel 627 in 2019? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00090",
+    "source_index": 34,
+    "question": "What is the minimum value of channel 680 in 2019-10-23 to 2019-11-22? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00097",
+    "source_index": 35,
+    "question": "What is the minimum value of channel 811 in 2023-02? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00099",
+    "source_index": 36,
+    "question": "What is the minimum value of channel 865 in 2020-07? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00100",
+    "source_index": 37,
+    "question": "What is the range value of channel 891 in 2020-11-25 to 2020-12-15? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00103",
+    "source_index": 38,
+    "question": "What is the maximum value of channel 897 in 2022-08-19 to 2022-08-28? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00104",
+    "source_index": 39,
+    "question": "What is the median value of channel 933 in 2022-08-13 to 2022-09-09? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00107",
+    "source_index": 40,
+    "question": "What is the minimum value of channel MUFL in 2017-11-24 to 2017-12-10? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00108",
+    "source_index": 41,
+    "question": "What is the median value of channel MULL in 2017-09? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00113",
+    "source_index": 42,
+    "question": "What is the maximum value of channel 67 in 2019? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00114",
+    "source_index": 43,
+    "question": "What is the minimum value of channel 71 in 2023? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00116",
+    "source_index": 44,
+    "question": "What is the minimum value of channel 123 in 2020? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00117",
+    "source_index": 45,
+    "question": "What is the minimum value of channel 124 in 2023? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00119",
+    "source_index": 46,
+    "question": "What is the minimum value of channel 147 in 2020? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00120",
+    "source_index": 47,
+    "question": "What is the maximum value of channel 151 in 2020? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00122",
+    "source_index": 48,
+    "question": "What is the average value of channel 155 in 2020? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00131",
+    "source_index": 49,
+    "question": "What is the range value of channel 312 in 2020? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00132",
+    "source_index": 50,
+    "question": "What is the minimum value of channel 430 in 2021-03? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00133",
+    "source_index": 51,
+    "question": "What is the average value of channel 441 in 2021-04? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00134",
+    "source_index": 52,
+    "question": "What is the median value of channel 495 in 2022-08? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00135",
+    "source_index": 53,
+    "question": "What is the maximum value of channel 496 in 2023-05-02 to 2023-05-19? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00136",
+    "source_index": 54,
+    "question": "What is the median value of channel 501 in 2023-11? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00139",
+    "source_index": 55,
+    "question": "What is the range value of channel 589 in 2020-12? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00140",
+    "source_index": 56,
+    "question": "What is the median value of channel 591 in 2022? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00141",
+    "source_index": 57,
+    "question": "What is the minimum value of channel 595 in 2021-02-24 to 2021-03-25? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00142",
+    "source_index": 58,
+    "question": "What is the median value of channel 625 in 2022? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00143",
+    "source_index": 59,
+    "question": "What is the average value of channel 626 in 2023? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00147",
+    "source_index": 60,
+    "question": "What is the maximum value of channel 683 in 2020-11-01 to 2020-11-10? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00148",
+    "source_index": 61,
+    "question": "What is the minimum value of channel 727 in 2022? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00149",
+    "source_index": 62,
+    "question": "What is the median value of channel 728 in 2020-02? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00150",
+    "source_index": 63,
+    "question": "What is the maximum value of channel 729 in 2019-02-27 to 2019-03-27? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00157",
+    "source_index": 64,
+    "question": "What is the range value of channel 894 in 2022-03-27 to 2022-04-22? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00158",
+    "source_index": 65,
+    "question": "What is the median value of channel 895 in 2023? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00160",
+    "source_index": 66,
+    "question": "What is the maximum value of channel 933 in 2022-06-19 to 2022-07-12? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00161",
+    "source_index": 67,
+    "question": "What is the range value of channel HUFL in 2018-01? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00163",
+    "source_index": 68,
+    "question": "What is the median value of channel MUFL in 2018? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00164",
+    "source_index": 69,
+    "question": "What is the median value of channel MULL in 2016-12-17 to 2017-01-06? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00165",
+    "source_index": 70,
+    "question": "What is the maximum value of channel LUFL in 2018-02? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T1_Global_Aggregation_00167",
+    "source_index": 71,
+    "question": "What is the maximum value of channel OT in 2016-12-20 to 2016-12-30? (Output format: a single numeric value, rounded to 3 decimal places, e.g., x.xxx)"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00340",
+    "source_index": 72,
+    "question": "Find the longest period where channel 71 remained above 0.01 in 2020-08-22 to 2020-10-14. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00341",
+    "source_index": 73,
+    "question": "Find the longest period where channel 99 remained above 0.807 in 2022-09-27 to 2022-11-02. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00344",
+    "source_index": 74,
+    "question": "Find the longest period where channel 146 remained above 0.857 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00346",
+    "source_index": 75,
+    "question": "Find the longest period where channel 151 remained above 0.648 in 2020-03-31 to 2020-05-03. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00352",
+    "source_index": 76,
+    "question": "Find the longest period where channel 172 remained above 428.0 in 2019. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00354",
+    "source_index": 77,
+    "question": "Find the longest period where channel 177 remained above 316.0 in 2020-06-02 to 2020-08-22. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00355",
+    "source_index": 78,
+    "question": "Find the longest period where channel 237 remained above 0.88 in 2022-09-19 to 2022-11-07. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00356",
+    "source_index": 79,
+    "question": "Find the longest period where channel 245 remained above 0.679 in 2019-08-08 to 2019-09-08. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00359",
+    "source_index": 80,
+    "question": "Find the longest period where channel 441 remained above 34.1 in 2023-02-15 to 2023-05-10. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00365",
+    "source_index": 81,
+    "question": "Find the longest period where channel 589 remained above 386.0 in 2023-09-07 to 2023-12-05. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00366",
+    "source_index": 82,
+    "question": "Find the longest period where channel 591 remained above 220.0 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00368",
+    "source_index": 83,
+    "question": "Find the longest period where channel 625 remained above 0.045 in 2022-08-05 to 2022-09-11. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00369",
+    "source_index": 84,
+    "question": "Find the longest period where channel 626 remained above 0.815 in 2021-06-09 to 2021-07-23. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00370",
+    "source_index": 85,
+    "question": "Find the longest period where channel 627 remained above 0.378 in 2019-11-13 to 2020-01-06. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00371",
+    "source_index": 86,
+    "question": "Find the longest period where channel 647 remained above 0.653 in 2019-12-08 to 2020-01-29. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00372",
+    "source_index": 87,
+    "question": "Find the longest period where channel 680 remained above 6.84 in 2023. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00373",
+    "source_index": 88,
+    "question": "Find the longest period where channel 683 remained above 1.43 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00376",
+    "source_index": 89,
+    "question": "Find the longest period where channel 729 remained above 89.7 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00379",
+    "source_index": 90,
+    "question": "Find the longest period where channel 811 remained above 11.8 in 2019. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00380",
+    "source_index": 91,
+    "question": "Find the longest period where channel 813 remained above 0.789 in 2020-09-09 to 2020-11-23. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00382",
+    "source_index": 92,
+    "question": "Find the longest period where channel 891 remained above 3.15 in 2023-04-06 to 2023-06-17. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00383",
+    "source_index": 93,
+    "question": "Find the longest period where channel 894 remained above 8.34 in 2023. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00385",
+    "source_index": 94,
+    "question": "Find the longest period where channel 897 remained above 0.019 in 2019. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00388",
+    "source_index": 95,
+    "question": "Find the longest period where channel HULL remained above 1.474 in 2017-02-12 to 2017-04-13. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00389",
+    "source_index": 96,
+    "question": "Find the longest period where channel MUFL remained above 10.554 in 2016-07-03 to 2016-09-28. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00390",
+    "source_index": 97,
+    "question": "Find the longest period where channel MULL remained above 0.142 in 2017-02-22 to 2017-04-19. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00394",
+    "source_index": 98,
+    "question": "Find the longest period where channel m_02 remained above 0.107 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00397",
+    "source_index": 99,
+    "question": "Find the longest period where channel 67 remained above 0.227 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00398",
+    "source_index": 100,
+    "question": "Find the longest period where channel 71 remained above 0.776 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00399",
+    "source_index": 101,
+    "question": "Find the longest period where channel 99 remained above 0.077 in 2022-05-13 to 2022-07-30. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00400",
+    "source_index": 102,
+    "question": "Find the longest period where channel 123 remained above 1.25 in 2019-01-29 to 2019-04-20. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00405",
+    "source_index": 103,
+    "question": "Find the longest period where channel 154 remained above 0.632 in 2021. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00408",
+    "source_index": 104,
+    "question": "Find the longest period where channel 169 remained above 577.0 in 2021. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00409",
+    "source_index": 105,
+    "question": "Find the longest period where channel 170 remained above 486.0 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00413",
+    "source_index": 106,
+    "question": "Find the longest period where channel 237 remained above 1.67 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00420",
+    "source_index": 107,
+    "question": "Find the longest period where channel 501 remained above 0.352 in 2022-10-08 to 2022-12-03. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00421",
+    "source_index": 108,
+    "question": "Find the longest period where channel 578 remained above 1.11 in 2023. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00422",
+    "source_index": 109,
+    "question": "Find the longest period where channel 580 remained above 0.41 in 2023-02-11 to 2023-04-16. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00424",
+    "source_index": 110,
+    "question": "Find the longest period where channel 591 remained above 158.0 in 2021-09-29 to 2021-12-21. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00425",
+    "source_index": 111,
+    "question": "Find the longest period where channel 595 remained above 2.14 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00426",
+    "source_index": 112,
+    "question": "Find the longest period where channel 625 remained above 0.906 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00427",
+    "source_index": 113,
+    "question": "Find the longest period where channel 626 remained above 0.398 in 2022-09-14 to 2022-11-04. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00429",
+    "source_index": 114,
+    "question": "Find the longest period where channel 647 remained above 1.49 in 2021. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00436",
+    "source_index": 115,
+    "question": "Find the longest period where channel 762 remained above 0.138 in 2019-03-31 to 2019-05-06. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00437",
+    "source_index": 116,
+    "question": "Find the longest period where channel 811 remained above 9.64 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00438",
+    "source_index": 117,
+    "question": "Find the longest period where channel 813 remained above 1.75 in 2021-02-11 to 2021-04-25. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00439",
+    "source_index": 118,
+    "question": "Find the longest period where channel 865 remained above 15.3 in 2023. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00444",
+    "source_index": 119,
+    "question": "Find the longest period where channel 933 remained above 0.298 in 2019-01-30 to 2019-04-18. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00445",
+    "source_index": 120,
+    "question": "Find the longest period where channel HUFL remained above 13.195 in 2017-12-05 to 2018-01-08. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00448",
+    "source_index": 121,
+    "question": "Find the longest period where channel MULL remained above 2.523 in 2018. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00463",
+    "source_index": 122,
+    "question": "Find the longest period where channel 151 remained above 0.562 in 2021-06-10 to 2021-08-25. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00465",
+    "source_index": 123,
+    "question": "Find the longest period where channel 155 remained above 0.248 in 2020-10-28 to 2020-12-29. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00467",
+    "source_index": 124,
+    "question": "Find the longest period where channel 169 remained above 521.0 in 2019. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00469",
+    "source_index": 125,
+    "question": "Find the longest period where channel 172 remained above 628.0 in 2019-02-25 to 2019-05-07. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00470",
+    "source_index": 126,
+    "question": "Find the longest period where channel 173 remained above 344.0 in 2019. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00472",
+    "source_index": 127,
+    "question": "Find the longest period where channel 237 remained above 1.21 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00474",
+    "source_index": 128,
+    "question": "Find the longest period where channel 312 remained above 0.1 in 2020-07-25 to 2020-10-02. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00478",
+    "source_index": 129,
+    "question": "Find the longest period where channel 496 remained above 0.264 in 2023-07-29 to 2023-10-24. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00481",
+    "source_index": 130,
+    "question": "Find the longest period where channel 580 remained above 0.404 in 2019-02-08 to 2019-04-06. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00482",
+    "source_index": 131,
+    "question": "Find the longest period where channel 589 remained above 484.0 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00486",
+    "source_index": 132,
+    "question": "Find the longest period where channel 626 remained above 1.19 in 2021. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00488",
+    "source_index": 133,
+    "question": "Find the longest period where channel 647 remained above 0.249 in 2020-05-26 to 2020-07-03. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00489",
+    "source_index": 134,
+    "question": "Find the longest period where channel 680 remained above 4.48 in 2022. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00492",
+    "source_index": 135,
+    "question": "Find the longest period where channel 728 remained above 73.5 in 2023-04-30 to 2023-06-08. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00494",
+    "source_index": 136,
+    "question": "Find the longest period where channel 754 remained above 0.203 in 2019-09-06 to 2019-11-05. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00495",
+    "source_index": 137,
+    "question": "Find the longest period where channel 762 remained above 0.199 in 2021. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00498",
+    "source_index": 138,
+    "question": "Find the longest period where channel 865 remained above 13.0 in 2020. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00499",
+    "source_index": 139,
+    "question": "Find the longest period where channel 891 remained above 4.93 in 2021. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00502",
+    "source_index": 140,
+    "question": "Find the longest period where channel 897 remained above 0.028 in 2022-10-11 to 2022-12-23. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00506",
+    "source_index": 141,
+    "question": "Find the longest period where channel MUFL remained above 8.528 in 2017. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00509",
+    "source_index": 142,
+    "question": "Find the longest period where channel LULL remained above 1.34 in 2018. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T3_Interval_Discovery_00511",
+    "source_index": 143,
+    "question": "Find the longest period where channel m_06 remained above 0.301 in 2020-01-01 to 2020-03-29. (Output format: a time interval, e.g., [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00173",
+    "source_index": 144,
+    "question": "At what exact timestamp did channel 99 reach its maximum value in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00174",
+    "source_index": 145,
+    "question": "At what exact timestamp did channel 123 reach its minimum value in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00177",
+    "source_index": 146,
+    "question": "At what exact timestamp did channel 147 reach its maximum value in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00182",
+    "source_index": 147,
+    "question": "At what exact timestamp did channel 169 reach its minimum value in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00184",
+    "source_index": 148,
+    "question": "At what exact timestamp did channel 172 reach its minimum value in 2020-03? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00188",
+    "source_index": 149,
+    "question": "At what exact timestamp did channel 245 last fall below 0.546 in 2019-12? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00191",
+    "source_index": 150,
+    "question": "At what exact timestamp did channel 441 last fall below 6.07 in 2022-07? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00192",
+    "source_index": 151,
+    "question": "At what exact timestamp did channel 495 reach its minimum value in 2022-08? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00194",
+    "source_index": 152,
+    "question": "At what exact timestamp did channel 501 reach its minimum value in 2020-01? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00200",
+    "source_index": 153,
+    "question": "At what exact timestamp did channel 625 first rise above 2.86 in 2023-12? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00202",
+    "source_index": 154,
+    "question": "At what exact timestamp did channel 627 first rise above 0.478 in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00204",
+    "source_index": 155,
+    "question": "At what exact timestamp did channel 680 last fall below 4.32 in 2023-04? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00209",
+    "source_index": 156,
+    "question": "At what exact timestamp did channel 754 last fall below 0.093 in 2023? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00210",
+    "source_index": 157,
+    "question": "At what exact timestamp did channel 762 first rise above 0.691 in 2023? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00211",
+    "source_index": 158,
+    "question": "At what exact timestamp did channel 811 last fall below 13.7 in 2023-03? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00213",
+    "source_index": 159,
+    "question": "At what exact timestamp did channel 865 reach its minimum value in 2023-12? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00214",
+    "source_index": 160,
+    "question": "At what exact timestamp did channel 891 reach its minimum value in 2021-01? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00217",
+    "source_index": 161,
+    "question": "At what exact timestamp did channel 897 reach its minimum value in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00218",
+    "source_index": 162,
+    "question": "At what exact timestamp did channel 933 reach its maximum value in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00220",
+    "source_index": 163,
+    "question": "At what exact timestamp did channel HULL first rise above 4.287 in 2016-11? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00222",
+    "source_index": 164,
+    "question": "At what exact timestamp did channel MULL last fall below -1.528 in 2017? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00224",
+    "source_index": 165,
+    "question": "At what exact timestamp did channel LULL reach its maximum value in 2016-09? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00227",
+    "source_index": 166,
+    "question": "At what exact timestamp did channel m_18 last fall below 0.052 in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00230",
+    "source_index": 167,
+    "question": "At what exact timestamp did channel 99 reach its minimum value in 2022-03? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00232",
+    "source_index": 168,
+    "question": "At what exact timestamp did channel 124 first rise above 0.387 in 2021? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00233",
+    "source_index": 169,
+    "question": "At what exact timestamp did channel 146 first rise above 0.758 in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00237",
+    "source_index": 170,
+    "question": "At what exact timestamp did channel 155 reach its maximum value in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00238",
+    "source_index": 171,
+    "question": "At what exact timestamp did channel 166 reach its maximum value in 2022-06? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00239",
+    "source_index": 172,
+    "question": "At what exact timestamp did channel 169 reach its minimum value in 2022-04? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00243",
+    "source_index": 173,
+    "question": "At what exact timestamp did channel 177 last fall below 112.0 in 2023? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00246",
+    "source_index": 174,
+    "question": "At what exact timestamp did channel 312 reach its minimum value in 2023? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00247",
+    "source_index": 175,
+    "question": "At what exact timestamp did channel 430 reach its minimum value in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00248",
+    "source_index": 176,
+    "question": "At what exact timestamp did channel 441 first rise above 20.5 in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00254",
+    "source_index": 177,
+    "question": "At what exact timestamp did channel 589 last fall below 209.0 in 2020-08? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00255",
+    "source_index": 178,
+    "question": "At what exact timestamp did channel 591 reach its minimum value in 2021-03? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00259",
+    "source_index": 179,
+    "question": "At what exact timestamp did channel 627 reach its minimum value in 2019-06? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00260",
+    "source_index": 180,
+    "question": "At what exact timestamp did channel 647 reach its maximum value in 2021-11? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00262",
+    "source_index": 181,
+    "question": "At what exact timestamp did channel 683 reach its minimum value in 2022-05? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00264",
+    "source_index": 182,
+    "question": "At what exact timestamp did channel 728 reach its maximum value in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00266",
+    "source_index": 183,
+    "question": "At what exact timestamp did channel 754 reach its maximum value in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00267",
+    "source_index": 184,
+    "question": "At what exact timestamp did channel 762 last fall below 0.056 in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00268",
+    "source_index": 185,
+    "question": "At what exact timestamp did channel 811 last fall below 11.3 in 2023-12? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00269",
+    "source_index": 186,
+    "question": "At what exact timestamp did channel 813 reach its maximum value in 2019-03? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00276",
+    "source_index": 187,
+    "question": "At what exact timestamp did channel HUFL reach its minimum value in 2018-03? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00280",
+    "source_index": 188,
+    "question": "At what exact timestamp did channel LULL first rise above 1.34 in 2018? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00283",
+    "source_index": 189,
+    "question": "At what exact timestamp did channel m_06 reach its maximum value in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00284",
+    "source_index": 190,
+    "question": "At what exact timestamp did channel 67 reach its maximum value in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00287",
+    "source_index": 191,
+    "question": "At what exact timestamp did channel 123 reach its maximum value in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00289",
+    "source_index": 192,
+    "question": "At what exact timestamp did channel 146 last fall below 0.275 in 2023? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00293",
+    "source_index": 193,
+    "question": "At what exact timestamp did channel 155 last fall below 0.164 in 2021-05? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00294",
+    "source_index": 194,
+    "question": "At what exact timestamp did channel 166 first rise above 602.0 in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00296",
+    "source_index": 195,
+    "question": "At what exact timestamp did channel 170 first rise above 456.0 in 2021-04? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00297",
+    "source_index": 196,
+    "question": "At what exact timestamp did channel 172 reach its minimum value in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00301",
+    "source_index": 197,
+    "question": "At what exact timestamp did channel 245 first rise above 0.421 in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00304",
+    "source_index": 198,
+    "question": "At what exact timestamp did channel 441 last fall below 10.9 in 2021? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00305",
+    "source_index": 199,
+    "question": "At what exact timestamp did channel 495 reach its minimum value in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00310",
+    "source_index": 200,
+    "question": "At what exact timestamp did channel 589 first rise above 416.0 in 2022? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00311",
+    "source_index": 201,
+    "question": "At what exact timestamp did channel 591 reach its minimum value in 2019-05? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00313",
+    "source_index": 202,
+    "question": "At what exact timestamp did channel 625 reach its maximum value in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00315",
+    "source_index": 203,
+    "question": "At what exact timestamp did channel 627 reach its maximum value in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00316",
+    "source_index": 204,
+    "question": "At what exact timestamp did channel 647 first rise above 0.606 in 2022-05? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00317",
+    "source_index": 205,
+    "question": "At what exact timestamp did channel 680 first rise above 6.84 in 2023? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00318",
+    "source_index": 206,
+    "question": "At what exact timestamp did channel 683 reach its minimum value in 2020-09? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00319",
+    "source_index": 207,
+    "question": "At what exact timestamp did channel 727 last fall below 56.1 in 2021? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00322",
+    "source_index": 208,
+    "question": "At what exact timestamp did channel 754 last fall below 0.068 in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00324",
+    "source_index": 209,
+    "question": "At what exact timestamp did channel 811 first rise above 11.8 in 2019? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00327",
+    "source_index": 210,
+    "question": "At what exact timestamp did channel 891 first rise above 3.49 in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00328",
+    "source_index": 211,
+    "question": "At what exact timestamp did channel 894 last fall below 3.05 in 2020-10? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00332",
+    "source_index": 212,
+    "question": "At what exact timestamp did channel HULL first rise above 0.737 in 2017-02? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00334",
+    "source_index": 213,
+    "question": "At what exact timestamp did channel LUFL reach its maximum value in 2017? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00335",
+    "source_index": 214,
+    "question": "At what exact timestamp did channel LULL last fall below 0.67 in 2017-10? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T2_Temporal_Localization_00338",
+    "source_index": 215,
+    "question": "At what exact timestamp did channel m_11 first rise above 0.122 in 2020? (Output format: a specific timestamp, e.g., YYYY-MM-DD HH:MM:SS)"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00516",
+    "source_index": 216,
+    "question": "Which 21-day period in 2023 had the largest range for channel 71? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00517",
+    "source_index": 217,
+    "question": "Which 30-day period in 2023 had the largest range for channel 99? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00518",
+    "source_index": 218,
+    "question": "Which 55-day period in 2020 had the lowest average for channel 123? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00525",
+    "source_index": 219,
+    "question": "Which 43-day period in 2022 had the highest variance for channel 166? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00530",
+    "source_index": 220,
+    "question": "Which 19-day period in 2023 had the largest range for channel 177? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00531",
+    "source_index": 221,
+    "question": "Which 49-day period in 2019 had the largest range for channel 237? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00532",
+    "source_index": 222,
+    "question": "Which 17-day period in 2023 had the largest range for channel 245? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00533",
+    "source_index": 223,
+    "question": "Which 58-day period in 2021 had the lowest average for channel 312? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00536",
+    "source_index": 224,
+    "question": "Which 57-day period in 2021 had the highest variance for channel 495? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00541",
+    "source_index": 225,
+    "question": "Which 47-day period in 2020 had the highest variance for channel 589? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00543",
+    "source_index": 226,
+    "question": "Which 8-day period in 2019 had the highest variance for channel 595? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00554",
+    "source_index": 227,
+    "question": "Which 21-day period in 2019 had the highest variance for channel 762? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00555",
+    "source_index": 228,
+    "question": "Which 52-day period in 2022 had the highest variance for channel 811? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00557",
+    "source_index": 229,
+    "question": "Which 3-day period in 2021 had the lowest average for channel 865? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00558",
+    "source_index": 230,
+    "question": "Which 58-day period in 2020 had the highest average for channel 891? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00564",
+    "source_index": 231,
+    "question": "Which 43-day period in 2018 had the largest range for channel HULL? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00566",
+    "source_index": 232,
+    "question": "Which 46-day period in 2016 had the largest range for channel MULL? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00569",
+    "source_index": 233,
+    "question": "Which 29-day period in 2017 had the largest range for channel OT? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00574",
+    "source_index": 234,
+    "question": "Which 24-day period in 2019 had the highest variance for channel 67? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00579",
+    "source_index": 235,
+    "question": "Which 51-day period in 2019 had the highest average for channel 146? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00580",
+    "source_index": 236,
+    "question": "Which 43-day period in 2022 had the highest variance for channel 147? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00583",
+    "source_index": 237,
+    "question": "Which 41-day period in 2023 had the lowest average for channel 155? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00585",
+    "source_index": 238,
+    "question": "Which 50-day period in 2023 had the highest average for channel 169? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00586",
+    "source_index": 239,
+    "question": "Which 43-day period in 2021 had the highest variance for channel 170? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00587",
+    "source_index": 240,
+    "question": "Which 18-day period in 2020 had the lowest average for channel 172? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00591",
+    "source_index": 241,
+    "question": "Which 42-day period in 2020 had the lowest average for channel 245? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00596",
+    "source_index": 242,
+    "question": "Which 11-day period in 2023 had the highest average for channel 496? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00600",
+    "source_index": 243,
+    "question": "Which 34-day period in 2022 had the largest range for channel 589? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00601",
+    "source_index": 244,
+    "question": "Which 21-day period in 2023 had the lowest average for channel 591? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00605",
+    "source_index": 245,
+    "question": "Which 12-day period in 2020 had the lowest average for channel 627? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00608",
+    "source_index": 246,
+    "question": "Which 54-day period in 2023 had the highest average for channel 683? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00609",
+    "source_index": 247,
+    "question": "Which 56-day period in 2023 had the lowest average for channel 727? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00616",
+    "source_index": 248,
+    "question": "Which 55-day period in 2019 had the lowest average for channel 865? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00619",
+    "source_index": 249,
+    "question": "Which 4-day period in 2020 had the largest range for channel 895? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00624",
+    "source_index": 250,
+    "question": "Which 37-day period in 2017 had the highest variance for channel MUFL? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00627",
+    "source_index": 251,
+    "question": "Which 41-day period in 2018 had the highest variance for channel LULL? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00629",
+    "source_index": 252,
+    "question": "Which 4-day period in 2020 had the largest range for channel m_06? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00633",
+    "source_index": 253,
+    "question": "Which 14-day period in 2021 had the highest variance for channel 67? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00640",
+    "source_index": 254,
+    "question": "Which 31-day period in 2021 had the largest range for channel 151? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00642",
+    "source_index": 255,
+    "question": "Which 18-day period in 2021 had the highest average for channel 155? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00643",
+    "source_index": 256,
+    "question": "Which 9-day period in 2019 had the lowest average for channel 166? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00645",
+    "source_index": 257,
+    "question": "Which 59-day period in 2022 had the highest average for channel 170? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00646",
+    "source_index": 258,
+    "question": "Which 32-day period in 2019 had the lowest average for channel 172? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00650",
+    "source_index": 259,
+    "question": "Which 59-day period in 2020 had the largest range for channel 245? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00653",
+    "source_index": 260,
+    "question": "Which 39-day period in 2019 had the lowest average for channel 441? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00655",
+    "source_index": 261,
+    "question": "Which 41-day period in 2023 had the lowest average for channel 496? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00656",
+    "source_index": 262,
+    "question": "Which 60-day period in 2022 had the highest variance for channel 501? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00657",
+    "source_index": 263,
+    "question": "Which 20-day period in 2023 had the highest variance for channel 578? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00664",
+    "source_index": 264,
+    "question": "Which 12-day period in 2023 had the highest average for channel 627? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00665",
+    "source_index": 265,
+    "question": "Which 14-day period in 2021 had the highest average for channel 647? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00666",
+    "source_index": 266,
+    "question": "Which 17-day period in 2021 had the largest range for channel 680? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00674",
+    "source_index": 267,
+    "question": "Which 38-day period in 2023 had the highest average for channel 813? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00675",
+    "source_index": 268,
+    "question": "Which 46-day period in 2020 had the highest variance for channel 865? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00680",
+    "source_index": 269,
+    "question": "Which 57-day period in 2021 had the highest average for channel 933? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00681",
+    "source_index": 270,
+    "question": "Which 28-day period in 2018 had the highest average for channel HUFL? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00688",
+    "source_index": 271,
+    "question": "Which 19-day period in 2020 had the largest range for channel m_06? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00689",
+    "source_index": 272,
+    "question": "Which 4-day period in 2020 had the lowest average for channel m_14? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  },
+  {
+    "task_id": "L1_T4_Sliding_Window_00690",
+    "source_index": 273,
+    "question": "Which 6-day period in 2020 had the highest average for channel m_24? (Output format: [YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:SS])"
+  }
+]

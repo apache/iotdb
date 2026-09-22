@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
+import org.apache.iotdb.cli.fs.FsRowReader;
+import org.apache.iotdb.cli.fs.command.ReadOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
@@ -153,15 +155,21 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
 
   @Override
   public List<SqlRow> stats(FsPath path) throws SQLException {
-    return collectStatistics(path, false);
+    return collectStatistics(path, false, null);
+  }
+
+  @Override
+  public List<SqlRow> stats(FsPath path, ReadOptions options) throws SQLException {
+    return collectStatistics(path, false, options);
   }
 
   @Override
   public List<SqlRow> countRows(FsPath path) throws SQLException {
-    return collectStatistics(path, true);
+    return collectStatistics(path, true, null);
   }
 
-  private List<SqlRow> collectStatistics(FsPath path, boolean count) throws SQLException {
+  private List<SqlRow> collectStatistics(FsPath path, boolean count, ReadOptions options)
+      throws SQLException {
     Map<String, List<FsColumn>> devices = new LinkedHashMap<>();
     for (SqlRow row : rawSchema(path)) {
       Path series = new Path(row.get("Timeseries"), true);
@@ -176,6 +184,9 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
       List<SqlRow> rows =
           normalize(
               executor.query("SELECT * FROM " + device.getKey() + " ORDER BY time ASC"), true);
+      if (options != null) {
+        rows = FsRowReader.filterRows(rows, device.getValue(), options);
+      }
       result.addAll(
           count
               ? FsStatistics.count(model(), device.getKey(), device.getValue(), rows)

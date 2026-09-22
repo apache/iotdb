@@ -22,9 +22,12 @@ package org.apache.iotdb.cli.fs.provider;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -144,6 +147,8 @@ final class FsStatistics {
         cells.put("first", statistic.first);
         cells.put("last", statistic.last);
         cells.put("sum", statistic.sum());
+        cells.put("avg", statistic.average());
+        cells.put("median", statistic.median());
         cells.put("stats_source", timeline.count == 0 ? null : "scan");
         Map<String, String> types = new LinkedHashMap<>();
         for (String name : cells.keySet()) {
@@ -156,6 +161,8 @@ final class FsStatistics {
           types.put(name, column.getDataType());
         }
         types.put("sum", statistic.floating() ? "DOUBLE" : "INT64");
+        types.put("avg", "DOUBLE");
+        types.put("median", "DOUBLE");
         result.add(new SqlRow(cells, types));
       }
     }
@@ -191,6 +198,7 @@ final class FsStatistics {
     private String last;
     private BigInteger integerSum = BigInteger.ZERO;
     private double floatingSum;
+    private final List<String> numericValues = new ArrayList<>();
 
     private ValueStats(String type) {
       this.type = type;
@@ -226,6 +234,9 @@ final class FsStatistics {
           max = value;
         }
       }
+      if (numeric()) {
+        numericValues.add(value);
+      }
       if ("BOOLEAN".equals(type)) {
         if (Boolean.parseBoolean(value)) {
           integerSum = integerSum.add(BigInteger.ONE);
@@ -241,6 +252,14 @@ final class FsStatistics {
       return "FLOAT".equals(type) || "DOUBLE".equals(type);
     }
 
+    private boolean integer() {
+      return "INT32".equals(type) || "INT64".equals(type);
+    }
+
+    private boolean numeric() {
+      return integer() || floating();
+    }
+
     private String sum() {
       if (count == 0) {
         return null;
@@ -249,6 +268,43 @@ final class FsStatistics {
         return integerSum.toString();
       }
       return floating() ? Double.toString(floatingSum) : null;
+    }
+
+    private String average() {
+      if (!numeric() || numericValues.isEmpty()) {
+        return null;
+      }
+      if (integer()) {
+        BigInteger total = BigInteger.ZERO;
+        for (String value : numericValues) total = total.add(new BigInteger(value));
+        return new BigDecimal(total)
+            .divide(BigDecimal.valueOf(numericValues.size()), MathContext.DECIMAL128)
+            .stripTrailingZeros()
+            .toPlainString();
+      }
+      return Double.toString(floatingSum / numericValues.size());
+    }
+
+    private String median() {
+      if (!numeric() || numericValues.isEmpty()) {
+        return null;
+      }
+      List<String> sorted = new ArrayList<>(numericValues);
+      Collections.sort(sorted, this::compare);
+      int middle = sorted.size() / 2;
+      if (sorted.size() % 2 != 0) {
+        return sorted.get(middle);
+      }
+      if (integer()) {
+        return new BigDecimal(sorted.get(middle))
+            .add(new BigDecimal(sorted.get(middle - 1)))
+            .divide(BigDecimal.valueOf(2))
+            .stripTrailingZeros()
+            .toPlainString();
+      }
+      return Double.toString(
+          (Double.parseDouble(sorted.get(middle)) + Double.parseDouble(sorted.get(middle - 1)))
+              / 2);
     }
 
     private int compare(String left, String right) {

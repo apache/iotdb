@@ -1,0 +1,394 @@
+{
+  "sha": "f9e1aa02160d39e3f8df52bf5c69c5cf2e472499",
+  "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/f9e1aa02160d39e3f8df52bf5c69c5cf2e472499",
+  "tree": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "496ee2ca6a2f08396a4076fe43dedf3dc0da8b6d",
+      "size": 9,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/496ee2ca6a2f08396a4076fe43dedf3dc0da8b6d"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "52bd1459bd805f5a715e4975287d84c44201a79e",
+      "size": 18649,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/52bd1459bd805f5a715e4975287d84c44201a79e"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7463c94fe81c2c5505399d063048d44f0b277fb9",
+      "size": 8583,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/7463c94fe81c2c5505399d063048d44f0b277fb9"
+    },
+    {
+      "path": "data",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "26e63f109df7b8006b7171a4ca046912c0927c19",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/26e63f109df7b8006b7171a4ca046912c0927c19"
+    },
+    {
+      "path": "data/mimic_iv",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5cd7e34fc105650dae7c1aec21c82b80b4531a09",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/5cd7e34fc105650dae7c1aec21c82b80b4531a09"
+    },
+    {
+      "path": "data/mimic_iv/mimic_iv.sql",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e95d60f1b6abef5900f16f8e8b89a64d41d95801",
+      "size": 6090,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/e95d60f1b6abef5900f16f8e8b89a64d41d95801"
+    },
+    {
+      "path": "data/mimic_iv/mimic_iv.sqlite",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1b205e0de42ad0551fa84cf402f71a994d39a48",
+      "size": 37023744,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/b1b205e0de42ad0551fa84cf402f71a994d39a48"
+    },
+    {
+      "path": "data/mimic_iv/tables.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d627761144db90a5dcef9103f6e9fe7bb2c4dc78",
+      "size": 10451,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/d627761144db90a5dcef9103f6e9fe7bb2c4dc78"
+    },
+    {
+      "path": "data/mimic_iv/test",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9a77da4fc318b610f77c85130371fe51ea2c4a42",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/9a77da4fc318b610f77c85130371fe51ea2c4a42"
+    },
+    {
+      "path": "data/mimic_iv/test/annotated.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "101c91a7164db6c88f7e0e72edd9f000142f7a3d",
+      "size": 1290707,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/101c91a7164db6c88f7e0e72edd9f000142f7a3d"
+    },
+    {
+      "path": "data/mimic_iv/test/answer.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1d76741a803c8d3a199fe0a0e14120c669c502f2",
+      "size": 148577,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/1d76741a803c8d3a199fe0a0e14120c669c502f2"
+    },
+    {
+      "path": "data/mimic_iv/test/data.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89820996b33d3ea1cdaeb428ee1d54b45c279a42",
+      "size": 171799,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/89820996b33d3ea1cdaeb428ee1d54b45c279a42"
+    },
+    {
+      "path": "data/mimic_iv/test/label.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0eadbca4f251bf3c3aab44a56f225cb316f9981e",
+      "size": 516885,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/0eadbca4f251bf3c3aab44a56f225cb316f9981e"
+    },
+    {
+      "path": "data/mimic_iv/train",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6943a8091cdb33994a2fb6e34c9ce63f2b8f9fc2",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/6943a8091cdb33994a2fb6e34c9ce63f2b8f9fc2"
+    },
+    {
+      "path": "data/mimic_iv/train/annotated.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30cd6829dbb44a81504472bd75cc4b7eb42df6c9",
+      "size": 6236075,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/30cd6829dbb44a81504472bd75cc4b7eb42df6c9"
+    },
+    {
+      "path": "data/mimic_iv/train/answer.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38848fc253f5de37abe06bdca68ae885383ae35f",
+      "size": 713125,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/38848fc253f5de37abe06bdca68ae885383ae35f"
+    },
+    {
+      "path": "data/mimic_iv/train/data.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a43063b66a99e1cc868b485f6bae030c8529bf49",
+      "size": 755050,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/a43063b66a99e1cc868b485f6bae030c8529bf49"
+    },
+    {
+      "path": "data/mimic_iv/train/label.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "525ada91ad1fbe374fe01b7395944e9ae392f5bd",
+      "size": 2492116,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/525ada91ad1fbe374fe01b7395944e9ae392f5bd"
+    },
+    {
+      "path": "data/mimic_iv/valid",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b15c7cefb24bf51ac399e08d4b4883c31ed2f1a6",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/b15c7cefb24bf51ac399e08d4b4883c31ed2f1a6"
+    },
+    {
+      "path": "data/mimic_iv/valid/annotated.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a11d71bf5cfbcd9acc5542011ef6d05b606660fb",
+      "size": 1279481,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/a11d71bf5cfbcd9acc5542011ef6d05b606660fb"
+    },
+    {
+      "path": "data/mimic_iv/valid/answer.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6303a79ce0695ad3ce5859606367200d391b9fc3",
+      "size": 145360,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/6303a79ce0695ad3ce5859606367200d391b9fc3"
+    },
+    {
+      "path": "data/mimic_iv/valid/data.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea66dd7fa7be849127e00d121a75a98c9301a93c",
+      "size": 169832,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/ea66dd7fa7be849127e00d121a75a98c9301a93c"
+    },
+    {
+      "path": "data/mimic_iv/valid/label.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5c7629a1d440d8eee94012c6e51c9cdf0e240feb",
+      "size": 511584,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/5c7629a1d440d8eee94012c6e51c9cdf0e240feb"
+    },
+    {
+      "path": "image",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5a658e1228f2ec4c7f5e608671f7668cef205482",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/5a658e1228f2ec4c7f5e608671f7668cef205482"
+    },
+    {
+      "path": "image/logo.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4e73d95d188b061c1737b10a621e0d54f1587fa9",
+      "size": 27965,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/4e73d95d188b061c1737b10a621e0d54f1587fa9"
+    },
+    {
+      "path": "image/rs_formula.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ba939eedd0eda91920309a663cc7920aabb8579",
+      "size": 164580,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/7ba939eedd0eda91920309a663cc7920aabb8579"
+    },
+    {
+      "path": "image/task.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d542e98878786897dad7c226c5753111c7db9f38",
+      "size": 193166,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/d542e98878786897dad7c226c5753111c7db9f38"
+    },
+    {
+      "path": "ingestion_program",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5020516d2635743c2636ccb8b511a3759fc18572",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/5020516d2635743c2636ccb8b511a3759fc18572"
+    },
+    {
+      "path": "ingestion_program/ingestion.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b0ed5dbb4fe0774185768ec2ea13d8d7f77eac4",
+      "size": 926,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/2b0ed5dbb4fe0774185768ec2ea13d8d7f77eac4"
+    },
+    {
+      "path": "ingestion_program/metadata.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aca54eabf1d71e1aca0b8f4314f0f488eb1ae13e",
+      "size": 107,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/aca54eabf1d71e1aca0b8f4314f0f488eb1ae13e"
+    },
+    {
+      "path": "preprocess",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "943d8ea65c45b433e9f3969dfa723750a5b6ddf7",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/943d8ea65c45b433e9f3969dfa723750a5b6ddf7"
+    },
+    {
+      "path": "preprocess/preprocess.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89b909c1a9974daeaa6aa8e466ffb642acfa36bc",
+      "size": 252,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/89b909c1a9974daeaa6aa8e466ffb642acfa36bc"
+    },
+    {
+      "path": "preprocess/preprocess_db.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "207a1e4f43c90e8aa485a3e87fe175069ba02359",
+      "size": 3105,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/207a1e4f43c90e8aa485a3e87fe175069ba02359"
+    },
+    {
+      "path": "preprocess/preprocess_db_mimic_iv.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82bfa9fa72177df92a37a7ae2c04be998d057259",
+      "size": 53366,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/82bfa9fa72177df92a37a7ae2c04be998d057259"
+    },
+    {
+      "path": "preprocess/preprocess_utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b13878c620038e351f3cfd0f7f0ee99882e4dbb",
+      "size": 4912,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/7b13878c620038e351f3cfd0f7f0ee99882e4dbb"
+    },
+    {
+      "path": "sample_data",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "805ff8cb2a6fa8baaa8fc3e97b0f1fa4d5b0834a",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/805ff8cb2a6fa8baaa8fc3e97b0f1fa4d5b0834a"
+    },
+    {
+      "path": "sample_data/train",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3d69871783f9d71897aec8d1fe1c14046c686b1d",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/3d69871783f9d71897aec8d1fe1c14046c686b1d"
+    },
+    {
+      "path": "sample_data/train/answer.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5a60a5b9bf0acca47b0a10d1b8df175770100022",
+      "size": 1835,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/5a60a5b9bf0acca47b0a10d1b8df175770100022"
+    },
+    {
+      "path": "sample_data/train/data.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "393b34b0ae77b458b4d3b30febd383f7cae22fc7",
+      "size": 2813,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/393b34b0ae77b458b4d3b30febd383f7cae22fc7"
+    },
+    {
+      "path": "sample_data/train/label.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4cf5a05c6491e0ca9512083b6432b170613f4af5",
+      "size": 5063,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/4cf5a05c6491e0ca9512083b6432b170613f4af5"
+    },
+    {
+      "path": "sample_data/valid",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "94739356dfdb2607cc423fd8e011be7bf99192aa",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/94739356dfdb2607cc423fd8e011be7bf99192aa"
+    },
+    {
+      "path": "sample_data/valid/data.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e553384c8c278aa596772375e8c123ed54216bd5",
+      "size": 3193,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/e553384c8c278aa596772375e8c123ed54216bd5"
+    },
+    {
+      "path": "scoring_program",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "95b582193573d2a03762957405b0f8801f1124af",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/95b582193573d2a03762957405b0f8801f1124af"
+    },
+    {
+      "path": "scoring_program/metadata.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06ed948116a65d059c250f7170e22324a4ef0fc4",
+      "size": 65,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/06ed948116a65d059c250f7170e22324a4ef0fc4"
+    },
+    {
+      "path": "scoring_program/postprocessing.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f9c5a14404c67c0038e4ac013e89a6bfd597167",
+      "size": 2867,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/8f9c5a14404c67c0038e4ac013e89a6bfd597167"
+    },
+    {
+      "path": "scoring_program/scoring.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35cdb7bb0097aef5cee45c0aa9893bab65db8544",
+      "size": 2070,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/35cdb7bb0097aef5cee45c0aa9893bab65db8544"
+    },
+    {
+      "path": "scoring_program/scoring_utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c5e4838edd5223934c95dcbdc5ac5f4dd1f0ab4",
+      "size": 2887,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/7c5e4838edd5223934c95dcbdc5ac5f4dd1f0ab4"
+    },
+    {
+      "path": "scoring_program/scoring_v2.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "764b7000bbabab2332b1779c98f2cf93cc3b5ead",
+      "size": 1504,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/764b7000bbabab2332b1779c98f2cf93cc3b5ead"
+    },
+    {
+      "path": "utils",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c6a11ec8acc75ec3bf69761f8ddde311d5ecffb6",
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/trees/c6a11ec8acc75ec3bf69761f8ddde311d5ecffb6"
+    },
+    {
+      "path": "utils/data_io.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2cd985828d234afad4a460ff48fcd2a671d7517b",
+      "size": 257,
+      "url": "https://api.github.com/repos/glee4810/ehrsql-2024/git/blobs/2cd985828d234afad4a460ff48fcd2a671d7517b"
+    }
+  ],
+  "truncated": false
+}
