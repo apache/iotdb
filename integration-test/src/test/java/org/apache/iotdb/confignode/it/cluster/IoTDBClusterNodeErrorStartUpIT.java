@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.ClusterConstant;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
@@ -54,6 +55,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -122,40 +124,60 @@ public class IoTDBClusterNodeErrorStartUpIT {
       throws ClientManagerException, IOException, InterruptedException, TException {
     ConfigNodeWrapper configNodeWrapper = EnvFactory.getEnv().generateRandomConfigNodeWrapper();
     DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().generateRandomDataNodeWrapper();
+    String originalMainConfigNodeClassName = ClusterConstant.MAIN_CONFIGNODE_CLASS_NAME_FOR_IT;
 
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TNodeVersionInfo seedConfigNodeVersionInfo = client.showCluster().getNodeVersionInfo().get(0);
-      Assert.assertNotNull(seedConfigNodeVersionInfo);
-      Assert.assertTrue(seedConfigNodeVersionInfo.isSetProductEdition());
-      String seedProductEdition = seedConfigNodeVersionInfo.getProductEdition();
-      String differentProductEdition = "IOTDB".equals(seedProductEdition) ? "TIMECHODB" : "IOTDB";
+    try {
+      String seedProductEdition;
+      String differentProductEdition;
+      try (SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        TNodeVersionInfo seedConfigNodeVersionInfo =
+            client.showCluster().getNodeVersionInfo().get(0);
+        Assert.assertNotNull(seedConfigNodeVersionInfo);
+        Assert.assertTrue(seedConfigNodeVersionInfo.isSetProductEdition());
+        seedProductEdition = seedConfigNodeVersionInfo.getProductEdition();
+        differentProductEdition = "IOTDB".equals(seedProductEdition) ? "TIMECHODB" : "IOTDB";
 
-      TConfigNodeRegisterReq configNodeRegisterReq =
-          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(TEST_CLUSTER_NAME, configNodeWrapper);
-      configNodeRegisterReq
-          .getClusterParameters()
-          .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
-      configNodeRegisterReq.setVersionInfo(
-          seedConfigNodeVersionInfo.deepCopy().setProductEdition(differentProductEdition));
-      TConfigNodeRegisterResp configNodeRegisterResp =
-          client.registerConfigNode(configNodeRegisterReq);
-      assertProductEditionMismatch(
-          configNodeRegisterResp.getStatus().getCode(),
-          configNodeRegisterResp.getStatus().getMessage(),
-          seedProductEdition,
-          differentProductEdition);
+        TConfigNodeRegisterReq configNodeRegisterReq =
+            ConfigNodeTestUtils.generateTConfigNodeRegisterReq(
+                TEST_CLUSTER_NAME, configNodeWrapper);
+        configNodeRegisterReq
+            .getClusterParameters()
+            .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
+        configNodeRegisterReq.setVersionInfo(
+            seedConfigNodeVersionInfo.deepCopy().setProductEdition(differentProductEdition));
+        TConfigNodeRegisterResp configNodeRegisterResp =
+            client.registerConfigNode(configNodeRegisterReq);
+        assertProductEditionMismatch(
+            configNodeRegisterResp.getStatus().getCode(),
+            configNodeRegisterResp.getStatus().getMessage(),
+            seedProductEdition,
+            differentProductEdition);
 
-      TDataNodeRegisterReq dataNodeRegisterReq =
-          ConfigNodeTestUtils.generateTDataNodeRegisterReq(TEST_CLUSTER_NAME, dataNodeWrapper);
-      dataNodeRegisterReq.setVersionInfo(
-          seedConfigNodeVersionInfo.deepCopy().setProductEdition(differentProductEdition));
-      TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
-      assertProductEditionMismatch(
-          dataNodeRegisterResp.getStatus().getCode(),
-          dataNodeRegisterResp.getStatus().getMessage(),
-          seedProductEdition,
-          differentProductEdition);
+        TDataNodeRegisterReq dataNodeRegisterReq =
+            ConfigNodeTestUtils.generateTDataNodeRegisterReq(TEST_CLUSTER_NAME, dataNodeWrapper);
+        dataNodeRegisterReq.setVersionInfo(
+            seedConfigNodeVersionInfo.deepCopy().setProductEdition(differentProductEdition));
+        TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
+        assertProductEditionMismatch(
+            dataNodeRegisterResp.getStatus().getCode(),
+            dataNodeRegisterResp.getStatus().getMessage(),
+            seedProductEdition,
+            differentProductEdition);
+      }
+
+      ClusterConstant.MAIN_CONFIGNODE_CLASS_NAME_FOR_IT =
+          "org.apache.iotdb.confignode.service.ConfigNodeWithDifferentProductEditionForIT";
+      configNodeWrapper.start();
+      Process configNodeProcess = configNodeWrapper.getInstance();
+      Assert.assertNotNull(configNodeProcess);
+      Assert.assertTrue(configNodeProcess.waitFor(60, TimeUnit.SECONDS));
+      Assert.assertTrue(configNodeWrapper.logContains(differentProductEdition));
+      Assert.assertTrue(configNodeWrapper.logContains(seedProductEdition));
+      Assert.assertFalse(configNodeWrapper.logContains("NullPointerException"));
+    } finally {
+      ClusterConstant.MAIN_CONFIGNODE_CLASS_NAME_FOR_IT = originalMainConfigNodeClassName;
+      configNodeWrapper.stop();
     }
   }
 

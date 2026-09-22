@@ -30,6 +30,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -49,15 +51,22 @@ public class ConfigNodeShutdownHook extends Thread {
   public void run() {
     LOGGER.info(ConfigNodeMessages.CONFIGNODE_EXITING);
 
-    boolean isLeader = getConfigNodeInstance().getConfigManager().getConsensusManager().isLeader();
+    ConfigNode configNode = getConfigNodeInstance();
+    ConfigManager configManager = configNode.getConfigManager();
+    ConsensusManager consensusManager =
+        configManager == null ? null : configManager.getConsensusManager();
+    boolean shouldReportShutdown =
+        consensusManager != null
+            && consensusManager.isInitialized()
+            && !consensusManager.isLeader();
 
     try {
-      ConfigNode.getInstance().deactivate();
+      configNode.deactivate();
     } catch (IOException e) {
       LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHEN_DEACTIVATE_CONFIGNODE, e);
     }
 
-    if (!isLeader) {
+    if (shouldReportShutdown) {
       // Set and report shutdown to cluster ConfigNode-leader
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Unknown);
       boolean isReportSuccess = false;

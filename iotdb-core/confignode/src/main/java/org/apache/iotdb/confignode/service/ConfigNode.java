@@ -218,7 +218,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
                       configNodeId,
                       new TNodeVersionInfo(
                               IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO)
-                          .setProductEdition(IoTDBConstant.PRODUCT_EDITION));
+                          .setProductEdition(getProductEdition()));
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           } else if (status.getCode() == TSStatusCode.REJECT_NODE_START.getStatusCode()) {
@@ -256,7 +256,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             .applyConfigNode(
                 CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
                 new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO)
-                    .setProductEdition(IoTDBConstant.PRODUCT_EDITION));
+                    .setProductEdition(getProductEdition()));
 
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
@@ -420,7 +420,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
     req.setVersionInfo(
         new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO)
-            .setProductEdition(IoTDBConstant.PRODUCT_EDITION));
+            .setProductEdition(getProductEdition()));
 
     TEndPoint seedConfigNode = CONF.getSeedConfigNode();
     if (seedConfigNode == null) {
@@ -582,6 +582,10 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   public ConfigManager getConfigManager() {
     return configManager;
+  }
+
+  protected String getProductEdition() {
+    return IoTDBConstant.PRODUCT_EDITION;
   }
 
   private void addShutDownHook() {
