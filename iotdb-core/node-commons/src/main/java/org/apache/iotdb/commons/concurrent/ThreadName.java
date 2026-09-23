@@ -446,6 +446,7 @@ public enum ThreadName {
         ThreadModule.SCHEMA_ENGINE,
         ThreadModule.CLIENT_SERVICE,
         ThreadModule.IOT_CONSENSUS,
+        ThreadModule.IOT_CONSENSUS,
         ThreadModule.RATIS_CONSENSUS,
         ThreadModule.COMPUTE,
         ThreadModule.JVM,
