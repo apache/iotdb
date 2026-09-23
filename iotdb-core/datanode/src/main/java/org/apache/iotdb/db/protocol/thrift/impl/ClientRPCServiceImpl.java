@@ -1697,17 +1697,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus closeOperation(TSCloseOperationReq req) {
     IClientSession clientSession = SESSION_MANAGER.getCurrSession();
     if (req.isSetQueryId()
+        && req.isSetStatementId()
         && clientSession != null
         && clientSession.isLogin()
-        && COORDINATOR.getQueryExecution(req.queryId) != null
-        && !clientSession.containsQueryId(
-            req.isSetStatementId() ? req.getStatementId() : null, req.queryId)) {
+        && !clientSession.containsQueryId(req.getStatementId(), req.queryId)) {
       // The queryId indexes the process-wide map of running queries, so only the session that
-      // submitted the query may release it. Queries that are no longer running keep the previous
-      // behaviour: releasing an unknown queryId stays a no-op.
-      return RpcUtils.getStatus(
-          TSStatusCode.NO_PERMISSION,
-          DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237);
+      // submitted the query may release it.
+      if (COORDINATOR.getQueryExecution(req.queryId) != null) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION,
+            DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237);
+      }
+      // A queryId that is no longer running keeps the previous behaviour: releasing it stays a
+      // no-op. It must not fall through to the global cleanup below: query ids are allocated
+      // before their execution is published, so the session that owns this queryId can register
+      // it between the lookup above and the cleanup.
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return SESSION_MANAGER.closeOperation(
         clientSession,

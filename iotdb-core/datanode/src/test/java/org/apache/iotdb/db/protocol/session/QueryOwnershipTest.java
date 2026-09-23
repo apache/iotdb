@@ -88,13 +88,15 @@ public class QueryOwnershipTest {
           anotherSession,
           () -> {
             ClientRPCServiceImpl service = new ClientRPCServiceImpl();
-            TSFetchResultsReq request = createFetchResultsReq(anotherSession);
             Assert.assertEquals(
                 TSStatusCode.NO_PERMISSION.getStatusCode(),
-                service.fetchResults(request).getStatus().getCode());
+                service.fetchResults(createFetchResultsReq(anotherSession)).getStatus().getCode());
             Assert.assertEquals(
                 TSStatusCode.NO_PERMISSION.getStatusCode(),
-                service.fetchResultsV2(request).getStatus().getCode());
+                service
+                    .fetchResultsV2(createFetchResultsReqWithStatementId(anotherSession))
+                    .getStatus()
+                    .getCode());
           });
       // the rejected requests must not release the query of the session that submitted it
       Assert.assertTrue(queryExecutionMap.containsKey(QUERY_ID));
@@ -120,10 +122,38 @@ public class QueryOwnershipTest {
               Assert.assertEquals(
                   TSStatusCode.SUCCESS_STATUS.getStatusCode(),
                   new ClientRPCServiceImpl()
-                      .fetchResultsV2(createFetchResultsReq(owner))
+                      .fetchResultsV2(createFetchResultsReqWithStatementId(owner))
                       .getStatus()
                       .getCode()));
       // a fully consumed query is released, and the client closes it afterwards
+      Assert.assertFalse(queryExecutionMap.containsKey(QUERY_ID));
+      Assert.assertFalse(owner.containsQueryId(STATEMENT_ID, QUERY_ID));
+    } finally {
+      queryExecutionMap.remove(QUERY_ID);
+    }
+  }
+
+  @Test
+  public void testFetchResultsOfOwnQueryWithoutStatementIdIsStillServed() throws Exception {
+    ClientSession owner = createSession("user");
+    owner.addStatementId(STATEMENT_ID);
+    owner.addQueryId(STATEMENT_ID, QUERY_ID);
+    owner.setLogin(true);
+
+    Map<Long, IQueryExecution> queryExecutionMap = getQueryExecutionMap();
+    queryExecutionMap.put(QUERY_ID, mockQueryExecution());
+    try {
+      // the query id is bound to a statement of this session, the request does not mention it
+      withCurrentSession(
+          owner,
+          () ->
+              Assert.assertEquals(
+                  TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                  new ClientRPCServiceImpl()
+                      .fetchResults(createFetchResultsReq(owner))
+                      .getStatus()
+                      .getCode()));
+      // a fully consumed query is released for the session that submitted it
       Assert.assertFalse(queryExecutionMap.containsKey(QUERY_ID));
       Assert.assertFalse(owner.containsQueryId(STATEMENT_ID, QUERY_ID));
     } finally {
@@ -145,7 +175,8 @@ public class QueryOwnershipTest {
           owner,
           () -> {
             TSFetchResultsResp response =
-                new ClientRPCServiceImpl().fetchResultsV2(createFetchResultsReq(owner));
+                new ClientRPCServiceImpl()
+                    .fetchResultsV2(createFetchResultsReqWithStatementId(owner));
             Assert.assertEquals(
                 TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
             Assert.assertTrue(response.isMoreData());
@@ -174,6 +205,41 @@ public class QueryOwnershipTest {
                   TSStatusCode.NO_PERMISSION.getStatusCode(),
                   new ClientRPCServiceImpl().closeOperation(createCloseOperationReq()).getCode()));
       // the rejected request must not release the query of the session that submitted it
+      Assert.assertTrue(queryExecutionMap.containsKey(QUERY_ID));
+    } finally {
+      queryExecutionMap.remove(QUERY_ID);
+    }
+  }
+
+  @Test
+  public void testCloseOperationDoesNotReleaseQueryRegisteredWhileTheRequestIsServed()
+      throws Exception {
+    Map<Long, IQueryExecution> queryExecutionMap = getQueryExecutionMap();
+    IQueryExecution queryOfAnotherSession = mockQueryExecution();
+    // Query ids are allocated before their execution is published, so the session that owns this
+    // queryId can register its execution between the ownership check of this request and the point
+    // where the request would release the query. Simulate that publication from inside the
+    // ownership check, which is where the request decides who may release the queryId.
+    ClientSession anotherSession =
+        new ClientSession(Mockito.mock(Socket.class)) {
+          @Override
+          public boolean containsQueryId(Long statementId, long queryId) {
+            queryExecutionMap.putIfAbsent(queryId, queryOfAnotherSession);
+            return super.containsQueryId(statementId, queryId);
+          }
+        };
+    anotherSession.setUsername("user");
+    anotherSession.addStatementId(STATEMENT_ID);
+    anotherSession.setLogin(true);
+
+    try {
+      withCurrentSession(
+          anotherSession,
+          () ->
+              Assert.assertEquals(
+                  TSStatusCode.NO_PERMISSION.getStatusCode(),
+                  new ClientRPCServiceImpl().closeOperation(createCloseOperationReq()).getCode()));
+      // the request must never release the query that was just registered by its owner
       Assert.assertTrue(queryExecutionMap.containsKey(QUERY_ID));
     } finally {
       queryExecutionMap.remove(QUERY_ID);
@@ -237,9 +303,14 @@ public class QueryOwnershipTest {
     return queryExecution;
   }
 
+  /** The V1 fetch request of the legacy JDBC data set, which does not send a statement id. */
   private TSFetchResultsReq createFetchResultsReq(ClientSession session) {
-    return new TSFetchResultsReq(session.getId(), "select 1", 1024, QUERY_ID, true)
-        .setStatementId(STATEMENT_ID);
+    return new TSFetchResultsReq(session.getId(), "select 1", 1024, QUERY_ID, true);
+  }
+
+  /** The V2 fetch request, which always carries the statement id. */
+  private TSFetchResultsReq createFetchResultsReqWithStatementId(ClientSession session) {
+    return createFetchResultsReq(session).setStatementId(STATEMENT_ID);
   }
 
   private TSCloseOperationReq createCloseOperationReq() {

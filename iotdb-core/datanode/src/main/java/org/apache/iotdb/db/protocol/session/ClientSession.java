@@ -97,16 +97,20 @@ public class ClientSession extends IClientSession {
 
   public static boolean containsQueryId(
       Map<Long, Set<Long>> statementIdToQueryId, Long statementId, long queryId) {
+    // Set#contains takes an Object, so box the primitive queryId once: a client that does not send
+    // a statement id makes this method visit every statement set of the session, and a box per
+    // visited set would allocate once per statement on every fetched page.
+    Long boxedQueryId = queryId;
     if (statementId == null) {
       for (Set<Long> queryIds : statementIdToQueryId.values()) {
-        if (queryIds != null && queryIds.contains(queryId)) {
+        if (queryIds != null && queryIds.contains(boxedQueryId)) {
           return true;
         }
       }
       return false;
     }
     Set<Long> queryIds = statementIdToQueryId.get(statementId);
-    return queryIds != null && queryIds.contains(queryId);
+    return queryIds != null && queryIds.contains(boxedQueryId);
   }
 
   @Override
