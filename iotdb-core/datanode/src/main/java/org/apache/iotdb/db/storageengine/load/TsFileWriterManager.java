@@ -430,7 +430,9 @@ final class TsFileWriterManager {
         chunkPayloadRefs.add(
             payloadInMemory
                 ? new ChunkPayloadRef(
-                    writer.getFile().getAbsolutePath(), chunkOffset + chunkHeaderSize, payloadSize)
+                    LoadStagingDirs.recordedPath(writer.getFile()),
+                    chunkOffset + chunkHeaderSize,
+                    payloadSize)
                 : incomingRefs.get(i));
       } else if (!payloadInMemory) {
         // Whoever sent this piece was supposed to read the payload back from its own staged file
@@ -458,7 +460,7 @@ final class TsFileWriterManager {
         // The payload of the chunk is written last, so it ends where the chunk ends
         chunkPayloadRefs.add(
             new ChunkPayloadRef(
-                writer.getFile().getAbsolutePath(),
+                LoadStagingDirs.recordedPath(writer.getFile()),
                 writeResult.actualChunkEndOffset() - payloadSize,
                 payloadSize));
         progress.recordChunk(
@@ -855,7 +857,8 @@ final class TsFileWriterManager {
         final long size = file.length() - previousLength;
         if (size > 0) {
           refs.add(
-              new LoadTsFileConsensusNode.PieceRef(file.getAbsolutePath(), previousLength, size));
+              new LoadTsFileConsensusNode.PieceRef(
+                  LoadStagingDirs.recordedPath(file), previousLength, size));
         }
       }
     }

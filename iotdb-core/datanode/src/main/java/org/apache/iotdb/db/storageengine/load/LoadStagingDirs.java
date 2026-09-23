@@ -35,6 +35,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -71,6 +72,42 @@ final class LoadStagingDirs {
   /** The directories this DataNode stages the files of LOAD tasks in. */
   static String[] baseDirs() {
     return LOAD_BASE_DIRS.get();
+  }
+
+  /**
+   * The path of a staged file as a piece or a payload reference records it: relative to the staging
+   * root the file lives under.
+   *
+   * <p>A DataNode can stage its tasks in several roots, the roots of two nodes need not have the
+   * same names, and a restored snapshot may place a task under a different root than the one it was
+   * staged in. A reference that names the file by its absolute path therefore stops describing it
+   * as soon as it leaves the node that wrote it. Resolving the recorded path under the roots of the
+   * node that reads it describes the file wherever it ended up. A file outside every root keeps its
+   * absolute path, which both readers still accept.
+   */
+  static String recordedPath(final File file) {
+    final Path path = file.toPath().toAbsolutePath();
+    for (final String baseDir : baseDirs()) {
+      final Path base = new File(baseDir).toPath().toAbsolutePath();
+      if (path.startsWith(base)) {
+        return base.relativize(path).toString();
+      }
+    }
+    return file.getAbsolutePath();
+  }
+
+  /**
+   * @return the index of the staging root that holds this directory, or -1 when no root does
+   */
+  static int baseDirIndexOf(final File file) {
+    final Path path = file.toPath().toAbsolutePath();
+    final String[] baseDirs = baseDirs();
+    for (int i = 0; i < baseDirs.length; i++) {
+      if (path.startsWith(new File(baseDirs[i]).toPath().toAbsolutePath())) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   /** The staging directory of one region, the only place its staged payloads may be read from. */

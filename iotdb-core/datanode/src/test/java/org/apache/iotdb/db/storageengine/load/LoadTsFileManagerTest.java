@@ -200,7 +200,7 @@ public class LoadTsFileManagerTest {
     final List<LoadTsFileConsensusNode.PieceRef> laterRefs =
         firstRun.writePiece(uuid, toTsFileDataList(laterChunks));
     assertEquals(1, laterRefs.size());
-    final File staged = new File(laterRefs.get(0).getRelativePath());
+    final File staged = new File(tempDir, laterRefs.get(0).getRelativePath());
     assertTrue(staged.isFile());
     assertTrue(staged.length() > 0L);
 
@@ -327,7 +327,7 @@ public class LoadTsFileManagerTest {
     final NonAlignedChunkData chunkData = laidOutChunk();
     final LoadTsFileConsensusNode piece = stagedPiece(loadId, chunkData);
     manager.writePiece(piece);
-    final File staged = new File(piece.getPieceRefs().get(0).getRelativePath());
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
     final ChunkPayloadRef valid = chunkData.getChunkPayloadRefs().get(0);
     assertTrue(valid.readPayload().length > 0);
 
@@ -361,7 +361,7 @@ public class LoadTsFileManagerTest {
     final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
     final List<LoadTsFileConsensusNode.PieceRef> refs =
         manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(second)));
-    final File staged = new File(refs.get(0).getRelativePath());
+    final File staged = new File(tempDir, refs.get(0).getRelativePath());
     assertTrue(staged.isFile());
 
     final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
@@ -405,7 +405,7 @@ public class LoadTsFileManagerTest {
     final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
     final List<LoadTsFileConsensusNode.PieceRef> firstRefs =
         manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[0])));
-    final File staged = new File(firstRefs.get(0).getRelativePath());
+    final File staged = new File(tempDir, firstRefs.get(0).getRelativePath());
     manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[1])));
     final long lengthAfterBothPieces = staged.length();
     final File progressFile = LoadTsFileProgress.progressFileFor(staged);
@@ -482,7 +482,7 @@ public class LoadTsFileManagerTest {
     final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
     final List<LoadTsFileConsensusNode.PieceRef> refs =
         manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(laidOutChunk())));
-    final File staged = new File(refs.get(0).getRelativePath());
+    final File staged = new File(tempDir, refs.get(0).getRelativePath());
     assertTrue(staged.isFile());
 
     assertTrue(
@@ -508,7 +508,7 @@ public class LoadTsFileManagerTest {
       final String loadId = "retained-load";
       final List<LoadTsFileConsensusNode.PieceRef> refs =
           manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(laidOutChunk())));
-      final File staged = new File(refs.get(0).getRelativePath());
+      final File staged = new File(tempDir, refs.get(0).getRelativePath());
       assertTrue(staged.isFile());
 
       final LoadTsFileConsensusNode abort =
@@ -577,7 +577,7 @@ public class LoadTsFileManagerTest {
     final NonAlignedChunkData chunkData = laidOutChunk();
     final LoadTsFileConsensusNode piece = stagedPiece(loadId, chunkData);
     manager.writePiece(piece);
-    final File staged = new File(piece.getPieceRefs().get(0).getRelativePath());
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
     final ChunkPayloadRef payloadRef = chunkData.getChunkPayloadRefs().get(0);
     final byte[] stagedPayload = payloadRef.readPayload();
     assertTrue(stagedPayload.length > 0);
@@ -621,7 +621,7 @@ public class LoadTsFileManagerTest {
     final NonAlignedChunkData chunkData = laidOutChunk();
     final LoadTsFileConsensusNode piece = stagedPiece(loadId, chunkData);
     manager.writePiece(piece);
-    final File staged = new File(piece.getPieceRefs().get(0).getRelativePath());
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
     assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
 
     final LoadTsFileConsensusNode commit = commitNode(loadId);

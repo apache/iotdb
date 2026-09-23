@@ -540,7 +540,7 @@ public class LoadTsFileManagerSplitCoverageTest {
           toByteArray(request.serializeToByteBuffer()));
 
       // Without the staged payload the piece must be refused rather than imported empty
-      final File staged = new File(restored.getPieceRefs().get(0).getRelativePath());
+      final File staged = new File(tempDir, restored.getPieceRefs().get(0).getRelativePath());
       deleteStagedFileOrFail(staged);
       try {
         restored.serialize();
@@ -704,7 +704,7 @@ public class LoadTsFileManagerSplitCoverageTest {
               new ArrayList<>(pieceData));
       final List<LoadTsFileConsensusNode.PieceRef> firstWrite = manager.writePiece(piece);
       assertFalse("the piece must stage something", firstWrite.isEmpty());
-      final File staged = new File(firstWrite.get(0).getRelativePath());
+      final File staged = new File(tempDir, firstWrite.get(0).getRelativePath());
       final long lengthAfterFirstWrite = staged.length();
       final int recordedRangesAfterFirstWrite =
           new LoadTsFileProgress(staged).readAllRecords().size();
@@ -776,7 +776,7 @@ public class LoadTsFileManagerSplitCoverageTest {
                   0L,
                   firstPiece));
       assertFalse(refs.isEmpty());
-      final File staged = new File(refs.get(0).getRelativePath());
+      final File staged = new File(tempDir, refs.get(0).getRelativePath());
       final long lengthAfterFirstWrite = staged.length();
       final int rangesAfterFirstWrite = new LoadTsFileProgress(staged).readAllRecords().size();
       assertTrue(rangesAfterFirstWrite > 0);
@@ -897,7 +897,7 @@ public class LoadTsFileManagerSplitCoverageTest {
       assertFalse("scenario " + scenario.name + " produced no piece refs", refs.isEmpty());
       assertTrue(manager.prepare(prepareNode(uuid), Collections.emptyMap()));
 
-      final List<File> targetFiles = distinctFiles(refs);
+      final List<File> targetFiles = distinctFiles(refs, tempDir);
       final Set<String> stagedFiles = stagedFileNames(uuid);
       assertEquals(
           "scenario " + scenario.name + " staged files not covered by piece refs",
@@ -1002,14 +1002,16 @@ public class LoadTsFileManagerSplitCoverageTest {
         Collections.emptyMap());
   }
 
-  private static List<File> distinctFiles(final List<LoadTsFileConsensusNode.PieceRef> refs) {
+  private static List<File> distinctFiles(
+      final List<LoadTsFileConsensusNode.PieceRef> refs, final File baseDir) {
     final Set<String> paths = new LinkedHashSet<>();
     for (final LoadTsFileConsensusNode.PieceRef ref : refs) {
       paths.add(ref.getRelativePath());
     }
     final List<File> files = new ArrayList<>();
     for (final String path : paths) {
-      files.add(new File(path));
+      // A reference records its file relative to the staging root it was staged in.
+      files.add(new File(baseDir, path));
     }
     return files;
   }

@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -37,8 +38,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -64,6 +67,16 @@ public final class LoadTsFileSnapshot {
   /** The infix of a file that is still being copied into the snapshot, see {@link #copy}. */
   private static final String TEMP_FILE_SUFFIX = ".copying.";
 
+  /**
+   * The manifest that records which staging root each task of the snapshot was staged in: one
+   * {@code <task directory name> <root index>} line per task. A DataNode may stage its tasks in
+   * several roots, and the roots of the node that restores the snapshot need not be the same ones,
+   * so the index is a hint that keeps a restored task on the disk it came from; the references of a
+   * task resolve under whichever root it ends up in, see {@link
+   * LoadStagingDirs#recordedPath(File)}.
+   */
+  private static final String ROOTS_MANIFEST_NAME = "roots";
+
   private LoadTsFileSnapshot() {}
 
   /**
@@ -82,6 +95,7 @@ public final class LoadTsFileSnapshot {
     }
     final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
     try {
+      writeRootsManifest(loadSnapshotDir, taskDirs);
       for (final File taskDir : taskDirs) {
         final File targetDir = new File(loadSnapshotDir, taskDir.getName());
         // The progress logs are copied first, so a log never refers to bytes that the copy of its
@@ -132,6 +146,67 @@ public final class LoadTsFileSnapshot {
     return file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX);
   }
 
+  /**
+   * Records the staging root of every task of the snapshot, before any of their files is copied.
+   */
+  private static void writeRootsManifest(final File loadSnapshotDir, final List<File> taskDirs)
+      throws IOException {
+    final StringBuilder manifest = new StringBuilder();
+    for (final File taskDir : taskDirs) {
+      manifest
+          .append(taskDir.getName())
+          .append(' ')
+          .append(LoadStagingDirs.baseDirIndexOf(taskDir))
+          .append(System.lineSeparator());
+    }
+    final File manifestFile = File.createTempFile(ROOTS_MANIFEST_NAME, TEMP_FILE_SUFFIX);
+    try {
+      Files.write(manifestFile.toPath(), manifest.toString().getBytes(StandardCharsets.UTF_8));
+      copy(new File(loadSnapshotDir, ROOTS_MANIFEST_NAME), manifestFile);
+    } finally {
+      Files.deleteIfExists(manifestFile.toPath());
+    }
+  }
+
+  /** Reads the recorded staging root of every task of the snapshot, empty when it holds none. */
+  private static Map<String, Integer> readRootsManifest(final File loadSnapshotDir) {
+    final File manifestFile = new File(loadSnapshotDir, ROOTS_MANIFEST_NAME);
+    if (!manifestFile.isFile()) {
+      return Collections.emptyMap();
+    }
+    final Map<String, Integer> taskRoots = new HashMap<>();
+    try {
+      for (final String line :
+          new String(Files.readAllBytes(manifestFile.toPath()), StandardCharsets.UTF_8)
+              .split(System.lineSeparator())) {
+        final int separator = line.lastIndexOf(' ');
+        if (separator <= 0) {
+          continue;
+        }
+        try {
+          taskRoots.put(
+              line.substring(0, separator), Integer.parseInt(line.substring(separator + 1)));
+        } catch (final NumberFormatException ignored) {
+          // A line this node cannot read is a hint it does without, not a failure.
+        }
+      }
+    } catch (final IOException e) {
+      LOGGER.warn(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
+      return Collections.emptyMap();
+    }
+    return taskRoots;
+  }
+
+  /** The root a task of the snapshot is restored into, on a node that may hold fewer roots. */
+  private static int rootOf(
+      final Map<String, Integer> taskRoots, final String taskName, final int rootCount) {
+    final Integer recorded = taskRoots.get(taskName);
+    if (recorded == null || recorded < 0) {
+      return 0;
+    }
+    return recorded < rootCount ? recorded : recorded % rootCount;
+  }
+
   private static File[] listFiles(final File dir) {
     final File[] files = dir.listFiles();
     return files == null ? new File[0] : files;
@@ -176,8 +251,7 @@ public final class LoadTsFileSnapshot {
     if (loadBaseDirs.length == 0) {
       return;
     }
-    final File regionLoadDir =
-        LoadStagingDirs.regionLoadDir(new File(loadBaseDirs[0]), databaseName, dataRegionIdString);
+    final Map<String, Integer> taskRoots = readRootsManifest(loadSnapshotDir);
     final File[] loadIdDirs = loadSnapshotDir.listFiles();
     if (loadIdDirs == null) {
       return;
@@ -192,7 +266,17 @@ public final class LoadTsFileSnapshot {
       if (files == null) {
         continue;
       }
-      final File targetDir = new File(regionLoadDir, loadIdDir.getName());
+      // The task goes back to the root it was staged in when this node has it, and to the roots it
+      // has otherwise: the recorded references are relative to a root, so they describe the files
+      // wherever they land.
+      final File targetDir =
+          new File(
+              LoadStagingDirs.regionLoadDir(
+                  new File(
+                      loadBaseDirs[rootOf(taskRoots, loadIdDir.getName(), loadBaseDirs.length)]),
+                  databaseName,
+                  dataRegionIdString),
+              loadIdDir.getName());
       taskCount++;
       for (final File file : files) {
         if (!file.isFile()) {

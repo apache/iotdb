@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCon
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.NonAlignedChunkData;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -44,8 +45,11 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -60,6 +64,10 @@ import static org.junit.Assert.assertTrue;
  * it.
  */
 public class LoadTsFileSnapshotTest {
+
+  private static final String DATABASE_NAME = "root.snapshot_test";
+  private static final String REGION_ID = "0";
+  private static final String REGION_DIR_NAME = DATABASE_NAME + "-" + REGION_ID;
 
   private File tempDir;
   private String[] originalLoadBaseDirs;
@@ -94,7 +102,7 @@ public class LoadTsFileSnapshotTest {
     final NonAlignedChunkData chunkData = laidOutChunk();
     final LoadTsFileConsensusNode piece = stagedPiece(loadId, chunkData);
     manager.writePiece(piece);
-    final File staged = new File(piece.getPieceRefs().get(0).getRelativePath());
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
     final File taskDir = staged.getParentFile();
     assertTrue(staged.isFile());
     final File snapshotDir = new File(tempDir, "snapshot");
@@ -118,8 +126,19 @@ public class LoadTsFileSnapshotTest {
       assertFalse(file.getName().contains(".copying."));
     }
     assertEquals(taskDir.listFiles().length, copiedDir.listFiles().length);
-    assertEquals(
-        copiedDir.listFiles().length, LoadTsFileSnapshot.collectSnapshotFiles(snapshotDir).size());
+
+    // The transfer layer sees every file of the task plus the manifest that records which staging
+    // root the task was staged in.
+    final Set<String> collected = new HashSet<>();
+    for (final File file : LoadTsFileSnapshot.collectSnapshotFiles(snapshotDir)) {
+      collected.add(file.getParentFile().getName() + "/" + file.getName());
+    }
+    for (final File file : copiedDir.listFiles()) {
+      assertTrue(collected.contains(copiedDir.getName() + "/" + file.getName()));
+    }
+    assertTrue(
+        "the snapshot has to record the staging root of its tasks",
+        collected.contains("load/roots"));
   }
 
   @Test
@@ -145,6 +164,101 @@ public class LoadTsFileSnapshotTest {
     assertTrue(LoadTsFileSnapshot.collectSnapshotFiles(snapshotDir).isEmpty());
   }
 
+  /**
+   * A DataNode can stage its tasks in several roots, and the snapshot has to bring every task back
+   * to the root it was staged in - and, more importantly, the references it recorded have to keep
+   * describing the files wherever they are restored.
+   */
+  @Test
+  public void testSnapshotRestoresEveryTaskIntoTheRootItWasStagedIn() throws Exception {
+    final File firstRoot = new File(tempDir, "root-0");
+    final File secondRoot = new File(tempDir, "root-1");
+    assertTrue(firstRoot.mkdirs() && secondRoot.mkdirs());
+    setLoadRoots(firstRoot, secondRoot);
+
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final LoadTsFileConsensusNode firstPiece = stagedPiece("multi-root-a", laidOutChunk());
+    manager.writePiece(firstPiece);
+    final LoadTsFileConsensusNode secondPiece =
+        stagedPiece(
+            "multi-root-b",
+            laidOutChunk(
+                createNonAlignedChunkData(
+                    new StringArrayDeviceID("root", "snapshot_test", "d1"), "s1", 100, 10)));
+    manager.writePiece(secondPiece);
+
+    // The folder manager hands the tasks out across the configured roots in turn.
+    final File firstTaskDir = new File(new File(firstRoot, REGION_DIR_NAME), "multi-root-a");
+    final File secondTaskDir = new File(new File(secondRoot, REGION_DIR_NAME), "multi-root-b");
+    assertTrue(firstTaskDir.isDirectory());
+    assertTrue(secondTaskDir.isDirectory());
+
+    // The reference a replica reads a payload back with, kept across the round trip below.
+    final ChunkPayloadRef reference =
+        ((ChunkData) firstPiece.getTsFileDataList().get(0)).getChunkPayloadRefs().get(0);
+    final byte[] payloadBefore = reference.readPayload();
+
+    final File snapshotDir = new File(tempDir, "snapshot");
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+    LoadTsFileSnapshot.clear(DATABASE_NAME, REGION_ID);
+    assertFalse(firstTaskDir.exists());
+    assertFalse(secondTaskDir.exists());
+
+    LoadTsFileSnapshot.restore(DATABASE_NAME, REGION_ID, snapshotDir);
+
+    // Every task is back in the root it came from, and the recorded reference still reads its
+    // bytes.
+    assertTrue(firstTaskDir.isDirectory());
+    assertTrue(secondTaskDir.isDirectory());
+    assertArrayEquals(payloadBefore, reference.readPayload());
+  }
+
+  /**
+   * The node that restores a snapshot need not have the roots the snapshot was taken on: a task
+   * then lands on a root this node has, and the references it recorded still resolve there.
+   */
+  @Test
+  public void testSnapshotRestoresOntoAGodeWithFewerRoots() throws Exception {
+    final File firstRoot = new File(tempDir, "root-0");
+    final File secondRoot = new File(tempDir, "root-1");
+    assertTrue(firstRoot.mkdirs() && secondRoot.mkdirs());
+    setLoadRoots(firstRoot, secondRoot);
+
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final LoadTsFileConsensusNode piece = stagedPiece("single-root", laidOutChunk());
+    manager.writePiece(piece);
+    final ChunkPayloadRef reference =
+        ((ChunkData) piece.getTsFileDataList().get(0)).getChunkPayloadRefs().get(0);
+    final byte[] payloadBefore = reference.readPayload();
+
+    final File snapshotDir = new File(tempDir, "snapshot");
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+    LoadTsFileSnapshot.clear(DATABASE_NAME, REGION_ID);
+
+    // The restoring node has one root only, which is not the one the task was staged in.
+    final File onlyRoot = new File(tempDir, "only-root");
+    assertTrue(onlyRoot.mkdirs());
+    setLoadRoots(onlyRoot);
+    LoadTsFileSnapshot.restore(DATABASE_NAME, REGION_ID, snapshotDir);
+
+    final File restoredTaskDir = new File(new File(onlyRoot, REGION_DIR_NAME), "single-root");
+    assertTrue(restoredTaskDir.isDirectory());
+    assertArrayEquals(payloadBefore, reference.readPayload());
+  }
+
+  /** Configures the staging roots of this node, the way the folder manager reads them. */
+  private void setLoadRoots(final File... roots) throws Exception {
+    final String[] dirs = new String[roots.length];
+    for (int i = 0; i < roots.length; i++) {
+      dirs[i] = roots[i].getAbsolutePath();
+    }
+    config.setLoadTsFileDirs(dirs);
+    // Rebuilds the folder manager, which is what makes the new roots the ones tasks are staged in.
+    LoadStagingDirs.folderManager();
+  }
+
   /** A PIECE that carries one chunk, which stages it and records where its payload landed. */
   private static LoadTsFileConsensusNode stagedPiece(
       final String loadId, final NonAlignedChunkData chunkData) {
@@ -154,6 +268,12 @@ public class LoadTsFileSnapshotTest {
         "file-1",
         0L,
         new ArrayList<>(Collections.singletonList(chunkData)));
+  }
+
+  /** The same chunk, with its layout assigned as the piece pipeline assigns it. */
+  private static NonAlignedChunkData laidOutChunk(final NonAlignedChunkData chunkData) {
+    new ChunkOffsetCalculator().assign(chunkData);
+    return chunkData;
   }
 
   private static NonAlignedChunkData laidOutChunk() {
