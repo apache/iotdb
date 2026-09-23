@@ -272,11 +272,10 @@ public class ClusterQuotaManager {
           .forEach(
               schemaRegionId -> {
                 if (deviceNum.containsKey(schemaRegionId)) {
-                  deviceCount.addAndGet(deviceCount.get() + deviceNum.get(schemaRegionId));
+                  deviceCount.addAndGet(deviceNum.get(schemaRegionId));
                 }
                 if (timeSeriesNum.containsKey(schemaRegionId)) {
-                  timeSeriesCount.addAndGet(
-                      timeSeriesCount.get() + timeSeriesNum.get(schemaRegionId));
+                  timeSeriesCount.addAndGet(timeSeriesNum.get(schemaRegionId));
                 }
               });
       quotaInfo.getSpaceQuotaUsage().get(entry.getKey()).setDeviceNum(deviceCount.get());

@@ -259,7 +259,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:20:00.000Z,null,null,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value) AS cnt FROM demo2 ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value) AS cnt FROM demo2 ORDER BY device,value,time",
         expectedHeader,
         retArray,
         DATABASE_NAME);

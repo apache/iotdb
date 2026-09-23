@@ -175,15 +175,16 @@ public class IoTDBTableViewQueryIT {
           "select current from view1 where time > 1",
           "select current from table1 where time > 1" + (aligned ? "" : " and current is not null"),
           true);
+      // FILL runs before an outer ORDER BY, so give both sources the same ordered input.
       compareQueryResults(
           session,
-          "select * from view1 fill method linear",
-          "select * from table1 fill method linear",
+          "select * from (select * from view1 order by time, battery) fill method linear",
+          "select * from (select * from table1 order by time, battery) fill method linear",
           true);
       compareQueryResults(
           session,
-          "select * from view1 fill method previous",
-          "select * from table1 fill method previous",
+          "select * from (select * from view1 order by time, battery) fill method previous",
+          "select * from (select * from table1 order by time, battery) fill method previous",
           true);
       compareQueryResults(
           session,
