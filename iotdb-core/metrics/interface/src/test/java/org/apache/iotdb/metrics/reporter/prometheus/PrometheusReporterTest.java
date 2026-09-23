@@ -25,6 +25,8 @@ import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 
 import org.junit.Test;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -35,6 +37,31 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class PrometheusReporterTest {
+
+  @Test
+  public void testMetricsEndpoint() throws Exception {
+    MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+    boolean originalAsyncUpdate = metricConfig.isPrometheusReporterAsyncUpdate();
+    Integer originalPort = metricConfig.getPrometheusReporterPort();
+    metricConfig.setPrometheusReporterAsyncUpdate(false);
+    metricConfig.setPrometheusReporterPort(0);
+
+    PrometheusReporter reporter = new PrometheusReporter(new DoNothingMetricManager());
+    try {
+      assertTrue(reporter.start());
+      HttpURLConnection connection =
+          (HttpURLConnection)
+              new URL("http://127.0.0.1:" + reporter.getListeningPort() + "/metrics")
+                  .openConnection();
+      connection.setRequestMethod("GET");
+      assertEquals(200, connection.getResponseCode());
+      assertEquals("text/plain", connection.getHeaderField("Content-Type"));
+    } finally {
+      reporter.stop();
+      metricConfig.setPrometheusReporterAsyncUpdate(originalAsyncUpdate);
+      metricConfig.setPrometheusReporterPort(originalPort);
+    }
+  }
 
   @Test
   public void testManagedExecutorRecreatedAfterRestart() {

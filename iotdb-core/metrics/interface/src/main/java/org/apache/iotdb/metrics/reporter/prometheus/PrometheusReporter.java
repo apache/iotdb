@@ -36,36 +36,33 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import io.netty.channel.ChannelOption;
-import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.util.concurrent.GlobalEventExecutor;
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsParameters;
+import com.sun.net.httpserver.HttpsServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
-import reactor.netty.DisposableServer;
-import reactor.netty.http.server.HttpServer;
-import reactor.netty.http.server.HttpServerRequest;
-import reactor.netty.http.server.HttpServerResponse;
 
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
-import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -77,10 +74,12 @@ public class PrometheusReporter implements Reporter {
   private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final long PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS = 15;
+  private static final int PROMETHEUS_HTTP_SERVER_WORKER_THREADS = 2;
   private final AbstractMetricManager metricManager;
   private final Supplier<ScheduledExecutorService> snapshotUpdateExecutorSupplier;
   private volatile ScheduledExecutorService snapshotUpdateExecutor;
-  private volatile DisposableServer httpServer;
+  private volatile ExecutorService httpExecutor;
+  private volatile HttpServer httpServer;
 
   /** A null snapshot means that no complete scrape has been published yet. */
   private volatile String metricsSnapshot;
@@ -129,42 +128,11 @@ public class PrometheusReporter implements Reporter {
     // A reporter can be started again after its metric manager has been reset.
     metricsSnapshot = null;
     try {
-      HttpServer serverTransport =
-          HttpServer.create()
-              .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-              .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
-              .port(METRIC_CONFIG.getPrometheusReporterPort())
-              .route(
-                  routes ->
-                      routes.get(
-                          "/metrics",
-                          (req, res) -> {
-                            if (!authenticate(req, res)) {
-                              // authenticate not pass
-                              return Mono.empty();
-                            }
-                            String metrics =
-                                METRIC_CONFIG.isPrometheusReporterAsyncUpdate()
-                                    ? getMetricsSnapshot()
-                                    : scrape();
-                            return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
-                                .sendString(Mono.just(metrics));
-                          }));
-      if (METRIC_CONFIG.isEnableSSL()) {
-        SslContext sslContext;
-        try {
-          sslContext =
-              createSslContext(
-                  METRIC_CONFIG.getKeyStorePath(),
-                  METRIC_CONFIG.getKeyStorePassword(),
-                  METRIC_CONFIG.getTrustStorePath(),
-                  METRIC_CONFIG.getTrustStorePassword());
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
-        serverTransport = serverTransport.secure(spec -> spec.sslContext(sslContext));
-      }
-      httpServer = serverTransport.bindNow();
+      httpServer = createHttpServer();
+      httpExecutor = newHttpExecutor();
+      httpServer.setExecutor(httpExecutor);
+      httpServer.createContext("/metrics", this::handleMetricsRequest);
+      httpServer.start();
       if (METRIC_CONFIG.isPrometheusReporterAsyncUpdate()) {
         startSnapshotUpdater();
       }
@@ -173,13 +141,10 @@ public class PrometheusReporter implements Reporter {
       // NoClassDefFoundError
       stopSnapshotUpdater();
       if (httpServer != null) {
-        try {
-          httpServer.disposeNow(Duration.ofSeconds(10));
-        } catch (Exception ignored) {
-          // do nothing
-        }
+        httpServer.stop(0);
       }
       httpServer = null;
+      stopHttpExecutor();
       LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_START_FAILED, e);
       return false;
     }
@@ -189,9 +154,68 @@ public class PrometheusReporter implements Reporter {
     return true;
   }
 
+  private HttpServer createHttpServer() throws Exception {
+    InetSocketAddress address = new InetSocketAddress(METRIC_CONFIG.getPrometheusReporterPort());
+    if (!METRIC_CONFIG.isEnableSSL()) {
+      return HttpServer.create(address, 0);
+    }
+
+    SSLContext sslContext =
+        createSslContext(
+            METRIC_CONFIG.getKeyStorePath(),
+            METRIC_CONFIG.getKeyStorePassword(),
+            METRIC_CONFIG.getTrustStorePath(),
+            METRIC_CONFIG.getTrustStorePassword());
+    HttpsServer httpsServer = HttpsServer.create(address, 0);
+    httpsServer.setHttpsConfigurator(
+        new HttpsConfigurator(sslContext) {
+          @Override
+          public void configure(HttpsParameters parameters) {
+            SSLParameters sslParameters = sslContext.getDefaultSSLParameters();
+            sslParameters.setNeedClientAuth(true);
+            parameters.setSSLParameters(sslParameters);
+          }
+        });
+    return httpsServer;
+  }
+
+  private ExecutorService newHttpExecutor() {
+    return Executors.newFixedThreadPool(
+        PROMETHEUS_HTTP_SERVER_WORKER_THREADS,
+        runnable -> {
+          Thread thread = new Thread(runnable, "prometheus-reporter-http");
+          thread.setDaemon(true);
+          return thread;
+        });
+  }
+
+  private void handleMetricsRequest(HttpExchange exchange) throws IOException {
+    try {
+      if (!"GET".equals(exchange.getRequestMethod())
+          || !"/metrics".equals(exchange.getRequestURI().getPath())) {
+        exchange.sendResponseHeaders(404, -1);
+        return;
+      }
+      if (!authenticate(exchange)) {
+        return;
+      }
+
+      String metrics =
+          METRIC_CONFIG.isPrometheusReporterAsyncUpdate() ? getMetricsSnapshot() : scrape();
+      byte[] response = metrics.getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "text/plain");
+      exchange.sendResponseHeaders(200, response.length);
+      try (OutputStream outputStream = exchange.getResponseBody()) {
+        outputStream.write(response);
+      }
+    } finally {
+      exchange.close();
+    }
+  }
+
   @SuppressWarnings("unsafeThreadSchedule")
   private void startSnapshotUpdater() {
-    // Keep metric collection off Reactor HTTP threads and avoid overlapping scrapes.
+    // Keep metric collection off HTTP worker threads and avoid overlapping scrapes.
     if (snapshotUpdateExecutor == null || snapshotUpdateExecutor.isShutdown()) {
       // Create a fresh executor for every start so a stopped reporter can be started again with
       // the same managed thread-pool factory.
@@ -246,14 +270,14 @@ public class PrometheusReporter implements Reporter {
     }
   }
 
-  private boolean authenticate(HttpServerRequest req, HttpServerResponse res) {
+  private boolean authenticate(HttpExchange exchange) throws IOException {
     if (!METRIC_CONFIG.prometheusNeedAuth()) {
       return true;
     }
 
-    String header = req.requestHeaders().get(HttpHeaderNames.AUTHORIZATION);
+    String header = exchange.getRequestHeaders().getFirst("Authorization");
     if (header == null || !header.startsWith(BASIC_AUTH_PREFIX)) {
-      return authenticateFailed(res);
+      return authenticateFailed(exchange);
     }
 
     // base64 decoding
@@ -265,7 +289,7 @@ public class PrometheusReporter implements Reporter {
     int dividerIndex = decodedString.indexOf(DIVIDER_BETWEEN_USERNAME_AND_DIVIDER);
     if (dividerIndex < 0) {
       LOGGER.warn(MetricsMessages.PROMETHEUS_UNEXPECTED_AUTH, decodedString);
-      return authenticateFailed(res);
+      return authenticateFailed(exchange);
     }
 
     // check username and password
@@ -273,16 +297,16 @@ public class PrometheusReporter implements Reporter {
     String password = decodedString.substring(dividerIndex + 1);
     if (!METRIC_CONFIG.getDecodedPrometheusReporterUsername().equals(username)
         || !METRIC_CONFIG.getDecodedPrometheusReporterPassword().equals(password)) {
-      return authenticateFailed(res);
+      return authenticateFailed(exchange);
     }
 
     return true;
   }
 
-  private boolean authenticateFailed(HttpServerResponse response) {
-    response
-        .status(HttpResponseStatus.UNAUTHORIZED)
-        .addHeader(HttpHeaderNames.WWW_AUTHENTICATE, "Basic realm=\"" + REALM + "\"");
+  private boolean authenticateFailed(HttpExchange exchange) throws IOException {
+    Headers responseHeaders = exchange.getResponseHeaders();
+    responseHeaders.add("WWW-Authenticate", "Basic realm=\"" + REALM + "\"");
+    exchange.sendResponseHeaders(401, -1);
     return false;
   }
 
@@ -393,39 +417,41 @@ public class PrometheusReporter implements Reporter {
     return result;
   }
 
-  private SslContext createSslContext(
+  private SSLContext createSslContext(
       String keystorePath,
       String keystorePassword,
       String truststorePath,
       String truststorePassword)
       throws Exception {
-    SslContextBuilder sslContextBuilder = null;
+    KeyManagerFactory keyManagerFactory = null;
     if (keystorePath != null && keystorePassword != null) {
       KeyStore keyStore = KeyStore.getInstance("JKS");
       try (FileInputStream fis = new FileInputStream(keystorePath)) {
         keyStore.load(fis, keystorePassword.toCharArray());
       }
-      KeyManagerFactory kmf =
-          KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-      kmf.init(keyStore, keystorePassword.toCharArray());
-      sslContextBuilder = SslContextBuilder.forServer(kmf);
+      keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      keyManagerFactory.init(keyStore, keystorePassword.toCharArray());
     }
 
-    if (sslContextBuilder != null && truststorePath != null && truststorePassword != null) {
+    TrustManagerFactory trustManagerFactory = null;
+    if (keyManagerFactory != null && truststorePath != null && truststorePassword != null) {
       KeyStore trustStore = KeyStore.getInstance("JKS");
       try (FileInputStream fis = new FileInputStream(truststorePath)) {
         trustStore.load(fis, truststorePassword.toCharArray());
       }
-      TrustManagerFactory tmf =
+      trustManagerFactory =
           TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-      tmf.init(trustStore);
-      sslContextBuilder.trustManager(tmf);
+      trustManagerFactory.init(trustStore);
     }
-    if (sslContextBuilder == null) {
+    if (keyManagerFactory == null) {
       throw new Exception(MetricsMessages.KEYSTORE_OR_TRUSTSTORE_NULL);
     }
-    sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
-    return sslContextBuilder.build();
+    SSLContext sslContext = SSLContext.getInstance("TLS");
+    sslContext.init(
+        keyManagerFactory.getKeyManagers(),
+        trustManagerFactory == null ? null : trustManagerFactory.getTrustManagers(),
+        null);
+    return sslContext;
   }
 
   @Override
@@ -433,15 +459,29 @@ public class PrometheusReporter implements Reporter {
     stopSnapshotUpdater();
     if (httpServer != null) {
       try {
-        httpServer.disposeNow(Duration.ofSeconds(10));
+        httpServer.stop(0);
         httpServer = null;
       } catch (Exception e) {
         LOGGER.error(MetricsMessages.PROMETHEUS_REPORTER_STOP_FAILED, e);
         return false;
       }
     }
+    stopHttpExecutor();
     LOGGER.info(MetricsMessages.PROMETHEUS_REPORTER_STOP);
     return true;
+  }
+
+  private void stopHttpExecutor() {
+    ExecutorService executor = httpExecutor;
+    httpExecutor = null;
+    if (executor != null) {
+      executor.shutdownNow();
+    }
+  }
+
+  int getListeningPort() {
+    HttpServer server = httpServer;
+    return server == null ? -1 : server.getAddress().getPort();
   }
 
   @Override

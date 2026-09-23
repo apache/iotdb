@@ -192,9 +192,7 @@ public enum ThreadName {
   SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
   PROMETHEUS_REPORTER_SNAPSHOT_UPDATER("PrometheusReporter-Snapshot-Updater"),
-  PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
-  PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
-  PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
+  PROMETHEUS_REPORTER_HTTP("prometheus-reporter-http"),
   // -------------------------- Other --------------------------
   ACTIVE_LOAD_TSFILE_LOADER("Active-Load-TsFile-Loader"),
   ACTIVE_LOAD_DIR_SCANNER("Active-Load-Dir-Scanner"),
@@ -394,10 +392,7 @@ public enum ThreadName {
               SYSTEM_SCHEDULE_METRICS,
               RESOURCE_CONTROL_DISK_STATISTIC,
               PROMETHEUS_REPORTER_SNAPSHOT_UPDATER,
-              PROMETHEUS_REACTOR_HTTP_EPOLL,
-              PROMETHEUS_REACTOR_HTTP_NIO,
-              PROMETHEUS_REACTOR_HTTP_EPOLL,
-              PROMETHEUS_BOUNDED_ELASTIC));
+              PROMETHEUS_REPORTER_HTTP));
   private static final Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
