@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.procedure.env;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -36,17 +36,17 @@ import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
-import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -71,6 +72,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -97,14 +99,16 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ConfigNodeProcedureEnv {
@@ -112,6 +116,7 @@ public class ConfigNodeProcedureEnv {
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
   private static final int RUNTIME_META_PUSH_RETRY_NUM = 1;
+  private static final Consumer<Set<Integer>> NO_OP_PENDING_DATA_NODE_TRACKER = ignored -> {};
 
   /** Add or remove node lock. */
   private final LockQueue nodeLock = new LockQueue();
@@ -165,74 +170,38 @@ public class ConfigNodeProcedureEnv {
     getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
-  /**
-   * @param databaseName database name
-   * @return ALL SUCCESS OR NOT
-   * @throws IOException IOE
-   * @throws TException Thrift IOE
-   */
   public boolean invalidateCache(final String databaseName) throws IOException, TException {
-    final List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
     final TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(databaseName);
-    for (final TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
-      final int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-
-      // If the node is not alive, retry for up to 10 times
-      NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
-      int retryNum = 10;
-      if (nodeStatus == NodeStatus.Unknown) {
-        for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
-          try {
-            TimeUnit.MILLISECONDS.sleep(500);
-          } catch (final InterruptedException e) {
-            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-            Thread.currentThread().interrupt();
-            break;
-          }
-          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
-        }
-      }
-
-      if (nodeStatus == NodeStatus.Unknown) {
-        LOG.warn(
-            "Invalidate cache failed, because DataNode {} is Unknown",
-            dataNodeConfiguration.getLocation().getInternalEndPoint());
-        return false;
-      }
-
-      // Always invalidate PartitionCache first
-      final TSStatus invalidatePartitionStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
-
-      final TSStatus invalidateSchemaStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
-
-      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-        LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
-            invalidatePartitionStatus,
-            invalidateSchemaStatus);
-        return false;
-      }
+    // The per-round cache invalidation is sent asynchronously so the lease framework can collect a
+    // cluster-wide ack map and decide whether unAcked DataNodes are safely fenced.
+    final ClusterCachePropagator propagator =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(configManager));
+    if (!propagator.propagate(
+        targets ->
+            invalidateDatabaseCacheOnce(
+                targets, invalidateCacheReq, CnToDnAsyncRequestType.INVALIDATE_PARTITION_CACHE))) {
+      return false;
     }
-    return true;
+    return propagator.propagate(
+        targets ->
+            invalidateDatabaseCacheOnce(
+                targets, invalidateCacheReq, CnToDnAsyncRequestType.INVALIDATE_SCHEMA_CACHE));
   }
 
-  public boolean verifySucceed(TSStatus... status) {
-    return Arrays.stream(status)
-        .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  private Map<Integer, TSStatus> invalidateDatabaseCacheOnce(
+      final Map<Integer, TDataNodeLocation> targets,
+      final TInvalidateCacheReq invalidateCacheReq,
+      final CnToDnAsyncRequestType requestType) {
+    final DataNodeAsyncRequestContext<TInvalidateCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(requestType, invalidateCacheReq, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
   }
 
   /**
@@ -288,10 +257,11 @@ public class ConfigNodeProcedureEnv {
         tsStatus =
             new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
                 .setMessage(
-                    "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
+                    ProcedureMessages
+                        .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B);
       }
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
     }
@@ -519,7 +489,7 @@ public class ConfigNodeProcedureEnv {
     try {
       return getConsensusManager().write(createRegionGroupsPlan);
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(
               "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());
@@ -651,6 +621,11 @@ public class ConfigNodeProcedureEnv {
 
   public Map<Integer, TPushPipeMetaResp> pushAllPipeMetaToDataNodes(
       List<ByteBuffer> pipeMetaBinaryList) {
+    return pushAllPipeMetaToDataNodes(pipeMetaBinaryList, NO_OP_PENDING_DATA_NODE_TRACKER);
+  }
+
+  public Map<Integer, TPushPipeMetaResp> pushAllPipeMetaToDataNodes(
+      List<ByteBuffer> pipeMetaBinaryList, final Consumer<Set<Integer>> pendingDataNodeTracker) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
@@ -659,13 +634,17 @@ public class ConfigNodeProcedureEnv {
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_PUSH_ALL_META, request, dataNodeLocationMap);
     final long timeoutInMs = getRequiredPipeMetadataRequestTimeoutInMs();
-    sendRequiredMetadataRequest(clientHandler, timeoutInMs);
-    fillMissingPipePushMetaResponses(clientHandler, timeoutInMs);
-    return clientHandler.getResponseMap();
+    return sendPipeMetaRequest(clientHandler, timeoutInMs, false, pendingDataNodeTracker);
   }
 
   public Map<Integer, TPushPipeMetaResp> pushAllPipeMetaToDataNodesBestEffort(
       List<ByteBuffer> pipeMetaBinaryList) {
+    return pushAllPipeMetaToDataNodesBestEffort(
+        pipeMetaBinaryList, NO_OP_PENDING_DATA_NODE_TRACKER);
+  }
+
+  public Map<Integer, TPushPipeMetaResp> pushAllPipeMetaToDataNodesBestEffort(
+      List<ByteBuffer> pipeMetaBinaryList, final Consumer<Set<Integer>> pendingDataNodeTracker) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
@@ -673,12 +652,16 @@ public class ConfigNodeProcedureEnv {
     final DataNodeAsyncRequestContext<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_PUSH_ALL_META, request, dataNodeLocationMap);
-    final long timeoutInMs = sendBestEffortRuntimeMetaRequest(clientHandler);
-    fillMissingPipePushMetaResponses(clientHandler, timeoutInMs);
-    return clientHandler.getResponseMap();
+    return sendPipeMetaRequest(
+        clientHandler, getRuntimeMetaPushTimeoutInMs(), true, pendingDataNodeTracker);
   }
 
   public Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(ByteBuffer pipeMetaBinary) {
+    return pushSinglePipeMetaToDataNodes(pipeMetaBinary, NO_OP_PENDING_DATA_NODE_TRACKER);
+  }
+
+  public Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
+      ByteBuffer pipeMetaBinary, final Consumer<Set<Integer>> pendingDataNodeTracker) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSinglePipeMetaReq request = new TPushSinglePipeMetaReq().setPipeMeta(pipeMetaBinary);
@@ -687,12 +670,15 @@ public class ConfigNodeProcedureEnv {
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
     final long timeoutInMs = getRequiredPipeMetadataRequestTimeoutInMs();
-    sendRequiredMetadataRequest(clientHandler, timeoutInMs);
-    fillMissingPipePushMetaResponses(clientHandler, timeoutInMs);
-    return clientHandler.getResponseMap();
+    return sendPipeMetaRequest(clientHandler, timeoutInMs, false, pendingDataNodeTracker);
   }
 
   public Map<Integer, TPushPipeMetaResp> dropSinglePipeOnDataNodes(String pipeNameToDrop) {
+    return dropSinglePipeOnDataNodes(pipeNameToDrop, NO_OP_PENDING_DATA_NODE_TRACKER);
+  }
+
+  public Map<Integer, TPushPipeMetaResp> dropSinglePipeOnDataNodes(
+      String pipeNameToDrop, final Consumer<Set<Integer>> pendingDataNodeTracker) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSinglePipeMetaReq request =
@@ -702,13 +688,16 @@ public class ConfigNodeProcedureEnv {
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
     final long timeoutInMs = getRequiredPipeMetadataRequestTimeoutInMs();
-    sendRequiredMetadataRequest(clientHandler, timeoutInMs);
-    fillMissingPipePushMetaResponses(clientHandler, timeoutInMs);
-    return clientHandler.getResponseMap();
+    return sendPipeMetaRequest(clientHandler, timeoutInMs, false, pendingDataNodeTracker);
   }
 
   public Map<Integer, TPushPipeMetaResp> pushMultiPipeMetaToDataNodes(
       List<ByteBuffer> pipeMetaBinaryList) {
+    return pushMultiPipeMetaToDataNodes(pipeMetaBinaryList, NO_OP_PENDING_DATA_NODE_TRACKER);
+  }
+
+  public Map<Integer, TPushPipeMetaResp> pushMultiPipeMetaToDataNodes(
+      List<ByteBuffer> pipeMetaBinaryList, final Consumer<Set<Integer>> pendingDataNodeTracker) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushMultiPipeMetaReq request =
@@ -718,9 +707,7 @@ public class ConfigNodeProcedureEnv {
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
     final long timeoutInMs = getRequiredPipeMetadataRequestTimeoutInMs();
-    sendRequiredMetadataRequest(clientHandler, timeoutInMs);
-    fillMissingPipePushMetaResponses(clientHandler, timeoutInMs);
-    return clientHandler.getResponseMap();
+    return sendPipeMetaRequest(clientHandler, timeoutInMs, false, pendingDataNodeTracker);
   }
 
   public Map<Integer, TPushPipeMetaResp> dropMultiPipeOnDataNodes(List<String> pipeNamesToDrop) {
@@ -784,10 +771,21 @@ public class ConfigNodeProcedureEnv {
   }
 
   public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop) {
+    return dropSingleTopicOnDataNode(topicNameToDrop, null);
+  }
+
+  public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop, boolean isTableModel) {
+    return dropSingleTopicOnDataNode(topicNameToDrop, Boolean.valueOf(isTableModel));
+  }
+
+  private List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop, Boolean isTableModel) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSingleTopicMetaReq request =
         new TPushSingleTopicMetaReq().setTopicNameToDrop(topicNameToDrop);
+    if (Objects.nonNull(isTableModel)) {
+      request.setIsTableModel(isTableModel);
+    }
 
     final DataNodeAsyncRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
@@ -933,6 +931,37 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseMap();
   }
 
+  /**
+   * Collect the current pipe metadata from the specified DataNodes before a metadata-changing
+   * procedure. The caller can use the returned task progress to avoid basing a replacement pipe on
+   * a stale ConfigNode heartbeat.
+   *
+   * <p>This is deliberately best effort. A DataNode that is unavailable cannot contribute a newer
+   * checkpoint, but the alter procedure can still use the checkpoint already stored by ConfigNode.
+   */
+  public Map<Integer, TPipeHeartbeatResp> collectPipeMetaFromDataNodes(
+      final Set<Integer> dataNodeIds) {
+    if (dataNodeIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations().entrySet().stream()
+            .filter(entry -> dataNodeIds.contains(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    if (dataNodeLocationMap.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    final DataNodeAsyncRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.PIPE_HEARTBEAT,
+            new TPipeHeartbeatReq(System.currentTimeMillis()),
+            dataNodeLocationMap);
+    sendRuntimeMetaRequest(clientHandler, true, getRuntimeMetaPushTimeoutInMs());
+    return clientHandler.getResponseMap();
+  }
+
   public Map<Integer, TSStatus> pushSubscriptionRuntimeStatesToDataNodes(
       final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap,
       final long runtimeVersion) {
@@ -1007,6 +1036,22 @@ public class ConfigNodeProcedureEnv {
     return dataNodeId >= 0
         && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Unknown
         && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Removing;
+  }
+
+  private static Map<Integer, TPushPipeMetaResp> sendPipeMetaRequest(
+      final DataNodeAsyncRequestContext<?, TPushPipeMetaResp> clientHandler,
+      final long timeoutInMs,
+      final boolean keepSilent,
+      final Consumer<Set<Integer>> pendingDataNodeTracker) {
+    pendingDataNodeTracker.accept(
+        Collections.unmodifiableSet(clientHandler.getNodeLocationMap().keySet()));
+    try {
+      sendRuntimeMetaRequest(clientHandler, keepSilent, timeoutInMs);
+      fillMissingPipePushMetaResponses(clientHandler, timeoutInMs);
+      return clientHandler.getResponseMap();
+    } finally {
+      pendingDataNodeTracker.accept(Collections.emptySet());
+    }
   }
 
   private static long sendBestEffortRuntimeMetaRequest(

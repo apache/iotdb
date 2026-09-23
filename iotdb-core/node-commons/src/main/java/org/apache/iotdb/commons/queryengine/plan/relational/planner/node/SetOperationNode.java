@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
@@ -56,10 +57,11 @@ public abstract class SetOperationNode extends MultiChildProcessNode {
       List<Symbol> outputs) {
     super(id);
 
-    requireNonNull(children, "children is null");
-    checkArgument(!children.isEmpty(), "Must have at least one source");
-    requireNonNull(outputToInputs, "outputToInputs is null");
-    requireNonNull(outputs, "outputs is null");
+    requireNonNull(children, QueryMessages.EXCEPTION_CHILDREN_IS_NULL_0CB43CE2);
+    checkArgument(
+        !children.isEmpty(), QueryMessages.EXCEPTION_MUST_HAVE_AT_LEAST_ONE_SOURCE_4114F454);
+    requireNonNull(outputToInputs, QueryMessages.EXCEPTION_OUTPUTTOINPUTS_IS_NULL_4125312B);
+    requireNonNull(outputs, QueryMessages.EXCEPTION_OUTPUTS_IS_NULL_EFD078A2);
 
     this.children = ImmutableList.copyOf(children);
     this.outputToInputs = ImmutableListMultimap.copyOf(outputToInputs);
@@ -68,7 +70,8 @@ public abstract class SetOperationNode extends MultiChildProcessNode {
     for (Collection<Symbol> inputs : this.outputToInputs.asMap().values()) {
       checkArgument(
           inputs.size() == this.children.size(),
-          "Every child needs to map its symbols to an output %s operation symbol",
+          QueryMessages
+              .EXCEPTION_EVERY_CHILD_NEEDS_TO_MAP_ITS_SYMBOLS_TO_AN_OUTPUT_ARG_OPERATION_SYMBOL_7FA107A2,
           this.getClass().getSimpleName());
     }
 
@@ -78,7 +81,7 @@ public abstract class SetOperationNode extends MultiChildProcessNode {
       for (Collection<Symbol> expectedInputs : this.outputToInputs.asMap().values()) {
         checkArgument(
             childSymbols.contains(Iterables.get(expectedInputs, i)),
-            "Child does not provide required symbols");
+            QueryMessages.EXCEPTION_CHILD_DOES_NOT_PROVIDE_REQUIRED_SYMBOLS_B7CE956E);
       }
     }
   }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -189,7 +190,10 @@ public class LoadTsFileScheduler implements IScheduler {
           synchronized (LOADING_FILE_SET) {
             if (LOADING_FILE_SET.contains(filePath)) {
               throw new LoadFileException(
-                  String.format("TsFile %s is loading by another scheduler.", filePath));
+                  String.format(
+                      DataNodeQueryMessages
+                          .QUERY_EXCEPTION_TSFILE_S_IS_LOADING_BY_ANOTHER_SCHEDULER_55077B82,
+                      filePath));
             }
             LOADING_FILE_SET.add(filePath);
           }
@@ -244,23 +248,32 @@ public class LoadTsFileScheduler implements IScheduler {
           if (RegionMigrateService.getInstance().getLastNotifyMigratingTime() > startTimeMs
               || RegionMigrateService.getInstance().mayHaveMigratingRegions()) {
             LOGGER.warn(
-                "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss",
+                DataNodeQueryMessages
+                    .LOADTSFILESCHEDULER_REGION_MIGRATION_WAS_DETECTED_DURING_LOADING_TSFILE_ARG_WILL_CONVERT,
                 filePath);
             isLoadSingleTsFileSuccess = false;
           }
 
           if (isLoadSingleTsFileSuccess) {
             node.clean();
-            LOGGER.info(
-                "Load TsFile {} Successfully, load process [{}/{}]",
-                filePath,
-                i + 1,
-                tsFileNodeListSize);
+            if (isGeneratedByPipe) {
+              LOGGER.debug(
+                  DataNodeQueryMessages.LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG,
+                  filePath,
+                  i + 1,
+                  tsFileNodeListSize);
+            } else {
+              LOGGER.info(
+                  DataNodeQueryMessages.LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG,
+                  filePath,
+                  i + 1,
+                  tsFileNodeListSize);
+            }
           } else {
             isLoadSuccess = false;
             failedTsFileNodeIndexes.add(i);
             LOGGER.warn(
-                "Can not Load TsFile {}, load process [{}/{}]",
+                DataNodeQueryMessages.CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG,
                 filePath,
                 i + 1,
                 tsFileNodeListSize);
@@ -299,7 +312,8 @@ public class LoadTsFileScheduler implements IScheduler {
         try {
           // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
           LOGGER.info(
-              "Load TsFile(s) failed, will try to convert to tablets and insert. Failed TsFiles: {}",
+              DataNodeQueryMessages
+                  .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
               failedTsFiles);
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
@@ -308,6 +322,7 @@ public class LoadTsFileScheduler implements IScheduler {
         }
       }
     } finally {
+      dispatcher.close();
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
   }
@@ -324,18 +339,44 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (IllegalStateException e) {
       LOGGER.warn(
           String.format(
-              "Dispatch TsFileData error when parsing TsFile %s.",
+              DataNodeQueryMessages.DISPATCH_TSFILEDATA_ERROR_WHEN_PARSING_TSFILE_S,
               node.getTsFileResource().getTsFile()),
           e);
       return false;
     } catch (Exception e) {
       LOGGER.warn(
-          String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);
+          String.format(
+              DataNodeQueryMessages.PARSE_OR_SEND_TSFILE_S_ERROR,
+              node.getTsFileResource().getTsFile()),
+          e);
       return false;
     } finally {
       tsFileDataManager.clear();
     }
     return true;
+  }
+
+  static boolean isSameRegionReplicaSet(TRegionReplicaSet original, TRegionReplicaSet current) {
+    if (!Objects.equals(original.getRegionId(), current.getRegionId())) {
+      return false;
+    }
+
+    final Map<TDataNodeLocation, Integer> locationCounts = new HashMap<>();
+    for (TDataNodeLocation location : original.getDataNodeLocations()) {
+      locationCounts.merge(location, 1, Integer::sum);
+    }
+    for (TDataNodeLocation location : current.getDataNodeLocations()) {
+      final Integer count = locationCounts.get(location);
+      if (count == null) {
+        return false;
+      }
+      if (count == 1) {
+        locationCounts.remove(location);
+      } else {
+        locationCounts.put(location, count - 1);
+      }
+    }
+    return locationCounts.isEmpty();
   }
 
   private boolean dispatchOnePieceNode(
@@ -361,8 +402,9 @@ public class LoadTsFileScheduler implements IScheduler {
               CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
         LOGGER.warn(
-            "Dispatch one piece to ReplicaSet {} error. Result status code {}. "
-                + "Result status message {}. Dispatch piece node error:%n{}",
+            DataNodeQueryMessages.DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG
+                + DataNodeQueryMessages
+                    .RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG,
             replicaSet,
             TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
             result.getFailureStatus().getMessage(),
@@ -370,14 +412,16 @@ public class LoadTsFileScheduler implements IScheduler {
         if (result.getFailureStatus().getSubStatus() != null) {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             LOGGER.warn(
-                "Sub status code {}. Sub status message {}.",
+                DataNodeQueryMessages.SUB_STATUS_CODE_ARG_SUB_STATUS_MESSAGE_ARG,
                 TSStatusCode.representOf(status.getCode()).toString(),
                 status.getMessage());
           }
         }
         TSStatus status = result.getFailureStatus();
         status.setMessage(
-            String.format("Load %s piece error in 1st phase. Because ", pieceNode.getTsFile())
+            String.format(
+                    DataNodeQueryMessages.MESSAGE_LOAD_ARG_PIECE_ERROR_1ST_PHASE_BECAUSE_F3D9672C,
+                    pieceNode.getTsFile())
                 + status.getMessage());
         return false;
       }
@@ -390,7 +434,10 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (TimeoutException e) {
       dispatchResultFuture.cancel(true);
       LOGGER.warn(
-          String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()), e);
+          String.format(
+              DataNodeQueryMessages.WAIT_FOR_LOADING_S_TIME_OUT,
+              LoadTsFilePieceNode.class.getName()),
+          e);
       return false;
     }
     return true;
@@ -398,7 +445,11 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean secondPhase(
       boolean isFirstPhaseSuccess, String uuid, TsFileResource tsFileResource) {
-    LOGGER.info(DataNodeQueryMessages.START_DISPATCHING_LOAD_COMMAND_FOR_UUID, uuid);
+    if (isGeneratedByPipe) {
+      LOGGER.debug(DataNodeQueryMessages.START_DISPATCHING_LOAD_COMMAND_FOR_UUID, uuid);
+    } else {
+      LOGGER.info(DataNodeQueryMessages.START_DISPATCHING_LOAD_COMMAND_FOR_UUID, uuid);
+    }
     final File tsFile = tsFileResource.getTsFile();
     final TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -421,8 +472,11 @@ public class LoadTsFileScheduler implements IScheduler {
                         } catch (final IOException e) {
                           throw new RuntimeException(
                               String.format(
-                                  "Serialize Progress Index error, isFirstPhaseSuccess: %s, uuid: %s, tsFile: %s",
-                                  isFirstPhaseSuccess, uuid, tsFile.getAbsolutePath()),
+                                  DataNodeQueryMessages
+                                      .QUERY_EXCEPTION_SERIALIZE_PROGRESS_INDEX_ERROR_ISFIRSTPHASESUCCESS_S_UUID_690F0419,
+                                  isFirstPhaseSuccess,
+                                  uuid,
+                                  tsFile.getAbsolutePath()),
                               e);
                         }
                       })));
@@ -432,8 +486,9 @@ public class LoadTsFileScheduler implements IScheduler {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         LOGGER.warn(
-            "Dispatch load command {} of TsFile {} error to replicaSets {} error. "
-                + "Result status code {}. Result status message {}.",
+            DataNodeQueryMessages
+                    .DISPATCH_LOAD_COMMAND_ARG_OF_TSFILE_ARG_ERROR_TO_REPLICASETS_ARG_ERROR
+                + DataNodeQueryMessages.RESULT_STATUS_CODE_ARG_RESULT_STATUS_MESSAGE_ARG,
             loadCommandReq,
             tsFile,
             allReplicaSets,
@@ -442,8 +497,13 @@ public class LoadTsFileScheduler implements IScheduler {
         TSStatus status = result.getFailureStatus();
         status.setMessage(
             String.format(
-                "Load %s error in second phase. Because %s, first phase is %s",
-                tsFile, status.getMessage(), isFirstPhaseSuccess ? "success" : "failed"));
+                DataNodeQueryMessages
+                    .MESSAGE_LOAD_ARG_ERROR_SECOND_PHASE_BECAUSE_ARG_FIRST_PHASE_ARG_CBA980FC,
+                tsFile,
+                status.getMessage(),
+                isFirstPhaseSuccess
+                    ? DataNodeQueryMessages.MESSAGE_SUCCESS_260CA9DD
+                    : DataNodeQueryMessages.MESSAGE_FAILED_26934EB3));
         return false;
       }
     } catch (InterruptedException | ExecutionException e) {
@@ -516,8 +576,8 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (FragmentInstanceDispatchException e) {
       LOGGER.warn(
           String.format(
-              "Dispatch tsFile %s error to local error. Result status code %s. "
-                  + "Result status message %s.",
+              DataNodeQueryMessages.DISPATCH_TSFILE_S_ERROR_TO_LOCAL_ERROR_RESULT_STATUS_CODE_S
+                  + DataNodeQueryMessages.RESULT_STATUS_MESSAGE_S,
               node.getTsFileResource().getTsFile(),
               TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
               e.getFailureStatus().getMessage()));
@@ -589,7 +649,10 @@ public class LoadTsFileScheduler implements IScheduler {
             failedNode.isTableModel()
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap())
+                        (isGeneratedByPipe
+                                ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
+                                : LoadTsFile.createUnchecked(
+                                    null, filePath, Collections.emptyMap()))
                             .setDatabase(failedNode.getDatabase())
                             .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
                             .setConvertOnTypeMismatch(true))
@@ -605,17 +668,18 @@ public class LoadTsFileScheduler implements IScheduler {
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
           iterator.remove();
           LOGGER.info(
-              "Load: Successfully converted TsFile {} into tablets and inserted.",
+              DataNodeQueryMessages
+                  .LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED,
               failedNode.getTsFileResource().getTsFilePath());
         } else {
           LOGGER.warn(
-              "Load: Failed to convert to tablets from TsFile {}. Status: {}",
+              DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_TSFILE_ARG_STATUS_ARG,
               failedNode.getTsFileResource().getTsFilePath(),
               status);
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Load: Failed to convert to tablets from TsFile {}. Exception: {}",
+            DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_TSFILE_ARG_EXCEPTION_ARG,
             failedNode.getTsFileResource().getTsFilePath(),
             e.getMessage(),
             e);
@@ -647,7 +711,9 @@ public class LoadTsFileScheduler implements IScheduler {
       final String filePath, final boolean deleteAfterLoad, final String database)
       throws FileNotFoundException {
     final LoadTsFileStatement statement =
-        LoadTsFileStatement.createUnchecked(filePath)
+        (isGeneratedByPipe
+                ? LoadTsFileStatement.createForPipe(filePath)
+                : LoadTsFileStatement.createUnchecked(filePath))
             .setDeleteAfterLoad(deleteAfterLoad)
             .setConvertOnTypeMismatch(true);
     if (database != null) {
@@ -662,7 +728,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   @Override
   public void stop(Throwable t) {
-    // Do nothing
+    dispatcher.abort();
   }
 
   @Override
@@ -716,7 +782,9 @@ public class LoadTsFileScheduler implements IScheduler {
           return addOrSendDeletionData((DeletionData) tsFileData);
         default:
           throw new UnsupportedOperationException(
-              String.format("Unsupported TsFileDataType %s.", tsFileData.getType()));
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TSFILEDATATYPE_S_374475FA,
+                  tsFileData.getType()));
       }
     }
 
@@ -761,8 +829,7 @@ public class LoadTsFileScheduler implements IScheduler {
                       singleTsFileNode
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
-          dataSize -= pieceNode.getDataSize();
-          block.reduceMemoryUsage(pieceNode.getDataSize());
+          releaseMemoryUsage(pieceNode.getDataSize());
 
           if (!isDispatchSuccess) {
             // Currently there is no retry, so return directly
@@ -808,7 +875,8 @@ public class LoadTsFileScheduler implements IScheduler {
         final TRegionReplicaSet replicaSet = replicaSets.get(chunkPartitionIndexes[i]);
         final TConsensusGroupId regionId = replicaSet.getRegionId();
         if (regionId2ReplicaSetAndNode.containsKey(regionId)
-            && !Objects.equals(regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet)) {
+            && !isSameRegionReplicaSet(
+                regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet)) {
           // Detected region replica set changed (maybe due to region migration), throw an exception
           throw new RegionReplicaSetChangedException(
               regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet);
@@ -847,12 +915,12 @@ public class LoadTsFileScheduler implements IScheduler {
       boolean isAllSuccess = true;
       for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, LoadTsFilePieceNode>> entry :
           regionId2ReplicaSetAndNode.entrySet()) {
-        block.reduceMemoryUsage(entry.getValue().getRight().getDataSize());
+        releaseMemoryUsage(entry.getValue().getRight().getDataSize());
         if (isAllSuccess
             && !scheduler.dispatchOnePieceNode(
                 entry.getValue().getRight(), entry.getValue().getLeft())) {
           LOGGER.warn(
-              "Dispatch piece node {} of TsFile {} error.",
+              DataNodeQueryMessages.DISPATCH_PIECE_NODE_ARG_OF_TSFILE_ARG_ERROR,
               entry.getValue(),
               singleTsFileNode.getTsFileResource().getTsFile());
           isAllSuccess = false;
@@ -861,7 +929,17 @@ public class LoadTsFileScheduler implements IScheduler {
       return isAllSuccess;
     }
 
+    private void releaseMemoryUsage(final long memorySize) {
+      dataSize -= memorySize;
+      block.reduceMemoryUsage(memorySize);
+    }
+
     private void clear() {
+      if (dataSize > 0) {
+        block.reduceMemoryUsage(dataSize);
+        dataSize = 0;
+      }
+      nonDirectionalChunkData.clear();
       regionId2ReplicaSetAndNode.clear();
     }
   }

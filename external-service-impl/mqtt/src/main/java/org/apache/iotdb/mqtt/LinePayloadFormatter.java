@@ -122,7 +122,7 @@ public class LinePayloadFormatter implements PayloadFormatter {
         messages.add(message);
       } catch (Exception e) {
         log.warn(
-            "The line pattern parsing fails, and the failed line message is {} ,exception is",
+            MqttMessages.LOG_LINE_PATTERN_PARSING_FAILS_FAILED_LINE_MESSAGE_ARG_EXCEPTION_6EFB0EE2,
             line,
             e);
       }

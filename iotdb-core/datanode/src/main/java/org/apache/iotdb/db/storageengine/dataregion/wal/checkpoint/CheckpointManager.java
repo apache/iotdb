@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
@@ -110,6 +111,7 @@ public class CheckpointManager implements AutoCloseable {
         currentLogWriter.write(tmpBuffer);
       } catch (IOException e) {
         logger.error(StorageEngineMessages.FAIL_TO_LOG_MAX_MEMTABLE_ID, maxMemTableId, e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       }
       // log global memTables' info
       makeGlobalInfoCP();
@@ -200,6 +202,7 @@ public class CheckpointManager implements AutoCloseable {
       currentLogWriter.write(cachedByteBuffer);
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAIL_TO_MAKE_CHECKPOINT, checkpoint, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     } finally {
       cachedByteBuffer.clear();
     }
@@ -214,9 +217,11 @@ public class CheckpointManager implements AutoCloseable {
         currentLogWriter.force();
       } catch (IOException e) {
         logger.error(
-            "Fail to fsync wal node-{}'s checkpoint writer, change system mode to error.",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_FSYNC_WAL_NODE_S_CHECKPOINT_WRITER_CHANGE_SYSTEM_6E1EE226,
             identifier,
             e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       }
 
@@ -233,9 +238,11 @@ public class CheckpointManager implements AutoCloseable {
         }
       } catch (IOException e) {
         logger.error(
-            "Fail to roll wal node-{}'s checkpoint writer, change system mode to error.",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_ROLL_WAL_NODE_S_CHECKPOINT_WRITER_CHANGE_SYSTEM_791DDAB7,
             identifier,
             e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       }
     } finally {
@@ -327,6 +334,7 @@ public class CheckpointManager implements AutoCloseable {
           currentLogWriter.close();
         } catch (IOException e) {
           logger.error(StorageEngineMessages.FAIL_TO_CLOSE_WAL_CHECKPOINT_WRITER, identifier, e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         }
       }
     } finally {

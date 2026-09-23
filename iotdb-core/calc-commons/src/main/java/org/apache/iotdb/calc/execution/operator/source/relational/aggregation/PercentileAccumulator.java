@@ -20,13 +20,16 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.Percentile;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +42,8 @@ public class PercentileAccumulator implements TableAccumulator {
       RamUsageEstimator.shallowSizeOfInstance(PercentileAccumulator.class);
 
   private final TSDataType seriesDataType;
+  private final TypeServices.ColumnToDoubleConverter valueConverter;
+  private final TypeServices.NumericResultWriter resultWriter;
   private Percentile percentile = new Percentile();
   // percentage is a query-level constant; it is read once from the first input/intermediate and
   // kept fixed afterwards, so it never gets reset to 0 by a later all-null batch.
@@ -52,6 +57,17 @@ public class PercentileAccumulator implements TableAccumulator {
       TSDataType seriesDataType, MemoryReservationManager memoryReservationManager) {
     this.seriesDataType = seriesDataType;
     this.memoryReservationManager = memoryReservationManager;
+    Type type = Type.fromTsDataType(seriesDataType);
+    this.valueConverter =
+        TypeServices.PERCENTILE_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(type)
+            .create(
+                () ->
+                    new UnSupportedDataTypeException(
+                        String.format(
+                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION,
+                            seriesDataType)));
+    this.resultWriter = TypeServices.NUMERIC_RESULT_WRITER_SERVICE.call(type);
     updateMemoryReservation();
   }
 
@@ -69,30 +85,13 @@ public class PercentileAccumulator implements TableAccumulator {
   public void addInput(Column[] arguments, AggregationMask mask) {
     if (arguments.length != 2) {
       throw new SemanticException(
-          String.format("PERCENTILE requires 2 arguments, but got %d", arguments.length));
+          String.format(CalcMessages.PERCENTILE_REQUIRES_TWO_ARGUMENTS, arguments.length));
     }
     if (!percentageInitialized) {
       percentage = arguments[1].getDouble(0);
       percentageInitialized = true;
     }
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(arguments[0], mask);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], mask);
-        break;
-      case FLOAT:
-        addFloatInput(arguments[0], mask);
-        break;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Percentile Aggregation: %s", seriesDataType));
-    }
+    addInput(arguments[0], mask);
     updateMemoryReservation();
   }
 
@@ -132,24 +131,7 @@ public class PercentileAccumulator implements TableAccumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilder.writeInt((int) result);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong((long) result);
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat((float) result);
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(result);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in PERCENTILE Aggregation: %s", seriesDataType));
-    }
+    resultWriter.write(columnBuilder, result);
   }
 
   @Override
@@ -159,7 +141,8 @@ public class PercentileAccumulator implements TableAccumulator {
 
   @Override
   public void addStatistics(Statistics[] statistics) {
-    throw new UnsupportedOperationException("PercentileAccumulator does not support statistics");
+    throw new UnsupportedOperationException(
+        CalcMessages.PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS);
   }
 
   @Override
@@ -180,13 +163,13 @@ public class PercentileAccumulator implements TableAccumulator {
     previousPercentileSize = currentSize;
   }
 
-  private void addIntInput(Column column, AggregationMask mask) {
+  private void addInput(Column column, AggregationMask mask) {
     int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
-          percentile.addValue(column.getInt(i));
+          percentile.addValue(valueConverter.convert(column, i));
         }
       }
     } else {
@@ -195,70 +178,7 @@ public class PercentileAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!column.isNull(position)) {
-          percentile.addValue(column.getInt(position));
-        }
-      }
-    }
-  }
-
-  private void addLongInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          percentile.addValue(column.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          percentile.addValue(column.getLong(position));
-        }
-      }
-    }
-  }
-
-  private void addFloatInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          percentile.addValue(column.getFloat(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          percentile.addValue(column.getFloat(position));
-        }
-      }
-    }
-  }
-
-  private void addDoubleInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          percentile.addValue(column.getDouble(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          percentile.addValue(column.getDouble(position));
+          percentile.addValue(valueConverter.convert(column, position));
         }
       }
     }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.execution.querystats;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -34,7 +36,7 @@ public class QueryPlanOptimizerStatistics {
 
   public QueryPlanOptimizerStatistics(
       String rule, long invocations, long applied, long totalTime, long failures) {
-    this.rule = requireNonNull(rule, "rule is null");
+    this.rule = requireNonNull(rule, DataNodeQueryMessages.EXCEPTION_RULE_IS_NULL_5387C8CC);
     this.invocations = invocations;
     this.applied = applied;
     this.totalTime = totalTime;

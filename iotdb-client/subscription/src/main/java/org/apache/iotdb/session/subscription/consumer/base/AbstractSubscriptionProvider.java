@@ -26,11 +26,13 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
@@ -53,6 +55,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeat
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
@@ -69,10 +72,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractSubscriptionProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProvider.class);
+
+  private static final int CLOSE_TIMEOUT_IN_MS = 5_000;
 
   private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
@@ -86,11 +92,14 @@ public abstract class AbstractSubscriptionProvider {
 
   private String consumerId;
   private String consumerGroupId;
+  private String consumerInstanceId;
   private final String ownerId;
   private final Long ownerEpoch;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private final AtomicBoolean isAvailable = new AtomicBoolean(false);
+  private final ReentrantLock rpcLock = new ReentrantLock();
 
   private final TEndPoint endPoint;
   private int dataNodeId;
@@ -148,6 +157,16 @@ public abstract class AbstractSubscriptionProvider {
     return session.getSessionConnection();
   }
 
+  private TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req)
+      throws TException, IoTDBConnectionException {
+    rpcLock.lock();
+    try {
+      return getSessionConnection().pipeSubscribe(req);
+    } finally {
+      rpcLock.unlock();
+    }
+  }
+
   boolean isAvailable() {
     return isAvailable.get();
   }
@@ -172,6 +191,10 @@ public abstract class AbstractSubscriptionProvider {
     return consumerGroupId;
   }
 
+  void setConsumerInstanceId(final String consumerInstanceId) {
+    this.consumerInstanceId = consumerInstanceId;
+  }
+
   TEndPoint getEndPoint() {
     return endPoint;
   }
@@ -189,6 +212,9 @@ public abstract class AbstractSubscriptionProvider {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    if (consumerInstanceId != null) {
+      consumerAttributes.put(ConsumerConstant.CONSUMER_INSTANCE_ID_KEY, consumerInstanceId);
+    }
     if (ownerId != null) {
       consumerAttributes.put(ConsumerConstant.OWNER_ID_KEY, ownerId);
     }
@@ -223,7 +249,8 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize handshake request {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_HANDSHAKE_REQUEST_ARG_C1414290,
           this,
           consumerConfig,
           e);
@@ -231,11 +258,12 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} handshake with request {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_HANDSHAKE_REQUEST_ARG_SET_SUBSCRIPTI,
           this,
           consumerConfig,
           e);
@@ -246,15 +274,72 @@ public abstract class AbstractSubscriptionProvider {
     return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
   }
 
-  synchronized void close() throws SubscriptionException, IoTDBConnectionException {
-    if (isClosed.get()) {
+  void prepareClose() {
+    final SubscriptionSessionConnection connection;
+    try {
+      connection = getSessionConnection();
+    } catch (final IoTDBConnectionException | RuntimeException ignored) {
+      return;
+    }
+    if (connection == null) {
       return;
     }
 
+    if (!connection.setTimeout(CLOSE_TIMEOUT_IN_MS)) {
+      setUnavailable();
+      connection.forceClose();
+      return;
+    }
+
+    if (rpcLock.tryLock()) {
+      rpcLock.unlock();
+    } else {
+      // Changing SO_TIMEOUT does not affect a read that is already blocked. Closing the transport
+      // is the only reliable way to make an in-flight RPC release the provider immediately.
+      setUnavailable();
+      connection.forceClose();
+    }
+  }
+
+  void close() throws SubscriptionException, IoTDBConnectionException {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
+      return;
+    }
+
+    SubscriptionSessionConnection connection = null;
     try {
-      closeInternal(); // throw SubscriptionException
+      connection = getSessionConnection();
+      if (!connection.setTimeout(CLOSE_TIMEOUT_IN_MS) || !rpcLock.tryLock()) {
+        connection.forceClose();
+        return;
+      }
+      try {
+        closeInternal(); // throw SubscriptionException
+      } finally {
+        rpcLock.unlock();
+      }
     } finally {
-      session.close(); // throw IoTDBConnectionException
+      try {
+        if (connection != null) {
+          connection.forceClose();
+        }
+      } finally {
+        try {
+          // The transport is already closed, so Session.close() only updates local resources and
+          // cannot block on a second closeSession RPC.
+          session.close(); // throw IoTDBConnectionException
+        } finally {
+          setUnavailable();
+          isClosed.set(true);
+        }
+      }
+    }
+  }
+
+  synchronized void closeSession() throws IoTDBConnectionException {
+    try {
+      session.close();
+    } finally {
       setUnavailable();
       isClosed.set(true);
     }
@@ -263,11 +348,12 @@ public abstract class AbstractSubscriptionProvider {
   void closeInternal() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
+      resp = pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} close, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_CLOSE_SET_SUBSCRIPTIONPROVIDER_UNAVA,
           this,
           e);
       setUnavailable();
@@ -290,7 +376,8 @@ public abstract class AbstractSubscriptionProvider {
       req = SubscriptionHeartbeatReq.toThriftReq(processorBufferedCommitContexts);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize heartbeat request {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_HEARTBEAT_REQUEST_ARG_634C8333,
           this,
           processorBufferedCommitContexts,
           e);
@@ -299,11 +386,12 @@ public abstract class AbstractSubscriptionProvider {
 
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} heartbeat, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_HEARTBEAT_SET_SUBSCRIPTIONPROVIDER_U,
           this,
           e);
       setUnavailable();
@@ -319,7 +407,8 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize subscribe request {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SUBSCRIBE_REQUEST_ARG_5E703B32,
           this,
           topicNames,
           e);
@@ -327,11 +416,12 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} subscribe with request {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SUBSCRIBE_REQUEST_ARG_SET_SUBSCRIPTI,
           this,
           topicNames,
           e);
@@ -350,7 +440,8 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize unsubscribe request {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_UNSUBSCRIBE_REQUEST_ARG_85D423CE,
           this,
           topicNames,
           e);
@@ -358,11 +449,12 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} unsubscribe with request {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_UNSUBSCRIBE_REQUEST_ARG_SET_SUBSCRIP,
           this,
           topicNames,
           e);
@@ -382,7 +474,8 @@ public abstract class AbstractSubscriptionProvider {
       req = SubscriptionSeekReq.toThriftReq(topicName, seekType, timestamp);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize seek request for topic {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SEEK_REQUEST_TOPIC_ARG_7620B991,
           this,
           topicName,
           e);
@@ -390,10 +483,11 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek with request for topic {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SEEK_REQUEST_TOPIC_ARG_SET_AEAFC363,
           this,
           topicName,
           e);
@@ -410,7 +504,8 @@ public abstract class AbstractSubscriptionProvider {
       req = SubscriptionSeekReq.toTopicProgressReq(topicName, topicProgress);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize seek(topicProgress) for topic {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SEEK_TOPICPROGRESS_TOPIC_ARG_E64C0FAF,
           this,
           topicName,
           e);
@@ -418,10 +513,11 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek(topicProgress) for topic {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SEEK_TOPICPROGRESS_TOPIC_ARG_SET_193,
           this,
           topicName,
           e);
@@ -438,7 +534,8 @@ public abstract class AbstractSubscriptionProvider {
       req = SubscriptionSeekReq.toSeekAfterTopicProgressReq(topicName, topicProgress);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize seekAfter(topicProgress) for topic {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SEEKAFTER_TOPICPROGRESS_TOPIC_ARG_9F79F3CF,
           this,
           topicName,
           e);
@@ -446,10 +543,11 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seekAfter(topicProgress) for topic {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SEEKAFTER_TOPICPROGRESS_TOPIC_ARG_SE,
           this,
           topicName,
           e);
@@ -507,7 +605,8 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribePollReq.toTPipeSubscribeReq(pollMessage);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize poll request {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_POLL_REQUEST_ARG_969C4A7A,
           this,
           pollMessage,
           e);
@@ -515,11 +614,12 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} poll with request {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_POLL_REQUEST_ARG_SET_SUBSCRIPTIONPRO,
           this,
           pollMessage,
           e);
@@ -539,7 +639,8 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts, nack);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize commit request {}",
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_COMMIT_REQUEST_ARG_D5335538,
           this,
           subscriptionCommitContexts,
           e);
@@ -547,11 +648,12 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} commit with request {}, set SubscriptionProvider unavailable",
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_COMMIT_REQUEST_ARG_SET_SUBSCRIPTIONP,
           this,
           subscriptionCommitContexts,
           e);
@@ -627,6 +729,9 @@ public abstract class AbstractSubscriptionProvider {
           LOGGER.warn(errorMessage);
           throw new SubscriptionOwnerFencedException(errorMessage);
         }
+      case 1919: // SUBSCRIPTION_CONSUMER_FENCED
+        LOGGER.warn(status.message);
+        throw new SubscriptionConsumerFencedException(status.message);
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CONSUMER

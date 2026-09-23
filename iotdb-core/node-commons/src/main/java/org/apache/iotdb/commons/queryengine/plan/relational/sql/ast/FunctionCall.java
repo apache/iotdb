@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -47,33 +49,34 @@ public class FunctionCall extends Expression {
 
   public FunctionCall(QualifiedName name, List<Expression> arguments) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.window = Optional.empty();
     this.nullTreatment = Optional.empty();
     this.distinct = false;
     this.processingMode = Optional.empty();
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public FunctionCall(QualifiedName name, boolean distinct, List<Expression> arguments) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.window = Optional.empty();
     this.nullTreatment = Optional.empty();
     this.distinct = distinct;
     this.processingMode = Optional.empty();
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public FunctionCall(
       QualifiedName name, Optional<ProcessingMode> processingMode, List<Expression> arguments) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.window = Optional.empty();
     this.nullTreatment = Optional.empty();
     this.distinct = false;
-    this.processingMode = requireNonNull(processingMode, "processingMode is null");
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    this.processingMode =
+        requireNonNull(processingMode, QueryMessages.EXCEPTION_PROCESSINGMODE_IS_NULL_F4D8AE91);
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public FunctionCall(
@@ -82,12 +85,13 @@ public class FunctionCall extends Expression {
       Optional<ProcessingMode> processingMode,
       List<Expression> arguments) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.window = Optional.empty();
     this.nullTreatment = Optional.empty();
     this.distinct = distinct;
-    this.processingMode = requireNonNull(processingMode, "processingMode is null");
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    this.processingMode =
+        requireNonNull(processingMode, QueryMessages.EXCEPTION_PROCESSINGMODE_IS_NULL_F4D8AE91);
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public FunctionCall(NodeLocation location, QualifiedName name, List<Expression> arguments) {
@@ -100,13 +104,14 @@ public class FunctionCall extends Expression {
       boolean distinct,
       Optional<ProcessingMode> processingMode,
       List<Expression> arguments) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.window = Optional.empty();
     this.nullTreatment = Optional.empty();
     this.distinct = distinct;
-    this.processingMode = requireNonNull(processingMode, "processingMode is null");
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    this.processingMode =
+        requireNonNull(processingMode, QueryMessages.EXCEPTION_PROCESSINGMODE_IS_NULL_F4D8AE91);
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public FunctionCall(
@@ -116,7 +121,7 @@ public class FunctionCall extends Expression {
       Optional<NullTreatment> nullTreatment,
       boolean distinct,
       List<Expression> arguments) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
 
     this.name = name;
     this.window = window;
@@ -134,13 +139,14 @@ public class FunctionCall extends Expression {
       boolean distinct,
       Optional<ProcessingMode> processingMode,
       List<Expression> arguments) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
 
     this.name = name;
     this.window = window;
     this.nullTreatment = nullTreatment;
     this.distinct = distinct;
-    this.processingMode = requireNonNull(processingMode, "processingMode is null");
+    this.processingMode =
+        requireNonNull(processingMode, QueryMessages.EXCEPTION_PROCESSINGMODE_IS_NULL_F4D8AE91);
     this.arguments = arguments;
   }
 

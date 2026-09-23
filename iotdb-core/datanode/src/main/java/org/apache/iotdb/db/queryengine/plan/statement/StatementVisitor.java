@@ -148,6 +148,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -527,6 +529,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(repairDataPartitionTable, context);
   }
 
+  public R visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      C context) {
+    return visitStatement(showRepairDataPartitionTableProgressStatement, context);
+  }
+
   public R visitLoadConfiguration(
       LoadConfigurationStatement loadConfigurationStatement, C context) {
     return visitStatement(loadConfigurationStatement, context);
@@ -542,6 +550,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowQueries(ShowQueriesStatement showQueriesStatement, C context) {
     return visitStatement(showQueriesStatement, context);
+  }
+
+  public R visitShowReceivers(ShowReceiversStatement showReceiversStatement, C context) {
+    return visitStatement(showReceiversStatement, context);
   }
 
   public R visitShowDiskUsage(ShowDiskUsageStatement showDiskUsageStatement, C context) {

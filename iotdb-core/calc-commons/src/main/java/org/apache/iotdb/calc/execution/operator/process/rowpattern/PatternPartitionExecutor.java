@@ -388,7 +388,7 @@ public final class PatternPartitionExecutor {
       case FIRST:
         checkState(
             skipToNavigation.isPresent(),
-            "skip to navigation is missing for SKIP TO %s",
+            CalcMessages.EXCEPTION_SKIP_TO_NAVIGATION_IS_MISSING_FOR_SKIP_TO_ARG_8A303D73,
             skipToPosition.name());
         int position =
             skipToNavigation
@@ -401,11 +401,12 @@ public final class PatternPartitionExecutor {
                     patternStart);
         if (position == -1) {
           throw new SemanticException(
-              "AFTER MATCH SKIP TO failed: pattern variable is not present in match");
+              CalcMessages
+                  .EXCEPTION_AFTER_MATCH_SKIP_FAILED_PATTERN_VARIABLE_NOT_PRESENT_MATCH_2891B276);
         }
         if (position == patternStart) {
           throw new SemanticException(
-              "AFTER MATCH SKIP TO failed: cannot skip to first row of match");
+              CalcMessages.EXCEPTION_AFTER_MATCH_SKIP_FAILED_CANNOT_SKIP_FIRST_ROW_MATCH_71D4093B);
         }
         lastSkippedPosition = position - 1;
         break;

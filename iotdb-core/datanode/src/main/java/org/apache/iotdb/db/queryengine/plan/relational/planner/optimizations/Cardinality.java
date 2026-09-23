@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.Range;
 
 import static java.util.Objects.requireNonNull;
@@ -27,7 +29,9 @@ public class Cardinality {
   private final Range<Long> cardinalityRange;
 
   public Cardinality(Range<Long> cardinalityRange) {
-    this.cardinalityRange = requireNonNull(cardinalityRange, "cardinalityRange is null");
+    this.cardinalityRange =
+        requireNonNull(
+            cardinalityRange, DataNodeQueryMessages.EXCEPTION_CARDINALITYRANGE_IS_NULL_8FDEE0B4);
   }
 
   public boolean isEmpty() {

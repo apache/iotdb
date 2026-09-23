@@ -94,7 +94,9 @@ public class IntermediateLayerVisitor
   public IntermediateLayer visitExpression(
       Expression expression, IntermediateLayerVisitorContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + expression.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            expression.getClass().getName()));
   }
 
   @Override
@@ -323,7 +325,9 @@ public class IntermediateLayerVisitor
         return new RegularTransformer(parentReader, regularExpression.getPattern());
       default:
         throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_737846D6,
+                expression.getExpressionType()));
     }
   }
 
@@ -361,7 +365,9 @@ public class IntermediateLayerVisitor
         return new LogicOrTransformer(leftParentLayerReader, rightParentLayerReader);
       default:
         throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_737846D6,
+                expression.getExpressionType()));
     }
   }
 
@@ -379,7 +385,9 @@ public class IntermediateLayerVisitor
           betweenExpression.isNotBetween());
     }
     throw new UnsupportedOperationException(
-        "Unsupported Expression Type: " + expression.getExpressionType());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_737846D6,
+            expression.getExpressionType()));
   }
 
   private UDFQueryTransformer getUdfTransformer(

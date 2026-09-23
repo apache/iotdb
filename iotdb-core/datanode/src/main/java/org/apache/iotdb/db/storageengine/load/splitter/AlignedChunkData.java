@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -33,12 +34,12 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -59,13 +60,6 @@ import java.util.Queue;
 import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MEASUREMENT_ID_CACHE;
 
 public class AlignedChunkData implements ChunkData {
-  protected static final int DEFAULT_INT32 = 0;
-  protected static final long DEFAULT_INT64 = 0L;
-  protected static final float DEFAULT_FLOAT = 0;
-  protected static final double DEFAULT_DOUBLE = 0.0;
-  protected static final boolean DEFAULT_BOOLEAN = false;
-  protected static final Binary DEFAULT_BINARY = null;
-
   protected final TTimePartitionSlot timePartitionSlot;
   protected final IDeviceID device;
   protected List<ChunkHeader> chunkHeaderList;
@@ -213,11 +207,7 @@ public class AlignedChunkData implements ChunkData {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     satisfiedLengthQueue.offer(satisfiedLength);
     final long startTime = timePartitionSlot.getStartTime();
-    // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
-    if (endTime <= startTime) {
-      endTime = Long.MAX_VALUE;
-    }
+    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
@@ -235,13 +225,12 @@ public class AlignedChunkData implements ChunkData {
   public void writeDecodeValuePage(
       final long[] times, final TsPrimitiveType[] values, final TSDataType dataType)
       throws IOException {
+    final Type type = Type.fromTsDataType(dataType);
+    final TypeServices.ValueSerializer<TsPrimitiveType> valueSerializer =
+        TypeServices.StorageEngine.TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.call(type);
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
-    // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
-    if (endTime <= startTime) {
-      endTime = Long.MAX_VALUE;
-    }
+    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     final int satisfiedLength = satisfiedLengthQueue.poll();
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
@@ -257,33 +246,7 @@ public class AlignedChunkData implements ChunkData {
           dataSize += ReadWriteIOUtils.write(true, stream);
         } else {
           dataSize += ReadWriteIOUtils.write(false, stream);
-          switch (dataType) {
-            case INT32:
-            case DATE:
-              dataSize += ReadWriteIOUtils.write(values[i].getInt(), stream);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              dataSize += ReadWriteIOUtils.write(values[i].getLong(), stream);
-              break;
-            case FLOAT:
-              dataSize += ReadWriteIOUtils.write(values[i].getFloat(), stream);
-              break;
-            case DOUBLE:
-              dataSize += ReadWriteIOUtils.write(values[i].getDouble(), stream);
-              break;
-            case BOOLEAN:
-              dataSize += ReadWriteIOUtils.write(values[i].getBoolean(), stream);
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-              dataSize += ReadWriteIOUtils.write(values[i].getBinary(), stream);
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", dataType));
-          }
+          dataSize += valueSerializer.serialize(values[i], stream);
         }
       }
     }
@@ -372,6 +335,13 @@ public class AlignedChunkData implements ChunkData {
       throws IOException, PageException {
     boolean needDecode;
     int decodePageIndex = 0;
+    final Type type = isTimeChunk ? null : Type.fromTsDataType(chunkHeader.getDataType());
+    final ValueChunkWriter valueChunkWriter =
+        isTimeChunk ? null : chunkWriter.getValueChunkWriterByIndex(valueChunkIndex);
+    final TypeServices.DecodedValueChunkWriter decodedValueWriter =
+        isTimeChunk
+            ? null
+            : TypeServices.StorageEngine.DECODED_VALUE_CHUNK_WRITER_SERVICE.call(type);
     for (int j = 0; j < pageNumber; j++) {
       needDecode = ReadWriteIOUtils.readBool(stream);
       if (needDecode) {
@@ -387,43 +357,7 @@ public class AlignedChunkData implements ChunkData {
             chunkWriter.writeTime(time);
           } else {
             final boolean isNull = ReadWriteIOUtils.readBool(stream);
-            switch (chunkHeader.getDataType()) {
-              case INT32:
-              case DATE:
-                final int int32Value = isNull ? DEFAULT_INT32 : ReadWriteIOUtils.readInt(stream);
-                chunkWriter.write(timePageBatch[i], int32Value, isNull, valueChunkIndex);
-                break;
-              case INT64:
-              case TIMESTAMP:
-                final long int64Value = isNull ? DEFAULT_INT64 : ReadWriteIOUtils.readLong(stream);
-                chunkWriter.write(timePageBatch[i], int64Value, isNull, valueChunkIndex);
-                break;
-              case FLOAT:
-                final float floatValue =
-                    isNull ? DEFAULT_FLOAT : ReadWriteIOUtils.readFloat(stream);
-                chunkWriter.write(timePageBatch[i], floatValue, isNull, valueChunkIndex);
-                break;
-              case DOUBLE:
-                final double doubleValue =
-                    isNull ? DEFAULT_DOUBLE : ReadWriteIOUtils.readDouble(stream);
-                chunkWriter.write(timePageBatch[i], doubleValue, isNull, valueChunkIndex);
-                break;
-              case BOOLEAN:
-                final boolean boolValue =
-                    isNull ? DEFAULT_BOOLEAN : ReadWriteIOUtils.readBool(stream);
-                chunkWriter.write(timePageBatch[i], boolValue, isNull, valueChunkIndex);
-                break;
-              case TEXT:
-              case BLOB:
-              case STRING:
-                final Binary binaryValue =
-                    isNull ? DEFAULT_BINARY : ReadWriteIOUtils.readBinary(stream);
-                chunkWriter.write(timePageBatch[i], binaryValue, isNull, valueChunkIndex);
-                break;
-              default:
-                throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", chunkHeader.getDataType()));
-            }
+            decodedValueWriter.write(valueChunkWriter, timePageBatch[i], stream, isNull);
           }
         }
         if (isTimeChunk) {

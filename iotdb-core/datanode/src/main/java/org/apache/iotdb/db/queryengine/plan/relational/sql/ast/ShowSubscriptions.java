@@ -34,13 +34,23 @@ public class ShowSubscriptions extends SubscriptionStatement {
       RamUsageEstimator.shallowSizeOfInstance(ShowSubscriptions.class);
 
   private final String topicName;
+  private final boolean details;
 
   public ShowSubscriptions(final String topicName) {
+    this(topicName, false);
+  }
+
+  public ShowSubscriptions(final String topicName, final boolean details) {
     this.topicName = topicName;
+    this.details = details;
   }
 
   public String getTopicName() {
     return topicName;
+  }
+
+  public boolean isDetails() {
+    return details;
   }
 
   @Override
@@ -50,7 +60,7 @@ public class ShowSubscriptions extends SubscriptionStatement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName);
+    return Objects.hash(topicName, details);
   }
 
   @Override
@@ -62,12 +72,12 @@ public class ShowSubscriptions extends SubscriptionStatement {
       return false;
     }
     final ShowSubscriptions that = (ShowSubscriptions) obj;
-    return Objects.equals(this.topicName, that.topicName);
+    return Objects.equals(this.topicName, that.topicName) && this.details == that.details;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("topicName", topicName).toString();
+    return toStringHelper(this).add("topicName", topicName).add("details", details).toString();
   }
 
   @Override

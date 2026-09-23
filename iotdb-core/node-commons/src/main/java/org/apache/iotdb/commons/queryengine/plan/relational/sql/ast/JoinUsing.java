@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -36,8 +38,8 @@ public class JoinUsing extends JoinCriteria {
   private final List<Identifier> columns;
 
   public JoinUsing(List<Identifier> columns) {
-    requireNonNull(columns, "columns is null");
-    checkArgument(!columns.isEmpty(), "columns is empty");
+    requireNonNull(columns, QueryMessages.EXCEPTION_COLUMNS_IS_NULL_6C8F32B3);
+    checkArgument(!columns.isEmpty(), QueryMessages.EXCEPTION_COLUMNS_IS_EMPTY_C7A671C9);
     this.columns = ImmutableList.copyOf(columns);
   }
 

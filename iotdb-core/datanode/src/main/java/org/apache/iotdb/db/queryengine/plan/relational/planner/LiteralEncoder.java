@@ -59,13 +59,17 @@ public final class LiteralEncoder {
   private final PlannerContext plannerContext;
 
   public LiteralEncoder(PlannerContext plannerContext) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
   }
 
   public List<Expression> toExpressions(List<?> objects, List<? extends Type> types) {
-    requireNonNull(objects, "objects is null");
-    requireNonNull(types, "types is null");
-    checkArgument(objects.size() == types.size(), "objects and types do not have the same size");
+    requireNonNull(objects, DataNodeQueryMessages.EXCEPTION_OBJECTS_IS_NULL_819EE879);
+    requireNonNull(types, DataNodeQueryMessages.EXCEPTION_TYPES_IS_NULL_E4B2309D);
+    checkArgument(
+        objects.size() == types.size(),
+        DataNodeQueryMessages.EXCEPTION_OBJECTS_AND_TYPES_DO_NOT_HAVE_THE_SAME_SIZE_8B51E17B);
 
     ImmutableList.Builder<Expression> expressions = ImmutableList.builder();
     for (int i = 0; i < objects.size(); i++) {
@@ -77,7 +81,7 @@ public final class LiteralEncoder {
   }
 
   public Expression toExpression(@Nullable Object object, Type type) {
-    requireNonNull(type, "type is null");
+    requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
 
     if (object instanceof Expression) {
       return (Expression) object;

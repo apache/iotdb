@@ -53,9 +53,6 @@ int32_t parseDateExpressionToInt(const IoTDBDate& date) {
 }
 
 IoTDBDate parseIntToDate(int32_t dateInt) {
-  if (dateInt == EMPTY_DATE_INT) {
-    return IoTDBDate::notADate();
-  }
   const int year = dateInt / 10000;
   const int month = (dateInt % 10000) / 100;
   const int day = dateInt % 100;

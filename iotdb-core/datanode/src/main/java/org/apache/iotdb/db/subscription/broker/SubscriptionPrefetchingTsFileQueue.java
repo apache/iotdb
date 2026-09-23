@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -86,7 +87,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           if (Objects.isNull(ev)) {
             if (isCommitContextOutdated(commitContext)) {
               LOGGER.warn(
-                  "SubscriptionPrefetchingTsFileQueue {} detected outdated poll request, consumer {}, commit context {}, writing offset {}",
+                  DataNodePipeMessages
+                      .PIPE_LOG_SUBSCRIPTIONPREFETCHINGTSFILEQUEUE_DETECTED_OUTDATED_POLL_7E0CE108,
                   this,
                   consumerId,
                   commitContext,

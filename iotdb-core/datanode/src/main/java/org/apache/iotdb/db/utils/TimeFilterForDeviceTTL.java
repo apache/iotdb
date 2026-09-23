@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -40,7 +40,7 @@ public class TimeFilterForDeviceTTL {
   public boolean satisfyStartEndTime(long startTime, long endTime, IDeviceID deviceID) {
     long ttl = getTTL(deviceID);
     if (ttl != Long.MAX_VALUE) {
-      long validStartTime = CommonDateTimeUtils.currentTime() - ttl;
+      long validStartTime = CommonUtils.getTTLLowerBound(ttl);
       if (validStartTime > endTime) {
         return false;
       }
@@ -52,7 +52,7 @@ public class TimeFilterForDeviceTTL {
   public boolean satisfy(long time, IDeviceID deviceID) {
     long ttl = getTTL(deviceID);
     if (ttl != Long.MAX_VALUE) {
-      long validStartTime = CommonDateTimeUtils.currentTime() - ttl;
+      long validStartTime = CommonUtils.getTTLLowerBound(ttl);
       if (validStartTime > time) {
         return false;
       }
@@ -65,7 +65,8 @@ public class TimeFilterForDeviceTTL {
     Long ttl = ttlCached.get(deviceID);
     if (ttl == null) {
       throw new IllegalArgumentException(
-          "deviceID should not be empty in getTTL method in TimeFilterForDeviceTTL");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_DEVICEID_SHOULD_NOT_BE_EMPTY_IN_GETTTL_METHOD_IN_TIMEFILTERFORDEVICETTL_8A501A45);
     }
     return ttl;
   }

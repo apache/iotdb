@@ -436,6 +436,25 @@ public class UDAFPatternTest {
     }
 
     @Override
+    public Column convertTo(TSDataType targetType) {
+      if (targetType == dataType) {
+        return this;
+      }
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean arePositionsEqual(int position, Column other, int otherPosition) {
+      if (isNull(position) || other.isNull(otherPosition)) {
+        return isNull(position) && other.isNull(otherPosition);
+      }
+      if (dataType == TSDataType.INT64) {
+        return getLong(position) == other.getLong(otherPosition);
+      }
+      return Double.compare(getDouble(position), other.getDouble(otherPosition)) == 0;
+    }
+
+    @Override
     public long getLong(int position) {
       return longValues[position];
     }

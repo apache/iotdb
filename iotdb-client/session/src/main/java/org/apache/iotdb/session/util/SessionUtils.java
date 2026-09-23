@@ -24,16 +24,13 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.encoder.Encoder;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
@@ -42,17 +39,13 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
 
 public class SessionUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionUtils.class);
   private static final byte TYPE_NULL = -2;
-  private static final int EMPTY_DATE_INT = 10000101;
 
   public static ByteBuffer getTimeBuffer(Tablet tablet) {
     ByteBuffer timeBuffer = ByteBuffer.allocate(getTimeBytesSize(tablet));
@@ -118,39 +111,8 @@ public class SessionUtils {
 
   private static int calOccupationOfOneColumn(
       TSDataType dataType, Object[] values, int columnIndex, int rowSize) {
-    int valueOccupation = 0;
-    switch (dataType) {
-      case BOOLEAN:
-        valueOccupation += rowSize;
-        break;
-      case INT32:
-      case FLOAT:
-      case DATE:
-        valueOccupation += rowSize * 4;
-        break;
-      case INT64:
-      case DOUBLE:
-      case TIMESTAMP:
-        valueOccupation += rowSize * 8;
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        valueOccupation += rowSize * 4;
-        Binary[] binaries = (Binary[]) values[columnIndex];
-        for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-          valueOccupation +=
-              binaries[rowIndex] != null
-                  ? binaries[rowIndex].getLength()
-                  : Binary.EMPTY_VALUE.getLength();
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-    return valueOccupation;
+    return SessionTypeServices.tabletColumnOccupationCalculator(dataType)
+        .calculate(values, columnIndex, rowSize);
   }
 
   public static ByteBuffer getValueBuffer(
@@ -161,47 +123,17 @@ public class SessionUtils {
     return buffer;
   }
 
+  public static Object sortValueList(Object valueList, TSDataType dataType, int[] index) {
+    return SessionTypeServices.valueListSorter(dataType).sort(valueList, index);
+  }
+
   public static int calculateLength(List<TSDataType> types, List<? extends Object> values)
       throws IoTDBConnectionException {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
       // types
       res += Byte.BYTES;
-      switch (types.get(i)) {
-        case BOOLEAN:
-          res += 1;
-          break;
-        case INT32:
-        case DATE:
-          res += Integer.BYTES;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          res += Long.BYTES;
-          break;
-        case FLOAT:
-          res += Float.BYTES;
-          break;
-        case DOUBLE:
-          res += Double.BYTES;
-          break;
-        case TEXT:
-        case STRING:
-        case OBJECT:
-          res += Integer.BYTES;
-          if (values.get(i) instanceof Binary) {
-            res += ((Binary) values.get(i)).getValues().length;
-          } else {
-            res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
-          }
-          break;
-        case BLOB:
-          res += Integer.BYTES;
-          res += ((Binary) values.get(i)).getValues().length;
-          break;
-        default:
-          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
-      }
+      res += SessionTypeServices.valueLengthCalculator(types.get(i)).calculate(values.get(i));
     }
     return res;
   }
@@ -226,148 +158,26 @@ public class SessionUtils {
           ReadWriteIOUtils.write(TYPE_NULL, buffer);
           continue;
         }
-        ReadWriteIOUtils.write(types.get(i), buffer);
-        switch (types.get(i)) {
-          case BOOLEAN:
-            ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
-            break;
-          case INT32:
-            ReadWriteIOUtils.write((Integer) values.get(i), buffer);
-            break;
-          case DATE:
-            ReadWriteIOUtils.write(
-                DateUtils.parseDateExpressionToInt((LocalDate) values.get(i)), buffer);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            ReadWriteIOUtils.write((Long) values.get(i), buffer);
-            break;
-          case FLOAT:
-            ReadWriteIOUtils.write((Float) values.get(i), buffer);
-            break;
-          case DOUBLE:
-            ReadWriteIOUtils.write((Double) values.get(i), buffer);
-            break;
-          case TEXT:
-          case STRING:
-            byte[] bytes;
-            if (values.get(i) instanceof Binary) {
-              bytes = ((Binary) values.get(i)).getValues();
-            } else {
-              bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
-            }
-            ReadWriteIOUtils.write(bytes.length, buffer);
-            buffer.put(bytes);
-            break;
-          case BLOB:
-            bytes = ((Binary) values.get(i)).getValues();
-            ReadWriteIOUtils.write(bytes.length, buffer);
-            buffer.put(bytes);
-            break;
-          default:
-            throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
-        }
+        TSDataType type = types.get(i);
+        ReadWriteIOUtils.write(type, buffer);
+        SessionTypeServices.valueWriter(type).write(values.get(i), buffer);
       } catch (Throwable e) {
         LOGGER.error(
-            "Cannot put values for measurement {}, type={}", measurements.get(i), types.get(i), e);
+            SessionMessages.LOG_CANNOT_PUT_VALUES_MEASUREMENT_ARG_TYPE_ARG_27AFC67B,
+            measurements.get(i),
+            types.get(i),
+            e);
         throw e;
       }
     }
     buffer.flip();
   }
 
-  @SuppressWarnings({
-    "squid:S6541",
-    "squid:S3776"
-  }) /// ignore Cognitive Complexity of methods should not be too high
-  // ignore Methods should not perform too many tasks (aka Brain method)
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
-
-    switch (dataType) {
-      case INT32:
-        int[] intValues = (int[]) tablet.getValues()[i];
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            valueBuffer.putInt(intValues[index]);
-          } else {
-            valueBuffer.putInt(Integer.MIN_VALUE);
-          }
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) tablet.getValues()[i];
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            valueBuffer.putLong(longValues[index]);
-          } else {
-            valueBuffer.putLong(Long.MIN_VALUE);
-          }
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) tablet.getValues()[i];
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            valueBuffer.putFloat(floatValues[index]);
-          } else {
-            valueBuffer.putFloat(Float.MIN_VALUE);
-          }
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) tablet.getValues()[i];
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            valueBuffer.putDouble(doubleValues[index]);
-          } else {
-            valueBuffer.putDouble(Double.MIN_VALUE);
-          }
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) tablet.getValues()[i];
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
-          } else {
-            valueBuffer.put(BytesUtils.boolToByte(false));
-          }
-        }
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i) && binaryValues[index] != null) {
-            valueBuffer.putInt(binaryValues[index].getLength());
-            valueBuffer.put(binaryValues[index].getValues());
-          } else {
-            valueBuffer.putInt(Binary.EMPTY_VALUE.getLength());
-            valueBuffer.put(Binary.EMPTY_VALUE.getValues());
-          }
-        }
-        break;
-      case DATE:
-        LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[i];
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i) && dateValues[index] != null) {
-            valueBuffer.putInt(DateUtils.parseDateExpressionToInt(dateValues[index]));
-          } else {
-            valueBuffer.putInt(EMPTY_DATE_INT);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
+    SessionTypeServices.tabletValueWriter(dataType).write(tablet, i, valueBuffer);
   }
 
-  @SuppressWarnings({"java:S3776", "java:S6541"})
   public static void encodeValue(
       TSDataType dataType,
       Tablet tablet,
@@ -375,90 +185,97 @@ public class SessionUtils {
       Encoder encoder,
       ByteArrayOutputStream outputStream) {
 
-    switch (dataType) {
-      case INT32:
-        int[] intValues = (int[]) tablet.getValues()[i];
-        int lastNonNullIntValue = 0;
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            lastNonNullIntValue = intValues[index];
-          }
-          encoder.encode(lastNonNullIntValue, outputStream);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) tablet.getValues()[i];
-        long lastNonNullLongValue = 0;
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            lastNonNullLongValue = longValues[index];
-          }
-          encoder.encode(lastNonNullLongValue, outputStream);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) tablet.getValues()[i];
-        float lastNonNullFloatValue = 0.0f;
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            lastNonNullFloatValue = floatValues[index];
-          }
-          encoder.encode(lastNonNullFloatValue, outputStream);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) tablet.getValues()[i];
-        double lastNonNullDoubleValue = 0.0;
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            lastNonNullDoubleValue = doubleValues[index];
-          }
-          encoder.encode(lastNonNullDoubleValue, outputStream);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) tablet.getValues()[i];
-        boolean lastNonNullBooleanValue = false;
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            lastNonNullBooleanValue = boolValues[index];
-          }
-          encoder.encode(lastNonNullBooleanValue, outputStream);
-        }
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
-        Binary lastNonNullBinaryValue = Binary.EMPTY_VALUE;
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i) && binaryValues[index] != null) {
-            lastNonNullBinaryValue = binaryValues[index];
-          }
-          encoder.encode(lastNonNullBinaryValue, outputStream);
-        }
-        break;
-      case DATE:
-        LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[i];
-        int lastNonNullDateValue = EMPTY_DATE_INT;
-        for (int index = 0; index < tablet.getRowSize(); index++) {
-          if (!tablet.isNull(index, i)) {
-            lastNonNullDateValue = DateUtils.parseDateExpressionToInt(dateValues[index]);
-          }
-          // use the previous value as the placeholder of nulls to increase encoding performance
-          encoder.encode(lastNonNullDateValue, outputStream);
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
+    SessionTypeServices.tabletValueEncoder(dataType).encode(tablet, i, encoder, outputStream);
     try {
       encoder.flush(outputStream);
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  /**
+   * Remove FIELD columns that are entirely null within {@code [0, rowSize)} according to BitMap.
+   * TAG / ATTRIBUTE columns are always kept. Does not mutate the input tablet.
+   *
+   * @param tablet source tablet
+   * @return the same instance if nothing to drop; a new tablet with remaining columns; or {@code
+   *     null} if no columns remain (e.g. tree-model tablet whose FIELD columns are all null). For
+   *     table-model tablets, TAG / ATTRIBUTE columns are kept even when every FIELD column is null.
+   */
+  public static Tablet filterNullColumns(Tablet tablet) {
+    if (tablet == null) {
+      return null;
+    }
+    BitMap[] bitMaps = tablet.getBitMaps();
+    if (bitMaps == null) {
+      return tablet;
+    }
+
+    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    List<ColumnCategory> columnCategories = tablet.getColumnTypes();
+    Object[] values = tablet.getValues();
+    int columnCount = schemas.size();
+    int rowSize = tablet.getRowSize();
+
+    List<IMeasurementSchema> keptSchemas = new ArrayList<>(columnCount);
+    List<ColumnCategory> keptCategories =
+        columnCategories != null ? new ArrayList<>(columnCount) : null;
+    List<Object> keptValues = new ArrayList<>(columnCount);
+    List<BitMap> keptBitMaps = new ArrayList<>(columnCount);
+
+    for (int i = 0; i < columnCount; i++) {
+      ColumnCategory category =
+          columnCategories != null && i < columnCategories.size()
+              ? columnCategories.get(i)
+              : ColumnCategory.FIELD;
+      boolean isField = category == ColumnCategory.FIELD;
+
+      boolean drop =
+          isField
+              && schemas.get(i).getMeasurementName() != null
+              && i < bitMaps.length
+              && isColumnAllNull(bitMaps[i], rowSize);
+      if (drop) {
+        continue;
+      }
+
+      keptSchemas.add(schemas.get(i));
+      if (keptCategories != null) {
+        keptCategories.add(category);
+      }
+      keptValues.add(values[i]);
+      keptBitMaps.add(i < bitMaps.length ? bitMaps[i] : null);
+    }
+
+    if (keptSchemas.size() == columnCount) {
+      return tablet;
+    }
+    if (keptSchemas.isEmpty()) {
+      return null;
+    }
+
+    Object[] newValues = keptValues.toArray();
+    BitMap[] newBitMaps = keptBitMaps.toArray(new BitMap[0]);
+    if (keptCategories != null) {
+      return new Tablet(
+          tablet.getDeviceId(),
+          keptSchemas,
+          keptCategories,
+          tablet.getTimestamps(),
+          newValues,
+          newBitMaps,
+          rowSize);
+    }
+    return new Tablet(
+        tablet.getDeviceId(), keptSchemas, tablet.getTimestamps(), newValues, newBitMaps, rowSize);
+  }
+
+  private static boolean isColumnAllNull(BitMap bitMap, int rowSize) {
+    if (bitMap == null || rowSize <= 0) {
+      return false;
+    }
+    // BitMap is sized to maxRowNumber; only [0, rowSize) are active rows.
+    return bitMap.isRangeAllMarked(0, rowSize);
   }
 
   /* Used for table model insert only. */
@@ -481,8 +298,12 @@ public class SessionUtils {
     }
     List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
-      TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(nodeUrl);
-      endPointsList.add(endPoint);
+      try {
+        endPointsList.add(UrlUtils.parseTEndPointIpv4AndIpv6Url(nodeUrl));
+      } catch (NumberFormatException e) {
+        throw new NumberFormatException(
+            SessionMessages.EXCEPTION_NODEURL_INCORRECT_FORMAT_C1463B2C);
+      }
     }
     return endPointsList;
   }

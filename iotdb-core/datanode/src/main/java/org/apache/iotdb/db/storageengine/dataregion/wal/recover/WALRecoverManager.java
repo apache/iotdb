@@ -101,7 +101,8 @@ public class WALRecoverManager {
         throw new WALRecoverException(StorageEngineMessages.FAIL_TO_RECOVER_WAL, e);
       }
       logger.info(
-          "Data regions have submitted all unsealed TsFiles, start recovering TsFiles in each wal node.");
+          StorageEngineMessages
+              .STORAGE_LOG_DATA_REGIONS_HAVE_SUBMITTED_ALL_UNSEALED_TSFILES_START_RECOVERING_208E6A26);
       // recover each wal node's TsFiles
       if (!walNodeDirs.isEmpty()) {
         recoverThreadPool =
@@ -163,7 +164,8 @@ public class WALRecoverManager {
               recoverPerformer.getRecoverListener().succeed();
             } catch (DataRegionException | IOException | WALRecoverException e) {
               logger.error(
-                  "Fail to recover unsealed TsFile {}, skip it.",
+                  StorageEngineMessages
+                      .STORAGE_LOG_FAIL_TO_RECOVER_UNSEALED_TSFILE_SKIP_IT_CA576205,
                   recoverPerformer.getTsFileAbsolutePath(),
                   e);
               recoverPerformer.getRecoverListener().fail(e);
@@ -200,7 +202,7 @@ public class WALRecoverManager {
         absolutePath2RecoverPerformer.put(tsFileRelativePath, recoverPerformer);
       } catch (IOException e) {
         logger.error(
-            "Fail to add recover performer for file {}",
+            StorageEngineMessages.STORAGE_LOG_FAIL_TO_ADD_RECOVER_PERFORMER_FOR_FILE_54746E05,
             recoverPerformer.getTsFileAbsolutePath(),
             e);
       }

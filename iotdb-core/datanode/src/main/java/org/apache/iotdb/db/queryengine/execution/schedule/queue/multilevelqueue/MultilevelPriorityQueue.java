@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue
 
 import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
 import java.util.PriorityQueue;
@@ -97,7 +98,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
    */
   @Override
   public void pushToQueue(DriverTask task) {
-    checkArgument(task != null, "DriverTask to be pushed is null");
+    checkArgument(
+        task != null, DataNodeQueryMessages.EXCEPTION_DRIVERTASK_TO_BE_PUSHED_IS_NULL_7581A0E3);
     // Push tasks with the highest priority(Currently, only ShowQuery related tasks) into
     // highestPriorityLevelQueue directly.
     if (task.isHighestPriority()) {
@@ -145,7 +147,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
 
   @Override
   protected DriverTask remove(DriverTask driverTask) {
-    checkArgument(driverTask != null, "driverTask is null");
+    checkArgument(driverTask != null, DataNodeQueryMessages.EXCEPTION_DRIVERTASK_IS_NULL_A13D4AF9);
     if (highestPriorityLevelQueue.remove(driverTask)) {
       return driverTask;
     }
@@ -188,7 +190,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     // We do not support get() for MultilevelPriorityQueue since it is inefficient and not
     // necessary.
     throw new UnsupportedOperationException(
-        "MultilevelPriorityQueue does not support access element by get.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_MULTILEVELPRIORITYQUEUE_DOES_NOT_SUPPORT_ACCESS_ELEMENT_02FE5AC9);
   }
 
   @Override
@@ -240,9 +243,12 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
 
     // selected level == -1 means that the queue is empty and this method is only called when the
     // queue is not empty.
-    checkState(selectedLevel != -1, "selected level can not equal to -1");
+    checkState(
+        selectedLevel != -1,
+        DataNodeQueryMessages.EXCEPTION_SELECTED_LEVEL_CAN_NOT_EQUAL_TO_MINUS_1_1DA93B14);
     DriverTask result = levelWaitingSplits[selectedLevel].poll();
-    checkState(result != null, "result driverTask cannot be null");
+    checkState(
+        result != null, DataNodeQueryMessages.EXCEPTION_RESULT_DRIVERTASK_CANNOT_BE_NULL_30A06DB1);
     return result;
   }
 

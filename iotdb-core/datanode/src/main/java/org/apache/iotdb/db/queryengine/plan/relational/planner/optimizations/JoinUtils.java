@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 
@@ -102,10 +103,12 @@ public class JoinUtils {
       Collection<Symbol> rightSymbols) {
     checkArgument(
         leftSymbols.containsAll(extractUnique(leftEffectivePredicate)),
-        "leftEffectivePredicate must only contain symbols from leftSymbols");
+        DataNodeQueryMessages
+            .EXCEPTION_LEFTEFFECTIVEPREDICATE_MUST_ONLY_CONTAIN_SYMBOLS_FROM_LEFTSYMBOLS_DB3259B8);
     checkArgument(
         rightSymbols.containsAll(extractUnique(rightEffectivePredicate)),
-        "rightEffectivePredicate must only contain symbols from rightSymbols");
+        DataNodeQueryMessages
+            .EXCEPTION_RIGHTEFFECTIVEPREDICATE_MUST_ONLY_CONTAIN_SYMBOLS_FROM_RIGHTSYMBOLS_4B97238D);
 
     ImmutableList.Builder<Expression> leftPushDownConjuncts = ImmutableList.builder();
     ImmutableList.Builder<Expression> rightPushDownConjuncts = ImmutableList.builder();
@@ -258,10 +261,12 @@ public class JoinUtils {
       Collection<Symbol> innerSymbols) {
     checkArgument(
         outerSymbols.containsAll(extractUnique(outerEffectivePredicate)),
-        "outerEffectivePredicate must only contain symbols from outerSymbols");
+        DataNodeQueryMessages
+            .EXCEPTION_OUTEREFFECTIVEPREDICATE_MUST_ONLY_CONTAIN_SYMBOLS_FROM_OUTERSYMBOLS_99FC2AA9);
     checkArgument(
         innerSymbols.containsAll(extractUnique(innerEffectivePredicate)),
-        "innerEffectivePredicate must only contain symbols from innerSymbols");
+        DataNodeQueryMessages
+            .EXCEPTION_INNEREFFECTIVEPREDICATE_MUST_ONLY_CONTAIN_SYMBOLS_FROM_INNERSYMBOLS_ECB7C6A2);
 
     ImmutableList.Builder<Expression> outerPushdownConjuncts = ImmutableList.builder();
     ImmutableList.Builder<Expression> innerPushdownConjuncts = ImmutableList.builder();

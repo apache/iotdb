@@ -19,21 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 
 /** A common exception to pass to {@link IDriver#failed(Throwable)}. */
 public class DriverTaskAbortedException extends Exception {
 
-  public static final String BY_TIMEOUT = "timeout";
-  public static final String BY_FRAGMENT_ABORT_CALLED = "called";
-  public static final String BY_QUERY_CASCADING_ABORTED = "query cascading aborted";
-  public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
-  public static final String BY_INTERNAL_ERROR_SCHEDULED = "internal error scheduled";
+  public static final String BY_TIMEOUT = DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_TIMEOUT;
+  public static final String BY_FRAGMENT_ABORT_CALLED =
+      DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_FRAGMENT_ABORT_CALLED;
+  public static final String BY_QUERY_CASCADING_ABORTED =
+      DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_QUERY_CASCADING_ABORTED;
+  public static final String BY_ALREADY_BEING_CANCELLED =
+      DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_ALREADY_BEING_CANCELLED;
+  public static final String BY_INTERNAL_ERROR_SCHEDULED =
+      DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED;
 
   public static final String BY_MEMORY_NOT_ENOUGH =
-      "Memory is not enough to execute the query task.";
+      DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH;
 
   public DriverTaskAbortedException(String driverTaskName, String causeMsg) {
-    super(String.format("DriverTask %s is aborted by %s", driverTaskName, causeMsg));
+    super(String.format(DataNodeQueryMessages.DRIVER_TASK_ABORTED_FMT, driverTaskName, causeMsg));
   }
 }

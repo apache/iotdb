@@ -35,7 +35,9 @@ import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -118,6 +120,26 @@ public class InsertNodeIsMeasurementFailedTest {
     assertTrue(node.isMeasurementFailed(0));
     assertFalse(node.hasValidMeasurements());
     assertTrue(node.allMeasurementFailed());
+  }
+
+  @Test
+  public void testGetRawMeasurementsReusesMeasurementsWhenSchemaNamesMatch()
+      throws IllegalPathException {
+    InsertRowNode node = buildInsertRowNode(new String[] {"s0", "s1"});
+
+    assertSame(node.getMeasurements(), node.getRawMeasurements());
+  }
+
+  @Test
+  public void testGetRawMeasurementsCopiesOnlyWhenSchemaNameDiffers() throws IllegalPathException {
+    InsertRowNode node = buildInsertRowNode(new String[] {"alias", "s1"});
+    node.getMeasurementSchemas()[0] = new MeasurementSchema("s0", TSDataType.INT32);
+
+    String[] rawMeasurements = node.getRawMeasurements();
+
+    assertNotSame(node.getMeasurements(), rawMeasurements);
+    assertArrayEquals(new String[] {"s0", "s1"}, rawMeasurements);
+    assertArrayEquals(new String[] {"alias", "s1"}, node.getMeasurements());
   }
 
   @Test

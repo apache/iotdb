@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -200,6 +201,8 @@ public class AbstractCompactionTest {
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     fileCount = 0;
     if (!SEQ_DIRS.exists()) {
       Assert.assertTrue(SEQ_DIRS.mkdirs());
@@ -495,6 +498,8 @@ public class AbstractCompactionTest {
         .getConfig()
         .setInnerCompactionTaskSelectionModsFileThreshold(oldModsFileSize);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(oldLongestExpiredTime);
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
 
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointMaxNumber);

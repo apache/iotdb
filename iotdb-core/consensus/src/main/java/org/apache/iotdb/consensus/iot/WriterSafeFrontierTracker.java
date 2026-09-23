@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.iot;
 
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,9 +83,10 @@ public class WriterSafeFrontierTracker {
       return;
     }
     LOGGER.warn(
-        "Observed incomparable writer safe-time barrier for writer {}. "
-            + "keep pendingSafePhysicalTime={}, pendingSafeLocalSeq={}, "
-            + "ignore safePhysicalTime={}, safeLocalSeq={}",
+        IoTConsensusMessages.LOG_OBSERVED_INCOMPARABLE_WRITER_SAFE_TIME_BARRIER_WRITER_ARG_0F0C171D
+            + IoTConsensusMessages
+                .LOG_KEEP_PENDINGSAFEPHYSICALTIME_ARG_PENDINGSAFELOCALSEQ_ARG_7123FD95
+            + IoTConsensusMessages.LOG_IGNORE_SAFEPHYSICALTIME_ARG_SAFELOCALSEQ_ARG_A601C4D1,
         writerNodeId,
         state.pendingSafePhysicalTime,
         state.pendingSafeLocalSeq,

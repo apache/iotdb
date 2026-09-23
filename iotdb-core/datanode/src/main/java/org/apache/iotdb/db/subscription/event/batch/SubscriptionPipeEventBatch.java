@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -89,7 +90,10 @@ public abstract class SubscriptionPipeEventBatch {
       enrichedEvents.add(event);
     } else {
       LOGGER.warn(
-          "SubscriptionPipeEventBatch {} ignore EnrichedEvent {} when batching.", this, event);
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONPIPEEVENTBATCH_IGNORE_ENRICHEDEVENT_WHEN_BATCHING_E69BE90D,
+          this,
+          event);
     }
     return onEvent(consumer);
   }

@@ -74,6 +74,10 @@ public class ConsumerMeta {
     return Objects.nonNull(getEncryptedPassword()) ? getEncryptedPassword() : getPassword();
   }
 
+  public ConsumerConfig getConfig() {
+    return config;
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);

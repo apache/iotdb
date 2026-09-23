@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -32,7 +33,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -92,8 +92,8 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
         if (arguments[0].isNull(i) || arguments[1].isNull(i)) {
           continue;
         }
-        double y = getDoubleValue(arguments[0], i, yDataType);
-        double x = getDoubleValue(arguments[1], i, xDataType);
+        double y = getDoubleValue(arguments[0], i);
+        double x = getDoubleValue(arguments[1], i);
         update(groupIds[i], x, y);
       }
     } else {
@@ -103,29 +103,15 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
         if (arguments[0].isNull(position) || arguments[1].isNull(position)) {
           continue;
         }
-        double y = getDoubleValue(arguments[0], position, yDataType);
-        double x = getDoubleValue(arguments[1], position, xDataType);
+        double y = getDoubleValue(arguments[0], position);
+        double x = getDoubleValue(arguments[1], position);
         update(groupIds[position], x, y);
       }
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Regression Aggregation: %s", dataType));
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(int groupId, double x, double y) {
@@ -148,7 +134,7 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -205,7 +191,7 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     if (counts.get(groupId) == 0) {
       columnBuilder.appendNull();
@@ -245,7 +231,7 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
         }
         break;
       default:
-        throw new UnsupportedOperationException("Unknown type: " + regressionType);
+        throw new UnsupportedOperationException(CalcMessages.UNKNOWN_TYPE + regressionType);
     }
   }
 

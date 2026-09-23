@@ -53,8 +53,11 @@ import java.util.stream.Collectors;
 
 /** Reads one or more TsFiles as a table function source. */
 public class ReadTsFileTableFunction implements TableFunction {
+  static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 8L * 1024 * 1024;
   private static final String TABLE_NAME_PARAMETER_NAME = "TABLE_NAME";
   private static final String PATHS_PARAMETER_NAME = "PATHS";
+  private static final String DEVICE_METADATA_INFO_SWAP_THRESHOLD_PARAMETER_NAME =
+      "DEVICE_METADATA_INFO_SWAP_THRESHOLD";
 
   private MPPQueryContext mppQueryContext;
 
@@ -70,6 +73,11 @@ public class ReadTsFileTableFunction implements TableFunction {
             .name(TABLE_NAME_PARAMETER_NAME)
             .type(Type.STRING)
             .defaultValue("")
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(DEVICE_METADATA_INFO_SWAP_THRESHOLD_PARAMETER_NAME)
+            .type(Type.INT64)
+            .defaultValue(DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES)
             .build());
   }
 
@@ -92,6 +100,15 @@ public class ReadTsFileTableFunction implements TableFunction {
     }
     DescribedSchema outputSchema = convertToDescribedSchema(mergedTableSchema);
 
+    long deviceMetadataInfoSwapThreshold =
+        getOptionalLongArgument(
+            arguments,
+            DEVICE_METADATA_INFO_SWAP_THRESHOLD_PARAMETER_NAME,
+            DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES);
+    if (deviceMetadataInfoSwapThreshold <= 0) {
+      deviceMetadataInfoSwapThreshold = DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES;
+    }
+
     ReadTsFileTableFunctionHandle handle =
         new ReadTsFileTableFunctionHandle(
             schemaCollector.getTableName(),
@@ -101,7 +118,8 @@ public class ReadTsFileTableFunction implements TableFunction {
             mergedTableSchema.getColumnTypes().stream()
                 .map(TsTableColumnCategory::fromTsFileColumnCategory)
                 .collect(Collectors.toList()),
-            outputSchema);
+            outputSchema,
+            deviceMetadataInfoSwapThreshold);
 
     return TableFunctionAnalysis.builder().properColumnSchema(outputSchema).handle(handle).build();
   }
@@ -145,6 +163,26 @@ public class ReadTsFileTableFunction implements TableFunction {
           String.format(DataNodeQueryMessages.ARGUMENT_SHOULD_BE_A_STRING, name));
     }
     return ((String) value).trim();
+  }
+
+  private static long getOptionalLongArgument(
+      Map<String, Argument> arguments, String name, long defaultValue) {
+    Argument argument = arguments.get(name);
+    if (argument == null) {
+      return defaultValue;
+    }
+    if (!(argument instanceof ScalarArgument)) {
+      throw new UDFArgumentNotValidException(DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT + name);
+    }
+    Object value = ((ScalarArgument) argument).getValue();
+    if (value instanceof Long) {
+      return (Long) value;
+    }
+    if (value instanceof Integer) {
+      return ((Integer) value).longValue();
+    }
+    throw new UDFArgumentNotValidException(
+        String.format(DataNodeQueryMessages.ARGUMENT_SHOULD_BE_A_NUMBER, name));
   }
 
   private static List<String> parseTsFilePaths(String tsFilePaths) {
@@ -204,6 +242,7 @@ public class ReadTsFileTableFunction implements TableFunction {
     private List<String> outputColumnNames;
     private List<Type> outputColumnTypes;
     private List<TsTableColumnCategory> outputColumnCategories;
+    private long deviceMetadataInfoSwapThreshold;
 
     public ReadTsFileTableFunctionHandle() {
       this(
@@ -211,14 +250,16 @@ public class ReadTsFileTableFunction implements TableFunction {
           Collections.emptyList(),
           Collections.emptyList(),
           Collections.emptyList(),
-          Collections.emptyList());
+          Collections.emptyList(),
+          DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES);
     }
 
     public ReadTsFileTableFunctionHandle(
         String tableName,
         List<String> tsFilePaths,
         List<TsTableColumnCategory> outputColumnCategories,
-        DescribedSchema outputSchema) {
+        DescribedSchema outputSchema,
+        long deviceMetadataInfoSwapThreshold) {
       this(
           tableName,
           tsFilePaths,
@@ -228,7 +269,8 @@ public class ReadTsFileTableFunction implements TableFunction {
           outputSchema.getFields().stream()
               .map(DescribedSchema.Field::getType)
               .collect(Collectors.toList()),
-          outputColumnCategories);
+          outputColumnCategories,
+          deviceMetadataInfoSwapThreshold);
     }
 
     private ReadTsFileTableFunctionHandle(
@@ -236,7 +278,8 @@ public class ReadTsFileTableFunction implements TableFunction {
         List<String> tsFilePaths,
         List<String> outputColumnNames,
         List<Type> outputColumnTypes,
-        List<TsTableColumnCategory> outputColumnCategories) {
+        List<TsTableColumnCategory> outputColumnCategories,
+        long deviceMetadataInfoSwapThreshold) {
       if (outputColumnNames.size() != outputColumnTypes.size()) {
         throw new IllegalArgumentException(
             DataNodeQueryMessages.OUTPUT_COLUMN_NAMES_AND_TYPES_SIZE_MISMATCH);
@@ -251,6 +294,7 @@ public class ReadTsFileTableFunction implements TableFunction {
       this.outputColumnTypes = Collections.unmodifiableList(new ArrayList<>(outputColumnTypes));
       this.outputColumnCategories =
           Collections.unmodifiableList(new ArrayList<>(outputColumnCategories));
+      this.deviceMetadataInfoSwapThreshold = deviceMetadataInfoSwapThreshold;
     }
 
     public String getTableName() {
@@ -271,6 +315,10 @@ public class ReadTsFileTableFunction implements TableFunction {
 
     public List<TsTableColumnCategory> getOutputColumnCategories() {
       return outputColumnCategories;
+    }
+
+    public long getDeviceMetadataInfoSwapThreshold() {
+      return deviceMetadataInfoSwapThreshold;
     }
 
     @Override
@@ -299,6 +347,8 @@ public class ReadTsFileTableFunction implements TableFunction {
           + outputColumnTypes
           + ", outputColumnCategories="
           + outputColumnCategories
+          + ", deviceMetadataInfoSwapThreshold="
+          + deviceMetadataInfoSwapThreshold
           + '}';
     }
   }

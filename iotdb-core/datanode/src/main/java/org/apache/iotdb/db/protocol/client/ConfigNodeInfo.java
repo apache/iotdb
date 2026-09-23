@@ -19,137 +19,81 @@
 
 package org.apache.iotdb.db.protocol.client;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.client.AbstractConfigNodeInfo;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
-import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Map;
 
-public class ConfigNodeInfo {
-  private static final Logger logger = LoggerFactory.getLogger(ConfigNodeInfo.class);
+public class ConfigNodeInfo extends AbstractConfigNodeInfo {
+  private static final String NODE_TYPE_NAME = "datanode";
 
-  private static final String CONFIG_NODE_LIST = "config_node_list";
-
-  private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
-
-  /** latest config nodes. */
-  private final Set<TEndPoint> onlineConfigNodes;
-
-  public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
-
-  SystemPropertiesHandler systemPropertiesHandler = DataNodeSystemPropertiesHandler.getInstance();
+  private final Map<TEndPoint, Integer> configNodeIdMap = new HashMap<>();
 
   private ConfigNodeInfo() {
-    this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
-    this.onlineConfigNodes = new HashSet<>();
+    this(DataNodeSystemPropertiesHandler.getInstance());
+  }
+
+  private ConfigNodeInfo(final SystemPropertiesHandler systemPropertiesHandler) {
+    super(systemPropertiesHandler);
   }
 
   public static void reinitializeStatics() {
     ConfigNodeInfoHolder.INSTANCE = new ConfigNodeInfo();
   }
 
-  /** Update ConfigNodeList both in memory and system.properties file */
-  public boolean updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
-    long startTime = System.currentTimeMillis();
-    // Check whether the config nodes are latest or not
-    configNodeInfoReadWriteLock.readLock().lock();
-    try {
-      if (onlineConfigNodes.size() == latestConfigNodes.size()
-          && onlineConfigNodes.containsAll(latestConfigNodes)) {
-        return true;
-      }
-    } finally {
-      configNodeInfoReadWriteLock.readLock().unlock();
-    }
+  static void reinitializeStatics(final SystemPropertiesHandler systemPropertiesHandler) {
+    ConfigNodeInfoHolder.INSTANCE = new ConfigNodeInfo(systemPropertiesHandler);
+  }
 
-    // Update config nodes
-    configNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      onlineConfigNodes.clear();
-      onlineConfigNodes.addAll(latestConfigNodes);
-      storeConfigNodeList();
-      long endTime = System.currentTimeMillis();
-      logger.info(
-          DataNodeMiscMessages.UPDATE_CONFIG_NODE_SUCCESSFULLY,
-          onlineConfigNodes,
-          (endTime - startTime));
-    } catch (IOException e) {
-      logger.error(DataNodeMiscMessages.UPDATE_CONFIG_NODE_FAILED, e);
+  @Override
+  public synchronized boolean updateConfigNodeList(final List<TEndPoint> latestConfigNodes) {
+    if (!super.updateConfigNodeList(latestConfigNodes)) {
       return false;
-    } finally {
-      configNodeInfoReadWriteLock.writeLock().unlock();
     }
+    configNodeIdMap.keySet().retainAll(latestConfigNodes);
     return true;
   }
 
-  /**
-   * Call this method to store config node list.
-   *
-   * @throws IOException if properties deserialization or configNode list serialization failed.
-   */
-  public void storeConfigNodeList() throws IOException {
-    if (!systemPropertiesHandler.fileExist()) {
-      logger.info(DataNodeMiscMessages.SYSTEM_PROPERTIES_NOT_EXIST);
-      return;
+  public synchronized boolean updateConfigNodeLocations(
+      final List<TConfigNodeLocation> latestConfigNodeLocations) {
+    if (latestConfigNodeLocations == null) {
+      return false;
     }
-    systemPropertiesHandler.put(
-        CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
+
+    final List<TEndPoint> latestConfigNodes = new ArrayList<>();
+    final Map<TEndPoint, Integer> latestConfigNodeIdMap = new HashMap<>();
+    for (final TConfigNodeLocation configNodeLocation : latestConfigNodeLocations) {
+      if (configNodeLocation == null || configNodeLocation.getInternalEndPoint() == null) {
+        continue;
+      }
+      final TEndPoint internalEndPoint = configNodeLocation.getInternalEndPoint();
+      latestConfigNodes.add(internalEndPoint);
+      latestConfigNodeIdMap.put(internalEndPoint, configNodeLocation.getConfigNodeId());
+    }
+
+    if (!updateConfigNodeList(latestConfigNodes)) {
+      return false;
+    }
+    configNodeIdMap.putAll(latestConfigNodeIdMap);
+    return true;
   }
 
-  public void loadConfigNodeList() throws StartupException {
-    long startTime = System.currentTimeMillis();
-    // properties contain CONFIG_NODE_LIST only when start as Data node
-    configNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      Properties properties = systemPropertiesHandler.read();
-
-      if (properties.containsKey(CONFIG_NODE_LIST)) {
-        onlineConfigNodes.clear();
-        onlineConfigNodes.addAll(
-            NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));
-      }
-      if (onlineConfigNodes.isEmpty()) {
-        throw new StartupException(
-            "Removing is only allowed in an environment where the datanode has been successfully started. "
-                + "Please check whether it is removed on the confignode, or if you have deleted the system.properties file by mistake.");
-      }
-      long endTime = System.currentTimeMillis();
-      logger.info(
-          DataNodeMiscMessages.LOAD_CONFIG_NODE_SUCCESSFULLY,
-          onlineConfigNodes,
-          (endTime - startTime));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } catch (BadNodeUrlException e) {
-      logger.error(DataNodeMiscMessages.CANNOT_PARSE_CONFIG_NODE_LIST);
-    } finally {
-      configNodeInfoReadWriteLock.writeLock().unlock();
-    }
+  @Override
+  protected String getNodeTypeName() {
+    return NODE_TYPE_NAME;
   }
 
-  public List<TEndPoint> getLatestConfigNodes() {
-    List<TEndPoint> result;
-    configNodeInfoReadWriteLock.readLock().lock();
-    try {
-      result = new ArrayList<>(onlineConfigNodes);
-    } finally {
-      configNodeInfoReadWriteLock.readLock().unlock();
+  public synchronized int getConfigNodeId(final TEndPoint internalEndPoint) {
+    if (internalEndPoint == null) {
+      return -1;
     }
-    return result;
+    return configNodeIdMap.getOrDefault(internalEndPoint, -1);
   }
 
   private static class ConfigNodeInfoHolder {

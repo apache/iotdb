@@ -89,6 +89,22 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
           "database,max_schema_region_group_num,max_data_region_group_num,",
           Collections.singleton("test_create,3,4,"));
 
+      statement.execute("create database test_create_schema with(max_schema_region_group_num=3)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select database, max_schema_region_group_num, max_data_region_group_num "
+                  + "from information_schema.databases where database = 'test_create_schema'"),
+          "database,max_schema_region_group_num,max_data_region_group_num,",
+          Collections.singleton("test_create_schema,3," + DEFAULT_DATA_REGION_GROUP_NUM + ","));
+
+      statement.execute("create database test_create_data with(max_data_region_group_num=4)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select database, max_schema_region_group_num, max_data_region_group_num "
+                  + "from information_schema.databases where database = 'test_create_data'"),
+          "database,max_schema_region_group_num,max_data_region_group_num,",
+          Collections.singleton("test_create_data," + DEFAULT_SCHEMA_REGION_GROUP_NUM + ",4,"));
+
       statement.execute("create database test_alter");
       statement.execute(
           "alter database test_alter set properties max_schema_region_group_num=3, max_data_region_group_num=4");
@@ -110,6 +126,63 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
           () ->
               statement.execute(
                   "create database test_deprecated with(schema_region_group_num=4, data_region_group_num=5)"));
+    }
+  }
+
+  @Test
+  public void testAlterMaxRegionGroupNumCannotDecrease() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database test_decrease_data with(max_data_region_group_num=8)");
+      statement.execute(
+          "alter database test_decrease_data set properties max_data_region_group_num=16");
+
+      final SQLException exception =
+          Assert.assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "alter database test_decrease_data set properties max_data_region_group_num=12"));
+      Assert.assertTrue(
+          exception.getMessage(),
+          exception
+              .getMessage()
+              .contains(
+                  "MaxDataRegionGroupNum should be greater than or equal to current max "
+                      + "DataRegionGroupNum: 16."));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select database, max_data_region_group_num from information_schema.databases "
+                  + "where database = 'test_decrease_data'"),
+          "database,max_data_region_group_num,",
+          Collections.singleton("test_decrease_data,16,"));
+
+      statement.execute("create database test_decrease_schema with(max_schema_region_group_num=4)");
+      statement.execute(
+          "alter database test_decrease_schema set properties max_schema_region_group_num=5");
+
+      final SQLException schemaException =
+          Assert.assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "alter database test_decrease_schema set properties max_schema_region_group_num=3"));
+      Assert.assertTrue(
+          schemaException.getMessage(),
+          schemaException
+              .getMessage()
+              .contains(
+                  "MaxSchemaRegionGroupNum should be greater than or equal to current max "
+                      + "SchemaRegionGroupNum: 5."));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select database, max_schema_region_group_num from information_schema.databases "
+                  + "where database = 'test_decrease_schema'"),
+          "database,max_schema_region_group_num,",
+          Collections.singleton("test_decrease_schema,5,"));
     }
   }
 

@@ -81,11 +81,42 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    properties.setProperty("dn_thrift_max_frame_size", String.valueOf(thriftMaxFrameSize));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     properties.setProperty(
         "load_tsfile_analyze_schema_memory_size_in_bytes",
         String.valueOf(loadTsFileAnalyzeSchemaMemorySizeInBytes));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
+    properties.setProperty(
+        "max_allocate_memory_ratio_for_load", String.valueOf(maxAllocateMemoryRatioForLoad));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes) {
+    properties.setProperty(
+        "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
+        String.valueOf(loadTsFileTabletConversionBatchMemorySizeInBytes));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds) {
+    properties.setProperty(
+        "load_active_listening_check_interval_seconds",
+        String.valueOf(loadActiveListeningCheckIntervalSeconds));
     return this;
   }
 
@@ -141,6 +172,33 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
     setProperty("query_cost_stat_window", String.valueOf(queryCostStatWindow));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    setProperty("dn_data_dirs", dnDataDirs);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
+    setProperty("dn_multi_dir_strategy", multiDirStrategy);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    setProperty("table_query_device_entry_batch_size_in_bytes", String.valueOf(batchSizeInBytes));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
+    setProperty(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        String.valueOf(mppDataExchangeMaxPayloadSizeInBytes));
     return this;
   }
 }

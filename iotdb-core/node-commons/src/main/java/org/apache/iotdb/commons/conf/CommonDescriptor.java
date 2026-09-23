@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
@@ -335,21 +336,15 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
-
     config.setPathLogMaxSize(
         Integer.parseInt(
             properties.getProperty(
                 "path_log_max_size", String.valueOf(config.getPathLogMaxSize()))));
 
     loadRetryProperties(properties);
-    loadBinaryAllocatorProps(properties);
   }
 
   private void loadSubscriptionProps(TrimProperties properties) {
-    config.setSubscriptionEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_enabled", String.valueOf(config.getSubscriptionEnabled()))));
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
@@ -585,6 +580,31 @@ public class CommonDescriptor {
   }
 
   /**
+   * Parse, validate and apply {@code disk_space_warning_threshold} for a runtime hot reload, then
+   * return the applied value. Shared by the ConfigNode and DataNode hot-reload paths so both use
+   * the same parsing / bounds rules. Callers on the DataNode must additionally refresh the {@code
+   * JVMCommonUtils} static copy that the ReadOnly disk guard actually consumes.
+   */
+  public double loadHotModifiedDiskSpaceWarningThreshold(final TrimProperties properties)
+      throws IOException {
+    double diskSpaceWarningThreshold =
+        Double.parseDouble(
+            properties.getProperty(
+                "disk_space_warning_threshold",
+                String.valueOf(config.getDiskSpaceWarningThreshold())));
+    if (!Double.isFinite(diskSpaceWarningThreshold)
+        || diskSpaceWarningThreshold < 0
+        || diskSpaceWarningThreshold >= 1) {
+      throw new IOException(
+          CommonMessages.EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766
+              + diskSpaceWarningThreshold
+              + ".");
+    }
+    config.setDiskSpaceWarningThreshold(diskSpaceWarningThreshold);
+    return diskSpaceWarningThreshold;
+  }
+
+  /**
    * Reload only the subscription consensus properties that are intended to take effect on hot
    * configuration reload.
    *
@@ -626,30 +646,6 @@ public class CommonDescriptor {
                 String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
   }
 
-  public void loadBinaryAllocatorProps(TrimProperties properties) {
-    config.setEnableBinaryAllocator(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_binary_allocator", Boolean.toString(config.isEnableBinaryAllocator()))));
-    config.setMinAllocateSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "small_blob_object", String.valueOf(config.getMinAllocateSize()))));
-    config.setMaxAllocateSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "huge_blob_object", String.valueOf(config.getMaxAllocateSize()))));
-    int arenaNum =
-        Integer.parseInt(properties.getProperty("arena_num", String.valueOf(config.getArenaNum())));
-    if (arenaNum > 0) {
-      config.setArenaNum(arenaNum);
-    }
-    config.setLog2SizeClassGroup(
-        Integer.parseInt(
-            properties.getProperty(
-                "log2_size_class_group", String.valueOf(config.getLog2SizeClassGroup()))));
-  }
-
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setTimePartitionOrigin(
@@ -679,6 +675,10 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setThriftSSLClientAuth(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "thrift_ssl_client_auth", Boolean.toString(config.isThriftSSLClientAuth()))));
     config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
     config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
     config.setTrustStorePath(

@@ -60,7 +60,7 @@ public class TableFunctionNode extends MultiChildProcessNode {
       List<PlanNode> children,
       List<TableArgumentProperties> tableArgumentProperties) {
     super(id, children);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.tableFunctionHandle = tableFunctionHandle;
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.tableArgumentProperties = ImmutableList.copyOf(tableArgumentProperties);
@@ -73,7 +73,7 @@ public class TableFunctionNode extends MultiChildProcessNode {
       List<Symbol> properOutputs,
       List<TableArgumentProperties> tableArgumentProperties) {
     super(id);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.tableFunctionHandle = tableFunctionHandle;
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.tableArgumentProperties = ImmutableList.copyOf(tableArgumentProperties);
@@ -130,7 +130,9 @@ public class TableFunctionNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newSources) {
-    checkArgument(children.size() == newSources.size(), "wrong number of new children");
+    checkArgument(
+        children.size() == newSources.size(),
+        QueryMessages.EXCEPTION_WRONG_NUMBER_OF_NEW_CHILDREN_817AF800);
     return new TableFunctionNode(
         getPlanNodeId(),
         name,
@@ -263,13 +265,18 @@ public class TableFunctionNode extends MultiChildProcessNode {
         List<Symbol> requiredColumns,
         Optional<DataOrganizationSpecification> dataOrganizationSpecification,
         boolean requireRecordSnapshot) {
-      this.argumentName = requireNonNull(argumentName, "argumentName is null");
+      this.argumentName =
+          requireNonNull(argumentName, QueryMessages.EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F);
       this.rowSemantics = rowSemantics;
       this.passThroughSpecification =
-          requireNonNull(passThroughSpecification, "passThroughSpecification is null");
+          requireNonNull(
+              passThroughSpecification,
+              QueryMessages.EXCEPTION_PASSTHROUGHSPECIFICATION_IS_NULL_2B48FE41);
       this.requiredColumns = ImmutableList.copyOf(requiredColumns);
       this.dataOrganizationSpecification =
-          requireNonNull(dataOrganizationSpecification, "specification is null");
+          requireNonNull(
+              dataOrganizationSpecification,
+              QueryMessages.EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029);
       this.requireRecordSnapshot = requireRecordSnapshot;
     }
 
@@ -357,7 +364,7 @@ public class TableFunctionNode extends MultiChildProcessNode {
     private final boolean isPartitioningColumn;
 
     public PassThroughColumn(Symbol symbol, boolean isPartitioningColumn) {
-      this.symbol = requireNonNull(symbol, "symbol is null");
+      this.symbol = requireNonNull(symbol, QueryMessages.EXCEPTION_SYMBOL_IS_NULL_AE539B31);
       this.isPartitioningColumn = isPartitioningColumn;
     }
 

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -77,7 +78,8 @@ public class SubscriptionConsumerAgent {
     } catch (final Exception e) {
       final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
       LOGGER.warn(
-          "Exception occurred when handling single consumer group meta changes for consumer group {}",
+          DataNodePipeMessages
+              .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C,
           consumerGroupId,
           e);
       final String exceptionMessage =
@@ -99,8 +101,12 @@ public class SubscriptionConsumerAgent {
 
     // if consumer group meta does not exist on local agent
     if (Objects.isNull(metaInAgent)) {
-      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+      ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
+          consumerGroupId,
+          metaFromCoordinator.getSubscribedTopicNames(),
+          metaFromCoordinator.visibleUnder(true));
+      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       return;
     }
 
@@ -109,7 +115,8 @@ public class SubscriptionConsumerAgent {
     if (metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
       if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
         LOGGER.warn(
-            "Subscription: broker bound to consumer group [{}] has already existed when the creation time of consumer group meta on local agent {} is inconsistent with meta from coordinator {}, drop it",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_HAS_ALREADY_0F37997F,
             consumerGroupId,
             metaInAgent,
             metaFromCoordinator);
@@ -122,6 +129,10 @@ public class SubscriptionConsumerAgent {
         }
       }
 
+      ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
+          consumerGroupId,
+          metaFromCoordinator.getSubscribedTopicNames(),
+          metaFromCoordinator.visibleUnder(true));
       consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       // no need to create broker manually
@@ -134,43 +145,55 @@ public class SubscriptionConsumerAgent {
     final Set<String> pipeTopicsUnsubByGroup = new LinkedHashSet<>();
     final Set<String> consensusTopicsUnsubByGroup = new LinkedHashSet<>();
     for (final String topicName : topicsUnsubByGroup) {
-      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          topicName, metaFromCoordinator.visibleUnder(true))) {
         consensusTopicsUnsubByGroup.add(topicName);
         continue;
       }
       pipeTopicsUnsubByGroup.add(topicName);
     }
-    for (final String topicName : pipeTopicsUnsubByGroup) {
-      SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
-    }
-    // Tear down consensus-based subscriptions for unsubscribed topics
-    if (!consensusTopicsUnsubByGroup.isEmpty()) {
-      ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
-          consumerGroupId, consensusTopicsUnsubByGroup);
-    }
-
     // Detect newly subscribed topics (present in new meta but not in old meta)
     final Set<String> newlySubscribedTopics =
         ConsumerGroupMeta.getTopicsNewlySubByGroup(metaInAgent, metaFromCoordinator);
 
     LOGGER.info(
-        "Subscription: consumer group [{}] meta change detected, "
-            + "topicsUnsubByGroup={}, newlySubscribedTopics={}",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_CONSUMER_GROUP_META_CHANGE_DETECTED_TOPICSUNSUBBYGROUP_F6DAF20A,
         consumerGroupId,
         topicsUnsubByGroup,
         newlySubscribedTopics);
 
-    // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully checking the
-    //       changes in its fields.
-    consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
-    consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+    applyTopicDiff(
+        () -> {
+          if (!newlySubscribedTopics.isEmpty()) {
+            ConsensusSubscriptionSetupHandler.handleNewSubscriptions(
+                consumerGroupId, newlySubscribedTopics);
+          }
+        },
+        () -> {
+          for (final String topicName : pipeTopicsUnsubByGroup) {
+            SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
+          }
+          if (!consensusTopicsUnsubByGroup.isEmpty()) {
+            ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
+                consumerGroupId, consensusTopicsUnsubByGroup);
+          }
+        },
+        () -> {
+          // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully
+          // checking the changes in its fields.
+          consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+          consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+        });
+  }
 
-    // Set up consensus-based subscription for newly subscribed consensus-mode topics.
-    // This must happen after the meta is updated so that the broker can find the topic config.
-    if (!newlySubscribedTopics.isEmpty()) {
-      ConsensusSubscriptionSetupHandler.handleNewSubscriptions(
-          consumerGroupId, newlySubscribedTopics);
-    }
+  static void applyTopicDiff(
+      final Runnable setupNewTopics,
+      final Runnable teardownRemovedTopics,
+      final Runnable publishMeta) {
+    setupNewTopics.run();
+    teardownRemovedTopics.run();
+    publishMeta.run();
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(
@@ -184,7 +207,8 @@ public class SubscriptionConsumerAgent {
         } catch (final Exception e) {
           final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
           LOGGER.warn(
-              "Exception occurred when handling single consumer group meta changes for consumer group {}",
+              DataNodePipeMessages
+                  .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C,
               consumerGroupId,
               e);
           final String exceptionMessage =
@@ -229,7 +253,8 @@ public class SubscriptionConsumerAgent {
       }
     } else {
       LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not existed when the corresponding consumer group meta has already existed on local agent, ignore it",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXISTED_9F09E4DE,
           consumerGroupId);
     }
 
@@ -252,6 +277,17 @@ public class SubscriptionConsumerAgent {
     acquireReadLock();
     try {
       return consumerGroupMetaKeeper.getTopicsSubscribedByConsumer(consumerGroupId, consumerId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isTableModel(final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      final ConsumerGroupMeta consumerGroupMeta =
+          consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+      return Objects.nonNull(consumerGroupMeta) && consumerGroupMeta.visibleUnder(true);
     } finally {
       releaseReadLock();
     }

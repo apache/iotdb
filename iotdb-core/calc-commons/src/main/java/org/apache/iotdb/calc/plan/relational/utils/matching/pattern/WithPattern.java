@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching.pattern;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Match;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
@@ -36,7 +37,8 @@ public class WithPattern<T> extends Pattern<T> {
 
   public WithPattern(PropertyPattern<? super T, ?, ?> propertyPattern, Pattern<T> previous) {
     super(previous);
-    this.propertyPattern = requireNonNull(propertyPattern, "propertyPattern is null");
+    this.propertyPattern =
+        requireNonNull(propertyPattern, CalcMessages.EXCEPTION_PROPERTYPATTERN_IS_NULL_37185AE7);
   }
 
   public Pattern<?> getPattern() {

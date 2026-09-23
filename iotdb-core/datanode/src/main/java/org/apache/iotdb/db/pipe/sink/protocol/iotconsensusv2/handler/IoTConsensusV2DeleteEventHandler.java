@@ -112,7 +112,7 @@ public class IoTConsensusV2DeleteEventHandler
                 event.getReplicateIndexForIoTV2(),
                 e),
         e,
-        "Failed to transfer PipeDeleteNodeEvent %s (committer key=%s, replicate index=%s).",
+        DataNodePipeMessages.FAILED_TO_TRANSFER_PIPEDELETENODEEVENT_COMMITTER_KEY_REPLICATE,
         event.coreReportMessage(),
         event.getCommitterKey(),
         event.getReplicateIndexForIoTV2());

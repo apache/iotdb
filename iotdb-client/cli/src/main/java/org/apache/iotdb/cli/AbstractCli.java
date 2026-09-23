@@ -35,8 +35,11 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.ArrayUtils;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -56,6 +59,38 @@ import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
 
 public abstract class AbstractCli {
 
+  static String timestampPrecision = "ms";
+  static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+
+  private static final TypeService<SqlValueGetter> SQL_VALUE_GETTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, OBJECT ->
+                (resultSet, columnIndex, zoneId) -> resultSet.getString(columnIndex);
+            case BLOB ->
+                (resultSet, columnIndex, zoneId) -> {
+                  byte[] value = resultSet.getBytes(columnIndex);
+                  return value == null ? null : BytesUtils.parseBlobByteArrayToString(value);
+                };
+            case DATE ->
+                (resultSet, columnIndex, zoneId) -> {
+                  int value = resultSet.getInt(columnIndex);
+                  return resultSet.wasNull() ? null : DateUtils.formatDate(value);
+                };
+            case TIMESTAMP ->
+                (resultSet, columnIndex, zoneId) -> {
+                  long value = resultSet.getLong(columnIndex);
+                  return resultSet.wasNull()
+                      ? null
+                      : RpcUtils.formatDatetime(timeFormat, timestampPrecision, value, zoneId);
+                };
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                    String.format(
+                        CliMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                        type.getTypeEnum()));
+          };
+
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
 
@@ -74,8 +109,10 @@ public abstract class AbstractCli {
 
   static final String USE_SSL_ARGS = "usessl";
   static final String TRUST_STORE_ARGS = "ts";
+  static final String KEY_STORE_ARGS = "ks";
 
   static final String TRUST_STORE_PWD_ARGS = "tpw";
+  static final String KEY_STORE_PWD_ARGS = "kpw";
 
   static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
 
@@ -83,8 +120,10 @@ public abstract class AbstractCli {
 
   private static final String USE_SSL = "use_ssl";
   private static final String TRUST_STORE = "trust_store";
+  private static final String KEY_STORE = "key_store";
 
   private static final String TRUST_STORE_PWD = "trust_store_pwd";
+  private static final String KEY_STORE_PWD = "key_store_pwd";
   private static final String SSL_PROTOCOL = "ssl_protocol";
   private static final String NULL = "null";
 
@@ -115,8 +154,6 @@ public abstract class AbstractCli {
   static int maxPrintRowCount = 1000;
   private static int fetchSize = 1000;
   static int queryTimeout = 0;
-  static String timestampPrecision = "ms";
-  static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
   private static boolean continuePrint = false;
 
   private static int lineCount = 0;
@@ -135,6 +172,8 @@ public abstract class AbstractCli {
   static String trustStore;
   // TODO: Make non-static
   static String trustStorePwd;
+  static String keyStore;
+  static String keyStorePwd;
   static String sslProtocol;
 
   static String execute;
@@ -160,6 +199,8 @@ public abstract class AbstractCli {
     keywordSet.add("-" + USE_SSL_ARGS);
     keywordSet.add("-" + TRUST_STORE_ARGS);
     keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
+    keywordSet.add("-" + KEY_STORE_ARGS);
+    keywordSet.add("-" + KEY_STORE_PWD_ARGS);
     keywordSet.add("-" + SSL_PROTOCOL_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
@@ -218,6 +259,42 @@ public abstract class AbstractCli {
             .desc("Use SSL statement. (optional)")
             .build();
     options.addOption(useSSL);
+
+    Option trustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .longOpt(TRUST_STORE)
+            .argName(TRUST_STORE)
+            .hasArg()
+            .desc("Trust store. (optional)")
+            .build();
+    options.addOption(trustStore);
+
+    Option trustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .longOpt(TRUST_STORE_PWD)
+            .argName(TRUST_STORE_PWD)
+            .hasArg()
+            .desc("Trust store password. (optional)")
+            .build();
+    options.addOption(trustStorePwd);
+
+    Option keyStore =
+        Option.builder(KEY_STORE_ARGS)
+            .longOpt(KEY_STORE)
+            .argName(KEY_STORE)
+            .hasArg()
+            .desc("Key store for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStore);
+
+    Option keyStorePwd =
+        Option.builder(KEY_STORE_PWD_ARGS)
+            .longOpt(KEY_STORE_PWD)
+            .argName(KEY_STORE_PWD)
+            .hasArg()
+            .desc("Key store password for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStorePwd);
 
     Option sslProtocol =
         Option.builder(SSL_PROTOCOL_ARGS)
@@ -750,40 +827,14 @@ public abstract class AbstractCli {
   private static String getStringByColumnIndex(
       IoTDBJDBCResultSet resultSet, int columnIndex, ZoneId zoneId) throws SQLException {
     TSDataType type = resultSet.getColumnTypeByIndex(columnIndex);
-    switch (type) {
-      case BOOLEAN:
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-      case TEXT:
-      case STRING:
-      case OBJECT:
-        return resultSet.getString(columnIndex);
-      case BLOB:
-        byte[] v = resultSet.getBytes(columnIndex);
-        if (v == null) {
-          return null;
-        } else {
-          return BytesUtils.parseBlobByteArrayToString(v);
-        }
-      case DATE:
-        int intValue = resultSet.getInt(columnIndex);
-        if (resultSet.wasNull()) {
-          return null;
-        } else {
-          return DateUtils.formatDate(intValue);
-        }
-      case TIMESTAMP:
-        long longValue = resultSet.getLong(columnIndex);
-        if (resultSet.wasNull()) {
-          return null;
-        } else {
-          return RpcUtils.formatDatetime(timeFormat, timestampPrecision, longValue, zoneId);
-        }
-      default:
-        return null;
-    }
+    return SQL_VALUE_GETTER_SERVICE
+        .call(Type.fromTsDataType(type))
+        .get(resultSet, columnIndex, zoneId);
+  }
+
+  @FunctionalInterface
+  private interface SqlValueGetter {
+    String get(ResultSet resultSet, int columnIndex, ZoneId zoneId) throws SQLException;
   }
 
   private static List<List<String>> cacheTracingInfo(ResultSet resultSet, List<Integer> maxSizeList)

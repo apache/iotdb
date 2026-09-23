@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 
 import org.apache.tsfile.utils.Pair;
@@ -197,7 +198,10 @@ public class PredicateUtils {
     //    }
     else {
       throw new IllegalStateException(
-          "Unsupported expression in extractGlobalTimePredicate: " + predicate);
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_IN_EXTRACTGLOBALTIMEPREDICATE_S_083B1BFA,
+              predicate));
     }
   }
 

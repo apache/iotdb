@@ -164,8 +164,7 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
       final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
       if (receiverThreadLocalVersion != reqVersion) {
         LOGGER.warn(
-            "The iotConsensusV2 request version {} is different from the sender request version {},"
-                + " the receiver will be reset to the sender request version.",
+            DataNodePipeMessages.THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM,
             receiverThreadLocalVersion,
             reqVersion);
         receiverReference.set(null);
@@ -199,7 +198,10 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
         LOGGER.info(DataNodePipeMessages.RECEIVER_IS_READY, consensusPipeName);
       } else {
         throw new UnsupportedOperationException(
-            String.format("Unsupported iotConsensusV2 request version %d", reqVersion));
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_UNSUPPORTED_IOTCONSENSUSV2_REQUEST_VERSION_D_E1D94606,
+                reqVersion));
       }
     } else {
       waitUntilReceiverGetInitiated(receiverReference);

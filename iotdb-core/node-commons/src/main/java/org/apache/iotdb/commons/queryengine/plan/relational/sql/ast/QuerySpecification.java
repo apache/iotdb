@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -73,16 +75,16 @@ public class QuerySpecification extends QueryBody {
       Optional<Node> limit) {
     super(location);
 
-    this.select = requireNonNull(select, "select is null");
-    this.from = requireNonNull(from, "from is null");
-    this.where = requireNonNull(where, "where is null");
-    this.groupBy = requireNonNull(groupBy, "groupBy is null");
-    this.having = requireNonNull(having, "having is null");
-    this.fill = requireNonNull(fill, "fill is null");
-    this.windows = requireNonNull(windows, "windows is null");
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
-    this.offset = requireNonNull(offset, "offset is null");
-    this.limit = requireNonNull(limit, "limit is null");
+    this.select = requireNonNull(select, QueryMessages.EXCEPTION_SELECT_IS_NULL_B45C440F);
+    this.from = requireNonNull(from, QueryMessages.EXCEPTION_FROM_IS_NULL_2651BF57);
+    this.where = requireNonNull(where, QueryMessages.EXCEPTION_WHERE_IS_NULL_A1A3FCBC);
+    this.groupBy = requireNonNull(groupBy, QueryMessages.EXCEPTION_GROUPBY_IS_NULL_4CF478F2);
+    this.having = requireNonNull(having, QueryMessages.EXCEPTION_HAVING_IS_NULL_700DC5B0);
+    this.fill = requireNonNull(fill, QueryMessages.EXCEPTION_FILL_IS_NULL_3548C13D);
+    this.windows = requireNonNull(windows, QueryMessages.EXCEPTION_WINDOWS_IS_NULL_549D8892);
+    this.orderBy = requireNonNull(orderBy, QueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
+    this.offset = requireNonNull(offset, QueryMessages.EXCEPTION_OFFSET_IS_NULL_82BA6093);
+    this.limit = requireNonNull(limit, QueryMessages.EXCEPTION_LIMIT_IS_NULL_2EE9FA0F);
   }
 
   public Select getSelect() {

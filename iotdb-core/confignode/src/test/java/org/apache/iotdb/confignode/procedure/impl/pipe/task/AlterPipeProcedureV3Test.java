@@ -55,6 +55,7 @@ public class AlterPipeProcedureV3Test {
         new TAlterPipeReq("testPipe", processorAttributes, connectorAttributes, false, true);
     req.setExtractorAttributes(extractorAttributes);
     req.setIsReplaceAllExtractorAttributes(false);
+    req.setIsTableModel(true);
     AlterPipeProcedureV2 proc = new AlterPipeProcedureV2(req);
 
     try {

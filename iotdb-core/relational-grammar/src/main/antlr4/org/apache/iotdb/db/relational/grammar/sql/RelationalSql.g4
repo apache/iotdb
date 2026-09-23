@@ -49,6 +49,7 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | showCreateDatabaseStatement
     | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
@@ -102,6 +103,8 @@ statement
     | startPipeStatement
     | stopPipeStatement
     | showPipesStatement
+    | showReceiversStatement
+    | showCreatePipeStatement
     | createPipePluginStatement
     | dropPipePluginStatement
     | showPipePluginsStatement
@@ -111,6 +114,7 @@ statement
     | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
+    | showCreateTopicStatement
     | showSubscriptionsStatement
     | dropSubscriptionStatement
 
@@ -203,6 +207,10 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+showCreateDatabaseStatement
+    : SHOW CREATE DATABASE database=identifier
     ;
 
 countDatabasesStatement
@@ -520,6 +528,14 @@ showPipesStatement
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showReceiversStatement
+    : SHOW RECEIVERS
+    ;
+
+showCreatePipeStatement
+    : SHOW CREATE PIPE pipeName=identifier
+    ;
+
 createPipePluginStatement
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=string uriClause
     ;
@@ -558,8 +574,12 @@ showTopicsStatement
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
     ;
 
+showCreateTopicStatement
+    : SHOW CREATE TOPIC topicName=identifier
+    ;
+
 showSubscriptionsStatement
-    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    : SHOW SUBSCRIPTIONS (DETAILS)? (ON topicName=identifier)?
     ;
 
 dropSubscriptionStatement
@@ -629,7 +649,7 @@ showSeriesSlotListStatement
     ;
 
 migrateRegionStatement
-    : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
+    : MIGRATE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
 reconstructRegionStatement
@@ -1511,9 +1531,9 @@ nonReserved
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
-    | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
+    | RANGE | READ | READONLY | RECEIVERS | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
     | SERIESSLOTID | SERVICE | SERVICES | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | STREAMS | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TAGS | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
@@ -1801,6 +1821,7 @@ QUOTES: 'QUOTES';
 RANGE: 'RANGE';
 READ: 'READ';
 READONLY: 'READONLY';
+RECEIVERS: 'RECEIVERS';
 RECONSTRUCT: 'RECONSTRUCT';
 RECURSIVE: 'RECURSIVE';
 REFRESH: 'REFRESH';
@@ -1854,6 +1875,8 @@ SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+STREAM: 'STREAM';
+STREAMS: 'STREAMS';
 SUBSCRIPTION: 'SUBSCRIPTION';
 SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';

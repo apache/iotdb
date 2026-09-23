@@ -23,18 +23,20 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +119,10 @@ public class TabletStatementConverter {
     final int rowSize = ReadWriteIOUtils.readInt(byteBuffer);
     if (rowSize < 0) {
       throw new IllegalArgumentException(
-          String.format("Invalid row size %s in tablet format deserialization.", rowSize));
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_INVALID_ROW_SIZE_ARG_IN_TABLET_FORMAT_DESERIALIZATION_76405615,
+              rowSize));
     }
 
     // deserialize schemas
@@ -125,7 +130,10 @@ public class TabletStatementConverter {
         readBooleanByte(byteBuffer, "schema existence") ? ReadWriteIOUtils.readInt(byteBuffer) : 0;
     if (schemaSize < 0) {
       throw new IllegalArgumentException(
-          String.format("Invalid schema size %s in tablet format deserialization.", schemaSize));
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_INVALID_SCHEMA_SIZE_ARG_IN_TABLET_FORMAT_DESERIALIZATION_838C5359,
+              schemaSize));
     }
     ensureRemaining(byteBuffer, schemaSize, "measurement schema existence flags");
     final String[] measurement = new String[schemaSize];
@@ -162,13 +170,15 @@ public class TabletStatementConverter {
         if (readColumnCategory) {
           if (!byteBuffer.hasRemaining()) {
             throw new IllegalArgumentException(
-                "Missing column category in current tablet format deserialization.");
+                DataNodePipeMessages
+                    .EXCEPTION_MISSING_COLUMN_CATEGORY_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_660BD963);
           }
           final byte columnCategory = byteBuffer.get();
           if (columnCategory < 0 || columnCategory >= ColumnCategory.values().length) {
             throw new IllegalArgumentException(
                 String.format(
-                    "Invalid column category %s in current tablet format deserialization.",
+                    DataNodePipeMessages
+                        .EXCEPTION_INVALID_COLUMN_CATEGORY_ARG_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_569FF178,
                     columnCategory));
           }
           columnCategories[i] =
@@ -198,7 +208,8 @@ public class TabletStatementConverter {
     final boolean isTimesNotNull = readBooleanByte(byteBuffer, "timestamp column existence");
     if (rowSize > 0 && !isTimesNotNull) {
       throw new IllegalArgumentException(
-          "Missing timestamps in tablet format deserialization with non-empty rows.");
+          DataNodePipeMessages
+              .EXCEPTION_MISSING_TIMESTAMPS_IN_TABLET_FORMAT_DESERIALIZATION_WITH_NON_EMPTY_ROWS_7550129E);
     }
     if (isTimesNotNull) {
       ensureRemaining(byteBuffer, (long) Long.BYTES * rowSize, "timestamps");
@@ -246,7 +257,8 @@ public class TabletStatementConverter {
     final boolean isValuesNotNull = readBooleanByte(byteBuffer, "value column existence");
     if (rowSize > 0 && schemaSize > 0 && !isValuesNotNull) {
       throw new IllegalArgumentException(
-          "Missing values in tablet format deserialization with non-empty rows.");
+          DataNodePipeMessages
+              .EXCEPTION_MISSING_VALUES_IN_TABLET_FORMAT_DESERIALIZATION_WITH_NON_EMPTY_ROWS_1B9C08D9);
     }
     if (isValuesNotNull) {
       // Use the method that returns both values array and memory size
@@ -353,13 +365,20 @@ public class TabletStatementConverter {
   private static boolean readBooleanByte(final ByteBuffer buffer, final String fieldName) {
     if (!buffer.hasRemaining()) {
       throw new IllegalArgumentException(
-          String.format("Missing %s flag in tablet format deserialization.", fieldName));
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_MISSING_ARG_FLAG_IN_TABLET_FORMAT_DESERIALIZATION_2F802C0D,
+              fieldName));
     }
 
     final byte value = ReadWriteIOUtils.readByte(buffer);
     if (value != 0 && value != 1) {
       throw new IllegalArgumentException(
-          String.format("Invalid %s flag %s in tablet format deserialization.", fieldName, value));
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_INVALID_ARG_FLAG_ARG_IN_TABLET_FORMAT_DESERIALIZATION_40FF35AA,
+              fieldName,
+              value));
     }
     return value == 1;
   }
@@ -369,8 +388,11 @@ public class TabletStatementConverter {
     if (expectedSize > buffer.remaining()) {
       throw new IllegalArgumentException(
           String.format(
-              "Insufficient bytes for %s in tablet format deserialization, expected %s, remaining %s.",
-              fieldName, expectedSize, buffer.remaining()));
+              DataNodePipeMessages
+                  .EXCEPTION_INSUFFICIENT_BYTES_FOR_ARG_IN_TABLET_FORMAT_DESERIALIZATION_EXPECTED_ARG_REMAINING_ARG_3FE76C83,
+              fieldName,
+              expectedSize,
+              buffer.remaining()));
     }
   }
 
@@ -422,7 +444,10 @@ public class TabletStatementConverter {
         final int size = ReadWriteIOUtils.readInt(byteBuffer);
         if (size < 0) {
           throw new IllegalArgumentException(
-              String.format("Invalid bitmap size %s in tablet format deserialization.", size));
+              String.format(
+                  DataNodePipeMessages
+                      .EXCEPTION_INVALID_BITMAP_SIZE_ARG_IN_TABLET_FORMAT_DESERIALIZATION_832E7C9C,
+                  size));
         }
         final Binary valueBinary = ReadWriteIOUtils.readBinary(byteBuffer);
         final byte[] byteArray = valueBinary.getValues();
@@ -478,110 +503,24 @@ public class TabletStatementConverter {
         continue;
       }
 
-      switch (types[i]) {
-        case BOOLEAN:
-          final boolean[] boolValues = new boolean[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              boolValues[index] = readBooleanByte(byteBuffer, "boolean value");
-            }
-          }
-          values[i] = boolValues;
-          // Calculate memory for boolean array: array header + 1 byte per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + rowSize);
-          break;
-        case INT32:
-        case DATE:
-          final int[] intValues = new int[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              intValues[index] = ReadWriteIOUtils.readInt(byteBuffer);
-            }
-          }
-          values[i] = intValues;
-          // Calculate memory for int array: array header + 4 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Integer.BYTES * rowSize);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          final long[] longValues = new long[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              longValues[index] = ReadWriteIOUtils.readLong(byteBuffer);
-            }
-          }
-          values[i] = longValues;
-          // Calculate memory for long array: array header + 8 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Long.BYTES * rowSize);
-          break;
-        case FLOAT:
-          final float[] floatValues = new float[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              floatValues[index] = ReadWriteIOUtils.readFloat(byteBuffer);
-            }
-          }
-          values[i] = floatValues;
-          // Calculate memory for float array: array header + 4 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Float.BYTES * rowSize);
-          break;
-        case DOUBLE:
-          final double[] doubleValues = new double[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              doubleValues[index] = ReadWriteIOUtils.readDouble(byteBuffer);
-            }
-          }
-          values[i] = doubleValues;
-          // Calculate memory for double array: array header + 8 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Double.BYTES * rowSize);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          // Handle object array type: Binary[] is an array of objects
-          final Binary[] binaryValues = new Binary[rowSize];
-          // Calculate memory for Binary array: array header + object references
-          long binaryArrayMemory =
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * rowSize);
-
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              final boolean isNotNull = readBooleanByte(byteBuffer, "binary value existence");
-              if (isNotNull) {
-                binaryValues[index] = ReadWriteIOUtils.readBinary(byteBuffer);
-                // Calculate memory for each Binary object during deserialization
-                binaryArrayMemory += binaryValues[index].ramBytesUsed();
-              } else {
-                binaryValues[index] = Binary.EMPTY_VALUE;
-                // EMPTY_VALUE also has memory cost
-                binaryArrayMemory += Binary.EMPTY_VALUE.ramBytesUsed();
-              }
-            }
-          } else {
-            Arrays.fill(binaryValues, Binary.EMPTY_VALUE);
-            // Calculate memory for all EMPTY_VALUE
-            binaryArrayMemory += (long) rowSize * Binary.EMPTY_VALUE.ramBytesUsed();
-          }
-          values[i] = binaryValues;
-          // Add calculated Binary array memory to total
-          memorySize += binaryArrayMemory;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", types[i]));
+      final Type type = Type.fromTsDataType(types[i]);
+      final Type serializedArrayType =
+          types[i] == TSDataType.DATE ? Type.fromTsDataType(TSDataType.INT32) : type;
+      values[i] =
+          isValueColumnsNotNull
+              ? serializedArrayType.deserializeArray(byteBuffer, rowSize)
+              : TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+                  .call(type)
+                  .apply(rowSize);
+      final boolean isBinaryType = types[i].isBinary();
+      if (isBinaryType && !isValueColumnsNotNull) {
+        Arrays.fill((Binary[]) values[i], Binary.EMPTY_VALUE);
+      }
+      memorySize += type.estimateArraySize(values[i]);
+      if (isBinaryType) {
+        for (final Binary binary : (Binary[]) values[i]) {
+          memorySize += binary.ramBytesUsed();
+        }
       }
     }
 

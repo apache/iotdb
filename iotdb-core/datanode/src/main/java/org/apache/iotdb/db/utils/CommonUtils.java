@@ -51,19 +51,18 @@ import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.db.utils.TypeServices.ValueConversion.VALUE_PARSER_SERVICE;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
@@ -84,93 +83,10 @@ public class CommonUtils {
       if ("null".equals(value) || "NULL".equals(value)) {
         return null;
       }
-      switch (dataType) {
-        case BOOLEAN:
-          return parseBoolean(value);
-        case INT32:
-          try {
-            return Integer.parseInt(StringUtils.trim(value));
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-        case INT64:
-          try {
-            return Long.parseLong(StringUtils.trim(value));
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-        case TIMESTAMP:
-          try {
-            if (TypeInferenceUtils.isNumber(value)) {
-              return Long.parseLong(value);
-            } else {
-              return DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
-                  StringUtils.trim(value), zoneId);
-            }
-          } catch (Throwable e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input "
-                    + value
-                    + ", registered "
-                    + dataType
-                    + " because "
-                    + e.getMessage());
-          }
-        case DATE:
-          return parseIntFromString(value);
-        case FLOAT:
-          float f;
-          try {
-            f = Float.parseFloat(value);
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-          if (Float.isInfinite(f)) {
-            throw new NumberFormatException(DataNodeMiscMessages.INPUT_FLOAT_INFINITY);
-          }
-          return f;
-        case DOUBLE:
-          double d;
-          try {
-            d = Double.parseDouble(value);
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-          if (Double.isInfinite(d)) {
-            throw new NumberFormatException(DataNodeMiscMessages.INPUT_DOUBLE_INFINITY);
-          }
-          return d;
-        case TEXT:
-        case STRING:
-          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(value, TSFileConfig.STRING_CHARSET);
-            } else {
-              return new Binary(
-                  value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
-            }
-          }
-          return new Binary(value, TSFileConfig.STRING_CHARSET);
-        case BLOB:
-          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(parseBlobStringToByteArray(value));
-            } else {
-              return new Binary(parseBlobStringToByteArray(value.substring(1, value.length() - 1)));
-            }
-          }
-          return new Binary(parseBlobStringToByteArray(value));
-        case OBJECT:
-          throw new NumberFormatException(
-              "data type is not consistent, input " + value + ", registered " + dataType);
-        default:
-          throw new QueryProcessException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
+      try {
+        return VALUE_PARSER_SERVICE.call(Type.fromTsDataType(dataType)).parse(value, zoneId);
+      } catch (final UnsupportedOperationException ignored) {
+        throw new QueryProcessException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
       }
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());
@@ -188,16 +104,16 @@ public class CommonUtils {
       }
     } catch (Throwable e) {
       throw new NumberFormatException(
-          "data type is not consistent, input "
-              + value
-              + ", registered "
-              + TSDataType.DATE
-              + " because "
-              + e.getMessage());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_BECAUSE_50C4BF31,
+              value,
+              TSDataType.DATE,
+              e.getMessage()));
     }
   }
 
-  private static boolean parseBoolean(String value) throws QueryProcessException {
+  static boolean parseBoolean(String value) throws QueryProcessException {
     value = value.toLowerCase();
     if (SqlConstant.BOOLEAN_FALSE_NUM.equals(value) || SqlConstant.BOOLEAN_FALSE.equals(value)) {
       return false;
@@ -363,43 +279,29 @@ public class CommonUtils {
    * @return whether the given time falls in ttl
    */
   public static boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || time >= getTTLLowerBound(dataTTL);
+  }
+
+  public static long getTTLLowerBound(long dataTTL) {
+    if (dataTTL == Long.MAX_VALUE) {
+      return Long.MIN_VALUE;
+    }
+
+    long currentTime = CommonDateTimeUtils.currentTime();
+    if (dataTTL >= 0 && currentTime < Long.MIN_VALUE + dataTTL) {
+      return Long.MIN_VALUE;
+    }
+    if (dataTTL < 0 && currentTime > Long.MAX_VALUE + dataTTL) {
+      return Long.MAX_VALUE;
+    }
+    return currentTime - dataTTL;
   }
 
   public static Object createValueColumnOfDataType(
       TSDataType dataType, TsTableColumnCategory columnCategory, int rowNum) {
-    Object valueColumn;
-    switch (dataType) {
-      case INT32:
-        valueColumn = new int[rowNum];
-        break;
-      case INT64:
-      case TIMESTAMP:
-        valueColumn = new long[rowNum];
-        break;
-      case FLOAT:
-        valueColumn = new float[rowNum];
-        break;
-      case DOUBLE:
-        valueColumn = new double[rowNum];
-        break;
-      case BOOLEAN:
-        valueColumn = new boolean[rowNum];
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        valueColumn = new Binary[rowNum];
-        break;
-      case DATE:
-        valueColumn = new LocalDate[rowNum];
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-    return valueColumn;
+    return TypeServices.StorageEngine.TABLET_COLUMN_ALLOCATOR_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(rowNum);
   }
 
   public static void swapArray(Object[] array, int i, int j) {

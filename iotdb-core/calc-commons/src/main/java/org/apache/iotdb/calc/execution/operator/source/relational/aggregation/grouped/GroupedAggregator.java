@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 
@@ -49,14 +50,19 @@ public class GroupedAggregator {
       TSDataType outputType,
       List<Integer> inputChannels,
       OptionalInt maskChannel) {
-    this.accumulator = requireNonNull(accumulator, "accumulator is null");
-    this.step = requireNonNull(step, "step is null");
-    this.outputType = requireNonNull(outputType, "intermediateType is null");
-    this.inputChannels = Ints.toArray(requireNonNull(inputChannels, "inputChannels is null"));
-    this.maskChannel = requireNonNull(maskChannel, "maskChannel is null");
+    this.accumulator =
+        requireNonNull(accumulator, CalcMessages.EXCEPTION_ACCUMULATOR_IS_NULL_EF0C1DFF);
+    this.step = requireNonNull(step, CalcMessages.EXCEPTION_STEP_IS_NULL_F83262DA);
+    this.outputType =
+        requireNonNull(outputType, CalcMessages.EXCEPTION_INTERMEDIATETYPE_IS_NULL_D0D9B957);
+    this.inputChannels =
+        Ints.toArray(
+            requireNonNull(inputChannels, CalcMessages.EXCEPTION_INPUTCHANNELS_IS_NULL_647DA393));
+    this.maskChannel =
+        requireNonNull(maskChannel, CalcMessages.EXCEPTION_MASKCHANNEL_IS_NULL_571AD53D);
     checkArgument(
         step.isInputRaw() || inputChannels.size() == 1,
-        "expected 1 input channel for intermediate aggregation");
+        CalcMessages.EXCEPTION_EXPECTED_1_INPUT_CHANNEL_FOR_INTERMEDIATE_AGGREGATION_3190C507);
   }
 
   public TSDataType getType() {

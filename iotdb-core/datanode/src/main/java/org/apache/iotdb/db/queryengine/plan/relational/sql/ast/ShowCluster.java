@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -48,18 +49,20 @@ public class ShowCluster extends Statement {
   }
 
   public ShowCluster(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.details = false;
   }
 
   public ShowCluster(Boolean withDetails) {
     super(null);
-    this.details = requireNonNull(withDetails, "details is null");
+    this.details =
+        requireNonNull(withDetails, DataNodeQueryMessages.EXCEPTION_DETAILS_IS_NULL_8EDEEA03);
   }
 
   public ShowCluster(NodeLocation location, Boolean withDetails) {
-    super(requireNonNull(location, "location is null"));
-    this.details = requireNonNull(withDetails, "details is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.details =
+        requireNonNull(withDetails, DataNodeQueryMessages.EXCEPTION_DETAILS_IS_NULL_8EDEEA03);
   }
 
   public Optional<Boolean> getDetails() {

@@ -76,7 +76,8 @@ public class SharedTimeDataBuffer {
       return timeData.get(pageId);
     } else {
       throw new UnsupportedOperationException(
-          "PageId in SharedTimeDataBuffer should be  incremental.");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_PAGEID_IN_SHAREDTIMEDATABUFFER_SHOULD_BE_INCREMENTAL_A5E6C4EE);
     }
   }
 

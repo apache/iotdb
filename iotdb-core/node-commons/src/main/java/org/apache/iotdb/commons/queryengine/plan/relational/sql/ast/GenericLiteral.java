@@ -44,7 +44,7 @@ public class GenericLiteral extends Literal {
 
   public GenericLiteral(String type, String value) {
     super(null);
-    this.type = requireNonNull(type, "type is null");
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
 
     if (type.equalsIgnoreCase("X")) {
       // we explicitly disallow "X" as type name, so if the user arrived here,
@@ -52,22 +52,20 @@ public class GenericLiteral extends Literal {
       // added whitespace between the X and quote
       throw new ParsingException(QueryMessages.GENERIC_LITERAL_NO_SPACE);
     }
-    this.value = requireNonNull(value, "value is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public GenericLiteral(NodeLocation location, String type, String value) {
-    super(requireNonNull(location, "location is null"));
-    this.type = requireNonNull(type, "type is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
 
     if (type.equalsIgnoreCase("X")) {
       // we explicitly disallow "X" as type name, so if the user arrived here,
       // it must be because that he intended to give a binaryLiteral instead, but
       // added whitespace between the X and quote
-      throw new ParsingException(
-          "Spaces are not allowed between 'X' and the starting quote of a binary literal",
-          location);
+      throw new ParsingException(QueryMessages.GENERIC_LITERAL_NO_SPACE, location);
     }
-    this.value = requireNonNull(value, "value is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public String getType() {

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
@@ -49,7 +50,8 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
 
   public PruneTableScanColumns(Metadata metadata) {
     super(tableScan());
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
@@ -115,7 +117,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 treeDeviceViewScanNode.getTreeDBName(),
                 treeDeviceViewScanNode.getMeasurementColumnNameMap());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else if (node instanceof TreeNonAlignedDeviceViewScanNode) {
         TreeNonAlignedDeviceViewScanNode treeDeviceViewScanNode =
             (TreeNonAlignedDeviceViewScanNode) deviceTableScanNode;
@@ -137,11 +139,11 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 treeDeviceViewScanNode.getTreeDBName(),
                 treeDeviceViewScanNode.getMeasurementColumnNameMap());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else if (node instanceof TreeDeviceViewScanNode) {
         TreeDeviceViewScanNode treeDeviceViewScanNode =
             (TreeDeviceViewScanNode) deviceTableScanNode;
-        return Optional.of(
+        TreeDeviceViewScanNode prunedNode =
             new TreeDeviceViewScanNode(
                 deviceTableScanNode.getPlanNodeId(),
                 deviceTableScanNode.getQualifiedObjectName(),
@@ -157,7 +159,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.isPushLimitToEachDevice(),
                 deviceTableScanNode.containsNonAlignedDevice(),
                 treeDeviceViewScanNode.getTreeDBName(),
-                treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+                treeDeviceViewScanNode.getMeasurementColumnNameMap());
+        prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else if (node instanceof ExternalTsFileScanNode externalTsFileScanNode) {
         ExternalTsFileScanNode prunedNode =
             new ExternalTsFileScanNode(
@@ -177,7 +181,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 externalTsFileScanNode.getDeviceTaskPartitionIndex(),
                 externalTsFileScanNode.getSchemaFilter());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else {
         DeviceTableScanNode prunedNode =
             new DeviceTableScanNode(
@@ -195,7 +199,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.isPushLimitToEachDevice(),
                 deviceTableScanNode.containsNonAlignedDevice());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       }
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for
@@ -204,7 +208,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
       return Optional.empty();
     } else {
       throw new UnsupportedOperationException(
-          "Unknown TableScanNode type: " + node.getClass().getSimpleName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNKNOWN_TABLESCANNODE_TYPE_S_6246EF1E,
+              node.getClass().getSimpleName()));
     }
   }
 }

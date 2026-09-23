@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -36,10 +38,10 @@ public class CompactionStatisticsCheckFailedException extends RuntimeException {
     super(
         getExceptionMsg(
             deviceID,
-            "The time range of current device is "
-                + deviceTimeRange
-                + ", which should equals actual device time range "
-                + actualDeviceTimeRange));
+            String.format(
+                StorageEngineMessages.CURRENT_DEVICE_TIME_RANGE_MISMATCH_FMT,
+                deviceTimeRange,
+                actualDeviceTimeRange)));
   }
 
   public CompactionStatisticsCheckFailedException(
@@ -47,10 +49,10 @@ public class CompactionStatisticsCheckFailedException extends RuntimeException {
     super(
         getExceptionMsg(
             deviceID,
-            "Current timeseriesMetadata is "
-                + timeseriesMetadata
-                + ", which should equals actual time range "
-                + actualTimeRange));
+            String.format(
+                StorageEngineMessages.CURRENT_TIMESERIES_METADATA_MISMATCH_FMT,
+                timeseriesMetadata,
+                actualTimeRange)));
   }
 
   public CompactionStatisticsCheckFailedException(
@@ -58,10 +60,10 @@ public class CompactionStatisticsCheckFailedException extends RuntimeException {
     super(
         getExceptionMsg(
             deviceID,
-            "Current chunkMetadata is "
-                + chunkMetadata
-                + ", which should equals actual chunk time range "
-                + actualChunkTimeRange));
+            String.format(
+                StorageEngineMessages.CURRENT_CHUNK_METADATA_MISMATCH_FMT,
+                chunkMetadata,
+                actualChunkTimeRange)));
   }
 
   public CompactionStatisticsCheckFailedException(
@@ -69,14 +71,15 @@ public class CompactionStatisticsCheckFailedException extends RuntimeException {
     super(
         getExceptionMsg(
             deviceID,
-            "Current page is "
-                + pageHeader
-                + ", which should contains actual page data time range "
-                + pageDataTimeRange));
+            String.format(
+                StorageEngineMessages.CURRENT_PAGE_TIME_RANGE_MISMATCH_FMT,
+                pageHeader,
+                pageDataTimeRange)));
   }
 
   private static String getExceptionMsg(IDeviceID deviceID, String detail) {
-    return "The device(" + deviceID + ")'s time range verification failed. " + detail;
+    return String.format(
+        StorageEngineMessages.DEVICE_TIME_RANGE_VERIFICATION_FAILED_FMT, deviceID, detail);
   }
 
   @Override

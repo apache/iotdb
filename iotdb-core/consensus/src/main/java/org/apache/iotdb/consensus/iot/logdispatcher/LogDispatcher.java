@@ -184,9 +184,16 @@ public class LogDispatcher {
   }
 
   public void offer(IndexedConsensusRequest request) {
+    offer(request, true);
+  }
+
+  public void offer(IndexedConsensusRequest request, boolean keepRequestsForSubscription) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
       request.buildSerializedRequests();
+      if (!keepRequestsForSubscription) {
+        request.clearRequests();
+      }
       synchronized (this) {
         threads.forEach(
             thread -> {
@@ -204,6 +211,10 @@ public class LogDispatcher {
               }
             });
       }
+    } else if (!keepRequestsForSubscription) {
+      // A single-replica region has no dispatcher thread, but still does not need the raw request
+      // after the state machine has applied it when subscriptions are disabled.
+      request.clearRequests();
     }
   }
 
@@ -538,7 +549,8 @@ public class LogDispatcher {
         lastIdleWriterSafeTimeBarrierSentTimeMs = now;
       } else {
         logger.debug(
-            "{}: Failed to send idle writer safe-time barrier to {}. status={}",
+            IoTConsensusMessages
+                .LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD,
             impl.getThisNode().getGroupId(),
             peer,
             status);
@@ -598,6 +610,7 @@ public class LogDispatcher {
           currentIndex,
           maxIndex);
       boolean hasCorruptedData = false;
+      final boolean consensusGroupContainsUserData = impl.containsUserData();
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
@@ -622,6 +635,9 @@ public class LogDispatcher {
           hasCorruptedData = true;
         }
         targetIndex = data.getSearchIndex() + 1;
+        // The WAL reader derives this bit directly from the entry type. Apply the group-level
+        // exclusion here without deserializing the request solely for audit classification.
+        data.setContainsUserData(consensusGroupContainsUserData && data.containsUserData());
         data.buildSerializedRequests();
         // construct request from wal
         TLogEntry logEntry =
@@ -629,7 +645,7 @@ public class LogDispatcher {
                 data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
         logEntry.setRoutingEpoch(data.getRoutingEpoch());
         logEntry.setPhysicalTime(data.getPhysicalTime());
-        logBatches.addTLogEntry(logEntry);
+        logBatches.addTLogEntry(logEntry, data.containsUserData());
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
       // possible, avoiding potential duplication
@@ -646,7 +662,7 @@ public class LogDispatcher {
               request.getMemorySize());
       logEntry.setRoutingEpoch(request.getRoutingEpoch());
       logEntry.setPhysicalTime(request.getPhysicalTime());
-      logBatches.addTLogEntry(logEntry);
+      logBatches.addTLogEntry(logEntry, request.containsUserData());
     }
   }
 

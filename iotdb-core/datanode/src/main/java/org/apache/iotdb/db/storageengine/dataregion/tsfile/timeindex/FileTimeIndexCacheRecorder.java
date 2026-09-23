@@ -175,7 +175,8 @@ public class FileTimeIndexCacheRecorder {
           try {
             if (!dataRegionSysDir.exists() && !dataRegionSysDir.mkdirs()) {
               LOGGER.debug(
-                  "DataRegionSysDir has existed，filePath:{}", dataRegionSysDir.getAbsolutePath());
+                  StorageEngineMessages.STORAGE_LOG_DATAREGIONSYSDIR_HAS_EXISTED_FILEPATH_53009475,
+                  dataRegionSysDir.getAbsolutePath());
             }
             if (!logFile.createNewFile()) {
               LOGGER.debug(
@@ -185,7 +186,10 @@ public class FileTimeIndexCacheRecorder {
             return new FileTimeIndexCacheWriter(logFile, true);
           } catch (IOException e) {
             LOGGER.error(
-                "FileTimeIndex log file create filed，filePath:{}", logFile.getAbsolutePath(), e);
+                StorageEngineMessages
+                    .STORAGE_LOG_FILETIMEINDEX_LOG_FILE_CREATE_FILED_FILEPATH_D675FBD5,
+                logFile.getAbsolutePath(),
+                e);
             throw new RuntimeException(e);
           }
         });

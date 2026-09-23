@@ -47,11 +47,23 @@ public:
   }
   TableSessionBuilder* useSSL(bool useSSL) {
     AbstractSessionBuilder::useSSL = useSSL;
+    AbstractSessionBuilder::sslConfig.useSsl = useSSL;
     return this;
   }
 
   TableSessionBuilder* trustCertFilePath(const std::string& trustCertFilePath) {
     AbstractSessionBuilder::trustCertFilePath = trustCertFilePath;
+    AbstractSessionBuilder::sslConfig.trustCertFilePath = trustCertFilePath;
+    return this;
+  }
+
+  TableSessionBuilder* clientCertificateFilePath(const std::string& clientCertificateFilePath) {
+    AbstractSessionBuilder::sslConfig.clientCertificateFilePath = clientCertificateFilePath;
+    return this;
+  }
+
+  TableSessionBuilder* clientPrivateKeyFilePath(const std::string& clientPrivateKeyFilePath) {
+    AbstractSessionBuilder::sslConfig.clientPrivateKeyFilePath = clientPrivateKeyFilePath;
     return this;
   }
 

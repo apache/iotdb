@@ -20,9 +20,13 @@
 package org.apache.iotdb.library;
 
 import org.apache.iotdb.library.frequency.UDFEnvelopeAnalysis;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.lang.reflect.Proxy;
 
 public class UDFEnvelopeTest {
   private final UDFEnvelopeAnalysis analysis = new UDFEnvelopeAnalysis();
@@ -117,5 +121,24 @@ public class UDFEnvelopeTest {
       vibData[i] = Math.sin(i * 2 * Math.PI / 9) + Math.cos(i * 4 * Math.PI / 9);
     double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
+  }
+
+  @Test
+  public void testNumericHelperReadsRequestedColumn() throws Exception {
+    Row row =
+        (Row)
+            Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[] {Row.class},
+                (proxy, method, args) -> {
+                  if (method.getName().equals("getDataType")) {
+                    return Type.INT32;
+                  }
+                  if (method.getName().equals("getInt")) {
+                    return new int[] {11, 22}[(int) args[0]];
+                  }
+                  throw new AssertionError(method.getName());
+                });
+    Assert.assertEquals(22.0, analysis.getValueAsDouble(row, 1), 0.0);
   }
 }

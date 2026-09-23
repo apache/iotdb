@@ -112,9 +112,10 @@ public class TsFileNameGenerator {
             if (!targetDir.exists()) {
               if (!targetDir.mkdirs() && !targetDir.exists()) {
                 throw new IOException(
-                    "Directory creation failed: "
-                        + tsFileDir
-                        + " (Permission denied or parent not writable)");
+                    String.format(
+                        StorageEngineMessages
+                            .STORAGE_EXCEPTION_DIRECTORY_CREATION_FAILED_S_PERMISSION_DENIED_OR_PARENT_2855777B,
+                        tsFileDir));
               }
             }
             return tsFileDir
@@ -414,7 +415,8 @@ public class TsFileNameGenerator {
   }
 
   public static class TsFileName {
-    private static final String FILE_NAME_PATTERN = "(\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
+    // Timestamps may be negative for pre-epoch data, while the version is always non-negative.
+    private static final String FILE_NAME_PATTERN = "(-?\\d+)-(\\d+)-(\\d+)-(\\d+)\\.tsfile$";
     private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);
 
     private long time;

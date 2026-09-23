@@ -16,6 +16,7 @@
  */
 package org.apache.iotdb.rest;
 
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
@@ -79,6 +80,9 @@ public class RestService implements IExternalService {
             new HttpConnectionFactory(httpsConfig));
     httpsConnector.setPort(port);
     httpsConnector.setIdleTimeout(idleTime);
+    httpsConnector.addBean(
+        new TrustedChannelAuditHandshakeListener(
+            DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary));
     server.addConnector(httpsConnector);
 
     server.setHandler(constructServletContextHandler());

@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFinishedException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -31,6 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemPageReader;
@@ -41,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 
 import org.apache.tsfile.block.column.Column;
@@ -57,12 +64,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
@@ -71,16 +73,14 @@ import org.apache.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.tsfile.read.reader.page.TablePageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Accountable;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -106,6 +106,7 @@ public class SeriesScanUtil implements Accountable {
   private final IDeviceID deviceID;
   protected boolean isAligned = false;
   private final TSDataType dataType;
+  private final Type typeInterface;
 
   // inner class of SeriesReader for order purpose
   protected final TimeOrderUtils orderUtils;
@@ -139,6 +140,7 @@ public class SeriesScanUtil implements Accountable {
 
   protected SeriesScanOptions scanOptions;
   private final PaginationController paginationController;
+  private boolean runtimeFilterExhausted;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -163,6 +165,7 @@ public class SeriesScanUtil implements Accountable {
     this.seriesPath = seriesPath;
     this.deviceID = seriesPath.getDeviceId();
     this.dataType = seriesPath.getSeriesType();
+    this.typeInterface = Type.fromTsDataType(dataType);
 
     this.scanOptions = scanOptions;
     this.paginationController = scanOptions.getPaginationController();
@@ -205,6 +208,9 @@ public class SeriesScanUtil implements Accountable {
    * @param dataSource the query data source
    */
   public void initQueryDataSource(QueryDataSource dataSource) {
+    if (scanOptions.getTopKRuntimeFilter() != null) {
+      dataSource.initRuntimeFilterTracking();
+    }
     dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
@@ -276,7 +282,8 @@ public class SeriesScanUtil implements Accountable {
   // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
   // execution time slice.
   public Optional<Boolean> hasNextFile() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    checkFragmentInstanceState();
+    if (runtimeFilterExhausted || !paginationController.hasCurLimit()) {
       return Optional.of(false);
     }
 
@@ -284,12 +291,12 @@ public class SeriesScanUtil implements Accountable {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IllegalStateException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ALL_CACHED_PAGES_SHOULD_BE_CONSUMED_FIRST_UNSEQPAGEREADERS_55898EFB,
+              unSeqPageReaders.isEmpty(),
+              (firstPageReader != null),
+              mergeReader.hasNextTimeValuePair()));
     }
 
     if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
@@ -329,13 +336,35 @@ public class SeriesScanUtil implements Accountable {
   }
 
   public boolean canUseCurrentFileStatistics() {
-    checkState(firstTimeSeriesMetadata != null, "no first file");
+    checkState(
+        firstTimeSeriesMetadata != null, DataNodeQueryMessages.EXCEPTION_NO_FIRST_FILE_F5F2E276);
 
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstTimeSeriesMetadata)
         && filterAllSatisfy(scanOptions.getPushDownFilter(), firstTimeSeriesMetadata);
+  }
+
+  /**
+   * Returns false when the time range cannot contain any row that may still qualify for TopK, so
+   * the caller can skip decoding the whole file/chunk/page.
+   */
+  private boolean mayQualifyRuntimeFilterRange(Statistics<? extends Serializable> statistics) {
+    TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
+    if (filter == null) {
+      return true;
+    }
+    return filter.mayQualifyRange(statistics.getStartTime(), statistics.getEndTime());
+  }
+
+  private boolean skipByTopKRuntimeFilter(
+      Statistics<? extends Serializable> statistics, Runnable skip) {
+    if (!mayQualifyRuntimeFilterRange(statistics)) {
+      skip.run();
+      return true;
+    }
+    return false;
   }
 
   @SuppressWarnings("squid:S3740")
@@ -368,7 +397,7 @@ public class SeriesScanUtil implements Accountable {
    * @throws IllegalStateException illegal state
    */
   public Optional<Boolean> hasNextChunk() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (runtimeFilterExhausted || !paginationController.hasCurLimit()) {
       return Optional.of(false);
     }
 
@@ -376,12 +405,12 @@ public class SeriesScanUtil implements Accountable {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IllegalStateException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ALL_CACHED_PAGES_SHOULD_BE_CONSUMED_FIRST_UNSEQPAGEREADERS_55898EFB,
+              unSeqPageReaders.isEmpty(),
+              (firstPageReader != null),
+              mergeReader.hasNextTimeValuePair()));
     }
 
     if (firstChunkMetadata != null) {
@@ -415,6 +444,10 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
+      return;
+    }
+
+    if (skipByTopKRuntimeFilter(firstChunkMetadata.getStatistics(), this::skipCurrentChunk)) {
       return;
     }
 
@@ -507,7 +540,7 @@ public class SeriesScanUtil implements Accountable {
   }
 
   public boolean canUseCurrentChunkStatistics() {
-    checkState(firstChunkMetadata != null, "no first chunk");
+    checkState(firstChunkMetadata != null, DataNodeQueryMessages.EXCEPTION_NO_FIRST_CHUNK_7DCEB14C);
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
       return false;
@@ -541,7 +574,7 @@ public class SeriesScanUtil implements Accountable {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   public boolean hasNextPage() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (runtimeFilterExhausted || !paginationController.hasCurLimit()) {
       return false;
     }
 
@@ -664,6 +697,14 @@ public class SeriesScanUtil implements Accountable {
     long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    final File tsFile;
+    if (chunkLoader instanceof DiskChunkLoader) {
+      tsFile = ((DiskChunkLoader) chunkLoader).getTsFile();
+    } else if (chunkLoader instanceof DiskAlignedChunkLoader) {
+      tsFile = ((DiskAlignedChunkLoader) chunkLoader).getTsFile();
+    } else {
+      tsFile = null;
+    }
     if ((chunkLoader instanceof MemChunkLoader)
         && ((MemChunkLoader) chunkLoader).isStreamingQueryMemChunk()) {
       unpackOneFakeMemChunkMetaData(
@@ -672,7 +713,7 @@ public class SeriesScanUtil implements Accountable {
     }
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(
-            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
+            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList(), context);
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -687,7 +728,8 @@ public class SeriesScanUtil implements Accountable {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
-                  true));
+                  true,
+                  tsFile));
         }
       } else {
         for (int i = pageReaderList.size() - 1; i >= 0; i--) {
@@ -698,7 +740,8 @@ public class SeriesScanUtil implements Accountable {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
-                  true));
+                  true,
+                  tsFile));
         }
       }
     } else {
@@ -711,7 +754,8 @@ public class SeriesScanUtil implements Accountable {
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
-                      false)));
+                      false,
+                      tsFile)));
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -918,6 +962,10 @@ public class SeriesScanUtil implements Accountable {
   }
 
   private TsBlock filterAndPaginateCachedBlock(TsBlock tsBlock) {
+    tsBlock = applyRuntimeFilterToTsBlock(tsBlock);
+    if (tsBlock == null || tsBlock.isEmpty()) {
+      return null;
+    }
     if (scanOptions.getPushDownFilter() == null) {
       return paginationController.applyTsBlock(tsBlock);
     }
@@ -934,6 +982,31 @@ public class SeriesScanUtil implements Accountable {
         new TsBlockBuilder(getTsDataTypeList()),
         scanOptions.getPushDownFilter(),
         paginationController);
+  }
+
+  private TsBlock applyRuntimeFilterToTsBlock(TsBlock tsBlock) {
+    TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
+    if (filter == null) {
+      return tsBlock;
+    }
+
+    int positionCount = tsBlock.getPositionCount();
+    int keepCount = positionCount;
+    for (int i = 0; i < positionCount; i++) {
+      if (!filter.mayQualify(tsBlock.getTimeByIndex(i))) {
+        keepCount = i;
+        runtimeFilterExhausted = true;
+        break;
+      }
+    }
+
+    if (keepCount == positionCount) {
+      return tsBlock;
+    }
+    if (keepCount == 0) {
+      return null;
+    }
+    return tsBlock.getRegion(0, keepCount);
   }
 
   private TsBlock getTransferedDataTypeTsBlock(TsBlock tsBlock) {
@@ -960,439 +1033,11 @@ public class SeriesScanUtil implements Accountable {
     int positionCount = tsBlock.getPositionCount();
     Column[] newValueColumns = new Column[length];
     for (int i = 0; i < length; i++) {
-      TSDataType sourceType = valueColumns[i].getDataType();
       TSDataType finalDataType = getTsDataTypeList().get(i);
-      switch (finalDataType) {
-        case BOOLEAN:
-          if (sourceType == TSDataType.BOOLEAN) {
-            newValueColumns[i] = valueColumns[i];
-          } else {
-            newValueColumns[i] =
-                new BooleanColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new boolean[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case INT32:
-          if (sourceType == TSDataType.INT32) {
-            newValueColumns[i] = valueColumns[i];
-          } else {
-            newValueColumns[i] =
-                new IntColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new int[positionCount],
-                    TSDataType.INT32);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case INT64:
-          if (sourceType == TSDataType.INT64) {
-            newValueColumns[i] = valueColumns[i];
-          } else if (sourceType == TSDataType.INT32) {
-            newValueColumns[i] =
-                new LongColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new long[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getLongs()[j] =
-                    ((Number) valueColumns[i].getInts()[j]).longValue();
-              }
-            }
-          } else if (sourceType == TSDataType.TIMESTAMP) {
-            newValueColumns[i] = valueColumns[i];
-          } else {
-            newValueColumns[i] =
-                new LongColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new long[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case FLOAT:
-          if (sourceType == TSDataType.FLOAT) {
-            newValueColumns[i] = valueColumns[i];
-          } else if (sourceType == TSDataType.INT32) {
-            newValueColumns[i] =
-                new FloatColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new float[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getFloats()[j] =
-                    ((Number) valueColumns[i].getInts()[j]).floatValue();
-              }
-            }
-          } else {
-            newValueColumns[i] =
-                new FloatColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new float[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case DOUBLE:
-          if (sourceType == TSDataType.DOUBLE) {
-            newValueColumns[i] = valueColumns[i];
-          } else if (sourceType == TSDataType.INT32) {
-            newValueColumns[i] =
-                new DoubleColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new double[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getDoubles()[j] =
-                    ((Number) valueColumns[i].getInts()[j]).doubleValue();
-              }
-            }
-          } else if (sourceType == TSDataType.INT64) {
-            newValueColumns[i] =
-                new DoubleColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new double[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getDoubles()[j] =
-                    ((Number) valueColumns[i].getLongs()[j]).doubleValue();
-              }
-            }
-          } else if (sourceType == TSDataType.FLOAT) {
-            newValueColumns[i] =
-                new DoubleColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new double[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getDoubles()[j] =
-                    ((Number) valueColumns[i].getFloats()[j]).doubleValue();
-              }
-            }
-          } else if (sourceType == TSDataType.TIMESTAMP) {
-            newValueColumns[i] =
-                new DoubleColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new double[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getDoubles()[j] =
-                    ((Number) valueColumns[i].getLongs()[j]).doubleValue();
-              }
-            }
-          } else {
-            newValueColumns[i] =
-                new DoubleColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new double[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case TEXT:
-          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TEXT)) {
-            newValueColumns[i] = valueColumns[i];
-          } else if (sourceType == TSDataType.INT32) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.DATE) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        TSDataType.getDateStringValue(valueColumns[i].getInts()[j]),
-                        StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getLongs()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.FLOAT) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getFloats()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.DOUBLE) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getDoubles()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.BOOLEAN) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case TIMESTAMP:
-          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TIMESTAMP)) {
-            newValueColumns[i] = valueColumns[i];
-          } else if (sourceType == TSDataType.INT32) {
-            newValueColumns[i] =
-                new LongColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new long[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getLongs()[j] =
-                    ((Number) valueColumns[i].getInts()[j]).longValue();
-              }
-            }
-          } else if (sourceType == TSDataType.INT64) {
-            newValueColumns[i] = valueColumns[i];
-          } else {
-            newValueColumns[i] =
-                new LongColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new long[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case DATE:
-          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.DATE)) {
-            newValueColumns[i] = valueColumns[i];
-          } else {
-            newValueColumns[i] =
-                new IntColumn(
-                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case BLOB:
-          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.BLOB)) {
-            newValueColumns[i] = valueColumns[i];
-          } else {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case STRING:
-          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.STRING)) {
-            newValueColumns[i] = valueColumns[i];
-          } else if (sourceType == TSDataType.INT32) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.DATE) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        TSDataType.getDateStringValue(valueColumns[i].getInts()[j]),
-                        StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getLongs()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.FLOAT) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getFloats()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.DOUBLE) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getDoubles()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else if (sourceType == TSDataType.BOOLEAN) {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getBinaries()[j] =
-                    new Binary(
-                        String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
-              }
-            }
-          } else {
-            newValueColumns[i] =
-                new BinaryColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new Binary[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = true;
-            }
-          }
-          break;
-        case OBJECT:
-          newValueColumns[i] = valueColumns[i];
-        case VECTOR:
-        case UNKNOWN:
-        default:
-          break;
-      }
+      newValueColumns[i] =
+          TypeServices.Transformation.ALTERED_DATA_TYPE_COLUMN_TRANSFORMER_SERVICE
+              .call(Type.fromTsDataType(finalDataType))
+              .transform(valueColumns[i], positionCount);
     }
 
     tsBlock = new TsBlock(tsBlock.getTimeColumn(), newValueColumns);
@@ -1402,6 +1047,10 @@ public class SeriesScanUtil implements Accountable {
   /** filter data in whole page level, and apply the offset at the same time */
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
+      return;
+    }
+
+    if (skipByTopKRuntimeFilter(firstPageReader.getStatistics(), this::skipCurrentPage)) {
       return;
     }
 
@@ -1650,51 +1299,18 @@ public class SeriesScanUtil implements Accountable {
 
   private void addTimeValuePairToResult(TimeValuePair timeValuePair, TsBlockBuilder builder) {
     builder.getTimeColumnBuilder().writeLong(timeValuePair.getTimestamp());
-    switch (dataType) {
-      case BOOLEAN:
-        builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
-        break;
-      case INT32:
-      case DATE:
-        builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
-        break;
-      case FLOAT:
-        builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
-        break;
-      case DOUBLE:
-        builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        if (timeValuePair.getValue().getDataType() == TSDataType.DATE) {
-          builder
-              .getColumnBuilder(0)
-              .writeBinary(
-                  new Binary(
-                      TSDataType.getDateStringValue(timeValuePair.getValue().getInt()),
-                      StandardCharsets.UTF_8));
+    TsPrimitiveType primitiveType = timeValuePair.getValue();
+    if (dataType == TSDataType.VECTOR) {
+      TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+      for (int i = 0; i < values.length; i++) {
+        if (values[i] == null) {
+          builder.getColumnBuilder(i).appendNull();
         } else {
-          builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+          builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
         }
-        break;
-      case VECTOR:
-        TsPrimitiveType[] values = timeValuePair.getValue().getVector();
-        for (int i = 0; i < values.length; i++) {
-          if (values[i] == null) {
-            builder.getColumnBuilder(i).appendNull();
-          } else {
-            builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    } else {
+      builder.getColumnBuilder(0).writeTsPrimitiveType(primitiveType);
     }
     builder.declarePosition();
   }
@@ -1891,6 +1507,10 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
 
+    if (skipByTopKRuntimeFilter(firstTimeSeriesMetadata.getStatistics(), this::skipCurrentFile)) {
+      return;
+    }
+
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstTimeSeriesMetadata)) {
@@ -1933,8 +1553,10 @@ public class SeriesScanUtil implements Accountable {
   }
 
   private Optional<ITimeSeriesMetadata> unpackSeqTsFileResource() throws IOException {
+    checkFragmentInstanceState();
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
+    checkFragmentInstanceState();
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
@@ -1946,8 +1568,10 @@ public class SeriesScanUtil implements Accountable {
   }
 
   private Optional<ITimeSeriesMetadata> unpackUnseqTsFileResource() throws IOException {
+    checkFragmentInstanceState();
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
+    checkFragmentInstanceState();
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
@@ -1955,6 +1579,27 @@ public class SeriesScanUtil implements Accountable {
       return Optional.of(timeseriesMetadata);
     } else {
       return Optional.empty();
+    }
+  }
+
+  private void checkFragmentInstanceState() throws IOException {
+    // Compaction also uses this scanner, but its context has no fragment state machine.
+    if (context.getStateMachine() == null) {
+      return;
+    }
+    FragmentInstanceState state = context.getStateMachine().getState();
+    if (state == FragmentInstanceState.FINISHED) {
+      throw new FragmentInstanceFinishedException(context.getId());
+    }
+    if (state.isDone()) {
+      // A scan over many overlapping files may stay in one operator call long after cancellation.
+      // Exit on the driver thread so it can release its lock and finish resource cleanup.
+      throw new IOException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4,
+              context.getId(),
+              state),
+          context.getFailureCause().orElse(null));
     }
   }
 
@@ -2015,6 +1660,7 @@ public class SeriesScanUtil implements Accountable {
     protected final boolean isSeq;
     protected final boolean isAligned;
     protected final boolean isMem;
+    protected final File tsFile;
 
     VersionPageReader(
         QueryContext context,
@@ -2022,7 +1668,8 @@ public class SeriesScanUtil implements Accountable {
         long version,
         long offset,
         IPageReader data,
-        boolean isSeq) {
+        boolean isSeq,
+        File tsFile) {
       this.context = context;
       this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
       this.data = data;
@@ -2032,6 +1679,7 @@ public class SeriesScanUtil implements Accountable {
               || data instanceof MemAlignedPageReader
               || data instanceof TablePageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
+      this.tsFile = tsFile;
     }
 
     @SuppressWarnings("squid:S3740")
@@ -2076,6 +1724,21 @@ public class SeriesScanUtil implements Accountable {
               CommonUtils.toString(tsBlock));
         }
         return tsBlock;
+      } catch (Exception e) {
+        if (tsFile != null) {
+          throw new CorruptedTsFileException(
+              tsFile,
+              CorruptedTsFileException.Stage.DECODE_PAGE_DATA,
+              context.isExternalTsFileScan()
+                  ? String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377,
+                      tsFile)
+                  : DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9,
+              e);
+        }
+        throw e;
       } finally {
         long time = System.nanoTime() - startTime;
         if (isAligned) {
@@ -2392,10 +2055,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex)) {
+          curSeqFileIndex--;
+          continue;
+        }
         if (dataSource.isSeqSatisfied(
             deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isSeqSatisfiedByRuntimeFilter(curSeqFileIndex, filter, false)) {
+            break;
+          }
+          dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curSeqFileIndex--;
       }
@@ -2404,10 +2080,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextUnseqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex)) {
+          curUnseqFileIndex++;
+          continue;
+        }
         if (dataSource.isUnSeqSatisfied(
             deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter)) {
+            break;
+          }
+          dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curUnseqFileIndex++;
       }
@@ -2521,10 +2210,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex)) {
+          curSeqFileIndex++;
+          continue;
+        }
         if (dataSource.isSeqSatisfied(
             deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isSeqSatisfiedByRuntimeFilter(curSeqFileIndex, filter, false)) {
+            break;
+          }
+          dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curSeqFileIndex++;
       }
@@ -2533,10 +2235,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextUnseqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex)) {
+          curUnseqFileIndex++;
+          continue;
+        }
         if (dataSource.isUnSeqSatisfied(
             deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter)) {
+            break;
+          }
+          dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curUnseqFileIndex++;
       }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.read.common.type.Type;
 
@@ -31,6 +32,7 @@ public class TypeCoercion {
   private final Function<TypeSignature, Type> lookupType;
 
   public TypeCoercion(Function<TypeSignature, Type> lookupType) {
-    this.lookupType = requireNonNull(lookupType, "lookupType is null");
+    this.lookupType =
+        requireNonNull(lookupType, DataNodeQueryMessages.EXCEPTION_LOOKUPTYPE_IS_NULL_190054FA);
   }
 }

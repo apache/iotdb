@@ -130,6 +130,56 @@ public class IoTDBReadTsFileTableFunctionIT {
   }
 
   @Test
+  public void testReadTsFileWithTagFilterAndProjectionPruning() throws Exception {
+    // Reproduces a bug where projection pruning removes tag columns from the scan node's
+    // assignments, and the subsequent device filter construction rebuilds tag indices from the
+    // pruned list, causing tag index misalignment in ExternalTsFileDeviceFilterVisitor.
+    // The TsFile has tag columns [tag1, tag2]. When SELECT projects only time and s1 (omitting
+    // both tag columns), the old code would assign tag2 an index of 0 instead of 1, and
+    // deviceID.segment(1) would read tag1 instead of tag2.
+    File tsFile = new File(tmpDir, "tag-projection-pruning.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile)) {
+      generateTable(
+          writer, "table1", Arrays.asList("tag1", "tag2"), Arrays.asList("s1", "s2"), 1, 2);
+    }
+
+    // tag2 = 'tag2_1' should match only the device whose tag2 is tag2_1
+    // Before fix: read deviceID.segment(1)=tag1 instead of tag2, so this actually evaluated
+    // tag1 = 'tag2_1' and returned empty
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile)
+            + "', TABLE_NAME => 'table1') WHERE tag2 = 'tag2_1' ORDER BY time",
+        new String[] {"time", "s1"},
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,", "1970-01-01T00:00:00.002Z,2,",
+        },
+        DATABASE_NAME);
+
+    // tag2 = 'tag1_1' should match nothing: no device has tag2 = tag1_1
+    // Before fix: read deviceID.segment(1)=tag1, so this actually evaluated tag1 = 'tag1_1'
+    // and returned 2 rows (the device with tag1_1)
+    tableResultSetEqualTest(
+        "SELECT time, s1 FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile)
+            + "', TABLE_NAME => 'table1') WHERE tag2 = 'tag1_1'",
+        new String[] {"time", "s1"},
+        new String[] {},
+        DATABASE_NAME);
+
+    // Verify: select tag2 as well to confirm correct matching
+    tableResultSetEqualTest(
+        "SELECT time, tag2, s1 FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile)
+            + "', TABLE_NAME => 'table1') WHERE tag2 = 'tag2_2' ORDER BY time",
+        new String[] {"time", "tag2", "s1"},
+        new String[] {
+          "1970-01-01T00:00:00.001Z,tag2_2,1,", "1970-01-01T00:00:00.002Z,tag2_2,2,",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testReadTsFileAggregationWithNoMatchedDevice() throws Exception {
     File tsFile = new File(tmpDir, "empty-device-aggregation.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile)) {

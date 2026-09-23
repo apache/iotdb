@@ -54,10 +54,10 @@ public class CountDatabaseTask implements IConfigTask {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(storageGroupNum);
     builder.declarePosition();
-    ColumnHeader storageGroupColumnHeader =
+    ColumnHeader databaseColumnHeader =
         new ColumnHeader(IoTDBConstant.COLUMN_COUNT, TSDataType.INT32);
     DatasetHeader datasetHeader =
-        new DatasetHeader(Collections.singletonList(storageGroupColumnHeader), true);
+        new DatasetHeader(Collections.singletonList(databaseColumnHeader), true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

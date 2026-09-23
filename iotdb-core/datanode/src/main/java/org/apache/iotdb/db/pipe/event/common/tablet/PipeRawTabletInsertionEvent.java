@@ -112,6 +112,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+    inheritSourceEventReportSkippingIfNecessary();
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
@@ -376,11 +377,12 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     final long[] timestamps = tablet.getTimestamps();
-    if (Objects.isNull(timestamps) || timestamps.length == 0) {
+    final int rowSize = tablet.getRowSize();
+    if (Objects.isNull(timestamps) || rowSize <= 0) {
       return false;
     }
     // We assume that `timestamps` is ordered.
-    return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+    return startTime <= timestamps[rowSize - 1] && timestamps[0] <= endTime;
   }
 
   @Override
@@ -398,6 +400,18 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
           });
     }
     this.needToReport = true;
+    inheritSourceEventReportSkippingIfNecessary();
+  }
+
+  private void inheritSourceEventReportSkippingIfNecessary() {
+    if (needToReport && shouldSkipReportOnCommitBecauseOfSourceEvent()) {
+      skipReportOnCommit();
+    }
+  }
+
+  private boolean shouldSkipReportOnCommitBecauseOfSourceEvent() {
+    return sourceEvent instanceof PipeTsFileInsertionEvent
+        && !((PipeTsFileInsertionEvent) sourceEvent).shouldReportGeneratedEventsOnCommit();
   }
 
   // This getter is reserved for user-defined plugins

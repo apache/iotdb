@@ -163,4 +163,14 @@ public final class ConsensusMessages {
   public static final String FAILED_TO_READ_KEYSTORE =
       "读取 keystore 或 truststore 失败。";
   public static final String NOT_IMPLEMENTED_YET = "尚未实现";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_RAFT_SERVER_CANNOT_SERVE_READ_REQUESTS_NOW_LEADER_UNKNOWN_UNDER_B6D65373 = "Raft Server 当前无法处理读请求（leader 未知或正在恢复）。";
+  public static final String EXCEPTION_PLEASE_TRY_READ_LATER_D8E0CDE1 = "请稍后重试读取：";
+  public static final String EXCEPTION_RATIS_REQUEST_FAILED_52AF217F = "Ratis 请求失败 ";
+  public static final String EXCEPTION_UNKNOWN_88183B94 = "未知";
+  public static final String EXCEPTION_RATIS_REQUEST_FAILED_58107CDE = "Ratis 请求失败：";
+  public static final String EXCEPTION_DOT_F779BA66 = ". ";
+
 }

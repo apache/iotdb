@@ -93,7 +93,10 @@ public class DeletionResourceManager implements AutoCloseable {
           LOGGER.warn(
               DataNodePipeMessages.UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT, storageDir);
           throw new IOException(
-              String.format("Unable to create iotConsensusV2 deletion dir at %s", storageDir));
+              String.format(
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT_S_800EE360,
+                  storageDir));
         }
       }
       try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
@@ -132,6 +135,9 @@ public class DeletionResourceManager implements AutoCloseable {
     LOGGER.info(DataNodePipeMessages.CLOSING_DELETION_RESOURCE_MANAGER_FOR, dataRegionId);
     this.deleteNode2ResourcesMap.clear();
     this.deletionBuffer.close();
+    if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP != null) {
+      DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.remove(dataRegionId, this);
+    }
     LOGGER.info(
         DataNodePipeMessages.DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY, dataRegionId);
   }

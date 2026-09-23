@@ -328,7 +328,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     for (String node : prefix.getNodes()) {
       if (MULTI_LEVEL_PATH_WILDCARD.equals(node) || ONE_LEVEL_PATH_WILDCARD.equals(node)) {
         throw new IllegalArgumentException(
-            "Wildcards are not allowed in the prefix path: " + prefix.getFullPath());
+            PathMessages.EXCEPTION_WILDCARDS_NOT_ALLOWED_PREFIX_PATH_948C42D1
+                + prefix.getFullPath());
       }
     }
 

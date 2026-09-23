@@ -15,6 +15,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -25,7 +26,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -77,8 +77,8 @@ public class TableRegressionAccumulator implements TableAccumulator {
         if (arguments[0].isNull(i) || arguments[1].isNull(i)) {
           continue;
         }
-        double y = getDoubleValue(arguments[0], i, yDataType);
-        double x = getDoubleValue(arguments[1], i, xDataType);
+        double y = getDoubleValue(arguments[0], i);
+        double x = getDoubleValue(arguments[1], i);
         update(x, y);
       }
     } else {
@@ -88,29 +88,15 @@ public class TableRegressionAccumulator implements TableAccumulator {
         if (arguments[0].isNull(position) || arguments[1].isNull(position)) {
           continue;
         }
-        double y = getDoubleValue(arguments[0], position, yDataType);
-        double x = getDoubleValue(arguments[1], position, xDataType);
+        double y = getDoubleValue(arguments[0], position);
+        double x = getDoubleValue(arguments[1], position);
         update(x, y);
       }
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Regression Aggregation: %s", dataType));
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(double x, double y) {
@@ -176,7 +162,7 @@ public class TableRegressionAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate output of Regression should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_OUTPUT_OF_REGRESSION_SHOULD_BE_BINARYCOLUMN_E74D77ED);
     if (count == 0) {
       columnBuilder.appendNull();
     } else {
@@ -215,19 +201,20 @@ public class TableRegressionAccumulator implements TableAccumulator {
         }
         break;
       default:
-        throw new UnsupportedOperationException("Unknown type: " + regressionType);
+        throw new UnsupportedOperationException(CalcMessages.UNKNOWN_TYPE + regressionType);
     }
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 2, "Input of Regression should be 2");
+    checkArgument(
+        arguments.length == 2, CalcMessages.EXCEPTION_INPUT_OF_REGRESSION_SHOULD_BE_2_3893EEE3);
     if (count == 0 || arguments[0].isNull(0) || arguments[1].isNull(0)) {
       return;
     }
 
-    double otherY = getDoubleValue(arguments[0], 0, yDataType);
-    double otherX = getDoubleValue(arguments[1], 0, xDataType);
+    double otherY = getDoubleValue(arguments[0], 0);
+    double otherX = getDoubleValue(arguments[1], 0);
 
     if (count == 1) {
       reset();

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.plan.relational.metadata;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
@@ -184,7 +185,7 @@ public class CommonMetadataUtils {
   public static void throwColumnNotExistsException(final Object columnName) {
     throw new SemanticException(
         new IoTDBException(
-            String.format("Column '%s' cannot be resolved.", columnName),
+            String.format(CalcMessages.EXCEPTION_COLUMN_ARG_CANNOT_RESOLVED_508579EC, columnName),
             TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()));
   }
 }

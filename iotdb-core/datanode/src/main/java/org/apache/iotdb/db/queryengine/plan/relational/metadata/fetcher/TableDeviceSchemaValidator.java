@@ -81,7 +81,7 @@ public class TableDeviceSchemaValidator {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Validating device schema {}.{} and other {} devices",
+          DataNodeQueryMessages.VALIDATING_DEVICE_SCHEMA_ARG_ARG_AND_OTHER_ARG_DEVICES,
           schemaValidation.getTableName(),
           Arrays.toString(deviceIdList.get(0)),
           deviceIdList.size() - 1);

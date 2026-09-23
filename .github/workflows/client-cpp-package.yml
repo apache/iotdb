@@ -309,7 +309,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          brew install boost openssl llvm@17 bison
+          brew install boost llvm@17 bison
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
@@ -369,6 +369,22 @@ jobs:
           unzip -q -o "${PKG_TARBALL}" -d "${PKG_UNPACK}"
           PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
           test -n "${PKG_ROOT}"
+          OPENSSL_BUILD_INSTALL="${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/build/_deps/openssl/install"
+          test -d "${OPENSSL_BUILD_INSTALL}"
+          rm -rf "${RUNNER_TEMP}/openssl-build-install-hidden"
+          mv "${OPENSSL_BUILD_INSTALL}" "${RUNNER_TEMP}/openssl-build-install-hidden"
+          SSL_DYLIB=$(find "${PKG_ROOT}/lib" -type f -name 'libssl*.dylib' -print -quit)
+          CRYPTO_DYLIB=$(find "${PKG_ROOT}/lib" -type f -name 'libcrypto*.dylib' -print -quit)
+          test -n "${SSL_DYLIB}"
+          test -n "${CRYPTO_DYLIB}"
+          otool -D "${SSL_DYLIB}" | grep -F "@rpath/$(basename "${SSL_DYLIB}")"
+          otool -D "${CRYPTO_DYLIB}" | grep -F "@rpath/$(basename "${CRYPTO_DYLIB}")"
+          otool -L "${SSL_DYLIB}" | grep -F "@rpath/$(basename "${CRYPTO_DYLIB}")"
+          if otool -L "${PKG_ROOT}/lib/libiotdb_session.dylib" "${SSL_DYLIB}" "${CRYPTO_DYLIB}" \
+              | grep -F "${GITHUB_WORKSPACE}"; then
+            echo "Packaged dylibs still reference the build workspace"
+            exit 1
+          fi
           EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
           cmake -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
             -DCMAKE_BUILD_TYPE=Release \
@@ -415,7 +431,8 @@ jobs:
       - name: Install C++ dependencies (Windows)
         shell: pwsh
         run: |
-          choco install winflexbison3 -y --no-progress
+          choco install winflexbison3 strawberryperl -y --no-progress
+          echo 'C:\Strawberry\perl\bin' >> $env:GITHUB_PATH
           $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
           if ('${{ matrix.boost_choco_version }}' -ne '') {
             $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
@@ -429,10 +446,6 @@ jobs:
             throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
           }
           echo $boostDir.FullName >> $env:GITHUB_PATH
-          choco install openssl -y --no-progress
-          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
-          echo "$sslPath\bin" >> $env:GITHUB_PATH
-          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -524,6 +537,7 @@ jobs:
           fi
           cmake "${CMAKE_ARGS[@]}"
           cmake --build "${EXAMPLE_BUILD}" --config Release
+          export PATH="${PKG_ROOT}/lib:${PATH}"
           ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
           if [ "${RUNNER_OS}" = "Windows" ]; then
             WORKSPACE_BASE="$(cygpath -u "${GITHUB_WORKSPACE}")"

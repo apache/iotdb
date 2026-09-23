@@ -77,7 +77,9 @@ public class SnapshotTaker {
         && Objects.requireNonNull(snapshotDir.listFiles()).length > 0) {
       // the directory should be empty or not exists
       throw new DirectoryNotLegalException(
-          String.format("%s already exists and is not empty", snapshotDirPath));
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_S_ALREADY_EXISTS_AND_IS_NOT_EMPTY_CF0BD6A4,
+              snapshotDirPath));
     }
 
     if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
@@ -224,12 +226,10 @@ public class SnapshotTaker {
     try {
       for (TsFileResource resource : resources) {
         if (!resource.isClosed()) {
-          continue;
+          LOGGER.error(StorageEngineMessages.CANNOT_SNAPSHOT_UNCLOSED_TSFILE, resource);
+          return false;
         }
         File tsFile = resource.getTsFile();
-        if (!resource.isClosed()) {
-          continue;
-        }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         File snapshotResourceFile =
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);

@@ -107,7 +107,7 @@ public class SettleService implements IService {
       return;
     }
     logger.info(
-        "Totally find {} tsFiles to be settled.",
+        DataNodeMiscMessages.MISC_LOG_TOTALLY_FIND_TSFILES_TO_BE_SETTLED_DB47A63C,
         seqResourcesToBeSettled.size() + unseqResourcesToBeSettled.size());
     // settle seqTsFile
     for (TsFileResource resource : seqResourcesToBeSettled) {
@@ -153,7 +153,9 @@ public class SettleService implements IService {
               new File(tsFilePath).getParentFile().getParentFile().getParentFile().getName());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(
-          "Fail to get sg of this tsFile while parsing the file path.", e);
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_FAIL_TO_GET_SG_OF_THIS_TSFILE_WHILE_PARSING_THE_FILE_PATH_9EADADE1,
+          e);
     }
     return sgPath;
   }

@@ -173,7 +173,8 @@ public class CteMaterializer {
         context.reserveMemoryForFrontEnd(tsBlock.get().getRetainedSizeInBytes());
         if (!cteDataStore.addTsBlock(tsBlock.get())) {
           LOGGER.warn(
-              "Fail to materialize CTE because the data size exceeded memory or the row count threshold");
+              DataNodeQueryMessages
+                  .FAIL_TO_MATERIALIZE_CTE_BECAUSE_THE_DATA_SIZE_EXCEEDED_MEMORY_OR_THE_ROW_COUNT_THRESHOLD);
           if (context.isExplainAnalyze()) {
             handleCteExplainAnalyzeResults(
                 context,
@@ -213,7 +214,8 @@ public class CteMaterializer {
     final List<TSDataType> columnDataTypes = datasetHeader.getRespDataTypes();
     if (columnNames.size() != columnDataTypes.size()) {
       throw new IoTDBRuntimeException(
-          "Size of column names and column data types do not match",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SIZE_OF_COLUMN_NAMES_AND_COLUMN_DATA_TYPES_DO_NOT_MATCH_9333D273,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
@@ -324,7 +326,8 @@ public class CteMaterializer {
       context.addCteExplainResult(table, new Pair<>(maxLineLength, lines));
     } catch (FragmentInstanceFetchException e) {
       throw new IoTDBRuntimeException(
-          "Failed to fetch fragment instance statistics",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_FAILED_TO_FETCH_FRAGMENT_INSTANCE_STATISTICS_45176795,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }

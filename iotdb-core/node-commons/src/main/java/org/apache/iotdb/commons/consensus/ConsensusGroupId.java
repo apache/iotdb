@@ -88,7 +88,10 @@ public abstract class ConsensusGroupId implements Comparable<ConsensusGroupId> {
         groupId = new ConfigRegionId(id);
       } else {
         throw new IllegalArgumentException(
-            "Unrecognized TConsensusGroupType: " + type + " with id = " + id);
+            CommonMessages.EXCEPTION_UNRECOGNIZED_TCONSENSUSGROUPTYPE_9204FF8E
+                + type
+                + CommonMessages.EXCEPTION_ID_1F238F51
+                + id);
       }
       return groupId;
     }

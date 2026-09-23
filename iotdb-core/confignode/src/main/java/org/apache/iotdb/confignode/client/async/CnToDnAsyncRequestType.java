@@ -46,6 +46,7 @@ public enum CnToDnAsyncRequestType {
   CHANGE_REGION_LEADER,
 
   // Cache
+  INVALIDATE_PARTITION_CACHE,
   INVALIDATE_SCHEMA_CACHE,
   INVALIDATE_LAST_CACHE,
   CLEAR_CACHE,
@@ -122,7 +123,7 @@ public enum CnToDnAsyncRequestType {
 
   // Table
   UPDATE_TABLE,
-  INVALIDATE_TABLE_CACHE,
+  PRE_DELETE_TABLE,
   DELETE_DATA_FOR_DROP_TABLE,
   DELETE_DEVICES_FOR_DROP_TABLE,
   INVALIDATE_COLUMN_CACHE,
@@ -137,4 +138,7 @@ public enum CnToDnAsyncRequestType {
   // audit log and event write-back
   INSERT_RECORD,
   ENABLE_SEPARATION_OF_ADMIN_POWERS,
+
+  // authority
+  INVALIDATE_PERMISSION_CACHE,
 }

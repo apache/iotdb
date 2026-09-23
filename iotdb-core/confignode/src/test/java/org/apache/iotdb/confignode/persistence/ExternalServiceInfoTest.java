@@ -90,4 +90,25 @@ public class ExternalServiceInfoTest {
         serviceInfo.getRawDatanodeToServiceInfos(),
         serviceInfoBefore.getRawDatanodeToServiceInfos());
   }
+
+  @Test
+  public void testLoadEmptySnapshotClearsExistingState() throws Exception {
+    final File emptySnapshotDir = new File(BASE_OUTPUT_PATH, "empty-external-service-snapshot");
+    final ExternalServiceInfo emptySnapshotSource = new ExternalServiceInfo();
+    final ExternalServiceInfo target = new ExternalServiceInfo();
+    try {
+      Assert.assertTrue(emptySnapshotDir.mkdirs() || emptySnapshotDir.isDirectory());
+      target.addService(
+          new CreateExternalServicePlan(
+              1, new ServiceInfo("TEST", "testClassName", ServiceInfo.ServiceType.USER_DEFINED)));
+      Assert.assertFalse(target.getRawDatanodeToServiceInfos().isEmpty());
+
+      Assert.assertTrue(emptySnapshotSource.processTakeSnapshot(emptySnapshotDir));
+      target.processLoadSnapshot(emptySnapshotDir);
+
+      Assert.assertTrue(target.getRawDatanodeToServiceInfos().isEmpty());
+    } finally {
+      FileUtils.deleteDirectory(emptySnapshotDir);
+    }
+  }
 }

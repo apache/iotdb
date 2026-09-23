@@ -49,8 +49,8 @@
 示例：
 
 ```bash
-unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28.zip
-export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28
+unzip iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28.zip
+export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28
 ```
 
 解压后的 SDK 主要包含：
@@ -72,7 +72,7 @@ Thrift 或 Boost 的头文件/库。
 项目中的 `CMakeLists.txt` 可这样写：
 
 ```cmake
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(my_iotdb_app LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -236,14 +236,20 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 
 | CMake 变量 | Maven 属性 |
 |------------|------------|
-| `WITH_SSL` | `with.ssl`，例如 `-Dwith.ssl=ON` |
+| `WITH_SSL` | `with.ssl`（默认 `ON`，关闭用 `-Dwith.ssl=OFF`） |
 | `IOTDB_OFFLINE` | `iotdb.offline` |
 | `BUILD_TESTING` | `build.tests` |
 | `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
 | `BOOST_INCLUDEDIR` | `boost.include.dir` |
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
-直接使用 CMake 时传入 `-DWITH_SSL=ON`、`-DIOTDB_OFFLINE=ON` 等即可。
+SSL 默认开启（`WITH_SSL=ON`）。默认构建会下载固定版本的 OpenSSL 3.5.8 源码，
+校验 SHA-256 后在 Linux、macOS 和 Windows 上编译，并将动态库复制到 SDK 的
+`lib/` 目录。设置 `-DIOTDB_OPENSSL_FROM_SOURCE=OFF` 可改用系统 OpenSSL 3.x。
+
+标准 TLS 使用 `useSSL(true)` 和 `trustCertFilePath("ca.crt")`；mTLS 再同时设置
+`clientCertificateFilePath("client.crt")` 与
+`clientPrivateKeyFilePath("client.key")`。客户端证书和未加密 PEM 私钥必须成对配置。
 Debug 构建请在配置阶段传入 `-DCMAKE_BUILD_TYPE=Debug`。Windows 使用 Visual
 Studio 生成器时也需要传入该选项，以便内置 Thrift 静态库使用 Debug MSVC 运行时；
 随后用 `cmake --build build --config Debug --target install` 构建安装。

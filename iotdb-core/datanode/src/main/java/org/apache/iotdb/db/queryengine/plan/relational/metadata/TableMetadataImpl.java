@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionFactory;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -57,8 +59,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBui
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -66,6 +71,7 @@ import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.Type;
@@ -74,7 +80,6 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -98,7 +103,7 @@ public class TableMetadataImpl implements Metadata {
 
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
-  private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+  private final ITableCache tableCache = DataNodeTableCache.getInstance();
 
   @Override
   public TableFunction getTableFunction(String functionName) {
@@ -233,18 +238,20 @@ public class TableMetadataImpl implements Metadata {
               && isNumericType(argumentTypes.get(0))
               && BOOLEAN.equals(argumentTypes.get(1)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports one numeric data types [INT32, INT64, FLOAT, DOUBLE] and one boolean");
+                + DataNodeQueryMessages
+                    .ONLY_SUPPORTS_ONE_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT_DOUBLE_AND_ONE_BOOLEAN);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isOneSupportedMathNumericType(argumentTypes)
           && !CommonMetadataUtils.isTwoSupportedMathNumericType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+                + DataNodeQueryMessages
+                    .ONLY_SUPPORTS_TWO_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT_DOUBLE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.REPLACE
@@ -254,9 +261,10 @@ public class TableMetadataImpl implements Metadata {
       if (!CommonMetadataUtils.isTwoCharType(argumentTypes)
           && !CommonMetadataUtils.isThreeCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two or three arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_OR_THREE_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.SUBSTRING
@@ -270,9 +278,10 @@ public class TableMetadataImpl implements Metadata {
               && CommonMetadataUtils.isIntegerNumber(argumentTypes.get(1))
               && CommonMetadataUtils.isIntegerNumber(argumentTypes.get(2)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_OR_THREE_ARGUMENTS_AND_FIRST_MUST_BE_TEXT_OR_STRING_DATA_TYPE_SECOND);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -281,52 +290,58 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))
               || CommonMetadataUtils.isObjectType(argumentTypes.get(0))))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text or string or blob or object data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_OR_STRING_OR_BLOB_OR_OBJECT_DATA_TYPE);
       }
       return INT64;
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && CommonMetadataUtils.isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && CommonMetadataUtils.isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && CommonMetadataUtils.isCharType(argumentTypes.get(0)))
           && !(argumentTypes.size() == 2 && CommonMetadataUtils.isTwoCharType(argumentTypes))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one or two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_OR_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.LTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && CommonMetadataUtils.isCharType(argumentTypes.get(0)))
           && !(argumentTypes.size() == 2 && CommonMetadataUtils.isTwoCharType(argumentTypes))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one or two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_OR_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.RTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && CommonMetadataUtils.isCharType(argumentTypes.get(0)))
           && !(argumentTypes.size() == 2 && CommonMetadataUtils.isTwoCharType(argumentTypes))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one or two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_OR_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.REGEXP_LIKE
@@ -334,17 +349,19 @@ public class TableMetadataImpl implements Metadata {
         .equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return BOOLEAN;
     } else if (TableBuiltinScalarFunction.STRPOS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return INT32;
     } else if (TableBuiltinScalarFunction.STARTS_WITH
@@ -352,9 +369,10 @@ public class TableMetadataImpl implements Metadata {
         .equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return BOOLEAN;
     } else if (TableBuiltinScalarFunction.ENDS_WITH
@@ -362,107 +380,119 @@ public class TableMetadataImpl implements Metadata {
         .equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return BOOLEAN;
     } else if (TableBuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() >= 2
           && argumentTypes.stream().allMatch(CommonMetadataUtils::isCharType))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two or more arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_OR_MORE_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isTwoCharType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be text or string data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_ARGUMENTS_AND_THEY_MUST_BE_TEXT_OR_STRING_DATA_TYPE);
       }
       return INT32;
     } else if (TableBuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.COS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.TAN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ASIN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ACOS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ATAN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.SINH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.COSH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.TANH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.DEGREES
@@ -471,9 +501,10 @@ public class TableMetadataImpl implements Metadata {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.RADIANS
@@ -482,97 +513,106 @@ public class TableMetadataImpl implements Metadata {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return argumentTypes.get(0);
     } else if (TableBuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return argumentTypes.get(0);
     } else if (TableBuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.FLOOR.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.EXP.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.LN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.LOG10.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
           && CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_FLOAT_INT32_OR_INT64_DATA_TYPE);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.PI.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.isEmpty())) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " accepts no argument.");
+                + DataNodeQueryMessages.ACCEPTS_NO_ARGUMENT);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.E.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.isEmpty())) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " accepts no argument.");
+                + DataNodeQueryMessages.ACCEPTS_NO_ARGUMENT);
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.DATE_BIN
@@ -580,17 +620,19 @@ public class TableMetadataImpl implements Metadata {
         .equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isTimestampType(argumentTypes.get(2))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two or three arguments and the second and third must be TimeStamp data type.");
+                + DataNodeQueryMessages
+                    .ONLY_ACCEPTS_TWO_OR_THREE_ARGUMENTS_AND_THE_SECOND_AND_THIRD_MUST_BE_TIMESTAMP_DATA_TYPE);
       }
       return TIMESTAMP;
     } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
       if (argumentTypes.size() < 2 || !CommonMetadataUtils.isCharType(argumentTypes.get(0))) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " must have at least two arguments, and first argument pattern must be TEXT or STRING type.");
+                + DataNodeQueryMessages
+                    .MUST_HAVE_AT_LEAST_TWO_ARGUMENTS_AND_FIRST_ARGUMENT_PATTERN_MUST_BE_TEXT_OR_STRING_TYPE);
       }
       return STRING;
     } else if (FAIL_FUNCTION_NAME.equalsIgnoreCase(functionName)) {
@@ -600,9 +642,10 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() < 2
           || !CommonMetadataUtils.areAllTypesSameAndComparable(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function "
+            DataNodeQueryMessages.SCALAR_FUNCTION
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " must have at least two arguments, and all type must be the same.");
+                + DataNodeQueryMessages
+                    .MUST_HAVE_AT_LEAST_TWO_ARGUMENTS_AND_ALL_TYPE_MUST_BE_THE_SAME);
       }
       return argumentTypes.get(0);
     } else if (TableBuiltinScalarFunction.BIT_COUNT.getFunctionName().equalsIgnoreCase(functionName)
@@ -616,7 +659,8 @@ public class TableMetadataImpl implements Metadata {
               && CommonMetadataUtils.isIntegerNumber(argumentTypes.get(1)))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_TWO_ARGUMENTS_AND_THEY_MUST_BE_INT32_OR_INT64_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -626,7 +670,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isIntegerNumber(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int32 or Int64 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT32_OR_INT64_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -644,7 +689,8 @@ public class TableMetadataImpl implements Metadata {
               && CommonMetadataUtils.isIntegerNumber(argumentTypes.get(1)))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_TWO_ARGUMENTS_AND_THEY_MUST_BE_INT32_OR_INT64_DATA_TYPE,
                 functionName));
       }
       return argumentTypes.get(0);
@@ -656,7 +702,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return STRING;
@@ -666,7 +713,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isCharType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_OR_STRING_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -678,7 +726,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return STRING;
@@ -688,7 +737,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isCharType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_OR_STRING_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -700,7 +750,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return STRING;
@@ -710,7 +761,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isCharType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_OR_STRING_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -720,7 +772,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -730,7 +783,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -740,7 +794,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -750,7 +805,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -762,7 +818,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -774,7 +831,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -784,7 +842,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0))))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return STRING;
@@ -794,7 +853,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isCharType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_OR_STRING_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -806,7 +866,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isBlobType(argumentTypes.get(0)))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BlOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE_2,
                 functionName));
       }
       return argumentTypes.get(0);
@@ -822,7 +883,8 @@ public class TableMetadataImpl implements Metadata {
           || !CommonMetadataUtils.isCharType(argumentTypes.get(1))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts two arguments, first argument must be TEXT, STRING, or BlOB type, second argument must be STRING OR TEXT type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_TWO_ARGUMENTS_FIRST_ARGUMENT_MUST_BE_TEXT_STRING_OR_BLOB,
                 functionName));
       }
       return BLOB;
@@ -832,7 +894,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT32_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -842,7 +905,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT32;
@@ -852,7 +916,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT64_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -862,7 +927,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -872,7 +938,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT32_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -882,7 +949,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT32;
@@ -892,7 +960,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT64_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -902,7 +971,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -912,7 +982,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !FLOAT.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Float data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_FLOAT_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -922,7 +993,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return FLOAT;
@@ -932,7 +1004,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !DOUBLE.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Double data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -942,7 +1015,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return DOUBLE;
@@ -952,7 +1026,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -967,7 +1042,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -977,7 +1053,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT32_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -987,7 +1064,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT32;
@@ -997,7 +1075,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT64_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -1007,7 +1086,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -1017,7 +1097,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT32_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -1027,7 +1108,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT32;
@@ -1037,7 +1119,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_INT64_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -1047,7 +1130,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -1057,7 +1141,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !FLOAT.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Float data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_FLOAT_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -1067,7 +1152,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return FLOAT;
@@ -1077,7 +1163,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !DOUBLE.equals(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be Double data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_DOUBLE_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -1087,7 +1174,8 @@ public class TableMetadataImpl implements Metadata {
       if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBlobType(argumentTypes.get(0))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_BLOB_DATA_TYPE,
                 functionName));
       }
       return DOUBLE;
@@ -1097,7 +1185,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return INT64;
@@ -1112,7 +1201,8 @@ public class TableMetadataImpl implements Metadata {
               || CommonMetadataUtils.isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                DataNodeQueryMessages
+                    .SCALAR_FUNCTION_S_ONLY_ACCEPTS_ONE_ARGUMENT_AND_IT_MUST_BE_TEXT_STRING_OR_BLOB_DATA_TYPE,
                 functionName));
       }
       return BLOB;
@@ -1124,8 +1214,10 @@ public class TableMetadataImpl implements Metadata {
           || !CommonMetadataUtils.isBlobType(argumentTypes.get(2))) {
         throw new SemanticException(
             String.format(
-                "Scalar function %s only accepts three arguments, first argument must be BlOB type, "
-                    + "second argument must be int32 or int64 type, third argument must be BLOB type.",
+                DataNodeQueryMessages
+                        .SCALAR_FUNCTION_S_ONLY_ACCEPTS_THREE_ARGUMENTS_FIRST_ARGUMENT_MUST_BE_BLOB_TYPE
+                    + DataNodeQueryMessages
+                        .SECOND_ARGUMENT_MUST_BE_INT32_OR_INT64_TYPE_THIRD_ARGUMENT_MUST_BE_BLOB_TYPE,
                 functionName));
       }
       return BLOB;
@@ -1146,13 +1238,15 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have one argument", functionName));
+                  DataNodeQueryMessages.AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_ARGUMENT,
+                  functionName));
         }
 
         if (!CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                  DataNodeQueryMessages
+                      .AGGREGATE_FUNCTIONS_S_ONLY_SUPPORT_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT_DOUBLE,
                   functionName));
         }
         break;
@@ -1164,19 +1258,23 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Error size of input expressions. expression: %s, actual size: %s, expected size: [2].",
-                  functionName.toUpperCase(), argumentTypes.size()));
+                  DataNodeQueryMessages
+                      .ERROR_SIZE_OF_INPUT_EXPRESSIONS_EXPRESSION_S_ACTUAL_SIZE_S_EXPECTED_SIZE_2,
+                  functionName.toUpperCase(),
+                  argumentTypes.size()));
         }
         if (!CommonMetadataUtils.isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  DataNodeQueryMessages
+                      .AGGREGATE_FUNCTIONS_S_ONLY_SUPPORT_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP,
                   functionName.toUpperCase()));
         }
         if (!CommonMetadataUtils.isNumericType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  DataNodeQueryMessages
+                      .AGGREGATE_FUNCTIONS_S_ONLY_SUPPORT_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP,
                   functionName.toUpperCase()));
         }
         break;
@@ -1185,13 +1283,16 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
               String.format(
-                  "Error size of input expressions. expression: %s, actual size: %s, expected size: [1].",
-                  functionName.toUpperCase(), argumentTypes.size()));
+                  DataNodeQueryMessages
+                      .ERROR_SIZE_OF_INPUT_EXPRESSIONS_EXPRESSION_S_ACTUAL_SIZE_S_EXPECTED_SIZE_1,
+                  functionName.toUpperCase(),
+                  argumentTypes.size()));
         }
         if (!CommonMetadataUtils.isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  DataNodeQueryMessages
+                      .AGGREGATE_FUNCTIONS_S_ONLY_SUPPORT_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP,
                   functionName.toUpperCase()));
         }
         break;
@@ -1201,14 +1302,16 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have one argument", functionName));
+                  DataNodeQueryMessages.AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_ARGUMENT,
+                  functionName));
         }
         break;
       case SqlConstant.COUNT_IF:
         if (argumentTypes.size() != 1 || !CommonMetadataUtils.isBool(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have one boolean expression as argument",
+                  DataNodeQueryMessages
+                      .AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_BOOLEAN_EXPRESSION_AS_ARGUMENT,
                   functionName));
         }
         break;
@@ -1217,11 +1320,14 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have one or two arguments", functionName));
+                  DataNodeQueryMessages.AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_OR_TWO_ARGUMENTS,
+                  functionName));
         } else if (!CommonMetadataUtils.isTimestampType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
-                  "Second argument of Aggregate functions [%s] should be orderable", functionName));
+                  DataNodeQueryMessages
+                      .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_ORDERABLE,
+                  functionName));
         }
         break;
       case SqlConstant.FIRST_BY_AGGREGATION:
@@ -1229,7 +1335,8 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 3) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have two or three arguments",
+                  DataNodeQueryMessages
+                      .AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS,
                   functionName));
         }
         break;
@@ -1238,11 +1345,14 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have two arguments", functionName));
+                  DataNodeQueryMessages.AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS,
+                  functionName));
         } else if (!argumentTypes.get(1).isOrderable()) {
           throw new SemanticException(
               String.format(
-                  "Second argument of Aggregate functions [%s] should be orderable", functionName));
+                  DataNodeQueryMessages
+                      .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_ORDERABLE,
+                  functionName));
         }
 
         break;
@@ -1250,14 +1360,16 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 1 && argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have two arguments", functionName));
+                  DataNodeQueryMessages.AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS,
+                  functionName));
         }
 
         if (argumentTypes.size() == 2
             && !CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
-                  "Second argument of Aggregate functions [%s] should be numberic type and do not use expression",
+                  DataNodeQueryMessages
+                      .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_NUMBERIC_TYPE_AND_DO_NOT_USE,
                   functionName));
         }
         break;
@@ -1265,7 +1377,8 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 3) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should only have three arguments", functionName));
+                  DataNodeQueryMessages.AGGREGATION_FUNCTIONS_S_SHOULD_ONLY_HAVE_THREE_ARGUMENTS,
+                  functionName));
         }
         break;
       case SqlConstant.APPROX_PERCENTILE:
@@ -1273,7 +1386,8 @@ public class TableMetadataImpl implements Metadata {
         if (argumentSize != 2 && argumentSize != 3) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should only have two or three arguments",
+                  DataNodeQueryMessages
+                      .AGGREGATION_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS,
                   functionName));
         }
 
@@ -1281,7 +1395,8 @@ public class TableMetadataImpl implements Metadata {
         if (!isNumericType(valueColumnType)) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  DataNodeQueryMessages
+                      .AGGREGATION_FUNCTIONS_S_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT,
                   functionName));
         }
 
@@ -1289,7 +1404,8 @@ public class TableMetadataImpl implements Metadata {
         if (!isDecimalType(percentageType)) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have percentage as decimal type",
+                  DataNodeQueryMessages
+                      .AGGREGATION_FUNCTIONS_S_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE,
                   functionName));
         }
         if (argumentSize == 3) {
@@ -1297,8 +1413,9 @@ public class TableMetadataImpl implements Metadata {
           if (!INT32.equals(weightType) && !CommonMetadataUtils.isUnknownType(weightType)) {
             throw new SemanticException(
                 String.format(
-                    "Aggregation functions [%s] do not support weight as %s type",
-                    functionName, weightType.getDisplayName()));
+                    DataNodeQueryMessages.AGGREGATION_FUNCTIONS_S_DO_NOT_SUPPORT_WEIGHT_AS_S_TYPE,
+                    functionName,
+                    weightType.getDisplayName()));
           }
         }
         break;
@@ -1306,21 +1423,43 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should only have two arguments", functionName));
+                  DataNodeQueryMessages
+                      .EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD,
+                  functionName));
         }
 
         if (!isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  DataNodeQueryMessages
+                      .EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87,
                   functionName));
         }
         if (!isDecimalType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have percentage as decimal type",
+                  DataNodeQueryMessages
+                      .EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF,
                   functionName));
         }
+        break;
+      case SqlConstant.IRATE:
+        validateRateFunctionArguments(
+            functionName,
+            argumentTypes,
+            2,
+            DataNodeQueryMessages
+                .EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08);
+        break;
+      case SqlConstant.RATE:
+      case SqlConstant.INCREASE:
+      case SqlConstant.DELTA:
+        validateRateFunctionArguments(
+            functionName,
+            argumentTypes,
+            4,
+            DataNodeQueryMessages
+                .EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B);
         break;
       case SqlConstant.COUNT:
         break;
@@ -1363,6 +1502,10 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.REGR_INTERCEPT:
       case SqlConstant.SKEWNESS:
       case SqlConstant.KURTOSIS:
+      case SqlConstant.RATE:
+      case SqlConstant.INCREASE:
+      case SqlConstant.IRATE:
+      case SqlConstant.DELTA:
         return DOUBLE;
       case SqlConstant.APPROX_MOST_FREQUENT:
         return STRING;
@@ -1376,34 +1519,41 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.NTILE:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
-              String.format("Window function [%s] should only have one argument", functionName));
+              String.format(
+                  DataNodeQueryMessages.WINDOW_FUNCTION_S_SHOULD_ONLY_HAVE_ONE_ARGUMENT,
+                  functionName));
         }
         break;
       case SqlConstant.NTH_VALUE:
         if (argumentTypes.size() != 2
             || !CommonMetadataUtils.isIntegerNumber(argumentTypes.get(1))) {
           throw new SemanticException(
-              "Window function [nth_value] should only have two argument, and second argument must be integer type");
+              DataNodeQueryMessages
+                  .WINDOW_FUNCTION_NTH_VALUE_SHOULD_ONLY_HAVE_TWO_ARGUMENT_AND_SECOND_ARGUMENT_MUST_BE);
         }
         break;
       case SqlConstant.TABLE_FIRST_VALUE:
       case SqlConstant.TABLE_LAST_VALUE:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
-              String.format("Window function [%s] should only have one argument", functionName));
+              String.format(
+                  DataNodeQueryMessages.WINDOW_FUNCTION_S_SHOULD_ONLY_HAVE_ONE_ARGUMENT,
+                  functionName));
         }
       case SqlConstant.LEAD:
       case SqlConstant.LAG:
         if (argumentTypes.isEmpty() || argumentTypes.size() > 3) {
           throw new SemanticException(
               String.format(
-                  "Window function [%s] should only have one to three argument", functionName));
+                  DataNodeQueryMessages.WINDOW_FUNCTION_S_SHOULD_ONLY_HAVE_ONE_TO_THREE_ARGUMENT,
+                  functionName));
         }
         if (argumentTypes.size() >= 2
             && !CommonMetadataUtils.isIntegerNumber(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
-                  "Window function [%s]'s second argument must be integer type", functionName));
+                  DataNodeQueryMessages.WINDOW_FUNCTION_S_S_SECOND_ARGUMENT_MUST_BE_INTEGER_TYPE,
+                  functionName));
         }
         break;
       default:
@@ -1485,6 +1635,33 @@ public class TableMetadataImpl implements Metadata {
     throw new SemanticException(DataNodeQueryMessages.UNKNOWN_FUNCTION + functionName);
   }
 
+  private static void validateRateFunctionArguments(
+      String functionName,
+      List<? extends Type> argumentTypes,
+      int expectedArgumentCount,
+      String argumentCountError) {
+    if (argumentTypes.size() != expectedArgumentCount) {
+      throw new SemanticException(String.format(argumentCountError, functionName));
+    }
+    if (!CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0))) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434,
+              functionName));
+    }
+    for (int i = 1; i < argumentTypes.size(); i++) {
+      Type argumentType = argumentTypes.get(i);
+      if (!INT64.equals(argumentType) && !TIMESTAMP.equals(argumentType)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3,
+                functionName));
+      }
+    }
+  }
+
   @Override
   public boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl) {
@@ -1504,18 +1681,20 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public Map<String, List<DeviceEntry>> indexScan(
+  public DeviceEntryDataSetResult indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
-      final MPPQueryContext context) {
+      final MPPQueryContext context,
+      final PlanNodeId planNodeId) {
     return TableDeviceSchemaFetcher.getInstance()
-        .fetchDeviceSchemaForDataQuery(
+        .fetchDeviceSchemaForDataQueryAsDataSet(
             tableName.getDatabaseName(),
             tableName.getObjectName(),
             expressionList,
             attributeColumns,
-            context);
+            context,
+            planNodeId);
   }
 
   @Override
@@ -1573,6 +1752,7 @@ public class TableMetadataImpl implements Metadata {
     return partitionFetcher.getOrCreateSchemaPartition(database, deviceIDList, userName);
   }
 
+  @TableModel
   @Override
   public SchemaPartition getSchemaPartition(
       final String database, final List<IDeviceID> deviceIDList) {
@@ -1592,9 +1772,28 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public DataPartition getDataPartition(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    return partitionFetcher.getDataPartition(database, dataSet, timePartitionSlots);
+  }
+
+  @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+        database, dataSet, timePartitionSlots, needLeftAll, needRightAll);
   }
 }

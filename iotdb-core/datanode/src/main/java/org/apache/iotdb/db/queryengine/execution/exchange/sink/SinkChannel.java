@@ -39,11 +39,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.thrift.TApplicationException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +65,19 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.S
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
 
 public class SinkChannel implements ISinkChannel {
+
+  private static class TsBlockInfo {
+    private TsBlock tsBlock;
+    private ByteBuffer serializedTsBlock;
+    private final long tsBlockSize;
+
+    // private Class, no need to do access control
+    private TsBlockInfo(TsBlock tsBlock, ByteBuffer serializedTsBlock, long tsBlockSize) {
+      this.tsBlock = tsBlock;
+      this.serializedTsBlock = serializedTsBlock;
+      this.tsBlockSize = tsBlockSize;
+    }
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SinkChannel.class);
 
@@ -92,8 +105,7 @@ public class SinkChannel implements ISinkChannel {
   // Use LinkedHashMap to meet 2 needs,
   //   1. Predictable iteration order so that removing buffered TsBlocks can be efficient.
   //   2. Fast lookup.
-  private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
-      new LinkedHashMap<>();
+  private final LinkedHashMap<Integer, TsBlockInfo> sequenceIdToTsBlock = new LinkedHashMap<>();
 
   // size for current TsBlock to reserve and free
   private long currentTsBlockSize;
@@ -174,20 +186,42 @@ public class SinkChannel implements ISinkChannel {
       boolean isHighestPriority,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndPoint can not be null.");
+    this.remoteEndpoint =
+        Validate.notNull(
+            remoteEndpoint,
+            DataNodeQueryMessages.EXCEPTION_REMOTEENDPOINT_CAN_NOT_BE_NULL_DOT_83488ACF);
     this.remoteFragmentInstanceId =
-        Validate.notNull(remoteFragmentInstanceId, "remoteFragmentInstanceId can not be null.");
-    this.remotePlanNodeId = Validate.notNull(remotePlanNodeId, "remotePlanNodeId can not be null.");
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
+        Validate.notNull(
+            remoteFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_REMOTEFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_C2449A29);
+    this.remotePlanNodeId =
+        Validate.notNull(
+            remotePlanNodeId,
+            DataNodeQueryMessages.EXCEPTION_REMOTEPLANNODEID_CAN_NOT_BE_NULL_DOT_03956DE2);
+    this.localPlanNodeId =
+        Validate.notNull(
+            localPlanNodeId,
+            DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.fullFragmentInstanceId =
         FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
     this.localMemoryManager =
-        Validate.notNull(localMemoryManager, "localMemoryManager can not be null.");
-    this.executorService = Validate.notNull(executorService, "executorService can not be null.");
-    this.serde = Validate.notNull(serde, "serde can not be null.");
-    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+        Validate.notNull(
+            localMemoryManager,
+            DataNodeQueryMessages.EXCEPTION_LOCALMEMORYMANAGER_CAN_NOT_BE_NULL_DOT_7A46C6CE);
+    this.executorService =
+        Validate.notNull(
+            executorService,
+            DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_BC459BD4);
+    this.serde =
+        Validate.notNull(serde, DataNodeQueryMessages.EXCEPTION_SERDE_CAN_NOT_BE_NULL_DOT_D46F66E7);
+    this.sinkListener =
+        Validate.notNull(
+            sinkListener,
+            DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.isHighestPriority = isHighestPriority;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
@@ -223,7 +257,7 @@ public class SinkChannel implements ISinkChannel {
   public synchronized void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
-      Validate.notNull(tsBlock, "tsBlocks is null");
+      Validate.notNull(tsBlock, DataNodeQueryMessages.EXCEPTION_TSBLOCKS_IS_NULL_02287FD8);
       if (closed) {
         // SinkChannel may have been closed by its downstream SourceHandle
         return;
@@ -251,7 +285,7 @@ public class SinkChannel implements ISinkChannel {
       blocked = reserveResult.getFuture();
       bufferRetainedSizeInBytes += reserveResult.getReservedBytes();
 
-      sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
+      sequenceIdToTsBlock.put(nextSequenceId, new TsBlockInfo(tsBlock, null, currentTsBlockSize));
       nextSequenceId += 1;
       currentTsBlockSize = reserveResult.getReservedBytes();
 
@@ -376,15 +410,16 @@ public class SinkChannel implements ISinkChannel {
     if (aborted || closed) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "SinkChannel still receive getting TsBlock request after being aborted={} or closed={}",
+            DataNodeQueryMessages
+                .SINKCHANNEL_STILL_RECEIVE_GETTING_TSBLOCK_REQUEST_AFTER_BEING_ABORTED_ARG_OR_CLOSED_ARG,
             aborted,
             closed);
       }
       throw new GetTsBlockFromClosedOrAbortedChannelException(
           DataNodeQueryMessages.SINKCHANNEL_IS_ABORTED_OR_CLOSED);
     }
-    Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
-    if (pair == null || pair.left == null) {
+    TsBlockInfo tsBlockInfo = sequenceIdToTsBlock.get(sequenceId);
+    if (tsBlockInfo == null) {
       LOGGER.warn(
           DataNodeQueryMessages.THE_TSBLOCK_DOESNT_EXIST_SEQUENCE_ID_REMAINING,
           sequenceId,
@@ -392,7 +427,22 @@ public class SinkChannel implements ISinkChannel {
       throw new IllegalStateException(
           DataNodeQueryMessages.THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID + sequenceId);
     }
-    return serde.serialize(pair.left);
+    ByteBuffer serializedTsBlock = tsBlockInfo.serializedTsBlock;
+    if (serializedTsBlock != null) {
+      return serializedTsBlock.duplicate();
+    }
+    if (tsBlockInfo.tsBlock == null) {
+      LOGGER.warn(
+          DataNodeQueryMessages.THE_TSBLOCK_DOESNT_EXIST_SEQUENCE_ID_REMAINING,
+          sequenceId,
+          sequenceIdToTsBlock.entrySet());
+      throw new IllegalStateException(
+          DataNodeQueryMessages.THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID + sequenceId);
+    }
+    serializedTsBlock = serde.serialize(tsBlockInfo.tsBlock);
+    tsBlockInfo.serializedTsBlock = serializedTsBlock;
+    tsBlockInfo.tsBlock = null;
+    return serializedTsBlock.duplicate();
   }
 
   public void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
@@ -401,10 +451,9 @@ public class SinkChannel implements ISinkChannel {
       if (aborted || closed) {
         return;
       }
-      Iterator<Entry<Integer, Pair<TsBlock, Long>>> iterator =
-          sequenceIdToTsBlock.entrySet().iterator();
+      Iterator<Entry<Integer, TsBlockInfo>> iterator = sequenceIdToTsBlock.entrySet().iterator();
       while (iterator.hasNext()) {
-        Entry<Integer, Pair<TsBlock, Long>> entry = iterator.next();
+        Entry<Integer, TsBlockInfo> entry = iterator.next();
         if (entry.getKey() < startSequenceId) {
           continue;
         }
@@ -412,8 +461,8 @@ public class SinkChannel implements ISinkChannel {
           break;
         }
 
-        freedBytes += entry.getValue().right;
-        bufferRetainedSizeInBytes -= entry.getValue().right;
+        freedBytes += entry.getValue().tsBlockSize;
+        bufferRetainedSizeInBytes -= entry.getValue().tsBlockSize;
         iterator.remove();
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodeQueryMessages.ACK_TSBLOCK, entry.getKey());
@@ -500,6 +549,26 @@ public class SinkChannel implements ISinkChannel {
 
   // endregion
 
+  /**
+   * A {@link TApplicationException} means the downstream received the RPC but failed while handling
+   * it. Retrying the same data-block notification cannot recover that failure. The sync client may
+   * wrap it in multiple {@code TException}s, so inspect the complete cause chain.
+   */
+  private static boolean containsTApplicationException(Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof TApplicationException) {
+        return true;
+      }
+      Throwable cause = current.getCause();
+      if (cause == current) {
+        return false;
+      }
+      current = cause;
+    }
+    return false;
+  }
+
   // region ============ TestOnly ============
   @TestOnly
   public void setRetryIntervalInMs(long retryIntervalInMs) {
@@ -521,9 +590,10 @@ public class SinkChannel implements ISinkChannel {
     SendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
       Validate.isTrue(
           startSequenceId >= 0,
-          "Start sequence ID should be greater than or equal to zero, but was: "
+          DataNodeQueryMessages
+                  .EXCEPTION_START_SEQUENCE_ID_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ZERO_COMMA_BUT_WAS_COLON_4D2D708E
               + startSequenceId
-              + ".");
+              + DataNodeQueryMessages.EXCEPTION_DOT_9D9B854A);
       this.startSequenceId = startSequenceId;
       this.blockSizes = Validate.notNull(blockSizes);
     }
@@ -533,7 +603,7 @@ public class SinkChannel implements ISinkChannel {
       try (SetThreadName sinkChannelName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[NotifyNewTsBlock] [{}, {}) to {}.{}",
+              DataNodeQueryMessages.NOTIFYNEWTSBLOCK_ARG_ARG_TO_ARG_ARG,
               startSequenceId,
               startSequenceId + blockSizes.size(),
               remoteFragmentInstanceId,
@@ -557,8 +627,9 @@ public class SinkChannel implements ISinkChannel {
           } catch (Exception e) {
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT, attempt, e);
-            if (attempt == MAX_ATTEMPT_TIMES) {
+            if (containsTApplicationException(e) || attempt == MAX_ATTEMPT_TIMES) {
               sinkListener.onFailure(SinkChannel.this, e);
+              return;
             }
             try {
               Thread.sleep(retryIntervalInMs);

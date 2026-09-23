@@ -105,6 +105,8 @@ public enum ThreadName {
   CONFIG_NODE_TIMEOUT_EXECUTOR("ProcedureTimeoutExecutor"),
   CONFIG_NODE_WORKER_THREAD_MONITOR("ProcedureWorkerThreadMonitor"),
   CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
+  RELOAD_TABLE_METADATA_CACHE("Reload-Table-Metadata-Cache"),
+  CHECK_DN_LEASE_STATUS("Check-DN-Lease-Status"),
   // -------------------------- IoTConsensusV2 --------------------------
   IOT_CONSENSUS_V2_RPC_SERVICE("IoTConsensusV2RPC-Service"),
   IOT_CONSENSUS_V2_RPC_PROCESSOR("IoTConsensusV2RPC-Processor"),
@@ -189,6 +191,7 @@ public enum ThreadName {
   // -------------------------- Metrics --------------------------
   SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
+  PROMETHEUS_REPORTER_SNAPSHOT_UPDATER("PrometheusReporter-Snapshot-Updater"),
   PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
@@ -207,8 +210,6 @@ public enum ThreadName {
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),
-  BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
-  BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
   FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL("FindEarliestTimeSlot-Parallel-Pool"),
   DATA_PARTITION_RECOVER_PARALLEL_POOL("DataPartitionRecover-Parallel-Pool"),
 
@@ -383,13 +384,16 @@ public enum ThreadName {
               CONFIG_NODE_PROCEDURE_WORKER,
               CONFIG_NODE_WORKER_THREAD_MONITOR,
               CONFIG_NODE_TIMEOUT_EXECUTOR,
-              CONFIG_NODE_RETRY_FAILED_TASK));
+              CONFIG_NODE_RETRY_FAILED_TASK,
+              RELOAD_TABLE_METADATA_CACHE,
+              CHECK_DN_LEASE_STATUS));
 
   private static final Set<ThreadName> metricsThreadNames =
       new HashSet<>(
           Arrays.asList(
               SYSTEM_SCHEDULE_METRICS,
               RESOURCE_CONTROL_DISK_STATISTIC,
+              PROMETHEUS_REPORTER_SNAPSHOT_UPDATER,
               PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_REACTOR_HTTP_NIO,
               PROMETHEUS_REACTOR_HTTP_EPOLL,

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
@@ -37,7 +39,7 @@ public class NullLiteral extends Literal {
   }
 
   public NullLiteral(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
   }
 
   @Override

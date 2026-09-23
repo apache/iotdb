@@ -26,7 +26,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.log.SchemaFileLogWriter;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -95,9 +94,14 @@ public class PageIOChannel {
 
     // complete log file
     if (!res.isEmpty()) {
-      try (FileOutputStream outputStream = new FileOutputStream(logPath, true)) {
-        outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
-        return outputStream.getChannel().size();
+      try (FileChannel logChannel =
+          FileChannel.open(
+              new File(logPath).toPath(),
+              StandardOpenOption.CREATE,
+              StandardOpenOption.WRITE,
+              StandardOpenOption.APPEND)) {
+        logChannel.write(ByteBuffer.wrap(new byte[] {SchemaFileConfig.SF_COMMIT_MARK}));
+        return logChannel.size();
       }
     }
     return 0L;

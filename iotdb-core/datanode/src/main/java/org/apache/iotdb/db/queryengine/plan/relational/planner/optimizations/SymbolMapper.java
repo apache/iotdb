@@ -68,7 +68,9 @@ public class SymbolMapper {
   private final Function<Symbol, Symbol> mappingFunction;
 
   public SymbolMapper(Function<Symbol, Symbol> mappingFunction) {
-    this.mappingFunction = requireNonNull(mappingFunction, "mappingFunction is null");
+    this.mappingFunction =
+        requireNonNull(
+            mappingFunction, DataNodeQueryMessages.EXCEPTION_MAPPINGFUNCTION_IS_NULL_212D6109);
   }
 
   public static SymbolMapper symbolMapper(Map<Symbol, Symbol> mapping) {
@@ -409,7 +411,9 @@ public class SymbolMapper {
                 pointer.getMatchNumberSymbol());
       } else {
         throw new IllegalArgumentException(
-            "Unsupported ValuePointer type: " + assignment.getValuePointer().getClass().getName());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_VALUEPOINTER_TYPE_S_4147FFFB,
+                assignment.getValuePointer().getClass().getName()));
       }
 
       newAssignments.add(

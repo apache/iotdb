@@ -100,7 +100,10 @@ public enum ComparisonOperator implements BinaryOperator {
 
     if (normLeft.type != normRight.type) {
       throw new SemanticException(
-          "Cannot compare values of different types: " + normLeft.type + " vs. " + normRight.type);
+          CalcMessages.EXCEPTION_CANNOT_COMPARE_VALUES_DIFFERENT_TYPES_A95EDA7F
+              + normLeft.type
+              + CalcMessages.EXCEPTION_VS_AEDAB253
+              + normRight.type);
     }
 
     return normLeft.compareTo(normRight);

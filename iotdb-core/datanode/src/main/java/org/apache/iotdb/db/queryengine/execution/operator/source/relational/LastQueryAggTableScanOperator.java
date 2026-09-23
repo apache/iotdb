@@ -38,11 +38,11 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -163,7 +163,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       if (lastRowCacheResults != null) {
         buildResultUseLastRowCache();
       } else {
-        checkState(lastValuesCacheResults != null, "lastValuesCacheResults shouldn't be null here");
+        checkState(
+            lastValuesCacheResults != null,
+            DataNodeQueryMessages
+                .EXCEPTION_LASTVALUESCACHERESULTS_SHOULDN_QUOTE_T_BE_NULL_HERE_0DCD5841);
         buildResultUseLastValuesCache();
       }
       return;
@@ -502,7 +505,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case FIELD:
           checkState(
               aggregator.getAccumulator() instanceof LastDescAccumulator,
-              "Accumulator should be LastDescAccumulator when reach here");
+              DataNodeQueryMessages
+                  .EXCEPTION_ACCUMULATOR_SHOULD_BE_LASTDESCACCUMULATOR_WHEN_REACH_HERE_CE38F96A);
 
           int measurementIdx = aggColumnsIndexArray[aggregatorInputChannels.get(channel)];
           long lastTime =
@@ -639,7 +643,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case FIELD:
           checkState(
               tableAggregator.getAccumulator() instanceof LastDescAccumulator,
-              "Accumulator should be LastDescAccumulator when reach here");
+              DataNodeQueryMessages
+                  .EXCEPTION_ACCUMULATOR_SHOULD_BE_LASTDESCACCUMULATOR_WHEN_REACH_HERE_CE38F96A);
           LastDescAccumulator lastAccumulator =
               (LastDescAccumulator) tableAggregator.getAccumulator();
           updateMeasurementList.add(schema.getName());
@@ -716,7 +721,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       if (lastRowCacheResults != null) {
         updateLastCacheUseLastRowIfPossible();
       } else {
-        checkState(lastValuesCacheResults != null, "lastValuesCacheResults shouldn't be null here");
+        checkState(
+            lastValuesCacheResults != null,
+            DataNodeQueryMessages
+                .EXCEPTION_LASTVALUESCACHERESULTS_SHOULDN_QUOTE_T_BE_NULL_HERE_0DCD5841);
         updateLastCacheUseLastValuesIfPossible();
       }
     }
@@ -734,30 +742,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   }
 
   private TsPrimitiveType cloneTsPrimitiveType(TsPrimitiveType originalValue) {
-    switch (originalValue.getDataType()) {
-      case BOOLEAN:
-        return new TsPrimitiveType.TsBoolean(originalValue.getBoolean());
-      case INT32:
-      case DATE:
-        return new TsPrimitiveType.TsInt(originalValue.getInt());
-      case INT64:
-      case TIMESTAMP:
-        return new TsPrimitiveType.TsLong(originalValue.getLong());
-      case FLOAT:
-        return new TsPrimitiveType.TsFloat(originalValue.getFloat());
-      case DOUBLE:
-        return new TsPrimitiveType.TsDouble(originalValue.getDouble());
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return new TsPrimitiveType.TsBinary(originalValue.getBinary());
-      case VECTOR:
-        return new TsPrimitiveType.TsVector(originalValue.getVector());
-      default:
-        throw new UnSupportedDataTypeException(
-            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + originalValue.getDataType());
-    }
+    return Type.fromTsDataType(originalValue.getDataType())
+        .getTsPrimitiveType(originalValue.getValue());
   }
 
   @Override

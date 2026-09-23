@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.MaxMinByAccumulatorStrategy;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
@@ -40,7 +44,8 @@ import java.util.Collections;
 import static com.google.common.base.Preconditions.checkArgument;
 
 /** max(x,y) returns the value of x associated with the maximum value of y over all input values. */
-public abstract class MaxMinByBaseAccumulator implements Accumulator {
+public abstract class MaxMinByBaseAccumulator
+    implements Accumulator, TypeServices.Aggregation.MaxMinByAccumulator {
 
   private final TSDataType xDataType;
 
@@ -50,56 +55,41 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
 
   private final TsPrimitiveType xResult;
 
+  private final MaxMinByAccumulatorStrategy xStrategy;
+
+  private final MaxMinByAccumulatorStrategy yStrategy;
+
   private boolean xNull = true;
 
   private boolean initResult;
 
   private long yTimeStamp = Long.MAX_VALUE;
 
-  private static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy/MinBy: %s";
-
   protected MaxMinByBaseAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
-    this.xResult = TsPrimitiveType.getByType(xDataType);
-    this.yExtremeValue = TsPrimitiveType.getByType(yDataType);
+    final Type xType = Type.fromTsDataType(xDataType);
+    final Type yType = Type.fromTsDataType(yDataType);
+    this.xResult = xType.getTsPrimitiveType();
+    this.yExtremeValue = yType.getTsPrimitiveType();
+    this.xStrategy = TypeServices.Aggregation.MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.call(xType);
+    this.yStrategy = TypeServices.Aggregation.MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.call(yType);
+    ensureSupported();
   }
 
   // Column should be like: | Time | x | y |
   @Override
   public void addInput(Column[] column, BitMap bitMap) {
     checkArgument(column.length == 3, "Length of input Column[] for MaxBy/MinBy should be 3");
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(column, bitMap);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(column, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(column, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(column, bitMap);
-        return;
-      case STRING:
-        addBinaryInput(column, bitMap);
-        return;
-      case TEXT:
-      case BLOB:
-      case BOOLEAN:
-      case OBJECT:
-      default:
-        throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
-    }
+    yStrategy.addInput(this, column, bitMap);
   }
 
   // partialResult should be like: | partialMaxByBinary |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxBy/MinBy should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXBY_SLASH_MINBY_SHOULD_BE_1_BF0078F4);
     // Return if y is null.
     if (partialResult[0].isNull(0)) {
       return;
@@ -126,7 +116,9 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
   // columnBuilders should be like | TextIntermediateColumnBuilder |
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXVALUE_SHOULD_BE_1_659B6D42);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;
@@ -167,19 +159,8 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
     return xDataType;
   }
 
-  private void addIntInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[2].isNull(i)) {
-        updateIntResult(column[0].getLong(i), column[2].getInt(i), column[1], i);
-      }
-    }
-  }
-
-  private void updateIntResult(long time, int yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateIntResult(long time, int yValue, Column xColumn, int xIndex) {
     if (!initResult
         || check(yValue, yExtremeValue.getInt())
         || (yValue == yExtremeValue.getInt() && time < yTimeStamp)) {
@@ -190,19 +171,8 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[2].isNull(i)) {
-        updateLongResult(column[0].getLong(i), column[2].getLong(i), column[1], i);
-      }
-    }
-  }
-
-  private void updateLongResult(long time, long yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateLongResult(long time, long yValue, Column xColumn, int xIndex) {
     if (!initResult
         || check(yValue, yExtremeValue.getLong())
         || (yValue == yExtremeValue.getLong() && time < yTimeStamp)) {
@@ -213,19 +183,8 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[2].isNull(i)) {
-        updateFloatResult(column[0].getLong(i), column[2].getFloat(i), column[1], i);
-      }
-    }
-  }
-
-  private void updateFloatResult(long time, float yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateFloatResult(long time, float yValue, Column xColumn, int xIndex) {
     if (!initResult
         || check(yValue, yExtremeValue.getFloat())
         || (yValue == yExtremeValue.getFloat() && time < yTimeStamp)) {
@@ -236,19 +195,8 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[2].isNull(i)) {
-        updateDoubleResult(column[0].getLong(i), column[2].getDouble(i), column[1], i);
-      }
-    }
-  }
-
-  private void updateDoubleResult(long time, double yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateDoubleResult(long time, double yValue, Column xColumn, int xIndex) {
     if (!initResult
         || check(yValue, yExtremeValue.getDouble())
         || (yValue == yExtremeValue.getDouble() && time < yTimeStamp)) {
@@ -259,19 +207,8 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
     }
   }
 
-  private void addBinaryInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[2].isNull(i)) {
-        updateBinaryResult(column[0].getLong(i), column[2].getBinary(i), column[1], i);
-      }
-    }
-  }
-
-  private void updateBinaryResult(long time, Binary yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateBinaryResult(long time, Binary yValue, Column xColumn, int xIndex) {
     if (!initResult
         || check(yValue, yExtremeValue.getBinary())
         || (yValue.compareTo(yExtremeValue.getBinary()) == 0 && time < yTimeStamp)) {
@@ -287,33 +224,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(xResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(xResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(xResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(xResult.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        columnBuilder.writeBinary(xResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(xResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, xDataType));
-    }
+    xStrategy.writeXResult(columnBuilder, xResult);
   }
 
   private void updateX(Column xColumn, int xIndex) {
@@ -321,34 +232,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       xNull = true;
     } else {
       xNull = false;
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          xResult.setInt(xColumn.getInt(xIndex));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          xResult.setLong(xColumn.getLong(xIndex));
-          break;
-        case FLOAT:
-          xResult.setFloat(xColumn.getFloat(xIndex));
-          break;
-        case DOUBLE:
-          xResult.setDouble(xColumn.getDouble(xIndex));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          xResult.setBinary(xColumn.getBinary(xIndex));
-          break;
-        case BOOLEAN:
-          xResult.setBoolean(xColumn.getBoolean(xIndex));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(UNSUPPORTED_TYPE_MESSAGE, xDataType));
-      }
+      xStrategy.setXResult(xResult, xColumn, xIndex);
     }
   }
 
@@ -364,7 +248,9 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for MaxByAccumulator.", e);
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_FAILED_TO_SERIALIZE_INTERMEDIATE_RESULT_FOR_MAXBYACCUMULATOR_2F18B6E7,
+          e);
     }
     return byteArrayOutputStream.toByteArray();
   }
@@ -372,124 +258,35 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
   private void writeIntermediateToStream(
       TSDataType dataType, TsPrimitiveType value, DataOutputStream dataOutputStream)
       throws IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        dataOutputStream.writeInt(value.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        dataOutputStream.writeLong(value.getLong());
-        break;
-      case FLOAT:
-        dataOutputStream.writeFloat(value.getFloat());
-        break;
-      case DOUBLE:
-        dataOutputStream.writeDouble(value.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        String content = value.getBinary().toString();
-        dataOutputStream.writeInt(content.length());
-        dataOutputStream.writeBytes(content);
-        break;
-      case BOOLEAN:
-        dataOutputStream.writeBoolean(value.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, dataType));
-    }
+    Type.fromTsDataType(dataType).serialize(value, dataOutputStream);
   }
 
   private void updateFromBytesIntermediateInput(byte[] bytes) {
-    long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-    int offset = Long.BYTES;
-    // Use Column to store x value
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(xDataType));
-    ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        int intMaxVal = BytesUtils.bytesToInt(bytes, offset);
-        offset += Integer.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateIntResult(time, intMaxVal, columnBuilder.build(), 0);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long longMaxVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-        offset += Long.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateLongResult(time, longMaxVal, columnBuilder.build(), 0);
-        break;
-      case FLOAT:
-        float floatMaxVal = BytesUtils.bytesToFloat(bytes, offset);
-        offset += Float.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateFloatResult(time, floatMaxVal, columnBuilder.build(), 0);
-        break;
-      case DOUBLE:
-        double doubleMaxVal = BytesUtils.bytesToDouble(bytes, offset);
-        offset += Long.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateDoubleResult(time, doubleMaxVal, columnBuilder.build(), 0);
-        break;
-      case STRING:
-        int length = BytesUtils.bytesToInt(bytes, offset);
-        offset += Integer.BYTES;
-        Binary binaryMaxVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-        offset += length;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateBinaryResult(time, binaryMaxVal, columnBuilder.build(), 0);
-        break;
-      case TEXT:
-      case BLOB:
-      case BOOLEAN:
-      case OBJECT:
-      default:
-        throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
-    }
+    final long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
+    yStrategy.updateIntermediate(this, time, bytes, Long.BYTES);
   }
 
-  private void readXFromBytesIntermediateInput(
-      byte[] bytes, int offset, ColumnBuilder columnBuilder) {
-    boolean isXNull = BytesUtils.bytesToBool(bytes, offset);
-    offset += 1;
+  @Override
+  public Column readXFromBytesIntermediateInput(byte[] bytes, int offset) {
+    // Use Column to preserve the existing null handling when updating the selected x value.
+    final TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(xDataType));
+    final ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
+    final boolean isXNull = BytesUtils.bytesToBool(bytes, offset);
     if (isXNull) {
       columnBuilder.appendNull();
     } else {
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          columnBuilder.writeInt(BytesUtils.bytesToInt(bytes, offset));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columnBuilder.writeLong(BytesUtils.bytesToLongFromOffset(bytes, 8, offset));
-          break;
-        case FLOAT:
-          columnBuilder.writeFloat(BytesUtils.bytesToFloat(bytes, offset));
-          break;
-        case DOUBLE:
-          columnBuilder.writeDouble(BytesUtils.bytesToDouble(bytes, offset));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          columnBuilder.writeBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));
-          break;
-        case BOOLEAN:
-          columnBuilder.writeBoolean(BytesUtils.bytesToBool(bytes, offset));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(UNSUPPORTED_TYPE_MESSAGE, xDataType));
-      }
+      xStrategy.writeSerializedValue(bytes, offset + Byte.BYTES, columnBuilder);
+    }
+    return columnBuilder.build();
+  }
+
+  private void ensureSupported() {
+    if (!xStrategy.isXSupported() || !yStrategy.isYSupported()) {
+      final TSDataType unsupportedType = xStrategy.isXSupported() ? yDataType : xDataType;
+      throw new UnSupportedDataTypeException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1,
+              unsupportedType));
     }
   }
 

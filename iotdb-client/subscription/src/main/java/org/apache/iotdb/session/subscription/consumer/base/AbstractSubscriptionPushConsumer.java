@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -62,7 +63,10 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   private final long autoPollIntervalMs;
   private final long autoPollTimeoutMs;
 
+  private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
+
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
   protected AbstractSubscriptionPushConsumer(
       final AbstractSubscriptionPushConsumerBuilder builder) {
@@ -124,23 +128,39 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       return;
     }
 
-    super.open();
-
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    try {
+      super.open();
+    } catch (final SubscriptionException e) {
+      isClosed.set(true);
+      throw e;
+    }
+    emptyPollLogThrottler.reset();
 
     // submit auto poll worker
     submitAutoPollWorker();
   }
 
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
       return;
     }
 
-    super.close();
-    isClosed.set(true);
+    try {
+      synchronized (this) {
+        if (isClosed.get()) {
+          return;
+        }
+
+        isClosed.set(true);
+        prepareClose();
+        super.close();
+      }
+    } finally {
+      isClosing.set(false);
+    }
   }
 
   @Override
@@ -155,7 +175,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
     future[0] =
         SubscriptionExecutorServiceManager.submitAutoPollWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.PUSH_CONSUMER_CANCEL_AUTO_POLL, this);
@@ -171,7 +191,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   class AutoPollWorker implements Runnable {
     @Override
     public void run() {
-      if (isClosed()) {
+      if (isClosed() || isFenced()) {
         return;
       }
 
@@ -198,14 +218,20 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
               return type == SubscriptionMessageType.WATERMARK.getType();
             });
         if (messages.isEmpty()) {
-          LOGGER.info(
-              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
-              this,
-              CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
-              autoPollTimeoutMs);
+          final OptionalLong consecutiveEmptyPollCount =
+              emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
+          if (consecutiveEmptyPollCount.isPresent()) {
+            LOGGER.info(
+                SubscriptionMessages.PUSH_CONSUMER_POLL_EMPTY_MESSAGE,
+                AbstractSubscriptionPushConsumer.this,
+                CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
+                autoPollTimeoutMs,
+                consecutiveEmptyPollCount.getAsLong());
+          }
           return;
         }
 
+        emptyPollLogThrottler.reset();
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
         }
@@ -224,7 +250,10 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
             }
           } catch (final Exception e) {
             LOGGER.warn(
-                "Consumer listener raised an exception while consuming message: {}", message, e);
+                SubscriptionMessages
+                    .LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D,
+                message,
+                e);
             messagesToNack.add(message);
           }
         }

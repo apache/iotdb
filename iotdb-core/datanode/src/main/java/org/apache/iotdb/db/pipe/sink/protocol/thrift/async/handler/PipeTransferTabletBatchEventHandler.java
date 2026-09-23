@@ -118,11 +118,11 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
       PipeLogger.log(
           LOGGER::warn,
           exception,
-          "Failed to transfer TabletInsertionEvent batch. Total failed events: %s, related pipe names: %s",
+          DataNodePipeMessages.FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH,
           events.size(),
           events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()));
     } finally {
-      sink.addFailureEventsToRetryQueue(events, exception);
+      sink.addFailureEventsToRetryQueue(events, exception, this);
     }
   }
 

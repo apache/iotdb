@@ -25,6 +25,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -57,6 +58,38 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
 
   private void createMetrics(final String taskID) {
     createRate(taskID);
+    createHistogram(taskID);
+  }
+
+  private static String[] getCreationTimeTags(final PipeSinkSubtask connector) {
+    return connector.getPipeName() == null
+        ? new String[] {
+          Tag.NAME.toString(),
+          connector.getAttributeSortedString(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(connector.getCreationTime())
+        }
+        : new String[] {
+          Tag.NAME.toString(),
+          connector.getAttributeSortedString(),
+          Tag.PIPE.toString(),
+          connector.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(connector.getCreationTime())
+        };
+  }
+
+  private static String[] getNameTags(final PipeSinkSubtask connector) {
+    return connector.getPipeName() == null
+        ? new String[] {Tag.NAME.toString(), connector.getAttributeSortedString()}
+        : new String[] {
+          Tag.NAME.toString(),
+          connector.getAttributeSortedString(),
+          Tag.PIPE.toString(),
+          connector.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(connector.getCreationTime())
+        };
   }
 
   private void createRate(final String taskID) {
@@ -67,10 +100,32 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            getCreationTimeTags(connector)));
+  }
+
+  private void createHistogram(final String taskID) {
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
+
+    final Histogram schemaBatchSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            getCreationTimeTags(connector));
+    connector.setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
+
+    final Histogram schemaBatchTimeIntervalHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            getCreationTimeTags(connector));
+    connector.setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
+
+    final Histogram schemaBatchEventSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            getNameTags(connector));
+    connector.setEventSizeHistogram(schemaBatchEventSizeHistogram);
   }
 
   @Override
@@ -83,6 +138,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
 
   private void removeMetrics(final String taskID) {
     removeRate(taskID);
+    removeHistogram(taskID);
   }
 
   private void removeRate(final String taskID) {
@@ -91,11 +147,22 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getCreationTimeTags(connector));
     schemaRateMap.remove(taskID);
+  }
+
+  private void removeHistogram(final String taskID) {
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
+        getCreationTimeTags(connector));
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
+        getCreationTimeTags(connector));
+    metricService.remove(
+        MetricType.HISTOGRAM, Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(), getNameTags(connector));
   }
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,7 +38,9 @@ public class DropTopic extends SubscriptionStatement {
   private final boolean ifExistsCondition;
 
   public DropTopic(final String topicName, final boolean ifExistsCondition) {
-    this.topicName = requireNonNull(topicName, "topic name can not be null");
+    this.topicName =
+        requireNonNull(
+            topicName, DataNodeQueryMessages.EXCEPTION_TOPIC_NAME_CAN_NOT_BE_NULL_EA4ED0BF);
     this.ifExistsCondition = ifExistsCondition;
   }
 

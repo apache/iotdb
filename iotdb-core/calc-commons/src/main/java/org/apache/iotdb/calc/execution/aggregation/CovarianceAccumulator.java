@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -63,26 +65,14 @@ public class CovarianceAccumulator implements Accumulator {
         continue;
       }
 
-      double x = getDoubleValue(columns[1], i, seriesDataTypes[0]);
-      double y = getDoubleValue(columns[2], i, seriesDataTypes[1]);
+      double x = getDoubleValue(columns[1], i);
+      double y = getDoubleValue(columns[2], i);
       update(x, y);
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new IllegalArgumentException("Unsupported data type: " + dataType);
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(double x, double y) {
@@ -98,7 +88,9 @@ public class CovarianceAccumulator implements Accumulator {
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of Covariance should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        CalcMessages.EXCEPTION_PARTIALRESULT_OF_COVARIANCE_SHOULD_BE_1_E6A950B1);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -138,7 +130,9 @@ public class CovarianceAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of Covariance should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        CalcMessages.EXCEPTION_PARTIALRESULT_OF_COVARIANCE_SHOULD_BE_1_E6A950B1);
     if (count == 0) {
       columnBuilders[0].appendNull();
       return;
@@ -171,13 +165,14 @@ public class CovarianceAccumulator implements Accumulator {
         }
         break;
       default:
-        throw new UnsupportedOperationException("Unknown type: " + covarianceType);
+        throw new UnsupportedOperationException(CalcMessages.UNKNOWN_TYPE + covarianceType);
     }
   }
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 1, "Input of Covariance should be 1");
+    checkArgument(
+        input.length == 1, CalcMessages.EXCEPTION_INPUT_OF_COVARIANCE_SHOULD_BE_1_75D3F4FD);
     if (input[0].isNull(0)) {
       return;
     }
@@ -190,7 +185,8 @@ public class CovarianceAccumulator implements Accumulator {
       return;
     }
     checkArgument(
-        count >= otherCount, "Covariance state count is smaller than removed state count");
+        count >= otherCount,
+        CalcMessages.EXCEPTION_COVARIANCE_STATE_COUNT_IS_SMALLER_THAN_REMOVED_STATE_COUNT_8C088DC6);
 
     if (count == otherCount) {
       reset();

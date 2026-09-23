@@ -21,7 +21,7 @@ package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.GKArray;
-import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -45,7 +45,8 @@ public class UDAFPercentile implements UDTF {
   private GKArray sketch;
   private boolean exact;
   private double rank;
-  private Type dataType;
+  private TypeServices.NumericRowReader rowReader;
+  private PercentileOperations operations;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -68,7 +69,17 @@ public class UDAFPercentile implements UDTF {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(parameters.getDataType(0));
-    dataType = parameters.getDataType(0);
+    Type dataType = parameters.getDataType(0);
+    org.apache.tsfile.read.common.type.Type type = TypeServices.toReadType(dataType);
+    rowReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(type);
+    operations =
+        TypeServices.numericService(
+                INT_OPERATIONS,
+                LONG_OPERATIONS,
+                FLOAT_OPERATIONS,
+                DOUBLE_OPERATIONS,
+                UNSUPPORTED_OPERATIONS)
+            .call(type);
     double error = parameters.getDoubleOrDefault("error", 0);
     rank = parameters.getDoubleOrDefault("rank", 0.5);
     exact = (error == 0);
@@ -77,28 +88,7 @@ public class UDAFPercentile implements UDTF {
     } else {
       sketch = new GKArray(error);
     }
-    switch (dataType) {
-      case INT32:
-        intDic = new HashMap<>();
-        break;
-      case INT64:
-        longDic = new HashMap<>();
-        break;
-      case FLOAT:
-        floatDic = new HashMap<>();
-        break;
-      case DOUBLE:
-        doubleDic = new HashMap<>();
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case BOOLEAN:
-      default:
-        break;
-    }
+    operations.initialize(this);
   }
 
   @Override
@@ -108,40 +98,12 @@ public class UDAFPercentile implements UDTF {
     }
     if (exact) {
       statistics.insert(row);
-      switch (dataType) {
-        case INT32:
-          intDic.put(row.getInt(0), row.getTime());
-          break;
-        case INT64:
-          longDic.put(row.getLong(0), row.getTime());
-          break;
-        case FLOAT:
-          float fv = row.getFloat(0);
-          if (Float.isFinite(fv)) {
-            floatDic.put(fv, row.getTime());
-          }
-          break;
-        case DOUBLE:
-          double dv = row.getDouble(0);
-          if (Double.isFinite(dv)) {
-            doubleDic.put(dv, row.getTime());
-          }
-          break;
-        case BLOB:
-        case BOOLEAN:
-        case STRING:
-        case TEXT:
-        case DATE:
-        case TIMESTAMP:
-        default:
-          break;
-      }
+      operations.insertExact(this, row);
     } else {
-      double res = Util.getValueAsDouble(row);
-      if (!Double.isFinite(res)) {
-        return;
+      double value = rowReader.read(row);
+      if (Double.isFinite(value)) {
+        sketch.insert(value);
       }
-      sketch.insert(res);
     }
   }
 
@@ -149,64 +111,116 @@ public class UDAFPercentile implements UDTF {
   public void terminate(PointCollector collector) throws Exception {
     try {
       if (exact) {
-        long time;
-        switch (dataType) {
-          case INT32:
-            int ires = Integer.parseInt(statistics.getPercentile(rank));
-            time = intDic.getOrDefault(ires, 0L);
-            collector.putInt(time, ires);
-            break;
-          case INT64:
-            long lres = Long.parseLong(statistics.getPercentile(rank));
-            time = longDic.getOrDefault(lres, 0L);
-            collector.putLong(time, lres);
-            break;
-          case FLOAT:
-            float fres = Float.parseFloat(statistics.getPercentile(rank));
-            time = floatDic.getOrDefault(fres, 0L);
-            collector.putFloat(time, fres);
-            break;
-          case DOUBLE:
-            double dres = Double.parseDouble(statistics.getPercentile(rank));
-            time = doubleDic.getOrDefault(dres, 0L);
-            collector.putDouble(time, dres);
-            break;
-          case DATE:
-          case TIMESTAMP:
-          case TEXT:
-          case STRING:
-          case BOOLEAN:
-          case BLOB:
-          default:
-            break;
-        }
+        operations.writeExact(this, collector);
       } else {
         double res = sketch.query(rank);
-        switch (dataType) {
-          case INT32:
-            collector.putInt(0, (int) res);
-            break;
-          case INT64:
-            collector.putLong(0, (long) res);
-            break;
-          case FLOAT:
-            collector.putFloat(0, (float) res);
-            break;
-          case DOUBLE:
-            collector.putDouble(0, res);
-            break;
-          case BOOLEAN:
-          case BLOB:
-          case STRING:
-          case TEXT:
-          case TIMESTAMP:
-          case DATE:
-          default:
-            break;
-        }
+        operations.writeApprox(res, collector);
       }
     } catch (NoSuchElementException | ArithmeticException e) {
       // Empty inputs have no percentile to emit.
     }
+  }
+
+  private static final PercentileOperations INT_OPERATIONS =
+      new PercentileOperations() {
+        public void initialize(UDAFPercentile target) {
+          target.intDic = new HashMap<>();
+        }
+
+        public void insertExact(UDAFPercentile target, Row row) throws Exception {
+          target.intDic.put(row.getInt(0), row.getTime());
+        }
+
+        public void writeExact(UDAFPercentile target, PointCollector collector) throws Exception {
+          int value = Integer.parseInt(target.statistics.getPercentile(target.rank));
+          collector.putInt(target.intDic.getOrDefault(value, 0L), value);
+        }
+
+        public void writeApprox(double value, PointCollector collector) throws Exception {
+          collector.putInt(0, (int) value);
+        }
+      };
+  private static final PercentileOperations LONG_OPERATIONS =
+      new PercentileOperations() {
+        public void initialize(UDAFPercentile target) {
+          target.longDic = new HashMap<>();
+        }
+
+        public void insertExact(UDAFPercentile target, Row row) throws Exception {
+          target.longDic.put(row.getLong(0), row.getTime());
+        }
+
+        public void writeExact(UDAFPercentile target, PointCollector collector) throws Exception {
+          long value = Long.parseLong(target.statistics.getPercentile(target.rank));
+          collector.putLong(target.longDic.getOrDefault(value, 0L), value);
+        }
+
+        public void writeApprox(double value, PointCollector collector) throws Exception {
+          collector.putLong(0, (long) value);
+        }
+      };
+  private static final PercentileOperations FLOAT_OPERATIONS =
+      new PercentileOperations() {
+        public void initialize(UDAFPercentile target) {
+          target.floatDic = new HashMap<>();
+        }
+
+        public void insertExact(UDAFPercentile target, Row row) throws Exception {
+          float value = row.getFloat(0);
+          if (Float.isFinite(value)) {
+            target.floatDic.put(value, row.getTime());
+          }
+        }
+
+        public void writeExact(UDAFPercentile target, PointCollector collector) throws Exception {
+          float value = Float.parseFloat(target.statistics.getPercentile(target.rank));
+          collector.putFloat(target.floatDic.getOrDefault(value, 0L), value);
+        }
+
+        public void writeApprox(double value, PointCollector collector) throws Exception {
+          collector.putFloat(0, (float) value);
+        }
+      };
+  private static final PercentileOperations DOUBLE_OPERATIONS =
+      new PercentileOperations() {
+        public void initialize(UDAFPercentile target) {
+          target.doubleDic = new HashMap<>();
+        }
+
+        public void insertExact(UDAFPercentile target, Row row) throws Exception {
+          double value = row.getDouble(0);
+          if (Double.isFinite(value)) {
+            target.doubleDic.put(value, row.getTime());
+          }
+        }
+
+        public void writeExact(UDAFPercentile target, PointCollector collector) throws Exception {
+          double value = Double.parseDouble(target.statistics.getPercentile(target.rank));
+          collector.putDouble(target.doubleDic.getOrDefault(value, 0L), value);
+        }
+
+        public void writeApprox(double value, PointCollector collector) throws Exception {
+          collector.putDouble(0, value);
+        }
+      };
+  private static final PercentileOperations UNSUPPORTED_OPERATIONS =
+      new PercentileOperations() {
+        public void initialize(UDAFPercentile target) {}
+
+        public void insertExact(UDAFPercentile target, Row row) {}
+
+        public void writeExact(UDAFPercentile target, PointCollector collector) {}
+
+        public void writeApprox(double value, PointCollector collector) {}
+      };
+
+  private interface PercentileOperations {
+    void initialize(UDAFPercentile target);
+
+    void insertExact(UDAFPercentile target, Row row) throws Exception;
+
+    void writeExact(UDAFPercentile target, PointCollector collector) throws Exception;
+
+    void writeApprox(double value, PointCollector collector) throws Exception;
   }
 }

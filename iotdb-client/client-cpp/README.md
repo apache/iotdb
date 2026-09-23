@@ -49,8 +49,8 @@ run:
 Example:
 
 ```bash
-unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28.zip
-export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28
+unzip iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28.zip
+export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28
 ```
 
 The unpacked SDK contains public headers, one runtime library, CMake and
@@ -71,7 +71,7 @@ separate Thrift or Boost headers/libraries for normal SDK use.
 ### 2. Link with CMake
 
 ```cmake
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(my_iotdb_app LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -300,7 +300,7 @@ so they require glibc 2.28 or newer on the deployment host.
 | ppc64le | `quay.io/pypa/manylinux_2_28_ppc64le` |
 | s390x | `quay.io/pypa/manylinux_2_28_s390x` |
 
-Thrift **0.21.0** is compiled from source during the CMake configure step (see
+Thrift **0.24.0** is compiled from source during the CMake configure step (see
 `cmake/FetchThrift.cmake`). Older releases that used pre-built
 `iotdb-tools-thrift` Maven artifacts and `-Diotdb-tools-thrift.version=...`
 for glibc/MSVC compatibility apply only to the **legacy** client-cpp build;
@@ -378,15 +378,16 @@ etc. directly.
 
 | Option                | Default                          | Purpose                                                                                                  |
 |-----------------------|----------------------------------|----------------------------------------------------------------------------------------------------------|
-| `WITH_SSL`            | `OFF`                            | Link against OpenSSL. See *SSL* below.                                                                   |
+| `WITH_SSL`            | `ON`                             | Link against OpenSSL and bundle its runtime libraries. See *SSL* below.                                  |
 | `BUILD_TESTING`       | `OFF` (Maven sets `ON` for verify) | Build Catch2 IT executables (Catch2 v2.13.7 header downloaded at configure time).                        |
 | `CATCH2_INCLUDE_DIR`  | (unset)                          | Pre-downloaded Catch2 include dir (Maven sets this under `target/test/catch2`).                          |
 | `IOTDB_OFFLINE`       | `OFF`                            | Disallow any network access during configure.                                                            |
 | `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
-| `THRIFT_VERSION`      | `0.21.0`                         | Apache Thrift version to build from source.                                                              |
+| `THRIFT_VERSION`      | `0.24.0`                         | Apache Thrift version to build from source.                                                              |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
-| `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install when `WITH_SSL=ON`.                                                             |
+| `IOTDB_OPENSSL_FROM_SOURCE` | `ON`                       | Build the checksum-pinned OpenSSL source release; set `OFF` to opt into system OpenSSL.                  |
+| `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install used only when `IOTDB_OPENSSL_FROM_SOURCE=OFF`.                                 |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
 | `CMAKE_BUILD_TYPE`    | `Release`                        | Single-config generator build type. Use `Debug` to produce a debug library.                              |
 
@@ -427,17 +428,17 @@ cmake --build build --config Release --target install
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-3.5.0.tar.gz` when `WITH_SSL=ON`)            |
-   | `mac/`     | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz` (newer Boost for Xcode/Clang; Apple ships m4/flex/bison; `openssl-3.5.0.tar.gz` optional)                               |
-   | `windows/` | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`)                                                      |
+   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `openssl-3.5.8.tar.gz` |
+   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz`, `openssl-3.5.8.tar.gz` |
+   | `windows/` | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `openssl-3.5.8.tar.gz` |
 
    Reference URLs (the configure step uses the same):
-   - Apache Thrift 0.21.0: <https://archive.apache.org/dist/thrift/0.21.0/thrift-0.21.0.tar.gz>
+   - Apache Thrift 0.24.0: <https://archive.apache.org/dist/thrift/0.24.0/thrift-0.24.0.tar.gz>
    - Boost 1.60.0:        <https://archives.boost.io/release/1.60.0/source/boost_1_60_0.tar.gz>
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
-   - OpenSSL 3.5.0:       <https://www.openssl.org/source/openssl-3.5.0.tar.gz>
+   - OpenSSL 3.5.8:       <https://github.com/openssl/openssl/releases/download/openssl-3.5.8/openssl-3.5.8.tar.gz>
 
 2. Run the build with offline mode enabled:
 
@@ -461,7 +462,7 @@ CI environments can share a single cache by setting
 ### Linux
 
 - Tested with GCC 7+ and Clang 9+. Anything that can compile Apache Thrift
-  0.21.0 works.
+  0.24.0 works.
 - Build deps that must already exist on the host (only required when
   CMake auto-builds m4/flex/bison from tarball): `make`, `autoconf`,
   `gcc`, plus the standard C/C++ toolchain. `sudo` is **not** required;
@@ -492,9 +493,9 @@ Prerequisites:
 2. **flex / bison.** Install <https://sourceforge.net/projects/winflexbison/>
    and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
    `PATH`.
-3. **OpenSSL** *(only when `WITH_SSL=ON`)*: run the Win64 OpenSSL
-   installer from <https://slproweb.com/products/Win32OpenSSL.html>, then
-   pass `-DOPENSSL_ROOT_DIR=...` to CMake.
+3. **Perl** *(`WITH_SSL=ON` is the default)*: install Strawberry Perl so the
+   pinned OpenSSL source release can be built (`choco install strawberryperl`).
+   Pass `-DWITH_SSL=OFF` to build without SSL.
 
 On Windows the SDK ships as **`iotdb_session.dll`** plus an import library
 **`iotdb_session.lib`**, built with **`/MD`** (dynamic CRT, same as a
@@ -507,16 +508,37 @@ the GNU autotools tarballs assume a POSIX shell environment.
 
 ## SSL
 
-Both Thrift and `iotdb_session` build without OpenSSL by default. Enable
-SSL with `-Dwith.ssl=ON` (Maven) or `-DWITH_SSL=ON` (standalone CMake).
-CMake first calls `find_package(OpenSSL)`;
-if nothing is found, it falls back to:
+`iotdb_session` builds **with OpenSSL by default** (`WITH_SSL=ON`). Disable
+it with `-Dwith.ssl=OFF` (Maven) or `-DWITH_SSL=OFF` (standalone CMake).
 
-- **Linux / macOS** – use a local `openssl-<ver>.tar.gz` (or download it
-  when not in offline mode), configure with `no-shared`, install into
-  `build/_deps/openssl/install`, and link statically.
-- **Windows** – fail with a friendly message that points at the Win64
-  OpenSSL installer. Building OpenSSL from source via MSVC is out of scope.
+OpenSSL **3.x** is used (Apache-2.0 licensed). Note that **OpenSSL 4.0 removed**
+the legacy TLS-method APIs (`TLSv1_method`, `SSLv3_method`, …) that Apache
+Thrift's `TSSLSocket` still calls, so install/point at a 3.x build, not 4.0.
+
+By default CMake downloads OpenSSL 3.5.8, verifies its SHA-256 checksum, and
+builds shared libraries from source on Linux, macOS, and Windows. The runtime
+libraries are bundled into the package `lib/` directory so the published SDK is
+self-contained. Set `-DIOTDB_OPENSSL_FROM_SOURCE=OFF` to opt into a compatible
+system OpenSSL 3.x instead.
+
+Enable authenticated TLS by configuring a PEM CA certificate. Add a PEM client
+certificate chain and an unencrypted PEM private key for mutual TLS:
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->trustCertFilePath("ca.crt")
+                   ->clientCertificateFilePath("client.crt")
+                   ->clientPrivateKeyFilePath("client.key")
+                   ->build();
+```
+
+The client certificate and private key must either both be configured or both
+be omitted. The same methods are available on `TableSessionBuilder` and
+`SessionPoolBuilder`; the C API provides `ts_session_set_ssl_config()` and
+`ts_table_session_new_with_ssl()`.
 
 ## Tests
 

@@ -108,12 +108,25 @@ public class PipeTableResp implements DataSet {
       final String pipeName,
       final boolean isTableModel,
       final String userName) {
-    final PipeTableResp resp = filter(whereClause, pipeName);
-    resp.allPipeMeta.removeIf(
-        meta ->
-            !meta.getStaticMeta().visibleUnder(isTableModel)
-                || !isVisible4User(userName, meta.getStaticMeta()));
-    return resp;
+    return new PipeTableResp(
+            status,
+            allPipeMeta.stream()
+                .filter(
+                    meta ->
+                        meta.getStaticMeta().visibleUnder(isTableModel)
+                            && isVisible4User(userName, meta.getStaticMeta()))
+                .collect(Collectors.toList()))
+        .filter(whereClause, pipeName);
+  }
+
+  public PipeTableResp filter(
+      final Boolean whereClause, final String pipeName, final String userName) {
+    return new PipeTableResp(
+            status,
+            allPipeMeta.stream()
+                .filter(meta -> isVisible4User(userName, meta.getStaticMeta()))
+                .collect(Collectors.toList()))
+        .filter(whereClause, pipeName);
   }
 
   public boolean isVisible4User(final String userName, final PipeStaticMeta meta) {
@@ -166,10 +179,10 @@ public class PipeTableResp implements DataSet {
     return Objects.equals(
         userName,
         sinkParameters.getStringByKeys(
-            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
-            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
-            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY));
+            PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+            PipeSinkConstant.SINK_IOTDB_USER_KEY,
+            PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+            PipeSinkConstant.SINK_IOTDB_USERNAME_KEY));
   }
 
   public TGetAllPipeInfoResp convertToTGetAllPipeInfoResp() throws IOException {
@@ -194,6 +207,9 @@ public class PipeTableResp implements DataSet {
           runtimeMeta.getNodeId2PipeRuntimeExceptionMap().entrySet()) {
         final Integer nodeId = entry.getKey();
         final PipeRuntimeException e = entry.getValue();
+        if (e.getTimeStamp() <= runtimeMeta.getExceptionsClearTime()) {
+          continue;
+        }
         final String exceptionMessage =
             DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
 
@@ -206,6 +222,9 @@ public class PipeTableResp implements DataSet {
           runtimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
         final Integer regionId = entry.getKey();
         for (final PipeRuntimeException e : entry.getValue().getExceptionMessages()) {
+          if (e.getTimeStamp() <= runtimeMeta.getExceptionsClearTime()) {
+            continue;
+          }
           final String exceptionMessage =
               DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
           pipeExceptionMessage2RegionIdsMap
@@ -270,6 +289,11 @@ public class PipeTableResp implements DataSet {
           canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingEvents());
       showPipeInfo.setEstimatedRemainingTime(
           canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingTime());
+      final Boolean isDegraded = temporaryMeta.getGlobalDegraded();
+      if (Objects.nonNull(isDegraded)) {
+        showPipeInfo.setIsDegraded(isDegraded);
+      }
+      showPipeInfo.setRecentFailures(temporaryMeta.getGlobalRecentFailures());
       showPipeInfoList.add(showPipeInfo);
     }
 

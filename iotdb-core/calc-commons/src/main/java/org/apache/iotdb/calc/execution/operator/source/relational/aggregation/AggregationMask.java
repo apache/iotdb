@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
@@ -59,15 +61,17 @@ public final class AggregationMask {
   }
 
   private AggregationMask(int positionCount, int[] selectedPositions, int selectedPositionCount) {
-    checkArgument(positionCount >= 0, "positionCount is negative");
-    checkArgument(selectedPositionCount >= 0, "selectedPositionCount is negative");
+    checkArgument(positionCount >= 0, CalcMessages.EXCEPTION_POSITIONCOUNT_IS_NEGATIVE_2FACCDCA);
+    checkArgument(
+        selectedPositionCount >= 0,
+        CalcMessages.EXCEPTION_SELECTEDPOSITIONCOUNT_IS_NEGATIVE_A8A7FDA1);
     checkArgument(
         selectedPositionCount <= positionCount,
-        "selectedPositionCount cannot be greater than positionCount");
-    requireNonNull(selectedPositions, "selectedPositions is null");
+        CalcMessages.EXCEPTION_SELECTEDPOSITIONCOUNT_CANNOT_BE_GREATER_THAN_POSITIONCOUNT_871FF8DA);
+    requireNonNull(selectedPositions, CalcMessages.EXCEPTION_SELECTEDPOSITIONS_IS_NULL_2300C002);
     checkArgument(
         selectedPositions.length >= selectedPositionCount,
-        "selectedPosition is smaller than selectedPositionCount");
+        CalcMessages.EXCEPTION_SELECTEDPOSITION_IS_SMALLER_THAN_SELECTEDPOSITIONCOUNT_465B9220);
 
     reset(positionCount);
     this.selectedPositions = selectedPositions;
@@ -75,7 +79,7 @@ public final class AggregationMask {
   }
 
   public void reset(int positionCount) {
-    checkArgument(positionCount >= 0, "positionCount is negative");
+    checkArgument(positionCount >= 0, CalcMessages.EXCEPTION_POSITIONCOUNT_IS_NEGATIVE_2FACCDCA);
     this.positionCount = positionCount;
     this.selectedPositionCount = positionCount;
   }
@@ -105,7 +109,7 @@ public final class AggregationMask {
 
   private Column[] getPositions(
       Column[] originalColumns, int[] retainedPositions, int offset, int length) {
-    requireNonNull(retainedPositions, "retainedPositions is null");
+    requireNonNull(retainedPositions, CalcMessages.EXCEPTION_RETAINEDPOSITIONS_IS_NULL_E62F9B0D);
 
     Column[] columns = new Column[originalColumns.length];
     for (int i = 0; i < originalColumns.length; i++) {
@@ -123,7 +127,9 @@ public final class AggregationMask {
   }
 
   public int[] getSelectedPositions() {
-    checkState(!isSelectAll(), "getSelectedPositions not available when in selectAll mode");
+    checkState(
+        !isSelectAll(),
+        CalcMessages.EXCEPTION_GETSELECTEDPOSITIONS_NOT_AVAILABLE_WHEN_IN_SELECTALL_MODE_CBE671D3);
     return selectedPositions;
   }
 
@@ -141,7 +147,7 @@ public final class AggregationMask {
     int positionCount = column.getPositionCount();
     checkArgument(
         positionCount == this.positionCount,
-        "Block position count does not match current position count");
+        CalcMessages.EXCEPTION_BLOCK_POSITION_COUNT_DOES_NOT_MATCH_CURRENT_POSITION_COUNT_FE4BBE3D);
     if (isSelectNone()) {
       return;
     }

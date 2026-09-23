@@ -285,7 +285,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
 
     if (!snapshotFile.exists()) {
-      // do nothing if the snapshot file is not existed
+      clear();
       return;
     }
 

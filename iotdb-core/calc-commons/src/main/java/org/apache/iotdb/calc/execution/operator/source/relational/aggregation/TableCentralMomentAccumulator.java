@@ -15,6 +15,8 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -23,6 +25,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -39,6 +42,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   private static final double EPSILON = 1e-12;
 
   private final TSDataType seriesDataType;
+  private final TypeServices.NumericBatchReader doubleValueConverter;
   private final CentralMomentAccumulator.MomentType momentType;
 
   private long count;
@@ -50,46 +54,21 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   public TableCentralMomentAccumulator(
       TSDataType seriesDataType, CentralMomentAccumulator.MomentType momentType) {
     this.seriesDataType = seriesDataType;
+    this.doubleValueConverter =
+        TypeServices.NUMERIC_BATCH_READER_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .create(
+                () ->
+                    new UnSupportedDataTypeException(
+                        String.format(
+                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION,
+                            seriesDataType)));
     this.momentType = momentType;
   }
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[0].isNull(i)) {
-          update(getDoubleValue(arguments[0], i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      for (int i = 0; i < positionCount; i++) {
-        int position = selectedPositions[i];
-        if (!arguments[0].isNull(position)) {
-          update(getDoubleValue(arguments[0], position));
-        }
-      }
-    }
-  }
-
-  private double getDoubleValue(Column column, int position) {
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                "Unsupported data type in CentralMoment Aggregation: %s", seriesDataType));
-    }
+    doubleValueConverter.read(arguments[0], mask, (position, value) -> update(value));
   }
 
   private void update(double value) {
@@ -116,7 +95,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -175,7 +154,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     if (count == 0) {
       columnBuilder.appendNull();
@@ -231,12 +210,13 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "Input of CentralMoment should be 1");
+    checkArgument(
+        arguments.length == 1, CalcMessages.EXCEPTION_INPUT_OF_CENTRALMOMENT_SHOULD_BE_1_FD23B170);
     if (count == 0 || arguments[0].isNull(0)) {
       return;
     }
 
-    double value = getDoubleValue(arguments[0], 0);
+    double value = doubleValueConverter.convert(arguments[0], 0);
     if (count == 1) {
       reset();
       return;

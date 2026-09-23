@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.CapturePattern;
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.FilterPattern;
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.TypeOfPattern;
@@ -45,11 +46,11 @@ public abstract class Pattern<T> {
   }
 
   protected Pattern(Pattern<?> previous) {
-    this(Optional.of(requireNonNull(previous, "previous is null")));
+    this(Optional.of(requireNonNull(previous, CalcMessages.EXCEPTION_PREVIOUS_IS_NULL_056F5D52)));
   }
 
   protected Pattern(Optional<Pattern<?>> previous) {
-    this.previous = requireNonNull(previous, "previous is null");
+    this.previous = requireNonNull(previous, CalcMessages.EXCEPTION_PREVIOUS_IS_NULL_056F5D52);
   }
 
   // FIXME make sure there's a proper toString,

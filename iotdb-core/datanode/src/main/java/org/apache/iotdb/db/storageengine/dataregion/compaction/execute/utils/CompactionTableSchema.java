@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTableSchemaNotMatchException;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -39,7 +40,11 @@ public class CompactionTableSchema extends TableSchema {
     }
     if (!tableSchema.getTableName().equals(this.tableName)) {
       throw new CompactionTableSchemaNotMatchException(
-          "this.tableName is " + tableName + " merge tableName is " + tableSchema.getTableName());
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_THIS_TABLENAME_IS_S_MERGE_TABLENAME_IS_S_4B05FA97,
+              tableName,
+              tableSchema.getTableName()));
     }
     // filter id columns
     List<IMeasurementSchema> otherSchemaColumnSchemas = tableSchema.getColumnSchemas();

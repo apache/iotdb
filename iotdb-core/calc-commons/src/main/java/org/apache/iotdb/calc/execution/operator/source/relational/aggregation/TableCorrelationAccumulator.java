@@ -14,6 +14,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -23,7 +25,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -69,8 +70,8 @@ public class TableCorrelationAccumulator implements TableAccumulator {
         if (arguments[0].isNull(i) || arguments[1].isNull(i)) {
           continue;
         }
-        double x = getDoubleValue(arguments[0], i, xDataType);
-        double y = getDoubleValue(arguments[1], i, yDataType);
+        double x = getDoubleValue(arguments[0], i);
+        double y = getDoubleValue(arguments[1], i);
         update(x, y);
       }
     } else {
@@ -80,29 +81,15 @@ public class TableCorrelationAccumulator implements TableAccumulator {
         if (arguments[0].isNull(position) || arguments[1].isNull(position)) {
           continue;
         }
-        double x = getDoubleValue(arguments[0], position, xDataType);
-        double y = getDoubleValue(arguments[1], position, yDataType);
+        double x = getDoubleValue(arguments[0], position);
+        double y = getDoubleValue(arguments[1], position);
         update(x, y);
       }
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Correlation Aggregation: %s", dataType));
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(double x, double y) {
@@ -120,13 +107,14 @@ public class TableCorrelationAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 2, "Input of Correlation should be 2");
+    checkArgument(
+        arguments.length == 2, CalcMessages.EXCEPTION_INPUT_OF_CORRELATION_SHOULD_BE_2_64BB37B5);
     if (count == 0 || arguments[0].isNull(0) || arguments[1].isNull(0)) {
       return;
     }
 
-    double otherX = getDoubleValue(arguments[0], 0, xDataType);
-    double otherY = getDoubleValue(arguments[1], 0, yDataType);
+    double otherX = getDoubleValue(arguments[0], 0);
+    double otherY = getDoubleValue(arguments[1], 0);
 
     if (count == 1) {
       reset();
@@ -164,7 +152,7 @@ public class TableCorrelationAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -223,7 +211,7 @@ public class TableCorrelationAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     if (count == 0) {
       columnBuilder.appendNull();

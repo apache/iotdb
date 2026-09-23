@@ -48,4 +48,10 @@ public final class PathMessages {
       "仅接受 MeasurementPath 和 AlignedPath。";
 
   private PathMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_NODES_LENGTH_MEASUREMENTPATH_SHOULD_ALWAYS_GREATER_THAN_2_CURRENT_39B913AE = "MeasurementPath 的 nodes.length 应始终大于 2，当前为：";
+  public static final String EXCEPTION_WILDCARDS_NOT_ALLOWED_PREFIX_PATH_948C42D1 = "前缀路径中不允许使用通配符：";
+
 }

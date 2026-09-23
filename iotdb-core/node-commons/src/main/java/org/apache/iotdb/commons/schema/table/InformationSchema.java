@@ -47,6 +47,7 @@ public class InformationSchema {
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
+  public static final String RECEIVERS = "receivers";
   public static final String PIPE_PLUGINS = "pipe_plugins";
   public static final String TOPICS = "topics";
   public static final String SUBSCRIPTIONS = "subscriptions";
@@ -115,6 +116,10 @@ public class InformationSchema {
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
+    databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATABASES, databaseTable);
 
     final TsTable tableTable = new TsTable(TABLES);
@@ -134,6 +139,10 @@ public class InformationSchema {
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
+    tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
@@ -225,7 +234,46 @@ public class InformationSchema {
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.ESTIMATED_REMAINING_SECONDS_TABLE_MODEL, TSDataType.DOUBLE));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.IS_DEGRADED_TABLE_MODEL, TSDataType.BOOLEAN));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.RECENT_FAILURES_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPES, pipeTable);
+
+    final TsTable receiversTable = new TsTable(RECEIVERS);
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.RECEIVER_NODE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.RECEIVER_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.PROTOCOL_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SENDER_CLUSTER_ID_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SENDER_ADDRESS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.RECEIVER_USER_NAME_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SENDER_PORTS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CONNECTION_COUNT_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_COUNT_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_IDS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_HANDSHAKE_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_TRANSFER_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    schemaTables.put(RECEIVERS, receiversTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);
     pipePluginTable.addColumnSchema(

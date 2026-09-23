@@ -156,6 +156,7 @@ keyWords
     | MODELS
     | MODIFY
     | NAN
+    | NEED_LAST_CACHE
     | NODEID
     | NODES
     | NONE
@@ -189,6 +190,7 @@ keyWords
     | PRIVILEGES
     | PRIVILEGE_VALUE
     | PROCESSLIST
+    | PROGRESS
     | PROCESSOR
     | PROPERTY
     | PRUNE
@@ -196,6 +198,7 @@ keyWords
     | QUERY
     | QUERYID
     | QUOTA
+    | RECEIVERS
     | RANGE
     | READONLY
     | READ

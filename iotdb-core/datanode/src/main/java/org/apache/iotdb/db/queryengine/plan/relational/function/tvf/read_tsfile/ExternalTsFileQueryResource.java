@@ -28,12 +28,14 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -88,6 +90,7 @@ public class ExternalTsFileQueryResource {
   private final String tableName;
   private final List<String> tsFilePaths;
   private final Map<Symbol, ColumnSchema> tableColumnSchema;
+  private final long deviceMetadataInfoSwapThreshold;
   private final List<TsFileResource> sharedTsFileResources;
   private final List<DeviceEntry> sharedDeviceEntries = new ArrayList<>();
   private final List<DeviceTaskPartition> deviceTaskPartitions = new ArrayList<>();
@@ -99,13 +102,15 @@ public class ExternalTsFileQueryResource {
   // deleting temporary run files while drivers are still reading them.
   private int fragmentInstanceUsageCount;
   private boolean closed;
+  private boolean queryExecutionWantsToClose;
 
   public ExternalTsFileQueryResource(
       MPPQueryContext queryContext,
       Path tempRoot,
       String tableName,
       List<String> tsFilePaths,
-      Map<Symbol, ColumnSchema> tableColumnSchema) {
+      Map<Symbol, ColumnSchema> tableColumnSchema,
+      long deviceMetadataInfoSwapThreshold) {
     this.queryContext = requireNonNull(queryContext, "queryContext is null");
     this.queryId = queryContext.getQueryId();
     this.externalTsFileResourceMemoryReservationManager =
@@ -115,6 +120,7 @@ public class ExternalTsFileQueryResource {
     this.tableName = tableName;
     this.tsFilePaths = requireNonNull(tsFilePaths, "tsFilePaths");
     this.tableColumnSchema = tableColumnSchema;
+    this.deviceMetadataInfoSwapThreshold = deviceMetadataInfoSwapThreshold;
     this.sharedTsFileResources = createTsFileResources(this.tsFilePaths);
     for (String tsFilePath : tsFilePaths) {
       FileReaderManager.getInstance().increaseExternalFileReaderReference(tsFilePath);
@@ -174,6 +180,7 @@ public class ExternalTsFileQueryResource {
               ? new SequentialDeviceTaskRunCursorManager(partition)
               : new PriorityDeviceTaskRunCursorManager(partition));
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new RuntimeException(
           DataNodeQueryMessages.FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_TASK_RUN_READER, e);
     }
@@ -229,12 +236,13 @@ public class ExternalTsFileQueryResource {
       throw new IllegalStateException(
           DataNodeQueryMessages.EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE);
     }
-    if (fragmentInstanceUsageCount == 0) {
+    if (fragmentInstanceUsageCount == 0 && queryExecutionWantsToClose) {
       close();
     }
   }
 
   public synchronized void closeByQueryExecution() {
+    queryExecutionWantsToClose = true;
     if (fragmentInstanceUsageCount == 0) {
       close();
     }
@@ -280,7 +288,6 @@ public class ExternalTsFileQueryResource {
 
   public class DeviceTaskPartition {
 
-    private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 8L * 1024 * 1024;
     private static final long MEMORY_RESERVE_BATCH_SIZE_IN_BYTES = 1024 * 1024;
 
     private final int partitionIndex;
@@ -324,6 +331,7 @@ public class ExternalTsFileQueryResource {
             writeDeviceTaskRun(
                 queryTempRoot.resolve(planNodeId.getId()), runFiles.size(), pendingDeviceTasks));
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw new RuntimeException(
             DataNodeQueryMessages.FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION, e);
       }
@@ -341,7 +349,8 @@ public class ExternalTsFileQueryResource {
     }
 
     private boolean shouldFlush() {
-      if (getPendingMemoryBytes() >= DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES) {
+      if (getPendingMemoryBytes()
+          >= ExternalTsFileQueryResource.this.deviceMetadataInfoSwapThreshold) {
         return true;
       }
       if (unreservedBytes < MEMORY_RESERVE_BATCH_SIZE_IN_BYTES) {
@@ -668,24 +677,45 @@ public class ExternalTsFileQueryResource {
     private DeviceCollector() {
       try {
         for (int fileIndex = 0; fileIndex < tsFilePaths.size(); fileIndex++) {
-          TsFileSequenceReader reader =
-              FileReaderManager.getInstance()
-                  .get(tsFilePaths.get(fileIndex), null, true, null, true);
-          deviceIteratorMap.put(fileIndex, new LazyTsFileDeviceIterator(reader, tableName, null));
+          try {
+            TsFileSequenceReader reader =
+                FileReaderManager.getInstance()
+                    .get(tsFilePaths.get(fileIndex), null, true, null, true);
+            deviceIteratorMap.put(fileIndex, new LazyTsFileDeviceIterator(reader, tableName, null));
+          } catch (Exception e) {
+            throw corruptedMetadataIndexNodeException(fileIndex, e);
+          }
         }
-      } catch (IOException e) {
+      } catch (RuntimeException e) {
         close();
-        throw new RuntimeException(
-            DataNodeQueryMessages.FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_COLLECTOR, e);
+        throw e;
       }
     }
 
+    private CorruptedTsFileException corruptedMetadataIndexNodeException(
+        int fileIndex, Exception cause) {
+      File tsFile = sharedTsFileResources.get(fileIndex).getTsFile();
+      return new CorruptedTsFileException(
+          tsFile,
+          CorruptedTsFileException.Stage.READ_METADATA_INDEX_NODE,
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633,
+              tsFile),
+          cause);
+    }
+
     private boolean hasNextDevice() {
-      for (LazyTsFileDeviceIterator deviceIterator : deviceIteratorMap.values()) {
-        if (deviceIterator.hasNext()
-            || (deviceIterator.hasCurrent()
-                && !deviceIterator.getCurrentDeviceID().equals(currentDevice))) {
-          return true;
+      for (Map.Entry<Integer, LazyTsFileDeviceIterator> entry : deviceIteratorMap.entrySet()) {
+        try {
+          LazyTsFileDeviceIterator deviceIterator = entry.getValue();
+          if (deviceIterator.hasNext()
+              || (deviceIterator.hasCurrent()
+                  && !deviceIterator.getCurrentDeviceID().equals(currentDevice))) {
+            return true;
+          }
+        } catch (Exception e) {
+          throw corruptedMetadataIndexNodeException(entry.getKey(), e);
         }
       }
       return false;
@@ -697,21 +727,25 @@ public class ExternalTsFileQueryResource {
           deviceIteratorMap.entrySet().iterator();
       while (iterator.hasNext()) {
         Map.Entry<Integer, LazyTsFileDeviceIterator> entry = iterator.next();
-        LazyTsFileDeviceIterator deviceIterator = entry.getValue();
-        IDeviceID currentFileDevice = null;
-        if (deviceIterator.hasCurrent()) {
-          currentFileDevice = deviceIterator.getCurrentDeviceID();
-        }
-        if (currentFileDevice == null || currentFileDevice.equals(currentDevice)) {
-          if (deviceIterator.hasNext()) {
-            currentFileDevice = deviceIterator.next();
-          } else {
-            iterator.remove();
-            continue;
+        try {
+          LazyTsFileDeviceIterator deviceIterator = entry.getValue();
+          IDeviceID currentFileDevice = null;
+          if (deviceIterator.hasCurrent()) {
+            currentFileDevice = deviceIterator.getCurrentDeviceID();
           }
-        }
-        if (minDevice == null || minDevice.compareTo(currentFileDevice) > 0) {
-          minDevice = currentFileDevice;
+          if (currentFileDevice == null || currentFileDevice.equals(currentDevice)) {
+            if (deviceIterator.hasNext()) {
+              currentFileDevice = deviceIterator.next();
+            } else {
+              iterator.remove();
+              continue;
+            }
+          }
+          if (minDevice == null || minDevice.compareTo(currentFileDevice) > 0) {
+            minDevice = currentFileDevice;
+          }
+        } catch (Exception e) {
+          throw corruptedMetadataIndexNodeException(entry.getKey(), e);
         }
       }
       currentDevice = minDevice;
@@ -722,15 +756,19 @@ public class ExternalTsFileQueryResource {
     private void collectCurrentDeviceOffsets() {
       List<ExternalTsFileDeviceQueryTask.DeviceOffset> deviceOffsets = new ArrayList<>();
       for (Map.Entry<Integer, LazyTsFileDeviceIterator> entry : deviceIteratorMap.entrySet()) {
-        LazyTsFileDeviceIterator deviceIterator = entry.getValue();
-        if (currentDevice != null
-            && deviceIterator.hasCurrent()
-            && currentDevice.equals(deviceIterator.getCurrentDeviceID())) {
-          deviceOffsets.add(
-              new ExternalTsFileDeviceQueryTask.DeviceOffset(
-                  entry.getKey(),
-                  deviceIterator.getCurrentDeviceMeasurementNodeOffset()[0],
-                  deviceIterator.getCurrentDeviceMeasurementNodeOffset()[1]));
+        try {
+          LazyTsFileDeviceIterator deviceIterator = entry.getValue();
+          if (currentDevice != null
+              && deviceIterator.hasCurrent()
+              && currentDevice.equals(deviceIterator.getCurrentDeviceID())) {
+            deviceOffsets.add(
+                new ExternalTsFileDeviceQueryTask.DeviceOffset(
+                    entry.getKey(),
+                    deviceIterator.getCurrentDeviceMeasurementNodeOffset()[0],
+                    deviceIterator.getCurrentDeviceMeasurementNodeOffset()[1]));
+          }
+        } catch (Exception e) {
+          throw corruptedMetadataIndexNodeException(entry.getKey(), e);
         }
       }
       currentDeviceOffsets = deviceOffsets;

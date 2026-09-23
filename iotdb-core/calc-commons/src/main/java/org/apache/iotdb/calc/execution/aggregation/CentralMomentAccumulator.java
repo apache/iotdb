@@ -14,10 +14,14 @@
 
 package org.apache.iotdb.calc.execution.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 
@@ -35,7 +39,7 @@ public class CentralMomentAccumulator implements Accumulator {
     KURTOSIS
   }
 
-  private final TSDataType seriesDataType;
+  private final TypeServices.ColumnToDoubleConverter doubleValueConverter;
   private final MomentType momentType;
 
   private long count;
@@ -45,7 +49,15 @@ public class CentralMomentAccumulator implements Accumulator {
   private double m4;
 
   public CentralMomentAccumulator(TSDataType seriesDataType, MomentType momentType) {
-    this.seriesDataType = seriesDataType;
+    this.doubleValueConverter =
+        TypeServices.NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .create(
+                () ->
+                    new UnsupportedOperationException(
+                        String.format(
+                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION,
+                            seriesDataType)));
     this.momentType = momentType;
   }
 
@@ -60,25 +72,7 @@ public class CentralMomentAccumulator implements Accumulator {
       if (columns[1].isNull(i)) {
         continue;
       }
-      update(getDoubleValue(columns[1], i));
-    }
-  }
-
-  private double getDoubleValue(Column column, int position) {
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnsupportedOperationException(
-            "Unsupported data type in CentralMoment Aggregation: " + seriesDataType);
+      update(doubleValueConverter.convert(columns[1], i));
     }
   }
 
@@ -102,7 +96,9 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of CentralMoment should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        CalcMessages.EXCEPTION_PARTIALRESULT_OF_CENTRALMOMENT_SHOULD_BE_1_B7C0B4B9);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -156,7 +152,8 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult should be 1");
+    checkArgument(
+        columnBuilders.length == 1, CalcMessages.EXCEPTION_PARTIALRESULT_SHOULD_BE_1_399D5DC3);
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
@@ -202,7 +199,8 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 1, "Input of CentralMoment should be 1");
+    checkArgument(
+        input.length == 1, CalcMessages.EXCEPTION_INPUT_OF_CENTRALMOMENT_SHOULD_BE_1_FD23B170);
     if (input[0].isNull(0)) {
       return;
     }
@@ -214,7 +212,10 @@ public class CentralMomentAccumulator implements Accumulator {
     if (nB == 0) {
       return;
     }
-    checkArgument(count >= nB, "CentralMoment state count is smaller than removed state count");
+    checkArgument(
+        count >= nB,
+        CalcMessages
+            .EXCEPTION_CENTRALMOMENT_STATE_COUNT_IS_SMALLER_THAN_REMOVED_STATE_COUNT_B87864BA);
 
     if (count == nB) {
       reset();

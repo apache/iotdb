@@ -33,8 +33,18 @@ public interface DataNodeConfig {
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
 
+  DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize);
+
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
+
+  DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad);
+
+  DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes);
+
+  DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds);
 
   DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval);
 
@@ -53,4 +63,12 @@ public interface DataNodeConfig {
   DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
 
   DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
+
+  DataNodeConfig setDnDataDirs(String dnDataDirs);
+
+  DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
+
+  DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes);
+
+  DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes);
 }

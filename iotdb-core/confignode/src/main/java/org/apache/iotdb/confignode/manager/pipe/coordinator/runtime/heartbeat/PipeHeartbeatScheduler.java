@@ -115,7 +115,10 @@ public class PipeHeartbeatScheduler {
                         resp.getPipeMetaList(),
                         resp.getPipeCompletedList(),
                         resp.getPipeRemainingEventCountList(),
-                        resp.getPipeRemainingTimeList())));
+                        resp.getPipeRemainingTimeList(),
+                        resp.getPipeDegradedStatusList(),
+                        resp.getPipeRecentFailureList(),
+                        resp.getPipeCompletedDataRegionList())));
 
     // config node heartbeat
     try {
@@ -127,7 +130,9 @@ public class PipeHeartbeatScheduler {
               configNodeResp.getPipeMetaList(),
               null,
               configNodeResp.getPipeRemainingEventCountList(),
-              configNodeResp.getPipeRemainingTimeList()));
+              configNodeResp.getPipeRemainingTimeList(),
+              configNodeResp.getPipeDegradedStatusList(),
+              configNodeResp.getPipeRecentFailureList()));
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn, e, ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK);

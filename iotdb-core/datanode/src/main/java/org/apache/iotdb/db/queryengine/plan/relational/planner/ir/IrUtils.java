@@ -143,8 +143,8 @@ public final class IrUtils {
 
   public static Expression logicalExpression(
       LogicalExpression.Operator operator, Collection<Expression> expressions) {
-    requireNonNull(operator, "operator is null");
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(operator, DataNodeQueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     if (expressions.isEmpty()) {
       switch (operator) {
@@ -182,7 +182,7 @@ public final class IrUtils {
   }
 
   public static Expression combineConjuncts(Collection<Expression> expressions) {
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     List<Expression> conjuncts =
         expressions.stream()
@@ -200,7 +200,7 @@ public final class IrUtils {
   }
 
   public static Expression combineConjunctsWithDuplicates(Collection<Expression> expressions) {
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     List<Expression> conjuncts =
         expressions.stream()
@@ -225,7 +225,7 @@ public final class IrUtils {
 
   public static Expression combineDisjunctsWithDefault(
       Collection<Expression> expressions, Expression emptyDefault) {
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     List<Expression> disjuncts =
         expressions.stream()

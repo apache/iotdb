@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -55,7 +57,10 @@ public enum FragmentState {
   private final boolean failureState;
 
   FragmentState(boolean doneState, boolean failureState) {
-    checkArgument(!failureState || doneState, "%s is a non-done failure state", name());
+    checkArgument(
+        !failureState || doneState,
+        DataNodeQueryMessages.EXCEPTION_ARG_IS_A_NON_MINUS_DONE_FAILURE_STATE_B167E915,
+        name());
     this.doneState = doneState;
     this.failureState = failureState;
   }

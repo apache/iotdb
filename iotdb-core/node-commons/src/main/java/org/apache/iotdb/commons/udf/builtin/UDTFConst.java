@@ -34,6 +34,7 @@ import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
@@ -60,14 +61,15 @@ public class UDTFConst implements UDTF {
     VALID_TYPES.add(TSDataType.OBJECT.name());
   }
 
-  private TSDataType dataType;
-
   private int intValue;
   private long longValue;
   private float floatValue;
   private double doubleValue;
   private boolean booleanValue;
   private Binary binaryValue;
+  private TypeServices.ConstantRowCollector rowCollector;
+  private TypeServices.ConstantRowMapper rowMapper;
+  private TypeServices.ConstantColumnValueWriter columnValueWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFParameterNotValidException {
@@ -82,38 +84,12 @@ public class UDTFConst implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    dataType = TSDataType.valueOf(parameters.getString("type"));
-    switch (dataType) {
-      case INT32:
-        intValue = Integer.parseInt(parameters.getString("value"));
-        break;
-      case DATE:
-        intValue = DateUtils.parseDateExpressionToInt(parameters.getString("value"));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longValue = Long.parseLong(parameters.getString("value"));
-        break;
-      case FLOAT:
-        floatValue = Float.parseFloat(parameters.getString("value"));
-        break;
-      case DOUBLE:
-        doubleValue = Double.parseDouble(parameters.getString("value"));
-        break;
-      case BOOLEAN:
-        booleanValue = Boolean.parseBoolean(parameters.getString("value"));
-        break;
-      case TEXT:
-      case STRING:
-        binaryValue = BytesUtils.valueOf(parameters.getString("value"));
-        break;
-      case BLOB:
-      case OBJECT:
-        binaryValue = new Binary(BlobUtils.parseBlobString(parameters.getString("value")));
-        break;
-      default:
-        throw new UnsupportedOperationException();
-    }
+    TSDataType dataType = TSDataType.valueOf(parameters.getString("type"));
+    Type type = Type.fromTsDataType(dataType);
+    TypeServices.CONSTANT_PARSER_SERVICE.call(type).parse(this, parameters);
+    rowCollector = TypeServices.CONSTANT_ROW_COLLECTOR_SERVICE.call(type);
+    rowMapper = TypeServices.CONSTANT_ROW_MAPPER_SERVICE.call(type);
+    columnValueWriter = TypeServices.CONSTANT_COLUMN_VALUE_WRITER_SERVICE.call(type);
 
     configurations
         .setAccessStrategy(new MappableRowByRowAccessStrategy())
@@ -122,162 +98,93 @@ public class UDTFConst implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        collector.putInt(row.getTime(), intValue);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        collector.putLong(row.getTime(), longValue);
-        break;
-      case FLOAT:
-        collector.putFloat(row.getTime(), floatValue);
-        break;
-      case DOUBLE:
-        collector.putDouble(row.getTime(), doubleValue);
-        break;
-      case BOOLEAN:
-        collector.putBoolean(row.getTime(), booleanValue);
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        collector.putBinary(row.getTime(), UDFBinaryTransformer.transformToUDFBinary(binaryValue));
-        break;
-      default:
-        throw new UnsupportedOperationException();
-    }
+    rowCollector.collect(this, row, collector);
   }
 
   @Override
   public Object transform(Row row) throws IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return intValue;
-      case INT64:
-      case TIMESTAMP:
-        return longValue;
-      case FLOAT:
-        return floatValue;
-      case DOUBLE:
-        return doubleValue;
-      case BOOLEAN:
-        return booleanValue;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        return UDFBinaryTransformer.transformToUDFBinary(binaryValue);
-      default:
-        throw new UnsupportedOperationException();
-    }
+    return rowMapper.map(this);
   }
 
   @Override
   public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
-    int count = columns[0].getPositionCount();
+    writeConstant(columns, builder);
+  }
 
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        for (int i = 0; i < count; i++) {
-          boolean hasWritten = false;
-          for (int j = 0; j < columns.length - 1; j++) {
-            if (!columns[j].isNull(i)) {
-              builder.writeInt(intValue);
-              hasWritten = true;
-              break;
-            }
-          }
-          if (!hasWritten) {
-            builder.appendNull();
-          }
+  void parseInt(UDFParameters parameters) {
+    intValue = Integer.parseInt(parameters.getString("value"));
+  }
+
+  void parseDate(UDFParameters parameters) {
+    intValue = DateUtils.parseDateExpressionToInt(parameters.getString("value"));
+  }
+
+  void parseLong(UDFParameters parameters) {
+    longValue = Long.parseLong(parameters.getString("value"));
+  }
+
+  void parseFloat(UDFParameters parameters) {
+    floatValue = Float.parseFloat(parameters.getString("value"));
+  }
+
+  void parseDouble(UDFParameters parameters) {
+    doubleValue = Double.parseDouble(parameters.getString("value"));
+  }
+
+  void parseBoolean(UDFParameters parameters) {
+    booleanValue = Boolean.parseBoolean(parameters.getString("value"));
+  }
+
+  void parseText(UDFParameters parameters) {
+    binaryValue = BytesUtils.valueOf(parameters.getString("value"));
+  }
+
+  void parseBlob(UDFParameters parameters) {
+    binaryValue = new Binary(BlobUtils.parseBlobString(parameters.getString("value")));
+  }
+
+  int intValue() {
+    return intValue;
+  }
+
+  long longValue() {
+    return longValue;
+  }
+
+  float floatValue() {
+    return floatValue;
+  }
+
+  double doubleValue() {
+    return doubleValue;
+  }
+
+  boolean booleanValue() {
+    return booleanValue;
+  }
+
+  org.apache.iotdb.udf.api.type.Binary binaryValue() {
+    return UDFBinaryTransformer.transformToUDFBinary(binaryValue);
+  }
+
+  Binary tsFileBinaryValue() {
+    return binaryValue;
+  }
+
+  private void writeConstant(Column[] columns, ColumnBuilder builder) {
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      boolean hasWritten = false;
+      for (int j = 0; j < columns.length - 1; j++) {
+        if (!columns[j].isNull(i)) {
+          columnValueWriter.write(this, builder);
+          hasWritten = true;
+          break;
         }
-        return;
-      case INT64:
-      case TIMESTAMP:
-        for (int i = 0; i < count; i++) {
-          boolean hasWritten = false;
-          for (int j = 0; j < columns.length - 1; j++) {
-            if (!columns[j].isNull(i)) {
-              builder.writeLong(longValue);
-              hasWritten = true;
-              break;
-            }
-          }
-          if (!hasWritten) {
-            builder.appendNull();
-          }
-        }
-        return;
-      case FLOAT:
-        for (int i = 0; i < count; i++) {
-          boolean hasWritten = false;
-          for (int j = 0; j < columns.length - 1; j++) {
-            if (!columns[j].isNull(i)) {
-              builder.writeFloat(floatValue);
-              hasWritten = true;
-              break;
-            }
-          }
-          if (!hasWritten) {
-            builder.appendNull();
-          }
-        }
-        return;
-      case DOUBLE:
-        for (int i = 0; i < count; i++) {
-          boolean hasWritten = false;
-          for (int j = 0; j < columns.length - 1; j++) {
-            if (!columns[j].isNull(i)) {
-              builder.writeDouble(doubleValue);
-              hasWritten = true;
-              break;
-            }
-          }
-          if (!hasWritten) {
-            builder.appendNull();
-          }
-        }
-        return;
-      case BOOLEAN:
-        for (int i = 0; i < count; i++) {
-          boolean hasWritten = false;
-          for (int j = 0; j < columns.length - 1; j++) {
-            if (!columns[j].isNull(i)) {
-              builder.writeBoolean(booleanValue);
-              hasWritten = true;
-              break;
-            }
-          }
-          if (!hasWritten) {
-            builder.appendNull();
-          }
-        }
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        for (int i = 0; i < count; i++) {
-          boolean hasWritten = false;
-          for (int j = 0; j < columns.length - 1; j++) {
-            if (!columns[j].isNull(i)) {
-              builder.writeBinary(binaryValue);
-              hasWritten = true;
-              break;
-            }
-          }
-          if (!hasWritten) {
-            builder.appendNull();
-          }
-        }
-        return;
-      default:
-        throw new UnsupportedOperationException();
+      }
+      if (!hasWritten) {
+        builder.appendNull();
+      }
     }
   }
 }

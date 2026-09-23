@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.node;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -44,11 +45,12 @@ public abstract class AbstractNodeProcedure<TState>
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       if (configNodeProcedureEnv.getNodeLock().tryLock(this)) {
-        LOG.info("procedureId {} acquire lock.", getProcId());
+        LOG.info(ProcedureMessages.LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_3FBF9987, getProcId());
         return ProcedureLockState.LOCK_ACQUIRED;
       }
       LOG.info(
-          "procedureId {} acquire lock failed, will wait for lock after finishing execution.",
+          ProcedureMessages
+              .LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_FAILED_WILL_WAIT_LOCK_AFTER_FINISHING_3B27278E,
           getProcId());
       return ProcedureLockState.LOCK_EVENT_WAIT;
     } finally {
@@ -72,7 +74,7 @@ public abstract class AbstractNodeProcedure<TState>
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
-      LOG.info("procedureId {} release lock.", getProcId());
+      LOG.info(ProcedureMessages.LOG_PROCEDUREID_ARG_RELEASE_LOCK_FF860D6B, getProcId());
       if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
         configNodeProcedureEnv
             .getNodeLock()

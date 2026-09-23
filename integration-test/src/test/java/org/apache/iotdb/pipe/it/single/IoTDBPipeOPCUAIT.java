@@ -23,21 +23,21 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
+import org.apache.iotdb.pipe.plugin.sink.opcua.client.ClientRunner;
+import org.apache.iotdb.pipe.plugin.sink.opcua.client.IoTDBOpcUaClient;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.UsernameProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.UsernameProvider;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
@@ -61,25 +61,35 @@ import java.util.Objects;
 import java.util.UUID;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
+import static org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace.timestampToUtc;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
 
+  private static final int PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES = 32 * 1024 * 1024;
+
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     MultiEnvFactory.createEnv(1);
     env = MultiEnvFactory.getEnv(0);
     env.getConfig()
+        .getConfigNodeConfig()
+        .setRatisLogAppenderBufferSizeMax(PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES);
+    env.getConfig()
+        .getDataNodeConfig()
+        .setThriftMaxFrameSize(PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES);
+    env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeMemoryManagementEnabled(false)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     env.initClusterEnvironment(1, 1);
+    registerOpcUaSinkPlugin();
   }
 
   @Test
@@ -126,13 +136,10 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
             throw e;
           }
         }
-        value =
-            opcUaClient
-                .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/`1`"))
-                .get();
+        value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/`1`"));
         Assert.assertEquals(new Variant(1.0), value.getValue());
         Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
-        opcUaClient.disconnect().get();
+        opcUaClient.disconnect();
         break;
       }
 
@@ -193,26 +200,19 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       long startTime = System.currentTimeMillis();
       while (true) {
         try {
-          value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"))
-                  .get();
+          value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"));
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
           Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
 
           value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1231`"))
-                  .get();
+              opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1231`"));
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
           Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
 
           value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1232`"))
-                  .get();
+              opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1232`"));
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
           Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
@@ -231,10 +231,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       startTime = System.currentTimeMillis();
       while (true) {
         try {
-          value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"))
-                  .get();
+          value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"));
           Assert.assertEquals(new DateTime(timestampToUtc(2)), value.getSourceTime());
           Assert.assertEquals(new Variant(2.0), value.getValue());
           Assert.assertEquals(StatusCode.UNCERTAIN, value.getStatusCode());
@@ -246,7 +243,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         }
       }
 
-      opcUaClient.disconnect().get();
+      opcUaClient.disconnect();
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
 
@@ -311,6 +308,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "opc-ua-sink");

@@ -36,7 +36,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -80,8 +82,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
@@ -667,6 +667,11 @@ public class RegionMaintainHandler {
     ConsensusPipeName pipeName = new ConsensusPipeName(dataRegionId, senderNodeId, receiverNodeId);
 
     String replicateMode = CONF.getIotConsensusV2Mode();
+    String database = configManager.getPartitionManager().getRegionDatabase(regionId);
+    String sqlDialect =
+        database != null && PathUtils.isTableModelDatabase(database)
+            ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+            : SystemConstant.SQL_DIALECT_TREE_VALUE;
 
     Map<String, String> extractorAttributes = new HashMap<>();
     extractorAttributes.put(EXTRACTOR_KEY, BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
@@ -677,8 +682,7 @@ public class RegionMaintainHandler {
     extractorAttributes.put(
         EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY, String.valueOf(receiverNodeId));
     extractorAttributes.put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode);
-    extractorAttributes.put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true));
-    extractorAttributes.put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true));
+    extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
     extractorAttributes.put(
         EXTRACTOR_IOTDB_USER_KEY, CommonDescriptor.getInstance().getConfig().getDefaultAdminName());
 

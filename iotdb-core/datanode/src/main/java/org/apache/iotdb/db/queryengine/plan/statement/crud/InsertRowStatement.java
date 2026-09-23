@@ -50,6 +50,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -161,33 +162,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          values[i] = ReadWriteIOUtils.readBool(buffer);
-          break;
-        case INT32:
-        case DATE:
-          values[i] = ReadWriteIOUtils.readInt(buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          values[i] = ReadWriteIOUtils.readLong(buffer);
-          break;
-        case FLOAT:
-          values[i] = ReadWriteIOUtils.readFloat(buffer);
-          break;
-        case DOUBLE:
-          values[i] = ReadWriteIOUtils.readDouble(buffer);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          values[i] = ReadWriteIOUtils.readBinary(buffer);
-          break;
-        default:
-          throw new QueryProcessException(
-              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + dataTypes[i]);
-      }
+      Type.fromTsDataType(dataTypes[i]).deserialize(values, i, buffer);
     }
   }
 
@@ -259,14 +234,16 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw new QueryProcessException(
-              new PathNotExistException(
-                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+              createPathNotExistException(
+                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i],
+                  getDataType(i)));
         } else {
           markFailedMeasurement(
               i,
               new QueryProcessException(
-                  new PathNotExistException(
-                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
+                  createPathNotExistException(
+                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i],
+                      getDataType(i))));
         }
         continue;
       }
@@ -281,13 +258,17 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
               || ((Binary) values[i]).getValues()[0] != 0
                   && ((Binary) values[i]).getValues()[0] != 1) {
             throw new IllegalArgumentException(
-                "data type is not consistent, input " + values[i] + ", registered " + dataTypes[i]);
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0,
+                    values[i],
+                    dataTypes[i]));
           }
         }
       } catch (Exception e) {
         LOGGER.warn(
-            "data type of {}.{} is not consistent, "
-                + "registered type {}, inserting timestamp {}, value {}",
+            DataNodeQueryMessages.DATA_TYPE_OF_ARG_ARG_IS_NOT_CONSISTENT
+                + DataNodeQueryMessages.REGISTERED_TYPE_ARG_INSERTING_TIMESTAMP_ARG_VALUE_ARG,
             devicePath,
             measurements[i],
             dataTypes[i],
@@ -366,8 +347,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (measurements.length != values.length) {
       throw new SemanticException(
           String.format(
-              "the measurementList's size %d is not consistent with the valueList's size %d",
-              measurements.length, values.length));
+              DataNodeQueryMessages
+                  .THE_MEASUREMENTLIST_S_SIZE_D_IS_NOT_CONSISTENT_WITH_THE_VALUELIST_S_SIZE_D,
+              measurements.length,
+              values.length));
     }
   }
 

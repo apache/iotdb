@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -27,14 +27,14 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to detect range anomaly of time series. */
 public class UDTFRange implements UDTF {
-  private Type dataType;
   private double upperBound;
   private double lowerBound;
+  private TypeServices.NumericRowReader rowReader;
+  private TypeServices.NumericRowWriter rowWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -61,7 +61,10 @@ public class UDTFRange implements UDTF {
         .setOutputDataType(parameters.getDataType(0));
     this.lowerBound = parameters.getDouble("lower_bound");
     this.upperBound = parameters.getDouble("upper_bound");
-    this.dataType = parameters.getDataType(0);
+    Type dataType = parameters.getDataType(0);
+    org.apache.tsfile.read.common.type.Type type = TypeServices.toReadType(dataType);
+    rowReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(type);
+    rowWriter = TypeServices.NUMERIC_ROW_WRITER_SERVICE.call(type);
   }
 
   @Override
@@ -69,46 +72,9 @@ public class UDTFRange implements UDTF {
     if (row.isNull(0)) {
       return;
     }
-    int intValue;
-    long longValue;
-    float floatValue;
-    double doubleValue;
-    long timestamp;
-    timestamp = row.getTime();
-    switch (dataType) {
-      case INT32:
-        intValue = row.getInt(0);
-        if (intValue > upperBound || intValue < lowerBound) {
-          collector.putInt(timestamp, intValue);
-        }
-        break;
-      case INT64:
-        longValue = row.getLong(0);
-        if (longValue > upperBound || longValue < lowerBound) {
-          collector.putLong(timestamp, longValue);
-        }
-        break;
-      case FLOAT:
-        floatValue = row.getFloat(0);
-        if (Float.isFinite(floatValue) && (floatValue > upperBound || floatValue < lowerBound)) {
-          collector.putFloat(timestamp, floatValue);
-        }
-        break;
-      case DOUBLE:
-        doubleValue = row.getDouble(0);
-        if (Double.isFinite(doubleValue)
-            && (doubleValue > upperBound || doubleValue < lowerBound)) {
-          collector.putDouble(timestamp, doubleValue);
-        }
-        break;
-      case DATE:
-      case TIMESTAMP:
-      case TEXT:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      default:
-        throw new UDFException(LibraryUdfMessages.NO_SUCH_DATA_TYPE);
+    double value = rowReader.read(row);
+    if (Double.isFinite(value) && (value > upperBound || value < lowerBound)) {
+      rowWriter.write(row, collector);
     }
   }
 

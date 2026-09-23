@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -42,7 +44,9 @@ public class CountAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of COUNT should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_COUNT_SHOULD_BE_ONE_COLUMN_906D6B19);
     int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
@@ -67,7 +71,9 @@ public class CountAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of COUNT should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_COUNT_SHOULD_BE_ONE_COLUMN_906D6B19);
     int count = arguments[0].getPositionCount();
     if (!arguments[0].mayHaveNull()) {
       countState -= count;

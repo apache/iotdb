@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
 import org.slf4j.Logger;
@@ -82,7 +83,7 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
       task.unlock();
     }
     LOGGER.warn(
-        "[DriverTaskTimeout] Current time is {}, ddl of task is {}",
+        DataNodeQueryMessages.DRIVERTASKTIMEOUT_CURRENT_TIME_IS_ARG_DDL_OF_TASK_IS_ARG,
         System.currentTimeMillis(),
         task.getDDL());
     task.setAbortCause(new QueryTimeoutException());

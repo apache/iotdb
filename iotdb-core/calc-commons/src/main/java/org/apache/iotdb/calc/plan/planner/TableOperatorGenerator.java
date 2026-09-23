@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.plan.planner;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.AssignUniqueIdOperator;
@@ -42,12 +43,6 @@ import org.apache.iotdb.calc.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.calc.execution.operator.process.ValuesOperator;
 import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.BinaryConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.BooleanConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.DoubleConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.FloatConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.IntConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.calc.execution.operator.process.function.TableFunctionLeafOperator;
 import org.apache.iotdb.calc.execution.operator.process.function.TableFunctionOperator;
 import org.apache.iotdb.calc.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
@@ -97,18 +92,11 @@ import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
-import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToDateLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToDoubleLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToFloatLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToInt32LiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToInt64LiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToStringLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
@@ -169,6 +157,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 
@@ -177,19 +166,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -203,7 +184,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -218,9 +198,7 @@ import static org.apache.iotdb.calc.execution.operator.process.rowpattern.Physic
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createBuiltinAccumulator;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
-import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.IDENTITY_FILL;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
-import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getLinearFill;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getNextFill;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getPreviousFill;
@@ -314,6 +292,11 @@ public abstract class TableOperatorGenerator<
       PlanNodeId planNodeId,
       C context) {
 
+    String fragmentInstanceId = getFragmentInstanceId(context);
+    String outerGlobalQueryId = getQueryId(context);
+    long outerQueryDeadlineMs = getOuterQueryDeadlineMs(context);
+    IoTDBLocalFactory ioTDBLocalFactory = getIoTDBLocalFactory(context);
+
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
 
     // records LeafColumnTransformer of filter
@@ -341,7 +324,11 @@ public abstract class TableOperatorGenerator<
                           0,
                           context.getTableTypeProvider(),
                           metadata,
-                          context.getMemoryReservationManager());
+                          context.getMemoryReservationManager(),
+                          fragmentInstanceId,
+                          outerGlobalQueryId,
+                          outerQueryDeadlineMs,
+                          ioTDBLocalFactory);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -369,7 +356,11 @@ public abstract class TableOperatorGenerator<
             inputLocations.size(),
             context.getTableTypeProvider(),
             metadata,
-            context.getMemoryReservationManager());
+            context.getMemoryReservationManager(),
+            fragmentInstanceId,
+            outerGlobalQueryId,
+            outerQueryDeadlineMs,
+            ioTDBLocalFactory);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -391,6 +382,22 @@ public abstract class TableOperatorGenerator<
         projectOutputTransformerList,
         false,
         predicate.isPresent());
+  }
+
+  protected String getFragmentInstanceId(C context) {
+    return null;
+  }
+
+  protected String getQueryId(C context) {
+    return null;
+  }
+
+  protected long getOuterQueryDeadlineMs(C context) {
+    return -1L;
+  }
+
+  protected IoTDBLocalFactory getIoTDBLocalFactory(C context) {
+    return null;
   }
 
   @Override
@@ -577,7 +584,10 @@ public abstract class TableOperatorGenerator<
       channel++;
     }
     throw new IllegalStateException(
-        String.format("Found no column %s in %s", symbol, node.getOutputSymbols()));
+        String.format(
+            CalcMessages.EXCEPTION_FOUND_NO_COLUMN_ARG_ARG_8CF632F7,
+            symbol,
+            node.getOutputSymbols()));
   }
 
   @Override
@@ -672,85 +682,10 @@ public abstract class TableOperatorGenerator<
       int inputColumnCount, List<TSDataType> inputDataTypes, Literal filledValue, C context) {
     IFill[] constantFill = new IFill[inputColumnCount];
     for (int i = 0; i < inputColumnCount; i++) {
-      switch (inputDataTypes.get(i)) {
-        case BOOLEAN:
-          Boolean bool = filledValue.accept(new CastToBooleanLiteralVisitor(), null);
-          if (bool == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new BooleanConstantFill(bool);
-          }
-          break;
-        case TEXT:
-        case STRING:
-          Binary binary =
-              filledValue.accept(new CastToStringLiteralVisitor(TSFileConfig.STRING_CHARSET), null);
-          if (binary == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new BinaryConstantFill(binary);
-          }
-          break;
-        case BLOB:
-          Binary blob = filledValue.accept(new CastToBlobLiteralVisitor(), null);
-          if (blob == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new BinaryConstantFill(blob);
-          }
-          break;
-        case INT32:
-          Integer intValue = filledValue.accept(new CastToInt32LiteralVisitor(), null);
-          if (intValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new IntConstantFill(intValue);
-          }
-          break;
-        case DATE:
-          Integer dateValue = filledValue.accept(new CastToDateLiteralVisitor(), null);
-          if (dateValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new IntConstantFill(dateValue);
-          }
-          break;
-        case INT64:
-          Long longValue = filledValue.accept(new CastToInt64LiteralVisitor(), null);
-          if (longValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new LongConstantFill(longValue);
-          }
-          break;
-        case TIMESTAMP:
-          Long timestampValue =
-              filledValue.accept(new CastToTimestampLiteralVisitor(context.getZoneId()), null);
-          if (timestampValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new LongConstantFill(timestampValue);
-          }
-          break;
-        case FLOAT:
-          Float floatValue = filledValue.accept(new CastToFloatLiteralVisitor(), null);
-          if (floatValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new FloatConstantFill(floatValue);
-          }
-          break;
-        case DOUBLE:
-          Double doubleValue = filledValue.accept(new CastToDoubleLiteralVisitor(), null);
-          if (doubleValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new DoubleConstantFill(doubleValue);
-          }
-          break;
-        default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
+      constantFill[i] =
+          TypeServices.VALUE_FILL_SERVICE
+              .call(Type.fromTsDataType(inputDataTypes.get(i)))
+              .create(filledValue, context.getZoneId());
     }
     return constantFill;
   }
@@ -854,6 +789,7 @@ public abstract class TableOperatorGenerator<
   public Operator visitTopK(TopKNode node, C context) {
     CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), TableTopKOperator.class.getSimpleName());
+    TopKRuntimeFilter topKRuntimeFilter = registerRuntimeFilter(context, node);
     List<Operator> children = new ArrayList<>(node.getChildren().size());
     for (PlanNode child : node.getChildren()) {
       children.add(this.process(child, context));
@@ -869,6 +805,25 @@ public abstract class TableOperatorGenerator<
         sortItemIndexList,
         sortItemDataTypeList,
         context.getTableTypeProvider());
+    if (topKRuntimeFilter != null) {
+      checkArgument(
+          sortItemsCount == 1,
+          CalcMessages.EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208);
+      TSDataType sortType = sortItemDataTypeList.get(0);
+      checkArgument(
+          sortType == TSDataType.INT64 || sortType == TSDataType.TIMESTAMP,
+          CalcMessages.EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208);
+      return new TableTopKOperator(
+          operatorContext,
+          children,
+          dataTypes,
+          getComparatorForTable(
+              node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
+          (int) node.getCount(),
+          node.isChildrenDataInOrder(),
+          topKRuntimeFilter,
+          sortItemIndexList.get(0));
+    }
     return new TableTopKOperator(
         operatorContext,
         children,
@@ -877,6 +832,10 @@ public abstract class TableOperatorGenerator<
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
         (int) node.getCount(),
         node.isChildrenDataInOrder());
+  }
+
+  protected TopKRuntimeFilter registerRuntimeFilter(C context, TopKNode node) {
+    return null;
   }
 
   protected List<TSDataType> getOutputColumnTypes(PlanNode node, ITableTypeProvider typeProvider) {
@@ -904,7 +863,9 @@ public abstract class TableOperatorGenerator<
               if (i == null) {
                 throw new IllegalStateException(
                     String.format(
-                        "Sort Item %s is not included in children's output columns", sortItem));
+                        CalcMessages
+                            .EXCEPTION_SORT_ITEM_ARG_NOT_INCLUDED_CHILDREN_S_OUTPUT_COLUMNS_CC911999,
+                        sortItem));
               }
               sortItemIndexList.add(i);
               sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));
@@ -980,7 +941,7 @@ public abstract class TableOperatorGenerator<
       Integer index = leftColumnNamesMap.get(node.getLeftOutputSymbols().get(i));
       if (index == null) {
         throw new IllegalStateException(
-            "Left child of JoinNode doesn't contain LeftOutputSymbol "
+            CalcMessages.EXCEPTION_LEFT_CHILD_JOINNODE_DOESN_T_CONTAIN_LEFTOUTPUTSYMBOL_0C8AA216
                 + node.getLeftOutputSymbols().get(i));
       }
       leftOutputSymbolIdx[i] = index;
@@ -993,7 +954,7 @@ public abstract class TableOperatorGenerator<
       Integer index = rightColumnNamesMap.get(node.getRightOutputSymbols().get(i));
       if (index == null) {
         throw new IllegalStateException(
-            "Right child of JoinNode doesn't contain RightOutputSymbol "
+            CalcMessages.EXCEPTION_RIGHT_CHILD_JOINNODE_DOESN_T_CONTAIN_RIGHTOUTPUTSYMBOL_10A86F63
                 + node.getLeftOutputSymbols().get(i));
       }
       rightOutputSymbolIdx[i] = index;
@@ -1052,13 +1013,15 @@ public abstract class TableOperatorGenerator<
       Integer leftAsofJoinKeyPosition = leftColumnNamesMap.get(asofJoinClause.getLeft());
       if (leftAsofJoinKeyPosition == null) {
         throw new IllegalStateException(
-            "Left child of JoinNode doesn't contain left ASOF main join key.");
+            CalcMessages
+                .EXCEPTION_LEFT_CHILD_JOINNODE_DOESN_T_CONTAIN_LEFT_ASOF_MAIN_JOIN_2850234A);
       }
       leftJoinKeyPositions[equiSize] = leftAsofJoinKeyPosition;
       Integer rightAsofJoinKeyPosition = rightColumnNamesMap.get(asofJoinClause.getRight());
       if (rightAsofJoinKeyPosition == null) {
         throw new IllegalStateException(
-            "Right child of JoinNode doesn't contain right ASOF main join key.");
+            CalcMessages
+                .EXCEPTION_RIGHT_CHILD_JOINNODE_DOESN_T_CONTAIN_RIGHT_ASOF_MAIN_JOIN_1A9631C9);
       }
       rightJoinKeyPositions[equiSize] = rightAsofJoinKeyPosition;
 
@@ -1144,7 +1107,9 @@ public abstract class TableOperatorGenerator<
           rightOutputSymbolIdx,
           JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
           dataTypes,
-          joinKeyTypes.stream().map(this::buildUpdateLastRowFunction).collect(Collectors.toList()));
+          joinKeyTypes.stream()
+              .map(TypeServices.UPDATE_LAST_ROW_SERVICE::call)
+              .collect(Collectors.toList()));
     } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
       CommonOperatorContext operatorContext =
           addOperatorContext(
@@ -1169,47 +1134,17 @@ public abstract class TableOperatorGenerator<
       checkArgument(
           !node.getFilter().isPresent() || node.getFilter().get().equals(TRUE_LITERAL),
           String.format(
-              "Filter is not supported in %s. Filter is %s.",
-              node.getJoinType(), node.getFilter().map(Expression::toString).orElse("null")));
+              CalcMessages.EXCEPTION_FILTER_IS_NOT_SUPPORTED_IN_ARG_DOT_FILTER_IS_ARG_DOT_417C4F3C,
+              node.getJoinType(),
+              node.getFilter()
+                  .map(Expression::toString)
+                  .orElse(CalcMessages.EXCEPTION_NULL_9B41EF67)));
       checkArgument(
           !node.getCriteria().isEmpty() || node.getAsofCriteria().isPresent(),
-          String.format("%s must have join keys.", node.getJoinType()));
+          String.format(
+              CalcMessages.EXCEPTION_ARG_MUST_HAVE_JOIN_KEYS_DOT_C24DAB2D, node.getJoinType()));
     } catch (IllegalArgumentException e) {
       throw new SemanticException(e.getMessage());
-    }
-  }
-
-  protected BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
-    switch (joinKeyType.getTypeEnum()) {
-      case INT32:
-        return (inputColumn, rowIndex) ->
-            new IntColumn(
-                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.INT32);
-      case DATE:
-        return (inputColumn, rowIndex) ->
-            new IntColumn(
-                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.DATE);
-      case INT64:
-      case TIMESTAMP:
-        return (inputColumn, rowIndex) ->
-            new LongColumn(1, Optional.empty(), new long[] {inputColumn.getLong(rowIndex)});
-      case FLOAT:
-        return (inputColumn, rowIndex) ->
-            new FloatColumn(1, Optional.empty(), new float[] {inputColumn.getFloat(rowIndex)});
-      case DOUBLE:
-        return (inputColumn, rowIndex) ->
-            new DoubleColumn(1, Optional.empty(), new double[] {inputColumn.getDouble(rowIndex)});
-      case BOOLEAN:
-        return (inputColumn, rowIndex) ->
-            new BooleanColumn(
-                1, Optional.empty(), new boolean[] {inputColumn.getBoolean(rowIndex)});
-      case STRING:
-      case TEXT:
-      case BLOB:
-        return (inputColumn, rowIndex) ->
-            new BinaryColumn(1, Optional.empty(), new Binary[] {inputColumn.getBinary(rowIndex)});
-      default:
-        throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_DATA_TYPE + joinKeyType);
     }
   }
 
@@ -1226,7 +1161,10 @@ public abstract class TableOperatorGenerator<
     int[] sourceOutputSymbolIdx = new int[node.getSource().getOutputSymbols().size()];
     for (int i = 0; i < sourceOutputSymbolIdx.length; i++) {
       Integer index = sourceColumnNamesMap.get(sourceOutputSymbols.get(i));
-      checkNotNull(index, "Source of SemiJoinNode doesn't contain sourceOutputSymbol.");
+      checkNotNull(
+          index,
+          CalcMessages
+              .EXCEPTION_SOURCE_OF_SEMIJOINNODE_DOESN_QUOTE_T_CONTAIN_SOURCEOUTPUTSYMBOL_DOT_527996EC);
       sourceOutputSymbolIdx[i] = index;
     }
 
@@ -1234,13 +1172,17 @@ public abstract class TableOperatorGenerator<
         makeLayoutFromOutputSymbols(node.getRightChild().getOutputSymbols());
 
     Integer sourceJoinKeyPosition = sourceColumnNamesMap.get(node.getSourceJoinSymbol());
-    checkNotNull(sourceJoinKeyPosition, "Source of SemiJoinNode doesn't contain sourceJoinSymbol.");
+    checkNotNull(
+        sourceJoinKeyPosition,
+        CalcMessages
+            .EXCEPTION_SOURCE_OF_SEMIJOINNODE_DOESN_QUOTE_T_CONTAIN_SOURCEJOINSYMBOL_DOT_32209273);
 
     Integer filteringSourceJoinKeyPosition =
         filteringSourceColumnNamesMap.get(node.getFilteringSourceJoinSymbol());
     checkNotNull(
         filteringSourceJoinKeyPosition,
-        "FilteringSource of SemiJoinNode doesn't contain filteringSourceJoinSymbol.");
+        CalcMessages
+            .EXCEPTION_FILTERINGSOURCE_OF_SEMIJOINNODE_DOESN_QUOTE_T_CONTAIN_FILTERINGSOURCEJOINSYMBOL__1B75DDE2);
 
     Type sourceJoinKeyType =
         context.getTableTypeProvider().getTableModelType(node.getSourceJoinSymbol());
@@ -1266,9 +1208,9 @@ public abstract class TableOperatorGenerator<
   protected void checkIfJoinKeyTypeMatches(Type leftJoinKeyType, Type rightJoinKeyType) {
     if (leftJoinKeyType != rightJoinKeyType) {
       throw new SemanticException(
-          "Join key type mismatch. Left join key type: "
+          CalcMessages.EXCEPTION_JOIN_KEY_TYPE_MISMATCH_LEFT_JOIN_KEY_TYPE_072E692E
               + leftJoinKeyType
-              + ", right join key type: "
+              + CalcMessages.EXCEPTION_RIGHT_JOIN_KEY_TYPE_56895767
               + rightJoinKeyType);
     }
   }
@@ -1329,7 +1271,8 @@ public abstract class TableOperatorGenerator<
                         false,
                         null,
                         Collections.emptySet(),
-                        operatorContext.getMemoryReservationContext())));
+                        operatorContext.getMemoryReservationContext(),
+                        context)));
     return createAggregationOperator(operatorContext, child, aggregatorBuilder.build());
   }
 
@@ -1344,7 +1287,8 @@ public abstract class TableOperatorGenerator<
       boolean isAggTableScan,
       String timeColumnName,
       Set<String> measurementColumnNames,
-      MemoryReservationManager memoryReservationManager) {
+      MemoryReservationManager memoryReservationManager,
+      C context) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1356,6 +1300,10 @@ public abstract class TableOperatorGenerator<
         aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
+    IoTDBLocal ioTDBLocal =
+        getAggregationTypeByFuncName(functionName) == TAggregationType.UDAF
+            ? createIoTDBLocal(context)
+            : null;
     TableAccumulator accumulator =
         createAccumulator(
             functionName,
@@ -1368,7 +1316,10 @@ public abstract class TableOperatorGenerator<
             timeColumnName,
             measurementColumnNames,
             aggregation.isDistinct(),
-            memoryReservationManager);
+            step,
+            aggregation.isInputOrderedByTimeAscending(),
+            memoryReservationManager,
+            ioTDBLocal);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1411,7 +1362,8 @@ public abstract class TableOperatorGenerator<
                             false,
                             null,
                             Collections.emptySet(),
-                            context.getMemoryReservationManager())));
+                            context.getMemoryReservationManager(),
+                            context)));
 
         CommonOperatorContext operatorContext =
             addOperatorContext(
@@ -1439,7 +1391,8 @@ public abstract class TableOperatorGenerator<
                           v,
                           node.getStep(),
                           typeProvider,
-                          context.getMemoryReservationManager())));
+                          context.getMemoryReservationManager(),
+                          context)));
 
       Set<Symbol> preGroupedKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
       List<Symbol> groupingKeys = node.getGroupingKeys();
@@ -1496,7 +1449,8 @@ public abstract class TableOperatorGenerator<
                         v,
                         node.getStep(),
                         typeProvider,
-                        context.getMemoryReservationManager())));
+                        context.getMemoryReservationManager(),
+                        context)));
     CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), HashAggregationOperator.class.getSimpleName());
@@ -1621,7 +1575,8 @@ public abstract class TableOperatorGenerator<
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
       ITableTypeProvider typeProvider,
-      MemoryReservationManager memoryReservationManager) {
+      MemoryReservationManager memoryReservationManager,
+      C context) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1633,6 +1588,10 @@ public abstract class TableOperatorGenerator<
         aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
+    IoTDBLocal ioTDBLocal =
+        getAggregationTypeByFuncName(functionName) == TAggregationType.UDAF
+            ? createIoTDBLocal(context)
+            : null;
     GroupedAccumulator accumulator =
         createGroupedAccumulator(
             functionName,
@@ -1642,7 +1601,10 @@ public abstract class TableOperatorGenerator<
             Collections.emptyMap(),
             true,
             aggregation.isDistinct(),
-            memoryReservationManager);
+            step,
+            aggregation.isInputOrderedByTimeAscending(),
+            memoryReservationManager,
+            ioTDBLocal);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1671,7 +1633,9 @@ public abstract class TableOperatorGenerator<
       CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), TableFunctionLeafOperator.class.getSimpleName());
-      return new TableFunctionLeafOperator(operatorContext, processorProvider, outputDataTypes);
+      IoTDBLocal ioTDBLocal = createIoTDBLocal(context);
+      return new TableFunctionLeafOperator(
+          operatorContext, processorProvider, outputDataTypes, ioTDBLocal);
     } else {
       Operator operator = node.getChild().accept(this, context);
       CommonOperatorContext operatorContext =
@@ -1716,6 +1680,7 @@ public abstract class TableOperatorGenerator<
       } else {
         partitionChannels = Collections.emptyList();
       }
+      IoTDBLocal ioTDBLocal = createIoTDBLocal(context);
       return new TableFunctionOperator(
           operatorContext,
           processorProvider,
@@ -1729,7 +1694,8 @@ public abstract class TableOperatorGenerator<
               .map(TableFunctionNode.PassThroughSpecification::isDeclaredAsPassThrough)
               .orElse(false),
           partitionChannels,
-          node.isRequireRecordSnapshot());
+          node.isRequireRecordSnapshot(),
+          ioTDBLocal);
     }
   }
 
@@ -2363,7 +2329,7 @@ public abstract class TableOperatorGenerator<
               new Column[0]);
       return new ValuesOperator(operatorContext, ImmutableList.of(oneRowWithoutColumnsBlock));
     } else {
-      throw new IllegalArgumentException("Row count must be 0 or 1");
+      throw new IllegalArgumentException(CalcMessages.EXCEPTION_ROW_COUNT_MUST_0_1_8D44189F);
     }
   }
 
@@ -2467,4 +2433,40 @@ public abstract class TableOperatorGenerator<
   }
 
   protected abstract SessionInfo getSessionInfo(C context);
+
+  protected IoTDBLocal createIoTDBLocal(C context) {
+    return IoTDBLocalFactory.createIoTDBLocal(
+        getIoTDBLocalFactory(context),
+        getSessionInfo(context),
+        getFragmentInstanceId(context),
+        getQueryId(context),
+        getOuterQueryDeadlineMs(context));
+  }
+
+  /** Factory for creating {@link IoTDBLocal} inside UDF column transformers. */
+  @FunctionalInterface
+  public interface IoTDBLocalFactory {
+
+    IoTDBLocal create(
+        SessionInfo sessionInfo,
+        String fragmentInstanceId,
+        String outerGlobalQueryId,
+        long outerQueryDeadlineMs);
+
+    static IoTDBLocal createIoTDBLocal(
+        IoTDBLocalFactory factory,
+        SessionInfo sessionInfo,
+        String fragmentInstanceId,
+        String outerGlobalQueryId,
+        long outerQueryDeadlineMs) {
+      checkArgument(factory != null, "IoTDBLocalFactory must not be null for UDF execution");
+      checkArgument(
+          fragmentInstanceId != null, "fragmentInstanceId must not be null for UDF execution");
+      checkArgument(outerGlobalQueryId != null, "queryId must not be null for UDF execution");
+      checkArgument(
+          outerQueryDeadlineMs > 0, "outerQueryDeadlineMs must be positive for UDF execution");
+      return factory.create(
+          sessionInfo, fragmentInstanceId, outerGlobalQueryId, outerQueryDeadlineMs);
+    }
+  }
 }

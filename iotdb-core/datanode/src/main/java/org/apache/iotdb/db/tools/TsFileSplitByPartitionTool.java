@@ -44,9 +44,8 @@ import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -146,7 +145,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     byte version = reader.readMarker();
     if (version != (byte) 3 && version != (byte) 4) {
       throw new WriteProcessException(
-          "The version of this tsfile is too low, please upgrade it to the version 4.");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_THE_VERSION_OF_THIS_TSFILE_IS_TOO_LOW_PLEASE_UPGRADE_IT_19CC276C);
     }
     // start to scan chunks and chunkGroups
     byte marker;
@@ -233,10 +233,11 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
 
     } catch (IOException e2) {
       throw new IOException(
-          "TsFile rewrite process cannot proceed at position "
-              + reader.position()
-              + "because: "
-              + e2.getMessage());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_TSFILE_REWRITE_PROCESS_CANNOT_PROCEED_AT_POSITION_SBECAUSE_3763D32F,
+              reader.position(),
+              e2.getMessage()));
     } finally {
       if (reader != null) {
         reader.close();
@@ -402,42 +403,20 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       BatchData batchData,
       MeasurementSchema schema,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
+    final Type type = Type.fromTsDataType(schema.getType());
+    long previousPartitionId = 0;
+    ChunkWriterImpl chunkWriter = null;
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
-      Object value = batchData.currentValue();
       long partitionId = TimePartitionUtils.getTimePartitionId(time);
 
-      ChunkWriterImpl chunkWriter =
-          partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
-      getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
-      switch (schema.getType()) {
-        case INT32:
-        case DATE:
-          chunkWriter.write(time, (int) value);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          chunkWriter.write(time, (long) value);
-          break;
-        case FLOAT:
-          chunkWriter.write(time, (float) value);
-          break;
-        case DOUBLE:
-          chunkWriter.write(time, (double) value);
-          break;
-        case BOOLEAN:
-          chunkWriter.write(time, (boolean) value);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          chunkWriter.write(time, (Binary) value);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", schema.getType()));
+      if (chunkWriter == null || partitionId != previousPartitionId) {
+        previousPartitionId = partitionId;
+        chunkWriter =
+            partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
+        getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       }
+      type.write(chunkWriter, time, batchData);
       batchData.next();
     }
     partitionChunkWriterMap

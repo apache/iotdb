@@ -56,7 +56,10 @@ import org.apache.tsfile.external.commons.lang3.ObjectUtils;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.jline.reader.LineReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +91,35 @@ import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public abstract class AbstractDataTool {
 
+  private static final TypeService<ValueParser> VALUE_PARSER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case TEXT, STRING ->
+                value -> {
+                  if (value.startsWith("\"") && value.endsWith("\"")) {
+                    return value.substring(1, value.length() - 1);
+                  }
+                  return value;
+                };
+            case BOOLEAN ->
+                value ->
+                    !"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)
+                        ? null
+                        : Boolean.parseBoolean(value);
+            case INT32 -> value -> Integer.parseInt(value);
+            case INT64, TIMESTAMP -> value -> Long.parseLong(value);
+            case FLOAT -> value -> Float.parseFloat(value);
+            case DOUBLE -> value -> Double.parseDouble(value);
+            case DATE -> value -> LocalDate.parse(value);
+            case BLOB ->
+                value -> new Binary(parseHexStringToByteArray(value.replaceFirst("0x", "")));
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                    String.format(
+                        CliMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                        type.getTypeEnum()));
+          };
+
   protected static String host;
   protected static String port;
   protected static String table;
@@ -97,6 +129,8 @@ public abstract class AbstractDataTool {
   protected static Boolean useSsl;
   protected static String trustStore;
   protected static String trustStorePwd;
+  protected static String keyStore;
+  protected static String keyStorePwd;
   protected static String sslProtocol;
   protected static Boolean aligned;
   protected static String database;
@@ -140,6 +174,9 @@ public abstract class AbstractDataTool {
 
   protected static Session.Builder configureSsl(Session.Builder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -148,6 +185,9 @@ public abstract class AbstractDataTool {
 
   protected static SessionPool.Builder configureSsl(SessionPool.Builder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -156,6 +196,9 @@ public abstract class AbstractDataTool {
 
   protected static TableSessionBuilder configureSsl(TableSessionBuilder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -164,6 +207,9 @@ public abstract class AbstractDataTool {
 
   protected static TableSessionPoolBuilder configureSsl(TableSessionPoolBuilder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -218,6 +264,13 @@ public abstract class AbstractDataTool {
         trustStorePwd = givenTPW;
       } else {
         trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+      }
+      keyStore = commandLine.getOptionValue(Constants.KEY_STORE_ARGS);
+      keyStorePwd = commandLine.getOptionValue(Constants.KEY_STORE_PWD_ARGS);
+      if (keyStore != null && keyStorePwd == null) {
+        keyStorePwd = cliCtx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+      } else if (keyStore == null && keyStorePwd != null) {
+        keyStore = cliCtx.getLineReader().readLine("please input your key_store:", '\0');
       }
     }
     boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
@@ -301,8 +354,8 @@ public abstract class AbstractDataTool {
       }
     }
     LOGGER.info(
-        "Input time format {} is not supported, "
-            + "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n",
+        CliMessages.LOG_INPUT_TIME_FORMAT_ARG_NOT_SUPPORTED_00172A7B
+            + CliMessages.LOG_PLEASE_INPUT_LIKE_YYYY_MM_DD_HH_MM_SS_SSS_9318BFC7,
         timeFormat);
     return false;
   }
@@ -446,38 +499,15 @@ public abstract class AbstractDataTool {
    */
   protected static Object typeTrans(String value, TSDataType type) {
     try {
-      switch (type) {
-        case TEXT:
-        case STRING:
-          if (value.startsWith("\"") && value.endsWith("\"")) {
-            return value.substring(1, value.length() - 1);
-          }
-          return value;
-        case BOOLEAN:
-          if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
-            return null;
-          }
-          return Boolean.parseBoolean(value);
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TIMESTAMP:
-          return Long.parseLong(value);
-        case DATE:
-          return LocalDate.parse(value);
-        case BLOB:
-          return new Binary(parseHexStringToByteArray(value.replaceFirst("0x", "")));
-        default:
-          return null;
-      }
+      return VALUE_PARSER_SERVICE.call(Type.fromTsDataType(type)).parse(value);
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  @FunctionalInterface
+  private interface ValueParser {
+    Object parse(String value);
   }
 
   private static byte[] parseHexStringToByteArray(String hexString) {

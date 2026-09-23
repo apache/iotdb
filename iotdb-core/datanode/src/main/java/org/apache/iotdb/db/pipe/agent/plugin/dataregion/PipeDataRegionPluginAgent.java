@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKee
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -85,7 +86,8 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
         pipeVisibility, sourceVisibility, processorVisibility, connectorVisibility)) {
       throw new PipeParameterNotValidException(
           String.format(
-              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the source (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_VISIBILITY_OF_THE_PIPE_S_S_IS_NOT_COMPATIBLE_WITH_THE_30B8BF0A,
               pipeName,
               pipeVisibility,
               sourceAttributes,

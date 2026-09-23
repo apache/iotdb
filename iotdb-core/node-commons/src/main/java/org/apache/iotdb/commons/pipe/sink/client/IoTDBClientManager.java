@@ -21,13 +21,16 @@ package org.apache.iotdb.commons.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketTimeoutException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,6 +53,9 @@ public abstract class IoTDBClientManager {
 
   protected final boolean shouldMarkAsPipeRequest;
   protected final boolean skipIfNoPrivileges;
+
+  protected volatile String pipeName;
+  protected volatile long pipeCreationTime = Long.MIN_VALUE;
 
   // This flag indicates whether the receiver supports mods transferring if
   // it is a DataNode receiver. The flag is useless for configNode receiver.
@@ -89,6 +95,26 @@ public abstract class IoTDBClientManager {
     return supportModsIfIsDataNodeReceiver;
   }
 
+  public void setPipeInfo(final String pipeName, final long pipeCreationTime) {
+    this.pipeName = pipeName;
+    this.pipeCreationTime = pipeCreationTime;
+  }
+
+  protected void appendPipeInfoToHandshakeParams(final Map<String, String> params) {
+    appendPipeInfoToHandshakeParams(params, pipeName, pipeCreationTime);
+  }
+
+  protected void appendPipeInfoToHandshakeParams(
+      final Map<String, String> params, final String pipeName, final long pipeCreationTime) {
+    if (pipeName == null) {
+      return;
+    }
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME, pipeName);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME,
+        String.valueOf(pipeCreationTime));
+  }
+
   public void adjustTimeoutIfNecessary(Throwable e) {
     do {
       if (e instanceof SocketTimeoutException || e instanceof TimeoutException) {
@@ -107,7 +133,7 @@ public abstract class IoTDBClientManager {
         if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
           CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
           LOGGER.info(
-              "Pipe connection timeout is adjusted to {} ms ({} mins)",
+              ClientMessages.LOG_PIPE_CONNECTION_TIMEOUT_ADJUSTED_ARG_MS_ARG_MINS_6D126A53,
               newConnectionTimeout,
               newConnectionTimeout / 60000.0);
         }

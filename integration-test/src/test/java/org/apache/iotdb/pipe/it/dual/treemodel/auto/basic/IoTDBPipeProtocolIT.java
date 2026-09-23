@@ -71,6 +71,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
@@ -82,6 +83,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(configNodeConsensus)
         .setSchemaRegionConsensusProtocolClass(schemaRegionConsensus)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
@@ -169,20 +171,26 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
+        .setDataReplicationFactor(1)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -355,6 +363,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -363,17 +372,22 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .setDataReplicationFactor(1)
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);

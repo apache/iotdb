@@ -22,9 +22,11 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -42,6 +44,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 
 public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
@@ -73,7 +76,9 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
         // print log every 5 seconds
         if (retryCount % 50 == 0) {
           LOGGER.warn(
-              "Failed to transfer tvlist memory owner to query engine, {}", ex.getMessage());
+              StorageEngineMessages
+                  .STORAGE_LOG_FAILED_TO_TRANSFER_TVLIST_MEMORY_OWNER_TO_QUERY_ENGINE_0DFA506D,
+              ex.getMessage());
         }
         retryCount++;
         long waitQueryInMs = System.currentTimeMillis() - startTimeInMs;
@@ -88,7 +93,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
               FragmentInstanceContext firstQuery = (FragmentInstanceContext) iterator.next();
               firstQuery.failed(
                   new MemoryNotEnoughException(
-                      "Memory not enough to clone the tvlist during flush phase"));
+                      StorageEngineMessages
+                          .STORAGE_EXCEPTION_MEMORY_NOT_ENOUGH_TO_CLONE_THE_TVLIST_DURING_FLUSH_PHASE_75C90725));
             }
           } finally {
             tvList.unlockQueryList();
@@ -105,19 +111,41 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  /**
+   * Try to release the TVList. If there are active queries, transfer memory ownership to the first
+   * query. For AlignedTVList, this will release non-query columns before transferring to reduce
+   * memory footprint.
+   */
   private void tryReleaseTvList(TVList tvList) {
-    long tvListRamSize = tvList.calculateRamSize().getRamSize();
     tvList.lockQueryList();
     try {
       if (tvList.getQueryContextSet().isEmpty()) {
         tvList.clear();
       } else {
         QueryContext firstQuery = tvList.getQueryContextSet().iterator().next();
+
+        // For AlignedTVList with active queries, release non-query columns before
+        // transferring memory ownership to reduce memory footprint.
+        if (tvList instanceof AlignedTVList) {
+          AlignedTVList alignedTVList = (AlignedTVList) tvList;
+
+          // Get the union of all columns accessed by queries. An empty (non-null) set means all
+          // queries are tracked but only access the time column, so all value columns are
+          // released; null means some query is untracked and releaseNonQueryColumns keeps
+          // everything.
+          Set<Integer> accessedColumns = alignedTVList.getAccessedColumnsForQuery();
+          if (accessedColumns != null) {
+            // Release non-query columns to reduce memory before ownership transfer
+            alignedTVList.releaseNonQueryColumns(accessedColumns);
+          }
+        }
+
         // transfer memory from write process to read process. Here it reserves read memory and
         // releaseFlushedMemTable will release write memory.
         if (firstQuery instanceof FragmentInstanceContext) {
           MemoryReservationManager memoryReservationManager =
               ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           memoryReservationManager.reserveMemoryCumulatively(tvListRamSize);
           tvList.setReservedMemoryBytes(tvListRamSize);
         }

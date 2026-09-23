@@ -23,17 +23,22 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiver;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.utils.BytesUtils;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -43,10 +48,30 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBAirGapReceiverTest {
+
+  private final PipeReceiverRuntimeRegistry registry = PipeReceiverRuntimeRegistry.getInstance();
+
+  @Before
+  public void setUp() {
+    registry.clear();
+    PipeDataNodeAgent.receiver().thrift().handleClientExit();
+    SessionManager.getInstance().removeCurrSession();
+  }
+
+  @After
+  public void tearDown() {
+    registry.clear();
+    PipeDataNodeAgent.receiver().thrift().handleClientExit();
+    SessionManager.getInstance().removeCurrSession();
+  }
 
   @Test
   public void testRejectOversizedAirGapPayload() throws Exception {
@@ -121,6 +146,58 @@ public class IoTDBAirGapReceiverTest {
     }
   }
 
+  @Test
+  public void testAirGapReceiverExitCleansThriftReceiverRuntime() throws Throwable {
+    final String sessionKey = "DataNode-1-air_gap-4";
+    registry.registerOrUpdateSession(
+        sessionKey,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-air-gap",
+        1,
+        100);
+    final RuntimeCleanupReceiver cleanupReceiver = new RuntimeCleanupReceiver(sessionKey);
+    setThriftReceiverThreadLocal(cleanupReceiver);
+
+    Assert.assertEquals(1, registry.snapshot().size());
+
+    new IoTDBAirGapReceiver(new EndOfStreamSocket(), 4L).runMayThrow();
+
+    Assert.assertTrue(cleanupReceiver.isExited());
+    Assert.assertTrue(registry.snapshot().isEmpty());
+    Assert.assertNull(getThriftReceiverThreadLocalReceiver());
+  }
+
+  @Test
+  public void testIdleReadTimeoutDoesNotRespondOrCloseSocket() throws Exception {
+    final RecordingSocket socket = new RecordingSocket(new TimeoutInputStream(new byte[0]));
+    invokeReceive(new IoTDBAirGapReceiver(socket, 4L));
+
+    Assert.assertArrayEquals(new byte[0], socket.getWrittenBytes());
+    Assert.assertFalse(socket.isClosed());
+  }
+
+  @Test
+  public void testPartialRequestReadTimeoutClosesSocketWithoutResponse() throws Exception {
+    final RecordingSocket socket =
+        new RecordingSocket(new TimeoutInputStream(new byte[] {(byte) 0xFF}));
+    invokeReceive(new IoTDBAirGapReceiver(socket, 5L));
+
+    Assert.assertArrayEquals(new byte[0], socket.getWrittenBytes());
+    Assert.assertTrue(socket.isClosed());
+  }
+
+  private static void invokeReceive(final IoTDBAirGapReceiver receiver) throws Exception {
+    final Method receive = IoTDBAirGapReceiver.class.getDeclaredMethod("receive");
+    receive.setAccessible(true);
+    receive.invoke(receiver);
+  }
+
   private static void setField(final Object target, final String fieldName, final Object value)
       throws Exception {
     final Field field = IoTDBAirGapReceiver.class.getDeclaredField(fieldName);
@@ -128,9 +205,40 @@ public class IoTDBAirGapReceiverTest {
     field.set(target, value);
   }
 
+  private static void setThriftReceiverThreadLocal(final IoTDBReceiver receiver) throws Exception {
+    getThriftReceiverThreadLocal().set(receiver);
+  }
+
+  private static IoTDBReceiver getThriftReceiverThreadLocalReceiver() throws Exception {
+    return getThriftReceiverThreadLocal().get();
+  }
+
+  private static ThreadLocal<IoTDBReceiver> getThriftReceiverThreadLocal() throws Exception {
+    final Field field = IoTDBDataNodeReceiverAgent.class.getDeclaredField("receiverThreadLocal");
+    field.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    final ThreadLocal<IoTDBReceiver> receiverThreadLocal =
+        (ThreadLocal<IoTDBReceiver>) field.get(PipeDataNodeAgent.receiver().thrift());
+    return receiverThreadLocal;
+  }
+
   private static class RecordingSocket extends Socket {
 
+    private final InputStream inputStream;
     private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+    private RecordingSocket() {
+      this(new ByteArrayInputStream(new byte[0]));
+    }
+
+    private RecordingSocket(final InputStream inputStream) {
+      this.inputStream = inputStream;
+    }
+
+    @Override
+    public InputStream getInputStream() {
+      return inputStream;
+    }
 
     @Override
     public OutputStream getOutputStream() {
@@ -139,6 +247,75 @@ public class IoTDBAirGapReceiverTest {
 
     byte[] getWrittenBytes() {
       return outputStream.toByteArray();
+    }
+  }
+
+  private static class EndOfStreamSocket extends RecordingSocket {
+
+    private boolean closed;
+
+    @Override
+    public void setSoTimeout(final int timeout) throws SocketException {
+      // noop for unit test
+    }
+
+    @Override
+    public void setKeepAlive(final boolean on) throws SocketException {
+      // noop for unit test
+    }
+
+    @Override
+    public InputStream getInputStream() {
+      return new ByteArrayInputStream(new byte[0]);
+    }
+
+    @Override
+    public InetAddress getInetAddress() {
+      return InetAddress.getLoopbackAddress();
+    }
+
+    @Override
+    public int getPort() {
+      return 9001;
+    }
+
+    @Override
+    public boolean isClosed() {
+      return closed;
+    }
+
+    @Override
+    public synchronized void close() {
+      closed = true;
+    }
+  }
+
+  private static class TimeoutInputStream extends InputStream {
+
+    private final byte[] bytesBeforeTimeout;
+    private int position;
+
+    private TimeoutInputStream(final byte[] bytesBeforeTimeout) {
+      this.bytesBeforeTimeout = bytesBeforeTimeout;
+    }
+
+    @Override
+    public int read() throws IOException {
+      if (position >= bytesBeforeTimeout.length) {
+        throw new SocketTimeoutException("Test timeout");
+      }
+      return bytesBeforeTimeout[position++] & 0xFF;
+    }
+
+    @Override
+    public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+      if (position >= bytesBeforeTimeout.length) {
+        throw new SocketTimeoutException("Test timeout");
+      }
+      final int bytesToRead = Math.min(length, bytesBeforeTimeout.length - position);
+      System.arraycopy(bytesBeforeTimeout, position, buffer, offset, bytesToRead);
+      position += bytesToRead;
+      return bytesToRead;
     }
   }
 
@@ -170,6 +347,36 @@ public class IoTDBAirGapReceiverTest {
     @Override
     public IoTDBSinkRequestVersion getVersion() {
       return IoTDBSinkRequestVersion.VERSION_1;
+    }
+  }
+
+  private static class RuntimeCleanupReceiver implements IoTDBReceiver {
+
+    private final String sessionKey;
+    private final AtomicBoolean exited = new AtomicBoolean(false);
+
+    private RuntimeCleanupReceiver(final String sessionKey) {
+      this.sessionKey = sessionKey;
+    }
+
+    @Override
+    public TPipeTransferResp receive(final TPipeTransferReq req) {
+      return new TPipeTransferResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+
+    @Override
+    public void handleExit() {
+      PipeReceiverRuntimeRegistry.getInstance().deregister(sessionKey);
+      exited.set(true);
+    }
+
+    @Override
+    public IoTDBSinkRequestVersion getVersion() {
+      return IoTDBSinkRequestVersion.VERSION_1;
+    }
+
+    private boolean isExited() {
+      return exited.get();
     }
   }
 }

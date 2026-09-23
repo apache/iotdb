@@ -191,7 +191,9 @@ public class ExternalServiceManager {
 
   public List<TExternalServiceEntry> getUserDefinedService(int dataNodeId) {
     try {
-      checkState(dataNodeId != -1, "dataNodeId should not be -1 here");
+      checkState(
+          dataNodeId != -1,
+          ManagerMessages.EXCEPTION_DATANODEID_SHOULD_NOT_BE_MINUS_1_HERE_5CB27796);
 
       ShowExternalServiceResp response =
           (ShowExternalServiceResp)

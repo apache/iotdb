@@ -736,7 +736,8 @@ public class TDigest implements Serializable {
       return r;
     } else {
       throw new IllegalStateException(
-          "Invalid format for serialized histogram, got encoding: " + encoding);
+          CalcMessages.EXCEPTION_INVALID_FORMAT_SERIALIZED_HISTOGRAM_GOT_ENCODING_A8E50EA5
+              + encoding);
     }
   }
 

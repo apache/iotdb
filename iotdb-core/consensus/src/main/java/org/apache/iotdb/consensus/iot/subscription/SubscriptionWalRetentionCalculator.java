@@ -84,7 +84,8 @@ public class SubscriptionWalRetentionCalculator {
   }
 
   public SubscriptionRetentionBound calculate(
-      final Collection<SubscriptionWalRetentionPolicy> retentionPolicies) {
+      final Collection<SubscriptionWalRetentionPolicy> retentionPolicies,
+      final Collection<Long> committedRetainedMinVersionIds) {
     SubscriptionRetentionBound mergedBound = SubscriptionRetentionBound.noConstraint();
     for (final SubscriptionWalRetentionPolicy policy : retentionPolicies) {
       // For each topic, data can be deleted once either its size retention or its time retention
@@ -94,6 +95,15 @@ public class SubscriptionWalRetentionCalculator {
           buildSizeRetentionBound(policy.getRetentionBytes())
               .mergeDeleteEither(buildTimeRetentionBound(policy.getRetentionMs()));
       mergedBound = mergedBound.mergeDeleteOnlyIfBoth(perQueueBound);
+    }
+    for (final long committedRetainedMinVersionId : committedRetainedMinVersionIds) {
+      // Topic retention is a historical replay window, while committed progress protects data
+      // that a consumer group has not acknowledged yet. A WAL file can be reclaimed only when
+      // both constraints allow it, so keep the more conservative (smaller) file-version bound.
+      mergedBound =
+          mergedBound.mergeDeleteOnlyIfBoth(
+              SubscriptionRetentionBound.of(
+                  Long.MAX_VALUE, Math.max(0L, committedRetainedMinVersionId)));
     }
     return mergedBound;
   }
@@ -118,9 +128,15 @@ public class SubscriptionWalRetentionCalculator {
       return SubscriptionRetentionBound.retainAll();
     }
 
-    final long cutoffTimeMs = System.currentTimeMillis() - retentionMs;
+    final long cutoffTimeMs = getTimeRetentionCutoffTimeMs(System.currentTimeMillis(), retentionMs);
     final Pair<Long, Long> deletionBound =
         consensusReqReader.getDeletionBoundBeforeTimestamp(cutoffTimeMs);
     return SubscriptionRetentionBound.of(deletionBound.left, deletionBound.right);
+  }
+
+  static long getTimeRetentionCutoffTimeMs(final long currentTimeMs, final long retentionMs) {
+    return retentionMs > 0 && currentTimeMs < Long.MIN_VALUE + retentionMs
+        ? Long.MIN_VALUE
+        : currentTimeMs - retentionMs;
   }
 }

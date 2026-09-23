@@ -212,3 +212,26 @@ TEndPoint UrlUtils::parseTEndPointIpv4AndIpv6Url(const string& endPointUrl) {
 
   return endPoint;
 }
+
+bool UrlUtils::isWildcardAddress(const string& host) {
+  if (host.empty()) {
+    return false;
+  }
+
+  const bool bracketed = host.size() >= 2 && host.front() == '[' && host.back() == ']';
+  const size_t begin = bracketed ? 1 : 0;
+  const size_t end = bracketed ? host.size() - 1 : host.size();
+  if (end - begin == 7 && host.compare(begin, end - begin, "0.0.0.0") == 0) {
+    return true;
+  }
+
+  bool hasColon = false;
+  for (size_t index = begin; index < end; ++index) {
+    if (host[index] == ':') {
+      hasColon = true;
+    } else if (host[index] != '0') {
+      return false;
+    }
+  }
+  return hasColon;
+}

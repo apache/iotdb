@@ -35,9 +35,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScal
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
 import java.util.List;
+
+import static org.apache.iotdb.db.utils.TypeServices.ValueConversion.AUTO_CAST_SERVICE;
 
 public class TypeInferenceUtils {
 
@@ -184,7 +187,7 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [MIN_VALUE, MAX_VALUE] only support data types [INT32, INT64, FLOAT, DOUBLE, STRING, DATE, TIMESTAMP]");
+            DataNodeMiscMessages.AGGREGATE_MIN_MAX_VALUE_ONLY_SUPPORT_ALLOWED_TYPES);
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
@@ -198,17 +201,14 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, "
-                + "VARIANCE, VAR_POP, VAR_SAMP] only support "
-                + "numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+            DataNodeMiscMessages.AGGREGATE_AVG_SUM_STDDEV_ONLY_SUPPORT_NUMERIC_TYPES);
       case SqlConstant.SKEWNESS:
       case SqlConstant.KURTOSIS:
         if (dataType.isNumeric() || TSDataType.TIMESTAMP.equals(dataType)) {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [SKEWNESS, KURTOSIS] only support "
-                + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+            DataNodeMiscMessages.AGGREGATE_SKEWNESS_KURTOSIS_ONLY_SUPPORT_NUMERIC_TYPES);
       // For the two-argument aggregation functions CORR, COVAR_POP, COVAR_SAMP,
       // REGR_SLOPE, and REGR_INTERCEPT, type validation is performed in
       // verifyIsAggregationDataTypeMatchedForBothInputs.
@@ -232,7 +232,7 @@ public class TypeInferenceUtils {
         if (dataType != TSDataType.BOOLEAN) {
           throw new SemanticException(
               String.format(
-                  "Input series of Aggregation function [%s] only supports data type [BOOLEAN]",
+                  DataNodeMiscMessages.AGGREGATE_FUNCTION_INPUT_SERIES_ONLY_SUPPORTS_BOOLEAN,
                   aggrFuncName));
         }
         return;
@@ -257,8 +257,7 @@ public class TypeInferenceUtils {
                 && !secondDataType.isNumeric()
                 && !TSDataType.TIMESTAMP.equals(secondDataType))) {
           throw new SemanticException(
-              "Aggregate functions [CORR, COVAR_POP, COVAR_SAMP, REGR_SLOPE, REGR_INTERCEPT] only support "
-                  + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+              DataNodeMiscMessages.AGGREGATE_CORR_COVAR_REGR_ONLY_SUPPORT_NUMERIC_TYPES);
         }
         return;
       default:
@@ -329,15 +328,12 @@ public class TypeInferenceUtils {
             return;
           } else {
             throw new SemanticException(
-                String.format(
-                    "Please check input keep condition of Aggregation function [%s]",
-                    functionName));
+                String.format(DataNodeMiscMessages.CHECK_AGGREGATION_KEEP_CONDITION, functionName));
           }
         } else {
           throw new SemanticException(
               String.format(
-                  "Keep condition of Aggregation function [%s] need to be constant or compare expression constructed by keep and a long number",
-                  functionName));
+                  DataNodeMiscMessages.AGGREGATION_KEEP_CONDITION_REQUIREMENT, functionName));
         }
       default:
         throw new IllegalArgumentException(
@@ -365,30 +361,10 @@ public class TypeInferenceUtils {
       return true;
     }
 
-    switch (fromType) {
-      case INT32:
-        switch (toType) {
-          case INT64:
-          case FLOAT:
-          case DOUBLE:
-            return true;
-          default:
-            return false;
-        }
-      case INT64:
-      case FLOAT:
-        return toType.equals(TSDataType.DOUBLE);
-      case DOUBLE:
-      case BOOLEAN:
-      case TEXT:
-      case DATE:
-      case TIMESTAMP:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return false;
-      default:
-        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_DATA_TYPE + fromType);
+    try {
+      return AUTO_CAST_SERVICE.call(Type.fromTsDataType(fromType)).test(toType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_DATA_TYPE + fromType);
     }
   }
 }

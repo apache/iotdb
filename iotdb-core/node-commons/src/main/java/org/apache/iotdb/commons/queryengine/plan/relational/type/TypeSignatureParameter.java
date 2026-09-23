@@ -62,8 +62,8 @@ public final class TypeSignatureParameter {
   }
 
   private TypeSignatureParameter(ParameterKind kind, Object value) {
-    this.kind = requireNonNull(kind, "kind is null");
-    this.value = requireNonNull(value, "value is null");
+    this.kind = requireNonNull(kind, QueryMessages.EXCEPTION_KIND_IS_NULL_8C13BAB2);
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   @Override

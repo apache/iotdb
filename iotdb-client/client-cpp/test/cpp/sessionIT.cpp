@@ -390,8 +390,7 @@ TEST_CASE("Session rejects SQL after close", "[sessionClose]") {
       builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
   localSession->open();
   localSession->close();
-  REQUIRE_THROWS_AS(localSession->executeNonQueryStatement("show databases"),
-                    IoTDBConnectionException);
+  REQUIRE_THROWS_AS(localSession->executeQueryStatement("SHOW VERSION"), IoTDBConnectionException);
 }
 
 TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
@@ -907,6 +906,21 @@ TEST_CASE("UrlUtils - parseTEndPointIpv4AndIpv6Url", "[UrlUtils]") {
   }
 }
 
+TEST_CASE("UrlUtils - isWildcardAddress", "[UrlUtils]") {
+  REQUIRE(UrlUtils::isWildcardAddress("0.0.0.0"));
+  REQUIRE(UrlUtils::isWildcardAddress("[0.0.0.0]"));
+  REQUIRE(UrlUtils::isWildcardAddress("::"));
+  REQUIRE(UrlUtils::isWildcardAddress("[::]"));
+  REQUIRE(UrlUtils::isWildcardAddress("0:0:0:0:0:0:0:0"));
+  REQUIRE(UrlUtils::isWildcardAddress("0::0"));
+
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress(""));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("127.0.0.1"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("localhost"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("::1"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("[::1]"));
+}
+
 TEST_CASE("TsBlock deserialize rejects truncated malicious payload", "[TsBlockDeserialize]") {
   std::string data(18, '\0');
   data[3] = '\x10';
@@ -1061,4 +1075,32 @@ TEST_CASE("SessionPool getSession times out when exhausted", "[sessionPool]") {
   REQUIRE(static_cast<bool>(reused));
   reused.release();
   pool->close();
+}
+
+TEST_CASE("Query DATE 1000-01-01", "[dateMinYear]") {
+  CaseReporter cr("dateMinYear");
+  const string timeseries = "root.test.d1.s_date_min";
+  if (session->checkTimeseriesExists(timeseries)) {
+    session->deleteTimeseries(timeseries);
+  }
+  session->createTimeseries(timeseries, TSDataType::DATE, TSEncoding::PLAIN,
+                            CompressionType::SNAPPY);
+
+  const string deviceId = "root.test.d1";
+  const vector<string> measurements = {"s_date_min"};
+  const vector<TSDataType::TSDataType> types = {TSDataType::DATE};
+  const IoTDBDate dateValue(1000, 1, 1);
+  vector<char*> values = {const_cast<char*>(reinterpret_cast<const char*>(&dateValue))};
+  session->insertRecord(deviceId, 1000LL, measurements, types, values);
+
+  unique_ptr<SessionDataSet> sessionDataSet =
+      session->executeQueryStatement("select s_date_min from root.test.d1 where time=1000");
+  REQUIRE(sessionDataSet->hasNext());
+  auto record = sessionDataSet->next();
+  REQUIRE(record->fields.size() == 1);
+  REQUIRE_FALSE(record->fields[0].isNull());
+  REQUIRE(record->fields[0].dateV.value() == dateValue);
+  REQUIRE(record->fields[0].dateV.value().toIsoExtendedString() == "1000-01-01");
+
+  session->deleteTimeseries(timeseries);
 }

@@ -90,7 +90,9 @@ public class InnerTimeJoinOperator implements ProcessOperator {
     this.inputTsBlocks = new TsBlock[inputOperatorsCount];
     this.canCallNext = new boolean[inputOperatorsCount];
     checkArgument(
-        children.size() > 1, "child size of InnerTimeJoinOperator should be larger than 1");
+        children.size() > 1,
+        DataNodeQueryMessages
+            .EXCEPTION_CHILD_SIZE_OF_INNERTIMEJOINOPERATOR_SHOULD_BE_LARGER_THAN_1_37EB7D74);
     this.inputIndex = new int[this.inputOperatorsCount];
     this.resultBuilder = new TsBlockBuilder(dataTypes);
     this.comparator = comparator;
@@ -247,7 +249,8 @@ public class InnerTimeJoinOperator implements ProcessOperator {
   private int[][] transformListToIntArray(List<List<Integer>> lists) {
     if (lists.size() <= 1) {
       throw new IllegalStateException(
-          "Child size of InnerTimeJoinOperator should be larger than 1.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_CHILD_SIZE_OF_INNERTIMEJOINOPERATOR_SHOULD_BE_LARGER_THAN_4E7CF105);
     }
     int[][] res = new int[lists.size()][lists.get(0).size()];
     for (int i = 0; i < res.length; i++) {

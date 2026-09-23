@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 
 public class DataTypeMismatchException extends MetadataException {
 
   // NOTICE: DO NOT CHANGE THIS STRING, IT IS USED IN THE ERROR HANDLING OF PIPE
-  public static final String REGISTERED_TYPE_STRING = "registered type";
+  public static final String REGISTERED_TYPE_STRING = DataNodeSchemaMessages.REGISTERED_TYPE_STRING;
 
   public DataTypeMismatchException(
       String deviceName,
@@ -37,28 +38,26 @@ public class DataTypeMismatchException extends MetadataException {
       Object value) {
     super(
         String.format(
-            "data type of %s.%s is not consistent, "
-                + "%s %s, inserting type %s, timestamp %s, value %s",
+            DataNodeSchemaMessages.DATA_TYPE_MISMATCH_REGISTERED_TYPE_FMT,
             deviceName,
             measurementName,
             REGISTERED_TYPE_STRING,
             typeInSchema,
             insertType,
             time,
-            value == null ? "null" : processValue(value.toString())));
+            value == null ? DataNodeSchemaMessages.NULL_VALUE : processValue(value.toString())));
   }
 
   public DataTypeMismatchException(
       String deviceName, String measurementName, TSDataType insertType, long time, Object value) {
     super(
         String.format(
-            "data type and value of %s.%s is not consistent, "
-                + "inserting type %s, timestamp %s, value %s",
+            DataNodeSchemaMessages.DATA_TYPE_AND_VALUE_MISMATCH_FMT,
             deviceName,
             measurementName,
             insertType,
             time,
-            value == null ? "null" : processValue(value.toString())));
+            value == null ? DataNodeSchemaMessages.NULL_VALUE : processValue(value.toString())));
   }
 
   private static String processValue(String value) {

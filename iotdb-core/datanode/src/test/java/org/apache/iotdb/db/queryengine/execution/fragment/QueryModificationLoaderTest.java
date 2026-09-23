@@ -324,6 +324,11 @@ public class QueryModificationLoaderTest {
     }
 
     @Override
+    public void releaseMemoryImmediately(long size) {
+      reservedBytes -= size;
+    }
+
+    @Override
     public void releaseAllReservedMemory() {
       reservedBytes = 0;
     }
@@ -338,6 +343,9 @@ public class QueryModificationLoaderTest {
     public void reserveMemoryVirtually(long bytesToBeReserved, long bytesAlreadyReserved) {
       reservedBytes += bytesToBeReserved + bytesAlreadyReserved;
     }
+
+    @Override
+    public void setHighestPriority(boolean isHighestPriority) {}
 
     private long getReservedBytes() {
       return reservedBytes;

@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -291,7 +292,7 @@ public class ConfigMTreeTest {
 
     final ConfigMTree newTree = new ConfigMTree(false);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    newTree.deserialize(inputStream);
+    newTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
     for (int i = 0; i < pathList.length; i++) {
       final TDatabaseSchema storageGroupSchema =
@@ -360,6 +361,10 @@ public class ConfigMTreeTest {
 
       root.preCreateTable(pathList[i], table);
       root.commitCreateTable(pathList[i], tableName);
+      if (i == 0) {
+        Assert.assertTrue(root.preDeleteColumn(pathList[i], tableName, "Attr", false));
+        root.preAlterColumnDataType(pathList[i], tableName, "Measurement", TSDataType.STRING);
+      }
     }
 
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -367,7 +372,7 @@ public class ConfigMTreeTest {
 
     final ConfigMTree newTree = new ConfigMTree(true);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    newTree.deserialize(inputStream);
+    newTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
     for (int i = 0; i < pathList.length; i++) {
       final TDatabaseSchema storageGroupSchema =
@@ -402,8 +407,21 @@ public class ConfigMTreeTest {
       final TsTable table = tables.get(0);
       assertEquals("table" + i, table.getTableName());
       assertEquals(1, table.getTagNum());
-      // currently, only construct the TsTable would not carry the time column
-      assertEquals(3, table.getColumnNum());
+      // These TsTables have no time column; the first table also hides its pre-deleted attribute.
+      assertEquals(i == 0 ? 2 : 3, table.getColumnNum());
+      final ConfigMTree.TableSchemaDetails details =
+          newTree.getTableSchemaDetails(pathList[i], table.getTableName());
+      if (i == 0) {
+        assertEquals(Collections.singleton("Attr"), details.preDeletedColumns);
+        assertEquals(TSDataType.STRING, details.preAlteredColumns.get("Measurement"));
+        assertEquals(TSDataType.DOUBLE, details.table.getColumnSchema("Measurement").getDataType());
+        Assert.assertNotNull(details.table.getColumnSchema("Attr"));
+        assertEquals(TSDataType.STRING, table.getColumnSchema("Measurement").getDataType());
+        Assert.assertNull(table.getColumnSchema("Attr"));
+      } else {
+        assertTrue(details.preDeletedColumns.isEmpty());
+        assertTrue(details.preAlteredColumns.isEmpty());
+      }
     }
   }
 
@@ -434,7 +452,7 @@ public class ConfigMTreeTest {
         SchemaUtils.getDataTypeCompatibleEncoding(TSDataType.STRING, TSEncoding.GORILLA);
     Assert.assertNotEquals(TSEncoding.GORILLA, expectedEncoding);
 
-    final TsTable preAlteredTable = root.getUsingTableSchema(database, table.getTableName());
+    final TsTable preAlteredTable = root.getTableSchemaForDesc(database, table.getTableName());
     final FieldColumnSchema preAlteredField =
         (FieldColumnSchema) preAlteredTable.getColumnSchema("measurement");
     Assert.assertEquals(TSDataType.STRING, preAlteredField.getDataType());
@@ -443,7 +461,7 @@ public class ConfigMTreeTest {
     root.commitAlterColumnDataType(
         database, table.getTableName(), "measurement", TSDataType.STRING);
 
-    final TsTable committedTable = root.getUsingTableSchema(database, table.getTableName());
+    final TsTable committedTable = root.getTableSchemaForDesc(database, table.getTableName());
     final FieldColumnSchema committedField =
         (FieldColumnSchema) committedTable.getColumnSchema("measurement");
     Assert.assertEquals(TSDataType.STRING, committedField.getDataType());
@@ -451,6 +469,57 @@ public class ConfigMTreeTest {
 
     Assert.assertTrue(
         root.getTableSchemaDetails(database, table.getTableName()).preAlteredColumns.isEmpty());
+  }
+
+  @Test
+  public void testRollbackPreAlterColumnDataTypeOnlyClearsMatchingRequest() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    root.preAlterColumnDataType(database, table.getTableName(), "measurement", TSDataType.STRING);
+    Assert.assertEquals(
+        TSDataType.STRING,
+        root.getTableSchemaForDataNode(database, table.getTableName())
+            .getColumnSchema("measurement")
+            .getDataType());
+
+    // A stale rollback must not clear a newer request for a different target type.
+    root.rollbackPreAlterColumnDataType(
+        database, table.getTableName(), "measurement", TSDataType.FLOAT);
+    Assert.assertEquals(
+        TSDataType.STRING,
+        root.getTableSchemaDetails(database, table.getTableName())
+            .preAlteredColumns
+            .get("measurement"));
+
+    root.rollbackPreAlterColumnDataType(
+        database, table.getTableName(), "measurement", TSDataType.STRING);
+    Assert.assertTrue(
+        root.getTableSchemaDetails(database, table.getTableName()).preAlteredColumns.isEmpty());
+    // A delayed commit from the failed procedure must not apply after the marker was rolled back.
+    root.commitAlterColumnDataType(
+        database, table.getTableName(), "measurement", TSDataType.STRING);
+    Assert.assertEquals(
+        TSDataType.DOUBLE,
+        root.getTableSchemaForDataNode(database, table.getTableName())
+            .getColumnSchema("measurement")
+            .getDataType());
   }
 
   @Test
@@ -497,7 +566,7 @@ public class ConfigMTreeTest {
     File schemaFile = new File(pathStr);
     try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
       ConfigMTree treeMTree = new ConfigMTree(false);
-      treeMTree.deserialize(inputStream);
+      treeMTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
       Set<String> databaseSet = new HashSet<>();
       for (PartialPath path : treeMTree.getAllDatabasePaths(false)) {
@@ -515,7 +584,7 @@ public class ConfigMTreeTest {
     File schemaFile = new File(pathStr);
     try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
       ConfigMTree tableMTree = new ConfigMTree(true);
-      tableMTree.deserialize(inputStream);
+      tableMTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
       Set<String> databaseSet = new HashSet<>();
       for (PartialPath path : tableMTree.getAllDatabasePaths(true)) {

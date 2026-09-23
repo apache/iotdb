@@ -453,6 +453,8 @@ public class TopicMeta {
     if (config.isTableTopic()) {
       // table model: database name and table name
       extractorAttributes.putAll(config.getAttributesWithSourceDatabaseAndTableName());
+      // column-filter is evaluated by subscription runtime on DataNode.
+      extractorAttributes.putAll(config.getAttributesWithSourceColumnFilter());
     } else {
       // tree model: path or pattern
       extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
@@ -490,6 +492,10 @@ public class TopicMeta {
   public boolean visibleUnder(final boolean isTableModel) {
     final Visibility visibility = VisibilityUtils.calculateFromTopicConfig(config);
     return VisibilityUtils.isCompatible(visibility, isTableModel);
+  }
+
+  public boolean visibleUnderTableModel() {
+    return visibleUnder(true);
   }
 
   ////////////////////////////////////// Object ////////////////////////////////

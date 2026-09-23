@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.library.match;
 
-import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.DTWState;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
@@ -44,12 +44,16 @@ public class UDAFDTWMatch implements UDAF {
   private Double[] pattern;
   private float threshold;
   private DTWState state;
+  private TypeServices.ColumnNumericReader valueReader;
 
   @Override
   public void beforeStart(UDFParameters udfParameters, UDAFConfigurations udafConfigurations) {
     udafConfigurations.setOutputDataType(Type.TEXT);
     Map<String, String> attributes = udfParameters.getAttributes();
     threshold = Float.parseFloat(attributes.get("threshold"));
+    valueReader =
+        TypeServices.COLUMN_NUMERIC_READER_SERVICE.call(
+            TypeServices.toReadType(udfParameters.getDataType(0)));
     pattern =
         Arrays.stream(attributes.get("pattern").split(","))
             .map(Double::valueOf)
@@ -80,7 +84,7 @@ public class UDAFDTWMatch implements UDAF {
         continue;
       }
       if (!columns[0].isNull(i) && !columns[1].isNull(i)) {
-        double value = getValue(columns[0], i);
+        double value = valueReader.read(columns[0], i);
         if (!Double.isFinite(value)) {
           continue;
         }
@@ -98,32 +102,15 @@ public class UDAFDTWMatch implements UDAF {
     }
   }
 
-  private double getValue(Column column, int i) {
-    switch (column.getDataType()) {
-      case INT32:
-        return column.getInt(i);
-      case INT64:
-        return column.getLong(i);
-      case FLOAT:
-        return column.getFloat(i);
-      case DOUBLE:
-        return column.getDouble(i);
-      case BOOLEAN:
-        return column.getBoolean(i) ? 1.0D : 0.0D;
-      default:
-        throw new RuntimeException(
-            String.format(LibraryUdfMessages.UNSUPPORTED_DATATYPE, column.getDataType()));
-    }
-  }
-
   private float calculateDTW(Double[] series1, Double[] series2) {
     int n = series1.length;
     int m = series2.length;
     if (n == 0 || m == 0) {
       return Float.POSITIVE_INFINITY;
     }
-
     double[][] dtw = new double[n + 1][m + 1];
+
+    // Initialize the DTW matrix
     for (int i = 0; i <= n; i++) {
       for (int j = 0; j <= m; j++) {
         dtw[i][j] = Double.POSITIVE_INFINITY;
@@ -131,6 +118,7 @@ public class UDAFDTWMatch implements UDAF {
     }
     dtw[0][0] = 0;
 
+    // Compute the DTW distance
     for (int i = 1; i <= n; i++) {
       for (int j = 1; j <= m; j++) {
         double cost = Math.abs(series1[i - 1] - series2[j - 1]);
@@ -227,8 +215,8 @@ public class UDAFDTWMatch implements UDAF {
 
   private static boolean isFiniteNonNegativeFloat(String value) {
     try {
-      float threshold = Float.parseFloat(value);
-      return Float.isFinite(threshold) && threshold >= 0;
+      float valueAsFloat = Float.parseFloat(value);
+      return Float.isFinite(valueAsFloat) && valueAsFloat >= 0;
     } catch (NumberFormatException e) {
       return false;
     }

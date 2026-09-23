@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.statement;
 
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -98,16 +99,42 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    LOGGER.info(
-        DataNodePipeMessages.PIPE_INSERTING_TABLET_TO_CASTING_TYPE_FROM,
-        devicePath,
-        measurements[columnIndex],
-        dataTypes[columnIndex],
-        dataType);
+    if (!isValidColumnForTypeConversion(columnIndex, dataType)) {
+      return false;
+    }
+    if (LOGGER.isInfoEnabled()) {
+      PipeLogger.log(
+          LOGGER::info,
+          DataNodePipeMessages.PIPE_INSERTING_TABLET_CASTING_TYPE_FROM,
+          dataTypes[columnIndex],
+          dataType);
+    }
     columns[columnIndex] =
         ArrayConverter.convert(dataTypes[columnIndex], dataType, columns[columnIndex]);
     dataTypes[columnIndex] = dataType;
     return true;
+  }
+
+  /**
+   * Returns whether a tablet column has all state required for type conversion.
+   *
+   * <p>Partial insert processing can leave a measurement slot without a data type or value column
+   * (and deserialized statements can contain arrays of different lengths). In that case the column
+   * must be treated as failed instead of being indexed by the conversion path.
+   */
+  protected boolean isValidColumnForTypeConversion(
+      final int columnIndex, final TSDataType dataType) {
+    return dataType != null
+        && dataTypes != null
+        && columns != null
+        && measurements != null
+        && columnIndex >= 0
+        && columnIndex < measurements.length
+        && columnIndex < dataTypes.length
+        && columnIndex < columns.length
+        && measurements[columnIndex] != null
+        && dataTypes[columnIndex] != null
+        && columns[columnIndex] != null;
   }
 
   protected boolean originalCheckAndCastDataType(int columnIndex, TSDataType dataType) {

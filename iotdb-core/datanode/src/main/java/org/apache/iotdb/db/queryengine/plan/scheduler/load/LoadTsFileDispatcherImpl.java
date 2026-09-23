@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -32,6 +34,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -55,18 +58,21 @@ import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TApplicationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -74,12 +80,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 
-public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
+public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
 
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
   private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
+  private static final int LOAD_TSFILE_PIECE_RPC_FRAME_RESERVED_BYTES = 1024;
   private static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS());
 
@@ -88,8 +95,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
-  private final ExecutorService executor;
+  private ExecutorService executor;
   private final boolean isGeneratedByPipe;
+  private final Map<TEndPoint, Integer> endPoint2ThriftMaxFrameSize = new ConcurrentHashMap<>();
 
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
@@ -97,9 +105,15 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     this.internalServiceClientManager = internalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
-    this.executor =
-        IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
     this.isGeneratedByPipe = isGeneratedByPipe;
+  }
+
+  private synchronized ExecutorService getOrCreateExecutor() {
+    if (executor == null || executor.isShutdown()) {
+      executor =
+          IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
+    }
+    return executor;
   }
 
   public void setUuid(String uuid) {
@@ -109,29 +123,33 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   @Override
   public Future<FragInstanceDispatchResult> dispatch(
       SubPlan root, List<FragmentInstance> instances) {
-    return executor.submit(
-        () -> {
-          for (FragmentInstance instance : instances) {
-            try (SetThreadName threadName =
-                new SetThreadName(
-                    "load-dispatcher" + "-" + instance.getId().getFullId() + "-" + uuid)) {
-              dispatchOneInstance(instance);
-            } catch (FragmentInstanceDispatchException e) {
-              return new FragInstanceDispatchResult(e.getFailureStatus());
-            } catch (Exception t) {
-              LOGGER.warn(DataNodeQueryMessages.CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION, t);
-              return new FragInstanceDispatchResult(
-                  RpcUtils.getStatus(
-                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
-            }
-          }
-          return new FragInstanceDispatchResult(true);
-        });
+    return getOrCreateExecutor()
+        .submit(
+            () -> {
+              for (FragmentInstance instance : instances) {
+                try (SetThreadName threadName =
+                    new SetThreadName(
+                        "load-dispatcher" + "-" + instance.getId().getFullId() + "-" + uuid)) {
+                  dispatchOneInstance(instance);
+                } catch (FragmentInstanceDispatchException e) {
+                  return new FragInstanceDispatchResult(e.getFailureStatus());
+                } catch (Exception t) {
+                  LOGGER.warn(DataNodeQueryMessages.CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION, t);
+                  return new FragInstanceDispatchResult(
+                      RpcUtils.getStatus(
+                          TSStatusCode.INTERNAL_SERVER_ERROR,
+                          String.format(
+                              DataNodeQueryMessages.MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800,
+                              t.getMessage())));
+                }
+              }
+              return new FragInstanceDispatchResult(true);
+            });
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    TTsFilePieceReq loadTsFileReq = null;
+    ByteBuffer body = null;
 
     for (TDataNodeLocation dataNodeLocation :
         instance.getRegionReplicaSet().getDataNodeLocations()) {
@@ -139,20 +157,113 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        if (loadTsFileReq == null) {
-          loadTsFileReq =
-              new TTsFilePieceReq(
-                  instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
-                  uuid,
-                  instance.getRegionReplicaSet().getRegionId());
+        if (body == null) {
+          body = instance.getFragment().getPlanNodeTree().serializeToByteBuffer();
         }
-        dispatchRemote(loadTsFileReq, endPoint);
+        dispatchRemote(body, instance.getRegionReplicaSet().getRegionId(), endPoint);
       }
     }
   }
 
+  private int getLoadTsFilePieceBodySizeLimit(final TEndPoint endPoint) throws Exception {
+    final int localMaxFrameSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    Integer remoteMaxFrameSize = endPoint2ThriftMaxFrameSize.get(endPoint);
+    if (remoteMaxFrameSize == null) {
+      // An oversized frame is rejected before the RPC handler runs and closes the connection, so
+      // the receiver's frame limit cannot be recovered from the sender's transport exception.
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(endPoint)) {
+        remoteMaxFrameSize = client.getThriftMaxFrameSize();
+      } catch (Exception e) {
+        if (!isUnknownMethod(e)) {
+          throw e;
+        }
+        // Older receivers still accept unsliced pieces. The failed RPC invalidates its client,
+        // so dispatchRemote borrows another client before sending the piece.
+        remoteMaxFrameSize = localMaxFrameSize;
+      }
+      if (remoteMaxFrameSize <= 0) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B,
+                remoteMaxFrameSize,
+                endPoint));
+      }
+      endPoint2ThriftMaxFrameSize.put(endPoint, remoteMaxFrameSize);
+    }
+    return Math.max(
+        1,
+        Math.min(localMaxFrameSize, remoteMaxFrameSize)
+            - LOAD_TSFILE_PIECE_RPC_FRAME_RESERVED_BYTES);
+  }
+
+  private static boolean isUnknownMethod(Throwable e) {
+    do {
+      if (e instanceof TApplicationException
+          && ((TApplicationException) e).getType() == TApplicationException.UNKNOWN_METHOD) {
+        return true;
+      }
+    } while ((e = e.getCause()) != null);
+    return false;
+  }
+
+  static List<TTsFilePieceReq> splitTsFilePieceReq(
+      final ByteBuffer body,
+      final String uuid,
+      final TConsensusGroupId consensusGroupId,
+      final int bodySizeLimit) {
+    if (bodySizeLimit <= 0) {
+      throw new IllegalArgumentException();
+    }
+
+    final int originBodySize = body.remaining();
+    final int sliceCount = getSliceCount(originBodySize, bodySizeLimit);
+    final List<TTsFilePieceReq> requests = new ArrayList<>(sliceCount);
+    if (sliceCount == 1) {
+      requests.add(createTsFilePieceReq(body.duplicate(), uuid, consensusGroupId));
+      return requests;
+    }
+
+    final int originPosition = body.position();
+    for (int sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++) {
+      final int startOffset = sliceIndex * bodySizeLimit;
+      final int endOffset = startOffset + Math.min(bodySizeLimit, originBodySize - startOffset);
+      final ByteBuffer slicedBody = body.duplicate();
+      slicedBody.position(originPosition + startOffset);
+      slicedBody.limit(originPosition + endOffset);
+      requests.add(
+          createTsFilePieceReq(slicedBody.slice(), uuid, consensusGroupId)
+              .setSliceIndex(sliceIndex)
+              .setSliceCount(sliceCount)
+              .setOriginBodySize(originBodySize));
+    }
+    return requests;
+  }
+
+  static int getSliceCount(final int bodySize, final int bodySizeLimit) {
+    if (bodySize < 0 || bodySizeLimit <= 0) {
+      throw new IllegalArgumentException();
+    }
+    return bodySize == 0 ? 1 : (bodySize - 1) / bodySizeLimit + 1;
+  }
+
+  private static TTsFilePieceReq createTsFilePieceReq(
+      final ByteBuffer body, final String uuid, final TConsensusGroupId consensusGroupId) {
+    final TTsFilePieceReq request =
+        new TTsFilePieceReq().setUuid(uuid).setConsensusGroupId(consensusGroupId);
+    // The generated setter copies the whole buffer, while these immutable slices remain valid until
+    // all replicas have been dispatched.
+    request.body = body;
+    return request;
+  }
+
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    LOGGER.info(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
+    if (isGeneratedByPipe) {
+      LOGGER.debug(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
+    } else {
+      LOGGER.info(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
+    }
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
@@ -206,30 +317,62 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private void dispatchRemote(TTsFilePieceReq loadTsFileReq, TEndPoint endPoint)
+  private void dispatchRemote(
+      ByteBuffer body, TConsensusGroupId consensusGroupId, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      client.setTimeout(CONNECTION_TIMEOUT_MS.get());
+    boolean transferAttemptRecorded = false;
+    try {
+      final List<TTsFilePieceReq> loadTsFileReqs =
+          splitTsFilePieceReq(
+              body, uuid, consensusGroupId, getLoadTsFilePieceBodySizeLimit(endPoint));
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(endPoint)) {
+        client.setTimeout(CONNECTION_TIMEOUT_MS.get());
 
-      final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
-      if (!loadResp.isAccepted()) {
-        LOGGER.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
+        for (final TTsFilePieceReq loadTsFileReq : loadTsFileReqs) {
+          final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+          if (!loadResp.isAccepted()) {
+            recordTransferAttempt(
+                endPoint,
+                false,
+                loadResp.isSetStatus()
+                    ? String.valueOf(loadResp.getStatus().getCode())
+                    : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
+                null);
+            transferAttemptRecorded = true;
+            LOGGER.warn(loadResp.message);
+            throw new FragmentInstanceDispatchException(loadResp.status);
+          }
+        }
+        recordTransferAttempt(endPoint, true, null, null);
+        transferAttemptRecorded = true;
       }
     } catch (Exception e) {
+      if (!transferAttemptRecorded) {
+        recordTransferAttempt(endPoint, false, null, e);
+      }
       adjustTimeoutIfNecessary(e);
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              loadTsFileReq, endPoint, e);
+              DataNodeQueryMessages
+                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D,
+              uuid,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
               .setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode())
               .setMessage(exceptionMessage));
     }
+  }
+
+  private void recordTransferAttempt(
+      TEndPoint target, boolean success, String errorCode, Throwable error) {
+    final TEndPoint localEndPoint = new TEndPoint(localhostIpAddr, localhostInternalPort);
+    DataNodeUserDataTransferAuditor.record(
+        localEndPoint, localEndPoint, target, success, errorCode, error);
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
@@ -258,15 +401,22 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         }
       } catch (FragmentInstanceDispatchException e) {
         LOGGER.warn(
-            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, e);
+            DataNodeQueryMessages.CANNOT_DISPATCH_LOADCOMMAND_FOR_LOAD_OPERATION_ARG,
+            duplicatedLoadCommandReq,
+            e);
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Exception t) {
         LOGGER.warn(
-            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, t);
+            DataNodeQueryMessages.CANNOT_DISPATCH_LOADCOMMAND_FOR_LOAD_OPERATION_ARG,
+            duplicatedLoadCommandReq,
+            t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+                    TSStatusCode.INTERNAL_SERVER_ERROR,
+                    String.format(
+                        DataNodeQueryMessages.MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800,
+                        t.getMessage()))));
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
@@ -317,8 +467,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              loadCommandReq, endPoint, e);
+              DataNodeQueryMessages
+                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D,
+              loadCommandReq,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
@@ -349,7 +502,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
           CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
           LOGGER.info(
-              "Load remote procedure call connection timeout is adjusted to {} ms ({} mins)",
+              DataNodeQueryMessages
+                  .LOAD_REMOTE_PROCEDURE_CALL_CONNECTION_TIMEOUT_IS_ADJUSTED_TO_ARG_MS_ARG_MINS,
               newConnectionTimeout,
               newConnectionTimeout / 60000.0);
         }
@@ -360,6 +514,14 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public void abort() {
-    // Do nothing
+    close();
+  }
+
+  @Override
+  public synchronized void close() {
+    if (executor != null) {
+      executor.shutdownNow();
+      executor = null;
+    }
   }
 }

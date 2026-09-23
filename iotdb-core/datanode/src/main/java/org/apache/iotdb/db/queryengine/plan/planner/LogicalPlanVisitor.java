@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -92,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -124,7 +126,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   @Override
   public PlanNode visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + node.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            node.getClass().getName()));
   }
 
   @Override
@@ -1015,6 +1019,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planOffset(showQueriesStatement.getRowOffset())
             .planLimit(showQueriesStatement.getRowLimit());
     return planBuilder.getRoot();
+  }
+
+  @Override
+  public PlanNode visitShowReceivers(
+      ShowReceiversStatement showReceiversStatement, MPPQueryContext context) {
+    return new LogicalPlanBuilder(analysis, context).planShowReceivers(analysis).getRoot();
   }
 
   @Override

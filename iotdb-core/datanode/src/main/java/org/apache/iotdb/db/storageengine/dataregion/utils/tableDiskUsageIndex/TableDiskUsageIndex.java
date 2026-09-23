@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -85,7 +86,8 @@ public class TableDiskUsageIndex {
           // keep processing subsequent operations.
           if (!stop) {
             LOGGER.warn(
-                "TableDiskUsageIndex worker thread was interrupted unexpectedly while waiting for operations.",
+                StorageEngineMessages
+                    .STORAGE_LOG_TABLEDISKUSAGEINDEX_WORKER_THREAD_WAS_INTERRUPTED_UNEXPECTEDLY_A21172AB,
                 e);
           }
         } catch (Exception e) {
@@ -117,6 +119,7 @@ public class TableDiskUsageIndex {
       writer.tsFileIndexWriter.syncIfNecessary();
     } catch (IOException e) {
       LOGGER.warn(StorageEngineMessages.FAILED_SYNC_TABLE_SIZE_INDEX, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
   }
 
@@ -208,7 +211,8 @@ public class TableDiskUsageIndex {
     }
     if (stop) {
       LOGGER.warn(
-          "Skip adding operation {} to queue because TableDiskUsageIndex has been stopped.",
+          StorageEngineMessages
+              .STORAGE_LOG_SKIP_ADDING_OPERATION_TO_QUEUE_BECAUSE_TABLEDISKUSAGEINDEX_4A606B40,
           operation);
       return false;
     }
@@ -504,7 +508,8 @@ public class TableDiskUsageIndex {
         activeReaderNum--;
       } else {
         LOGGER.warn(
-            "Attempt to decrease activeReaderNum when it is already 0. This may indicate an incorrect reader lifecycle management.");
+            StorageEngineMessages
+                .STORAGE_LOG_ATTEMPT_TO_DECREASE_ACTIVEREADERNUM_WHEN_IT_IS_ALREADY_0_73756CBB);
       }
     }
 

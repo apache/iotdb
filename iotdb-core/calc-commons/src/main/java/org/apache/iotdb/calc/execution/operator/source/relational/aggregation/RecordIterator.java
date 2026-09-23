@@ -59,7 +59,7 @@ public class RecordIterator implements Iterator<Record> {
     this.positionCount = positionCount;
     if (childrenColumns.size() != dataTypes.size()) {
       throw new IllegalArgumentException(
-          "The size of childrenColumns and dataTypes should be the same.");
+          CalcMessages.EXCEPTION_SIZE_CHILDRENCOLUMNS_DATATYPES_SHOULD_SAME_6EA43EA8);
     }
   }
 

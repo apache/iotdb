@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataTypeParameter;
@@ -58,6 +60,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -115,7 +118,9 @@ public final class ExpressionTreeRewriter<C> {
       // visit method,
       // so visitExpression() should never be called.
       throw new UnsupportedOperationException(
-          "visit() not implemented for " + node.getClass().getName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_VISIT_NOT_IMPLEMENTED_FOR_S_1A798A4D,
+              node.getClass().getName()));
     }
 
     @Override
@@ -677,6 +682,19 @@ public final class ExpressionTreeRewriter<C> {
     }
 
     @Override
+    public Expression visitCurrentTime(final CurrentTime node, final Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        final Expression result =
+            rewriter.rewriteCurrentTime(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      return node;
+    }
+
+    @Override
     public Expression visitCurrentUser(final CurrentUser node, final Context<C> context) {
       if (!context.isDefaultRewrite()) {
         final Expression result =
@@ -733,6 +751,19 @@ public final class ExpressionTreeRewriter<C> {
       if (!context.isDefaultRewrite()) {
         Expression result =
             rewriter.rewriteFieldReference(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      return node;
+    }
+
+    @Override
+    public Expression visitAllRows(AllRows node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteAllRows(node, context.get(), ExpressionTreeRewriter.this);
         if (result != null) {
           return result;
         }

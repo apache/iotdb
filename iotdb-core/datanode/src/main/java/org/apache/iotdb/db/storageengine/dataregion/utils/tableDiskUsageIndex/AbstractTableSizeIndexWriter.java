@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import org.slf4j.Logger;
@@ -58,7 +59,9 @@ public abstract class AbstractTableSizeIndexWriter {
         }
       } catch (Exception e) {
         logger.warn(
-            "Failed to delete old version table size index file {}", file.getAbsolutePath());
+            StorageEngineMessages
+                .STORAGE_LOG_FAILED_TO_DELETE_OLD_VERSION_TABLE_SIZE_INDEX_FILE_05930C4A,
+            file.getAbsolutePath());
       }
     }
   }

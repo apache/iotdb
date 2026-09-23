@@ -21,14 +21,14 @@
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SchemaPageOverflowException extends MetadataException {
 
   public SchemaPageOverflowException(int pageIndex) {
     super(
-        String.format(
-            "Page [%s] in pbtree file runs out of space or contains too many segments.", pageIndex),
+        String.format(DataNodeSchemaMessages.SCHEMA_PAGE_OVERFLOW_FMT, pageIndex),
         TSStatusCode.PAGE_OUT_OF_SPACE.getStatusCode(),
         true);
   }

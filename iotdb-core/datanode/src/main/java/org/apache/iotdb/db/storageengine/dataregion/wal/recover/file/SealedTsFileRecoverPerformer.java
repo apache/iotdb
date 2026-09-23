@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
@@ -45,11 +47,14 @@ public class SealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerformer
       try {
         reconstructResourceFile();
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw new DataRegionException(
-            "Failed recover the resource file: "
-                + tsFileResource.getTsFilePath()
-                + TsFileResource.RESOURCE_SUFFIX
-                + e);
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FAILED_RECOVER_THE_RESOURCE_FILE_S_S_S_E35EF7D5,
+                tsFileResource.getTsFilePath(),
+                TsFileResource.RESOURCE_SUFFIX,
+                e));
       }
     }
   }

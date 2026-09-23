@@ -28,9 +28,8 @@ import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,6 +42,7 @@ public class TabletDecoder {
   private final List<TSEncoding> columnEncodings;
   private final IUnCompressor unCompressor;
   private final int rowSize;
+  private final boolean allValueColumnsPlain;
 
   /**
    * @param compressionType the overall compression
@@ -60,6 +60,7 @@ public class TabletDecoder {
     this.columnEncodings = columnEncodings;
     this.unCompressor = IUnCompressor.getUnCompressor(compressionType);
     this.rowSize = rowSize;
+    this.allValueColumnsPlain = allValueColumnsPlain(dataTypes, columnEncodings);
   }
 
   public long[] decodeTime(ByteBuffer buffer) {
@@ -103,7 +104,7 @@ public class TabletDecoder {
       return output;
     } catch (IOException e) {
       throw new IoTDBRuntimeException(
-          "Failed to decompress compressedBuffer",
+          DataNodeMiscMessages.MISC_EXCEPTION_FAILED_TO_DECOMPRESS_COMPRESSEDBUFFER_56398D3E,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -112,6 +113,10 @@ public class TabletDecoder {
   private long[] decodeColumnForTimeStamp(ByteBuffer buffer, int rowCount) {
     TSDataType dataType = TSDataType.INT64;
     TSEncoding encodingType = columnEncodings.get(0);
+
+    if (encodingType == TSEncoding.PLAIN) {
+      return QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+    }
 
     Decoder decoder = Decoder.getDecoderByType(encodingType, dataType);
     long[] result = new long[rowCount];
@@ -129,9 +134,16 @@ public class TabletDecoder {
     RPCServiceThriftHandlerMetrics.getInstance().recordCompressionSizeTimer(compressedSize);
 
     long startDecodeTime = System.nanoTime();
-    Object[] columns = new Object[dataTypes.length];
-    for (int i = 0; i < dataTypes.length; i++) {
-      columns[i] = decodeColumn(uncompressed, i);
+    Object[] columns;
+    if (allValueColumnsPlain) {
+      columns =
+          QueryDataSetUtils.readTabletValuesFromBuffer(
+              uncompressed, dataTypes, dataTypes.length, rowSize);
+    } else {
+      columns = new Object[dataTypes.length];
+      for (int i = 0; i < dataTypes.length; i++) {
+        columns[i] = decodeColumn(uncompressed, i);
+      }
     }
 
     RPCServiceThriftHandlerMetrics.getInstance()
@@ -139,78 +151,28 @@ public class TabletDecoder {
     return new Pair<>(columns, uncompressed);
   }
 
+  private static boolean allValueColumnsPlain(
+      TSDataType[] dataTypes, List<TSEncoding> columnEncodings) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columnEncodings.get(i + 1) != TSEncoding.PLAIN || !supportsPlainFastPath(dataTypes[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean supportsPlainFastPath(TSDataType dataType) {
+    return TypeServices.StorageEngine.TABLET_PLAIN_FAST_PATH_SERVICE.call(
+        Type.fromTsDataType(dataType));
+  }
+
   private Object decodeColumn(ByteBuffer uncompressed, int columnIndex) {
     TSDataType dataType = dataTypes[columnIndex];
     TSEncoding encoding = columnEncodings.get(columnIndex + 1);
 
     Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
-    Object column = null;
-    switch (dataType) {
-      case DATE:
-      case INT32:
-        int[] intCol = new int[rowSize];
-        if (encoding == TSEncoding.PLAIN) {
-          // PlainEncoder uses var int, which may cause compatibility problem
-          for (int j = 0; j < rowSize; j++) {
-            intCol[j] = ReadWriteIOUtils.readInt(uncompressed);
-          }
-        } else {
-          for (int j = 0; j < rowSize; j++) {
-            intCol[j] = decoder.readInt(uncompressed);
-          }
-        }
-        column = intCol;
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longCol = new long[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          longCol[j] = decoder.readLong(uncompressed);
-        }
-        column = longCol;
-        break;
-      case FLOAT:
-        float[] floatCol = new float[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          floatCol[j] = decoder.readFloat(uncompressed);
-        }
-        column = floatCol;
-        break;
-      case DOUBLE:
-        double[] doubleCol = new double[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          doubleCol[j] = decoder.readDouble(uncompressed);
-        }
-        column = doubleCol;
-        break;
-      case BOOLEAN:
-        boolean[] boolCol = new boolean[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          boolCol[j] = decoder.readBoolean(uncompressed);
-        }
-        column = boolCol;
-        break;
-      case STRING:
-      case BLOB:
-      case TEXT:
-        Binary[] binaryCol = new Binary[rowSize];
-        if (encoding == TSEncoding.PLAIN) {
-          // PlainEncoder uses var int, which may cause compatibility problem
-          for (int j = 0; j < rowSize; j++) {
-            binaryCol[j] = ReadWriteIOUtils.readBinary(uncompressed);
-          }
-        } else {
-          for (int j = 0; j < rowSize; j++) {
-            binaryCol[j] = decoder.readBinary(uncompressed);
-          }
-        }
-        column = binaryCol;
-        break;
-      case UNKNOWN:
-      case VECTOR:
-      default:
-        throw new IllegalArgumentException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
-    }
-    return column;
+    return TypeServices.StorageEngine.TABLET_COLUMN_DECODER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .decode(decoder, uncompressed, rowSize, encoding);
   }
 }

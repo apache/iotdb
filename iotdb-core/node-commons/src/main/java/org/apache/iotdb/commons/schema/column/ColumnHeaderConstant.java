@@ -133,11 +133,26 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TOPIC = "Topic";
+  public static final String CREATE_TOPIC = "Create Topic";
 
   // column names for show subscriptions statement
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
   public static final String SUBSCRIBED_CONSUMERS = "SubscribedConsumers";
   public static final String SUBSCRIPTION_ID = "SubscriptionID";
+  public static final String SUBSCRIPTION_ACTIVE = "Active";
+  public static final String SUBSCRIPTION_INITIALIZED = "Initialized";
+  public static final String RAW_WAL_GAP = "RawWalGap";
+  public static final String APPROXIMATE_LAG = "ApproximateLag";
+  public static final String IN_FLIGHT_EVENT_COUNT = "InFlightEventCount";
+  public static final String PREFETCHED_EVENT_COUNT = "PrefetchedEventCount";
+  public static final String PENDING_EVENT_COUNT = "PendingEventCount";
+  public static final String CURRENT_WAL_SEARCH_INDEX = "CurrentWalSearchIndex";
+  public static final String NEXT_READ_SEARCH_INDEX = "NextReadSearchIndex";
+  public static final String LAST_PROGRESS_TIME = "LastProgressTime";
+  public static final String LAST_POLL_TIME = "LastPollTime";
+  public static final String LAST_CONSUMER_ID = "LastConsumerId";
+  public static final String SEEK_GENERATION = "SeekGeneration";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -194,6 +209,27 @@ public class ColumnHeaderConstant {
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
+  public static final String IS_DEGRADED = "IsDegraded";
+  public static final String RECENT_FAILURES = "RecentFailures";
+
+  // column names for show repair data partition table progress
+  public static final String REPAIR_DATA_PARTITION_TABLE_STATUS = "Status";
+  public static final String REPAIR_DATA_PARTITION_TABLE_PROGRESS = "Progress(%)";
+  public static final String REPAIR_DATA_PARTITION_TABLE_MESSAGE = "Message";
+
+  // column names for show receivers
+  public static final String RECEIVER_NODE_TYPE = "ReceiverNodeType";
+  public static final String RECEIVER_NODE_ID = "ReceiverNodeId";
+  public static final String PROTOCOL = "Protocol";
+  public static final String SENDER_CLUSTER_ID = "SenderClusterId";
+  public static final String SENDER_ADDRESS = "SenderAddress";
+  public static final String RECEIVER_USER_NAME = "UserName";
+  public static final String SENDER_PORTS = "SenderPorts";
+  public static final String CONNECTION_COUNT = "ConnectionCount";
+  public static final String PIPE_COUNT = "PipeCount";
+  public static final String PIPE_IDS = "PipeIDs";
+  public static final String LAST_HANDSHAKE_TIME = "LastHandshakeTime";
+  public static final String LAST_TRANSFER_TIME = "LastTransferTime";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -250,6 +286,7 @@ public class ColumnHeaderConstant {
       "max_schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
   public static final String MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL = "max_data_region_group_num";
+  public static final String NEED_LAST_CACHE_TABLE_MODEL = "need_last_cache";
 
   public static final String REGION_ID_TABLE_MODEL = "region_id";
   public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
@@ -270,6 +307,21 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
+  public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
+  public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
+
+  public static final String RECEIVER_NODE_TYPE_TABLE_MODEL = "receiver_node_type";
+  public static final String RECEIVER_NODE_ID_TABLE_MODEL = "receiver_node_id";
+  public static final String PROTOCOL_TABLE_MODEL = "protocol";
+  public static final String SENDER_CLUSTER_ID_TABLE_MODEL = "sender_cluster_id";
+  public static final String SENDER_ADDRESS_TABLE_MODEL = "sender_address";
+  public static final String RECEIVER_USER_NAME_TABLE_MODEL = "user_name";
+  public static final String SENDER_PORTS_TABLE_MODEL = "sender_ports";
+  public static final String CONNECTION_COUNT_TABLE_MODEL = "connection_count";
+  public static final String PIPE_COUNT_TABLE_MODEL = "pipe_count";
+  public static final String PIPE_IDS_TABLE_MODEL = "pipe_ids";
+  public static final String LAST_HANDSHAKE_TIME_TABLE_MODEL = "last_handshake_time";
+  public static final String LAST_TRANSFER_TIME_TABLE_MODEL = "last_transfer_time";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -336,11 +388,15 @@ public class ColumnHeaderConstant {
   public static final String PRIVILEGES = "Privileges";
   public static final String COMMENT = "Comment";
   public static final String TABLE_TYPE = "TableType";
+  public static final String NEED_LAST_CACHE = "NeedLastCache";
 
   public static final String VIEW = "View";
   public static final String CREATE_VIEW = "Create View";
   public static final String TABLE = "Table";
   public static final String CREATE_TABLE = "Create Table";
+  public static final String PIPE = "Pipe";
+  public static final String CREATE_PIPE = "Create Pipe";
+  public static final String CREATE_DATABASE = "Create Database";
 
   public static final String GRANT_OPTION = "GrantOption";
 
@@ -420,7 +476,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
@@ -603,12 +660,25 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
-          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
+          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
+          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN),
+          new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_PROGRESS, TSDataType.DOUBLE),
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTopicColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC, TSDataType.TEXT),
+          new ColumnHeader(CREATE_TOPIC, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSubscriptionColumnHeaders =
       ImmutableList.of(
@@ -616,6 +686,29 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
           new ColumnHeader(SUBSCRIBED_CONSUMERS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSubscriptionDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SUBSCRIPTION_ID, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(REGION_ID, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(SUBSCRIPTION_ACTIVE, TSDataType.BOOLEAN),
+          new ColumnHeader(SUBSCRIPTION_INITIALIZED, TSDataType.BOOLEAN),
+          new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(RAW_WAL_GAP, TSDataType.INT64),
+          new ColumnHeader(APPROXIMATE_LAG, TSDataType.INT64),
+          new ColumnHeader(IN_FLIGHT_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(PREFETCHED_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(PENDING_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(CURRENT_WAL_SEARCH_INDEX, TSDataType.INT64),
+          new ColumnHeader(NEXT_READ_SEARCH_INDEX, TSDataType.INT64),
+          new ColumnHeader(LAST_PROGRESS_TIME, TSDataType.INT64),
+          new ColumnHeader(LAST_POLL_TIME, TSDataType.INT64),
+          new ColumnHeader(LAST_CONSUMER_ID, TSDataType.TEXT),
+          new ColumnHeader(SEEK_GENERATION, TSDataType.INT64));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(
@@ -662,6 +755,21 @@ public class ColumnHeaderConstant {
           new ColumnHeader(WAIT_TIME_IN_SERVER, TSDataType.FLOAT),
           new ColumnHeader(CLIENT_IP_TREE_MODEL, TSDataType.STRING),
           new ColumnHeader(TIMEOUT, TSDataType.INT64));
+
+  public static final List<ColumnHeader> showReceiversColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(RECEIVER_NODE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(RECEIVER_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(PROTOCOL, TSDataType.TEXT),
+          new ColumnHeader(SENDER_CLUSTER_ID, TSDataType.TEXT),
+          new ColumnHeader(SENDER_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(RECEIVER_USER_NAME, TSDataType.TEXT),
+          new ColumnHeader(SENDER_PORTS, TSDataType.TEXT),
+          new ColumnHeader(CONNECTION_COUNT, TSDataType.INT32),
+          new ColumnHeader(PIPE_COUNT, TSDataType.INT32),
+          new ColumnHeader(PIPE_IDS, TSDataType.TEXT),
+          new ColumnHeader(LAST_HANDSHAKE_TIME, TSDataType.TEXT),
+          new ColumnHeader(LAST_TRANSFER_TIME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDiskUsageColumnHeaders =
       ImmutableList.of(
@@ -731,7 +839,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
@@ -756,6 +865,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TABLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TABLE, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showCreatePipeColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(PIPE, TSDataType.TEXT), new ColumnHeader(CREATE_PIPE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateDatabaseColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(CREATE_DATABASE, TSDataType.TEXT));
+
   public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
       ImmutableList.of(
           new ColumnHeader(USER_ID, TSDataType.INT64), new ColumnHeader(USER, TSDataType.TEXT));
@@ -771,7 +889,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT),
-          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT));
+          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(
@@ -807,7 +926,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> COPY_TO_TSFILE_COLUMN_HEADERS =
       ImmutableList.of(
-          new ColumnHeader(PATH.toLowerCase(), TSDataType.TEXT),
+          new ColumnHeader(PATH.toLowerCase(), TSDataType.STRING),
           new ColumnHeader(ROW_COUNT, TSDataType.INT64),
           new ColumnHeader(DEVICE_COUNT, TSDataType.INT64),
           new ColumnHeader(SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64),

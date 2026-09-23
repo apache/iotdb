@@ -240,6 +240,30 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
+   * Sets the key store path for mutual SSL connections.
+   *
+   * @param keyStore the key store path.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionBuilder keyStore(String keyStore) {
+    this.keyStore = keyStore;
+    return this;
+  }
+
+  /**
+   * Sets the key store password for mutual SSL connections.
+   *
+   * @param keyStorePwd the key store password.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionBuilder keyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  /**
    * Sets the SSL protocol for secure connections.
    *
    * @param sslProtocol the SSL protocol.

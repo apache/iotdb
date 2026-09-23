@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.ProcessMetrics;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -59,7 +60,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
-import org.apache.iotdb.db.service.metrics.ProcessMetrics;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
@@ -416,8 +416,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             ConfigNodeMessages.THE_RESULT_OF_REGISTER_SELF_CONFIGNODE_IS_RETRY, status, retry);
       } else if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
         LOGGER.info(
-            "ConfigNode leader is warming up before serving the registering ConfigNode, will wait"
-                + " and retry. Status: {}, retry: {}",
+            ConfigNodeMessages
+                .MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_AND_RETRY_STATUS_ARG_RETRY_ARG_3C924873,
             status,
             retry);
       } else {

@@ -23,10 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
@@ -67,6 +69,17 @@ public class DataPartitionTableIntegrityCheckProcedureTest {
         Assert.fail("Recreated is not DataPartitionTableIntegrityCheckProcedure");
       }
     }
+  }
+
+  @Test
+  public void progressStateTest() {
+    DataPartitionTableIntegrityCheckProcedure procedure =
+        new DataPartitionTableIntegrityCheckProcedure();
+    TShowRepairDataPartitionTableProgressResp progress = procedure.getProgress();
+    Assert.assertEquals(
+        RepairDataPartitionTableProgressState.COLLECT_EARLIEST_TIMESLOTS.name(),
+        progress.getState());
+    Assert.assertTrue(progress.getProgress() >= 0.0 && progress.getProgress() <= 100.0);
   }
 
   private DataPartitionTableIntegrityCheckProcedure createTestProcedureWithData() {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching.pattern;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Match;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
@@ -34,7 +35,10 @@ public class EqualsPattern<T> extends Pattern<T> {
   public EqualsPattern(T expectedValue, Optional<Pattern<?>> previous) {
     super(previous);
     this.expectedValue =
-        requireNonNull(expectedValue, "expectedValue can't be null. Use isNull() pattern instead.");
+        requireNonNull(
+            expectedValue,
+            CalcMessages
+                .EXCEPTION_EXPECTEDVALUE_CAN_QUOTE_T_BE_NULL_DOT_USE_ISNULL_LEFT_PAREN_RIGHT_PAREN_PATTERN__FC25E374);
   }
 
   public T expectedValue() {

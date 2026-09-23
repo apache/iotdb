@@ -36,4 +36,9 @@ public final class MetricsCoreMessages {
   public static final String JMX_UNABLE_TO_REGISTER = "IoTDB 指标：无法注册 {} {}";
 
   private MetricsCoreMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_DETECTED_ERROR_TAKING_SNAPSHOT_MAY_CAUSE_MISS_DURING_RECORDING_2BAE49C4 = "获取快照时检测到错误，可能导致本次记录缺失。";
+
 }

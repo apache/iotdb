@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.exception.runtime;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TableLostRuntimeException extends IoTDBRuntimeException {
 
   public TableLostRuntimeException(final String databaseName, final String tableName) {
     super(
-        String.format("Table %s in the database %s is lost unexpected.", tableName, databaseName),
+        String.format(DataNodeQueryMessages.TABLE_LOST_UNEXPECTED_FMT, tableName, databaseName),
         TSStatusCode.TABLE_IS_LOST.getStatusCode());
   }
 

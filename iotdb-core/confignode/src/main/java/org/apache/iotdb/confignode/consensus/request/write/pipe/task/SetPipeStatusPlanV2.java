@@ -34,6 +34,8 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
 
   private String pipeName;
   private PipeStatus status;
+  private boolean isTableModel;
+  private boolean isTableModelSet;
 
   public SetPipeStatusPlanV2() {
     super(ConfigPhysicalPlanType.SetPipeStatusV2);
@@ -45,6 +47,14 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
     this.status = status;
   }
 
+  public SetPipeStatusPlanV2(String pipeName, PipeStatus status, boolean isTableModel) {
+    super(ConfigPhysicalPlanType.SetPipeStatusV2);
+    this.pipeName = pipeName;
+    this.status = status;
+    this.isTableModel = isTableModel;
+    this.isTableModelSet = true;
+  }
+
   public String getPipeName() {
     return pipeName;
   }
@@ -53,17 +63,43 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
     return status;
   }
 
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public boolean isTableModelSet() {
+    return isTableModelSet;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(pipeName, stream);
     ReadWriteIOUtils.write(status.getType(), stream);
+    if (isTableModelSet) {
+      ReadWriteIOUtils.write(isTableModel, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = ReadWriteIOUtils.readString(buffer);
     status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
+    deserializeIsTableModel(buffer.hasRemaining(), buffer);
+  }
+
+  void deserializeImpl(final ByteBuffer buffer, final boolean isLastSubPlan) throws IOException {
+    pipeName = ReadWriteIOUtils.readString(buffer);
+    status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
+    deserializeIsTableModel(
+        OperateMultiplePipesPlanV2.hasTrailingFieldInSubPlan(buffer, isLastSubPlan), buffer);
+  }
+
+  private void deserializeIsTableModel(final boolean hasIsTableModel, final ByteBuffer buffer) {
+    isTableModelSet = hasIsTableModel;
+    if (hasIsTableModel) {
+      isTableModel = ReadWriteIOUtils.readBool(buffer);
+    }
   }
 
   @Override
@@ -75,16 +111,26 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
       return false;
     }
     SetPipeStatusPlanV2 that = (SetPipeStatusPlanV2) obj;
-    return pipeName.equals(that.pipeName) && status.equals(that.status);
+    return isTableModel == that.isTableModel
+        && isTableModelSet == that.isTableModelSet
+        && pipeName.equals(that.pipeName)
+        && status.equals(that.status);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName, status);
+    return Objects.hash(pipeName, status, isTableModel, isTableModelSet);
   }
 
   @Override
   public String toString() {
-    return "SetPipeStatusPlanV2{" + "pipeName='" + pipeName + "', status='" + status + "'}";
+    return "SetPipeStatusPlanV2{"
+        + "pipeName='"
+        + pipeName
+        + "', status='"
+        + status
+        + "', isTableModel="
+        + isTableModel
+        + "'}";
   }
 }

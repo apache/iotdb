@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.t
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -129,7 +130,8 @@ public class TsFileTableSizeIndexReader {
       }
     } catch (Exception e) {
       logger.warn(
-          "Failed to read table tsfile size index {} after position: {} and {} after position: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_READ_TABLE_TSFILE_SIZE_INDEX_AFTER_POSITION_AND_74251AF3,
           keyFile,
           valueFile,
           keyFileTruncateSize,
@@ -163,6 +165,7 @@ public class TsFileTableSizeIndexReader {
         }
       } catch (IOException e) {
         closeCurrentFile();
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw e;
       }
     } while (System.nanoTime() - startTime < maxRunTime);
@@ -195,7 +198,11 @@ public class TsFileTableSizeIndexReader {
       keyFileEntry = new KeyFileEntry(tsFileID, originTsFileID);
     } else {
       throw new IoTDBRuntimeException(
-          "Unsupported record type in file: " + keyFile.getPath() + ", type: " + type,
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_UNSUPPORTED_RECORD_TYPE_IN_FILE_S_TYPE_S_DADEE641,
+              keyFile.getPath(),
+              type),
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return keyFileEntry;

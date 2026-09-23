@@ -36,6 +36,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -61,13 +62,16 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
         .getConfig()
         .getCommonConfig()
         .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1);
+        .setSchemaReplicationFactor(1)
+        .setPipeAutoSplitFullEnabled(true);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1);
+        .setSchemaReplicationFactor(1)
+        .setPipeAutoSplitFullEnabled(true);
   }
 
   @Test
@@ -119,6 +123,100 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, secondSelectSql, secondQueryResult.header, secondQueryResult.rows);
     }
+  }
+
+  @Test
+  public void testAutoSplitHistoryTsFileWithDeletionWhenReceiverAutoCreateSchemaDisabled()
+      throws Exception {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.sg",
+            "create timeseries root.sg.non_aligned.s1 with datatype=INT32",
+            "create timeseries root.sg.non_aligned.s2 with datatype=DOUBLE",
+            "create aligned timeseries root.sg.aligned(s1 INT32, s2 DOUBLE)",
+            "create timeseries root.sg.deleted_measurement.s1 with datatype=INT32",
+            "create timeseries root.sg.deleted_measurement.s2 with datatype=DOUBLE",
+            "insert into root.sg.non_aligned(time, s1, s2) values(1, 1, 1.0), (2, 2, 2.0), (3, 3, 3.0)",
+            "insert into root.sg.aligned(time, s1, s2) values(1, 10, 10.0), (2, 20, 20.0), (3, 30, 30.0)",
+            "insert into root.sg.deleted_measurement(time, s1, s2) values(1, 100, 100.0), (2, 200, 200.0)",
+            "flush",
+            "delete from root.sg.non_aligned.s1 where time > 2",
+            "delete from root.sg.aligned.* where time > 2",
+            "delete timeseries root.sg.deleted_measurement.s1",
+            "flush"));
+
+    awaitUntilFlush(senderEnv);
+
+    TestUtils.executeNonQuery(
+        senderEnv,
+        String.format(
+            "create pipe test with source ('inclusion'='all', 'source.history.enable'='true', 'source.realtime.mode'='batch') "
+                + "with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+            receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.sg.non_aligned",
+        "Time,root.sg.non_aligned.s1,root.sg.non_aligned.s2,",
+        new HashSet<>(Arrays.asList("1,1,1.0,", "2,2,2.0,", "3,null,3.0,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.sg.aligned",
+        "Time,root.sg.aligned.s1,root.sg.aligned.s2,",
+        new HashSet<>(Arrays.asList("1,10,10.0,", "2,20,20.0,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.sg.deleted_measurement",
+        "Time,root.sg.deleted_measurement.s2,",
+        new HashSet<>(Arrays.asList("1,100.0,", "2,200.0,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries root.sg.deleted_measurement.*",
+        "count(timeseries),",
+        new HashSet<>(Arrays.asList("1,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "show devices root.sg.aligned",
+        "Device,IsAligned,Template,TTL(ms),",
+        new HashSet<>(Arrays.asList("root.sg.aligned,true,null,INF,")));
+  }
+
+  @Test
+  public void
+      testAutoSplitHistoryTsFileWithUnflushedAlignedDeletionWhenReceiverAutoCreateSchemaDisabled()
+          throws Exception {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.sg",
+            "create aligned timeseries root.sg.aligned(s0 INT32, s1 INT64, s2 DOUBLE)",
+            "insert into root.sg.aligned(time, s0, s1, s2) aligned "
+                + "values(1, 1, 10, 1.0), (2, 2, 20, 2.0), (3, 3, 30, 3.0)",
+            "delete timeseries root.sg.aligned.s1"));
+
+    TestUtils.executeNonQuery(
+        senderEnv,
+        String.format(
+            "create pipe test with source ('inclusion'='all', 'source.history.enable'='true', 'source.realtime.mode'='batch') "
+                + "with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+            receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select s0,s2 from root.sg.aligned",
+        "Time,root.sg.aligned.s0,root.sg.aligned.s2,",
+        new HashSet<>(Arrays.asList("1,1,1.0,", "2,2,2.0,", "3,3,3.0,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries root.sg.aligned.*",
+        "count(timeseries),",
+        new HashSet<>(Arrays.asList("2,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "show devices root.sg.aligned",
+        "Device,IsAligned,Template,TTL(ms),",
+        new HashSet<>(Arrays.asList("root.sg.aligned,true,null,INF,")));
   }
 
   private QueryResult queryForResult(final Statement statement, final String sql)

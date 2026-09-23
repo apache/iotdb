@@ -19,18 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
@@ -49,10 +45,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.math.DoubleMath;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
@@ -63,7 +59,6 @@ import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.read.filter.operator.ExtractTimeFilterOperators;
 import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
 import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
-import org.apache.tsfile.utils.Binary;
 
 import javax.annotation.Nullable;
 
@@ -158,7 +153,10 @@ public class ConvertPredicateToFilterVisitor
 
     if (!context.isMeasurementColumn(symbolReference)) {
       throw new IllegalStateException(
-          String.format("Only support measurement column in filter: %s", symbolReference));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ONLY_SUPPORT_MEASUREMENT_COLUMN_IN_FILTER_S_140800D9,
+              symbolReference));
     }
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
@@ -237,7 +235,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -254,7 +254,9 @@ public class ConvertPredicateToFilterVisitor
         return new ValueIsNotNullOperator(measurementIndex);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -273,7 +275,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -297,7 +301,9 @@ public class ConvertPredicateToFilterVisitor
         return ValueFilterApi.ltEq(measurementIndex, value, dataType);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -310,7 +316,10 @@ public class ConvertPredicateToFilterVisitor
 
     if (!context.isMeasurementColumn(symbolReference)) {
       throw new IllegalStateException(
-          String.format("Only support measurement column in filter: %s", symbolReference));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ONLY_SUPPORT_MEASUREMENT_COLUMN_IN_FILTER_S_140800D9,
+              symbolReference));
     }
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
@@ -339,40 +348,24 @@ public class ConvertPredicateToFilterVisitor
             measurementIndex, value, field1, zoneId, currPrecision);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported extract comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_EXTRACT_COMPARISON_OPERATOR_S_38A9CDFA,
+                operator));
     }
   }
 
   @SuppressWarnings("unchecked")
   public static <T extends Comparable<T>> T getValue(Literal value, Type dataType) {
     try {
-      switch (dataType.getTypeEnum()) {
-        case INT32:
-          return (T) Integer.valueOf((int) getLongValue(value));
-        case DATE:
-          return (T) getDateValue(value);
-        case INT64:
-          return (T) Long.valueOf(getLongValue(value));
-        case TIMESTAMP:
-          return (T) getTimestampValue(value);
-        case FLOAT:
-          return (T) Float.valueOf((float) getDoubleValue(value));
-        case DOUBLE:
-          return (T) Double.valueOf(getDoubleValue(value));
-        case BOOLEAN:
-          return (T) Boolean.valueOf(getBooleanValue(value));
-        case TEXT:
-        case STRING:
-          return (T) new Binary(getStringValue(value), TSFileConfig.STRING_CHARSET);
-        case BLOB:
-          return (T) new Binary(getBlobValue(value));
-        default:
-          throw new UnsupportedOperationException(
-              String.format("Unsupported data type %s", dataType));
-      }
+      return (T)
+          TypeServices.Predicate.RELATIONAL_CONVERT_PREDICATE_VALUE_PARSER_SERVICE
+              .call(dataType)
+              .apply(value);
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(
-          String.format("\"%s\" cannot be cast to [%s]", value, dataType));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC, value, dataType));
     }
   }
 
@@ -419,7 +412,9 @@ public class ConvertPredicateToFilterVisitor
             node.getTerms().stream().map(n -> process(n, context)).collect(Collectors.toList()));
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported logical operator %s", node.getOperator()));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_LOGICAL_OPERATOR_S_FDC60986,
+                node.getOperator()));
     }
   }
 
@@ -466,7 +461,9 @@ public class ConvertPredicateToFilterVisitor
           context);
     } else {
       throw new IllegalStateException(
-          String.format("%s is not supported in value push down", node));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_IS_NOT_SUPPORTED_IN_VALUE_PUSH_DOWN_DD54E38A,
+              node));
     }
   }
 
@@ -552,13 +549,17 @@ public class ConvertPredicateToFilterVisitor
                   measurementIndex, maxValue, field, zoneId, currPrecision)));
     } else if (context.isExtractMeasurementColumn(secondExpression)) {
       throw new IllegalStateException(
-          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_PREDICATECOMBINEINTOTABLESCANCHECKER_C591ED7D);
     } else if (context.isExtractMeasurementColumn(thirdExpression)) {
       throw new IllegalStateException(
-          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_PREDICATECOMBINEINTOTABLESCANCHECKER_C591ED7D);
     } else {
       throw new IllegalStateException(
-          String.format("%s is not supported in value push down", node));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_IS_NOT_SUPPORTED_IN_VALUE_PUSH_DOWN_DD54E38A,
+              node));
     }
   }
 
@@ -581,49 +582,6 @@ public class ConvertPredicateToFilterVisitor
     return ValueFilterApi.between(measurementIndex, min, max, dataType);
   }
 
-  public static double getDoubleValue(Expression expression) {
-    if (expression instanceof DoubleLiteral) {
-      return ((DoubleLiteral) expression).getValue();
-    } else if (expression instanceof LongLiteral) {
-      return ((LongLiteral) expression).getParsedValue();
-    } else if (expression instanceof FloatLiteral) {
-      return ((FloatLiteral) expression).getValue();
-    } else {
-      throw new IllegalArgumentException(
-          DataNodeQueryMessages.EXPRESSION_SHOULD_BE_NUMERIC_ACTUAL_IS + expression);
-    }
-  }
-
-  public static boolean getBooleanValue(Expression expression) {
-    return ((BooleanLiteral) expression).getValue();
-  }
-
-  public static String getStringValue(Expression expression) {
-    return ((StringLiteral) expression).getValue();
-  }
-
-  public static byte[] getBlobValue(Expression expression) {
-    return ((BinaryLiteral) expression).getValue();
-  }
-
-  public static Integer getDateValue(Expression expression) {
-    return Integer.valueOf(((GenericLiteral) expression).getValue());
-  }
-
-  public static Long getTimestampValue(Expression expression) {
-    if (expression instanceof LongLiteral) {
-      return ((LongLiteral) expression).getParsedValue();
-    } else if (expression instanceof DoubleLiteral) {
-      return (long) ((DoubleLiteral) expression).getValue();
-    } else if (expression instanceof GenericLiteral) {
-      return Long.valueOf(((GenericLiteral) expression).getValue());
-    } else {
-      throw new SemanticException(
-          "InList Literal for TIMESTAMP can only be LongLiteral, DoubleLiteral and GenericLiteral, current is "
-              + expression.getClass().getSimpleName());
-    }
-  }
-
   public static class Context {
 
     private final Map<String, Integer> measuremrntsMap;
@@ -639,7 +597,9 @@ public class ConvertPredicateToFilterVisitor
       Integer index = measuremrntsMap.get(measurement);
       if (index == null) {
         throw new IllegalArgumentException(
-            String.format("Measurement %s does not exist", measurement));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_MEASUREMENT_S_DOES_NOT_EXIST_23D2B5BE,
+                measurement));
       }
       return index;
     }
@@ -648,7 +608,10 @@ public class ConvertPredicateToFilterVisitor
       Type type = schemaMap.get(symbol).getType();
       if (type == null) {
         throw new IllegalArgumentException(
-            String.format("ColumnSchema of Symbol %s isn't saved in schemaMap", symbol));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_COLUMNSCHEMA_OF_SYMBOL_S_ISN_T_SAVED_IN_SCHEMAMAP_3A172EBC,
+                symbol));
       }
       return type;
     }

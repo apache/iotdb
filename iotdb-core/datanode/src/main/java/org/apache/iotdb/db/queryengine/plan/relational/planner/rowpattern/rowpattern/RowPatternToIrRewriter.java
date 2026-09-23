@@ -62,7 +62,8 @@ public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
   private final Analysis analysis;
 
   public RowPatternToIrRewriter(Analysis analysis) {
-    this.analysis = requireNonNull(analysis, "analysis is null");
+    this.analysis =
+        requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
   }
 
   public static IrRowPattern rewrite(RowPattern node, Analysis analysis) {
@@ -112,7 +113,9 @@ public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
     }
 
     throw new IllegalStateException(
-        "unsupported pattern quantifier type: " + quantifier.getClass().getSimpleName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_PATTERN_QUANTIFIER_TYPE_S_4ED427E9,
+            quantifier.getClass().getSimpleName()));
   }
 
   @Override

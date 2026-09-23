@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -281,8 +282,20 @@ public class QueryContext {
     tvListSet.addAll(set);
   }
 
+  /**
+   * Get columns of the TVList accessed by this query, or null if the query does not track
+   * column-level access for the TVList (e.g. a non-FragmentInstanceContext query, or a TVList not
+   * tracked by a FragmentInstanceContext). An empty (non-null) set means the TVList is tracked but
+   * only the time column is accessed (e.g. a time-only scan), which is different from being
+   * untracked.
+   */
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    return null;
+  }
+
   public void addRowLevelFilteredCount(long count) {
     throw new UnsupportedOperationException(
-        "the QueryContext does not support row level filtering");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_THE_QUERYCONTEXT_DOES_NOT_SUPPORT_ROW_LEVEL_FILTERING_D4CD0678);
   }
 }

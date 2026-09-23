@@ -33,17 +33,28 @@ public class Analyzer {
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
+  private final TreeAnalysisMutationJournal mutationJournal;
 
   public Analyzer(
       MPPQueryContext context, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    this(context, partitionFetcher, schemaFetcher, new TreeAnalysisMutationJournal());
+  }
+
+  public Analyzer(
+      MPPQueryContext context,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      TreeAnalysisMutationJournal mutationJournal) {
     this.context = context;
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
+    this.mutationJournal = mutationJournal;
   }
 
   public Analysis analyze(Statement statement) {
     long startTime = System.nanoTime();
-    AnalyzeVisitor visitor = new AnalyzeVisitor(partitionFetcher, schemaFetcher);
+    mutationJournal.prepareForAnalyze();
+    AnalyzeVisitor visitor = new AnalyzeVisitor(partitionFetcher, schemaFetcher, mutationJournal);
     Analysis analysis = null;
     context.setReserveMemoryForSchemaTreeFunc(
         mem -> {
@@ -53,6 +64,9 @@ public class Analyzer {
         });
     try {
       analysis = visitor.process(statement, context);
+    } catch (RuntimeException | Error e) {
+      mutationJournal.rollback();
+      throw e;
     } finally {
       if (analysis != null && context.releaseSchemaTreeAfterAnalyzing()) {
         analysis.setSchemaTree(null);

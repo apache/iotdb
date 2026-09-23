@@ -26,7 +26,11 @@ public class QuickAlignedTVList extends AlignedTVList {
   private final QuickSort policy;
 
   QuickAlignedTVList(List<TSDataType> types) {
-    super(types);
+    this(types, true);
+  }
+
+  QuickAlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
+    super(types, initializeValueColumns);
     policy = new QuickSort(this);
   }
 
@@ -34,6 +38,7 @@ public class QuickAlignedTVList extends AlignedTVList {
   public synchronized int sort() {
     if (!sorted) {
       policy.qsort(0, rowCount - 1);
+      updateSegmentMovedMap();
     }
     sorted = true;
     seqRowCount = rowCount;

@@ -50,7 +50,7 @@ for %%a in (%*) do (
             )
             :: Append IP and port to the ips string
             if !isPort! equ 1 (
-                set "ips=!ips!,!ip!:%%a"
+                set "ips=!ips!,!ip!;%%a"
             )
         )
     )
@@ -72,7 +72,7 @@ for %%a in (%*) do (
            )
             :: Append IP and port to the ips string
             if !isPort! equ 1 (
-              set "ips=!ips!,!ip!:%%a"
+              set "ips=!ips!,!ip!;%%a"
             )
         )
     )
@@ -430,9 +430,15 @@ set dn_data_region_consensus_port_occupied=0
 set cn_internal_port_occupied=0
 set cn_consensus_port_occupied=0
 set local_ports=%dn_rpc_port% %dn_internal_port% %dn_mpp_data_exchange_port% %dn_schema_region_consensus_port% %dn_data_region_consensus_port% %cn_consensus_port% %cn_internal_port%
-for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
+for /f "tokens=1,2,5" %%i in ('netstat /ano') do (
+    set "local_endpoint=%%j"
+    if "!local_endpoint:~0,1!"=="[" (
+      set "local_port=!local_endpoint:*]:=!"
+    ) else (
+      set "local_port=!local_endpoint:*:=!"
+    )
     if %%i==TCP (
-       if %%j==%dn_rpc_port% (
+       if !local_port!==%dn_rpc_port% (
          if !dn_rpc_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
@@ -443,7 +449,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
            )
            set dn_rpc_port_occupied=1
          )
-       ) else if %%j==%dn_internal_port% (
+       ) else if !local_port!==%dn_internal_port% (
          if !dn_internal_port_occupied!==0 (
              set spid=%%k
              call :checkIfIOTDBProcess !spid! is_iotdb
@@ -454,7 +460,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
              )
              set dn_internal_port_occupied=1
         )
-       ) else if %%j==%dn_mpp_data_exchange_port% (
+       ) else if !local_port!==%dn_mpp_data_exchange_port% (
          if !dn_mpp_data_exchange_port_occupied!==0 (
             set spid=%%k
             call :checkIfIOTDBProcess !spid! is_iotdb
@@ -465,7 +471,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
             )
            set dn_mpp_data_exchange_port_occupied=1
          )
-       ) else if %%j==%dn_schema_region_consensus_port% (
+       ) else if !local_port!==%dn_schema_region_consensus_port% (
          if !dn_schema_region_consensus_port_occupied!==0 (
             set spid=%%k
             call :checkIfIOTDBProcess !spid! is_iotdb
@@ -476,7 +482,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
             )
            set dn_schema_region_consensus_port_occupied=1
          )
-       ) else if %%j==%dn_data_region_consensus_port% (
+       ) else if !local_port!==%dn_data_region_consensus_port% (
          if !dn_data_region_consensus_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
@@ -488,7 +494,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
            )
            set dn_data_region_consensus_port_occupied=1
          )
-       ) else if %%j==%cn_internal_port% (
+       ) else if !local_port!==%cn_internal_port% (
          if !cn_internal_port_occupied!==0 (
              set spid=%%k
              call :checkIfIOTDBProcess !spid! is_iotdb
@@ -499,7 +505,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
              )
              set cn_internal_port_occupied=1
          )
-       ) else if %%j==%cn_consensus_port% (
+       ) else if !local_port!==%cn_consensus_port% (
          if !cn_consensus_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
@@ -556,9 +562,16 @@ exit /b
 :remote_ports_check
 for %%e in ("%endpoints:,=" "%") do (
     set counter=0
-    for /f "tokens=1,2 delims=:" %%i in ("%%~e") do (
+    for /f "tokens=1,2 delims=;" %%i in ("%%~e") do (
         set "ip=%%i"
         set "port=%%j"
+        if "!ip:~0,1!"=="[" if "!ip:~-1!"=="]" set "ip=!ip:~1,-1!"
+        set "display_ip=!ip!"
+        if not "!display_ip::=!"=="!display_ip!" (
+          if not "!display_ip:~0,1!"=="[" (
+            set "display_ip=[!display_ip!]"
+          )
+        )
         if "!allpreip!" == "!ip!" (
           set "iplist=!iplist! !port!"
         ) else (
@@ -566,12 +579,12 @@ for %%e in ("%endpoints:,=" "%") do (
           if !counter! EQU 0 (
            set /a counter+=1
            if defined iplist (
-           set "iplist=!iplist!,!ip!:!port!"
+           set "iplist=!iplist!,!display_ip!:!port!"
            ) else (
-           set "iplist=!ip!:!port!"
+           set "iplist=!display_ip!:!port!"
            )
           ) else (
-           set "iplist=!iplist!,!ip!:!port!"
+           set "iplist=!iplist!,!display_ip!:!port!"
           )
         )
 

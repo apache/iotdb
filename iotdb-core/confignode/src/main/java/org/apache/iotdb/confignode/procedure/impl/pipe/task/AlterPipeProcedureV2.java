@@ -20,7 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -30,6 +32,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -38,12 +41,14 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePl
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeat;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -55,9 +60,14 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -155,7 +165,9 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         alterPipeRequest.getPipeName());
 
     final PipeMeta currentPipeMeta =
-        pipeTaskInfo.get().getPipeMetaByPipeName(alterPipeRequest.getPipeName());
+        pipeTaskInfo
+            .get()
+            .getPipeMetaByPipeName(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel);
     currentPipeStaticMeta = currentPipeMeta.getStaticMeta();
     currentPipeRuntimeMeta = currentPipeMeta.getRuntimeMeta();
 
@@ -166,20 +178,34 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     updatedPipeStaticMeta =
         new PipeStaticMeta(
             alterPipeRequest.getPipeName(),
-            System.currentTimeMillis(),
+            pipeTaskInfo.get().generateUniqueCreationTime(alterPipeRequest.getPipeName()),
             new HashMap<>(alterPipeRequest.getExtractorAttributes()),
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
+
+    // The periodic heartbeat may not have reached ConfigNode immediately before this alter. Pull
+    // the current leader checkpoints first so a leader migration does not make the replacement
+    // task start from an older coordinator checkpoint.
+    final Map<Integer, ProgressIndex> latestProgressIndexMap =
+        PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getSourceParameters())
+                == PipeTaskAgent.isRealtimeOnlyPipe(updatedPipeStaticMeta.getSourceParameters())
+            ? collectLatestProgressIndexes(
+                env, currentPipeStaticMeta, currentConsensusGroupId2PipeTaskMeta)
+            : Collections.emptyMap();
 
     final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
     if (currentPipeStaticMeta.isSourceExternal()) {
       currentConsensusGroupId2PipeTaskMeta.forEach(
-          (taskId, pipeTaskMeta) ->
-              updatedConsensusGroupIdToTaskMetaMap.put(
-                  taskId,
-                  new PipeTaskMeta(
-                      pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId())));
+          (taskId, pipeTaskMeta) -> {
+            final PipeTaskMeta updatedPipeTaskMeta =
+                new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId());
+            final ProgressIndex latestProgressIndex = latestProgressIndexMap.get(taskId);
+            if (latestProgressIndex != null) {
+              updatedPipeTaskMeta.updateProgressIndex(latestProgressIndex);
+            }
+            updatedConsensusGroupIdToTaskMetaMap.put(taskId, updatedPipeTaskMeta);
+          });
     } else {
       // data regions & schema regions
       env.getConfigManager()
@@ -210,8 +236,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   // then it will extract all existing data now, not existing data since the
                   // original pipe was created
                   // Similar for "pure realtime"
-                  updatedConsensusGroupIdToTaskMetaMap.put(
-                      regionGroupId.getId(),
+                  final PipeTaskMeta updatedPipeTaskMeta =
                       new PipeTaskMeta(
                           PipeTaskAgent.isRealtimeOnlyPipe(
                                       currentPipeStaticMeta.getSourceParameters())
@@ -229,7 +254,14 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                                       && PipeTaskAgent.isRealtimeOnlyPipe(
                                           updatedPipeStaticMeta.getSourceParameters()))
                               ? PipeTaskMeta.getRevertedLeader(regionLeaderNodeId)
-                              : regionLeaderNodeId));
+                              : regionLeaderNodeId);
+                  final ProgressIndex latestProgressIndex =
+                      latestProgressIndexMap.get(regionGroupId.getId());
+                  if (latestProgressIndex != null) {
+                    updatedPipeTaskMeta.updateProgressIndex(latestProgressIndex);
+                  }
+                  updatedConsensusGroupIdToTaskMetaMap.put(
+                      regionGroupId.getId(), updatedPipeTaskMeta);
                 }
               });
 
@@ -253,9 +285,66 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     // If the pipe's previous status was user stopped, then after the alter operation, the pipe's
     // status remains user stopped; otherwise, it becomes running.
-    if (!pipeTaskInfo.get().isPipeStoppedByUser(alterPipeRequest.getPipeName())) {
+    if (!pipeTaskInfo
+        .get()
+        .isPipeStoppedByUser(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel)) {
       updatedPipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
     }
+  }
+
+  private Map<Integer, ProgressIndex> collectLatestProgressIndexes(
+      final ConfigNodeProcedureEnv env,
+      final PipeStaticMeta pipeStaticMeta,
+      final Map<Integer, PipeTaskMeta> taskMetaMap) {
+    final Set<Integer> leaderNodeIds = new HashSet<>();
+    final Set<Integer> registeredDataNodeIds =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations().keySet();
+    taskMetaMap.forEach(
+        (consensusGroupId, taskMeta) -> {
+          // The ConfigRegion task is led by a ConfigNode, not by a DataNode.
+          if (consensusGroupId != Integer.MIN_VALUE
+              && registeredDataNodeIds.contains(taskMeta.getLeaderNodeId())) {
+            leaderNodeIds.add(taskMeta.getLeaderNodeId());
+          }
+        });
+
+    if (leaderNodeIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    final Map<Integer, TPipeHeartbeatResp> responseMap =
+        env.collectPipeMetaFromDataNodes(leaderNodeIds);
+    final Map<Integer, ProgressIndex> latestProgressIndexMap = new HashMap<>();
+    responseMap.forEach(
+        (dataNodeId, response) -> {
+          if (response == null || !response.isSetPipeMetaList()) {
+            return;
+          }
+
+          final PipeMeta pipeMetaFromDataNode =
+              new PipeHeartbeat(response.getPipeMetaList(), null, null, null, null)
+                  .getPipeMeta(pipeStaticMeta);
+          if (pipeMetaFromDataNode == null) {
+            return;
+          }
+
+          pipeMetaFromDataNode
+              .getRuntimeMeta()
+              .getConsensusGroupId2TaskMetaMap()
+              .forEach(
+                  (consensusGroupId, taskMetaFromDataNode) -> {
+                    final PipeTaskMeta taskMetaFromCoordinator = taskMetaMap.get(consensusGroupId);
+                    if (taskMetaFromCoordinator == null
+                        || taskMetaFromCoordinator.getLeaderNodeId() != dataNodeId) {
+                      return;
+                    }
+                    latestProgressIndexMap.merge(
+                        consensusGroupId,
+                        taskMetaFromDataNode.getProgressIndex(),
+                        ProgressIndex::updateToMinimumEqualOrIsAfterProgressIndex);
+                  });
+        });
+    return latestProgressIndexMap;
   }
 
   @Override
@@ -270,7 +359,9 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new AlterPipePlanV2(updatedPipeStaticMeta, updatedPipeRuntimeMeta));
+              .write(
+                  new AlterPipePlanV2(
+                      currentPipeStaticMeta, updatedPipeStaticMeta, updatedPipeRuntimeMeta));
     } catch (final ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -287,18 +378,42 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(ProcedureMessages.ALTERPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(
-            pipeName,
-            !PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getSourceParameters())
-                    && PipeTaskAgent.isRealtimeOnlyPipe(updatedPipeStaticMeta.getSourceParameters())
-                ? pushSinglePipeMetaToDataNodes4Realtime(pipeName, env)
-                : pushSinglePipeMetaToDataNodes(pipeName, env));
+        parsePushPipeMetaExceptionForPipe(pipeName, pushAlteredPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
           alterPipeRequest.getPipeName(),
           exceptionMessage);
     }
+  }
+
+  private Map<Integer, TPushPipeMetaResp> pushAlteredPipeMetaToDataNodes(
+      final ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+
+    final PipeMeta droppedCurrentPipeMeta =
+        new PipeMeta(currentPipeStaticMeta, currentPipeRuntimeMeta).deepCopy4TaskAgent();
+    droppedCurrentPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    pipeMetaBinaryList.add(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(droppedCurrentPipeMeta).serialize());
+
+    final PipeMeta updatedPipeMeta =
+        pipeTaskInfo.get().getPipeMetaByPipeStaticMeta(updatedPipeStaticMeta);
+    if (!PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getSourceParameters())
+        && PipeTaskAgent.isRealtimeOnlyPipe(updatedPipeStaticMeta.getSourceParameters())
+        && !updatedPipeMeta.getStaticMeta().isSourceExternal()) {
+      updatedPipeMeta
+          .getStaticMeta()
+          .getSourceParameters()
+          .addOrReplaceEquivalentAttributes(
+              new PipeParameters(
+                  Collections.singletonMap(
+                      SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
+    }
+    pipeMetaBinaryList.add(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(updatedPipeMeta).serialize());
+
+    return env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList, this::setPendingDataNodeIds);
   }
 
   @Override
@@ -327,7 +442,9 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new AlterPipePlanV2(currentPipeStaticMeta, currentPipeRuntimeMeta));
+              .write(
+                  new AlterPipePlanV2(
+                      updatedPipeStaticMeta, currentPipeStaticMeta, currentPipeRuntimeMeta));
     } catch (final ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -408,6 +525,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       }
       ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllExtractorAttributes, stream);
     }
+    ReadWriteIOUtils.write(alterPipeRequest.isTableModel, stream);
   }
 
   @Override
@@ -458,6 +576,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       alterPipeRequest.setExtractorAttributes(new HashMap<>());
       alterPipeRequest.isReplaceAllExtractorAttributes = false;
     }
+    alterPipeRequest.isTableModel =
+        byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
@@ -470,6 +590,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     AlterPipeProcedureV2 that = (AlterPipeProcedureV2) o;
     return this.alterPipeRequest.getPipeName().equals(that.alterPipeRequest.getPipeName())
+        && this.alterPipeRequest.isTableModel == that.alterPipeRequest.isTableModel
         && this.alterPipeRequest
             .getExtractorAttributes()
             .toString()
@@ -488,6 +609,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public int hashCode() {
     return Objects.hash(
         alterPipeRequest.getPipeName(),
+        alterPipeRequest.isTableModel,
         alterPipeRequest.getExtractorAttributes(),
         alterPipeRequest.getProcessorAttributes(),
         alterPipeRequest.getConnectorAttributes());

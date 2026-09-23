@@ -21,6 +21,8 @@ package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 import java.util.Map;
@@ -127,18 +129,37 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   }
 
   public void addTableDevice(final String table) {
-    tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
+    tableDeviceNumber.compute(
+        table,
+        (tableName, num) -> {
+          if (Objects.nonNull(num)) {
+            return num + 1;
+          }
+          final ISchemaRegionMetric metric =
+              SchemaEngine.getInstance().getSchemaRegionMetric(schemaRegionId);
+          if (Objects.nonNull(metric)) {
+            metric.bindTableMetrics(table);
+          }
+          return 1L;
+        });
+    schemaEngineStatistics.addTableDevice(table);
   }
 
   public void decreaseTableDevice(final String table, final long decrease) {
     tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
+    schemaEngineStatistics.decreaseTableDevice(table, decrease);
   }
 
   // Reset table device, will alter the schema statistics as well
   public void resetTableDevice(final String table) {
     final long num = tableDeviceNumber.remove(table);
     devicesNumber.addAndGet(-num);
-    schemaEngineStatistics.deleteDevice(num);
+    final ISchemaRegionMetric metric =
+        SchemaEngine.getInstance().getSchemaRegionMetric(schemaRegionId);
+    if (Objects.nonNull(metric)) {
+      metric.unbindTableMetrics(table);
+    }
+    schemaEngineStatistics.resetTableDevice(table);
   }
 
   public void addDevice() {

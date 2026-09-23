@@ -100,7 +100,7 @@ endif()
 # binary / library can immediately drive code generation and linking.
 # ---------------------------------------------------------------------------
 set(_thrift_cmake_args
-        # CMake 4.x rejects Thrift 0.21's cmake_minimum_required(3.0); set policy first.
+        # CMake 4.x rejects Thrift's old cmake_minimum_required(3.x); set policy first.
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
         "-DCMAKE_INSTALL_PREFIX=${_thrift_install}"
         "-DCMAKE_BUILD_TYPE=${_thrift_build_config}"
@@ -138,6 +138,15 @@ endif()
 
 if(WITH_SSL)
     list(APPEND _thrift_cmake_args "-DWITH_OPENSSL=ON")
+    # Build Thrift's TSSLSocket against the same OpenSSL that iotdb_session links
+    # and bundles, so the runtime libraries match. find_package does not set
+    # OPENSSL_ROOT_DIR itself, so derive it from the resolved include dir.
+    if(OPENSSL_ROOT_DIR)
+        list(APPEND _thrift_cmake_args "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+    elseif(OPENSSL_INCLUDE_DIR)
+        get_filename_component(_thrift_ossl_root "${OPENSSL_INCLUDE_DIR}" DIRECTORY)
+        list(APPEND _thrift_cmake_args "-DOPENSSL_ROOT_DIR=${_thrift_ossl_root}")
+    endif()
 else()
     list(APPEND _thrift_cmake_args "-DWITH_OPENSSL=OFF")
 endif()
@@ -152,7 +161,15 @@ if(IOTDB_USE_CXX11_ABI)
 else()
     set(_thrift_abi_stamp "-abidefault")
 endif()
-set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-${_thrift_build_config}-mdll${_thrift_abi_stamp}")
+# Encode WITH_SSL in the stamp: toggling SSL changes WITH_OPENSSL, so a cached
+# build of the opposite flavour must not be reused (otherwise TSSLSocket is
+# missing/extra at link time).
+if(WITH_SSL)
+    set(_thrift_ssl_stamp "-ssl")
+else()
+    set(_thrift_ssl_stamp "-nossl")
+endif()
+set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-${_thrift_build_config}-mdll${_thrift_abi_stamp}${_thrift_ssl_stamp}")
 if(NOT EXISTS "${_thrift_stamp}")
     file(MAKE_DIRECTORY "${_thrift_build}")
     message(STATUS "[Thrift] configuring ${_thrift_dirname}")

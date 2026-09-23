@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.warnings;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.concurrent.GuardedBy;
 
@@ -43,7 +45,7 @@ public class DefaultWarningCollector implements WarningCollector {
 
   @Override
   public synchronized void add(IoTDBWarning warning) {
-    requireNonNull(warning, "warning is null");
+    requireNonNull(warning, DataNodeQueryMessages.EXCEPTION_WARNING_IS_NULL_E5A7C3C1);
     if (warnings.size() < maxWarnings) {
       warnings.add(warning);
     }

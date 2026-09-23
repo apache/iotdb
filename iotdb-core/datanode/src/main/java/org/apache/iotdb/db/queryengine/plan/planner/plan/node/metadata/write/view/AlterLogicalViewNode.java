@@ -148,7 +148,8 @@ public class AlterLogicalViewNode extends PlanNode {
   public List<String> getOutputColumnNames() {
     // TODO: CRTODO, complete this method
     throw new NotImplementedException(
-        "getOutputColumnNames of AlterLogicalViewNode is not implemented");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789);
   }
 
   @Override

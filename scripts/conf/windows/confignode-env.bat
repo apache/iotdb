@@ -19,8 +19,9 @@
 
 @echo off
 
-@REM You can set datanode memory size, example '2G' or '2048M'
-set MEMORY_SIZE=
+@REM You can set confignode memory size, example '2G' or '2048M'
+@REM If the MEMORY_SIZE environment variable is already set, its value will be used.
+if not defined MEMORY_SIZE set MEMORY_SIZE=
 
 @REM true or false
 @REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%CONFIGNODE_CONF%\jmx.password and %{CONFIGNODE_CONF%\jmx.access)

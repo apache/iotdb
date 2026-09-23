@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -73,7 +74,9 @@ public interface Rule<T> {
     private final Optional<PlanNode> transformedPlan;
 
     private Result(Optional<PlanNode> transformedPlan) {
-      this.transformedPlan = requireNonNull(transformedPlan, "transformedPlan is null");
+      this.transformedPlan =
+          requireNonNull(
+              transformedPlan, DataNodeQueryMessages.EXCEPTION_TRANSFORMEDPLAN_IS_NULL_83B2099A);
     }
 
     public Optional<PlanNode> getTransformedPlan() {

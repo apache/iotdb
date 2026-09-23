@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -74,14 +75,15 @@ public class ApplyNode extends TwoChildProcessNode {
       List<Symbol> correlation,
       Node originSubquery) {
     super(id, input, subquery);
-    requireNonNull(subqueryAssignments, "subqueryAssignments is null");
-    requireNonNull(correlation, "correlation is null");
-    requireNonNull(originSubquery, "originSubquery is null");
+    requireNonNull(
+        subqueryAssignments, QueryMessages.EXCEPTION_SUBQUERYASSIGNMENTS_IS_NULL_946CDC43);
+    requireNonNull(correlation, QueryMessages.EXCEPTION_CORRELATION_IS_NULL_F8327EAD);
+    requireNonNull(originSubquery, QueryMessages.EXCEPTION_ORIGINSUBQUERY_IS_NULL_8EFEB8D5);
 
     if (input != null) {
       checkArgument(
           input.getOutputSymbols().containsAll(correlation),
-          "Input does not contain symbols from correlation");
+          QueryMessages.EXCEPTION_INPUT_DOES_NOT_CONTAIN_SYMBOLS_FROM_CORRELATION_1B3DB7BF);
     }
 
     this.subqueryAssignments = subqueryAssignments;
@@ -124,7 +126,9 @@ public class ApplyNode extends TwoChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.size() == 2, "expected newChildren to contain 2 nodes");
+    checkArgument(
+        newChildren.size() == 2,
+        QueryMessages.EXCEPTION_EXPECTED_NEWCHILDREN_TO_CONTAIN_2_NODES_25FE7927);
     return new ApplyNode(
         getPlanNodeId(),
         newChildren.get(0),

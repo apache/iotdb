@@ -90,7 +90,10 @@ public class WALWriter extends LogWriter {
 
   private void writeMetadata(ByteBuffer buffer) throws IOException {
     buffer.flip();
-    logChannel.write(buffer);
+    // A successful seal is the recovery boundary for switching to the next WAL file.
+    while (buffer.hasRemaining()) {
+      logChannel.write(buffer);
+    }
   }
 
   @Override

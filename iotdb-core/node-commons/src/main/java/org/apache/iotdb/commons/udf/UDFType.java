@@ -108,8 +108,10 @@ public enum UDFType {
       }
     }
     throw new IllegalArgumentException(
-        "Unknown UDFType:"
-            + String.format("%8s", Integer.toBinaryString(readByte & 0xFF)).replace(' ', '0'));
+        CommonMessages.EXCEPTION_UNKNOWN_UDFTYPE_9A8D1B23
+            + String.format(
+                    CommonMessages.EXCEPTION_8S_5F5F831F, Integer.toBinaryString(readByte & 0xFF))
+                .replace(' ', '0'));
   }
 
   public boolean isTreeModel() {

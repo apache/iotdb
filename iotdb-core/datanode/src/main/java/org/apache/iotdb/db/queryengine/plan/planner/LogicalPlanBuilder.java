@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowReceiversNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -144,7 +145,8 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder(Analysis analysis, MPPQueryContext context) {
     this.analysis = analysis;
-    Validate.notNull(context, "Query context cannot be null");
+    Validate.notNull(
+        context, DataNodeQueryMessages.EXCEPTION_QUERY_CONTEXT_CANNOT_BE_NULL_C4809234);
     this.context = context;
   }
 
@@ -496,11 +498,11 @@ public class LogicalPlanBuilder {
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    List<SortItem> sortItemList = queryStatement.getSortItemList();
-
-    if (sortItemList.isEmpty()) {
-      sortItemList = new ArrayList<>();
-    }
+    // DEVICE and TIME are implicit merge keys for DeviceView. Append them to a planning-owned copy
+    // so rebuilding the plan after a dispatch failure does not mutate the parsed statement or
+    // accumulate duplicate keys. Keep the complete parameter in Analysis because a downstream
+    // SortNode must use the same implicit keys without reading a mutated QueryStatement.
+    List<SortItem> sortItemList = new ArrayList<>(queryStatement.getSortItemList());
     if (!queryStatement.isOrderByDevice()) {
       sortItemList.add(new SortItem(OrderByKey.DEVICE, Ordering.ASC));
     }
@@ -509,6 +511,7 @@ public class LogicalPlanBuilder {
     }
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
+    analysis.setMergeOrderParameter(orderByParameter);
 
     long limitValue =
         queryStatement.hasOffset()
@@ -1328,6 +1331,44 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  public LogicalPlanBuilder planShowReceivers(Analysis analysis) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root =
+          planSingleShowReceivers(dataNodeLocations.get(0))
+              .planSort(analysis.getMergeOrderParameter())
+              .getRoot();
+    } else {
+      List<String> outputColumns = new ArrayList<>();
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              analysis.getMergeOrderParameter(),
+              outputColumns);
+
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              mergeSortNode.addChild(
+                  this.planSingleShowReceivers(dataNodeLocation)
+                      .planSort(analysis.getMergeOrderParameter())
+                      .getRoot()));
+      outputColumns.addAll(mergeSortNode.getChildren().get(0).getOutputColumnNames());
+      this.root = mergeSortNode;
+    }
+
+    ColumnHeaderConstant.showReceiversColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  private LogicalPlanBuilder planSingleShowReceivers(TDataNodeLocation dataNodeLocation) {
+    this.root = new ShowReceiversNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+    return this;
+  }
+
   public LogicalPlanBuilder planShowDiskUsage(Analysis analysis, PartialPath pathPattern) {
     List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
@@ -1430,7 +1471,10 @@ public class LogicalPlanBuilder {
 
     Set<Expression> orderByExpressions = analysis.getOrderByExpressions();
     updateTypeProvider(orderByExpressions);
-    OrderByParameter orderByParameter = new OrderByParameter(queryStatement.getSortItemList());
+    OrderByParameter orderByParameter =
+        queryStatement.isAlignByDevice()
+            ? analysis.getMergeOrderParameter()
+            : new OrderByParameter(queryStatement.getSortItemList());
     if (orderByParameter.isEmpty()) {
       return this;
     }

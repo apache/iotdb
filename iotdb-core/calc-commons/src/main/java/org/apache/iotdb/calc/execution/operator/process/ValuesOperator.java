@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import com.google.common.collect.ImmutableList;
@@ -43,8 +44,9 @@ public class ValuesOperator implements Operator {
   private long currentRetainedSize;
 
   public ValuesOperator(CommonOperatorContext operatorContext, List<TsBlock> tsBlocks) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    requireNonNull(tsBlocks, "tsBlocks is null");
+    this.operatorContext =
+        requireNonNull(operatorContext, CalcMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
+    requireNonNull(tsBlocks, CalcMessages.EXCEPTION_TSBLOCKS_IS_NULL_02287FD8);
 
     this.tsBlocks = ImmutableList.copyOf(tsBlocks).iterator();
 

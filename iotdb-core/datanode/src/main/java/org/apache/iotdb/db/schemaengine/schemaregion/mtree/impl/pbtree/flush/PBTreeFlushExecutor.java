@@ -27,6 +27,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IM
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,11 @@ public class PBTreeFlushExecutor {
     }
     if (!exceptions.isEmpty()) {
       throw new MetadataException(
-          exceptions.stream().map(Exception::getMessage).reduce("", (a, b) -> a + ", " + b));
+          exceptions.stream()
+              .map(Exception::getMessage)
+              .reduce(
+                  DataNodeSchemaMessages.EMPTY_MESSAGE,
+                  (a, b) -> a + DataNodeSchemaMessages.EXCEPTION_COMMA_50AD1C01 + b));
     }
   }
 
@@ -120,6 +125,7 @@ public class PBTreeFlushExecutor {
           DataNodeSchemaMessages.IO_EXCEPTION_UPDATING_SG_MNODE,
           updatedStorageGroupMNode.getFullPath(),
           e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw e;
     }
   }

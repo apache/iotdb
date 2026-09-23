@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
@@ -51,6 +53,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -108,7 +111,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     }
 
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
@@ -122,10 +125,13 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
           ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy4TaskAgent())
           : null;
     } catch (final Exception e) {
-      return new TPushPipeMetaRespExceptionMessage(
-          pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-          e.getMessage(),
-          System.currentTimeMillis());
+      final TPushPipeMetaRespExceptionMessage exceptionMessage =
+          new TPushPipeMetaRespExceptionMessage(
+              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+              e.getMessage(),
+              System.currentTimeMillis());
+      exceptionMessage.setCreationTime(pipeMetaFromCoordinator.getStaticMeta().getCreationTime());
+      return exceptionMessage;
     }
   }
 
@@ -178,10 +184,13 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         }
 
         final ProgressIndex progressIndex = groupId2TaskMetaMap.get(regionId).getProgressIndex();
-        if (progressIndex instanceof MetaProgressIndex) {
-          if (((MetaProgressIndex) progressIndex).getIndex() + 1
-              < listeningQueueNewFirstIndex.get()) {
-            listeningQueueNewFirstIndex.set(((MetaProgressIndex) progressIndex).getIndex() + 1);
+        final Optional<MetaProgressIndex> metaProgressIndex =
+            Objects.isNull(progressIndex)
+                ? Optional.empty()
+                : progressIndex.getProgressIndexByType(MetaProgressIndex.class);
+        if (metaProgressIndex.isPresent()) {
+          if (metaProgressIndex.get().getIndex() + 1 < listeningQueueNewFirstIndex.get()) {
+            listeningQueueNewFirstIndex.set(metaProgressIndex.get().getIndex() + 1);
           }
         } else {
           // Do not clear "minimumProgressIndex"s related queues to avoid clearing
@@ -216,6 +225,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
+    final List<Integer> pipeDegradedStatusList = new ArrayList<>();
+    final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -230,11 +241,15 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
         pipeRemainingEventCountList.add(remainingEventCount);
         pipeRemainingTimeList.add(estimatedRemainingTime);
+        pipeDegradedStatusList.add(PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_UNKNOWN);
+        pipeRecentFailureList.add(
+            ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
 
         logger.ifPresent(
             l ->
                 l.info(
-                    "Reporting pipe meta: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                    ManagerMessages
+                        .LOG_REPORTING_PIPE_META_ARG_REMAININGEVENTCOUNT_ARG_ESTIMATEDREMAININGTIME_ARG_E2727CB4,
                     pipeMeta.coreReportMessage(),
                     remainingEventCount,
                     estimatedRemainingTime));
@@ -246,6 +261,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+    resp.setPipeDegradedStatusList(pipeDegradedStatusList);
+    resp.setPipeRecentFailureList(pipeRecentFailureList);
   }
 
   @Override

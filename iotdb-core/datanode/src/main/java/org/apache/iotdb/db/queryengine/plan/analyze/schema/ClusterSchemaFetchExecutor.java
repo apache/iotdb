@@ -61,6 +61,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+
 class ClusterSchemaFetchExecutor {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -265,7 +267,9 @@ class ClusterSchemaFetchExecutor {
       ExecutionResult executionResult = executionStatement(queryId, fetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new QuerySchemaFetchFailedException(
-            String.format("Fetch Schema failed, because %s", executionResult.status.getMessage()),
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_FETCH_SCHEMA_FAILED_BECAUSE_S_BE584DCE,
+                executionResult.status.getMessage()),
             executionResult.status.getCode());
       }
       IQueryExecution queryExecution = coordinator.getQueryExecution(queryId);
@@ -285,7 +289,10 @@ class ClusterSchemaFetchExecutor {
             } catch (IoTDBException e) {
               t = e;
               throw new QuerySchemaFetchFailedException(
-                  String.format("Fetch Schema failed: %s", e.getMessage()), e.getErrorCode());
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_FETCH_SCHEMA_FAILED_S_1C7B0050,
+                      e.getMessage()),
+                  e.getErrorCode());
             }
             if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
               break;
@@ -331,6 +338,8 @@ class ClusterSchemaFetchExecutor {
         // for data from old version
         ClusterSchemaTree deserializedSchemaTree = ClusterSchemaTree.deserialize(inputStream);
         if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializedSchemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left.size());
           context.reserveMemoryForSchemaTree(deserializedSchemaTree.ramBytesUsed());
         }
         resultSchemaTree.mergeSchemaTree(deserializedSchemaTree);
@@ -341,14 +350,20 @@ class ClusterSchemaFetchExecutor {
             context.reserveMemoryForSchemaTree(memCost);
           }
         }
+        long measurementCountBeforeDeserialization = deserializer.getMeasurementCount();
         deserializer.deserializeFromBatch(inputStream);
+        if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializer.getMeasurementCount() - measurementCountBeforeDeserialization);
+        }
         if (type == 3) {
           // 'type == 3' indicates this batch is finished
           resultSchemaTree.mergeSchemaTree(deserializer.finish());
         }
       } else {
         throw new RuntimeException(
-            new MetadataException("Failed to fetch schema because of unrecognized data"));
+            new MetadataException(
+                DataNodeQueryMessages.FAILED_TO_FETCH_SCHEMA_BECAUSE_OF_UNRECOGNIZED_DATA));
       }
     } catch (MemoryNotEnoughException e) {
       throw e;

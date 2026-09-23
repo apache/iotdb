@@ -19,7 +19,7 @@
 # Apache IoTDB - C++ Session Client (top-level CMake build)
 # =============================================================================
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(iotdb_session CXX C)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -78,7 +78,7 @@ if(NOT MSVC)
     file(WRITE "${_iotdb_cxx11_abi_stamp}" "${_iotdb_cxx11_abi_stamp_value}")
 endif()
 
-option(WITH_SSL "Build with OpenSSL support" OFF)
+option(WITH_SSL "Build with OpenSSL support" ON)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
 set(IOTDB_SESSION_VERSION "0.0.0"
@@ -97,7 +97,7 @@ else()
 endif()
 set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
-set(THRIFT_VERSION "0.21.0"
+set(THRIFT_VERSION "0.24.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
 
 if(WIN32)
@@ -120,6 +120,7 @@ include(FetchBoost)        # -> BOOST_INCLUDE_DIR (Thrift build only)
 include(FetchBuildTools)
 if(WITH_SSL)
     include(FetchOpenSSL)
+    include(InstallOpenSSLRuntime)
 endif()
 include(FetchThrift)
 include(GenerateThriftSources)
@@ -142,6 +143,22 @@ if(UNIX AND NOT APPLE)
     set_target_properties(iotdb_session PROPERTIES
             VERSION "${IOTDB_SESSION_VERSION}"
             SOVERSION "${IOTDB_SESSION_SOVERSION}")
+endif()
+
+# When SSL is on we bundle the OpenSSL shared libraries next to libiotdb_session
+# in the package lib/ directory. Give the library an $ORIGIN-relative runtime
+# search path so the loader finds them without LD_LIBRARY_PATH / install_name
+# tweaks, keeping the SDK self-contained.
+if(WITH_SSL)
+    if(APPLE)
+        set_target_properties(iotdb_session PROPERTIES
+                BUILD_RPATH "@loader_path"
+                INSTALL_RPATH "@loader_path")
+    elseif(UNIX)
+        set_target_properties(iotdb_session PROPERTIES
+                BUILD_RPATH "$ORIGIN"
+                INSTALL_RPATH "$ORIGIN")
+    endif()
 endif()
 
 add_dependencies(iotdb_session iotdb_thrift_external iotdb_thrift_codegen)
@@ -200,6 +217,7 @@ include(GNUInstallDirs)
 set(IOTDB_PUBLIC_HEADERS
         Export.h
         SessionConfig.h
+        SslConfig.h
         Session.h
         Common.h
         Optional.h
@@ -222,6 +240,12 @@ install(TARGETS iotdb_session
         RUNTIME DESTINATION lib
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
+
+# Ship the OpenSSL shared libraries we link against next to iotdb_session so the
+# packaged SDK is self-contained on machines without a system OpenSSL.
+if(WITH_SSL)
+    iotdb_install_openssl_runtime()
+endif()
 
 foreach(_hdr IN LISTS IOTDB_PUBLIC_HEADERS)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/include/${_hdr}"
@@ -261,6 +285,17 @@ set(IOTDB_SESSION_CI_BUILD_ID "$ENV{GITHUB_RUN_ID}")
 if(NOT IOTDB_SESSION_CI_BUILD_ID)
     set(IOTDB_SESSION_CI_BUILD_ID "local")
 endif()
+if(WITH_SSL)
+    set(IOTDB_SESSION_OPENSSL_VERSION "${OPENSSL_VERSION}")
+    if(IOTDB_OPENSSL_FROM_SOURCE)
+        set(IOTDB_SESSION_OPENSSL_PROVIDER "pinned-source")
+    else()
+        set(IOTDB_SESSION_OPENSSL_PROVIDER "system")
+    endif()
+else()
+    set(IOTDB_SESSION_OPENSSL_VERSION "disabled")
+    set(IOTDB_SESSION_OPENSSL_PROVIDER "disabled")
+endif()
 file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
         "${IOTDB_SESSION_VERSION}\n")
 file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
@@ -273,6 +308,8 @@ file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "cmake.generator=${CMAKE_GENERATOR}\n"
         "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
         "with.ssl=${WITH_SSL}\n"
+        "openssl.version=${IOTDB_SESSION_OPENSSL_VERSION}\n"
+        "openssl.provider=${IOTDB_SESSION_OPENSSL_PROVIDER}\n"
         "iotdb.offline=${IOTDB_OFFLINE}\n"
         "iotdb.use.cxx11.abi=${IOTDB_USE_CXX11_ABI}\n"
         "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")

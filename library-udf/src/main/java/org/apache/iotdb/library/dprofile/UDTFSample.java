@@ -20,8 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.LTThreeBuckets;
-import org.apache.iotdb.library.util.NoNumberException;
-import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -59,6 +58,10 @@ public class UDTFSample implements UDTF {
   private int num = 0; // number of points already sampled
   private Random random;
   private Type dataType;
+  private TypeServices.NumericValueWriter numericValueWriter;
+  private TypeServices.NumericRowReader numericRowReader;
+  private TypeServices.RowValueReader valueReader;
+  private TypeServices.RowValueWriter valueWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -83,6 +86,12 @@ public class UDTFSample implements UDTF {
     this.k = parameters.getIntOrDefault("k", 1);
     this.num = 0;
     this.dataType = parameters.getDataType(0);
+    numericValueWriter =
+        TypeServices.NUMERIC_VALUE_WRITER_SERVICE.call(TypeServices.toReadType(dataType));
+    numericRowReader =
+        TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
+    valueReader = TypeServices.rowValueReader(dataType);
+    valueWriter = TypeServices.rowValueWriter(dataType);
     String methodIn = parameters.getStringOrDefault("method", METHOD_RESERVOIR);
     if ("triangle".equalsIgnoreCase(methodIn)) {
       this.method = Method.TRIANGLE;
@@ -92,6 +101,8 @@ public class UDTFSample implements UDTF {
       this.method = Method.RESERVOIR;
     }
     if (this.method == Method.ISOMETRIC || this.method == Method.TRIANGLE) {
+      this.samples = null;
+      this.random = null;
       configurations
           .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
           .setOutputDataType(parameters.getDataType(0));
@@ -101,10 +112,7 @@ public class UDTFSample implements UDTF {
           .setOutputDataType(parameters.getDataType(0));
       this.samples = new Pair[this.k];
       this.random = new Random();
-      return;
     }
-    this.samples = null;
-    this.random = null;
   }
 
   @Override
@@ -120,7 +128,7 @@ public class UDTFSample implements UDTF {
       x = random.nextInt(num + 1);
     }
     if (x < this.k) {
-      Object v = Util.getValueAsObject(row);
+      Object v = valueReader.read(row);
       Long t = row.getTime();
       this.samples[x] = Pair.of(t, v);
     }
@@ -138,10 +146,9 @@ public class UDTFSample implements UDTF {
         if (row.isNull(0)) {
           continue;
         }
-        long time = row.getTime();
-        double data = Util.getValueAsDouble(row);
+        double data = numericRowReader.read(row);
         if (Double.isFinite(data)) {
-          input.add(Pair.of(time, data));
+          input.add(Pair.of(row.getTime(), data));
         }
       }
       int n = input.size();
@@ -153,40 +160,19 @@ public class UDTFSample implements UDTF {
           // The first and last element will always be sampled so the buckets is k - 2
           List<Pair<Long, Double>> output = LTThreeBuckets.sorted(input, k - 2);
           for (Pair<Long, Double> p : output) {
-            switch (dataType) {
-              case INT32:
-                collector.putInt(p.getLeft(), p.getRight().intValue());
-                break;
-              case INT64:
-                collector.putLong(p.getLeft(), p.getRight().longValue());
-                break;
-              case FLOAT:
-                collector.putFloat(p.getLeft(), p.getRight().floatValue());
-                break;
-              case DOUBLE:
-                collector.putDouble(p.getLeft(), p.getRight());
-                break;
-              case TIMESTAMP:
-              case DATE:
-              case BLOB:
-              case BOOLEAN:
-              case STRING:
-              case TEXT:
-              default:
-                throw new NoNumberException();
-            }
+            numericValueWriter.write(p.getLeft(), p.getRight(), collector);
           }
         } else { // For corner case of k == 1 and k == 2
           Pair<Long, Double> row = input.get(0); // Put first element
-          putNumericValue(collector, row.getLeft(), row.getRight());
+          numericValueWriter.write(row.getLeft(), row.getRight(), collector);
           if (k == 2) {
             row = input.get(n - 1); // Put last element
-            putNumericValue(collector, row.getLeft(), row.getRight());
+            numericValueWriter.write(row.getLeft(), row.getRight(), collector);
           }
         }
       } else { // when k is larger than series length, output all points
         for (Pair<Long, Double> row : input) {
-          putNumericValue(collector, row.getLeft(), row.getRight());
+          numericValueWriter.write(row.getLeft(), row.getRight(), collector);
         }
       }
     } else {
@@ -206,11 +192,11 @@ public class UDTFSample implements UDTF {
         for (long i = 0; i < this.k; i++) {
           long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
           Row row = validRows.get((int) j);
-          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
         }
       } else { // when k is larger than series length, output all points
         for (Row row : validRows) {
-          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
         }
       }
     }
@@ -223,33 +209,8 @@ public class UDTFSample implements UDTF {
       Arrays.sort(samples, 0, m);
       for (int i = 0; i < m; i++) {
         Pair<Long, Object> p = samples[i];
-        Util.putValue(pc, dataType, p.getLeft(), p.getRight());
+        valueWriter.write(pc, p.getLeft(), p.getRight());
       }
-    }
-  }
-
-  private void putNumericValue(PointCollector collector, long time, double value) throws Exception {
-    switch (dataType) {
-      case INT32:
-        collector.putInt(time, (int) value);
-        break;
-      case INT64:
-        collector.putLong(time, (long) value);
-        break;
-      case FLOAT:
-        collector.putFloat(time, (float) value);
-        break;
-      case DOUBLE:
-        collector.putDouble(time, value);
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-      default:
-        throw new NoNumberException();
     }
   }
 }

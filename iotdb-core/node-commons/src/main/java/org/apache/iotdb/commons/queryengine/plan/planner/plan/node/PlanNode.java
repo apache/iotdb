@@ -54,7 +54,7 @@ public abstract class PlanNode implements IConsensusRequest {
   protected PlanNode() {}
 
   protected PlanNode(PlanNodeId id) {
-    requireNonNull(id, "id is null");
+    requireNonNull(id, QueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
     this.id = id;
   }
 
@@ -77,6 +77,14 @@ public abstract class PlanNode implements IConsensusRequest {
   public abstract List<PlanNode> getChildren();
 
   public abstract void addChild(PlanNode child);
+
+  /** Releases fields that are no longer needed after the target region has been determined. */
+  public void clearUselessFieldsAfterRouting() {
+    final List<PlanNode> children = getChildren();
+    if (children != null) {
+      children.forEach(PlanNode::clearUselessFieldsAfterRouting);
+    }
+  }
 
   /**
    * If this plan node has to be serialized or deserialized, override this method. If this method is

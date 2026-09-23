@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAligne
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -248,6 +250,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       isRecovering = false;
     } catch (IOException e) {
       logger.error(DataNodeSchemaMessages.CANNOT_RECOVER_ALL_MTREE, storageGroupFullPath, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
     initialized = true;
   }
@@ -293,6 +296,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             SchemaConstant.METADATA_LOG_DESCRIPTION,
             e.getMessage(),
             e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       }
     }
   }
@@ -340,8 +344,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
-      logWriter.write(schemaRegionPlan);
-      regionStatistics.setMLogLength(logWriter.position());
+      try {
+        logWriter.write(schemaRegionPlan);
+        regionStatistics.setMLogLength(logWriter.position());
+      } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+        throw e;
+      }
     }
   }
 
@@ -358,6 +367,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         }
       } catch (IOException e) {
         logger.error(DataNodeSchemaMessages.CANNOT_FORCE_MLOG, schemaRegionId, e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       }
     }
   }
@@ -393,6 +403,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         logger.info(DataNodeSchemaMessages.MLOG_RECOVERY_CHECK_POINT, mLogOffset);
       } catch (IOException e) {
         logger.warn(DataNodeSchemaMessages.CANNOT_GET_MLOG_CHECKPOINT, e.getMessage());
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       }
       try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
@@ -427,6 +438,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       mLogReader.skip(offset);
     } catch (IOException e) {
       logger.error(DataNodeSchemaMessages.FAILED_TO_SKIP_MLOG, offset, schemaRegionDirPath, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
     while (mLogReader.hasNext()) {
       plan = mLogReader.next();
@@ -467,6 +479,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       initialized = false;
     } catch (IOException e) {
       logger.error(DataNodeSchemaMessages.CANNOT_CLOSE_METADATA_LOG_WRITER, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
     isClearing = false;
   }
@@ -491,7 +504,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     clear();
 
     // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+    SchemaRegionUtils.deleteSchemaRegionFolder(
+        schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       SystemInfo.getInstance()
@@ -583,6 +597,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     } catch (IOException | MetadataException e) {
       logger.error(
           DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       try {
         initialized = false;
         isRecovering = true;

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.AbstractO
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -59,17 +61,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -299,7 +299,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!aggregatorName2OutputNameMap.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The aggregator and output name %s is invalid.", aggregatorName2OutputNameMap));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_S_IS_INVALID_BC22CF92,
+              aggregatorName2OutputNameMap));
     }
 
     intermediateResultName2OperatorSupplierMap.keySet().retainAll(declaredIntermediateResultSet);
@@ -307,7 +309,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!declaredIntermediateResultSet.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The needed intermediate values %s are not defined.", declaredIntermediateResultSet));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_NEEDED_INTERMEDIATE_VALUES_S_ARE_NOT_DEFINED_3FF0C52D,
+              declaredIntermediateResultSet));
     }
 
     // Set up column name strings
@@ -326,7 +330,10 @@ public class AggregateProcessor implements PipeProcessor {
         agent.getConfiguredProcessor(processorName, parameters, configuration);
     if (!(windowProcessor instanceof AbstractWindowingProcessor)) {
       throw new PipeException(
-          String.format("The processor %s is not a windowing processor.", processorName));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_PROCESSOR_S_IS_NOT_A_WINDOWING_PROCESSOR_EA5B59BA,
+              processorName));
     }
     windowingProcessor = (AbstractWindowingProcessor) windowProcessor;
 
@@ -343,17 +350,15 @@ public class AggregateProcessor implements PipeProcessor {
 
     // Restore window state
     final ProgressIndex index = pipeTaskMeta.getProgressIndex();
-    if (index == MinimumProgressIndex.INSTANCE) {
+    if (Objects.isNull(index) || index == MinimumProgressIndex.INSTANCE) {
       return;
     }
-    if (!(index instanceof TimeWindowStateProgressIndex)) {
-      throw new PipeException(
-          String.format(
-              "The aggregate processor does not support progressIndexType %s", index.getType()));
-    }
-
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
-        (TimeWindowStateProgressIndex) index;
+        index.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
+    // A pipe altered from another processor may not have window state yet.
+    if (Objects.isNull(timeWindowStateProgressIndex)) {
+      return;
+    }
     for (final Map.Entry<String, Pair<Long, ByteBuffer>> entry :
         timeWindowStateProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
       final AtomicReference<TimeSeriesRuntimeState> stateReference =
@@ -464,54 +469,7 @@ public class AggregateProcessor implements PipeProcessor {
       synchronized (stateReference) {
         final TimeSeriesRuntimeState state = stateReference.get();
         try {
-          switch (row.getDataType(index)) {
-            case BOOLEAN:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getBoolean(index), outputMinReportIntervalMilliseconds);
-              break;
-            case INT32:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getInt(index), outputMinReportIntervalMilliseconds);
-              break;
-            case DATE:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getDate(index), outputMinReportIntervalMilliseconds);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getLong(index), outputMinReportIntervalMilliseconds);
-              break;
-            case FLOAT:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getFloat(index), outputMinReportIntervalMilliseconds);
-              break;
-            case DOUBLE:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getDouble(index), outputMinReportIntervalMilliseconds);
-              break;
-            case TEXT:
-            case STRING:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
-              break;
-            case BLOB:
-            case OBJECT:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getBinary(index), outputMinReportIntervalMilliseconds);
-              break;
-            default:
-              throw new UnsupportedOperationException(
-                  String.format("The type %s is not supported", row.getDataType(index)));
-          }
+          result = state.updateWindows(timestamp, row, index, outputMinReportIntervalMilliseconds);
           if (Objects.nonNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
             if (Objects.nonNull(result.getRight())) {
@@ -530,30 +488,29 @@ public class AggregateProcessor implements PipeProcessor {
   public void process(
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
-    try {
-      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-        final AtomicReference<Exception> ex = new AtomicReference<>();
-        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-            .consumeTabletInsertionEventsWithRetry(
-                event -> {
-                  try {
-                    process(event, eventCollector);
-                  } catch (Exception e) {
-                    ex.set(e);
-                  }
-                },
-                "AggregateProcessor::process");
-        if (ex.get() != null) {
-          throw ex.get();
-        }
-      } else {
+    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .consumeTabletInsertionEventsWithRetry(
+              event -> {
+                try {
+                  process(event, eventCollector);
+                } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                  throw e;
+                } catch (Exception e) {
+                  throw new PipeException(e.getMessage(), e);
+                }
+              },
+              "AggregateProcessor::process");
+      tsFileInsertionEvent.close();
+    } else {
+      try {
         for (final TabletInsertionEvent tabletInsertionEvent :
             tsFileInsertionEvent.toTabletInsertionEvents()) {
           process(tabletInsertionEvent, eventCollector);
         }
+      } finally {
+        tsFileInsertionEvent.close();
       }
-    } finally {
-      tsFileInsertionEvent.close();
     }
     // The timeProgressIndex shall only be reported by the output events
     // whose progressIndex is bounded with tablet events
@@ -655,6 +612,7 @@ public class AggregateProcessor implements PipeProcessor {
     final MeasurementSchema[] measurementSchemaList =
         new MeasurementSchema[columnNameStringList.length];
     final TSDataType[] valueColumnTypes = new TSDataType[columnNameStringList.length];
+    final Type[] valueTypes = new Type[columnNameStringList.length];
     final Object[] valueColumns = new Object[columnNameStringList.length];
     final BitMap[] bitMaps = new BitMap[columnNameStringList.length];
 
@@ -677,88 +635,19 @@ public class AggregateProcessor implements PipeProcessor {
             measurementSchemaList[columnIndex] =
                 new MeasurementSchema(
                     columnNameStringList[columnIndex], valueColumnTypes[columnIndex]);
-            switch (valueColumnTypes[columnIndex]) {
-              case BOOLEAN:
-                valueColumns[columnIndex] = new boolean[distinctOutputs.size()];
-                break;
-              case INT32:
-                valueColumns[columnIndex] = new int[distinctOutputs.size()];
-                break;
-              case DATE:
-                valueColumns[columnIndex] = new LocalDate[distinctOutputs.size()];
-                break;
-              case INT64:
-              case TIMESTAMP:
-                valueColumns[columnIndex] = new long[distinctOutputs.size()];
-                break;
-              case FLOAT:
-                valueColumns[columnIndex] = new float[distinctOutputs.size()];
-                break;
-              case DOUBLE:
-                valueColumns[columnIndex] = new double[distinctOutputs.size()];
-                break;
-              case TEXT:
-              case BLOB:
-              case OBJECT:
-              case STRING:
-                valueColumns[columnIndex] = new Binary[distinctOutputs.size()];
-                break;
-              default:
-                throw new UnsupportedOperationException(
-                    String.format(
-                        "The output tablet does not support column type %s",
-                        valueColumnTypes[columnIndex]));
-            }
+            valueTypes[columnIndex] = getOutputTabletType(valueColumnTypes[columnIndex]);
+            valueColumns[columnIndex] =
+                TypeServices.Pipe.AGGREGATE_TABLET_COLUMN_ALLOCATOR_SERVICE
+                    .call(valueTypes[columnIndex])
+                    .apply(distinctOutputs.size());
           }
           // Fill in values
-          switch (valueColumnTypes[columnIndex]) {
-            case BOOLEAN:
-              ((boolean[]) valueColumns[columnIndex])[rowIndex] =
-                  (boolean) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case INT32:
-              ((int[]) valueColumns[columnIndex])[rowIndex] =
-                  (int) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case DATE:
-              ((LocalDate[]) valueColumns[columnIndex])[rowIndex] =
-                  (LocalDate) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case INT64:
-            case TIMESTAMP:
-              ((long[]) valueColumns[columnIndex])[rowIndex] =
-                  (long) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case FLOAT:
-              ((float[]) valueColumns[columnIndex])[rowIndex] =
-                  (float) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case DOUBLE:
-              ((double[]) valueColumns[columnIndex])[rowIndex] =
-                  (double) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case TEXT:
-            case STRING:
-              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
-                  aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
-                          instanceof Binary
-                      ? (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
-                      : new Binary(
-                          (String)
-                              aggregatedResults.get(columnNameStringList[columnIndex]).getRight(),
-                          TSFileConfig.STRING_CHARSET);
-              break;
-            case BLOB:
-            case OBJECT:
-              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
-                  (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            default:
-              throw new UnsupportedOperationException(
-                  String.format(
-                      "The output tablet does not support column type %s",
-                      valueColumnTypes[columnIndex]));
-          }
+          TypeServices.Pipe.AGGREGATE_TABLET_COLUMN_VALUE_WRITER_SERVICE
+              .call(valueTypes[columnIndex])
+              .write(
+                  valueColumns[columnIndex],
+                  rowIndex,
+                  aggregatedResults.get(columnNameStringList[columnIndex]).getRight());
         } else {
           bitMaps[columnIndex].mark(rowIndex);
         }
@@ -850,6 +739,15 @@ public class AggregateProcessor implements PipeProcessor {
                     filteredBitMaps,
                     filteredColumnNameStringList));
       }
+    }
+  }
+
+  private static Type getOutputTabletType(final TSDataType dataType) {
+    try {
+      return Type.fromTsDataType(dataType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new UnsupportedOperationException(
+          String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, dataType));
     }
   }
 

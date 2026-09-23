@@ -185,7 +185,7 @@ public:
     case TSDataType::BLOB:
       return !stringV.is_initialized();
     case TSDataType::DATE:
-      return !dateV.is_initialized();
+      return !dateV.is_initialized() || dateV.value().is_not_a_date();
     default:
       return true;
     }
@@ -246,6 +246,7 @@ public:
   bool isMarked(size_t position) const;
   bool isAllUnmarked() const;
   bool isAllMarked() const;
+  bool isRangeAllMarked(size_t start, size_t length) const;
   const std::vector<char>& getByteArray() const;
   size_t getSize() const;
 

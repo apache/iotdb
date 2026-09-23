@@ -792,3 +792,33 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
   REQUIRE(ts_session_delete_timeseries(g_session, pblob) == TS_OK);
   REQUIRE(ts_session_delete_database(g_session, sg) == TS_OK);
 }
+
+TEST_CASE("C API - Query DATE 1000-01-01", "[c_dateMinYear]") {
+  CaseReporter cr("c_dateMinYear");
+
+  const char* path = "root.ctest.d1.s_date_min";
+  ensureTimeseries(g_session, path, TS_TYPE_DATE, TS_ENCODING_PLAIN, TS_COMPRESSION_SNAPPY);
+
+  const char* deviceId = "root.ctest.d1";
+  const char* measurements[] = {"s_date_min"};
+  TSDataType_C types[] = {TS_TYPE_DATE};
+  TSDate_C dateVal = {1000, 1, 1};
+  const void* vals[] = {&dateVal};
+  REQUIRE(ts_session_insert_record(g_session, deviceId, 1000LL, 1, measurements, types, vals) ==
+          TS_OK);
+
+  CSessionDataSet* dataSet = nullptr;
+  REQUIRE(ts_session_execute_query(g_session,
+                                   "select s_date_min from root.ctest.d1 where time=1000",
+                                   &dataSet) == TS_OK);
+  REQUIRE(dataSet != nullptr);
+  REQUIRE(ts_dataset_has_next(dataSet));
+  CRowRecord* record = ts_dataset_next(dataSet);
+  REQUIRE(record != nullptr);
+  REQUIRE_FALSE(ts_row_record_is_null(record, 0));
+  REQUIRE(ts_row_record_get_date_int32(record, 0) == 10000101);
+  ts_row_record_destroy(record);
+  ts_dataset_destroy(dataSet);
+
+  REQUIRE(ts_session_delete_timeseries(g_session, path) == TS_OK);
+}

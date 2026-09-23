@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.process.fill.identity;
 
 import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 
@@ -40,7 +41,8 @@ public class IdentityLinearFill implements ILinearFill {
   public boolean prepareForNext(
       long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
     throw new UnsupportedOperationException(
-        "IdentityLinearFill's needPrepareForNext() method should always return false.");
+        CalcMessages
+            .EXCEPTION_IDENTITYLINEARFILL_S_NEEDPREPAREFORNEXT_METHOD_SHOULD_ALWAYS_RETURN_FALSE_FF7AD73B);
   }
 
   @Override

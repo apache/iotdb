@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusR
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
@@ -455,6 +456,8 @@ public class RemoveDataNodeHandler {
       PartitionMetrics.unbindDataNodePartitionMetricsWhenUpdate(
           MetricService.getInstance(),
           NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
+      // Drop the removed DataNode's metadata-lease contact/capability state
+      DataNodeContactTracker.getInstance().removeDataNode(dataNodeLocation.getDataNodeId());
     }
   }
 

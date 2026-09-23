@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -28,8 +30,9 @@ public class LongVariableConstraint {
   private final String expression;
 
   LongVariableConstraint(String name, String expression) {
-    this.name = requireNonNull(name, "name is null");
-    this.expression = requireNonNull(expression, "expression is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.expression =
+        requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
   }
 
   public String getName() {

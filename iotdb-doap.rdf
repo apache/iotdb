@@ -50,16 +50,26 @@
     <programming-language>Java</programming-language>
     <programming-language>Python</programming-language>
     <programming-language>C++</programming-language>
+    <programming-language>C</programming-language>
     <programming-language>Go</programming-language>
-    <programming-language>Csharp</programming-language>
+    <programming-language>C#</programming-language>
+    <programming-language>Node.js</programming-language>
 
     <category rdf:resource="http://projects.apache.org/category/database" />
     <category rdf:resource="http://projects.apache.org/category/iot"/>
     <category rdf:resource="http://projects.apache.org/category/java"/>
     <category rdf:resource="http://projects.apache.org/category/python"/>
     <category rdf:resource="http://projects.apache.org/category/c++"/>
+    <category rdf:resource="http://projects.apache.org/category/c"/>
     <category rdf:resource="http://projects.apache.org/category/go"/>
-    <category rdf:resource="http://projects.apache.org/category/csharp"/>
+
+    <release>
+      <Version>
+        <name>Apache IoTDB</name>
+        <created>2026-07-08</created>
+        <revision>2.0.10</revision>
+      </Version>
+    </release>
 
     <release>
       <Version>

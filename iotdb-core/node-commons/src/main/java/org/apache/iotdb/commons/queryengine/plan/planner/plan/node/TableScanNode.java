@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -343,7 +344,7 @@ public abstract class TableScanNode extends SourceNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.isEmpty(), "newChildren is not empty");
+    checkArgument(newChildren.isEmpty(), QueryMessages.EXCEPTION_NEWCHILDREN_IS_NOT_EMPTY_170FCE18);
     return this;
   }
 }

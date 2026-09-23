@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.util.Collections;
@@ -84,19 +85,22 @@ public class MqttClientSession extends IClientSession {
   @Override
   public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
     throw new UnsupportedOperationException(
-        "MQTT client session does not support PREPARE statement.");
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_MQTT_CLIENT_SESSION_DOES_NOT_SUPPORT_PREPARE_STATEMENT_B42FBC65);
   }
 
   @Override
   public PreparedStatementInfo removePreparedStatement(String statementName) {
     throw new UnsupportedOperationException(
-        "MQTT client session does not support PREPARE statement.");
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_MQTT_CLIENT_SESSION_DOES_NOT_SUPPORT_PREPARE_STATEMENT_B42FBC65);
   }
 
   @Override
   public PreparedStatementInfo getPreparedStatement(String statementName) {
     throw new UnsupportedOperationException(
-        "MQTT client session does not support PREPARE statement.");
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_MQTT_CLIENT_SESSION_DOES_NOT_SUPPORT_PREPARE_STATEMENT_B42FBC65);
   }
 
   @Override

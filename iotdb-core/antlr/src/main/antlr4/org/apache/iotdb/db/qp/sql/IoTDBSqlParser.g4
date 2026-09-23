@@ -55,7 +55,7 @@ ddlStatement
     // ExternalService
     | createService | startService | stopService | dropService | showService
     // Pipe Task
-    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes | showReceivers
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
@@ -96,7 +96,7 @@ utilityStatement
     | showQueries | showDiskUsage | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
-    | repairDataPartitionTable
+    | repairDataPartitionTable | showRepairDataPartitionTableProgress
     ;
 
 /**
@@ -116,6 +116,7 @@ databaseAttributesClause
 
 databaseAttributeClause
     : databaseAttributeKey operator_eq INTEGER_LITERAL
+    | NEED_LAST_CACHE operator_eq boolean_literal
     ;
 
 databaseAttributeKey
@@ -577,7 +578,7 @@ getSeriesSlotList
 
 // ---- Migrate Region
 migrateRegion
-    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    : MIGRATE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
 reconstructRegion
@@ -701,6 +702,10 @@ showPipes
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showReceivers
+    : SHOW RECEIVERS
+    ;
+
 // Pipe Plugin =========================================================================================
 createPipePlugin
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=STRING_LITERAL uriClause
@@ -741,7 +746,7 @@ showTopics
     ;
 
 showSubscriptions
-    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    : SHOW SUBSCRIPTIONS (DETAILS)? (ON topicName=identifier)?
     ;
 
 dropSubscription
@@ -1281,6 +1286,11 @@ stopRepairData
 // Repair Data Partition Table
 repairDataPartitionTable
     : REPAIR DATA PARTITION TABLE
+    ;
+
+// Show Repair Data Partition Table Progress
+showRepairDataPartitionTableProgress
+    : SHOW REPAIR DATA PARTITION TABLE PROGRESS
     ;
 
 // Explain

@@ -18,9 +18,13 @@
  */
 package org.apache.iotdb.db.storageengine;
 
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 
 import com.google.common.collect.Lists;
 import org.junit.After;
@@ -83,5 +87,46 @@ public class StorageEngineTest {
     Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(timePartitionInterval / 2));
     Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 - 1));
     Assert.assertEquals(2, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 + 1));
+  }
+
+  @Test
+  public void testNotifyWALRecoverManagerWhenDirectBufferAllocationFailed() throws Exception {
+    DirectBufferMemoryAllocationException directBufferMemoryAllocationException =
+        new DirectBufferMemoryAllocationException(2, 1);
+    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(1));
+    try {
+      try {
+        storageEngine.handleDataRegionRecoverFailure(
+            "root.sg", new DataRegionId(0), directBufferMemoryAllocationException);
+        Assert.fail("Expected data region recovery to fail.");
+      } catch (DataRegionException e) {
+        Assert.assertSame(directBufferMemoryAllocationException, e);
+      }
+
+      ExceptionalCountDownLatch latch =
+          WALRecoverManager.getInstance().getAllDataRegionScannedLatch();
+      Assert.assertTrue(latch.hasException());
+      Assert.assertEquals(
+          directBufferMemoryAllocationException.getMessage(), latch.getExceptionMessage());
+    } finally {
+      WALRecoverManager.getInstance().clear();
+    }
+  }
+
+  @Test
+  public void testNotifyWALRecoverManagerButContinueForOtherDataRegionException() throws Exception {
+    DataRegionException dataRegionException = new DataRegionException("other recovery failure");
+    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(1));
+    try {
+      storageEngine.handleDataRegionRecoverFailure(
+          "root.sg", new DataRegionId(0), dataRegionException);
+
+      ExceptionalCountDownLatch latch =
+          WALRecoverManager.getInstance().getAllDataRegionScannedLatch();
+      Assert.assertTrue(latch.hasException());
+      Assert.assertEquals(dataRegionException.getMessage(), latch.getExceptionMessage());
+    } finally {
+      WALRecoverManager.getInstance().clear();
+    }
   }
 }

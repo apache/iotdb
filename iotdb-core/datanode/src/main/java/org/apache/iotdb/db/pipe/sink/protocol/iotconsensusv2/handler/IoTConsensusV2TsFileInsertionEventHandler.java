@@ -31,6 +31,8 @@ import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferR
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceWithModReq;
@@ -70,7 +72,8 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   private final boolean transferMod;
 
   private final int readFileBufferSize;
-  private final byte[] readBuffer;
+  private PipeTsFileMemoryBlock memoryBlock;
+  private byte[] readBuffer;
   private long position;
 
   private RandomAccessFile reader;
@@ -84,6 +87,8 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   private final long createTime;
 
   private long startTransferPieceTime;
+  private boolean currentAttemptContainsUserData;
+  private boolean transferAuditRecorded;
 
   public IoTConsensusV2TsFileInsertionEventHandler(
       final PipeTsFileInsertionEvent event,
@@ -106,8 +111,15 @@ public class IoTConsensusV2TsFileInsertionEventHandler
     transferMod = event.isWithMod();
     currentFile = transferMod ? modFile : tsFile;
 
-    readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
-    readBuffer = new byte[readFileBufferSize];
+    final long maxFileLength =
+        transferMod && Objects.nonNull(modFile)
+            ? Math.max(tsFile.length(), modFile.length())
+            : tsFile.length();
+    readFileBufferSize =
+        (int)
+            Math.min(
+                (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+                Math.max(maxFileLength, 1L));
     position = 0;
 
     reader =
@@ -128,6 +140,12 @@ public class IoTConsensusV2TsFileInsertionEventHandler
     this.client = client;
     client.setShouldReturnSelf(false);
 
+    if (readBuffer == null) {
+      memoryBlock =
+          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+      readBuffer = new byte[readFileBufferSize];
+    }
+
     final int readLength = reader.read(readBuffer);
     if (readLength == -1) {
       if (currentFile == modFile) {
@@ -145,6 +163,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         transfer(client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
+        currentAttemptContainsUserData = false;
         client.iotConsensusV2Transfer(
             transferMod
                 ? IoTConsensusV2TsFileSealWithModReq.toTIoTConsensusV2TransferReq(
@@ -175,6 +194,8 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
+    currentAttemptContainsUserData = true;
+    transferAuditRecorded = false;
     client.iotConsensusV2Transfer(
         transferMod
             ? IoTConsensusV2TsFilePieceWithModReq.toTIoTConsensusV2TransferReq(
@@ -246,6 +267,8 @@ public class IoTConsensusV2TsFileInsertionEventHandler
           client.returnSelf();
         }
 
+        releaseReadBufferMemoryBlock();
+
         long duration = System.nanoTime() - createTime;
         metric.recordConnectorTsFileTransferTimer(duration);
       }
@@ -257,6 +280,13 @@ public class IoTConsensusV2TsFileInsertionEventHandler
     try {
       final IoTConsensusV2TransferFilePieceResp resp =
           IoTConsensusV2TransferFilePieceResp.fromTIoTConsensusV2TransferResp(response);
+      final TSStatus transferStatus = resp.getStatus();
+      final boolean success =
+          transferStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || transferStatus.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+      connector.recordUserDataTransferAudit(
+          success, success ? null : String.valueOf(transferStatus.getCode()), null);
+      transferAuditRecorded = true;
 
       // This case only happens when the connection is broken, and the connector is reconnected
       // to the receiver, then the receiver will redirect the file position to the last position
@@ -291,6 +321,10 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
   @Override
   public void onError(final Exception exception) {
+    if (currentAttemptContainsUserData && !transferAuditRecorded) {
+      connector.recordUserDataTransferAudit(false, null, exception);
+      transferAuditRecorded = true;
+    }
     PipeLogger.log(
         ignored ->
             LOGGER.warn(
@@ -302,7 +336,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
                 event.getReplicateIndexForIoTV2(),
                 exception),
         exception,
-        "IoTConsensusV2-%s: Failed to transfer TsFileInsertionEvent %s (committer key %s, replicate index %s).",
+        DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY,
         consensusPipeName,
         tsFile,
         event.getCommitterKey(),
@@ -330,10 +364,20 @@ public class IoTConsensusV2TsFileInsertionEventHandler
       connector.addFailureEventToRetryQueue(event);
       metric.recordRetryCounter();
 
+      releaseReadBufferMemoryBlock();
+
       if (client != null) {
         client.setShouldReturnSelf(true);
         client.returnSelf();
       }
+    }
+  }
+
+  private void releaseReadBufferMemoryBlock() {
+    if (memoryBlock != null) {
+      memoryBlock.close();
+      memoryBlock = null;
+      readBuffer = null;
     }
   }
 }

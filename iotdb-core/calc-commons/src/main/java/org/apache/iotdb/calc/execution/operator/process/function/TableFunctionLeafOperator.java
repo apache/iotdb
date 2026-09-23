@@ -25,6 +25,7 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 
@@ -40,6 +41,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 // only one input source is supported now
 public class TableFunctionLeafOperator implements ProcessOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableFunctionLeafOperator.class);
@@ -48,22 +51,26 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   private final TsBlockBuilder blockBuilder;
 
   private final TableFunctionLeafProcessor processor;
+  private final IoTDBLocal ioTDBLocal;
   private volatile boolean init = false;
 
   public TableFunctionLeafOperator(
       CommonOperatorContext operatorContext,
       TableFunctionProcessorProvider processorProvider,
-      List<TSDataType> outputDataTypes) {
+      List<TSDataType> outputDataTypes,
+      IoTDBLocal ioTDBLocal) {
+    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for table function");
     this.operatorContext = operatorContext;
     this.processor = processorProvider.getSplitProcessor();
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
+    this.ioTDBLocal = ioTDBLocal;
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
     if (!init) {
       init = true;
-      processor.beforeStart();
+      processor.beforeStart(ioTDBLocal);
     }
     return NOT_BLOCKED;
   }
@@ -77,7 +84,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   public TsBlock next() throws Exception {
     List<ColumnBuilder> columnBuilders = getOutputColumnBuilders();
     try {
-      processor.process(columnBuilders);
+      processor.process(columnBuilders, ioTDBLocal);
     } catch (Exception e) {
       LOGGER.warn(CalcMessages.EXCEPTION_HAPPENED_WHEN_EXECUTING_UDTF, e);
       throw new IoTDBRuntimeException(
@@ -106,7 +113,8 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     try {
-      processor.beforeDestroy();
+      processor.beforeDestroy(ioTDBLocal);
+      ioTDBLocal.close();
     } catch (Exception e) {
       LOGGER.warn(CalcMessages.EXCEPTION_HAPPENED_WHEN_EXECUTING_UDTF, e);
       throw new IoTDBRuntimeException(

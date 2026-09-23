@@ -80,6 +80,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -144,6 +145,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
       sourceAttributes.put("source.inclusion", "data.insert");
       sourceAttributes.put("source.inclusion.exclusion", "");
@@ -201,6 +203,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("source.mode", "forced-log");
       sourceAttributes.put("user", "root");
 
@@ -257,6 +260,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("mode.streaming", "false");
       sourceAttributes.put("user", "root");
 
@@ -311,6 +315,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("source.mode", "hybrid");
       sourceAttributes.put("user", "root");
 
@@ -363,6 +368,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -426,6 +432,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -505,6 +512,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -565,6 +573,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       // Add this property to avoid to make self cycle.
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("forwarding-pipe-requests", "false");
       sourceAttributes.put("user", "root");
 
@@ -598,6 +607,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       // Add this property to avoid to make self cycle.
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
       sourceAttributes.put("forwarding-pipe-requests", "false");
       sourceAttributes.put("user", "root");

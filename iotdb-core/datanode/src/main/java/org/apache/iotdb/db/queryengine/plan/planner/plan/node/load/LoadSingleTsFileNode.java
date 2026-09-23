@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -112,7 +113,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
     if (slotList.isEmpty()) {
       throw new IllegalStateException(
-          String.format("Devices in TsFile %s is empty, this should not happen here.", tsFile));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_DEVICES_IN_TSFILE_S_IS_EMPTY_THIS_SHOULD_NOT_HAPPEN_HERE_BC1BE63C,
+              tsFile));
     } else {
       final TTimePartitionSlot firstSlot = slotList.get(0).right;
       for (int i = 1, size = slotList.size(); i < size; i++) {
@@ -238,17 +242,24 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   public void clean() {
+    if (!deleteAfterLoad) {
+      return;
+    }
+    deleteFile(tsFile);
+    deleteFile(new File(LoadUtil.getTsFileResourcePath(tsFile.getAbsolutePath())));
+    deleteFile(ModificationFile.getExclusiveMods(tsFile));
+    deleteFile(new File(LoadUtil.getTsFileModsV1Path(tsFile.getAbsolutePath())));
+  }
+
+  private void deleteFile(final File file) {
     try {
-      if (deleteAfterLoad) {
-        Files.deleteIfExists(tsFile.toPath());
-        Files.deleteIfExists(
-            new File(LoadUtil.getTsFileResourcePath(tsFile.getAbsolutePath())).toPath());
-        Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
-        Files.deleteIfExists(
-            new File(LoadUtil.getTsFileModsV1Path(tsFile.getAbsolutePath())).toPath());
-      }
-    } catch (final IOException e) {
-      LOGGER.warn(DataNodeQueryMessages.DELETE_AFTER_LOADING_ERROR, tsFile, e);
+      RetryUtils.retryOnException(
+          () -> {
+            Files.deleteIfExists(file.toPath());
+            return null;
+          });
+    } catch (final Exception e) {
+      LOGGER.warn(DataNodeQueryMessages.DELETE_AFTER_LOADING_ERROR, file, e);
     }
   }
 

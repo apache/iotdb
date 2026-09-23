@@ -115,7 +115,13 @@ public class SchemaRegionLoader {
       throws MetadataException {
     try {
       return currentConstructor.newInstance(schemaRegionParams);
-    } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+    } catch (InvocationTargetException e) {
+      if (e.getTargetException() instanceof MetadataException) {
+        throw (MetadataException) e.getTargetException();
+      }
+      logger.warn(e.getMessage(), e);
+      throw new MetadataException(e);
+    } catch (InstantiationException | IllegalAccessException e) {
       logger.warn(e.getMessage(), e);
       throw new MetadataException(e);
     }

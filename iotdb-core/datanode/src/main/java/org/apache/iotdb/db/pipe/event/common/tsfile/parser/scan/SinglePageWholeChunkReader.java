@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -32,6 +33,7 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.enums.EncryptionType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.tsfile.read.reader.page.LazyLoadPageData;
 import org.apache.tsfile.read.reader.page.PageReader;
@@ -169,20 +171,47 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
   static long estimatePageMemoryUsageInBytesWithBatchData(
       final PageHeader timePageHeader,
       final Chunk timeChunk,
-      final List<TSDataType> valueDataTypeList) {
+      final List<TSDataType> valueDataTypeList)
+      throws IOException {
     return estimatePageMemoryUsageInBytesWithBatchData(
         timePageHeader.getUncompressedSize(),
         getPageRowCount(timePageHeader, timeChunk),
         valueDataTypeList);
   }
 
-  static int getPageRowCount(final PageHeader pageHeader, final Chunk chunk) {
+  static int getPageRowCount(final PageHeader pageHeader, final Chunk chunk) throws IOException {
     if (isSinglePageChunk(chunk.getHeader())) {
-      return Objects.isNull(chunk.getChunkStatistic())
-          ? 0
-          : saturateToInt(chunk.getChunkStatistic().getCount());
+      if (Objects.nonNull(chunk.getChunkStatistic())) {
+        return saturateToInt(chunk.getChunkStatistic().getCount());
+      }
+      return isTimeChunk(chunk.getHeader()) ? countSinglePageTimeValues(chunk) : 0;
     }
     return saturateToInt(pageHeader.getNumOfValues());
+  }
+
+  private static int countSinglePageTimeValues(final Chunk chunk) throws IOException {
+    final ByteBuffer chunkDataBuffer = chunk.getData().duplicate();
+    final PageHeader pageHeader = deserializePageHeader(chunkDataBuffer, chunk.getHeader());
+    final ByteBuffer pageData =
+        deserializePageData(
+            pageHeader,
+            chunkDataBuffer,
+            chunk.getHeader(),
+            IDecryptor.getDecryptor(chunk.getEncryptParam()));
+    final Decoder decoder =
+        Decoder.getDecoderByType(chunk.getHeader().getEncodingType(), TSDataType.INT64);
+
+    int rowCount = 0;
+    while (decoder.hasNext(pageData)) {
+      decoder.readLong(pageData);
+      ++rowCount;
+    }
+    return rowCount;
+  }
+
+  private static boolean isTimeChunk(final ChunkHeader chunkHeader) {
+    return (chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+        == TsFileConstant.TIME_COLUMN_MASK;
   }
 
   private static int saturateToInt(final long value) {
@@ -224,26 +253,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       return 0;
     }
 
-    switch (dataType) {
-      case BOOLEAN:
-        return RamUsageEstimator.sizeOfBooleanArray(16) * segmentCount;
-      case INT32:
-      case DATE:
-        return RamUsageEstimator.sizeOfIntArray(16) * segmentCount;
-      case INT64:
-      case TIMESTAMP:
-        return RamUsageEstimator.sizeOfLongArray(16) * segmentCount;
-      case FLOAT:
-        return RamUsageEstimator.sizeOfFloatArray(16) * segmentCount;
-      case DOUBLE:
-        return RamUsageEstimator.sizeOfDoubleArray(16) * segmentCount;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return RamUsageEstimator.sizeOfObjectArray(16) * segmentCount;
-      default:
-        return 0;
-    }
+    return Type.fromTsDataType(dataType).estimateArraySize(16) * segmentCount;
   }
 
   private static long estimateVectorValueMemoryUsageInBytes(
@@ -263,24 +273,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
   }
 
   private static long estimateTsPrimitiveTypeValueMemoryUsageInBytes(final TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-      case DATE:
-      case FLOAT:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-      case DOUBLE:
-        return Long.BYTES;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-      default:
-        return 0;
-    }
+    return Type.fromTsDataType(dataType).estimateValueSize();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -294,10 +287,10 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
     // doesn't have a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
-          DataNodePipeMessages.DO_NOT_HAS_A_COMPLETE_PAGE_BODY
-              + compressedPageBodyLength
-              + ". Actual:"
-              + chunkBuffer.remaining());
+          String.format(
+              DataNodePipeMessages.COMPLETE_PAGE_BODY_EXPECTED_ACTUAL_FMT,
+              compressedPageBodyLength,
+              chunkBuffer.remaining()));
     }
     chunkBuffer.get(compressedPageBody);
     return ByteBuffer.wrap(compressedPageBody);
@@ -316,13 +309,12 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
           compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData.array(), 0);
     } catch (Exception e) {
       throw new IOException(
-          DataNodePipeMessages.UNCOMPRESS_ERROR_UNCOMPRESS_SIZE
-              + pageHeader.getUncompressedSize()
-              + "compressed size: "
-              + pageHeader.getCompressedSize()
-              + "page header: "
-              + pageHeader
-              + e.getMessage(),
+          String.format(
+              DataNodePipeMessages.UNCOMPRESS_PAGE_DATA_FAILED_FMT,
+              pageHeader.getUncompressedSize(),
+              pageHeader.getCompressedSize(),
+              pageHeader,
+              e.getMessage()),
           e);
     }
 

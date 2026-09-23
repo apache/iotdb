@@ -30,8 +30,8 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -161,39 +161,9 @@ public class SessionDataSet implements ISessionDataSet {
       if (!ioTDBRpcDataSet.isNull(columnIndex)) {
         TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
         field = new Field(dataType);
-        switch (dataType) {
-          case BOOLEAN:
-            boolean booleanValue = ioTDBRpcDataSet.getBoolean(columnIndex);
-            field.setBoolV(booleanValue);
-            break;
-          case INT32:
-          case DATE:
-            int intValue = ioTDBRpcDataSet.getInt(columnIndex);
-            field.setIntV(intValue);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            long longValue = ioTDBRpcDataSet.getLong(columnIndex);
-            field.setLongV(longValue);
-            break;
-          case FLOAT:
-            float floatValue = ioTDBRpcDataSet.getFloat(columnIndex);
-            field.setFloatV(floatValue);
-            break;
-          case DOUBLE:
-            double doubleValue = ioTDBRpcDataSet.getDouble(columnIndex);
-            field.setDoubleV(doubleValue);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            field.setBinaryV(ioTDBRpcDataSet.getBinary(columnIndex));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
-        }
+        TypeServices.FIELD_VALUE_READER_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .read(ioTDBRpcDataSet, columnIndex, field);
       } else {
         field = new Field(null);
       }

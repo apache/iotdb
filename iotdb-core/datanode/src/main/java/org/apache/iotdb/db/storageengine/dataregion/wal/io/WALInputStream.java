@@ -263,7 +263,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
     } catch (Exception e) {
       logger.error(
-          "Unexpected error when loading a wal segment {} in {}@{}",
+          StorageEngineMessages.STORAGE_LOG_UNEXPECTED_ERROR_WHEN_LOADING_A_WAL_SEGMENT_IN_45B42CCF,
           segmentInfo,
           logFile,
           position,

@@ -109,6 +109,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowReceiversNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -405,7 +406,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return DeviceSchemaFetchScanNode.deserialize(buffer);
       case 97:
         throw new UnsupportedOperationException(
-            "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_YOU_SHOULD_NEVER_SEE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_F380A4B6);
       case 98:
         return LastQueryScanNode.deserialize(buffer);
       case 99:
@@ -415,6 +417,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return ShowDiskUsageNode.deserialize(buffer);
       case 108:
         return CollectNode.deserialize(buffer);
+      case 110:
+        return ShowReceiversNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:
@@ -455,7 +459,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return InformationSchemaTableScanNode.deserialize(buffer);
       case 1022:
         throw new UnsupportedOperationException(
-            "AggregationTreeDeviceViewScanNode should not be deserialized");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_AGGREGATIONTREEDEVICEVIEWSCANNODE_SHOULD_NOT_BE_DESERIALIZED_11788F1B);
       case 1023:
         return TreeAlignedDeviceViewScanNode.deserialize(buffer);
       case 1024:

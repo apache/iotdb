@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletCollector;
@@ -72,7 +73,9 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
       parse((InsertTabletNode) insertNode);
     } else {
       throw new UnSupportedDataTypeException(
-          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_INSERTNODE_TYPE_S_IS_NOT_SUPPORTED_7DF82B58,
+              insertNode.getClass().getName()));
     }
   }
 
@@ -185,7 +188,8 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
   @Override
   public List<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer) {
-    final PipeTabletCollector tabletCollector = new PipeTabletCollector(pipeTaskMeta, sourceEvent);
+    final PipeTabletCollector tabletCollector =
+        new PipeTabletCollector(pipeTaskMeta, sourceEvent, isAligned);
     consumer.accept(convertToTablet(), tabletCollector);
     return tabletCollector.convertToTabletInsertionEvents(shouldReport);
   }

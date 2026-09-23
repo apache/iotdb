@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -39,14 +41,18 @@ public final class SimpleGroupBy extends GroupingElement {
     super(null);
     this.columns =
         ImmutableList.copyOf(
-            requireNonNull(simpleGroupByExpressions, "simpleGroupByExpressions is null"));
+            requireNonNull(
+                simpleGroupByExpressions,
+                QueryMessages.EXCEPTION_SIMPLEGROUPBYEXPRESSIONS_IS_NULL_3F6A1ECC));
   }
 
   public SimpleGroupBy(NodeLocation location, List<Expression> simpleGroupByExpressions) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.columns =
         ImmutableList.copyOf(
-            requireNonNull(simpleGroupByExpressions, "simpleGroupByExpressions is null"));
+            requireNonNull(
+                simpleGroupByExpressions,
+                QueryMessages.EXCEPTION_SIMPLEGROUPBYEXPRESSIONS_IS_NULL_3F6A1ECC));
   }
 
   @Override

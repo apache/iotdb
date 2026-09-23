@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.thrift.annotation.Nullable;
@@ -147,18 +149,20 @@ public class ConsumerGroupMeta {
       return;
     }
     final ConsumerMeta existedConsumerMeta = consumerIdToConsumerMeta.values().iterator().next();
-    final boolean match =
-        Objects.equals(existedConsumerMeta.getUsername(), consumerMeta.getUsername())
-            && Objects.equals(existedConsumerMeta.getPassword(), consumerMeta.getPassword());
-    if (!match) {
+    final String expectedSqlDialect = existedConsumerMeta.getConfig().getSqlDialect();
+    final String actualSqlDialect = consumerMeta.getConfig().getSqlDialect();
+    final boolean isExpectedTableModel =
+        SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(expectedSqlDialect);
+    final boolean isActualTableModel =
+        SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(actualSqlDialect);
+    if (isExpectedTableModel != isActualTableModel) {
       final String exceptionMessage =
           String.format(
-              "Failed to create consumer %s because inconsistent username & password under the same consumer group, expected %s:%s, actual %s:%s",
+              PipeMessages
+                  .EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9,
               consumerMeta.getConsumerId(),
-              existedConsumerMeta.getUsername(),
-              existedConsumerMeta.getPassword(),
-              consumerMeta.getUsername(),
-              consumerMeta.getPassword());
+              expectedSqlDialect,
+              actualSqlDialect);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
@@ -193,6 +197,15 @@ public class ConsumerGroupMeta {
 
   public ConsumerMeta getConsumerMeta(final String consumerId) {
     return consumerIdToConsumerMeta.get(consumerId);
+  }
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    if (consumerIdToConsumerMeta.isEmpty()) {
+      return false;
+    }
+    final String sqlDialect =
+        consumerIdToConsumerMeta.values().iterator().next().getConfig().getSqlDialect();
+    return isTableModel == SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(sqlDialect);
   }
 
   ////////////////////////// subscription //////////////////////////
@@ -239,28 +252,17 @@ public class ConsumerGroupMeta {
   }
 
   public boolean allowSubscribeTopicForConsumer(final String topic, final String consumerId) {
-    if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
-      return false;
-    }
-    final Set<String> subscribedConsumerIdSet = topicNameToSubscribedConsumerIdSet.get(topic);
-    if (Objects.isNull(subscribedConsumerIdSet)) {
-      return true;
-    }
-    if (subscribedConsumerIdSet.isEmpty()) {
-      return true;
-    }
-    final String subscribedConsumerId = subscribedConsumerIdSet.iterator().next();
-    return Objects.equals(
-        Objects.requireNonNull(consumerIdToConsumerMeta.get(subscribedConsumerId)).getUsername(),
-        Objects.requireNonNull(consumerIdToConsumerMeta.get(consumerId)).getUsername());
+    return consumerIdToConsumerMeta.containsKey(consumerId);
   }
 
   public void addSubscription(final String consumerId, final Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87,
+              consumerId,
+              consumerGroupId));
     }
 
     for (final String topic : topics) {
@@ -297,8 +299,10 @@ public class ConsumerGroupMeta {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to remove subscription from consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3,
+              consumerId,
+              consumerGroupId));
     }
 
     final Set<String> noSubscriptionTopicAfterRemoval = new HashSet<>();

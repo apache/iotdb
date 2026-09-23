@@ -118,7 +118,8 @@ public class RepairTaskRecoverLogParser {
 
   private void handleIncompleteRepairedTimePartition() {
     LOGGER.error(
-        "[{}][{}]Repair data log is not complete, time partition is {}.",
+        StorageEngineMessages
+            .STORAGE_LOG_REPAIR_DATA_LOG_IS_NOT_COMPLETE_TIME_PARTITION_IS_D9D4F01F,
         currentTimePartition.getDatabaseName(),
         currentTimePartition.getDataRegionId(),
         currentTimePartition.getTimePartitionId());

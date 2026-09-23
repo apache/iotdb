@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -69,20 +70,22 @@ public class PreparedStatementMemoryManager {
     boolean allocated = sharedMemoryBlock.allocate(memorySizeInBytes);
     if (!allocated) {
       LOGGER.warn(
-          "Failed to allocate {} bytes from shared MemoryBlock '{}' for PreparedStatement '{}'",
+          DataNodeQueryMessages
+              .FAILED_TO_ALLOCATE_ARG_BYTES_FROM_SHARED_MEMORYBLOCK_ARG_FOR_PREPAREDSTATEMENT_ARG,
           memorySizeInBytes,
           SHARED_MEMORY_BLOCK_NAME,
           statementName);
       throw new SemanticException(
           String.format(
-              "Insufficient memory for PreparedStatement '%s'. "
-                  + "Please deallocate some PreparedStatements and try again.",
+              DataNodeQueryMessages.INSUFFICIENT_MEMORY_FOR_PREPAREDSTATEMENT_S
+                  + DataNodeQueryMessages.PLEASE_DEALLOCATE_SOME_PREPAREDSTATEMENTS_AND_TRY_AGAIN,
               statementName));
     }
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Allocated {} bytes for PreparedStatement '{}' from shared MemoryBlock '{}'. ",
+          DataNodeQueryMessages
+              .ALLOCATED_ARG_BYTES_FOR_PREPAREDSTATEMENT_ARG_FROM_SHARED_MEMORYBLOCK_ARG,
           memorySizeInBytes,
           statementName,
           SHARED_MEMORY_BLOCK_NAME);
@@ -104,13 +107,15 @@ public class PreparedStatementMemoryManager {
       long releasedSize = sharedMemoryBlock.release(memorySizeInBytes);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Released {} bytes from shared MemoryBlock '{}' for PreparedStatement. ",
+            DataNodeQueryMessages
+                .RELEASED_ARG_BYTES_FROM_SHARED_MEMORYBLOCK_ARG_FOR_PREPAREDSTATEMENT,
             releasedSize,
             SHARED_MEMORY_BLOCK_NAME);
       }
     } else {
       LOGGER.error(
-          "Attempted to release memory from shared MemoryBlock '{}' but it is released",
+          DataNodeQueryMessages
+              .ATTEMPTED_TO_RELEASE_MEMORY_FROM_SHARED_MEMORYBLOCK_ARG_BUT_IT_IS_RELEASED,
           SHARED_MEMORY_BLOCK_NAME);
     }
   }
@@ -148,7 +153,7 @@ public class PreparedStatementMemoryManager {
 
     if (releasedCount > 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Released {} PreparedStatement(s) ({} bytes total) for session {}",
+          DataNodeQueryMessages.RELEASED_ARG_PREPAREDSTATEMENT_S_ARG_BYTES_TOTAL_FOR_SESSION_ARG,
           releasedCount,
           totalReleasedBytes,
           session);

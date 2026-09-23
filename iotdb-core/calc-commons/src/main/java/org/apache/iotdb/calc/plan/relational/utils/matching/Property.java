@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.EqualsPattern;
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.FilterPattern;
 
@@ -53,8 +54,8 @@ public class Property<F, C, T> {
   }
 
   public Property(String name, BiFunction<F, C, Optional<T>> function) {
-    this.name = requireNonNull(name, "name is null");
-    this.function = requireNonNull(function, "function is null");
+    this.name = requireNonNull(name, CalcMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.function = requireNonNull(function, CalcMessages.EXCEPTION_FUNCTION_IS_NULL_E0FA4B62);
   }
 
   public String getName() {

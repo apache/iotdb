@@ -33,6 +33,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheUpdateSource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -40,13 +41,13 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -60,7 +61,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode implements WALEntryValue, LastCacheUpdateSource {
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -343,6 +344,66 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     subSerialize(stream);
   }
 
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + serializedSubAttributesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by the row serializer.
+   *
+   * @return the serialized row field size
+   */
+  protected int serializedSubAttributesSize() {
+    return Long.BYTES
+        + ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath())
+        + serializedMeasurementsAndValuesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by the measurement and value serializer.
+   *
+   * @return the serialized measurement and value size
+   */
+  protected int serializedMeasurementsAndValuesSize() {
+    int size = Integer.BYTES + Byte.BYTES;
+
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size +=
+          measurementSchemas == null
+              ? ReadWriteIOUtils.sizeToWrite(measurements[i])
+              : measurementSchemas[i].serializedSize();
+    }
+
+    for (int i = 0; values != null && i < values.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size += serializedValueSize(i);
+    }
+
+    return size + Byte.BYTES + Byte.BYTES;
+  }
+
+  private int serializedValueSize(final int index) {
+    final TSDataType dataType = getDataTypeIfPresent(index);
+    if (values[index] == null) {
+      return Byte.BYTES + (dataType == null ? 0 : Byte.BYTES);
+    }
+
+    if (isNeedInferType) {
+      return Byte.BYTES + ReadWriteIOUtils.sizeToWrite(values[index].toString());
+    }
+
+    return Byte.BYTES
+        + TypeServices.StorageEngine.INSERT_ROW_SERIALIZED_VALUE_SIZE_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .applyAsInt(values[index]);
+  }
+
   void subSerialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(time, buffer);
     ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
@@ -446,33 +507,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         ReadWriteIOUtils.write(values[i].toString(), buffer);
       } else {
         ReadWriteIOUtils.write(dataType, buffer);
-        switch (dataType) {
-          case BOOLEAN:
-            ReadWriteIOUtils.write((Boolean) values[i], buffer);
-            break;
-          case INT32:
-          case DATE:
-            ReadWriteIOUtils.write((Integer) values[i], buffer);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            ReadWriteIOUtils.write((Long) values[i], buffer);
-            break;
-          case FLOAT:
-            ReadWriteIOUtils.write((Float) values[i], buffer);
-            break;
-          case DOUBLE:
-            ReadWriteIOUtils.write((Double) values[i], buffer);
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-          case OBJECT:
-            ReadWriteIOUtils.write((Binary) values[i], buffer);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
-        }
+        Type.fromTsDataType(dataType).serializeValue(values[i], buffer);
       }
     }
   }
@@ -507,33 +542,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         ReadWriteIOUtils.write(values[i].toString(), stream);
       } else {
         ReadWriteIOUtils.write(dataType, stream);
-        switch (dataType) {
-          case BOOLEAN:
-            ReadWriteIOUtils.write((Boolean) values[i], stream);
-            break;
-          case INT32:
-          case DATE:
-            ReadWriteIOUtils.write((Integer) values[i], stream);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            ReadWriteIOUtils.write((Long) values[i], stream);
-            break;
-          case FLOAT:
-            ReadWriteIOUtils.write((Float) values[i], stream);
-            break;
-          case DOUBLE:
-            ReadWriteIOUtils.write((Double) values[i], stream);
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-          case OBJECT:
-            ReadWriteIOUtils.write((Binary) values[i], stream);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
-        }
+        Type.fromTsDataType(dataType).serializeValue(values[i], stream);
       }
     }
   }
@@ -602,33 +611,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          values[i] = ReadWriteIOUtils.readBool(buffer);
-          break;
-        case INT32:
-        case DATE:
-          values[i] = ReadWriteIOUtils.readInt(buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          values[i] = ReadWriteIOUtils.readLong(buffer);
-          break;
-        case FLOAT:
-          values[i] = ReadWriteIOUtils.readFloat(buffer);
-          break;
-        case DOUBLE:
-          values[i] = ReadWriteIOUtils.readDouble(buffer);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          values[i] = ReadWriteIOUtils.readBinary(buffer);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
-      }
+      Type.fromTsDataType(dataTypes[i]).deserialize(values, i, buffer);
     }
   }
 
@@ -673,32 +656,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       size += Byte.BYTES;
-      switch (dataType) {
-        case BOOLEAN:
-          size += Byte.BYTES;
-          break;
-        case INT32:
-        case DATE:
-          size += Integer.BYTES;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          size += Long.BYTES;
-          break;
-        case FLOAT:
-          size += Float.BYTES;
-          break;
-        case DOUBLE:
-          size += Double.BYTES;
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
+      if (dataType != null) {
+        size += Type.fromTsDataType(dataType).calcTypeSize(values[i]);
       }
     }
 
@@ -758,33 +717,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       WALWriteUtils.write(dataType, buffer);
-      switch (dataType) {
-        case BOOLEAN:
-          WALWriteUtils.write((Boolean) values[i], buffer);
-          break;
-        case INT32:
-        case DATE:
-          WALWriteUtils.write((Integer) values[i], buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          WALWriteUtils.write((Long) values[i], buffer);
-          break;
-        case FLOAT:
-          WALWriteUtils.write((Float) values[i], buffer);
-          break;
-        case DOUBLE:
-          WALWriteUtils.write((Double) values[i], buffer);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          WALWriteUtils.write((Binary) values[i], buffer);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
-      }
+      TypeServices.StorageEngine.WAL_VALUE_WRITER_SERVICE
+          .call(Type.fromTsDataType(dataType))
+          .accept(values[i], buffer);
     }
   }
 
@@ -850,33 +785,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          values[i] = ReadWriteIOUtils.readBool(stream);
-          break;
-        case INT32:
-        case DATE:
-          values[i] = ReadWriteIOUtils.readInt(stream);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          values[i] = ReadWriteIOUtils.readLong(stream);
-          break;
-        case FLOAT:
-          values[i] = ReadWriteIOUtils.readFloat(stream);
-          break;
-        case DOUBLE:
-          values[i] = ReadWriteIOUtils.readDouble(stream);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          values[i] = ReadWriteIOUtils.readBinary(stream);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
-      }
+      Type.fromTsDataType(dataTypes[i]).deserialize(values, i, stream);
     }
   }
 
@@ -941,33 +850,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          values[i] = ReadWriteIOUtils.readBool(buffer);
-          break;
-        case INT32:
-        case DATE:
-          values[i] = ReadWriteIOUtils.readInt(buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          values[i] = ReadWriteIOUtils.readLong(buffer);
-          break;
-        case FLOAT:
-          values[i] = ReadWriteIOUtils.readFloat(buffer);
-          break;
-        case DOUBLE:
-          values[i] = ReadWriteIOUtils.readDouble(buffer);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          values[i] = ReadWriteIOUtils.readBinary(buffer);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
-      }
+      Type.fromTsDataType(dataTypes[i]).deserialize(values, i, buffer);
     }
   }
 
@@ -1007,7 +890,23 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       return null;
     }
     Object value = values[columnIndex];
-    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+    return new TimeValuePair(
+        time, Type.fromTsDataType(dataTypes[columnIndex]).getTsPrimitiveType(value));
+  }
+
+  @Override
+  public long getLastCacheTimestamp() {
+    return time;
+  }
+
+  @Override
+  public boolean hasLastCacheValue(final int index) {
+    return canComposeTimeValuePair(index);
+  }
+
+  @Override
+  public TimeValuePair getLastCacheValue(final int index) {
+    return composeTimeValuePair(index);
   }
 
   private boolean canComposeTimeValuePair(final int columnIndex) {
@@ -1026,19 +925,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
-    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-    for (int i = 0; i < rawMeasurements.length; i++) {
-      timeValuePairs[i] = composeTimeValuePair(i);
-    }
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCacheIfExists(
-            databaseName,
-            getDeviceID(),
-            rawMeasurements,
-            timeValuePairs,
-            isAligned,
-            measurementSchemas);
+            databaseName, getDeviceID(), measurements, this, isAligned, measurementSchemas);
   }
 
   @Override
