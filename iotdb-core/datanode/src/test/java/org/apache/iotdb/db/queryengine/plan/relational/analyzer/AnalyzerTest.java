@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -45,12 +46,17 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -78,6 +84,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -137,6 +145,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -1120,6 +1129,41 @@ public class AnalyzerTest {
   @Test
   public void testCountDeviceWithWhereCanBeAnalyzedAgain() {
     assertDeviceQueryCanBeAnalyzedAgain("COUNT DEVICES FROM table1 WHERE tag1 = 'shanghai'");
+  }
+
+  @Test
+  public void testPipeTransferredUpdateRejectsFieldTarget() {
+    final String database = "testdb";
+    final TsTable tsTable = new TsTable(table);
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+
+    try {
+      final Update statement =
+          new Update(
+              null,
+              new Table(QualifiedName.of(database, table)),
+              Collections.singletonList(
+                  new UpdateAssignment(new SymbolReference("s1"), new StringLiteral("invalid"))),
+              null);
+      final SessionInfo session =
+          new SessionInfo(0, "test", ZoneId.systemDefault(), database, SqlDialect.TABLE);
+      final MPPQueryContext queryContext =
+          new MPPQueryContext("", new QueryId("pipe_update_field"), session, null, null);
+
+      final SemanticException exception =
+          assertThrows(
+              SemanticException.class,
+              () ->
+                  analyzeStatement(
+                      statement, TEST_MATADATA, queryContext, new SqlParser(), session));
+      assertEquals("Update can only specify attribute columns.", exception.getMessage());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
   }
 
   @Test

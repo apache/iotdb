@@ -210,6 +210,21 @@ public class IoTDBDeviceIT {
       }
 
       try {
+        statement.execute("update table0 set temperature = '1'");
+        fail("Update shall fail for field column");
+      } catch (final Exception e) {
+        assertEquals("616: Column 'temperature' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "update table0 set temperature = '1' " + "where region_id = '1' and region_id = '2'");
+        fail("Update shall validate field column before finishing an empty update");
+      } catch (final Exception e) {
+        assertEquals("616: Column 'temperature' cannot be resolved", e.getMessage());
+      }
+
+      try {
         statement.execute("update table0 set model = cast(device_id as int32)");
         fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {

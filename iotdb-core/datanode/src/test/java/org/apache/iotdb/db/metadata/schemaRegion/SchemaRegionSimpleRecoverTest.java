@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
@@ -30,10 +31,12 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
@@ -317,5 +320,46 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(
         new Binary("value2", TSFileConfig.STRING_CHARSET),
         result.get(0).getAttributeValue(attributeName));
+  }
+
+  @Test
+  public void testUpdateDeviceRejectsFieldAssignment() throws Exception {
+    if (!testParams.getTestModeName().equals("MemoryMode")) {
+      return;
+    }
+
+    final String database = "sg";
+    final String tableName = "t";
+    final TsTable testTable = new TsTable(tableName);
+    testTable.addColumnSchema(new TagColumnSchema("tag", TSDataType.STRING));
+    testTable.addColumnSchema(new AttributeColumnSchema("attr", TSDataType.STRING));
+    testTable.addColumnSchema(new FieldColumnSchema("field", TSDataType.STRING));
+    DataNodeTableCache.getInstance().preUpdateTable(database, testTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
+
+    try {
+      final ISchemaRegion schemaRegion = getSchemaRegion(database, 0);
+      final MetadataException exception =
+          Assert.assertThrows(
+              MetadataException.class,
+              () ->
+                  schemaRegion.updateTableDeviceAttribute(
+                      new TableDeviceAttributeUpdateNode(
+                          new PlanNodeId(""),
+                          database,
+                          tableName,
+                          Collections.singletonList(Collections.emptyList()),
+                          null,
+                          Collections.singletonList(new ColumnHeader("tag", TSDataType.STRING)),
+                          null,
+                          Collections.singletonList(
+                              new UpdateAssignment(
+                                  new SymbolReference("field"), new StringLiteral("invalid"))),
+                          new SessionInfo(0, SessionConfig.DEFAULT_USER, ZoneId.systemDefault()))));
+      Assert.assertEquals(
+          DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS, exception.getMessage());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
   }
 }

@@ -971,24 +971,11 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
-      if (!node.parseWhere(
-          null,
-          table,
-          table.getColumnList().stream()
-              .filter(
-                  columnSchema ->
-                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
-          queryContext)) {
-        analysis.setFinishQueryAfterAnalyze();
-        return null;
-      }
 
       // If node.location is absent, this is a pipe-transferred update, namely the assignments are
-      // already parsed at the sender
+      // already parsed at the sender. Still validate the target columns at the receiver.
       if (node.getLocation().isPresent()) {
-        final Set<SymbolReference> attributeNames = new HashSet<>();
+        final Set<String> attributeNames = new HashSet<>();
         node.setAssignments(
             node.getAssignments().stream()
                 .map(
@@ -997,20 +984,7 @@ public class StatementAnalyzer {
                           analyzeAndRewriteExpression(
                                   translationMap, translationMap.getScope(), assignment.getName())
                               .getRight();
-                      if (!(parsedColumn instanceof SymbolReference)
-                          || table
-                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                  .getColumnCategory()
-                              != TsTableColumnCategory.ATTRIBUTE) {
-                        throw new SemanticException(
-                            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
-                      }
-                      if (attributeNames.contains(parsedColumn)) {
-                        throw new SemanticException(
-                            DataNodeQueryMessages
-                                .UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE);
-                      }
-                      attributeNames.add((SymbolReference) parsedColumn);
+                      validateUpdateAttributeColumn(parsedColumn, table, attributeNames);
 
                       final Pair<Type, Expression> expressionPair;
                       try {
@@ -1040,8 +1014,48 @@ public class StatementAnalyzer {
                       return new UpdateAssignment(parsedColumn, expressionPair.getRight());
                     })
                 .collect(Collectors.toList()));
+      } else {
+        final Set<String> attributeNames = new HashSet<>();
+        node.getAssignments()
+            .forEach(
+                assignment ->
+                    validateUpdateAttributeColumn(assignment.getName(), table, attributeNames));
+      }
+
+      if (!node.parseWhere(
+          null,
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext)) {
+        analysis.setFinishQueryAfterAnalyze();
+        return null;
       }
       return null;
+    }
+
+    private void validateUpdateAttributeColumn(
+        final Expression column, final TsTable table, final Set<String> attributeNames) {
+      if (!(column instanceof SymbolReference)) {
+        throw new SemanticException(
+            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
+      }
+
+      final String columnName = ((SymbolReference) column).getName();
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+      if (Objects.isNull(columnSchema)
+          || columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        throw new SemanticException(
+            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
+      }
+      if (!attributeNames.add(columnName)) {
+        throw new SemanticException(
+            DataNodeQueryMessages.UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE);
+      }
     }
 
     @Override
