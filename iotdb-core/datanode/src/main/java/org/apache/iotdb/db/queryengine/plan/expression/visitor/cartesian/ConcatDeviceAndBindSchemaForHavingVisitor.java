@@ -32,6 +32,9 @@ import org.apache.tsfile.enums.TSDataType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 
@@ -46,8 +49,17 @@ public class ConcatDeviceAndBindSchemaForHavingVisitor
     List<MeasurementPath> actualPaths =
         context.getSchemaTree().searchMeasurementPaths(concatPath).left;
     if (actualPaths.isEmpty()) {
+      // Preserve UNKNOWN for missing-measurement analysis. This schema is never written, so use
+      // explicit placeholders instead of asking TsFile for UNKNOWN's unsupported defaults.
       return Collections.singletonList(
-          new TimeSeriesOperand(new MeasurementPath(concatPath, TSDataType.UNKNOWN)));
+          new TimeSeriesOperand(
+              new MeasurementPath(
+                  concatPath,
+                  new MeasurementSchema(
+                      concatPath.getMeasurement(),
+                      TSDataType.UNKNOWN,
+                      TSEncoding.PLAIN,
+                      CompressionType.UNCOMPRESSED))));
     }
 
     List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
