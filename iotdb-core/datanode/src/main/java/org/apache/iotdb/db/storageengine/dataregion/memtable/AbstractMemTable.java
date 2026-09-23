@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -182,12 +183,13 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private IWritableMemChunkGroup createAlignedMemChunkGroupIfNotExistAndGet(
       IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
-    List<IMeasurementSchema> filteredSchemaList =
-        schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList());
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(
             deviceId,
             k -> {
+              // Existing devices need no filtered copy; new chunks own this mutable schema list.
+              List<IMeasurementSchema> filteredSchemaList =
+                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList());
               seriesNumber += filteredSchemaList.size();
               return new AlignedWritableMemChunkGroup(filteredSchemaList, k.isTableModel());
             });
@@ -292,12 +294,26 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private int insertAlignedNumericRow(RelationalInsertNumericRowNode row) {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    int measurementCount = row.getMeasurements().length;
+    int valueCount = row.getValueCount();
+    TsTableColumnCategory[] categories = row.getColumnCategories();
+    List<IMeasurementSchema> schemas = new ArrayList<>(measurementCount);
+    int validValues = 0;
     int nullPoints = 0;
     long rowSize = Long.BYTES + Integer.BYTES;
-    for (int i = 0; i < row.getMeasurements().length; i++) {
-      if (!row.isValidMeasurement(i, true) || row.isNull(i)) {
-        if (row.isValidMeasurement(i, true) && i < row.getValueCount() && row.isNull(i)) {
+    for (int i = 0; i < measurementCount; i++) {
+      boolean valid = row.isValidMeasurement(i, true);
+      boolean hasValue = i < valueCount;
+      // Match numeric-row presence checks, counting valid NULL fields but not missing slots.
+      if (valid
+          && hasValue
+          && categories != null
+          && i < categories.length
+          && categories[i] != null) {
+        validValues++;
+      }
+      if (!valid || !hasValue || row.isNull(i)) {
+        if (valid && hasValue) {
           nullPoints++;
         }
         schemas.add(null);
@@ -316,7 +332,6 @@ public abstract class AbstractMemTable implements IMemTable {
         .getAlignedMemChunk()
         .writeAlignedNumericPoints(row.getTime(), row.getNumericValues(), schemas);
     memSize += rowSize;
-    int validValues = row.getValidMeasurementNumber(true);
     int inserted =
         validValues
             - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()

@@ -435,7 +435,8 @@ public class IoTDBTableModelSessionIT {
         "Performance benchmark disabled; set iotdb.numeric.row.insert.perf.enabled=true to run",
         Boolean.getBoolean("iotdb.numeric.row.insert.perf.enabled"));
     final int concurrency = 16;
-    // Compare sustained single-row writes after warming both paths; verify all acknowledged rows.
+    // Compare sustained single-row writes after warming all three paths; verify all acknowledged
+    // rows.
     final int warmupRounds = 2;
     final int measuredRounds = 6;
     final int fieldCount = 99;
@@ -452,6 +453,7 @@ public class IoTDBTableModelSessionIT {
         session.executeNonQueryStatement("USE " + databasePrefix + i);
         session.executeNonQueryStatement(ddl.toString());
         session.executeNonQueryStatement(ddl.toString().replace("prepared_perf", "tablet_perf"));
+        session.executeNonQueryStatement(ddl.toString().replace("prepared_perf", "row_perf"));
       }
     }
 
@@ -469,10 +471,10 @@ public class IoTDBTableModelSessionIT {
     ITableSession[] sessions = new ITableSession[concurrency];
     NumericRowPreparedStatement[] prepared = new NumericRowPreparedStatement[concurrency];
     Tablet[] tablets = new Tablet[concurrency];
+    NumericRow[] rows = new NumericRow[concurrency];
     String[][] tags = new String[concurrency][];
     long[][] numericValues = new long[concurrency][fieldCount];
-    long[] preparedRows = new long[concurrency];
-    long[] tabletRows = new long[concurrency];
+    long[][] pathRows = new long[3][concurrency];
     ExecutorService executor = Executors.newFixedThreadPool(concurrency);
     try {
       // Connections, USE, prepare and reusable input allocation are outside every timed round.
@@ -484,16 +486,18 @@ public class IoTDBTableModelSessionIT {
         tablets[i] = new Tablet("tablet_perf", names, types, categories, 1);
         tags[i] = new String[] {"device-" + i};
         Arrays.fill(numericValues[i], Double.doubleToRawLongBits(1.0));
+        rows[i] =
+            new NumericRow("row_perf", 0, names, types, categories, numericValues[i], tags[i]);
       }
       IntConsumer preparedWrite =
           threadId -> {
             try {
               sessions[threadId].executePreparedInsertNumericRow(
                   prepared[threadId],
-                  preparedRows[threadId],
+                  pathRows[0][threadId],
                   numericValues[threadId],
                   tags[threadId]);
-              preparedRows[threadId]++;
+              pathRows[0][threadId]++;
             } catch (Exception e) {
               throw new RuntimeException(e);
             }
@@ -502,36 +506,56 @@ public class IoTDBTableModelSessionIT {
           threadId -> {
             try {
               Tablet tablet = tablets[threadId];
-              tablet.addTimestamp(0, tabletRows[threadId]);
+              tablet.addTimestamp(0, pathRows[2][threadId]);
               tablet.addValue("tag", 0, tags[threadId][0]);
               for (int i = 0; i < fieldCount; i++) {
                 tablet.addValue(names.get(i + 1), 0, 1.0D);
               }
               sessions[threadId].insert(tablet);
               tablet.reset();
-              tabletRows[threadId]++;
+              pathRows[2][threadId]++;
             } catch (Exception e) {
               throw new RuntimeException(e);
             }
           };
-      double[][] rates = new double[2][measuredRounds];
-      long[] totalRows = new long[2];
-      long[] totalNanos = new long[2];
+      IntConsumer rowWrite =
+          threadId -> {
+            try {
+              rows[threadId] =
+                  new NumericRow(
+                      "row_perf",
+                      pathRows[1][threadId],
+                      names,
+                      types,
+                      categories,
+                      numericValues[threadId],
+                      tags[threadId]);
+              sessions[threadId].insert(rows[threadId]);
+              pathRows[1][threadId]++;
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          };
+      IntConsumer[] paths = {preparedWrite, rowWrite, tabletWrite};
+      String[] pathNames = {"prepared numeric row", "insert NumericRow", "insertTablet batch=1"};
+      System.out.printf("configuration: concurrency=%d, tabletBatch=1%n", concurrency);
+      double[][] rates = new double[paths.length][measuredRounds];
+      long[] totalRows = new long[paths.length];
+      long[] totalNanos = new long[paths.length];
       for (int round = 0; round < warmupRounds + measuredRounds; round++) {
         boolean warmup = round < warmupRounds;
         int seconds = warmup ? 3 : 5;
-        // Alternate AB/BA to distribute shared JVM warmup and background storage work.
-        for (int position = 0; position < 2; position++) {
-          int path = (round + position) % 2;
+        // Rotate all three paths so each occupies every position during measured rounds.
+        for (int position = 0; position < paths.length; position++) {
+          int path = (round + position) % paths.length;
           WritePerformance result =
-              runConcurrentWrites(
-                  executor, concurrency, seconds, path == 0 ? preparedWrite : tabletWrite);
+              runConcurrentWrites(executor, concurrency, seconds, paths[path]);
           System.out.printf(
               "%s round %d position %d %s: %d rows, %.3f s, %.1f rows/s%n",
               warmup ? "warmup" : "measured",
               warmup ? round + 1 : round - warmupRounds + 1,
               position + 1,
-              path == 0 ? "prepared numeric row" : "insertTablet batch=1",
+              pathNames[path],
               result.rows(),
               result.nanos() / 1_000_000_000.0,
               result.rowsPerSecond());
@@ -542,25 +566,31 @@ public class IoTDBTableModelSessionIT {
           }
         }
       }
-      for (int path = 0; path < 2; path++) {
+      for (int path = 0; path < paths.length; path++) {
         Arrays.sort(rates[path]);
         System.out.printf(
             "summary %s: median %.1f rows/s, aggregate %.1f rows/s, min %.1f, max %.1f%n",
-            path == 0 ? "prepared numeric row" : "insertTablet batch=1",
+            pathNames[path],
             (rates[path][measuredRounds / 2 - 1] + rates[path][measuredRounds / 2]) / 2,
             totalRows[path] * 1_000_000_000.0 / totalNanos[path],
             rates[path][0],
             rates[path][measuredRounds - 1]);
       }
       // Per-device monotonic timestamps span warmup and measurement, so no rows overwrite others.
-      for (int path = 0; path < 2; path++) {
-        String table = path == 0 ? "prepared_perf" : "tablet_perf";
-        long[] rowsByThread = path == 0 ? preparedRows : tabletRows;
+      for (int path = 0; path < paths.length; path++) {
+        String table =
+            switch (path) {
+              case 0 -> "prepared_perf";
+              case 1 -> "row_perf";
+              default -> "tablet_perf";
+            };
+        long[] rowsByThread = pathRows[path];
         long expectedRows = Arrays.stream(rowsByThread).sum();
         for (int i = 0; i < concurrency; i++) {
           try (SessionDataSet dataSet =
               sessions[i].executeQueryStatement("SELECT count(*) FROM " + table)) {
             assertTrue(dataSet.hasNext());
+            // Each worker writes to its own database, including warm-up rows.
             assertEquals(rowsByThread[i], dataSet.next().getFields().get(0).getLongV());
             assertFalse(dataSet.hasNext());
           }
