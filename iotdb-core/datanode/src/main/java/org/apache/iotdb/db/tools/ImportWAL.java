@@ -60,6 +60,9 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
@@ -91,6 +94,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.function.IntFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -934,6 +938,91 @@ public class ImportWAL {
 
   static class WALReplayer implements WALReplayWorker {
 
+    private static final TypeService<IntFunction<Object>> SNAPSHOT_ARRAY_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> boolean[]::new;
+              case INT32 -> int[]::new;
+              case DATE -> LocalDate[]::new;
+              case INT64, TIMESTAMP -> long[]::new;
+              case FLOAT -> float[]::new;
+              case DOUBLE -> double[]::new;
+              case TEXT, STRING, BLOB, OBJECT -> Binary[]::new;
+              case ROW, VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type.getTypeEnum());
+            };
+
+    private static final TypeService<SnapshotValueWriter<TVList>> SNAPSHOT_VALUE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((boolean[]) target)[targetIndex] = list.getBoolean(sourceIndex);
+              case INT32 ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((int[]) target)[targetIndex] = list.getInt(sourceIndex);
+              case DATE ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((LocalDate[]) target)[targetIndex] =
+                          DateUtils.parseIntToLocalDate(list.getInt(sourceIndex));
+              case INT64, TIMESTAMP ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((long[]) target)[targetIndex] = list.getLong(sourceIndex);
+              case FLOAT ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((float[]) target)[targetIndex] = list.getFloat(sourceIndex);
+              case DOUBLE ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((double[]) target)[targetIndex] = list.getDouble(sourceIndex);
+              case TEXT, STRING, BLOB, OBJECT ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((Binary[]) target)[targetIndex] = list.getBinary(sourceIndex);
+              case ROW, VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type.getTypeEnum());
+            };
+
+    private static final TypeService<AlignedSnapshotValueWriter> ALIGNED_SNAPSHOT_VALUE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (target, targetIndex, list, sourceIndex, columnIndex) ->
+                      ((boolean[]) target)[targetIndex] =
+                          list.getBooleanByValueIndex(sourceIndex, columnIndex);
+              case INT32 ->
+                  (target, targetIndex, list, sourceIndex, columnIndex) ->
+                      ((int[]) target)[targetIndex] =
+                          list.getIntByValueIndex(sourceIndex, columnIndex);
+              case DATE ->
+                  (target, targetIndex, list, sourceIndex, columnIndex) ->
+                      ((LocalDate[]) target)[targetIndex] =
+                          DateUtils.parseIntToLocalDate(
+                              list.getIntByValueIndex(sourceIndex, columnIndex));
+              case INT64, TIMESTAMP ->
+                  (target, targetIndex, list, sourceIndex, columnIndex) ->
+                      ((long[]) target)[targetIndex] =
+                          list.getLongByValueIndex(sourceIndex, columnIndex);
+              case FLOAT ->
+                  (target, targetIndex, list, sourceIndex, columnIndex) ->
+                      ((float[]) target)[targetIndex] =
+                          list.getFloatByValueIndex(sourceIndex, columnIndex);
+              case DOUBLE ->
+                  (target, targetIndex, list, sourceIndex, columnIndex) ->
+                      ((double[]) target)[targetIndex] =
+                          list.getDoubleByValueIndex(sourceIndex, columnIndex);
+              case TEXT, STRING, BLOB, OBJECT ->
+                  (target, targetIndex, list, sourceIndex, columnIndex) ->
+                      ((Binary[]) target)[targetIndex] =
+                          list.getBinaryByValueIndex(sourceIndex, columnIndex);
+              case ROW, VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type.getTypeEnum());
+            };
+
+    private interface SnapshotValueWriter<T extends TVList> {
+      void write(Object target, int targetIndex, T list, int sourceIndex);
+    }
+
+    private interface AlignedSnapshotValueWriter {
+      void write(
+          Object target, int targetIndex, AlignedTVList list, int sourceIndex, int columnIndex);
+    }
+
     private final Session treeSession;
     private final Session tableSession;
     private final ConsensusLogToTabletConverter converter;
@@ -1599,16 +1688,7 @@ public class ImportWAL {
     }
 
     private static Object createValueArray(final TSDataType type, final int rowCount) {
-      return switch (type) {
-        case BOOLEAN -> new boolean[rowCount];
-        case INT32 -> new int[rowCount];
-        case DATE -> new LocalDate[rowCount];
-        case INT64, TIMESTAMP -> new long[rowCount];
-        case FLOAT -> new float[rowCount];
-        case DOUBLE -> new double[rowCount];
-        case TEXT, STRING, BLOB, OBJECT -> new Binary[rowCount];
-        case VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type);
-      };
+      return SNAPSHOT_ARRAY_SERVICE.call(Type.fromTsDataType(type)).apply(rowCount);
     }
 
     private static Object[] createValueArrays(
@@ -1626,19 +1706,9 @@ public class ImportWAL {
         final TSDataType type,
         final TVList list,
         final int sourceIndex) {
-      switch (type) {
-        case BOOLEAN -> ((boolean[]) target)[targetIndex] = list.getBoolean(sourceIndex);
-        case INT32 -> ((int[]) target)[targetIndex] = list.getInt(sourceIndex);
-        case DATE ->
-            ((LocalDate[]) target)[targetIndex] =
-                DateUtils.parseIntToLocalDate(list.getInt(sourceIndex));
-        case INT64, TIMESTAMP -> ((long[]) target)[targetIndex] = list.getLong(sourceIndex);
-        case FLOAT -> ((float[]) target)[targetIndex] = list.getFloat(sourceIndex);
-        case DOUBLE -> ((double[]) target)[targetIndex] = list.getDouble(sourceIndex);
-        case TEXT, STRING, BLOB, OBJECT ->
-            ((Binary[]) target)[targetIndex] = list.getBinary(sourceIndex);
-        case VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type);
-      }
+      SNAPSHOT_VALUE_SERVICE
+          .call(Type.fromTsDataType(type))
+          .write(target, targetIndex, list, sourceIndex);
     }
 
     private static void putValue(
@@ -1648,28 +1718,12 @@ public class ImportWAL {
         final AlignedTVList list,
         final int sourceIndex,
         final int columnIndex) {
-      switch (type) {
-        case BOOLEAN ->
-            ((boolean[]) target)[targetIndex] =
-                list.getBooleanByValueIndex(sourceIndex, columnIndex);
-        case INT32 ->
-            ((int[]) target)[targetIndex] = list.getIntByValueIndex(sourceIndex, columnIndex);
-        case DATE ->
-            ((LocalDate[]) target)[targetIndex] =
-                DateUtils.parseIntToLocalDate(list.getIntByValueIndex(sourceIndex, columnIndex));
-        case INT64, TIMESTAMP ->
-            ((long[]) target)[targetIndex] = list.getLongByValueIndex(sourceIndex, columnIndex);
-        case FLOAT ->
-            ((float[]) target)[targetIndex] = list.getFloatByValueIndex(sourceIndex, columnIndex);
-        case DOUBLE ->
-            ((double[]) target)[targetIndex] = list.getDoubleByValueIndex(sourceIndex, columnIndex);
-        case TEXT, STRING, BLOB, OBJECT ->
-            ((Binary[]) target)[targetIndex] = list.getBinaryByValueIndex(sourceIndex, columnIndex);
-        case VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type);
-      }
+      ALIGNED_SNAPSHOT_VALUE_SERVICE
+          .call(Type.fromTsDataType(type))
+          .write(target, targetIndex, list, sourceIndex, columnIndex);
     }
 
-    private static IllegalArgumentException unsupportedSnapshotDataType(final TSDataType type) {
+    private static IllegalArgumentException unsupportedSnapshotDataType(final TypeEnum type) {
       return new IllegalArgumentException(
           String.format(
               ImportWALMessages.EXCEPTION_UNSUPPORTED_SNAPSHOT_DATA_TYPE_ARG_7A32D312, type));
