@@ -36,7 +36,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.SQLException;
-import java.sql.SQLWarning;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
@@ -113,20 +112,37 @@ public class IoTDBStatementTest {
 
   @SuppressWarnings("resource")
   @Test
-  public void executionStatusMessageIsExposedAsWarningAndClearedOnNextExecution() throws Exception {
-    TSExecuteStatementResp response = new TSExecuteStatementResp();
-    response.setStatus(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("submission result"));
-    when(client.executeStatementV2(any())).thenReturn(response);
+  public void regionValidationErrorsArePropagatedByExecuteAndExecuteUpdate() throws Exception {
+    String[] statements = {
+      "MIGRATE REGION 1,1 FROM 2 TO 3",
+      "RECONSTRUCT REGION 1,1 ON 2",
+      "EXTEND REGION 1,1 TO 2",
+      "REMOVE REGION 1,1 FROM 2"
+    };
+    TSStatusCode[] codes = {
+      TSStatusCode.MIGRATE_REGION_ERROR,
+      TSStatusCode.RECONSTRUCT_REGION_ERROR,
+      TSStatusCode.EXTEND_REGION_ERROR,
+      TSStatusCode.REMOVE_REGION_PEER_ERROR
+    };
+    for (int i = 0; i < statements.length; i++) {
+      final String sql = statements[i];
+      TSStatus status =
+          new TSStatus(codes[i].getStatusCode()).setMessage("Duplicate Region ID 1 in the request");
+      TSExecuteStatementResp response = new TSExecuteStatementResp().setStatus(status);
+      when(client.executeStatementV2(any())).thenReturn(response);
+      when(client.executeUpdateStatement(any())).thenReturn(response);
+      IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
 
-    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
-    Assert.assertFalse(statement.execute("MIGRATE REGION 1 FROM 2 TO 3"));
-    SQLWarning warning = statement.getWarnings();
-    Assert.assertNotNull(warning);
-    Assert.assertEquals("submission result", warning.getMessage());
-
-    response.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    Assert.assertFalse(statement.execute("FLUSH"));
-    Assert.assertNull(statement.getWarnings());
+      SQLException executeError =
+          Assert.assertThrows(SQLException.class, () -> statement.execute(sql));
+      assertEquals(status.getCode(), executeError.getErrorCode());
+      Assert.assertTrue(executeError.getMessage().contains(status.getMessage()));
+      SQLException updateError =
+          Assert.assertThrows(SQLException.class, () -> statement.executeUpdate(sql));
+      assertEquals(status.getCode(), updateError.getErrorCode());
+      Assert.assertTrue(updateError.getMessage().contains(status.getMessage()));
+      Assert.assertNull(statement.getWarnings());
+    }
   }
 }
