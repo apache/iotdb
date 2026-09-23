@@ -48,10 +48,10 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_RECOVER_WAL = "WAL 恢复失败。";
   public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
       "通过协议 {} 向 Region {} 写入 LOAD 共识节点";
-  public static final String LOG_LOAD_CONSENSUS_REFRESH_REPLICA_SET_FAILED_7C244C63 =
-      "刷新 Region {} 的 LOAD 共识副本集失败，使用缓存的副本集：{}";
   public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
       "LOAD 共识路由已过期：region {} 的写节点 {} 不在副本集 {} 中。";
+  public static final String LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21 =
+      "重新查询 region {} 的路由失败，第 {} / {} 次：{}";
   public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_FILE_ARG_ARG_9105BFC5 =
       "枚举 LOAD 快照文件 %s 失败：%s";
   public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70 =
@@ -582,7 +582,6 @@ public final class StorageEngineMessages {
   public static final String UNSUPPORTED_TSFILE_DATA_TYPE = "不支持的 TsFileData 类型: ";
   public static final String DELETE_AFTER_LOADING_ERROR = "加载后删除 {} 出错。";
   public static final String LOAD_TSFILE_DIR_CREATED = "已创建加载 TsFile 目录 {}。";
-  public static final String CANNOT_CREATE_TSFILE_FOR_WRITING = "无法创建 TsFile {} 用于写入。";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "关闭 TsFileIOWriter {} 出错。";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "关闭修改文件 {} 出错。";
   public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =

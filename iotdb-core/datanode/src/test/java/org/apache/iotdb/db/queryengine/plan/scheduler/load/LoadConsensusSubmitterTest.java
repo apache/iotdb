@@ -140,6 +140,37 @@ public class LoadConsensusSubmitterTest {
   }
 
   /**
+   * A route that is looked up again drops what this DataNode has cached first: a lookup answers
+   * with the route the cache holds, and the route that has to be resolved again is the one that may
+   * have changed.
+   */
+  @Test
+  public void testResolvingARouteDropsTheCacheFirst() {
+    final TRegionReplicaSet freshRoute = replicaSet(location(21, "127.0.0.3", 9003));
+    final ClusterPartitionFetcher partitionFetcher = Mockito.mock(ClusterPartitionFetcher.class);
+    PowerMockito.mockStatic(ClusterPartitionFetcher.class);
+    PowerMockito.when(ClusterPartitionFetcher.getInstance()).thenReturn(partitionFetcher);
+    Mockito.when(partitionFetcher.getRegionReplicaSet(Mockito.any()))
+        .thenReturn(Collections.singletonList(freshRoute));
+
+    assertEquals(freshRoute, newSubmitter().resolveRoute(regionId(), 3));
+    Mockito.verify(partitionFetcher).invalidAllCache();
+  }
+
+  /** A route that cannot be resolved is reported as no route, so no caller adopts an empty one. */
+  @Test
+  public void testARouteThatCannotBeResolvedIsReportedAsNone() {
+    final ClusterPartitionFetcher partitionFetcher = Mockito.mock(ClusterPartitionFetcher.class);
+    PowerMockito.mockStatic(ClusterPartitionFetcher.class);
+    PowerMockito.when(ClusterPartitionFetcher.getInstance()).thenReturn(partitionFetcher);
+    Mockito.when(partitionFetcher.getRegionReplicaSet(Mockito.any()))
+        .thenReturn(Collections.emptyList());
+
+    // One attempt, so the test does not wait out the backoff of the others.
+    assertNull(newSubmitter().resolveRoute(regionId(), 1));
+  }
+
+  /**
    * The commands of one transaction all go to the replica set the splitter resolved, whatever the
    * local partition table holds now: a route refreshed in the middle of a transaction would send
    * the rest of a task to regions that hold a different plan, while the staged bytes stay where the

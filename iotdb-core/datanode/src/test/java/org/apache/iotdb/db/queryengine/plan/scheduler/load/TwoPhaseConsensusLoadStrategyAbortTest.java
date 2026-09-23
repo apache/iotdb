@@ -21,7 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
@@ -113,7 +116,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             submitter,
             "root",
             false);
-    setField(strategy, "allReplicaSets", replicaSets);
+    setField(strategy, "regionRoutes", routesOf(replicaSets));
     setField(strategy, "regionLoadIds", loadIds);
     setField(strategy, "regionPieceCounts", pieceCounts);
     setField(strategy, "regionTotalBytes", new LinkedHashMap<TConsensusGroupId, Long>());
@@ -137,6 +140,16 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     return (boolean) method.invoke(strategy, node);
   }
 
+  /** The route map a transaction holds, built from the replica sets of its regions. */
+  private static Map<TConsensusGroupId, TRegionReplicaSet> routesOf(
+      final Set<TRegionReplicaSet> replicaSets) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> routes = new LinkedHashMap<>();
+    for (final TRegionReplicaSet replicaSet : replicaSets) {
+      routes.put(replicaSet.getRegionId(), replicaSet);
+    }
+    return routes;
+  }
+
   private static Set<TRegionReplicaSet> twoRegionsInOrder() {
     final Set<TRegionReplicaSet> replicaSets = new LinkedHashSet<>();
     replicaSets.add(new TRegionReplicaSet(REGION_1, new ArrayList<>()));
@@ -156,6 +169,120 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     counts.put(REGION_1, 3L);
     counts.put(REGION_2, 2L);
     return counts;
+  }
+
+  /**
+   * A command that fails transiently is retried on the route the region has now: the route is
+   * looked up again with the cache dropped first, and the route that changed is adopted by the
+   * whole transaction, so the commands that follow a switched write node or a finished migration
+   * are sent where the staged bytes of the task are.
+   */
+  @Test
+  public void testAFailedCommandFollowsTheRouteTheRegionHasNow() throws Exception {
+    final TRegionReplicaSet pinnedRoute =
+        new TRegionReplicaSet(REGION_1, Collections.singletonList(location(11)));
+    final TRegionReplicaSet freshRoute =
+        new TRegionReplicaSet(REGION_1, Collections.singletonList(location(12)));
+    final List<String> submitted = new ArrayList<>();
+    final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
+    when(submitter.submit(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              final TRegionReplicaSet route = invocation.getArgument(0);
+              submitted.add(
+                  route.getRegionId().getId()
+                      + "@"
+                      + route.getDataNodeLocations().get(0).getDataNodeId());
+              return route.equals(pinnedRoute)
+                  ? RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR)
+                  : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+            });
+    when(submitter.resolveRoute(any(), any(Integer.class))).thenReturn(freshRoute);
+
+    final TwoPhaseConsensusLoadStrategy strategy =
+        strategy(
+            submitter,
+            new LinkedHashSet<>(Collections.singletonList(pinnedRoute)),
+            loadIds(),
+            pieceCounts());
+    final TSStatusCode status = submitPiece(strategy, REGION_1);
+
+    assertEquals(TSStatusCode.SUCCESS_STATUS, status);
+    assertEquals(
+        "1@11, then the retry on the route the region has now",
+        Arrays.asList("1@11", "1@12"),
+        submitted);
+    assertEquals(freshRoute, routesOf(strategy).get(REGION_1));
+  }
+
+  /**
+   * A route that cannot be looked up is no route at all: the command is repeated on the route it
+   * had instead of being moved to one that could not be read, and the answer of that attempt is
+   * what the caller decides from.
+   */
+  @Test
+  public void testARouteThatCannotBeLookedUpIsNotAdopted() throws Exception {
+    final TRegionReplicaSet pinnedRoute =
+        new TRegionReplicaSet(REGION_1, Collections.singletonList(location(11)));
+    final List<String> submitted = new ArrayList<>();
+    final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
+    when(submitter.submit(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              final TRegionReplicaSet route = invocation.getArgument(0);
+              submitted.add(
+                  route.getRegionId().getId()
+                      + "@"
+                      + route.getDataNodeLocations().get(0).getDataNodeId());
+              return RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR);
+            });
+    when(submitter.resolveRoute(any(), any(Integer.class))).thenReturn(null);
+
+    final TwoPhaseConsensusLoadStrategy strategy =
+        strategy(
+            submitter,
+            new LinkedHashSet<>(Collections.singletonList(pinnedRoute)),
+            loadIds(),
+            pieceCounts());
+    final TSStatusCode status = submitPiece(strategy, REGION_1);
+
+    assertEquals(TSStatusCode.DISPATCH_ERROR, status);
+    assertEquals(Arrays.asList("1@11", "1@11", "1@11"), submitted);
+  }
+
+  /** Submits a piece for a region through the bounded submission of the strategy. */
+  private static TSStatusCode submitPiece(
+      final TwoPhaseConsensusLoadStrategy strategy, final TConsensusGroupId regionId)
+      throws Exception {
+    final Method method =
+        TwoPhaseConsensusLoadStrategy.class.getDeclaredMethod(
+            "submitConsensusWithRetry", TConsensusGroupId.class, LoadTsFileConsensusNode.class);
+    method.setAccessible(true);
+    final LoadTsFileConsensusNode piece =
+        LoadTsFileConsensusNode.piece(
+            new PlanNodeId("load-piece"), "load-1", "file-1", 0L, new ArrayList<>());
+    return TSStatusCode.representOf(
+        ((org.apache.iotdb.common.rpc.thrift.TSStatus) method.invoke(strategy, regionId, piece))
+            .getCode());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<TConsensusGroupId, TRegionReplicaSet> routesOf(
+      final TwoPhaseConsensusLoadStrategy strategy) throws Exception {
+    final Field field = TwoPhaseConsensusLoadStrategy.class.getDeclaredField("regionRoutes");
+    field.setAccessible(true);
+    return (Map<TConsensusGroupId, TRegionReplicaSet>) field.get(strategy);
+  }
+
+  private static TDataNodeLocation location(final int dataNodeId) {
+    final TEndPoint endPoint = new TEndPoint("127.0.0." + dataNodeId, 9003);
+    return new TDataNodeLocation()
+        .setDataNodeId(dataNodeId)
+        .setClientRpcEndPoint(endPoint)
+        .setInternalEndPoint(endPoint)
+        .setMPPDataExchangeEndPoint(endPoint)
+        .setDataRegionConsensusEndPoint(endPoint)
+        .setSchemaRegionConsensusEndPoint(endPoint);
   }
 
   @Test

@@ -48,10 +48,10 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_RECOVER_WAL = "Fail to recover wal.";
   public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
       "Write LOAD consensus node to region {} via protocol {}";
-  public static final String LOG_LOAD_CONSENSUS_REFRESH_REPLICA_SET_FAILED_7C244C63 =
-      "Failed to refresh LOAD consensus replica set for region {}, using cached set: {}";
   public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
       "LOAD consensus route of region {} is stale: write node {} is not in replica set {}.";
+  public static final String LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21 =
+      "Failed to look the route of region {} up again, attempt {} of {}: {}";
   public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_FILE_ARG_ARG_9105BFC5 =
       "Failed to enumerate the LOAD snapshot file %s: %s";
   public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70 =
@@ -586,7 +586,6 @@ public final class StorageEngineMessages {
   public static final String UNSUPPORTED_TSFILE_DATA_TYPE = "Unsupported TsFileData type: ";
   public static final String DELETE_AFTER_LOADING_ERROR = "Delete After Loading {} error.";
   public static final String LOAD_TSFILE_DIR_CREATED = "Load TsFile dir {} is created.";
-  public static final String CANNOT_CREATE_TSFILE_FOR_WRITING = "Can not create TsFile {} for writing.";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "Close TsFileIOWriter {} error.";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "Close ModificationFile {} error.";
   public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =

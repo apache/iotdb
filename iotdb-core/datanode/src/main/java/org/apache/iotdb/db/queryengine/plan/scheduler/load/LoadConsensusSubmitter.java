@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
@@ -74,6 +76,9 @@ public class LoadConsensusSubmitter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadConsensusSubmitter.class);
 
+  /** How long a route lookup that failed is waited out before it is tried again. */
+  private static final long LOAD_CONSENSUS_ROUTE_RESOLVE_BACKOFF_MS = 100L;
+
   private final String localhostIp;
   private final int localhostPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
@@ -83,6 +88,46 @@ public class LoadConsensusSubmitter {
     this.clientManager = clientManager;
     this.localhostIp = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+  }
+
+  /**
+   * Looks the route of a region up again and returns the freshest replica set, or null when it
+   * cannot be resolved within the attempts.
+   *
+   * <p>What this DataNode has cached is dropped first: a lookup answers with the route the cache
+   * holds, and the route that has to be looked up again is exactly the one that may have changed
+   * under a write-node switch or a region migration. That is what the query path does before it
+   * re-analyzes a statement it was redirected for. A route that resolves to nothing within the
+   * attempts is reported as no route at all, so the caller repeats its command on the route it had
+   * instead of silently replacing it with one that could not be read.
+   */
+  public TRegionReplicaSet resolveRoute(final TConsensusGroupId regionId, final int attempts) {
+    for (int attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        ClusterPartitionFetcher.getInstance().invalidAllCache();
+        final List<TRegionReplicaSet> replicaSets =
+            ClusterPartitionFetcher.getInstance()
+                .getRegionReplicaSet(Collections.singletonList(regionId));
+        if (!replicaSets.isEmpty()) {
+          return replicaSets.get(0);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            StorageEngineMessages
+                .LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21,
+            regionId,
+            attempt,
+            attempts,
+            e.getMessage());
+      }
+      try {
+        Thread.sleep(LOAD_CONSENSUS_ROUTE_RESOLVE_BACKOFF_MS * attempt);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return null;
+      }
+    }
+    return null;
   }
 
   public TSStatus submit(TRegionReplicaSet replicaSet, LoadTsFileConsensusNode node) {

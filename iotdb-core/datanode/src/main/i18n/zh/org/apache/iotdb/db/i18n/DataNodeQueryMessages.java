@@ -3257,6 +3257,10 @@ public final class DataNodeQueryMessages {
   public static final String WAIT_FOR_LOADING_S_TIME_OUT =
 
       "等待加载 %s 超时。";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B =
+      "任务加载期间 region {} 的路由已从 {} 变为 {}，任务将跟随新路由";
+  public static final String EXCEPTION_NO_ROUTE_IS_KNOWN_FOR_REGION_ARG_OF_THE_LOAD_TASK_BC8F698F =
+      "加载任务中 region %s 没有已知路由";
   public static final String DISPATCH_LOAD_COMMAND_ARG_OF_TSFILE_ARG_ERROR_TO_REPLICASETS_ARG_ERROR =
 
       "分发加载命令 {}（TsFile {}）到 replicaSets {} 时出错。 ";

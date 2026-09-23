@@ -2773,6 +2773,10 @@ public final class DataNodeQueryMessages {
       "Sub status code {}. Sub status message {}.";
   public static final String WAIT_FOR_LOADING_S_TIME_OUT =
       "Wait for loading %s time out.";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B =
+      "The route of region {} changed from {} to {} while the task is being loaded, the task follows it";
+  public static final String EXCEPTION_NO_ROUTE_IS_KNOWN_FOR_REGION_ARG_OF_THE_LOAD_TASK_BC8F698F =
+      "No route is known for region %s of the load task";
   public static final String DISPATCH_LOAD_COMMAND_ARG_OF_TSFILE_ARG_ERROR_TO_REPLICASETS_ARG_ERROR =
       "Dispatch load command {} of TsFile {} error to replicaSets {} error. ";
   public static final String RESULT_STATUS_CODE_ARG_RESULT_STATUS_MESSAGE_ARG =

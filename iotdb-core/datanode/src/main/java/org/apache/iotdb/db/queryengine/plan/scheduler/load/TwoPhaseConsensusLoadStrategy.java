@@ -43,9 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -97,8 +95,18 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   /** The source file being loaded, kept for the phase-two commands. */
   private LoadSingleTsFileNode currentNode;
 
-  /** Regions touched by the current file; used to send ABORT/PREPARE+COMMIT in phase two. */
-  private final Set<TRegionReplicaSet> allReplicaSets = new HashSet<>();
+  /**
+   * The route of every region touched by the current file: the replica set the splitter resolved
+   * for it, replaced by a fresher one when a command fails and the route of the region can be
+   * looked up again, see {@link #submitWithRetry}. Every command of the transaction - the pieces,
+   * PREPARE, COMMIT and ABORT - reads the route of its region from here, so a route that changed
+   * between two commands of a task is followed by all of the remaining ones instead of leaving the
+   * pieces staged under one route and the terminal commands under another.
+   */
+  private final Map<TConsensusGroupId, TRegionReplicaSet> regionRoutes = new ConcurrentHashMap<>();
+
+  /** The attempts a route is looked up again with before a command gives up on it. */
+  private static final int LOAD_CONSENSUS_ROUTE_RESOLVE_MAX_ATTEMPTS = 3;
 
   private final Map<TConsensusGroupId, String> regionLoadIds = new ConcurrentHashMap<>();
   private final Map<TConsensusGroupId, Long> regionPieceCounts = new ConcurrentHashMap<>();
@@ -130,7 +138,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   public boolean execute(LoadSingleTsFileNode node) {
     this.currentNode = node;
     dispatcher.setUuid(UUID.randomUUID().toString());
-    allReplicaSets.clear();
+    regionRoutes.clear();
     regionLoadIds.clear();
     regionPieceCounts.clear();
     regionTotalBytes.clear();
@@ -191,8 +199,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
   private boolean dispatchOnePieceNode(
       LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
-    allReplicaSets.add(replicaSet);
-    return dispatchConsensusPiece(pieceNode, replicaSet);
+    // The first piece of a region pins the route the splitter resolved; a route that a re-resolve
+    // replaced later is followed by every command of the transaction from then on.
+    regionRoutes.putIfAbsent(replicaSet.getRegionId(), replicaSet);
+    return dispatchConsensusPiece(pieceNode, regionRoutes.get(replicaSet.getRegionId()));
   }
 
   /**
@@ -200,8 +210,8 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
    * permanent rejections are returned to the caller immediately so the scheduler can abort.
    */
   private TSStatus submitConsensusWithRetry(
-      TRegionReplicaSet replicaSet, LoadTsFileConsensusNode node) {
-    return submitWithRetry(replicaSet, node, false);
+      final TConsensusGroupId regionId, final LoadTsFileConsensusNode node) {
+    return submitWithRetry(regionId, node, false);
   }
 
   /**
@@ -218,14 +228,28 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
    * import a partition of the staged file twice.
    */
   private TSStatus submitTerminalCommandWithRetry(
-      final TRegionReplicaSet replicaSet, final LoadTsFileConsensusNode node) {
-    return submitWithRetry(replicaSet, node, node.getOp() == LoadTsFileConsensusOp.ABORT);
+      final TConsensusGroupId regionId, final LoadTsFileConsensusNode node) {
+    return submitWithRetry(regionId, node, node.getOp() == LoadTsFileConsensusOp.ABORT);
   }
 
+  /**
+   * Submits a command to the region it belongs to, with a bounded number of attempts.
+   *
+   * <p>The route the region has now is what the command is sent to. A transient failure may mean
+   * that this route is not the one that holds the region any more, so it is looked up again before
+   * the next attempt - with the local cache dropped first, see {@code
+   * LoadConsensusSubmitter#resolveRoute} - and a route that changed is adopted by the whole
+   * transaction, so the commands that follow a switched write node or a finished migration are sent
+   * where the staged bytes of the task are. A route that cannot be resolved at all is no route
+   * either: the attempt is repeated on the one that failed, and the answer of that attempt is what
+   * the caller decides from, instead of the transaction quietly continuing on a route that the
+   * partition table no longer knows.
+   */
   private TSStatus submitWithRetry(
-      final TRegionReplicaSet replicaSet,
+      final TConsensusGroupId regionId,
       final LoadTsFileConsensusNode node,
       final boolean retryEveryFailure) {
+    TRegionReplicaSet replicaSet = currentRoute(regionId);
     TSStatus status = null;
     for (int attempt = 1; attempt <= LOAD_CONSENSUS_SUBMIT_MAX_RETRIES; attempt++) {
       status = consensusSubmitter.submit(replicaSet, node);
@@ -242,6 +266,20 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
           attempt,
           LOAD_CONSENSUS_SUBMIT_MAX_RETRIES,
           status.getMessage());
+      // The route of the region may be the reason the command did not reach it: look it up again
+      // and follow it when it changed.
+      final TRegionReplicaSet resolved =
+          consensusSubmitter.resolveRoute(regionId, LOAD_CONSENSUS_ROUTE_RESOLVE_MAX_ATTEMPTS);
+      if (resolved != null && !resolved.equals(replicaSet)) {
+        LOGGER.info(
+            DataNodeQueryMessages
+                .LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B,
+            regionId,
+            replicaSet,
+            resolved);
+        replicaSet = resolved;
+        regionRoutes.put(regionId, resolved);
+      }
       try {
         Thread.sleep(LOAD_CONSENSUS_SUBMIT_RETRY_BACKOFF_MS * attempt);
       } catch (InterruptedException e) {
@@ -250,6 +288,20 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
       }
     }
     return status;
+  }
+
+  /** The route of a region in this transaction, pinned to what the splitter resolved at first. */
+  private TRegionReplicaSet currentRoute(final TConsensusGroupId regionId) {
+    final TRegionReplicaSet route = regionRoutes.get(regionId);
+    if (route != null) {
+      return route;
+    }
+    // A command that has no route yet cannot be sent anywhere: the caller held no region for it.
+    throw new IllegalStateException(
+        String.format(
+            DataNodeQueryMessages
+                .EXCEPTION_NO_ROUTE_IS_KNOWN_FOR_REGION_ARG_OF_THE_LOAD_TASK_BC8F698F,
+            regionId));
   }
 
   private boolean isTransientConsensusFailure(TSStatus status) {
@@ -287,7 +339,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             pieceNode.getTsFile() == null ? null : pieceNode.getTsFile().getName(),
             pieceIndex,
             pieceNode.getAllTsFileData());
-    final TSStatus pieceStatus = submitConsensusWithRetry(replicaSet, piece);
+    final TSStatus pieceStatus = submitConsensusWithRetry(regionId, piece);
     if (pieceStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           DataNodeQueryMessages.DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG
@@ -319,7 +371,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   }
 
   private boolean abortAllRegions() {
-    return abortRegions(allReplicaSets);
+    return abortRegions();
   }
 
   /**
@@ -328,14 +380,14 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
    * they would otherwise keep disk space of a task nobody ever finishes, and a later replay of the
    * same pieces would find a half-filled file.
    */
-  private boolean abortRegions(final Set<TRegionReplicaSet> replicaSets) {
+  private boolean abortRegions() {
     boolean allAborted = true;
-    for (TRegionReplicaSet replicaSet : replicaSets) {
+    for (TRegionReplicaSet replicaSet : regionRoutes.values()) {
       final String loadId = regionLoadIds.get(replicaSet.getRegionId());
       final LoadTsFileConsensusNode abort =
           LoadTsFileConsensusNode.abort(
               new PlanNodeId("load-abort-" + loadId), loadId, null, isGeneratedByPipe);
-      final TSStatus status = submitTerminalCommandWithRetry(replicaSet, abort);
+      final TSStatus status = submitTerminalCommandWithRetry(replicaSet.getRegionId(), abort);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             DataNodeQueryMessages
@@ -343,7 +395,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
                 + DataNodeQueryMessages.RESULT_STATUS_CODE_ARG_RESULT_STATUS_MESSAGE_ARG,
             abort,
             loadId,
-            allReplicaSets,
+            regionRoutes.values(),
             TSStatusCode.representOf(status.getCode()).name(),
             status.getMessage());
         allAborted = false;
@@ -369,7 +421,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   /** The prepare round: every touched region seals its staged data without importing anything. */
   private boolean prepareAllRegions(
       final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
-    for (TRegionReplicaSet replicaSet : allReplicaSets) {
+    for (TRegionReplicaSet replicaSet : regionRoutes.values()) {
       final TConsensusGroupId regionId = replicaSet.getRegionId();
       final String loadId = regionLoadIds.get(regionId);
       final LoadTsFileConsensusNode prepare =
@@ -382,7 +434,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
               0L,
               isGeneratedByPipe,
               timePartition2ProgressIndex);
-      final TSStatus prepareStatus = consensusSubmitter.submit(replicaSet, prepare);
+      final TSStatus prepareStatus = submitConsensusWithRetry(regionId, prepare);
       if (prepareStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             DataNodeQueryMessages
@@ -390,7 +442,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
                 + DataNodeQueryMessages.RESULT_STATUS_CODE_ARG_RESULT_STATUS_MESSAGE_ARG,
             prepare,
             loadId,
-            allReplicaSets,
+            regionRoutes.values(),
             TSStatusCode.representOf(prepareStatus.getCode()).name(),
             prepareStatus.getMessage());
         return false;
@@ -415,7 +467,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
       LoadSingleTsFileNode node,
       final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
     boolean allCommitted = true;
-    for (TRegionReplicaSet replicaSet : allReplicaSets) {
+    for (TRegionReplicaSet replicaSet : regionRoutes.values()) {
       final TConsensusGroupId regionId = replicaSet.getRegionId();
       final String loadId = regionLoadIds.get(regionId);
       final LoadTsFileConsensusNode commit =
@@ -426,7 +478,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
               isGeneratedByPipe,
               node.isDeleteAfterLoad(),
               timePartition2ProgressIndex);
-      final TSStatus commitStatus = submitTerminalCommandWithRetry(replicaSet, commit);
+      final TSStatus commitStatus = submitTerminalCommandWithRetry(regionId, commit);
       if (commitStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             DataNodeQueryMessages
@@ -434,7 +486,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
                 + DataNodeQueryMessages.RESULT_STATUS_CODE_ARG_RESULT_STATUS_MESSAGE_ARG,
             commit,
             loadId,
-            allReplicaSets,
+            regionRoutes.values(),
             TSStatusCode.representOf(commitStatus.getCode()).name(),
             commitStatus.getMessage());
         allCommitted = false;
