@@ -19,56 +19,116 @@
 
 package org.apache.iotdb.tool;
 
-import org.apache.iotdb.tool.data.AbstractDataTool;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tool.data.ImportData;
+import org.apache.iotdb.tool.data.ImportDataTable;
+import org.apache.iotdb.tool.data.ImportDataTree;
+import org.apache.iotdb.tool.schema.ImportSchemaTree;
 
-import org.apache.commons.csv.CSVParser;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.List;
+import java.lang.reflect.Method;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 /**
- * Resource-management guard for the CSV import paths. {@link AbstractDataTool#readCsvFile(String)}
- * returns a {@link CSVParser} that owns the underlying {@code FileInputStream}; the import call
- * sites (ImportData / ImportDataTree / ImportDataTable / ImportSchemaTree) now consume it inside a
- * try-with-resources, so the parser — and the file descriptor it wraps — is released on every exit,
- * including the empty-file / bad-header early returns that previously leaked it (bulk import over a
- * directory could otherwise exhaust file descriptors with "Too many open files").
+ * Every CSV import path opens a parser over a {@code FileInputStream}. On the early-return paths
+ * (an empty file, a header that fails validation) that parser used to be abandoned without being
+ * closed, so each such file leaked a file descriptor.
+ *
+ * <p>These tests drive the real import methods on an empty CSV many times and assert that the
+ * number of open descriptors in the process does not grow with the number of calls. Without the fix
+ * it grows by one per call.
  */
 public class ReadCsvFileResourceTest {
 
-  /** Reaches the protected static {@link AbstractDataTool#readCsvFile(String)} for the assertion. */
-  private static final class Probe extends AbstractDataTool {
-    static CSVParser open(String path) throws IOException {
-      return readCsvFile(path);
-    }
+  private static final int CALLS = 50;
+
+  /**
+   * Without the fix the growth is one per call. A leaked stream is only released once a GC lets the
+   * JVM's Cleaner reap it, so a collection mid-loop could hide some leaks; a quarter of the
+   * expected growth leaves room for that without letting a real leak through.
+   */
+  private static final int MAX_GROWTH = CALLS / 4;
+
+  @Test
+  public void importDataTreeClosesParserOnEarlyReturn() throws Exception {
+    TreeProbe tool = new TreeProbe();
+    assertNoDescriptorGrowth("ImportDataTree.importFromCsvFile", tool::importCsv);
   }
 
   @Test
-  public void readCsvFileParserIsClosedByTryWithResources() throws IOException {
+  public void importDataTableClosesParserOnEarlyReturn() throws Exception {
+    TableProbe tool = new TableProbe();
+    assertNoDescriptorGrowth("ImportDataTable.importFromCsvFile", tool::importCsv);
+  }
+
+  @Test
+  public void importSchemaTreeClosesParserOnEarlyReturn() throws Exception {
+    SchemaProbe tool = new SchemaProbe();
+    assertNoDescriptorGrowth("ImportSchemaTree.importSchemaFromCsvFile", tool::importCsv);
+  }
+
+  @Test
+  public void importDataClosesParserOnEarlyReturn() throws Exception {
+    Method importFromSingleFile =
+        ImportData.class.getDeclaredMethod("importFromSingleFile", Session.class, File.class);
+    importFromSingleFile.setAccessible(true);
+    // The session is not reached on the empty-file path.
+    assertNoDescriptorGrowth(
+        "ImportData.importFromSingleFile", file -> importFromSingleFile.invoke(null, null, file));
+  }
+
+  private static void assertNoDescriptorGrowth(String site, CsvImport importCsv) throws Exception {
+    // An empty file has no header, so every import path takes its "Empty file!" early return
+    // without needing a connection.
     File csv = File.createTempFile("readCsvFileResource", ".csv");
     csv.deleteOnExit();
-    try (FileWriter writer = new FileWriter(csv)) {
-      writer.write("Time,root.sg.d.s0\n1,10\n2,20\n");
-    }
 
-    CSVParser parser;
-    try (CSVParser opened = Probe.open(csv.getAbsolutePath())) {
-      parser = opened;
-      assertFalse("parser must be open inside the try block", opened.isClosed());
-      List<String> headerNames = opened.getHeaderNames();
-      assertFalse("header must be parsed", headerNames.isEmpty());
-      assertEquals("both data rows must be readable before close", 2L, opened.stream().count());
+    importCsv.run(csv); // warm-up: class loading may open descriptors of its own
+    long before = openDescriptors();
+    for (int i = 0; i < CALLS; i++) {
+      importCsv.run(csv);
     }
+    long growth = openDescriptors() - before;
 
     assertTrue(
-        "readCsvFile's parser (and the FileInputStream it wraps) must be closed on scope exit",
-        parser.isClosed());
+        site + " leaked " + growth + " file descriptors over " + CALLS + " calls",
+        growth < MAX_GROWTH);
+  }
+
+  private static long openDescriptors() {
+    File dir = new File("/proc/self/fd");
+    if (!dir.isDirectory()) {
+      dir = new File("/dev/fd");
+    }
+    String[] entries = dir.list();
+    assumeTrue("no per-process descriptor directory on this platform", entries != null);
+    return entries.length;
+  }
+
+  @FunctionalInterface
+  private interface CsvImport {
+    void run(File file) throws Exception;
+  }
+
+  private static final class TreeProbe extends ImportDataTree {
+    void importCsv(File file) {
+      importFromCsvFile(file);
+    }
+  }
+
+  private static final class TableProbe extends ImportDataTable {
+    void importCsv(File file) {
+      importFromCsvFile(file);
+    }
+  }
+
+  private static final class SchemaProbe extends ImportSchemaTree {
+    void importCsv(File file) {
+      importSchemaFromCsvFile(file);
+    }
   }
 }
