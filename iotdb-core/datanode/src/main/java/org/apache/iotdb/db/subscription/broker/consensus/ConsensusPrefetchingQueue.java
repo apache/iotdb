@@ -135,6 +135,10 @@ public class ConsensusPrefetchingQueue {
 
   private final ConsensusLogToTabletConverter converter;
 
+  // Consumer-group meta pushes hold the meta write lock while waiting for prefetch shutdown, so
+  // the prefetch path must use this immutable value instead of acquiring the meta read lock.
+  private final boolean tableModel;
+
   private final ConsensusSubscriptionCommitManager commitManager;
 
   private SubscriptionMemoryManager subscriptionMemoryManager;
@@ -540,6 +544,7 @@ public class ConsensusPrefetchingQueue {
     this.consensusReqReader = serverImpl.getConsensusReqReader();
     this.retentionPolicy = retentionPolicy;
     this.converter = converter;
+    this.tableModel = converter.isTableModel();
     this.commitManager = commitManager;
     this.subscriptionMemoryManager = SubscriptionDataNodeResourceManager.memory();
     this.fallbackCommittedRegionProgress = fallbackCommittedRegionProgress;
@@ -2159,8 +2164,7 @@ public class ConsensusPrefetchingQueue {
             payload,
             commitContext,
             SubscriptionAgent.broker()
-                .getColumnFilterMatcher(
-                    topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))
+                .getColumnFilterMatcher(topicName, tableModel)
                 .isTimeSelected(),
             getTimeSelectedByTable(converter.getDatabaseName(), tablets));
 
@@ -2187,9 +2191,7 @@ public class ConsensusPrefetchingQueue {
       return Collections.emptyMap();
     }
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker()
-            .getColumnFilterMatcher(
-                topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
+        SubscriptionAgent.broker().getColumnFilterMatcher(topicName, tableModel);
     final Map<String, Boolean> tableMap = new HashMap<>();
     for (final Tablet tablet : tablets) {
       if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {
