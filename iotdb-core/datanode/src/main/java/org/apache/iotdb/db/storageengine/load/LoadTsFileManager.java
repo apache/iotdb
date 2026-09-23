@@ -50,7 +50,9 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -93,6 +95,29 @@ public class LoadTsFileManager {
 
   /** The staged directories of the tasks that already reached COMMIT or ABORT. */
   private final LoadTaskRetention retention;
+
+  /**
+   * The tasks this region finished committing, most recent last, to answer a repeated COMMIT.
+   *
+   * <p>The coordinator cannot tell a lost answer from a lost command - an RPC that timed out may
+   * have applied - so it has to be able to re-send the COMMIT that ended a task. A task this region
+   * already imported is then a no-op and not a failure, otherwise a retry that follows a lost
+   * answer would report a load that committed everywhere as failed. A task whose staged directory
+   * is still there is recognized from the terminal record of its progress files as well; the record
+   * below covers the tasks that were released right away, and it is bounded because a restart may
+   * forget it: a repeated COMMIT of a task that committed before the restart is then reported as
+   * unknown again, which is what it is.
+   */
+  private static final int COMMITTED_TASK_HISTORY = 256;
+
+  private final Map<String, Boolean> committedLoadIds =
+      Collections.synchronizedMap(
+          new LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(final Map.Entry<String, Boolean> eldest) {
+              return size() > COMMITTED_TASK_HISTORY;
+            }
+          });
 
   private final DataRegion dataRegion;
 
@@ -279,6 +304,43 @@ public class LoadTsFileManager {
     return result;
   }
 
+  /** Whether this region already committed the task, so that a repeated COMMIT is a no-op. */
+  private boolean isAlreadyCommitted(final String loadId) {
+    if (committedLoadIds.containsKey(loadId)) {
+      return true;
+    }
+    for (final String baseDir : LoadStagingDirs.baseDirs()) {
+      final File taskDir =
+          new File(
+              LoadStagingDirs.regionLoadDir(
+                  new File(baseDir),
+                  dataRegion.getDatabaseName(),
+                  dataRegion.getDataRegionIdString()),
+              loadId);
+      final File[] files = taskDir.listFiles();
+      if (files == null) {
+        continue;
+      }
+      for (final File file : files) {
+        if (!file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
+          continue;
+        }
+        try {
+          final LoadTsFileProgress.TerminalRecord terminal = LoadTsFileProgress.readTerminal(file);
+          if (terminal != null && terminal.op() == LoadTsFileConsensusOp.COMMIT) {
+            return true;
+          }
+        } catch (final IOException e) {
+          LOGGER.warn(
+              StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
+              file.getPath(),
+              e);
+        }
+      }
+    }
+    return false;
+  }
+
   public boolean prepare(
       final LoadTsFileConsensusNode node,
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
@@ -308,7 +370,7 @@ public class LoadTsFileManager {
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
-      return false;
+      return isAlreadyCommitted(node.getLoadId());
     }
     LOGGER.info(
         StorageEngineMessages
@@ -324,6 +386,7 @@ public class LoadTsFileManager {
         .get(node.getLoadId())
         .loadAll(node.isGeneratedByPipe(), !mustRetainStagedFiles);
     finishConsensusTask(node, mustRetainStagedFiles, LoadTsFileConsensusOp.COMMIT);
+    committedLoadIds.put(node.getLoadId(), Boolean.TRUE);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     return true;

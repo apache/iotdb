@@ -435,6 +435,33 @@ public class LoadTsFileManagerTest {
   }
 
   /**
+   * A COMMIT that is sent twice must not report a failure the second time.
+   *
+   * <p>The coordinator cannot tell a lost answer from a lost command, so it re-sends the COMMIT
+   * that ended a task. The region imported the task on the first one, and answering the second one
+   * with a failure would report a load that committed everywhere as failed.
+   */
+  @Test
+  public void testRepeatedCommitOfTheSameTaskSucceeds() throws Exception {
+    emulateStagedFileImport();
+    final String loadId = "committed-twice";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final NonAlignedChunkData chunkData = laidOutChunk();
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, chunkData);
+    manager.writePiece(piece);
+    assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+
+    final LoadTsFileConsensusNode commit = commitNode(loadId);
+    commit.setSearchIndex(10L);
+    assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+
+    // The very same command again, as a coordinator that lost the answer sends it.
+    assertTrue(
+        "a repeated COMMIT of a committed task is a no-op, not a failure",
+        manager.loadAll(commit, Collections.emptyMap()));
+  }
+
+  /**
    * A staged file that no writer could resume cannot take the chunks of a further piece: their
    * offsets belong to that file, which already exists. The piece has to fail instead of being
    * dropped, because a replica that loses a piece silently imports a file that misses it.

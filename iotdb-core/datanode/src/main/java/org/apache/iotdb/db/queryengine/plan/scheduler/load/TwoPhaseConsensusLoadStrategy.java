@@ -404,6 +404,12 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
    * back. A region whose commit failed is therefore not rolled back either - it may have imported
    * its files before the failure was reported - and the regions behind it are still committed, so
    * the transaction reaches as many of its participants as it can.
+   *
+   * <p>A transient failure is retried, and the retry settles what the first attempt left open: the
+   * region answers a COMMIT of a task it already imported with success, see {@code
+   * LoadTsFileManager#loadAll}, so a command whose answer was lost is not reported as a failure
+   * while a command that truly failed still is. A region that fails for another reason keeps its
+   * answer: it is left as it is, which the load reports.
    */
   private boolean commitAllRegions(
       LoadSingleTsFileNode node,
