@@ -435,6 +435,72 @@ public class LoadTsFileManagerTest {
   }
 
   /**
+   * A staged file is only read back from a configured staging directory. A directory whose name
+   * merely starts with the name of one - {@code load-evil} next to {@code load} - is not inside it:
+   * the check compares path components, not the characters of a path.
+   */
+  @Test
+  public void testChunkPayloadRefIsNotFooledByADirectoryNamePrefix() throws Exception {
+    final File siblingRoot = new File(tempDir.getParentFile(), tempDir.getName() + "-evil");
+    assertTrue(siblingRoot.mkdirs());
+    try {
+      final File staged = new File(siblingRoot, "staged.tsfile");
+      Files.write(staged.toPath(), new byte[] {1, 2, 3, 4});
+
+      final ChunkPayloadRef outside = new ChunkPayloadRef(staged.getAbsolutePath(), 0L, 4L);
+      try {
+        outside.readPayload();
+        fail("a file outside the staging directories must not be read back");
+      } catch (final ChunkPayloadUnavailableException e) {
+        assertTrue(e.getMessage(), e.getMessage().contains(tempDir.getName() + "-evil"));
+      }
+    } finally {
+      deleteRecursively(siblingRoot);
+    }
+  }
+
+  /**
+   * A PREPARE that is sent twice seals the staged files once: the second one finds them sealed and
+   * leaves them as they are, so the replayed command does not append a second metadata zone.
+   */
+  @Test
+  public void testRepeatedPrepareSealsTheStagedFilesOnce() throws Exception {
+    final String loadId = "prepared-twice";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final NonAlignedChunkData chunkData = laidOutChunk();
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, chunkData);
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+
+    assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+    final long lengthAfterFirstPrepare = staged.length();
+    assertTrue(
+        "a repeated PREPARE of a prepared task is a no-op",
+        manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+    assertEquals(lengthAfterFirstPrepare, staged.length());
+  }
+
+  /**
+   * An ABORT that is sent twice leaves the region consistent: the second one finds no task to
+   * discard and reports the same success the command layer answers with either way.
+   */
+  @Test
+  public void testRepeatedAbortLeavesTheRegionConsistent() throws Exception {
+    final String loadId = "aborted-twice";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final List<LoadTsFileConsensusNode.PieceRef> refs =
+        manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(laidOutChunk())));
+    final File staged = new File(tempDir, refs.get(0).getRelativePath());
+
+    final LoadTsFileConsensusNode abort = abortNode(loadId);
+    assertTrue(manager.deleteAll(abort));
+    assertFalse(staged.exists());
+    // The command layer answers ABORT with success whatever this returns, so a replay is harmless.
+    assertFalse(manager.deleteAll(abort));
+    assertFalse(staged.exists());
+  }
+
+  /**
    * A COMMIT that is sent twice must not report a failure the second time.
    *
    * <p>The coordinator cannot tell a lost answer from a lost command, so it re-sends the COMMIT

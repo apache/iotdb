@@ -46,8 +46,10 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -68,6 +70,9 @@ public class LoadTsFileSnapshotTest {
   private static final String DATABASE_NAME = "root.snapshot_test";
   private static final String REGION_ID = "0";
   private static final String REGION_DIR_NAME = DATABASE_NAME + "-" + REGION_ID;
+
+  /** Bounds the loop that snapshots a task while its pieces are being applied. */
+  private static final int MAX_SNAPSHOTS = 500;
 
   private File tempDir;
   private String[] originalLoadBaseDirs;
@@ -246,6 +251,132 @@ public class LoadTsFileSnapshotTest {
     final File restoredTaskDir = new File(new File(onlyRoot, REGION_DIR_NAME), "single-root");
     assertTrue(restoredTaskDir.isDirectory());
     assertArrayEquals(payloadBefore, reference.readPayload());
+  }
+
+  /**
+   * A snapshot taken while pieces are still being applied has to be restorable: every range a
+   * copied progress log describes has to be inside the bytes that were copied with it.
+   *
+   * <p>The copy is not serialized with the pieces - the route of a task cannot be locked against
+   * the thread that applies them without stopping the region - so the order of the copy is what
+   * makes it safe: the logs are copied before the staged files they describe, and a staged file
+   * only ever grows at its end. A trailing log entry can still be caught half appended, and reading
+   * the copied log drops that fragment.
+   */
+  @Test
+  public void testSnapshotTakenWhilePiecesAreAppliedStaysRestorable() throws Exception {
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final String loadId = "concurrent-snapshot";
+
+    // Ten chunks of one partition, laid out one after the other, so every piece appends to the same
+    // staged file and its log.
+    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+    final List<NonAlignedChunkData> chunks = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      final NonAlignedChunkData chunk =
+          createNonAlignedChunkData(
+              new StringArrayDeviceID("root", "snapshot_test", "d" + i), "s" + i, i * 100, 10);
+      calculator.assign(chunk);
+      chunks.add(chunk);
+    }
+
+    final Set<Long> stagedLengths = new HashSet<>();
+    final AtomicBoolean writing = new AtomicBoolean(true);
+    final Thread writer =
+        new Thread(
+            () -> {
+              try {
+                for (final NonAlignedChunkData chunk : chunks) {
+                  manager.writePiece(loadId, Collections.singletonList(chunk));
+                  Thread.sleep(5L);
+                }
+              } catch (final Exception e) {
+                // Whatever was staged is what the snapshots below are checked against.
+              } finally {
+                writing.set(false);
+              }
+            });
+    writer.start();
+    try {
+      // Snapshot the task while the pieces of the writer thread are still being applied.
+      int snapshots = 0;
+      while (writing.get() && snapshots < MAX_SNAPSHOTS) {
+        final File snapshotDir = new File(tempDir, "snapshot-" + snapshots);
+        assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+        assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
+        stagedLengths.add(lengthOfTheStagedFile(snapshotDir));
+        snapshots++;
+        Thread.sleep(1L);
+      }
+      assertTrue("the snapshots have to have been taken while the task was staged", snapshots > 0);
+    } finally {
+      writer.join();
+    }
+    assertFalse("the writer has to have finished by now", writing.get());
+    assertTrue(
+        "the snapshots have to have caught the staged file while it was still growing",
+        stagedLengths.size() > 1);
+  }
+
+  /** The length of the staged file a snapshot holds, or -1 when it holds none yet. */
+  private static long lengthOfTheStagedFile(final File snapshotDir) {
+    final File[] taskDirs =
+        new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME).listFiles();
+    if (taskDirs == null) {
+      return -1L;
+    }
+    for (final File taskDir : taskDirs) {
+      final File[] files = taskDir.listFiles();
+      if (files == null) {
+        continue;
+      }
+      for (final File file : files) {
+        if (!file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
+          return file.length();
+        }
+      }
+    }
+    return -1L;
+  }
+
+  /** Every range of a copied log has to be inside the staged file that was copied with it. */
+  private static void assertEveryCopiedLogFitsItsCopiedFile(final File snapshotDir)
+      throws Exception {
+    final File[] taskDirs =
+        new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME).listFiles();
+    if (taskDirs == null) {
+      return;
+    }
+    for (final File taskDir : taskDirs) {
+      final File[] files = taskDir.listFiles();
+      if (files == null) {
+        continue;
+      }
+      for (final File file : files) {
+        if (!file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
+          continue;
+        }
+        final File staged =
+            new File(
+                taskDir,
+                file.getName()
+                    .substring(
+                        0, file.getName().length() - LoadTsFileProgress.PROGRESS_SUFFIX.length()));
+        final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
+        // Reading a copied log repairs the fragment of an entry that was caught half appended,
+        // exactly as the node that restores this snapshot does.
+        for (final LoadTsFileProgress.ChunkRangeRecord record :
+            progress.readAllRecordsRepairingTornTail()) {
+          assertTrue(
+              "a copied log describes bytes the copied file does not hold: "
+                  + record.physicalEnd()
+                  + " > "
+                  + staged.length(),
+              record.physicalEnd() <= staged.length());
+        }
+      }
+    }
   }
 
   /** Configures the staging roots of this node, the way the folder manager reads them. */
