@@ -50,6 +50,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -311,6 +312,24 @@ public class WALFileTest {
         // Readers reconstruct an in-memory prefix without replacing bytes under other readers.
         assertArrayEquals(bytes, Files.readAllBytes(walFile.toPath()));
       }
+    }
+  }
+
+  @Test
+  public void testRecoveryRejectsOversizedCompressedSegment() throws Exception {
+    // Include the declared payload so rejection is caused by its logical size, not a short read.
+    ByteBuffer bytes =
+        ByteBuffer.allocate(WALFileVersion.V3.getVersionBytes().length + 2 + 2 * Integer.BYTES);
+    bytes.put(WALFileVersion.V3.getVersionBytes());
+    bytes.put(CompressionType.LZ4.serialize());
+    bytes.putInt(1);
+    bytes.putInt(64 * 1024 * 1024);
+    bytes.put((byte) 0);
+    Files.write(walFile.toPath(), bytes.array());
+
+    try (WALInputStream input = new WALInputStream(walFile, true)) {
+      // A decompressor failure is wrapped in IOException; this must fail before reaching it.
+      assertThrows(EOFException.class, input::read);
     }
   }
 

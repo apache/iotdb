@@ -22,8 +22,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.utils.MmapUtil;
 
+import org.apache.tsfile.compress.ICompressor;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
@@ -263,6 +265,16 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     if (segmentInfo.dataInDiskSize <= 0
         || segmentInfo.uncompressedSize <= 0
         || segmentInfo.dataInDiskSize > remainingBytes) {
+      throw new EOFException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
+    }
+    // Recovery inspects untrusted headers. Bound allocations by the writer's configured segment
+    // capacity so a tiny corrupt payload cannot request a huge decompression buffer.
+    if (recoveringEntries
+        && (segmentInfo.uncompressedSize > WALBuffer.ONE_THIRD_WAL_BUFFER_SIZE
+            || (segmentInfo.compressionType != CompressionType.UNCOMPRESSED
+                && segmentInfo.dataInDiskSize
+                    > ICompressor.getCompressor(segmentInfo.compressionType)
+                        .getMaxBytesForCompression(WALBuffer.ONE_THIRD_WAL_BUFFER_SIZE)))) {
       throw new EOFException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
     }
     try {
