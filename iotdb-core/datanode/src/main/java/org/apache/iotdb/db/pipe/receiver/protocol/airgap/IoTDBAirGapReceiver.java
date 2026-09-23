@@ -40,11 +40,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -63,6 +67,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private final IoTDBDataNodeReceiverAgent agent;
 
   private boolean isELanguagePayload;
+  private OutputStream currentOutputStream;
+  private DatagramSocket currentDatagramSocket;
+  private SocketAddress currentRemoteSocketAddress;
 
   public IoTDBAirGapReceiver(final Socket socket, final long receiverId) {
     this.socket = socket;
@@ -105,33 +112,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
     try {
       final byte[] data = readData(inputStream);
+      currentOutputStream = socket.getOutputStream();
 
-      // If check sum failed, it indicates that the length we read may not be correct.
-      // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
-      // attempts to read from that.
-      // We directly close the socket here.
-      if (!checkSum(data)) {
-        LOGGER.warn(
-            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_OF, receiverId, socket);
-        try {
-          fail();
-        } finally {
-          socket.close();
-        }
-        return;
+      if (!receive(data, null)) {
+        socket.close();
       }
-
-      // Removed the used checksum
-      final ByteBuffer byteBuffer = ByteBuffer.wrap(data, LONG_LEN, data.length - LONG_LEN);
-
-      // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
-      final AirGapPseudoTPipeTransferRequest req =
-          (AirGapPseudoTPipeTransferRequest)
-              new AirGapPseudoTPipeTransferRequest()
-                  .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
-                  .setType(ReadWriteIOUtils.readShort(byteBuffer))
-                  .setBody(byteBuffer.slice());
-      handleReq(req, System.currentTimeMillis());
     } catch (final SocketTimeoutException e) {
       // It is normal for an air gap sender to remain idle. Only close the connection when the
       // timeout occurs after a request has started, because the stream can no longer be decoded
@@ -161,9 +146,78 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
   }
 
-  private void handleReq(final AirGapPseudoTPipeTransferRequest req, final long startTime)
+  boolean receive(final byte[] data, final String receiverKey) throws IOException {
+    try {
+      // If check sum failed, it indicates that the length we read may not be correct.
+      // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
+      // attempts to read from that.
+      if (!checkSum(data)) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_OF, receiverId, socket);
+        fail();
+        return false;
+      }
+
+      handleReq(toTPipeTransferReq(data), System.currentTimeMillis(), receiverKey);
+      return true;
+    } catch (final IOException e) {
+      throw e;
+    } catch (final Exception e) {
+      if (currentDatagramSocket != null) {
+        fail();
+      }
+      throw e;
+    } finally {
+      currentOutputStream = null;
+      currentDatagramSocket = null;
+      currentRemoteSocketAddress = null;
+    }
+  }
+
+  void receiveUdp(
+      final DatagramSocket datagramSocket,
+      final DatagramPacket packet,
+      final String receiverKey,
+      final byte[] buffer)
       throws IOException {
-    final TPipeTransferResp resp = agent.receive(req);
+    isELanguagePayload = false;
+    currentDatagramSocket = datagramSocket;
+    currentRemoteSocketAddress = packet.getSocketAddress();
+    boolean requestHandlingStarted = false;
+    try (final ByteArrayInputStream inputStream =
+        new ByteArrayInputStream(buffer, 0, packet.getLength())) {
+      final byte[] data = readData(inputStream);
+      requestHandlingStarted = true;
+      receive(data, receiverKey);
+    } catch (final Exception e) {
+      if (!requestHandlingStarted) {
+        fail();
+      }
+      throw e;
+    } finally {
+      currentOutputStream = null;
+      currentDatagramSocket = null;
+      currentRemoteSocketAddress = null;
+    }
+  }
+
+  private AirGapPseudoTPipeTransferRequest toTPipeTransferReq(final byte[] data) {
+    // Removed the used checksum
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(data, LONG_LEN, data.length - LONG_LEN);
+
+    // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
+    return (AirGapPseudoTPipeTransferRequest)
+        new AirGapPseudoTPipeTransferRequest()
+            .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
+            .setType(ReadWriteIOUtils.readShort(byteBuffer))
+            .setBody(byteBuffer.slice());
+  }
+
+  private void handleReq(
+      final AirGapPseudoTPipeTransferRequest req, final long startTime, final String receiverKey)
+      throws IOException {
+    final TPipeTransferResp resp =
+        receiverKey == null ? agent.receive(req) : agent.receive(receiverKey, req);
 
     final TSStatus status = resp.getStatus();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -181,7 +235,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       }
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
-        handleReq(req, startTime);
+        handleReq(req, startTime, receiverKey);
       } else {
         LOGGER.warn(
             DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY, receiverId);
@@ -198,14 +252,23 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   private void ok() throws IOException {
-    final OutputStream outputStream = socket.getOutputStream();
-    outputStream.write(AirGapOneByteResponse.OK);
-    outputStream.flush();
+    respond(AirGapOneByteResponse.OK);
   }
 
   private void fail() throws IOException {
-    final OutputStream outputStream = socket.getOutputStream();
-    outputStream.write(AirGapOneByteResponse.FAIL);
+    respond(AirGapOneByteResponse.FAIL);
+  }
+
+  private void respond(final byte[] response) throws IOException {
+    if (currentDatagramSocket != null && currentRemoteSocketAddress != null) {
+      currentDatagramSocket.send(
+          new DatagramPacket(response, response.length, currentRemoteSocketAddress));
+      return;
+    }
+
+    final OutputStream outputStream =
+        currentOutputStream != null ? currentOutputStream : socket.getOutputStream();
+    outputStream.write(response);
     outputStream.flush();
   }
 
