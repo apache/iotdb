@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.load;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -37,11 +39,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -80,11 +85,36 @@ public final class LoadTsFileSnapshot {
   private LoadTsFileSnapshot() {}
 
   /**
+   * The protocols whose snapshot carries the staging directory of a region.
+   *
+   * <p>A consensus LOAD stages its pieces on the write node, and a replica of IoTConsensus rebuilds
+   * the staged files from the entries of the log it applies while it is a member of the region. A
+   * replica that joins the region in the middle of a task is not a member for the pieces that were
+   * applied before it joined, so it inherits the staged state - and the progress its recovery
+   * resumes - from the snapshot that the migration transfers. Ratis replicates the full piece
+   * payload to every replica instead, so a payload reaches the staging area of a replica without a
+   * transfer of that area, and the load is restarted anyway when a migration is detected while it
+   * is running (see {@code LoadTsFileScheduler}).
+   */
+  private static final Set<String> PROTOCOLS_WITH_STAGING_SNAPSHOT =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  ConsensusFactory.IOT_CONSENSUS,
+                  ConsensusFactory.IOT_CONSENSUS_V2,
+                  ConsensusFactory.LEGACY_IOT_CONSENSUS_V2,
+                  ConsensusFactory.REAL_IOT_CONSENSUS_V2)));
+
+  /**
    * Copies the staged files of the in-progress LOAD tasks of {@code dataRegion} into {@code
    * snapshotDir/load/}. Returns {@code false} on an IO error so the caller can fail and clean up
    * the whole snapshot, mirroring the other snapshot steps.
    */
   public static boolean snapshot(final DataRegion dataRegion, final File snapshotDir) {
+    if (!PROTOCOLS_WITH_STAGING_SNAPSHOT.contains(
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
+      return true;
+    }
     final LoadTsFileManager manager = dataRegion.getLoadTsFileManagerIfPresent().orElse(null);
     if (manager == null) {
       return true;

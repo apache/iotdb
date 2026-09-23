@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
@@ -167,6 +168,31 @@ public class LoadTsFileSnapshotTest {
     assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
 
     assertTrue(LoadTsFileSnapshot.collectSnapshotFiles(snapshotDir).isEmpty());
+  }
+
+  /**
+   * A protocol that does not transfer the staging directory does not snapshot it either: Ratis
+   * replicates the payload of every piece to every replica itself, while an IoTConsensus replica
+   * that joins in the middle of a task inherits the staged state through the migration snapshot.
+   */
+  @Test
+  public void testNoStagingDirectoryIsSnapshottedForAProtocolThatDoesNotTransferIt()
+      throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+      final LoadTsFileConsensusNode piece = stagedPiece("ratis-load", laidOutChunk());
+      manager.writePiece(piece);
+
+      final File snapshotDir = new File(tempDir, "snapshot");
+      assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+      assertTrue(LoadTsFileSnapshot.collectSnapshotFiles(snapshotDir).isEmpty());
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
   }
 
   /**
