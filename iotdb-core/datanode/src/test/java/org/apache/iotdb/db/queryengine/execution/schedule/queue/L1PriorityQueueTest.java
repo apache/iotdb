@@ -25,6 +25,9 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
 
 public class L1PriorityQueueTest {
 
@@ -53,12 +56,14 @@ public class L1PriorityQueueTest {
               }
             });
     t1.start();
-    Thread.sleep(100);
-    Assert.assertEquals(Thread.State.WAITING, t1.getState());
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
     queue.push(e2);
-    Thread.sleep(100);
-    Assert.assertEquals(Thread.State.TERMINATED, t1.getState());
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, t1.getState()));
     Assert.assertEquals(1, res.size());
     Assert.assertEquals(e2.getDriverTaskId().toString(), res.get(0).getDriverTaskId().toString());
   }
