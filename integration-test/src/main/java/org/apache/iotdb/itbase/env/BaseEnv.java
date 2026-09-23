@@ -34,8 +34,6 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
-import reactor.util.annotation.Nullable;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -81,7 +79,7 @@ public interface BaseEnv {
   /** Return the {@link ClusterConfig} for developers to set values before test. */
   ClusterConfig getConfig();
 
-  default String getUrlContent(String urlStr, @Nullable String authHeader) {
+  default String getUrlContent(String urlStr, String authHeader) {
     StringBuilder sb = new StringBuilder();
     try {
       URL url = new URL(urlStr);

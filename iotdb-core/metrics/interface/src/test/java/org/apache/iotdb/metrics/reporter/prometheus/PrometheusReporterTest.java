@@ -27,7 +27,9 @@ import org.junit.Test;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -61,6 +63,46 @@ public class PrometheusReporterTest {
       metricConfig.setPrometheusReporterAsyncUpdate(originalAsyncUpdate);
       metricConfig.setPrometheusReporterPort(originalPort);
     }
+  }
+
+  @Test
+  public void testMetricsEndpointWithBasicAuthentication() throws Exception {
+    MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+    boolean originalAsyncUpdate = metricConfig.isPrometheusReporterAsyncUpdate();
+    Integer originalPort = metricConfig.getPrometheusReporterPort();
+    String originalUsername = metricConfig.getPrometheusReporterUsername();
+    String originalPassword = metricConfig.getPrometheusReporterPassword();
+    metricConfig.setPrometheusReporterAsyncUpdate(false);
+    metricConfig.setPrometheusReporterPort(0);
+    metricConfig.setPrometheusReporterUsername(encode("test-user"));
+    metricConfig.setPrometheusReporterPassword(encode("test-password"));
+
+    PrometheusReporter reporter = new PrometheusReporter(new DoNothingMetricManager());
+    try {
+      assertTrue(reporter.start());
+      URL metricsUrl = new URL("http://127.0.0.1:" + reporter.getListeningPort() + "/metrics");
+      HttpURLConnection unauthorizedConnection = (HttpURLConnection) metricsUrl.openConnection();
+      assertEquals(401, unauthorizedConnection.getResponseCode());
+      assertEquals(
+          "Basic realm=\"metrics\"", unauthorizedConnection.getHeaderField("WWW-Authenticate"));
+      unauthorizedConnection.disconnect();
+
+      HttpURLConnection authorizedConnection = (HttpURLConnection) metricsUrl.openConnection();
+      authorizedConnection.setRequestProperty(
+          "Authorization", "Basic " + encode("test-user:test-password"));
+      assertEquals(200, authorizedConnection.getResponseCode());
+      authorizedConnection.disconnect();
+    } finally {
+      reporter.stop();
+      metricConfig.setPrometheusReporterAsyncUpdate(originalAsyncUpdate);
+      metricConfig.setPrometheusReporterPort(originalPort);
+      metricConfig.setPrometheusReporterUsername(originalUsername);
+      metricConfig.setPrometheusReporterPassword(originalPassword);
+    }
+  }
+
+  private static String encode(String value) {
+    return Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
   }
 
   @Test

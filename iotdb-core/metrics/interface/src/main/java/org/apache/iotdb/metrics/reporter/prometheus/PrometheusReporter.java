@@ -62,10 +62,12 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -74,7 +76,9 @@ public class PrometheusReporter implements Reporter {
   private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final long PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS = 15;
-  private static final int PROMETHEUS_HTTP_SERVER_WORKER_THREADS = 2;
+  private static final int PROMETHEUS_HTTP_SERVER_CORE_THREADS = 2;
+  private static final int PROMETHEUS_HTTP_SERVER_MAX_THREADS = 8;
+  private static final int PROMETHEUS_HTTP_SERVER_QUEUE_CAPACITY = 16;
   private final AbstractMetricManager metricManager;
   private final Supplier<ScheduledExecutorService> snapshotUpdateExecutorSupplier;
   private volatile ScheduledExecutorService snapshotUpdateExecutor;
@@ -180,13 +184,18 @@ public class PrometheusReporter implements Reporter {
   }
 
   private ExecutorService newHttpExecutor() {
-    return Executors.newFixedThreadPool(
-        PROMETHEUS_HTTP_SERVER_WORKER_THREADS,
+    return new ThreadPoolExecutor(
+        PROMETHEUS_HTTP_SERVER_CORE_THREADS,
+        PROMETHEUS_HTTP_SERVER_MAX_THREADS,
+        60,
+        TimeUnit.SECONDS,
+        new ArrayBlockingQueue<>(PROMETHEUS_HTTP_SERVER_QUEUE_CAPACITY),
         runnable -> {
           Thread thread = new Thread(runnable, "prometheus-reporter-http");
           thread.setDaemon(true);
           return thread;
-        });
+        },
+        new ThreadPoolExecutor.AbortPolicy());
   }
 
   private void handleMetricsRequest(HttpExchange exchange) throws IOException {
