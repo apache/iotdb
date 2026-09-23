@@ -376,6 +376,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
           pipeInsertNodeTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
+      clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+    }
   }
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
