@@ -72,6 +72,11 @@ public class WALReader implements Closeable {
       return false;
     }
     try {
+      // An active WAL has no end marker until its writer closes. Reaching EOF exactly between
+      // entries is therefore valid, while EOF during deserialization still marks a partial entry.
+      if (walInputStream.available() == 0) {
+        return false;
+      }
       nextEntry = WALEntry.deserialize(logStream);
       if (nextEntry.getType() == WALEntryType.WAL_FILE_INFO_END_MARKER) {
         nextEntry = null;
@@ -96,6 +101,10 @@ public class WALReader implements Closeable {
 
   public long getWALCurrentReadOffset() throws IOException {
     return walInputStream.getFileCurrentPos();
+  }
+
+  public boolean isFileCorrupted() {
+    return fileCorrupted;
   }
 
   /**
