@@ -33,7 +33,6 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
@@ -58,9 +57,9 @@ import java.util.List;
  *   <li>stamps the target {@code regionReplicaSet} onto the node for correlation only - no follower
  *       endpoints are carried, replicas receive the command through consensus log replication
  *       exactly like ordinary writes;
- *   <li>resolves the single write peer of the partition: the current Ratis leader when the protocol
- *       is Ratis, otherwise the first replica-set location (the IoTConsensus write node, the same
- *       target the normal write path dispatches to);
+ *   <li>resolves the single write peer of the partition within that set: the current Ratis leader
+ *       when the protocol is Ratis, otherwise the first replica-set location (the IoTConsensus
+ *       write node, the same target the normal write path dispatches to);
  *   <li>writes the command through {@link RegionWriteExecutor} (local) or the internal RPC ({@code
  *       sendBatchPlanNode}) on that peer, which applies it via {@code
  *       DataRegionConsensusImpl.write} like any other write plan.
@@ -89,12 +88,18 @@ public class LoadConsensusSubmitter {
   public TSStatus submit(TRegionReplicaSet replicaSet, LoadTsFileConsensusNode node) {
     final ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(replicaSet.getRegionId());
-    // Follow the freshest partition route: after a write-node switch (leader change / region
-    // migration) the replica set captured at split time may be stale, so re-resolve it from the
-    // local partition table (a cache miss fetches the latest route map from the ConfigNode) and
-    // submit to the current write node, exactly like normal writes.
-    final TRegionReplicaSet currentReplicaSet = refreshReplicaSet(replicaSet, regionId);
-    node.setRegionReplicaSet(currentReplicaSet);
+    // The route is pinned for the whole transaction: the pieces of a task are already staged under
+    // the replica set the splitter resolved, and the PREPARE, COMMIT and ABORT of that task are
+    // sent
+    // to the same one. Re-resolving it per command would let a migration between two pieces move
+    // the
+    // rest of the task to a route whose regions hold a different plan, and a route that is merely
+    // refreshed while the pinned one is still the one holding the staged bytes tells nothing about
+    // whether those bytes may be committed. A pinned route that has become obsolete fails the
+    // dispatch instead, and the load is retried from the start, which is what the migration check
+    // of
+    // the scheduler asks for as well.
+    node.setRegionReplicaSet(replicaSet);
 
     final String protocol =
         IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
@@ -103,38 +108,14 @@ public class LoadConsensusSubmitter {
         regionId,
         protocol);
 
-    final TDataNodeLocation writePeer = resolveWritePeer(currentReplicaSet, regionId, protocol);
+    final TDataNodeLocation writePeer = resolveWritePeer(replicaSet, regionId, protocol);
     if (writePeer == null) {
       return new TSStatus(TSStatusCode.DISPATCH_ERROR.getStatusCode())
-          .setMessage(String.valueOf(currentReplicaSet));
+          .setMessage(String.valueOf(replicaSet));
     }
     return isLocal(writePeer.getInternalEndPoint())
         ? writeLocal(regionId, node)
         : writeRemote(writePeer.getInternalEndPoint(), regionId, node);
-  }
-
-  /**
-   * Re-resolves the partition replica set from the local partition table (falling back to the
-   * passed set when the lookup fails). IoTConsensus V1 has no leader election, so after a write
-   * node switch the coordinator must route by the refreshed route map instead of the stale set.
-   */
-  private TRegionReplicaSet refreshReplicaSet(
-      TRegionReplicaSet replicaSet, ConsensusGroupId regionId) {
-    try {
-      final List<TRegionReplicaSet> replicaSets =
-          ClusterPartitionFetcher.getInstance()
-              .getRegionReplicaSet(
-                  Collections.singletonList(regionId.convertToTConsensusGroupId()));
-      if (!replicaSets.isEmpty()) {
-        return replicaSets.get(0);
-      }
-    } catch (Exception e) {
-      LOGGER.warn(
-          StorageEngineMessages.LOG_LOAD_CONSENSUS_REFRESH_REPLICA_SET_FAILED_7C244C63,
-          regionId,
-          e.getMessage());
-    }
-    return replicaSet;
   }
 
   /**

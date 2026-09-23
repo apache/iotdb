@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -48,6 +49,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -61,7 +63,7 @@ import static org.junit.Assert.assertNull;
  */
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(DataRegionConsensusImpl.class)
+@PrepareForTest({DataRegionConsensusImpl.class, ClusterPartitionFetcher.class})
 public class LoadConsensusSubmitterTest {
 
   private static final int REGION_ID = 1;
@@ -135,6 +137,36 @@ public class LoadConsensusSubmitterTest {
         TSStatusCode.representOf(newSubmitter().submit(replicaSet, node).getCode());
 
     assertEquals(TSStatusCode.DISPATCH_ERROR, status);
+  }
+
+  /**
+   * The commands of one transaction all go to the replica set the splitter resolved, whatever the
+   * local partition table holds now: a route refreshed in the middle of a transaction would send
+   * the rest of a task to regions that hold a different plan, while the staged bytes stay where the
+   * pieces were written.
+   */
+  @Test
+  public void testTheRouteOfATransactionIsNotRefreshedBetweenItsCommands() {
+    final TRegionReplicaSet pinnedRoute =
+        replicaSet(location(11, "127.0.0.1", 9003), location(12, "127.0.0.2", 9003));
+    final TRegionReplicaSet freshRoute =
+        replicaSet(location(21, "127.0.0.3", 9003), location(22, "127.0.0.4", 9003));
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    stubLeader(99);
+
+    final ClusterPartitionFetcher partitionFetcher = Mockito.mock(ClusterPartitionFetcher.class);
+    PowerMockito.mockStatic(ClusterPartitionFetcher.class);
+    PowerMockito.when(ClusterPartitionFetcher.getInstance()).thenReturn(partitionFetcher);
+    Mockito.when(partitionFetcher.getRegionReplicaSet(Mockito.any()))
+        .thenReturn(Collections.singletonList(freshRoute));
+
+    final LoadTsFileConsensusNode node =
+        LoadTsFileConsensusNode.begin(
+            new PlanNodeId("load-begin"), "load-id", "file-1", false, null, 0);
+    newSubmitter().submit(pinnedRoute, node);
+
+    // The command was prepared for the pinned route, and the refreshed one was not consulted.
+    assertEquals(pinnedRoute, node.getRegionReplicaSet());
   }
 
   /**
