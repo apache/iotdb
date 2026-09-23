@@ -50,12 +50,28 @@ public final class StorageEngineMessages {
       "通过协议 {} 向 Region {} 写入 LOAD 共识节点";
   public static final String LOG_LOAD_CONSENSUS_REFRESH_REPLICA_SET_FAILED_7C244C63 =
       "刷新 Region {} 的 LOAD 共识副本集失败，使用缓存的副本集：{}";
+  public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
+      "LOAD 共识路由已过期：region {} 的写节点 {} 不在副本集 {} 中。";
+  public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_FILE_ARG_ARG_9105BFC5 =
+      "枚举 LOAD 快照文件 %s 失败：%s";
+  public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70 =
+      "枚举 LOAD 快照目录 %s 失败：%s";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD 共识分片校验和不一致，loadId: %s，pieceIndex: %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
       "读取已暂存的分片 %s 时意外到达文件末尾，offset: %s。";
   public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
       "已暂存的分片文件 %s 不存在，无法回读。";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =
+      "非法的 LOAD 共识 chunk payload 引用：路径 %s，偏移 %d，长度 %d";
+  public static final String EXCEPTION_THE_CHUNK_PAYLOAD_OF_ARG_BYTES_AT_OFFSET_ARG_IS_LONGER_THAN_THE_STAGED_FILE_ARG_14081256 =
+      "偏移 %d 处 %d 字节的 chunk payload 比暂存文件 %s 更长";
+  public static final String EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9 =
+      "内联 chunk payload 长度 %d 非法，最大为 %d";
+  public static final String LOG_DROPPED_THE_TRAILING_ENTRY_OF_THE_LOAD_PROGRESS_FILE_ARG_FROM_OFFSET_ARG_ON_WHICH_WAS_NOT_FULLY_APPENDED_05C8341B =
+      "已丢弃 LOAD 进度文件 {} 从偏移 {} 开始、未被完整追加的尾部条目";
+  public static final String EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06 =
+      "LOAD 任务 %s 的暂存文件 %s 已存在，但没有 writer 能恢复它，因此该分片无法暂存";
   public static final String EXCEPTION_FAILED_TO_READ_BACK_THE_STAGED_PIECE_FILE_ARG_ARG_3F54CB90 =
       "回读已暂存的分片文件 %s 失败：%s";
   public static final String

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
+import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadUnavailableException;
 import org.apache.iotdb.db.storageengine.load.splitter.NonAlignedChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
@@ -48,18 +49,24 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.TsFilePrecalculatedChunkWriter;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -155,13 +162,6 @@ public class LoadTsFileManagerTest {
    * up from its progress files, the piece the hole belongs to arrives afterwards - and the file
    * that is finally imported has to be complete and readable.
    */
-  @Ignore(
-      "Reproduces an open defect. The chunks staged before the restart keep their bytes and get "
-          + "correct chunk metadata, offsets and statistics in the sealed file, and the chunks "
-          + "staged after the restart are readable, but reading the restored ones returns no "
-          + "point at all: the resumed task imports a file whose pre-restart data is lost. "
-          + "Remove this annotation to reproduce it: the last assertion fails with "
-          + "\"expected:<100> but was:<0>\".")
   @Test
   public void testOutOfOrderPiecesSurviveTheLossOfTheInMemoryWriters() throws Exception {
     final String uuid = "restarted-load";
@@ -272,6 +272,205 @@ public class LoadTsFileManagerTest {
     } finally {
       manager.deleteAll(abortNode("empty-load"));
     }
+  }
+
+  /**
+   * A chunk payload reference that cannot describe bytes of any staged file is rejected where it is
+   * built or deserialized. Reading one back would otherwise allocate a negative or overflowing
+   * buffer, or seek to a negative offset, and fail with an unchecked exception that no caller of
+   * the consensus path expects.
+   */
+  @Test
+  public void testChunkPayloadRefRejectsMalformedReferences() throws Exception {
+    final String path = "/tmp/staged.tsfile";
+    final long[][] invalidBounds = {
+      {-1L, 10L},
+      {0L, -1L},
+      {0L, (long) Integer.MAX_VALUE + 1L},
+      {(long) Integer.MAX_VALUE, 10L}
+    };
+    for (final long[] bounds : invalidBounds) {
+      try {
+        new ChunkPayloadRef(path, bounds[0], bounds[1]);
+        fail("a reference of offset " + bounds[0] + " and size " + bounds[1] + " must be rejected");
+      } catch (final IllegalArgumentException e) {
+        assertTrue(e.getMessage().contains(path));
+      }
+    }
+    try {
+      new ChunkPayloadRef(null, 0L, 1L);
+      fail("a reference without a file must be rejected");
+    } catch (final IllegalArgumentException e) {
+      assertTrue(e.getMessage().contains("null"));
+    }
+
+    // The same reference arriving over the wire is malformed input rather than a programming error:
+    // deserializing it has to fail as an I/O failure of the request that carries it.
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (final DataOutputStream out = new DataOutputStream(bytes)) {
+      ReadWriteIOUtils.write(path, out);
+      ReadWriteIOUtils.write(0L, out);
+      ReadWriteIOUtils.write(-1L, out);
+    }
+    try {
+      ChunkPayloadRef.deserializeFrom(new ByteArrayInputStream(bytes.toByteArray()));
+      fail("deserializing a malformed reference must fail");
+    } catch (final IOException e) {
+      assertTrue(e.getMessage().contains(path));
+    }
+  }
+
+  @Test
+  public void testChunkPayloadRefRefusesToReadBeyondTheStagedFile() throws Exception {
+    final String loadId = "payload-ref-load";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final NonAlignedChunkData chunkData = laidOutChunk();
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, chunkData);
+    manager.writePiece(piece);
+    final File staged = new File(piece.getPieceRefs().get(0).getRelativePath());
+    final ChunkPayloadRef valid = chunkData.getChunkPayloadRefs().get(0);
+    assertTrue(valid.readPayload().length > 0);
+
+    // The bytes this reference names are past the end of the staged file, so there is nothing to
+    // read: the reference is refused before its payload is allocated.
+    final ChunkPayloadRef pastTheEnd =
+        new ChunkPayloadRef(valid.getFilePath(), valid.getOffset(), staged.length());
+    try {
+      pastTheEnd.readPayload();
+      fail("reading past the end of the staged file must fail");
+    } catch (final ChunkPayloadUnavailableException e) {
+      assertTrue(e.getMessage().contains(staged.getAbsolutePath()));
+    }
+  }
+
+  /**
+   * A PREPARE of a task that is still missing a piece must fail instead of sealing the file.
+   *
+   * <p>Only the second of the two chunks arrives here, and it is staged at the offset its own
+   * content defines, past the bytes the first one owns. The staged file is then exactly as long as
+   * the last recorded chunk, so its length says nothing about the hole in the middle of it and the
+   * completeness check has to look at the recorded ranges.
+   */
+  @Test
+  public void testPrepareFailsWhileAPieceOfTheTaskIsStillMissing() throws Exception {
+    final String loadId = "holey-load";
+    final NonAlignedChunkData[] chunks = twoChunksOfTheSamePartition();
+    final NonAlignedChunkData first = chunks[0];
+    final NonAlignedChunkData second = chunks[1];
+
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final List<LoadTsFileConsensusNode.PieceRef> refs =
+        manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(second)));
+    final File staged = new File(refs.get(0).getRelativePath());
+    assertTrue(staged.isFile());
+
+    final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
+    // The records of a progress file are read on demand, so the lengths below need them loaded.
+    progress.readAllRecords();
+    assertEquals(
+        second.getChunkLayout().offset() + second.getChunkLayout().length(), staged.length());
+    assertEquals(staged.length(), progress.getTotalLength());
+    assertFalse(progress.isReady(staged.length()));
+    try {
+      manager.prepare(prepareNode(loadId), Collections.emptyMap());
+      fail("PREPARE must not seal a task whose piece never arrived");
+    } catch (final LoadFileException e) {
+      assertTrue(e.getMessage().contains(staged.getAbsolutePath()));
+    }
+
+    // The piece that owned the hole arrives and is written where the layout puts it, so the two
+    // chunks cover the file from its header on without a gap and the same task can be sealed.
+    manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(first)));
+    // The records the getters below read are the ones this instance has loaded, so they are read
+    // again after the piece was staged.
+    progress.readAllRecords();
+    assertEquals(-1L, progress.getFirstHoleOffset());
+    assertEquals(
+        second.getChunkLayout().offset() + second.getChunkLayout().length(), staged.length());
+    assertTrue(progress.isReady(staged.length()));
+    assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+  }
+
+  /**
+   * A progress file that ends in the middle of an entry is what a snapshot of the staging directory
+   * holds when it was taken while a piece was being appended. The fragment describes nothing, while
+   * the entries before it are intact and describe bytes that are on disk, so recovery drops the
+   * fragment and resumes the staged file with those entries instead of treating the whole file as
+   * unattributable.
+   */
+  @Test
+  public void testTornProgressEntryIsRepairedOnRecovery() throws Exception {
+    final String loadId = "torn-progress";
+    final NonAlignedChunkData[] chunks = twoChunksOfTheSamePartition();
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final List<LoadTsFileConsensusNode.PieceRef> firstRefs =
+        manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[0])));
+    final File staged = new File(firstRefs.get(0).getRelativePath());
+    manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[1])));
+    final long lengthAfterBothPieces = staged.length();
+    final File progressFile = LoadTsFileProgress.progressFileFor(staged);
+
+    // The copy was taken while the entry of the second piece was still being appended.
+    try (final FileChannel channel =
+        FileChannel.open(progressFile.toPath(), StandardOpenOption.WRITE)) {
+      channel.truncate(progressFile.length() - 5L);
+    }
+
+    // A restart resumes the staged file from the entries that are complete, and the piece of the
+    // fragment is sent again, which is what a replica that joined through the snapshot sees. It is
+    // a
+    // fresh piece with the payload in memory: the offsets of a chunk come from its own content, so
+    // laying both chunks out again puts this one at the very offset it had before.
+    final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+    final NonAlignedChunkData replayedChunk = twoChunksOfTheSamePartition()[1];
+    final List<LoadTsFileConsensusNode.PieceRef> replayedRefs =
+        recovered.writePiece(loadId, toTsFileDataList(Collections.singletonList(replayedChunk)));
+    assertFalse("the re-sent piece must have been staged", replayedRefs.isEmpty());
+    assertEquals("both pieces have to be staged again", lengthAfterBothPieces, staged.length());
+
+    final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
+    progress.readAllRecords();
+    assertTrue(progress.isReady(staged.length()));
+    assertTrue(recovered.prepare(prepareNode(loadId), Collections.emptyMap()));
+  }
+
+  /**
+   * A staged file that no writer could resume cannot take the chunks of a further piece: their
+   * offsets belong to that file, which already exists. The piece has to fail instead of being
+   * dropped, because a replica that loses a piece silently imports a file that misses it.
+   */
+  @Test
+  public void testPieceOfAStagedFileWithoutResumableWriterFails() throws Exception {
+    final String loadId = "unresumable";
+    final File regionDir = new File(tempDir, "root.load_manager_test-0");
+    final File taskDir = new File(regionDir, loadId);
+    assertTrue(taskDir.mkdirs());
+    // A staged file without any progress file: nothing says which chunks its bytes hold.
+    final File staged = new File(taskDir, "root.load_manager_test-0-0.tsfile");
+    Files.write(staged.toPath(), new byte[] {1, 2, 3, 4, 5, 6, 7});
+
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(laidOutChunk())));
+      fail("a piece of a staged file that cannot be resumed must fail");
+    } catch (final IOException e) {
+      assertTrue(e.getMessage().contains(staged.getPath()));
+      assertTrue(e.getMessage().contains(loadId));
+    }
+  }
+
+  /** Two chunks of one time partition, the second one laid out behind the first one. */
+  private static NonAlignedChunkData[] twoChunksOfTheSamePartition() {
+    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+    final NonAlignedChunkData first =
+        createNonAlignedChunkData(
+            new StringArrayDeviceID("root", "load_manager_test", "d0"), "s0", 0, 10);
+    final NonAlignedChunkData second =
+        createNonAlignedChunkData(
+            new StringArrayDeviceID("root", "load_manager_test", "d1"), "s1", 100, 10);
+    calculator.assign(first);
+    calculator.assign(second);
+    return new NonAlignedChunkData[] {first, second};
   }
 
   @Test

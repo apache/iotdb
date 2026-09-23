@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -40,8 +41,10 @@ public class LoadTsFileProgressTest {
     final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
     final Chunk chunk = createChunk();
 
-    progress.recordChunk("root.sg.d1", false, 7L, 30L, true, chunk, 100L, 1L);
-    progress.recordChunk("root.sg.d2", false, 7L, 30L, true, chunk, 50L, 1L);
+    progress.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d1"), false, 7L, 30L, true, chunk, 100L, 1L);
+    progress.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d2"), false, 7L, 30L, true, chunk, 50L, 1L);
 
     Assert.assertEquals(100L, progress.getTotalLength());
 
@@ -55,7 +58,8 @@ public class LoadTsFileProgressTest {
     final Chunk chunk = createChunk();
 
     final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
-    progress.recordChunk("root.sg.d1", false, 7L, 30L, true, chunk, 40L, 1L);
+    progress.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d1"), false, 7L, 30L, true, chunk, 40L, 1L);
 
     Assert.assertEquals(40L, progress.getTotalLength());
     Assert.assertTrue(progress.isReady(40L));

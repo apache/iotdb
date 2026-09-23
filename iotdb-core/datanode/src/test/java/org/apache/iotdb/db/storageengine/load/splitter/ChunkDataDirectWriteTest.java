@@ -372,13 +372,7 @@ public class ChunkDataDirectWriteTest {
     final Chunk firstChunk = firstChunkData.getChunks().get(0);
     final long secondChunkLength =
         serializeChunkHeaderSize(secondChunk.getHeader()) + secondChunk.getData().remaining();
-    final long firstChunkLength =
-        serializeChunkHeaderSize(firstChunk.getHeader()) + firstChunk.getData().remaining();
     final long expectedLengthAfterSecondChunk = secondLayout.offset() + secondChunkLength;
-    final long expectedFinalLength =
-        expectedLengthAfterSecondChunk
-            + serializeChunkGroupHeaderSize(firstDevice)
-            + firstChunkLength;
 
     try (final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(tsFile)) {
       writer.writeChunk(
@@ -399,7 +393,13 @@ public class ChunkDataDirectWriteTest {
           firstChunk,
           firstLayout.offset());
       writer.getOutput().flush();
-      assertEquals(expectedFinalLength, tsFile.length());
+      // The chunk of the piece that was laid out first is written into the range the layout
+      // reserves
+      // for it, which the file already reaches past, so the file does not grow: appending it
+      // instead
+      // would leave that range as zeros that no chunk covers, which is indistinguishable from a
+      // piece that never arrived. The sealed file still holds both series, see below.
+      assertEquals(expectedLengthAfterSecondChunk, tsFile.length());
     } finally {
       assertSeriesReadable(tsFile, firstDevice, "s0", false, 4, 0, 3, TSDataType.INT32);
       assertSeriesReadable(tsFile, secondDevice, "s0", false, 4, 10, 13, TSDataType.INT32);

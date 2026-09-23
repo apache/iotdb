@@ -41,6 +41,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -66,6 +69,7 @@ public class LoadTsFileProgress {
 
   public static final String PROGRESS_SUFFIX = ".progress";
   private static final String MAGIC = "LTPROG1";
+
   private static final byte PROGRESS_ENTRY_VERSION = 3;
 
   /**
@@ -123,7 +127,7 @@ public class LoadTsFileProgress {
   }
 
   public void recordChunk(
-      final String device,
+      final IDeviceID device,
       final boolean aligned,
       final long chunkGroupHeaderOffset,
       final long chunkOffset,
@@ -146,7 +150,7 @@ public class LoadTsFileProgress {
   }
 
   public void recordChunk(
-      final String device,
+      final IDeviceID device,
       final boolean aligned,
       final long chunkGroupHeaderOffset,
       final long chunkOffset,
@@ -163,7 +167,14 @@ public class LoadTsFileProgress {
 
     final ChunkRangeRecord record =
         new ChunkRangeRecord(
-            device,
+            // A device that is not segmented is normalized the way the piece pipeline normalizes
+            // it,
+            // and a segmented one is kept exactly as it is: rebuilding it from the string it prints
+            // as would split it into a different number of segments, and the metadata restored from
+            // this record would then be filed under a device that no reader ever asks for.
+            device instanceof StringArrayDeviceID
+                ? device
+                : new StringArrayDeviceID(device.toString()),
             aligned,
             chunkGroupHeaderOffset,
             chunkOffset,
@@ -200,6 +211,21 @@ public class LoadTsFileProgress {
     return recordedChunkOffsets.contains(chunkOffset);
   }
 
+  /**
+   * Whether the staged file is complete: its records cover it from the TsFile header on without a
+   * hole, and the file holds at least the bytes they claim.
+   *
+   * <p>A hole means a piece never arrived. The file can be longer than the end of the ranges the
+   * records describe - a piece that arrived out of order is written at the absolute offset its own
+   * content defines, past the hole an earlier piece left - so the length alone cannot tell a
+   * complete file from one that is missing a piece in the middle. This is the check that gates
+   * sealing a staged file (PREPARE) and reclaiming its directory (the cleaner): both would turn a
+   * zero-filled hole into data, or delete bytes a replica still has to read back.
+   *
+   * <p>The preceding stages are more tolerant on purpose: a writer that resumes an interrupted task
+   * continues it after {@link #getTotalLength()}, keeping the hole, because the missing piece lands
+   * where its own offsets say as soon as it arrives.
+   */
   public boolean isReady(final long currentFileLength) throws IOException {
     if (currentFileLength <= TS_FILE_HEADER_SIZE) {
       return false;
@@ -208,10 +234,78 @@ public class LoadTsFileProgress {
     if (readAllRecords().isEmpty()) {
       return false;
     }
-    // A piece may still be missing, in which case the file ends before the last recorded chunk
-    // does;
-    // the caller compares the two, see getTotalLength().
-    return currentFileLength >= getTotalLength();
+    // Every recorded range has to be covered without a hole up to the end of the record set, and
+    // the file has to hold at least those bytes: a file that ends earlier lost a piece, a file with
+    // a hole in the middle is missing one.
+    return getFirstHoleOffset() < 0 && currentFileLength >= getTotalLength();
+  }
+
+  /**
+   * Reads the records of this file, and drops a trailing entry that was not appended completely.
+   *
+   * <p>An entry is appended with several writes, so a copy of this file taken while a piece was
+   * being appended ends in the middle of one. That is what a snapshot of the staging directory can
+   * hold: the snapshot is taken on the thread that migrates the region, while the pieces of the
+   * region keep being applied on the state machine thread, and the two are not serialized by the
+   * region lock. The entries before the fragment are intact and describe bytes that are on disk, so
+   * the fragment is cut off here and the file is read as the complete entries it holds.
+   *
+   * <p>Without that, the reader fails on the fragment, the staged file looks like it holds no
+   * attributable bytes at all, and the pieces that arrive after it are then written nowhere (see
+   * {@link TsFileWriterManager#write}) - the replica would import a file that silently misses them.
+   *
+   * @return the records of the complete entries
+   */
+  public List<ChunkRangeRecord> readAllRecordsRepairingTornTail() throws IOException {
+    if (!progressFile.isFile()) {
+      return new ArrayList<>();
+    }
+    final long tornTailOffset = tornTailOffset();
+    if (tornTailOffset >= 0L) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .LOG_DROPPED_THE_TRAILING_ENTRY_OF_THE_LOAD_PROGRESS_FILE_ARG_FROM_OFFSET_ARG_ON_WHICH_WAS_NOT_FULLY_APPENDED_05C8341B,
+          progressFile.getAbsolutePath(),
+          tornTailOffset);
+      try (final FileChannel channel =
+          FileChannel.open(progressFile.toPath(), StandardOpenOption.WRITE)) {
+        channel.truncate(tornTailOffset);
+      }
+    }
+    return readAllRecords();
+  }
+
+  /**
+   * @return the offset the trailing entry that was not appended completely starts at, or -1 when
+   *     every entry is complete or when the file is unreadable for any other reason
+   */
+  private long tornTailOffset() throws IOException {
+    final byte[] bytes = Files.readAllBytes(progressFile.toPath());
+    try (final DataInputStream input = new DataInputStream(new ByteArrayInputStream(bytes))) {
+      if (!MAGIC.equals(ReadWriteIOUtils.readString(input))) {
+        // Not a progress file of this version: nothing here says which bytes a task may keep.
+        return -1L;
+      }
+      readUuid(input);
+      while (input.available() > 0) {
+        final long entryStart = bytes.length - input.available();
+        if (input.available() < Integer.BYTES) {
+          // The length of the next entry is only partly there.
+          return entryStart;
+        }
+        final int entryLength = ReadWriteIOUtils.readInt(input);
+        if (entryLength <= 0) {
+          // An entry the writer never announced: a corrupt file, not an append that was cut off.
+          return -1L;
+        }
+        if (input.available() < entryLength) {
+          // The body of the next entry was not appended completely.
+          return entryStart;
+        }
+        input.skipBytes(entryLength);
+      }
+      return -1L;
+    }
   }
 
   public List<ChunkRangeRecord> readAllRecords() throws IOException {
@@ -473,32 +567,6 @@ public class LoadTsFileProgress {
     private final byte[] statisticsBytes;
     private final long physicalStart;
     private final long physicalEnd;
-
-    public ChunkRangeRecord(
-        final String device,
-        final boolean aligned,
-        final long chunkGroupHeaderOffset,
-        final long chunkOffset,
-        final boolean firstChunkOfGroup,
-        final TSDataType dataType,
-        final byte chunkType,
-        final byte[] chunkHeaderBytes,
-        final byte[] statisticsBytes,
-        final long physicalStart,
-        final long physicalEnd) {
-      this(
-          new StringArrayDeviceID(device),
-          aligned,
-          chunkGroupHeaderOffset,
-          chunkOffset,
-          firstChunkOfGroup,
-          dataType,
-          chunkType,
-          chunkHeaderBytes,
-          statisticsBytes,
-          physicalStart,
-          physicalEnd);
-    }
 
     /**
      * Takes the device as it was read back from the progress file, so that a device ID surviving a

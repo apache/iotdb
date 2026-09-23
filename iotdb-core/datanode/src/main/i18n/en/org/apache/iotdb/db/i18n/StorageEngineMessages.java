@@ -50,12 +50,28 @@ public final class StorageEngineMessages {
       "Write LOAD consensus node to region {} via protocol {}";
   public static final String LOG_LOAD_CONSENSUS_REFRESH_REPLICA_SET_FAILED_7C244C63 =
       "Failed to refresh LOAD consensus replica set for region {}, using cached set: {}";
+  public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
+      "LOAD consensus route of region {} is stale: write node {} is not in replica set {}.";
+  public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_FILE_ARG_ARG_9105BFC5 =
+      "Failed to enumerate the LOAD snapshot file %s: %s";
+  public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70 =
+      "Failed to enumerate the LOAD snapshot directory %s: %s";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
       "Unexpected end of file when reading staged piece %s at offset %s.";
   public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
       "Staged piece file %s is missing and cannot be read back.";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =
+      "Invalid LOAD consensus chunk payload ref: path %s, offset %d, size %d";
+  public static final String EXCEPTION_THE_CHUNK_PAYLOAD_OF_ARG_BYTES_AT_OFFSET_ARG_IS_LONGER_THAN_THE_STAGED_FILE_ARG_14081256 =
+      "The chunk payload of %d bytes at offset %d is longer than the staged file %s";
+  public static final String EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9 =
+      "Invalid inline chunk payload length %d, the maximum is %d";
+  public static final String LOG_DROPPED_THE_TRAILING_ENTRY_OF_THE_LOAD_PROGRESS_FILE_ARG_FROM_OFFSET_ARG_ON_WHICH_WAS_NOT_FULLY_APPENDED_05C8341B =
+      "Dropped the trailing entry of the LOAD progress file {} from offset {} on, which was not fully appended";
+  public static final String EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06 =
+      "The staged file %s of LOAD task %s already exists but no writer could resume it, so the piece cannot be staged";
   public static final String EXCEPTION_FAILED_TO_READ_BACK_THE_STAGED_PIECE_FILE_ARG_ARG_3F54CB90 =
       "Failed to read back the staged piece file %s: %s";
   public static final String

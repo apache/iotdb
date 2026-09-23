@@ -183,7 +183,11 @@ final class TsFileWriterManager {
       // previous run looks like it holds no complete chunk at all and is dropped instead of being
       // resumed.
       try {
-        progress.readAllRecords();
+        // A progress file that ends in the middle of an entry is what a snapshot of this directory
+        // can hold, because the snapshot is taken while the pieces are still being applied: the
+        // fragment is dropped and the entries before it are resumed, see
+        // LoadTsFileProgress#readAllRecordsRepairingTornTail.
+        progress.readAllRecordsRepairingTornTail();
       } catch (final IOException e) {
         // An unreadable progress file is as good as no progress file: the staged bytes cannot be
         // attributed to chunks any more, so the task is not resumed and the next command recreates
@@ -361,8 +365,17 @@ final class TsFileWriterManager {
           SystemFileFactory.INSTANCE.getFile(
               taskDir, partitionInfo.toString() + TsFileConstant.TSFILE_SUFFIX);
       if (!newTsFile.createNewFile()) {
-        LOGGER.error(StorageEngineMessages.CANNOT_CREATE_TSFILE_FOR_WRITING, newTsFile.getPath());
-        return;
+        // The file is there although this manager holds no writer for it, which is what a staged
+        // file that could not be resumed leaves behind. The chunks of this piece cannot be written
+        // anywhere else, because their offsets belong to that file, so the piece fails instead of
+        // being dropped: a replica that loses a piece without reporting anything would import a
+        // file that is missing it, and nothing downstream could tell.
+        throw new IOException(
+            String.format(
+                StorageEngineMessages
+                    .EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06,
+                newTsFile.getPath(),
+                uuidDirName(newTsFile)));
       }
 
       final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(newTsFile);
@@ -449,7 +462,7 @@ final class TsFileWriterManager {
                 writeResult.actualChunkEndOffset() - payloadSize,
                 payloadSize));
         progress.recordChunk(
-            chunkData.getDevice().toString(),
+            chunkData.getDevice(),
             chunkData.isAligned(),
             writeResult.actualChunkGroupHeaderOffset(),
             writeResult.actualChunkOffset(),
@@ -541,13 +554,13 @@ final class TsFileWriterManager {
       final LoadTsFileProgress progress = dataPartition2Progress.get(entry.getKey());
       if (progress != null && progress.exists() && progress.getTotalLength() > 0) {
         final long fileLength = writer.getFile().length();
-        // Every recorded chunk must be present. Pieces may arrive in any order and a later piece
-        // fills in the hole an earlier one left, so the recorded ranges are not necessarily
-        // contiguous; what must hold is that the last recorded chunk also ends the file. A piece
-        // that never arrived leaves the file shorter than that, and the bytes the writer filled
-        // in
-        // where it belongs are then a hole of zeros rather than data.
-        if (fileLength != progress.getTotalLength()) {
+        // Every recorded chunk must be present, and the recorded ranges have to cover the file
+        // without a hole. Pieces may arrive in any order and a later piece fills in the hole an
+        // earlier one left, so a missing piece is not always visible as a short file: it can also
+        // leave the file as long as the last recorded chunk while the bytes before it are zeros.
+        // Sealing then would put a hole of zeros into the imported TsFile, which is why the
+        // completeness check is the same one the cleaner and the resume path share.
+        if (!progress.isReady(fileLength)) {
           throw new LoadFileException(
               String.format(
                   StorageEngineMessages

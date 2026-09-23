@@ -48,6 +48,24 @@ public class ChunkPayloadRef {
   private final long size;
 
   public ChunkPayloadRef(final String filePath, final long offset, final long size) {
+    // Bounds and overflow guard before the reference is ever used to seek the staged file: a
+    // malformed or hostile reference must fail here instead of allocating a negative, oversized or
+    // overflowing byte array when its payload is read back. The same guard as the piece references
+    // of LoadTsFileConsensusNode.PieceRef.
+    if (filePath == null
+        || offset < 0
+        || size < 0
+        || size > Integer.MAX_VALUE
+        || offset + size < 0
+        || offset + size > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B,
+              filePath,
+              offset,
+              size));
+    }
     this.filePath = filePath;
     this.offset = offset;
     this.size = size;
@@ -72,10 +90,17 @@ public class ChunkPayloadRef {
   }
 
   public static ChunkPayloadRef deserializeFrom(final InputStream stream) throws IOException {
-    return new ChunkPayloadRef(
-        ReadWriteIOUtils.readString(stream),
-        ReadWriteIOUtils.readLong(stream),
-        ReadWriteIOUtils.readLong(stream));
+    final String filePath = ReadWriteIOUtils.readString(stream);
+    final long offset = ReadWriteIOUtils.readLong(stream);
+    final long size = ReadWriteIOUtils.readLong(stream);
+    try {
+      return new ChunkPayloadRef(filePath, offset, size);
+    } catch (final IllegalArgumentException e) {
+      // A reference that cannot describe bytes of any staged file is malformed input rather than a
+      // programming error: deserializing it has to fail as an I/O failure of the request, so a
+      // corrupt WAL entry or request is reported by the caller that reads it.
+      throw new IOException(e.getMessage(), e);
+    }
   }
 
   /**
@@ -86,8 +111,20 @@ public class ChunkPayloadRef {
    */
   public byte[] readPayload() {
     final File file = locateFile();
+    // Checked against the file before the buffer is allocated: without it a reference to bytes past
+    // the end of the staged file would still allocate its full size and fail later, and a huge size
+    // would be allocated only to be thrown away.
+    if (offset + size > file.length()) {
+      throw new ChunkPayloadUnavailableException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_THE_CHUNK_PAYLOAD_OF_ARG_BYTES_AT_OFFSET_ARG_IS_LONGER_THAN_THE_STAGED_FILE_ARG_14081256,
+              size,
+              offset,
+              file.getAbsolutePath()));
+    }
     try (final RandomAccessFile input = new RandomAccessFile(file, "r")) {
-      final byte[] payload = new byte[Math.toIntExact(size)];
+      final byte[] payload = new byte[(int) size];
       input.seek(offset);
       input.readFully(payload);
       return payload;
@@ -98,7 +135,7 @@ public class ChunkPayloadRef {
               file.getAbsolutePath(),
               offset),
           e);
-    } catch (final IOException | ArithmeticException e) {
+    } catch (final IOException | ArithmeticException | NegativeArraySizeException e) {
       throw new ChunkPayloadUnavailableException(
           String.format(
               StorageEngineMessages

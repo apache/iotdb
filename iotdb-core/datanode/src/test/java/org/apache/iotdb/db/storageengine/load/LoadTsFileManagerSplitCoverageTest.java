@@ -541,7 +541,7 @@ public class LoadTsFileManagerSplitCoverageTest {
 
       // Without the staged payload the piece must be refused rather than imported empty
       final File staged = new File(restored.getPieceRefs().get(0).getRelativePath());
-      assertTrue(staged.delete());
+      deleteStagedFileOrFail(staged);
       try {
         restored.serialize();
         fail("expected the expansion of a cleaned up piece to fail");
@@ -1781,6 +1781,36 @@ public class LoadTsFileManagerSplitCoverageTest {
       }
     }
     return null;
+  }
+
+  /**
+   * Deletes a staged file, and reports why it could not be deleted.
+   *
+   * <p>{@code File.delete()} only answers false, which hides the difference between a file that was
+   * taken away by somebody else - another owner of the staging directory, a cleaner that released
+   * the task - and a file system that refused the deletion, for example because a handle is still
+   * open on it. {@code Files.delete} reports the reason instead.
+   */
+  private static void deleteStagedFileOrFail(final File file) {
+    try {
+      Files.delete(file.toPath());
+    } catch (final IOException e) {
+      fail(
+          "could not delete the staged file "
+              + file
+              + ": exists="
+              + file.exists()
+              + ", length="
+              + file.length()
+              + ", parentExists="
+              + file.getParentFile().exists()
+              + ", parentWritable="
+              + file.getParentFile().canWrite()
+              + ", siblings="
+              + java.util.Arrays.toString(file.getParentFile().listFiles())
+              + ", cause="
+              + e);
+    }
   }
 
   private static void deleteRecursively(final File file) {

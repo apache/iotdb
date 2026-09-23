@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -38,6 +39,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Snapshot support for the in-progress LOAD staged files.
@@ -59,6 +61,9 @@ public final class LoadTsFileSnapshot {
    */
   public static final String SNAPSHOT_SUBDIR_NAME = IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
+  /** The infix of a file that is still being copied into the snapshot, see {@link #copy}. */
+  private static final String TEMP_FILE_SUFFIX = ".copying.";
+
   private LoadTsFileSnapshot() {}
 
   /**
@@ -76,40 +81,68 @@ public final class LoadTsFileSnapshot {
       return true;
     }
     final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
-    int taskCount = 0;
-    int fileCount = 0;
     try {
       for (final File taskDir : taskDirs) {
-        final File[] files = taskDir.listFiles();
-        if (files == null) {
-          continue;
-        }
         final File targetDir = new File(loadSnapshotDir, taskDir.getName());
-        taskCount++;
-        for (final File file : files) {
-          if (!file.isFile()) {
-            continue;
-          }
-          copy(new File(targetDir, file.getName()), file);
-          fileCount++;
-        }
+        // The progress logs are copied first, so a log never refers to bytes that the copy of its
+        // staged file does not hold: the pieces of the region keep being applied while this copy
+        // runs, and a staged file only ever grows at its end. The copy of the staged file is taken
+        // afterwards, and the trailing entry of a log can still be caught half appended there; the
+        // reader of the restored copy drops that fragment, see
+        // LoadTsFileProgress#readAllRecordsRepairingTornTail.
+        copyProgressLogs(taskDir, targetDir);
+        copyStagedFiles(taskDir, targetDir);
       }
-      if (taskCount > 0) {
-        LOGGER.info(
-            String.format(
-                StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C,
-                taskCount,
-                fileCount,
-                dataRegion.getDatabaseName()
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + dataRegion.getDataRegionIdString(),
-                snapshotDir.getAbsolutePath()));
-      }
+      LOGGER.info(
+          String.format(
+              StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C,
+              taskDirs.size(),
+              countFiles(loadSnapshotDir),
+              dataRegion.getDatabaseName()
+                  + IoTDBConstant.FILE_NAME_SEPARATOR
+                  + dataRegion.getDataRegionIdString(),
+              snapshotDir.getAbsolutePath()));
       return true;
     } catch (final IOException e) {
       LOGGER.warn(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
       return false;
     }
+  }
+
+  private static void copyProgressLogs(final File taskDir, final File targetDir)
+      throws IOException {
+    // The directory is listed again here on purpose: a time partition whose first piece arrived
+    // after the task was enumerated still contributes its progress log.
+    for (final File file : listFiles(taskDir)) {
+      if (file.isFile() && isProgressLog(file)) {
+        copy(new File(targetDir, file.getName()), file);
+      }
+    }
+  }
+
+  private static void copyStagedFiles(final File taskDir, final File targetDir) throws IOException {
+    for (final File file : listFiles(taskDir)) {
+      if (file.isFile() && !isProgressLog(file)) {
+        copy(new File(targetDir, file.getName()), file);
+      }
+    }
+  }
+
+  private static boolean isProgressLog(final File file) {
+    return file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX);
+  }
+
+  private static File[] listFiles(final File dir) {
+    final File[] files = dir.listFiles();
+    return files == null ? new File[0] : files;
+  }
+
+  private static int countFiles(final File dir) {
+    int count = 0;
+    for (final File file : listFiles(dir)) {
+      count += file.isDirectory() ? countFiles(file) : 1;
+    }
+    return count;
   }
 
   /**
@@ -202,23 +235,52 @@ public final class LoadTsFileSnapshot {
           @Override
           public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
               throws IOException {
-            fileList.add(file.toFile());
+            if (!file.getFileName().toString().contains(TEMP_FILE_SUFFIX)) {
+              // A file that is still being copied is not part of the snapshot: it is published
+              // under its final name once its copy is complete.
+              fileList.add(file.toFile());
+            }
             return FileVisitResult.CONTINUE;
           }
 
           @Override
           public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-            return FileVisitResult.CONTINUE;
+            // A staged file that cannot be enumerated would be missing from the snapshot while the
+            // snapshot still reports success, and restoring it would resume a task with holes. The
+            // failure has to abort the snapshot instead of shortening it silently.
+            throw new IOException(
+                String.format(
+                    StorageEngineMessages
+                        .EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_FILE_ARG_ARG_9105BFC5,
+                    file,
+                    exc.getMessage()),
+                exc);
           }
 
           @Override
           public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            if (exc != null) {
+              throw new IOException(
+                  String.format(
+                      StorageEngineMessages
+                          .EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70,
+                      dir,
+                      exc.getMessage()),
+                  exc);
+            }
             return FileVisitResult.CONTINUE;
           }
         });
     return fileList;
   }
 
+  /**
+   * Copies one file into the snapshot, publishing it under its final name only once it is complete.
+   *
+   * <p>The snapshot directory is read by the transfer layer while it is still being filled, so a
+   * file that appears under its final name has to be complete: a partially copied staged TsFile
+   * would otherwise be transferred as if it were whole.
+   */
   private static void copy(final File target, final File source) throws IOException {
     if (!target.getParentFile().exists() && !target.getParentFile().mkdirs()) {
       throw new IOException(
@@ -226,6 +288,24 @@ public final class LoadTsFileSnapshot {
               StorageEngineMessages.FAILED_TO_CREATE_DIR,
               target.getParentFile().getAbsolutePath()));
     }
-    Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+    final File tempTarget =
+        new File(target.getParentFile(), target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
+    try {
+      Files.copy(source.toPath(), tempTarget.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      try {
+        Files.move(
+            tempTarget.toPath(),
+            target.toPath(),
+            StandardCopyOption.REPLACE_EXISTING,
+            StandardCopyOption.ATOMIC_MOVE);
+      } catch (final AtomicMoveNotSupportedException e) {
+        // The snapshot may live on a file system without atomic renames; the copy is complete at
+        // this point, so a plain move publishes the same bytes.
+        Files.move(tempTarget.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+    } catch (final IOException e) {
+      Files.deleteIfExists(tempTarget.toPath());
+      throw e;
+    }
   }
 }

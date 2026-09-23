@@ -30,18 +30,17 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.writer.LocalTsFileOutput;
 import org.apache.tsfile.write.writer.TsFileOutput;
 import org.apache.tsfile.write.writer.tsmiterator.TSMIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +65,16 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
   public TsFilePrecalculatedChunkWriter(File file) throws IOException {
     this.file = file;
-    this.out = new LocalTsFileOutput(new FileOutputStream(file));
+    // The file is opened as a channel rather than as a stream because chunks are written at the
+    // absolute offsets of the layout: a piece that reaches this node after a piece the layout puts
+    // behind it has to be written at its own offset, see alignToOffset.
+    this.out =
+        new WritableFileChannelOutput(
+            FileChannel.open(
+                file.toPath(),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING));
     this.sealed = false;
     startFile();
   }
@@ -126,10 +134,18 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
   }
 
   /**
-   * @return the number of chunks the writer currently knows about, restored ones included.
+   * @return the number of chunks the writer currently knows about, restored ones included. Every
+   *     measurement of every device may hold several of them, so the lists are what is counted and
+   *     not the measurements holding them.
    */
   public int getChunkMetadataCount() {
-    return device2MetadataMap.values().stream().mapToInt(Map::size).sum();
+    int count = 0;
+    for (final Map<String, List<IChunkMetadata>> measurementMap : device2MetadataMap.values()) {
+      for (final List<IChunkMetadata> chunks : measurementMap.values()) {
+        count += chunks.size();
+      }
+    }
+    return count;
   }
 
   public boolean isSealed() {
@@ -199,6 +215,16 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
       return expectedOffset;
     }
     if (currentOffset > expectedOffset) {
+      // This piece arrived after a piece the layout puts behind it, which is what a writer resumed
+      // from a snapshot that already held the later pieces sees. The offset of a chunk is part of
+      // the layout every replica computes on its own, so the chunk has to be written where the
+      // layout puts it: the bytes that arrived earlier are elsewhere in the file, and the region in
+      // between stays the zeros this writer pads with. Appending it instead would leave the planned
+      // range as a hole, which is indistinguishable from a piece that never arrived.
+      if (out instanceof WritableFileChannelOutput) {
+        ((WritableFileChannelOutput) out).position(expectedOffset);
+        return expectedOffset;
+      }
       LOGGER.warn(
           StorageEngineMessages
               .LOG_PRECALCULATED_OFFSET_IS_BEHIND_ACTUAL_FILE_POSITION_USING_ACTUAL_POSITION_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_DELTA_ARG_F05C873F,
@@ -219,6 +245,12 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
       return;
     }
     sealed = true;
+    // Writing a chunk behind the end of the file leaves the position there, so the metadata zone
+    // has to be placed after the last byte of the data zone rather than after the last write:
+    // sealing at a position inside the data zone would overwrite chunks with the metadata index.
+    if (out instanceof WritableFileChannelOutput) {
+      ((WritableFileChannelOutput) out).positionToEndOfFile();
+    }
     final long metaOffset = out.getPosition();
     final OutputStream stream = out.wrapAsStream();
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, stream);
@@ -342,6 +374,16 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
     @Override
     public long getPosition() throws IOException {
       return channel.position();
+    }
+
+    /** Positions the channel at an absolute offset, so a late chunk lands where it was laid out. */
+    private void position(final long offset) throws IOException {
+      channel.position(offset);
+    }
+
+    /** Positions the channel after the last byte of the file. */
+    private void positionToEndOfFile() throws IOException {
+      channel.position(channel.size());
     }
 
     @Override

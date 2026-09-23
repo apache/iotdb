@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -128,7 +130,20 @@ public interface ChunkData extends TsFileData {
       refs.add(ChunkPayloadRef.deserializeFrom(stream));
       return ByteBuffer.wrap(new byte[0]);
     }
-    final byte[] payload = new byte[ReadWriteIOUtils.readInt(stream)];
+    // The length is read from the request, so it is validated before it sizes a buffer: a negative
+    // length must be reported as malformed input instead of escaping as an unchecked exception, and
+    // a length the transport could not have carried is rejected as well.
+    final int payloadLength = ReadWriteIOUtils.readInt(stream);
+    final int maxPayloadLength = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    if (payloadLength < 0 || payloadLength > maxPayloadLength) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9,
+              payloadLength,
+              maxPayloadLength));
+    }
+    final byte[] payload = new byte[payloadLength];
     new DataInputStream(stream).readFully(payload);
     return ByteBuffer.wrap(payload);
   }

@@ -106,7 +106,7 @@ public class LoadConsensusSubmitter {
     final TDataNodeLocation writePeer = resolveWritePeer(currentReplicaSet, regionId, protocol);
     if (writePeer == null) {
       return new TSStatus(TSStatusCode.DISPATCH_ERROR.getStatusCode())
-          .setMessage(String.valueOf(replicaSet));
+          .setMessage(String.valueOf(currentReplicaSet));
     }
     return isLocal(writePeer.getInternalEndPoint())
         ? writeLocal(regionId, node)
@@ -139,11 +139,18 @@ public class LoadConsensusSubmitter {
 
   /**
    * Resolves the single write peer of the partition. Ratis writes must land on the current leader,
-   * so the leader endpoint is matched against the replica-set locations first (falling back to the
-   * first location while the leader is not known yet); IoTConsensus routes every write to the first
-   * replica-set location, which is the partition's write node - the same target normal writes use.
+   * so the leader is matched against the replica-set locations by its DataNode id first: a Ratis
+   * leader is reported as a node id, without an endpoint to compare, so the node id is the only
+   * thing that identifies it. When the leader is known but the route does not hold it, the route is
+   * stale and no peer is returned at all - sending the command to another replica would leave the
+   * pieces staged on a node that cannot commit them. When the leader is not known (the coordinator
+   * does not host the partition, or Ratis has not elected one yet), IoTConsensus-like routing to
+   * the first location is used: that is the partition's write node, the same target normal writes
+   * use.
+   *
+   * <p>Package-private so that the resolution can be pinned by a test without a cluster around it.
    */
-  private TDataNodeLocation resolveWritePeer(
+  TDataNodeLocation resolveWritePeer(
       TRegionReplicaSet replicaSet, ConsensusGroupId regionId, String protocol) {
     final List<TDataNodeLocation> locations = replicaSet.getDataNodeLocations();
     if (locations == null || locations.isEmpty()) {
@@ -153,11 +160,17 @@ public class LoadConsensusSubmitter {
       final Peer leader = DataRegionConsensusImpl.getInstance().getLeader(regionId);
       if (leader != null) {
         for (TDataNodeLocation location : locations) {
-          final TEndPoint endPoint = location.getInternalEndPoint();
-          if (endPoint != null && endPoint.getIp().equals(leader.getEndpoint().getIp())) {
+          if (location.getDataNodeId() == leader.getNodeId()) {
             return location;
           }
         }
+        LOGGER.warn(
+            StorageEngineMessages
+                .LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2,
+            regionId,
+            leader.getNodeId(),
+            replicaSet);
+        return null;
       }
     }
     return locations.get(0);

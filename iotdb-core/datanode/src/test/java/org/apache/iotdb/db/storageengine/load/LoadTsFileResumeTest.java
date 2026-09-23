@@ -73,28 +73,67 @@ public class LoadTsFileResumeTest {
     final File tsFile = temporaryFolder.newFile("a.tsfile");
     final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
 
-    progress.recordChunk("root.sg.d1", false, FILE_HEADER_SIZE, 30L, true, createChunk(), 100L, 1L);
+    progress.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d1"),
+        false,
+        FILE_HEADER_SIZE,
+        30L,
+        true,
+        createChunk(),
+        100L,
+        1L);
     // A following chunk of the same group starts where the previous one ended, so it carries no
     // group
     // header offset of its own.
-    progress.recordChunk("root.sg.d1", false, 100L, 100L, false, createChunk(), 160L, 1L);
+    progress.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d1"),
+        false,
+        100L,
+        100L,
+        false,
+        createChunk(),
+        160L,
+        1L);
     // A second group written at 300 leaves the hole [160, 300), so only the contiguous prefix up to
     // 160 is known to be complete even though a later chunk already reached 400.
-    progress.recordChunk("root.sg.d2", false, 300L, 320L, true, createChunk(), 400L, 1L);
+    progress.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d2"),
+        false,
+        300L,
+        320L,
+        true,
+        createChunk(),
+        400L,
+        1L);
 
     Assert.assertEquals(160L, progress.getResumableLength());
     Assert.assertEquals(160L, progress.getFirstHoleOffset());
     Assert.assertEquals(400L, progress.getTotalLength());
-    // A file that long does look complete on its own, which is why the caller does not trust this
-    // length alone: it also requires the recorded ranges to reach the end of the file, see
-    // LoadTsFileManager#prepare.
-    Assert.assertTrue(progress.isReady(400L));
+    // A file that long does look complete on its own, which is why the completeness check does not
+    // trust this length alone: the hole is the piece that never arrived, and sealing or reclaiming
+    // the file with the hole in it would turn the zeros the writer left there into data.
+    Assert.assertFalse(progress.isReady(400L));
     Assert.assertEquals(2, progress.getContiguousPrefix().size());
 
     // The records were appended out of physical order, so the computation has to sort them.
     final LoadTsFileProgress reloaded = new LoadTsFileProgress(tsFile);
     Assert.assertEquals(3, reloaded.readAllRecords().size());
     Assert.assertEquals(160L, reloaded.getResumableLength());
+
+    // The piece that owned the hole arrives and lands at the offset its own content defines, which
+    // closes the gap: the very same progress file now describes a complete staged file.
+    reloaded.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d1"),
+        false,
+        160L,
+        160L,
+        true,
+        createChunk(),
+        300L,
+        1L);
+    Assert.assertEquals(-1L, reloaded.getFirstHoleOffset());
+    Assert.assertEquals(400L, reloaded.getTotalLength());
+    Assert.assertTrue(reloaded.isReady(400L));
   }
 
   @Test
@@ -102,7 +141,15 @@ public class LoadTsFileResumeTest {
     final File tsFile = temporaryFolder.newFile("b.tsfile");
     final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
 
-    progress.recordChunk("root.sg.d1", false, 64L, 90L, true, createChunk(), 150L, 1L);
+    progress.recordChunk(
+        new StringArrayDeviceID("root", "sg", "d1"),
+        false,
+        64L,
+        90L,
+        true,
+        createChunk(),
+        150L,
+        1L);
 
     Assert.assertEquals(-1L, progress.getResumableLength());
     Assert.assertEquals(FILE_HEADER_SIZE, progress.getFirstHoleOffset());
@@ -193,6 +240,12 @@ public class LoadTsFileResumeTest {
       }
       Assert.assertEquals(2, chunkCountByMeasurement.get("temperature").intValue());
       Assert.assertEquals(1, chunkCountByMeasurement.get("humidity").intValue());
+
+      // The two measurements are carried by two devices, not by three: a device that is restored
+      // under a differently shaped device ID gets an entry of its own next to the one the resumed
+      // writer uses for the very same measurement, and the reader that asks for the device it was
+      // written for finds neither of them.
+      Assert.assertEquals(2, reader.getAllDevices().size());
     }
   }
 
@@ -263,7 +316,7 @@ public class LoadTsFileResumeTest {
         final long physicalStart =
             firstChunkOfGroup ? result.actualChunkGroupHeaderOffset() : result.actualChunkOffset();
         progress.recordChunk(
-            device.toString(),
+            device,
             chunkData.isAligned(),
             result.actualChunkGroupHeaderOffset(),
             result.actualChunkOffset(),
