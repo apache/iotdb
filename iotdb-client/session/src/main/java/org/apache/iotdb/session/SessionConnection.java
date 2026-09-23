@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
@@ -196,15 +197,16 @@ public class SessionConnection {
       String keyStorePwd,
       String sslProtocol)
       throws IoTDBConnectionException, StatementExecutionException {
-    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
-    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
+    DeepCopyRpcTransportFactory transportFactory =
+        DeepCopyRpcTransportFactory.getInstance(
+            session.thriftDefaultBufferSize, session.thriftMaxFrameSize);
     try {
       if (transport != null && transport.isOpen()) {
         close();
       }
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
@@ -215,7 +217,7 @@ public class SessionConnection {
                 sslProtocol);
       } else {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       }
@@ -323,6 +325,31 @@ public class SessionConnection {
 
   protected IClientRPCService.Iface getClient() {
     return client;
+  }
+
+  protected boolean setTransportTimeout(final int timeoutInMs) {
+    if (!(transport instanceof TimeoutChangeableTransport)) {
+      return false;
+    }
+
+    try {
+      ((TimeoutChangeableTransport) transport).setTimeout(timeoutInMs);
+      return true;
+    } catch (final RuntimeException ignored) {
+      return false;
+    }
+  }
+
+  protected void forceCloseTransport() {
+    if (transport == null) {
+      return;
+    }
+
+    try {
+      transport.close();
+    } catch (final RuntimeException ignored) {
+      // Best effort. The caller must still finish updating its lifecycle state.
+    }
   }
 
   protected void setTimeZone(String zoneId)

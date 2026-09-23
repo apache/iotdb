@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryManager {
@@ -54,6 +55,8 @@ public class PipeMemoryManager {
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
   private final IMemoryBlock memoryBlock;
+
+  private final LongSupplier floatingMemoryUsageSupplier;
 
   private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
 
@@ -83,7 +86,8 @@ public class PipeMemoryManager {
         IoTDBDescriptor.getInstance()
             .getMemoryConfig()
             .getPipeMemoryManager()
-            .exactAllocate("Stream", MemoryBlockType.DYNAMIC));
+            .exactAllocate("Stream", MemoryBlockType.DYNAMIC),
+        () -> PipeDataNodeAgent.task().getAllFloatingMemoryUsageInByte());
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeMemoryManager#tryExpandAll()",
@@ -92,7 +96,13 @@ public class PipeMemoryManager {
   }
 
   PipeMemoryManager(final IMemoryBlock memoryBlock) {
+    this(memoryBlock, () -> PipeDataNodeAgent.task().getAllFloatingMemoryUsageInByte());
+  }
+
+  PipeMemoryManager(
+      final IMemoryBlock memoryBlock, final LongSupplier floatingMemoryUsageSupplier) {
     this.memoryBlock = memoryBlock;
+    this.floatingMemoryUsageSupplier = floatingMemoryUsageSupplier;
   }
 
   // NOTE: Here we unify the memory threshold judgment for tablet and tsfile memory block, because
@@ -472,12 +482,23 @@ public class PipeMemoryManager {
         && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
-  private boolean isHardEnoughForResizing(final PipeMemoryBlock block) {
+  private boolean isHardEnoughForResizing(
+      final PipeMemoryBlock block, final long extraMemoryInBytes) {
     if (block instanceof PipeTabletMemoryBlock) {
-      return isHardEnough4TabletParsing();
+      return (double) usedMemorySizeInBytesOfTablets
+                  + (double) extraMemoryInBytes
+                  + (double) usedMemorySizeInBytesOfTsFiles
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+          && (double) usedMemorySizeInBytesOfTablets + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTablets();
     }
     if (block instanceof PipeTsFileMemoryBlock) {
-      return isHardEnough4TsFileSlicing();
+      return (double) usedMemorySizeInBytesOfTablets
+                  + (double) usedMemorySizeInBytesOfTsFiles
+                  + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+          && (double) usedMemorySizeInBytesOfTsFiles + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTsTiles();
     }
     return true;
   }
@@ -670,6 +691,24 @@ public class PipeMemoryManager {
     resize(block, targetSize, true);
   }
 
+  /**
+   * Attempts a single resize without waiting for other pipe tasks to release memory.
+   *
+   * <p>This is intended for callers that hold payload/batch locks and can actively release memory
+   * after a failed attempt. Waiting in that situation can prevent the caller itself from making
+   * forward progress.
+   */
+  public synchronized boolean tryResize(final PipeMemoryBlock block, final long targetSize) {
+    if (targetSize < 0) {
+      return false;
+    }
+    if (block == null || block.isReleased()) {
+      LOGGER.warn(DataNodePipeMessages.FORCERESIZE_CANNOT_RESIZE_A_NULL_OR_RELEASED);
+      return false;
+    }
+    return tryResizeInternal(block, targetSize);
+  }
+
   public synchronized void resize(
       final PipeMemoryBlock block, final long targetSize, final boolean force) {
     if (block == null || block.isReleased()) {
@@ -677,61 +716,18 @@ public class PipeMemoryManager {
       return;
     }
 
-    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      block.setMemoryUsageInBytes(targetSize);
+    if (tryResizeInternal(block, targetSize)) {
       return;
     }
 
-    final long oldSize = block.getMemoryUsageInBytes();
-
-    if (oldSize >= targetSize) {
-      memoryBlock.release(oldSize - targetSize);
-      if (block instanceof PipeTabletMemoryBlock) {
-        usedMemorySizeInBytesOfTablets -= oldSize - targetSize;
-      }
-      if (block instanceof PipeTsFileMemoryBlock) {
-        usedMemorySizeInBytesOfTsFiles -= oldSize - targetSize;
-      }
-      block.setMemoryUsageInBytes(targetSize);
-
-      // If no memory is used in the block, we can remove it from the allocated blocks.
-      if (targetSize == 0) {
-        allocatedBlocks.remove(block);
-      }
-
-      notifyNextTsFileParserMemoryReservationInternal();
-      this.notifyAll();
-      return;
-    }
-
-    long sizeInBytes = targetSize - oldSize;
+    final long sizeInBytes = targetSize - block.getMemoryUsageInBytes();
     final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
-      // Dynamically resized data-structure blocks must obey the same admission thresholds as
-      // blocks allocated with a non-zero initial size. Otherwise they can exhaust the pool and
-      // prevent downstream consumers from allocating the memory needed to release them.
-      if (isHardEnoughForResizing(block)
-          && getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
-              >= sizeInBytes) {
-        memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
-        if (oldSize == 0) {
-          // If the memory block is not registered, we need to register it first.
-          // Otherwise, the memory usage will be inconsistent.
-          // See registerMemoryBlock for more details.
-          allocatedBlocks.add(block);
-        }
-        if (block instanceof PipeTabletMemoryBlock) {
-          usedMemorySizeInBytesOfTablets += sizeInBytes;
-        }
-        if (block instanceof PipeTsFileMemoryBlock) {
-          usedMemorySizeInBytesOfTsFiles += sizeInBytes;
-        }
-        block.setMemoryUsageInBytes(targetSize);
-        return;
-      }
-
       try {
         tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
+        if (tryResizeInternal(block, targetSize)) {
+          return;
+        }
         this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -750,6 +746,58 @@ public class PipeMemoryManager {
               memoryBlock.getUsedMemoryInBytes(),
               sizeInBytes));
     }
+  }
+
+  private boolean tryResizeInternal(final PipeMemoryBlock block, final long targetSize) {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      block.setMemoryUsageInBytes(targetSize);
+      return true;
+    }
+
+    final long oldSize = block.getMemoryUsageInBytes();
+    if (oldSize >= targetSize) {
+      final long releasedSize = oldSize - targetSize;
+      memoryBlock.release(releasedSize);
+      if (block instanceof PipeTabletMemoryBlock) {
+        usedMemorySizeInBytesOfTablets -= releasedSize;
+      }
+      if (block instanceof PipeTsFileMemoryBlock) {
+        usedMemorySizeInBytesOfTsFiles -= releasedSize;
+      }
+      block.setMemoryUsageInBytes(targetSize);
+
+      if (targetSize == 0) {
+        allocatedBlocks.remove(block);
+      }
+
+      notifyNextTsFileParserMemoryReservationInternal();
+      this.notifyAll();
+      return true;
+    }
+
+    final long sizeInBytes = targetSize - oldSize;
+    // Dynamically resized data-structure blocks must obey the same admission thresholds as blocks
+    // allocated with a non-zero initial size. Otherwise they can exhaust the pool and prevent
+    // downstream consumers from allocating the memory needed to release them.
+    if (!isHardEnoughForResizing(block, sizeInBytes)
+        || getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+            < sizeInBytes) {
+      return false;
+    }
+
+    memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
+    if (oldSize == 0) {
+      // Zero-sized blocks are registered lazily on their first successful expansion.
+      allocatedBlocks.add(block);
+    }
+    if (block instanceof PipeTabletMemoryBlock) {
+      usedMemorySizeInBytesOfTablets += sizeInBytes;
+    }
+    if (block instanceof PipeTsFileMemoryBlock) {
+      usedMemorySizeInBytesOfTsFiles += sizeInBytes;
+    }
+    block.setMemoryUsageInBytes(targetSize);
+    return true;
   }
 
   /**
@@ -1027,19 +1075,31 @@ public class PipeMemoryManager {
   }
 
   public long getFreeMemorySizeInBytes() {
-    return memoryBlock.getFreeMemoryInBytes();
+    return Math.max(0, getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes());
   }
 
   public long getTotalNonFloatingMemorySizeInBytes() {
-    return (long)
-        (memoryBlock.getTotalMemorySizeInBytes()
-            * (1 - PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
+    // Floating memory is an upper limit for retained InsertNodes instead of a statically reserved
+    // partition. Non-floating allocations can borrow all floating memory that is not actually in
+    // use, which is especially important for TsFile-only pipes.
+    return Math.max(
+        0, memoryBlock.getTotalMemorySizeInBytes() - getUsedFloatingMemorySizeInBytes());
   }
 
   public long getTotalFloatingMemorySizeInBytes() {
-    return (long)
-        (memoryBlock.getTotalMemorySizeInBytes()
-            * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
+    final long configuredUpperLimit =
+        Math.max(
+            0,
+            (long)
+                (memoryBlock.getTotalMemorySizeInBytes()
+                    * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
+    final long memoryNotUsedByNonFloatingAllocations =
+        Math.max(0, memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes());
+    return Math.min(configuredUpperLimit, memoryNotUsedByNonFloatingAllocations);
+  }
+
+  private long getUsedFloatingMemorySizeInBytes() {
+    return Math.max(0, floatingMemoryUsageSupplier.getAsLong());
   }
 
   public long getTotalMemorySizeInBytes() {

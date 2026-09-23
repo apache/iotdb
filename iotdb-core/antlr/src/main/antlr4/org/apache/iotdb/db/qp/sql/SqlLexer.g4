@@ -723,6 +723,10 @@ QUOTA
     : Q U O T A
     ;
 
+RECEIVERS
+    : R E C E I V E R S
+    ;
+
 RANGE
     : R A N G E
     ;
@@ -1237,6 +1241,10 @@ MAX_SCHEMA_REGION_GROUP_NUM
 
 MAX_DATA_REGION_GROUP_NUM
     : M A X '_' D A T A '_' R E G I O N '_' G R O U P '_' N U M
+    ;
+
+NEED_LAST_CACHE
+    : N E E D '_' L A S T '_' C A C H E
     ;
 
 CURRENT_TIMESTAMP

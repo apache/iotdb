@@ -276,10 +276,16 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private void deleteIncompleteSnapshot(File snapshotDir) throws IOException {
     // this takeSnapshot failed, clean up files and directories
     // statemachine is supposed to clear snapshotDir on failure
-    boolean isEmpty = snapshotDir.delete();
-    if (!isEmpty) {
+    try {
+      Files.deleteIfExists(snapshotDir.toPath());
+    } catch (IOException deleteException) {
       logger.info(RatisMessages.SNAPSHOT_DIR_INCOMPLETE_DELETING, snapshotDir.getAbsolutePath());
-      FileUtils.deleteFully(snapshotDir);
+      try {
+        FileUtils.deleteFully(snapshotDir);
+      } catch (IOException cleanupException) {
+        deleteException.addSuppressed(cleanupException);
+        throw deleteException;
+      }
     }
   }
 

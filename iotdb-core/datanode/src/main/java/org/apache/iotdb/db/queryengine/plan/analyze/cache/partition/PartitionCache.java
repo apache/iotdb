@@ -61,6 +61,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
@@ -69,6 +70,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
+import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +97,10 @@ public class PartitionCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
 
+  private static boolean isNeedLastCacheEnabled(final TDatabaseSchema databaseSchema) {
+    return !databaseSchema.isSetNeedLastCache() || databaseSchema.isNeedLastCache();
+  }
+
   /** calculate slotId by device */
   private final String seriesSlotExecutorName = config.getSeriesPartitionExecutorClass();
 
@@ -101,7 +108,7 @@ public class PartitionCache {
   private final SeriesPartitionExecutor partitionExecutor;
 
   /** the cache of database */
-  private final Set<String> databaseCache = new HashSet<>();
+  private final Map<String, Boolean> database2NeedLastCacheCache = new HashMap<>();
 
   /** database -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
@@ -209,7 +216,7 @@ public class PartitionCache {
    * @return database name, return {@code null} if cache miss
    */
   private String getDatabaseName(final IDeviceID deviceID) {
-    for (final String database : databaseCache) {
+    for (final String database : database2NeedLastCacheCache.keySet()) {
       if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
@@ -226,7 +233,7 @@ public class PartitionCache {
   private boolean containsDatabase(final String database) {
     databaseCacheLock.readLock().lock();
     try {
-      return databaseCache.contains(database);
+      return database2NeedLastCacheCache.containsKey(database);
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -255,7 +262,7 @@ public class PartitionCache {
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // update all database into cache
-          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
           getDatabaseMap(result, deviceIDs, true);
         }
       }
@@ -264,19 +271,39 @@ public class PartitionCache {
     }
   }
 
+  @TreeModel
+  public boolean isNeedLastCache(final String database) {
+    Boolean needLastCache = database2NeedLastCacheCache.get(database);
+    if (Objects.nonNull(needLastCache)) {
+      return needLastCache;
+    }
+    try {
+      fetchDatabaseAndUpdateCache(false);
+    } catch (final TException | ClientManagerException e) {
+      logger.warn(
+          "Failed to get need_last_cache info for database {}, will put cache anyway, exception: {}",
+          database,
+          e.getMessage());
+      return true;
+    }
+    needLastCache = database2NeedLastCacheCache.get(database);
+    return Objects.isNull(needLastCache) || needLastCache;
+  }
+
   /** get all database from configNode and update database cache. */
-  private void fetchDatabaseAndUpdateCache() throws ClientManagerException, TException {
+  private void fetchDatabaseAndUpdateCache(final boolean isTableModel)
+      throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-              .setIsTableModel(true)
+              .setIsTableModel(isTableModel)
               .setCanSeeAuditDB(true);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
-        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -534,6 +561,7 @@ public class PartitionCache {
     }
   }
 
+  @TableModel
   public void checkAndAutoCreateDatabase(
       final String database, final boolean isAutoCreate, final String userName) {
     failIfMetadataLeaseFenced();
@@ -541,7 +569,7 @@ public class PartitionCache {
     if (!isExisted) {
       try {
         // try to fetch database from config node when miss
-        fetchDatabaseAndUpdateCache();
+        fetchDatabaseAndUpdateCache(true);
         isExisted = containsDatabase(database);
         if (!isExisted && isAutoCreate) {
           // try to auto create database of failed device
@@ -560,12 +588,39 @@ public class PartitionCache {
   /**
    * update database cache
    *
-   * @param databaseNames the database names that need to update
+   * @param databases names of databases created through local {@code setDatabase} requests. Those
+   *     requests leave {@code needLastCache} unset, which is backward-compatibly treated as
+   *     enabled.
    */
-  public void updateDatabaseCache(final Set<String> databaseNames) {
+  public void updateDatabaseCache(final Set<String> databases) {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.addAll(databaseNames);
+      databases.forEach(
+          database -> {
+            // The newly created schemas omit needLastCache, whose compatibility default is true.
+            database2NeedLastCacheCache.put(database, true);
+          });
+    } finally {
+      databaseCacheLock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * update database cache
+   *
+   * @param databaseMap the database names and need last cache that need to update
+   */
+  public void updateDatabaseCache(final Map<String, TDatabaseSchema> databaseMap) {
+    databaseCacheLock.writeLock().lock();
+    try {
+      databaseMap.forEach(
+          (database, schema) -> {
+            final boolean needLastCache = isNeedLastCacheEnabled(schema);
+            database2NeedLastCacheCache.put(database, needLastCache);
+            if (!needLastCache) {
+              TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(database);
+            }
+          });
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -575,7 +630,7 @@ public class PartitionCache {
   public void removeFromDatabaseCache() {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.clear();
+      database2NeedLastCacheCache.clear();
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -885,18 +940,18 @@ public class PartitionCache {
       final Map<TConsensusGroupId, HashSet<TimeSlotRegionInfo>> consensusGroupToTimeSlotMap =
           new HashMap<>();
 
-      for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
+      for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
           databaseToQueryParamsMap.entrySet()) {
-        String databaseName = entry.getKey();
-        List<DataPartitionQueryParam> params = entry.getValue();
+        final String databaseName = entry.getKey();
+        final List<DataPartitionQueryParam> params = entry.getValue();
 
-        if (null == params || params.isEmpty()) {
+        if (params == null || params.isEmpty()) {
           cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
           return null;
         }
 
-        DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
-        if (null == dataPartitionTable) {
+        final DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
+        if (dataPartitionTable == null) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DATABASE_ARG,
@@ -907,20 +962,17 @@ public class PartitionCache {
           return null;
         }
 
-        Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
+        final Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
             dataPartitionTable.getDataPartitionMap();
-
-        for (DataPartitionQueryParam param : params) {
-          TSeriesPartitionSlot seriesPartitionSlot;
-          if (null != param.getDeviceID()) {
-            seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(param.getDeviceID());
-          } else {
+        for (final DataPartitionQueryParam param : params) {
+          if (param.getDeviceID() == null) {
             return null;
           }
-
-          SeriesPartitionTable cachedSeriesPartitionTable =
+          final TSeriesPartitionSlot seriesPartitionSlot =
+              partitionExecutor.getSeriesPartitionSlot(param.getDeviceID());
+          final SeriesPartitionTable cachedSeriesPartitionTable =
               cachedDatabasePartitionMap.get(seriesPartitionSlot);
-          if (null == cachedSeriesPartitionTable) {
+          if (cachedSeriesPartitionTable == null) {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DEVICE_ARG,
@@ -931,19 +983,17 @@ public class PartitionCache {
             return null;
           }
 
-          Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot =
+          final Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot =
               cachedSeriesPartitionTable.getSeriesPartitionMap();
-
           if (param.getTimePartitionSlotList().isEmpty()) {
             return null;
           }
-
-          for (TTimePartitionSlot timePartitionSlot : param.getTimePartitionSlotList()) {
-            List<TConsensusGroupId> cacheConsensusGroupIds =
+          for (final TTimePartitionSlot timePartitionSlot : param.getTimePartitionSlotList()) {
+            final List<TConsensusGroupId> cachedConsensusGroupIds =
                 cachedTimePartitionSlot.get(timePartitionSlot);
-            if (null == cacheConsensusGroupIds
-                || cacheConsensusGroupIds.isEmpty()
-                || null == timePartitionSlot) {
+            if (cachedConsensusGroupIds == null
+                || cachedConsensusGroupIds.isEmpty()
+                || timePartitionSlot == null) {
               if (logger.isDebugEnabled()) {
                 logger.debug(
                     DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_TIME_PARTITION_ARG,
@@ -954,10 +1004,10 @@ public class PartitionCache {
               return null;
             }
 
-            for (TConsensusGroupId groupId : cacheConsensusGroupIds) {
+            for (final TConsensusGroupId groupId : cachedConsensusGroupIds) {
               allConsensusGroupIds.add(groupId);
               consensusGroupToTimeSlotMap
-                  .computeIfAbsent(groupId, k -> new HashSet<>())
+                  .computeIfAbsent(groupId, key -> new HashSet<>())
                   .add(
                       new TimeSlotRegionInfo(databaseName, seriesPartitionSlot, timePartitionSlot));
             }
@@ -967,23 +1017,102 @@ public class PartitionCache {
 
       final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(allConsensusGroupIds);
       final List<TRegionReplicaSet> allRegionReplicaSets = getRegionReplicaSet(consensusGroupIds);
-
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+      final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap = new HashMap<>();
-
       for (int i = 0; i < allRegionReplicaSets.size(); i++) {
-        TConsensusGroupId groupId = consensusGroupIds.get(i);
-        TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
-
-        for (TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
+        final TConsensusGroupId groupId = consensusGroupIds.get(i);
+        final TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
+        for (final TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
           dataPartitionMap
-              .computeIfAbsent(info.databaseName, k -> new HashMap<>())
-              .computeIfAbsent(info.seriesPartitionSlot, k -> new HashMap<>())
-              .computeIfAbsent(info.timePartitionSlot, k -> new ArrayList<>())
+              .computeIfAbsent(info.databaseName, key -> new HashMap<>())
+              .computeIfAbsent(info.seriesPartitionSlot, key -> new HashMap<>())
+              .computeIfAbsent(info.timePartitionSlot, key -> new ArrayList<>())
               .add(replicaSet);
         }
       }
+      if (logger.isDebugEnabled()) {
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      }
+      cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
+    } finally {
+      dataPartitionCacheLock.readLock().unlock();
+    }
+  }
 
+  public DataPartition getDataPartition(
+      final String database,
+      final Set<TSeriesPartitionSlot> seriesPartitionSlots,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    final Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> querySlots = new HashMap<>();
+    for (final TSeriesPartitionSlot seriesPartitionSlot : seriesPartitionSlots) {
+      querySlots.put(seriesPartitionSlot, timePartitionSlots);
+    }
+    return getDataPartitionBySlots(Collections.singletonMap(database, querySlots));
+  }
+
+  private DataPartition getDataPartitionBySlots(
+      final Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> querySlots) {
+    dataPartitionCacheLock.readLock().lock();
+    try {
+      failIfMetadataLeaseFenced();
+      if (querySlots.isEmpty()) {
+        cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+        return null;
+      }
+      final Set<TConsensusGroupId> allConsensusGroupIds = new HashSet<>();
+      final Map<TConsensusGroupId, HashSet<TimeSlotRegionInfo>> consensusGroupToTimeSlotMap =
+          new HashMap<>();
+      for (final Map.Entry<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+          databaseEntry : querySlots.entrySet()) {
+        final DataPartitionTable dataPartitionTable =
+            dataPartitionCache.getIfPresent(databaseEntry.getKey());
+        if (dataPartitionTable == null || databaseEntry.getValue().isEmpty()) {
+          cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+          return null;
+        }
+        for (final Map.Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesEntry :
+            databaseEntry.getValue().entrySet()) {
+          final SeriesPartitionTable cachedSeriesPartitionTable =
+              dataPartitionTable.getDataPartitionMap().get(seriesEntry.getKey());
+          if (cachedSeriesPartitionTable == null || seriesEntry.getValue().isEmpty()) {
+            cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+            return null;
+          }
+          for (final TTimePartitionSlot timePartitionSlot : seriesEntry.getValue()) {
+            final List<TConsensusGroupId> cachedConsensusGroupIds =
+                cachedSeriesPartitionTable.getSeriesPartitionMap().get(timePartitionSlot);
+            if (cachedConsensusGroupIds == null || cachedConsensusGroupIds.isEmpty()) {
+              cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+              return null;
+            }
+            for (final TConsensusGroupId groupId : cachedConsensusGroupIds) {
+              allConsensusGroupIds.add(groupId);
+              consensusGroupToTimeSlotMap
+                  .computeIfAbsent(groupId, key -> new HashSet<>())
+                  .add(
+                      new TimeSlotRegionInfo(
+                          databaseEntry.getKey(), seriesEntry.getKey(), timePartitionSlot));
+            }
+          }
+        }
+      }
+
+      final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(allConsensusGroupIds);
+      final List<TRegionReplicaSet> allRegionReplicaSets = getRegionReplicaSet(consensusGroupIds);
+      final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+          dataPartitionMap = new HashMap<>();
+      for (int i = 0; i < allRegionReplicaSets.size(); i++) {
+        final TConsensusGroupId groupId = consensusGroupIds.get(i);
+        final TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
+        for (final TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
+          dataPartitionMap
+              .computeIfAbsent(info.databaseName, key -> new HashMap<>())
+              .computeIfAbsent(info.seriesPartitionSlot, key -> new HashMap<>())
+              .computeIfAbsent(info.timePartitionSlot, key -> new ArrayList<>())
+              .add(replicaSet);
+        }
+      }
       if (logger.isDebugEnabled()) {
         logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       }
@@ -1111,7 +1240,7 @@ public class PartitionCache {
   public String toString() {
     return "PartitionCache{"
         + ", databaseCache="
-        + databaseCache
+        + database2NeedLastCacheCache
         + ", replicaSetCache="
         + groupIdToReplicaSetMap
         + ", schemaPartitionCache="

@@ -257,6 +257,11 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
     TestUtils.executeNonQueries(
         database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null);
 
+    // Pipe transfers config events in order. Use a database event as a progress marker to ensure
+    // that all preparation statements have been applied on receiverEnv.
+    TableModelUtils.createDatabase(senderEnv, "test1");
+    TableModelUtils.hasDataBase("test1", receiverEnv);
+
     TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql, null);
 
     // Create an idempotent conflict
@@ -265,6 +270,6 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
     TableModelUtils.createDatabase(senderEnv, "test2");
 
     // Assume that the "database" is executed on receiverEnv
-    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 3, null);
+    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 4, null);
   }
 }

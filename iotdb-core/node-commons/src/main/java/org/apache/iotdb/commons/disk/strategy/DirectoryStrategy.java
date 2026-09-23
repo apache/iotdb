@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 
 import org.slf4j.Logger;
@@ -46,6 +47,12 @@ public abstract class DirectoryStrategy {
   /** All the folders of data files, should be init once the subclass is created. */
   List<String> folders = new ArrayList<>();
 
+  private boolean changeSystemStatusToReadOnly = true;
+
+  public void setChangeSystemStatusToReadOnly(boolean changeSystemStatusToReadOnly) {
+    this.changeSystemStatusToReadOnly = changeSystemStatusToReadOnly;
+  }
+
   /**
    * To init folders. Do not recommend to overwrite. This method guarantees that at least one folder
    * has available space.
@@ -61,8 +68,15 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
-      LOGGER.error(UtilMessages.DISK_SPACE_INSUFFICIENT_READ_ONLY);
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      if (changeSystemStatusToReadOnly) {
+        LOGGER.error(UtilMessages.DISK_SPACE_INSUFFICIENT_READ_ONLY);
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      } else {
+        if (LoggerPeriodicalLogReducer.shouldLog(
+            UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0)) {
+          LOGGER.error(UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0);
+        }
+      }
       throw new DiskSpaceInsufficientException(folders);
     }
 

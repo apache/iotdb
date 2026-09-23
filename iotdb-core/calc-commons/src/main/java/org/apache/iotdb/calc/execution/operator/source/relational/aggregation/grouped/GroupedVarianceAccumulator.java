@@ -24,6 +24,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -31,6 +32,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -43,6 +45,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedVarianceAccumulator.class);
   private final TSDataType seriesDataType;
+  private final TypeServices.NumericBatchReader doubleValueConverter;
   private final VarianceAccumulator.VarianceType varianceType;
 
   private final LongBigArray counts = new LongBigArray();
@@ -52,6 +55,10 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
   public GroupedVarianceAccumulator(
       TSDataType seriesDataType, VarianceAccumulator.VarianceType varianceType) {
     this.seriesDataType = seriesDataType;
+    this.doubleValueConverter =
+        TypeServices.NUMERIC_BATCH_READER_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .create(this::unsupportedDataTypeException);
     this.varianceType = varianceType;
   }
 
@@ -69,32 +76,8 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(groupIds, arguments[0], mask);
-        return;
-      case INT64:
-        addLongInput(groupIds, arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(groupIds, arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], mask);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_VARIANCE_AGGREGATION_ARG_C641D425,
-                seriesDataType));
-    }
+    checkInputDataType();
+    updateStateByAdd(groupIds, arguments[0], mask);
   }
 
   @Override
@@ -194,135 +177,27 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
     m2s.reset();
   }
 
-  private void addIntInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+  private void updateStateByAdd(int[] groupIds, Column column, AggregationMask mask) {
+    doubleValueConverter.read(
+        column,
+        mask,
+        (position, value) -> {
+          int groupId = groupIds[position];
+          counts.increment(groupId);
+          double delta = value - means.get(groupId);
+          means.add(groupId, delta / counts.get(groupId));
+          m2s.add(groupId, delta * (value - means.get(groupId)));
+        });
+  }
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        int value = column.getInt(i);
-        counts.increment(groupIds[i]);
-        double delta = value - means.get(groupIds[i]);
-        means.add(groupIds[i], delta / counts.get(groupIds[i]));
-        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        int value = column.getInt(position);
-        counts.increment(groupIds[position]);
-        double delta = value - means.get(groupIds[position]);
-        means.add(groupIds[position], delta / counts.get(groupIds[position]));
-        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
-      }
+  private void checkInputDataType() {
+    if (!seriesDataType.isNumeric()) {
+      throw unsupportedDataTypeException();
     }
   }
 
-  private void addLongInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        long value = column.getLong(i);
-        counts.increment(groupIds[i]);
-        double delta = value - means.get(groupIds[i]);
-        means.add(groupIds[i], delta / counts.get(groupIds[i]));
-        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        long value = column.getLong(position);
-        counts.increment(groupIds[position]);
-        double delta = value - means.get(groupIds[position]);
-        means.add(groupIds[position], delta / counts.get(groupIds[position]));
-        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
-      }
-    }
-  }
-
-  private void addFloatInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        float value = column.getFloat(i);
-        counts.increment(groupIds[i]);
-        double delta = value - means.get(groupIds[i]);
-        means.add(groupIds[i], delta / counts.get(groupIds[i]));
-        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        float value = column.getFloat(position);
-        counts.increment(groupIds[position]);
-        double delta = value - means.get(groupIds[position]);
-        means.add(groupIds[position], delta / counts.get(groupIds[position]));
-        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
-      }
-    }
-  }
-
-  private void addDoubleInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        double value = column.getDouble(i);
-        counts.increment(groupIds[i]);
-        double delta = value - means.get(groupIds[i]);
-        means.add(groupIds[i], delta / counts.get(groupIds[i]));
-        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        double value = column.getDouble(position);
-        counts.increment(groupIds[position]);
-        double delta = value - means.get(groupIds[position]);
-        means.add(groupIds[position], delta / counts.get(groupIds[position]));
-        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
-      }
-    }
+  private UnSupportedDataTypeException unsupportedDataTypeException() {
+    return new UnSupportedDataTypeException(
+        String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_VARIANCE_AGGREGATION, seriesDataType));
   }
 }

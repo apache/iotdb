@@ -27,6 +27,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
+import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -34,6 +37,7 @@ import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -67,6 +71,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
@@ -109,6 +114,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,6 +149,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.TsTable.NEED_LAST_CACHE_PROPERTY;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
@@ -268,6 +275,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             ConfigNodeMessages.SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO,
             currentSchema.getName(),
             currentSchema.getTTL());
+      }
+
+      if (alterSchema.isSetNeedLastCache()) {
+        currentSchema.setNeedLastCache(alterSchema.isNeedLastCache());
+        LOGGER.info(
+            ConfigNodeMessages
+                .LOG_SETNEEDLASTCACHE_THE_NEED_LAST_CACHE_FLAG_OF_DATABASE_ARG_IS_ADJUSTED_TO_ARG_C7CFFABC,
+            currentSchema.getName(),
+            currentSchema.isNeedLastCache());
       }
 
       mTree
@@ -781,7 +797,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return tmpFile.renameTo(snapshotFile);
     } finally {
       for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
+        if (!tmpFile.exists()
+            || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
           break;
         } else {
           LOGGER.warn(
@@ -1332,13 +1349,20 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                             TreeViewSchema.isTreeViewTable(pair.getLeft())
                                 ? TableType.VIEW_FROM_TREE.ordinal()
                                 : TableType.BASE_TABLE.ordinal());
+                        info.setNeedLastCache(
+                            pair.getLeft()
+                                .getPropValue(NEED_LAST_CACHE_PROPERTY)
+                                .map(Boolean::parseBoolean)
+                                .orElse(true));
                         return info;
                       })
                   .collect(Collectors.toList())
               : tableModelMTree
-                  .getAllUsingTablesUnderSpecificDatabase(
+                  .getAllTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
+                  .filter(pair -> pair.getRight() != TableNodeStatus.PRE_CREATE)
+                  .map(Pair::getLeft)
                   .map(
                       tsTable ->
                           new TTableInfo(
@@ -1380,6 +1404,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                         TreeViewSchema.isTreeViewTable(pair.getLeft())
                                             ? TableType.VIEW_FROM_TREE.ordinal()
                                             : TableType.BASE_TABLE.ordinal());
+                                    info.setNeedLastCache(
+                                        pair.getLeft()
+                                            .getPropValue(NEED_LAST_CACHE_PROPERTY)
+                                            .map(Boolean::parseBoolean)
+                                            .orElse(true));
                                     return info;
                                   })
                               .collect(Collectors.toList()))));
@@ -1426,7 +1455,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       return new DescTableResp(
           StatusUtils.OK,
-          tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          tableModelMTree.getTableSchemaForDesc(databasePath, plan.getTableName()),
           null,
           null);
     } catch (final MetadataException e) {
@@ -1536,6 +1565,80 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public TsTable getTableForModification(
+      final String database, final String tableName, final String... columnNames)
+      throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      final PartialPath databasePath = getQualifiedDatabasePartialPath(database);
+      final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
+          tableModelMTree.getTableAndStatusIfExists(databasePath, tableName);
+      if (!tableAndStatus.isPresent()) {
+        return null;
+      }
+      if (tableAndStatus.get().getRight() == TableNodeStatus.PRE_DELETE) {
+        throw new TableInDeletionException(database, tableName);
+      }
+      final TableSchemaDetails details =
+          tableModelMTree.getTableSchemaDetails(databasePath, tableName);
+      for (final String columnName : columnNames) {
+        if (details.preDeletedColumns.contains(columnName)) {
+          throw new ColumnInDeletionException(database, tableName, columnName);
+        }
+        if (details.preAlteredColumns.containsKey(columnName)) {
+          throw new ColumnInAlterException(database, tableName, columnName);
+        }
+      }
+      return tableModelMTree.getTableSchemaForDataNode(databasePath, tableName);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public boolean isColumnAlterCommitted(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType dataType)
+      throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      final PartialPath databasePath = getQualifiedDatabasePartialPath(database);
+      final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
+          tableModelMTree.getTableAndStatusIfExists(databasePath, tableName);
+      if (!tableAndStatus.isPresent()) {
+        return false;
+      }
+      final TableSchemaDetails details =
+          tableModelMTree.getTableSchemaDetails(databasePath, tableName);
+      final TsTableColumnSchema columnSchema = details.table.getColumnSchema(columnName);
+      return !details.preAlteredColumns.containsKey(columnName)
+          && columnSchema != null
+          && columnSchema.getDataType() == dataType;
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Optional<TSDataType> getPreAlteredColumnType(
+      final String database, final String tableName, final String columnName)
+      throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      final PartialPath databasePath = getQualifiedDatabasePartialPath(database);
+      if (!tableModelMTree.getTableAndStatusIfExists(databasePath, tableName).isPresent()) {
+        return Optional.empty();
+      }
+      return Optional.ofNullable(
+          tableModelMTree
+              .getTableSchemaDetails(databasePath, tableName)
+              .preAlteredColumns
+              .get(columnName));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
   public TSStatus addTableColumn(final AddTableColumnPlan plan) {
     return executeWithLock(
         () -> {
@@ -1618,6 +1721,23 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final SemanticException e) {
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus rollbackPreAlterColumnDataType(final RollbackPreAlterColumnDataTypePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      tableModelMTree.rollbackPreAlterColumnDataType(
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getColumnName(),
+          plan.getNewType());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }

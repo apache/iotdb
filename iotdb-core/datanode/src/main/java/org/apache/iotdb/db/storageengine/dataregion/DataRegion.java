@@ -46,7 +46,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -101,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Tr
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -1178,8 +1178,7 @@ public class DataRegion implements IDataRegionForQuery {
     // reject insertions that are out of ttl
     long ttl = getTTL(insertRowNode);
     if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
-      throw new OutOfTTLException(
-          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - ttl));
+      throw new OutOfTTLException(insertRowNode.getTime(), CommonUtils.getTTLLowerBound(ttl));
     }
     StorageEngine.blockInsertionIfReject();
     long startTime = System.nanoTime();
@@ -2156,6 +2155,7 @@ public class DataRegion implements IDataRegionForQuery {
               StorageEngineMessages
                   .STORAGE_LOG_MEET_IOEXCEPTION_WHEN_CREATING_TSFILEPROCESSOR_CHANGE_SYSTEM_4337F729,
               e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           throw new WriteProcessException(
               String.format(
@@ -2520,7 +2520,25 @@ public class DataRegion implements IDataRegionForQuery {
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
-      List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
+      List<Future<?>> tsFileProcessorsClosingFutures = new ArrayList<>();
+      writeLock("syncCloseAllWorkingTsFileProcessors");
+      try {
+        for (TsFileProcessor tsFileProcessor : closingSequenceTsFileProcessor) {
+          Future<?> closeFuture = tsFileProcessor.getCloseFuture();
+          if (closeFuture != null) {
+            tsFileProcessorsClosingFutures.add(closeFuture);
+          }
+        }
+        for (TsFileProcessor tsFileProcessor : closingUnSequenceTsFileProcessor) {
+          Future<?> closeFuture = tsFileProcessor.getCloseFuture();
+          if (closeFuture != null) {
+            tsFileProcessorsClosingFutures.add(closeFuture);
+          }
+        }
+        tsFileProcessorsClosingFutures.addAll(asyncCloseAllWorkingTsFileProcessors());
+      } finally {
+        writeUnlock();
+      }
       for (Future<?> f : tsFileProcessorsClosingFutures) {
         if (f != null) {
           f.get();
@@ -3233,7 +3251,7 @@ public class DataRegion implements IDataRegionForQuery {
               } catch (IOException e) {
                 logger.error(StorageEngineMessages.FAILED_TO_CHECK_OBJECT_FILES, e.getMessage());
               }
-              FileUtils.deleteQuietly(objectTableDir);
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectTableDir, true);
             }
             FileMetrics.getInstance().decreaseObjectFileNum(count.get());
             FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
@@ -4809,8 +4827,7 @@ public class DataRegion implements IDataRegionForQuery {
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
-                          DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - ttl))));
+                          DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           continue;
         }
         // init map
@@ -4926,8 +4943,7 @@ public class DataRegion implements IDataRegionForQuery {
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
-                          DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - ttl))));
+                          DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           insertRowNode.setFailedMeasurementNumber(
               insertRowNode.getMeasurements() == null ? 0 : insertRowNode.getMeasurements().length);
           insertRowNode.setMeasurements(null);

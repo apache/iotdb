@@ -63,7 +63,6 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
         .setSchemaReplicationFactor(1)
         .setDataReplicationFactor(2)
         .setAutoCreateSchemaEnabled(true)
-        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setSubscriptionOwnerLeaseDurationMsMin(1000);
@@ -150,7 +149,7 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
       session.dropTopicIfExists(topicName);
 
       final Properties config = new Properties();
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
       config.put(TopicConstant.DATABASE_KEY, database);
       config.put(TopicConstant.TABLE_KEY, table);

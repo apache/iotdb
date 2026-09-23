@@ -55,7 +55,7 @@ ddlStatement
     // ExternalService
     | createService | startService | stopService | dropService | showService
     // Pipe Task
-    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes | showReceivers
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
@@ -116,6 +116,7 @@ databaseAttributesClause
 
 databaseAttributeClause
     : databaseAttributeKey operator_eq INTEGER_LITERAL
+    | NEED_LAST_CACHE operator_eq boolean_literal
     ;
 
 databaseAttributeKey
@@ -701,6 +702,10 @@ showPipes
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showReceivers
+    : SHOW RECEIVERS
+    ;
+
 // Pipe Plugin =========================================================================================
 createPipePlugin
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=STRING_LITERAL uriClause
@@ -741,7 +746,7 @@ showTopics
     ;
 
 showSubscriptions
-    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    : SHOW SUBSCRIPTIONS (DETAILS)? (ON topicName=identifier)?
     ;
 
 dropSubscription

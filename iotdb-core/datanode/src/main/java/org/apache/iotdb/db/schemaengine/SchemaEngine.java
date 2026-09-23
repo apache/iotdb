@@ -336,12 +336,12 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
+  public synchronized boolean deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn(DataNodeSchemaMessages.SCHEMA_REGION_ALREADY_DELETED, schemaRegionId);
-      return;
+      return false;
     }
     schemaRegion.deleteSchemaRegion();
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
@@ -365,6 +365,7 @@ public class SchemaEngine {
         FileUtils.deleteFileOrDirectory(sgDir);
       }
     }
+    return true;
   }
 
   public int getSchemaRegionNumber() {
@@ -447,11 +448,21 @@ public class SchemaEngine {
     schemaQuotaManager.updateRemain(
         req.getTimeSeriesQuotaRemain(),
         req.isSetDeviceQuotaRemain() ? req.getDeviceQuotaRemain() : -1);
+    // Build both maps on snapshots and publish them together only after all counts succeed, so a
+    // failure cannot leave a partially updated heartbeat response.
+    Map<Integer, Long> regionDeviceUsageMap =
+        resp.getRegionDeviceUsageMap() == null
+            ? null
+            : new HashMap<>(resp.getRegionDeviceUsageMap());
+    Map<Integer, Long> regionSeriesUsageMap =
+        resp.getRegionSeriesUsageMap() == null
+            ? null
+            : new HashMap<>(resp.getRegionSeriesUsageMap());
     if (schemaQuotaManager.isDeviceLimit()) {
-      if (resp.getRegionDeviceUsageMap() == null) {
-        resp.setRegionDeviceUsageMap(new HashMap<>());
+      if (regionDeviceUsageMap == null) {
+        regionDeviceUsageMap = new HashMap<>();
       }
-      final Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
+      final Map<Integer, Long> tmp = regionDeviceUsageMap;
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -467,10 +478,10 @@ public class SchemaEngine {
                           .orElse(0L)));
     }
     if (schemaQuotaManager.isMeasurementLimit()) {
-      if (resp.getRegionSeriesUsageMap() == null) {
-        resp.setRegionSeriesUsageMap(new HashMap<>());
+      if (regionSeriesUsageMap == null) {
+        regionSeriesUsageMap = new HashMap<>();
       }
-      final Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
+      final Map<Integer, Long> tmp = regionSeriesUsageMap;
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -489,6 +500,12 @@ public class SchemaEngine {
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
                           .map(this::getTimeSeriesNumber4Quota)
                           .orElse(0L)));
+    }
+    if (regionDeviceUsageMap != null) {
+      resp.setRegionDeviceUsageMap(regionDeviceUsageMap);
+    }
+    if (regionSeriesUsageMap != null) {
+      resp.setRegionSeriesUsageMap(regionSeriesUsageMap);
     }
   }
 

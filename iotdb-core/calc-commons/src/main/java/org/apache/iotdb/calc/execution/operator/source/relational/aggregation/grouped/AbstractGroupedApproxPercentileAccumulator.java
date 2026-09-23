@@ -23,14 +23,15 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.TDigest;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.TDigestBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -39,11 +40,19 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedApproxPercentileAccumulator.class);
   protected final TSDataType seriesDataType;
+  private final TypeServices.NumericResultWriter resultWriter;
+  private final TypeServices.TriConsumer<int[], Column[], AggregationMask> inputAdder;
   protected double percentage;
   protected final TDigestBigArray array = new TDigestBigArray();
 
   AbstractGroupedApproxPercentileAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
+    this.resultWriter =
+        TypeServices.NUMERIC_RESULT_WRITER_SERVICE.call(Type.fromTsDataType(seriesDataType));
+    this.inputAdder =
+        TypeServices.GROUPED_APPROX_PERCENTILE_INPUT_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .apply(this);
   }
 
   @Override
@@ -65,31 +74,10 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
     } else {
       throw new IllegalArgumentException(
           String.format(
-              CalcMessages.EXCEPTION_APPROX_PERCENTILE_REQUIRES_2_3_ARGUMENTS_BUT_GOT_ARG_D78590AA,
-              arguments.length));
+              CalcMessages.APPROX_PERCENTILE_REQUIRES_TWO_OR_THREE_ARGUMENTS, arguments.length));
     }
 
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(groupIds, arguments, mask);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(groupIds, arguments, mask);
-        break;
-      case FLOAT:
-        addFloatInput(groupIds, arguments, mask);
-        break;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments, mask);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages
-                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_PERCENTILE_AGGREGATION_ARG_CFEC0431,
-                seriesDataType));
-    }
+    inputAdder.accept(groupIds, arguments, mask);
   }
 
   @Override
@@ -124,27 +112,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilder.writeInt((int) result);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong((long) result);
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat((float) result);
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(result);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages
-                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_PERCENTILE_AGGREGATION_ARG_CFEC0431,
-                seriesDataType));
-    }
+    resultWriter.write(columnBuilder, result);
   }
 
   @Override

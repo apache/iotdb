@@ -73,6 +73,7 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s doesn't exist.";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "Decrease reference count for snapshot {} error.";
+  public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
   public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
       "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
@@ -142,6 +143,8 @@ public final class ManagerMessages {
       "Failed to collect user name for user id {}";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "Failed to create consumer {} in consumer group {}. Result status: {}.";
+  public static final String EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12 =
+      "Failed to subscribe topic %s for consumer %s because the consumer does not exist in the consumer group";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
@@ -286,6 +289,12 @@ public final class ManagerMessages {
       "LoadStatistics service is started successfully.";
   public static final String LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "LoadStatistics service is stopped successfully.";
+  public static final String
+      LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69 =
+          "Skip duplicate Region ID {} in ReconstructRegion request to DataNode {}.";
+  public static final String
+      LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
+          "Skip non-existent Region ID {} in ReconstructRegion request to DataNode {}.";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
@@ -440,6 +449,8 @@ public final class ManagerMessages {
       "Start to create Region: {} on DataNode: {}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]";
+  public static final String START_TO_DELETE_REGION_ON_DATANODE =
+      "Start to delete Region: {} on DataNode: {}";
   public static final String START_TRANSFER_OF = "Start transfer of {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "Stop submitting CQ {} because {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -522,8 +533,6 @@ public final class ManagerMessages {
       "Unexpected interruption during waiting for configNode leader ready.";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "Unexpected interruption during waiting for get cluster id.";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "Unexpected non-create task in the RegionMaintainer queue; skipping it (the queue only recreates region replicas now, and region deletion is handled by RemoveRegionGroupProcedure).";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "Unexpected null procedure parameters for waitingProcedureFinished";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =

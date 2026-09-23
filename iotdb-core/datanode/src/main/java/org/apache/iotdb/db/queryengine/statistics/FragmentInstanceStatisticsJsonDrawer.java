@@ -56,12 +56,26 @@ public class FragmentInstanceStatisticsJsonDrawer {
     planStatistics.addProperty(
         "fetchSchemaCostMs", formatMs(context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
     planStatistics.addProperty(
+        "diskIOSizeForDeviceEntryDuringFetchSchema",
+        context.getDiskIOSizeForDeviceEntryDuringFetchSchema());
+    planStatistics.addProperty(
+        "diskIOTimeCostForDeviceEntryDuringFetchSchemaMs",
+        formatMs(context.getDiskIOTimeCostForDeviceEntryDuringFetchSchema() * NS_TO_MS_FACTOR));
+    planStatistics.addProperty("deviceEntryCount", context.getDeviceEntryCount());
+    planStatistics.addProperty(
         "logicalPlanCostMs", formatMs(context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
     planStatistics.addProperty(
         "logicalOptimizationCostMs",
         formatMs(context.getLogicalOptimizationCost() * NS_TO_MS_FACTOR));
     planStatistics.addProperty(
         "distributionPlanCostMs", formatMs(context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+    planStatistics.addProperty(
+        "diskIOSizeForDeviceEntryDuringDistributionPlan",
+        context.getDiskIOSizeForDeviceEntryDuringDistributionPlan());
+    planStatistics.addProperty(
+        "diskIOTimeCostForDeviceEntryDuringDistributionPlanMs",
+        formatMs(
+            context.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() * NS_TO_MS_FACTOR));
   }
 
   public void renderDispatchCost(MPPQueryContext context) {

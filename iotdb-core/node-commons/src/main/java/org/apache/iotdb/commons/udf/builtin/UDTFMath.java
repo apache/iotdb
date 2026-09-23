@@ -48,6 +48,8 @@ public abstract class UDTFMath implements UDTF {
   protected Transformer transformer;
 
   protected TSDataType dataType;
+  private TypeServices.NumericRowReader rowReader;
+  private TypeServices.NumericColumnReader columnReader;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -60,6 +62,10 @@ public abstract class UDTFMath implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    org.apache.tsfile.read.common.type.Type type =
+        org.apache.tsfile.read.common.type.Type.fromTsDataType(dataType);
+    rowReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(type);
+    columnReader = TypeServices.NUMERIC_COLUMN_READER_SERVICE.call(type);
     configurations
         .setAccessStrategy(new MappableRowByRowAccessStrategy())
         .setOutputDataType(Type.DOUBLE);
@@ -71,37 +77,7 @@ public abstract class UDTFMath implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
-    long time = row.getTime();
-    switch (dataType) {
-      case INT32:
-        collector.putDouble(time, transformer.transform(row.getInt(0)));
-        break;
-      case INT64:
-        collector.putDouble(time, transformer.transform(row.getLong(0)));
-        break;
-      case FLOAT:
-        collector.putDouble(time, transformer.transform(row.getFloat(0)));
-        break;
-      case DOUBLE:
-        collector.putDouble(time, transformer.transform(row.getDouble(0)));
-        break;
-      case BOOLEAN:
-      case TEXT:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      case BLOB:
-      case OBJECT:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    collector.putDouble(row.getTime(), transformer.transform(rowReader.read(row)));
   }
 
   @Override
@@ -109,120 +85,19 @@ public abstract class UDTFMath implements UDTF {
     if (row.isNull(0)) {
       return null;
     }
-    switch (dataType) {
-      case INT32:
-        return transformer.transform(row.getInt(0));
-      case INT64:
-        return transformer.transform(row.getLong(0));
-      case FLOAT:
-        return transformer.transform(row.getFloat(0));
-      case DOUBLE:
-        return transformer.transform(row.getDouble(0));
-      case DATE:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case TIMESTAMP:
-      case TEXT:
-      case BOOLEAN:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    return transformer.transform(rowReader.read(row));
   }
 
   @Override
   public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
-    switch (dataType) {
-      case INT32:
-        transformInt(columns, builder);
-        return;
-      case INT64:
-        transformLong(columns, builder);
-        return;
-      case FLOAT:
-        transformFloat(columns, builder);
-        return;
-      case DOUBLE:
-        transformDouble(columns, builder);
-        return;
-      case TEXT:
-      case BOOLEAN:
-      case STRING:
-      case TIMESTAMP:
-      case BLOB:
-      case OBJECT:
-      case DATE:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
-  }
-
-  private void transformInt(Column[] columns, ColumnBuilder builder) {
-    int[] inputs = columns[0].getInts();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
+    Column column = columns[0];
+    boolean[] isNulls = column.isNull();
+    int count = column.getPositionCount();
     for (int i = 0; i < count; i++) {
       if (isNulls[i]) {
         builder.appendNull();
       } else {
-        builder.writeDouble(transformer.transform(inputs[i]));
-      }
-    }
-  }
-
-  private void transformLong(Column[] columns, ColumnBuilder builder) {
-    long[] inputs = columns[0].getLongs();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (isNulls[i]) {
-        builder.appendNull();
-      } else {
-        builder.writeDouble(transformer.transform(inputs[i]));
-      }
-    }
-  }
-
-  private void transformFloat(Column[] columns, ColumnBuilder builder) {
-    float[] inputs = columns[0].getFloats();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (isNulls[i]) {
-        builder.appendNull();
-      } else {
-        builder.writeDouble(transformer.transform(inputs[i]));
-      }
-    }
-  }
-
-  private void transformDouble(Column[] columns, ColumnBuilder builder) {
-    double[] inputs = columns[0].getDoubles();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (isNulls[i]) {
-        builder.appendNull();
-      } else {
-        builder.writeDouble(transformer.transform(inputs[i]));
+        builder.writeDouble(transformer.transform(columnReader.read(column, i)));
       }
     }
   }

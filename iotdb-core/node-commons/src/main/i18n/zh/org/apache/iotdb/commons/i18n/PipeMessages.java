@@ -894,6 +894,7 @@ public final class PipeMessages {
   public static final String EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F = "region progress value 长度无效：%d";
   public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 = "添加 subscription 到 consumer group meta 失败：consumer %s 不存在于 consumer group %s";
   public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 = "从 consumer group meta 移除 subscription 失败：consumer %s 不存在于 consumer group %s";
+  public static final String EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9 = "创建 consumer %s 失败，因为同一 consumer group 下的 SQL dialect 不一致，预期为 %s，实际为 %s";
   public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "路径模式 %s 对 source 无效。仅允许前缀或完整路径。";
   public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "启用 double living 时，capture.tree 不能指定为 false";
   public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "启用 double living 时，capture.table 不能指定为 false";
@@ -923,6 +924,8 @@ public final class PipeMessages {
   public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type 不匹配：期望 {}，实际 {}";
   public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size 不匹配：期望 {}，实际 {}";
   public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "无效的 slice index：期望 {}，实际 {}";
+  public static final String LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17 =
+      "Pipe {}@{} 在 {} 中遇到了非预期的 HybridProgressIndex。进度索引：{}。";
   public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "解压后长度应介于 0 和 %d 之间，但实际为 %d。";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "未找到 DataPartitionTable 生成任务";

@@ -94,7 +94,7 @@ final class ConsensusSubscriptionITSupport {
       session.dropTopicIfExists(topicName);
 
       final Properties config = new Properties();
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
       config.put(TopicConstant.PATH_KEY, path);
       config.put(TopicConstant.ORDER_MODE_KEY, TopicConstant.ORDER_MODE_PER_WRITER_VALUE);

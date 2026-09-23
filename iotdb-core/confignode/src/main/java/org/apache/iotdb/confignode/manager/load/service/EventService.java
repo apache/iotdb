@@ -82,7 +82,10 @@ public class EventService {
         new AsyncEventBus(
             ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName(),
             IoTDBThreadPoolFactory.newFixedThreadPool(
-                5, ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName()));
+                ConfigNodeDescriptor.getInstance()
+                    .getConf()
+                    .getLoadStatisticsPublisherThreadCount(),
+                ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName()));
   }
 
   public void register(final IClusterStatusSubscriber listener) {

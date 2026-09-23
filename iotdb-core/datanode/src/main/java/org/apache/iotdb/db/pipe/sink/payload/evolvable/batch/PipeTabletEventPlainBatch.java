@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -30,19 +29,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -84,13 +81,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  public synchronized void onSuccess() {
-    clearBatchData();
-
-    super.onSuccess();
-  }
-
-  @Override
   protected void clearBatchData() {
     insertNodeBuffers.clear();
     tabletBuffers.clear();
@@ -100,6 +90,85 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     tableModelTabletMap.clear();
 
     pipe2BytesAccumulated.clear();
+  }
+
+  @Override
+  protected Object captureBatchState() {
+    final Map<String, Map<String, Pair<Integer, List<Tablet>>>> tableModelTabletMapSnapshot =
+        new HashMap<>();
+    tableModelTabletMap.forEach(
+        (database, tableMap) -> {
+          final Map<String, Pair<Integer, List<Tablet>>> tableMapSnapshot = new HashMap<>();
+          tableMap.forEach(
+              (table, tablets) ->
+                  tableMapSnapshot.put(
+                      table, new Pair<>(tablets.getLeft(), new ArrayList<>(tablets.getRight()))));
+          tableModelTabletMapSnapshot.put(database, tableMapSnapshot);
+        });
+    return new BatchState(
+        insertNodeBuffers.size(),
+        tabletBuffers.size(),
+        insertNodeDataBases.size(),
+        tabletDataBases.size(),
+        tableModelTabletMapSnapshot,
+        new HashMap<>(pipe2BytesAccumulated));
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  protected void rollbackBatchState(final Object state) {
+    if (!(state instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) state;
+    truncate(insertNodeBuffers, batchState.insertNodeBuffersSize);
+    truncate(tabletBuffers, batchState.tabletBuffersSize);
+    truncate(insertNodeDataBases, batchState.insertNodeDataBasesSize);
+    truncate(tabletDataBases, batchState.tabletDataBasesSize);
+
+    tableModelTabletMap.clear();
+    batchState.tableModelTabletMap.forEach(
+        (database, tableMap) -> {
+          final Map<String, Pair<Integer, List<Tablet>>> restoredTableMap = new HashMap<>();
+          tableMap.forEach(
+              (table, tablets) ->
+                  restoredTableMap.put(
+                      table, new Pair<>(tablets.getLeft(), new ArrayList<>(tablets.getRight()))));
+          tableModelTabletMap.put(database, restoredTableMap);
+        });
+
+    pipe2BytesAccumulated.clear();
+    pipe2BytesAccumulated.putAll(batchState.pipe2BytesAccumulated);
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final int insertNodeBuffersSize;
+    private final int tabletBuffersSize;
+    private final int insertNodeDataBasesSize;
+    private final int tabletDataBasesSize;
+    private final Map<String, Map<String, Pair<Integer, List<Tablet>>>> tableModelTabletMap;
+    private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated;
+
+    private BatchState(
+        final int insertNodeBuffersSize,
+        final int tabletBuffersSize,
+        final int insertNodeDataBasesSize,
+        final int tabletDataBasesSize,
+        final Map<String, Map<String, Pair<Integer, List<Tablet>>>> tableModelTabletMap,
+        final Map<Pair<String, Long>, Long> pipe2BytesAccumulated) {
+      this.insertNodeBuffersSize = insertNodeBuffersSize;
+      this.tabletBuffersSize = tabletBuffersSize;
+      this.insertNodeDataBasesSize = insertNodeDataBasesSize;
+      this.tabletDataBasesSize = tabletDataBasesSize;
+      this.tableModelTabletMap = tableModelTabletMap;
+      this.pipe2BytesAccumulated = pipe2BytesAccumulated;
+    }
   }
 
   public PipeTransferTabletBatchReqV2 toTPipeTransferReq() throws IOException {
@@ -288,50 +357,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private static Object copyValueList(
       final Object valueList, final TSDataType dataType, final int rowSize) {
-    switch (dataType) {
-      case BOOLEAN:
-        final boolean[] boolValues = (boolean[]) valueList;
-        final boolean[] copiedBoolValues = new boolean[rowSize];
-        System.arraycopy(boolValues, 0, copiedBoolValues, 0, rowSize);
-        return copiedBoolValues;
-      case INT32:
-        final int[] intValues = (int[]) valueList;
-        final int[] copiedIntValues = new int[rowSize];
-        System.arraycopy(intValues, 0, copiedIntValues, 0, rowSize);
-        return copiedIntValues;
-      case DATE:
-        final LocalDate[] dateValues = (LocalDate[]) valueList;
-        final LocalDate[] copiedDateValues = new LocalDate[rowSize];
-        System.arraycopy(dateValues, 0, copiedDateValues, 0, rowSize);
-        return copiedDateValues;
-      case INT64:
-      case TIMESTAMP:
-        final long[] longValues = (long[]) valueList;
-        final long[] copiedLongValues = new long[rowSize];
-        System.arraycopy(longValues, 0, copiedLongValues, 0, rowSize);
-        return copiedLongValues;
-      case FLOAT:
-        final float[] floatValues = (float[]) valueList;
-        final float[] copiedFloatValues = new float[rowSize];
-        System.arraycopy(floatValues, 0, copiedFloatValues, 0, rowSize);
-        return copiedFloatValues;
-      case DOUBLE:
-        final double[] doubleValues = (double[]) valueList;
-        final double[] copiedDoubleValues = new double[rowSize];
-        System.arraycopy(doubleValues, 0, copiedDoubleValues, 0, rowSize);
-        return copiedDoubleValues;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        final Binary[] binaryValues = (Binary[]) valueList;
-        final Binary[] copiedBinaryValues = new Binary[rowSize];
-        System.arraycopy(binaryValues, 0, copiedBinaryValues, 0, rowSize);
-        return copiedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                DataNodePipeMessages.PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                dataType));
-    }
+    final Object copiedValueList = Type.fromTsDataType(dataType).createArray(rowSize);
+    System.arraycopy(valueList, 0, copiedValueList, 0, rowSize);
+    return copiedValueList;
   }
 }

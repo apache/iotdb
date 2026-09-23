@@ -36,6 +36,9 @@ public final class DataNodeSchemaMessages {
       "SchemaRegion(id = {}) has been deleted, skiped";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.";
+  public static final String
+      LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975 =
+          "Metadata lease is fenced. Skip reporting schema usage in this heartbeat.";
   public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
       "The table %s.%s is a view from tree, cannot be written or deleted from";
   public static final String PEER_IS_SHUTTING_DOWN = "Peer is shutting down now.";
@@ -581,8 +584,6 @@ public final class DataNodeSchemaMessages {
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
       "Update table {}.{} by table fetch, {}";
   public static final String UPDATE_TABLE_BY_FETCH = "Update table {}.{} by table fetch.";
-  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
-      "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
   public static final String COMPARE_TABLE_ADDED = "Added table: ";
   public static final String COMPARE_TABLE_REMOVED = "Removed table: ";
   public static final String COMPARE_TABLE_NAME = "Table name: ";

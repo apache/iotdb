@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools.validate;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -122,8 +123,18 @@ public class TsFileOverlapValidationAndRepairTool {
               tsFileName.getInnerCompactionCnt(),
               0);
       targetFile = new File(targetDir.getAbsolutePath() + File.separator + fileNameStr);
+      if (!targetFile.exists()) {
+        break;
+      }
+      if (tsFileName.getTime() == Long.MAX_VALUE) {
+        throw new IOException(
+            String.format(
+                StorageEngineMessages
+                    .EXCEPTION_CANNOT_REPAIR_ARG_BECAUSE_TARGET_FILE_ALREADY_EXISTS_AND_TIMESTAMP_IS_LONG_MAX_VALUE_F29F630A,
+                tsfile.getAbsolutePath()));
+      }
       tsFileName.setTime(tsFileName.getTime() + 1);
-    } while (targetFile.exists());
+    } while (true);
 
     moveFile(tsfile, targetFile);
     moveFile(

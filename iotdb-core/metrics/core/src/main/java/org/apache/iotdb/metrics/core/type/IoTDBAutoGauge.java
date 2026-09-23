@@ -37,9 +37,10 @@ public class IoTDBAutoGauge<T> extends AbstractMetricMBean
 
   @Override
   public double getValue() {
-    if (refObject.get() == null) {
+    T object = refObject.get();
+    if (object == null) {
       return 0d;
     }
-    return mapper.applyAsDouble(refObject.get());
+    return mapper.applyAsDouble(object);
   }
 }

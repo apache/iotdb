@@ -128,5 +128,6 @@ public final class MetricsMessages {
   public static final String LOG_IOTDBSESSIONREPORTER_START_WRITE_ARG_ARG_E79CDDAE = "IoTDBSessionReporter start, write to {}:{}";
   public static final String LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8 = "PrometheusReporter started, use port {}";
   public static final String LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169 = "Detected an error when taking metric timer snapshot, will discard this metric";
+  public static final String LOG_PROMETHEUSREPORTER_FAILED_TO_UPDATE_METRICS_SNAPSHOT_ASYNCHRONOUSLY_F19FE4E3 = "PrometheusReporter failed to update metrics snapshot asynchronously";
 
 }

@@ -46,8 +46,11 @@ import org.mockito.Mockito;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -68,6 +71,181 @@ public class SourceHandleTest {
   @AfterClass
   public static void afterClass() {
     IoTDBDescriptor.getInstance().getMemoryConfig().setMaxBytesPerFragmentInstance(maxBytesPerFI);
+  }
+
+  @Test
+  public void testCloseStopsFragmentFetchAfterInFlightRpc() throws Exception {
+    testCancellationStopsFragmentFetchAfterInFlightRpc(false);
+  }
+
+  @Test
+  public void testAbortStopsFragmentFetchAfterInFlightRpc() throws Exception {
+    testCancellationStopsFragmentFetchAfterInFlightRpc(true);
+  }
+
+  private void testCancellationStopsFragmentFetchAfterInFlightRpc(boolean abort) throws Exception {
+    final String queryId = "q0";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+    final LocalMemoryManager localMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    final MemoryPool memoryPool = Utils.createMockNonBlockedMemoryPool();
+    Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
+    final SourceHandleListener sourceHandleListener = Mockito.mock(SourceHandleListener.class);
+    final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager =
+        Mockito.mock(IClientManager.class);
+    final SyncDataNodeMPPDataExchangeServiceClient client =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+    final CountDownLatch rpcStarted = new CountDownLatch(1);
+    final CountDownLatch returnResponse = new CountDownLatch(1);
+    Mockito.when(clientManager.borrowClient(remoteEndpoint)).thenReturn(client);
+    Mockito.doAnswer(
+            invocation -> {
+              rpcStarted.countDown();
+              Assert.assertTrue(returnResponse.await(10, TimeUnit.SECONDS));
+              return new TGetDataBlockResponse(List.of(ByteBuffer.wrap(new byte[] {1, 2})))
+                  .setOffset(2)
+                  .setTotalLength(6);
+            })
+        .when(client)
+        .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+
+    final SourceHandle sourceHandle =
+        new SourceHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            "exchange_0",
+            0,
+            localMemoryManager,
+            Executors.newSingleThreadExecutor(),
+            Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE),
+            sourceHandleListener,
+            clientManager);
+    sourceHandle.isBlocked();
+    sourceHandle.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
+    Assert.assertTrue(rpcStarted.await(10, TimeUnit.SECONDS));
+
+    if (abort) {
+      sourceHandle.abort();
+    } else {
+      sourceHandle.close();
+    }
+    returnResponse.countDown();
+
+    Mockito.verify(client, Mockito.timeout(10_000).times(1))
+        .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    Mockito.verify(client, Mockito.after(500).times(1))
+        .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    Mockito.verify(sourceHandleListener, Mockito.never())
+        .onFailure(Mockito.eq(sourceHandle), Mockito.any());
+    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+  }
+
+  @Test
+  public void testFragmentAllocationErrorFailsWithoutRetry() throws Exception {
+    final String queryId = "q0";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+    final LocalMemoryManager localMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    final MemoryPool memoryPool = Utils.createMockNonBlockedMemoryPool();
+    Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
+    final SourceHandleListener sourceHandleListener = Mockito.mock(SourceHandleListener.class);
+    final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager =
+        Mockito.mock(IClientManager.class);
+    final SyncDataNodeMPPDataExchangeServiceClient client =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+    Mockito.when(clientManager.borrowClient(remoteEndpoint)).thenReturn(client);
+    Mockito.when(client.getDataBlock(Mockito.any(TGetDataBlockRequest.class)))
+        .thenReturn(
+            new TGetDataBlockResponse(List.of(ByteBuffer.wrap(new byte[] {1})))
+                .setOffset(1)
+                .setTotalLength(Integer.MAX_VALUE));
+
+    final SourceHandle sourceHandle =
+        new SourceHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            "exchange_0",
+            0,
+            localMemoryManager,
+            Executors.newSingleThreadExecutor(),
+            Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE),
+            sourceHandleListener,
+            clientManager);
+    sourceHandle.isBlocked();
+    sourceHandle.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
+
+    Mockito.verify(sourceHandleListener, Mockito.timeout(10_000))
+        .onFailure(Mockito.eq(sourceHandle), Mockito.any(OutOfMemoryError.class));
+    Mockito.verify(client, Mockito.times(1)).getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+    sourceHandle.abort();
+  }
+
+  @Test
+  public void testFragmentAssemblyFailsWhenTotalLengthDoesNotMatch() {
+    final String queryId = "q0";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+
+    LocalMemoryManager localMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryPool memoryPool = Utils.createMockNonBlockedMemoryPool();
+    Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
+    SourceHandleListener sourceHandleListener = Mockito.mock(SourceHandleListener.class);
+    TsBlockSerde serde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
+    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager =
+        Mockito.mock(IClientManager.class);
+    SyncDataNodeMPPDataExchangeServiceClient client =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+    AtomicInteger rpcCount = new AtomicInteger();
+    try {
+      Mockito.when(clientManager.borrowClient(remoteEndpoint)).thenReturn(client);
+      Mockito.doAnswer(
+              invocation -> {
+                if (rpcCount.getAndIncrement() == 0) {
+                  return new TGetDataBlockResponse(List.of(ByteBuffer.wrap(new byte[] {1, 2})))
+                      .setOffset(2)
+                      .setTotalLength(5);
+                }
+                return new TGetDataBlockResponse(List.of(ByteBuffer.wrap(new byte[] {3, 4})));
+              })
+          .when(client)
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    } catch (ClientManagerException | TException e) {
+      Assert.fail(e.getMessage());
+    }
+
+    SourceHandle sourceHandle =
+        new SourceHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            "exchange_0",
+            0,
+            localMemoryManager,
+            Executors.newSingleThreadExecutor(),
+            serde,
+            sourceHandleListener,
+            clientManager);
+    Assert.assertFalse(sourceHandle.isBlocked().isDone());
+    sourceHandle.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
+    try {
+      Mockito.verify(client, Mockito.timeout(10_000).times(2))
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    } catch (TException e) {
+      Assert.fail(e.getMessage());
+    }
+    Mockito.verify(sourceHandleListener, Mockito.timeout(10_000))
+        .onFailure(Mockito.eq(sourceHandle), Mockito.any(IllegalStateException.class));
+    Mockito.verify(serde, Mockito.never()).deserialize(Mockito.any(ByteBuffer.class));
+    sourceHandle.abort();
   }
 
   @Test
@@ -608,6 +786,83 @@ public class SourceHandleTest {
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
         .onAborted(sourceHandle);
+  }
+
+  @Test
+  public void testShortResponseRetriesAndFails() {
+    final String queryId = "q0";
+    final int numOfMockTsBlock = 10;
+    final TEndPoint remoteEndpoint =
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+    final String localPlanNodeId = "exchange_0";
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+
+    final LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    final MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+    final SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
+    final TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
+    final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
+        Mockito.mock(IClientManager.class);
+    final SyncDataNodeMPPDataExchangeServiceClient mockClient =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+    try {
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
+      Mockito.doAnswer(
+              invocation -> {
+                final TGetDataBlockRequest request = invocation.getArgument(0);
+                if (request.getStartSequenceId() > 0) {
+                  throw new TException("mock RPC failure");
+                }
+                final List<ByteBuffer> shortResponse = new ArrayList<>();
+                for (int i = 0;
+                    i < request.getEndSequenceId() - request.getStartSequenceId() - 1;
+                    i++) {
+                  shortResponse.add(ByteBuffer.allocate(1));
+                }
+                return new TGetDataBlockResponse(shortResponse);
+              })
+          .when(mockClient)
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    } catch (ClientManagerException | TException e) {
+      Assert.fail(e.getMessage());
+    }
+
+    final SourceHandle sourceHandle =
+        new SourceHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            localPlanNodeId,
+            0,
+            mockLocalMemoryManager,
+            Executors.newSingleThreadExecutor(),
+            mockTsBlockSerde,
+            mockSourceHandleListener,
+            mockClientManager);
+    sourceHandle.setRetryIntervalInMs(0L);
+    final Future<?> blocked = sourceHandle.isBlocked();
+
+    sourceHandle.updatePendingDataBlockInfo(
+        0,
+        Stream.generate(() -> MOCK_TSBLOCK_SIZE)
+            .limit(numOfMockTsBlock)
+            .collect(Collectors.toList()));
+
+    try {
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(SourceHandle.MAX_ATTEMPT_TIMES + 1))
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    } catch (TException e) {
+      Assert.fail(e.getMessage());
+    }
+    Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_000).times(1))
+        .onFailure(Mockito.eq(sourceHandle), Mockito.any(TException.class));
+    Assert.assertFalse(blocked.isDone());
+    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+
+    sourceHandle.abort();
+    Assert.assertTrue(blocked.isDone());
   }
 
   @Test

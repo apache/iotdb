@@ -21,6 +21,23 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
+      "Load TsFile 分片内容为 null 或为空";
+  public static final String MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8 =
+      "Load TsFile 分片元数据无效：sliceCount=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_METADATA_CHANGED_SLICECOUNT_ARG_EXPECTED_ARG_ORIGINBODYSIZE_ARG_EXPECTED_ARG_B16B3122 =
+      "Load TsFile 分片元数据发生变化：sliceCount=%d（预期 %d），originBodySize=%d（预期 %d）";
+  public static final String MESSAGE_UNEXPECTED_LOAD_TSFILE_SLICE_INDEX_ARG_EXPECTED_ARG_SLICECOUNT_ARG_76260F62 =
+      "Load TsFile 分片索引 %d 不符合预期：预期 %d，sliceCount=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_EXCEEDS_ORIGINBODYSIZE_ASSEMBLEDSIZE_ARG_SLICESIZE_ARG_ORIGINBODYSIZE_ARG_0198E0D0 =
+      "Load TsFile 分片超出 originBodySize：assembledSize=%d，sliceSize=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_COMPLETED_BEFORE_THE_LAST_SLICE_RECEIVED_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_0425EA2C =
+      "Load TsFile 内容在最后一个分片之前已达到原始大小：received=%d，sliceCount=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_SIZE_MISMATCH_ASSEMBLEDSIZE_ARG_ORIGINBODYSIZE_ARG_5733FC4B =
+      "Load TsFile 内容大小不匹配：assembledSize=%d，originBodySize=%d";
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_ASSEMBLER_FOR_UUID_ARG_DATAREGION_ARG_SLICEINDEX_ARG_FF6EA463 =
+      "缺少 Load TsFile 分片组装器：uuid %s，DataRegion %s，sliceIndex=%d";
+
     public static final String IS_NOT_SUPPORTED =
       " 不受支持";
 
@@ -47,6 +64,8 @@ public final class StorageEngineMessages {
   public static final String REBOOT_ALL_TIMED_SERVICE_SUCCESSFULLY = "所有定时服务重启成功";
   public static final String FAILED_TO_DELETE = "删除失败: {} -> {}";
   public static final String FAILED_TO_CHECK_OBJECT_FILES = "检查对象文件失败: {}";
+  public static final String EXCEPTION_CANNOT_REPAIR_ARG_BECAUSE_TARGET_FILE_ALREADY_EXISTS_AND_TIMESTAMP_IS_LONG_MAX_VALUE_F29F630A =
+      "无法修复 %s，因为目标文件已存在且文件时间戳为 Long.MAX_VALUE";
 
   // ======================== Buffer Cache ========================
 
@@ -62,7 +81,6 @@ public final class StorageEngineMessages {
 
   // ======================== Resource Control - Disk ========================
 
-  public static final String FAILED_TO_DEREGISTER_FILE_LOCK = "注销文件锁失败，原因: {}";
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY = "所有目录已满，切换系统为只读模式。";
   public static final String FAILED_TO_PROCESS_FOLDER = "处理目录失败 '";
   public static final String FAIL_TO_GET_CANONICAL_PATH = "获取数据目录 {} 的规范路径失败";
@@ -393,6 +411,8 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CLOSE_SNAPSHOT_LOGGER = "关闭快照日志器失败";
   public static final String SNAPSHOTTING_COMPRESSION_RATIO = "正在快照压缩率文件 {}。";
   public static final String CATCH_IO_EXCEPTION_CREATING_SNAPSHOT = "创建快照时捕获到 IOException";
+  public static final String CANNOT_SNAPSHOT_UNCLOSED_TSFILE =
+      "无法创建快照，因为 TsFile {} 尚未关闭";
   public static final String HARD_LINK_TARGET_DIR_NOT_EXIST = "硬链接目标目录 {} 不存在";
   public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "硬链接源文件 {} 不存在，该文件将被忽略。";
   public static final String COPY_TARGET_DIR_NOT_EXIST = "复制目标目录 {} 不存在";
@@ -539,6 +559,10 @@ public final class StorageEngineMessages {
   public static final String ACTIVE_LOAD_METRIC_COLLECTOR_REGISTERED = "Active 加载指标收集定期任务已注册";
   public static final String DATABASE_NAME_MUST_NOT_BE_EMPTY = "数据库名称不能为空。";
   public static final String USER_NAME_MUST_NOT_BE_EMPTY = "用户名不能为空。";
+  public static final String EXCEPTION_CONVERSION_TASK_ID_MUST_NOT_BE_EMPTY_411D064E =
+      "转换任务 ID 不能为空。";
+  public static final String LOG_FAILED_TO_CLOSE_PIPE_TSFILE_CONVERSION_CONTEXT_8E4D886B =
+      "关闭 Pipe TsFile 转换上下文失败。";
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "执行 Active 加载定期任务时发生错误。";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active 加载定期任务执行器已成功启动。";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active 加载定期任务执行器已成功停止。";
@@ -1171,6 +1195,10 @@ public final class StorageEngineMessages {
       "自动加载 TsFile {} (isGeneratedByPipe = {}) 失败，原因：发生未知异常。文件将被移动到失败目录。";
   public static final String STORAGE_LOG_ERROR_OCCURRED_DURING_HOT_RELOAD_ACTIVE_LOAD_DIRS_CURRENT_673AFC0F =
       "热重载 active load 目录时发生错误。当前 active load 监听目录：{}。";
+  public static final String LOG_ACTIVE_LOAD_LISTENING_DIRECTORY_S_IS_SKIPPED_DURING_HOT_RELOAD_BECAUSE_IT_IS_UNDER_IOTDB_DATA_DIRECTORY_DA90CAE1 =
+      "Active Load 监听目录 {} 位于 data 目录下，热重载时将跳过该目录。";
+  public static final String LOG_FAILED_TO_VALIDATE_ACTIVE_LOAD_LISTENING_DIRECTORY_S_SKIP_SCANNING_ARG_0E6A508E =
+      "无法校验 Active Load 监听目录 {}，将跳过扫描该目录。原因：{}";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_READABLE_SKIP_SCANNING_THIS_DIR_9C8B7E00 =
       "当前目录路径不可读：{}。跳过扫描该目录。请检查权限。";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_WRITABLE_SKIP_SCANNING_THIS_DIR_4885E78F =
@@ -1363,12 +1391,6 @@ public final class StorageEngineMessages {
       "读取请求数量超限 - 等待 %sms";
   public static final String STORAGE_EXCEPTION_READ_SIZE_LIMIT_EXCEEDED_WAIT_SMS_E19598BA =
       "读取大小超限 - 等待 %sms";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_BECAUSE_THERE_IS_FILE_UNDER_1C59ACFC =
-      "无法创建目录 %s，原因：该路径下存在文件，请检查配置并重启。";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_PLEASE_CHECK_CONFIGURATION_BA580B67 =
-      "无法创建目录 %s，请检查配置并重启。";
-  public static final String STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC =
-      "目录 %s 检测到冲突，可能正被另一个 IoTDB 使用 (ProcessId=%s)。请检查配置并重启。";
   public static final String COMPACTION_INNER_SPACE = "内部";
   public static final String COMPACTION_CROSS_SPACE = "跨空间";
   public static final String DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT =

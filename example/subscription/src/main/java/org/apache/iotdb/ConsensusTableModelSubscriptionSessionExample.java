@@ -107,7 +107,7 @@ public class ConsensusTableModelSubscriptionSessionExample {
             .password(PASSWORD)
             .build()) {
       final Properties config = new Properties();
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
       config.put(TopicConstant.DATABASE_KEY, database);
       config.put(TopicConstant.TABLE_KEY, table);

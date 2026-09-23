@@ -37,11 +37,13 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferPipeReceiverRuntimeInfoCleanupReq;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -88,6 +90,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCom
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
@@ -192,14 +195,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         if (Objects.nonNull(authResp)) {
           return authResp;
         }
-        final TPipeTransferResp resp;
+        TPipeTransferResp resp;
         final long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
             resp = new TPipeTransferResp(getUnsupportedHandshakeV1Status());
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeHandshakeIfSuccess(resp, req);
           case HANDSHAKE_CONFIGNODE_V2:
             resp =
                 handleTransferHandshakeV2(
@@ -210,21 +213,23 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             }
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeHandshakeIfSuccess(resp, req);
           case TRANSFER_CONFIG_PLAN:
             resp = handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeTransferIfSuccess(resp);
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
             try {
               try (final AutoCloseable ignored =
                   PipeConfigNodeResourceManager.memory()
                       .tryAllocateReceiverMemory(getRequestBodySizeInBytes(req))) {
-                return handleTransferFilePiece(
-                    PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
-                    req instanceof AirGapPseudoTPipeTransferRequest,
-                    false);
+                resp =
+                    handleTransferFilePiece(
+                        PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
+                        req instanceof AirGapPseudoTPipeTransferRequest,
+                        false);
+                return recordConfigNodeTransferIfSuccess(resp);
               } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
                 return getReceiverTemporaryUnavailableResp(e);
               }
@@ -238,7 +243,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeTransferIfSuccess(resp);
           case TRANSFER_COMPRESSED:
             try (final AutoCloseable ignored =
                 PipeConfigNodeResourceManager.memory()
@@ -248,6 +253,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
               return getReceiverTemporaryUnavailableResp(e);
             }
+          case TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP:
+            final PipeTransferPipeReceiverRuntimeInfoCleanupReq cleanupReq =
+                PipeTransferPipeReceiverRuntimeInfoCleanupReq.fromTPipeTransferReq(req);
+            PipeReceiverRuntimeRegistry.getInstance()
+                .removePipeFromAllSessions(
+                    cleanupReq.getPipeName(), cleanupReq.getPipeCreationTime());
+            return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
           default:
             break;
         }
@@ -283,7 +295,32 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private boolean needHandshake(final PipeRequestType type) {
     return Objects.isNull(receiverFileDirWithIdSuffix.get())
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V1
-        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
+        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2
+        && type != PipeRequestType.TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP;
+  }
+
+  private TPipeTransferResp recordConfigNodeHandshakeIfSuccess(
+      final TPipeTransferResp resp, final TPipeTransferReq req) {
+    if (isSuccess(resp)) {
+      recordPipeReceiverHandshake(
+          PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+          getProtocol(req));
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp recordConfigNodeTransferIfSuccess(final TPipeTransferResp resp) {
+    if (isSuccess(resp)) {
+      recordPipeReceiverTransfer();
+    }
+    return resp;
+  }
+
+  private static String getProtocol(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        ? PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP
+        : PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT;
   }
 
   private TPipeTransferResp checkPipeTransferAuthenticated(final PipeRequestType type) {
@@ -413,6 +450,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case CreateSchemaTemplate:
         templateName = ((CreateSchemaTemplatePlan) plan).getTemplate().getName();
         return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, templateName, true);
+      case DropSchemaTemplate:
+        return checkGlobalStatus(
+            userEntity,
+            PrivilegeType.SYSTEM,
+            ((DropSchemaTemplatePlan) plan).getTemplateName(),
+            true);
       case CommitSetSchemaTemplate:
         templateName = ((CommitSetSchemaTemplatePlan) plan).getName();
         return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, templateName, true);
@@ -552,6 +595,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             PrivilegeType.DELETE,
             ((CommitDeleteTablePlan) plan).getDatabase(),
             ((CommitDeleteTablePlan) plan).getTableName());
+      case PipeDeleteDevices:
+        return checkTableStatus(
+            userEntity,
+            PrivilegeType.DELETE,
+            ((PipeDeleteDevicesPlan) plan).getDatabase(),
+            ((PipeDeleteDevicesPlan) plan).getTableName());
       case GrantRole:
       case GrantUser:
       case RevokeUser:
@@ -595,6 +644,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserAny
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkGlobalOrAnyStatus(
@@ -618,6 +671,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserAll
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
           if (privilegeType.isRelationalPrivilege()) {
             status =
@@ -646,6 +703,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserDBPriv
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkDatabaseStatus(
@@ -672,6 +733,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserTBPriv
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkTableStatus(
@@ -700,6 +765,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserSysPri
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkGlobalStatus(
@@ -747,7 +816,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return checkGlobalStatus(
             userEntity, PrivilegeType.MANAGE_ROLE, ((AuthorPlan) plan).getRoleName(), true);
       default:
-        return StatusUtils.OK;
+        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
     }
   }
 
@@ -1204,10 +1273,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .getPermissionManager()
             .operatePermission((AuthorPlan) plan, shouldMarkAsPipeRequest.get());
       case CreateSchemaTemplate:
-      default:
+      case DropSchemaTemplate:
+        // Only explicitly supported config-region pipe plans may be written to consensus. New plan
+        // types must be added to an explicit case after their authorization is implemented.
         return configManager
             .getConsensusManager()
             .write(shouldMarkAsPipeRequest.get() ? new PipeEnrichedPlan(plan) : plan);
+      default:
+        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
     }
   }
 

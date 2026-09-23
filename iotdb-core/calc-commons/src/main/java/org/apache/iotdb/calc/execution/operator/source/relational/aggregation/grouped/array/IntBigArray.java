@@ -25,6 +25,7 @@ import static org.apache.iotdb.calc.execution.operator.source.relational.aggrega
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BigArrays.SEGMENT_SIZE;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BigArrays.offset;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BigArrays.segment;
+import static org.apache.tsfile.utils.BytesUtils.intToBytes;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfIntArray;
@@ -72,6 +73,10 @@ public final class IntBigArray {
    */
   public int get(long index) {
     return array[segment(index)][offset(index)];
+  }
+
+  public void toBytes(long index, byte[] bytes, int offset) {
+    intToBytes(get(index), bytes, offset);
   }
 
   /**

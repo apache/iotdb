@@ -61,11 +61,16 @@ public class TopicMetaKeeper {
   /////////////////////////////////  TopicMeta  /////////////////////////////////
 
   public void addTopicMeta(String topicName, TopicMeta topicMeta) {
-    topicNameToTopicMetaMap.put(topicName, topicMeta);
+    topicNameToTopicMetaMap.put(generateTopicMetaKeeperKey(topicMeta), topicMeta);
   }
 
   public TopicMeta getTopicMeta(String topicName) {
-    return topicNameToTopicMetaMap.get(topicName);
+    final TopicMeta treeTopicMeta = getTopicMeta(topicName, false);
+    return Objects.nonNull(treeTopicMeta) ? treeTopicMeta : getTopicMeta(topicName, true);
+  }
+
+  public TopicMeta getTopicMeta(String topicName, boolean isTableModel) {
+    return topicNameToTopicMetaMap.get(generateTopicMetaKeeperKey(topicName, isTableModel));
   }
 
   public Iterable<TopicMeta> getAllTopicMeta() {
@@ -73,19 +78,22 @@ public class TopicMetaKeeper {
   }
 
   public void removeTopicMeta(String topicName) {
-    topicNameToTopicMetaMap.remove(topicName);
+    final String treeModelKey = generateTopicMetaKeeperKey(topicName, false);
+    if (topicNameToTopicMetaMap.remove(treeModelKey) == null) {
+      topicNameToTopicMetaMap.remove(generateTopicMetaKeeperKey(topicName, true));
+    }
+  }
+
+  public void removeTopicMeta(String topicName, boolean isTableModel) {
+    topicNameToTopicMetaMap.remove(generateTopicMetaKeeperKey(topicName, isTableModel));
   }
 
   public boolean containsTopicMeta(String topicName) {
-    return topicNameToTopicMetaMap.containsKey(topicName);
+    return containsTopicMeta(topicName, false) || containsTopicMeta(topicName, true);
   }
 
   public boolean containsTopicMeta(String topicName, boolean isTableModel) {
-    TopicMeta topicMeta = topicNameToTopicMetaMap.get(topicName);
-    if (Objects.isNull(topicMeta)) {
-      return false;
-    }
-    return topicMeta.visibleUnder(isTableModel);
+    return topicNameToTopicMetaMap.containsKey(generateTopicMetaKeeperKey(topicName, isTableModel));
   }
 
   public void clear() {
@@ -101,7 +109,7 @@ public class TopicMetaKeeper {
   public void processTakeSnapshot(FileOutputStream fileOutputStream) throws IOException {
     ReadWriteIOUtils.write(topicNameToTopicMetaMap.size(), fileOutputStream);
     for (Map.Entry<String, TopicMeta> entry : topicNameToTopicMetaMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), fileOutputStream);
+      ReadWriteIOUtils.write(entry.getValue().getTopicName(), fileOutputStream);
       entry.getValue().serialize(fileOutputStream);
     }
   }
@@ -112,7 +120,8 @@ public class TopicMetaKeeper {
     final int size = ReadWriteIOUtils.readInt(fileInputStream);
     for (int i = 0; i < size; i++) {
       final String topicName = ReadWriteIOUtils.readString(fileInputStream);
-      topicNameToTopicMetaMap.put(topicName, TopicMeta.deserialize(fileInputStream));
+      final TopicMeta topicMeta = TopicMeta.deserialize(fileInputStream);
+      topicNameToTopicMetaMap.put(generateTopicMetaKeeperKey(topicMeta), topicMeta);
     }
   }
 
@@ -138,5 +147,16 @@ public class TopicMetaKeeper {
   @Override
   public String toString() {
     return "TopicMetaKeeper{" + "topicNameToTopicMetaMap=" + topicNameToTopicMetaMap + '}';
+  }
+
+  /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
+
+  private static String generateTopicMetaKeeperKey(final TopicMeta topicMeta) {
+    return generateTopicMetaKeeperKey(topicMeta.getTopicName(), topicMeta.visibleUnderTableModel());
+  }
+
+  private static String generateTopicMetaKeeperKey(
+      final String topicName, final boolean isTableModel) {
+    return (isTableModel ? "table:" : "tree:") + topicName;
   }
 }

@@ -28,6 +28,7 @@ public final class CalcMessages {
   public static final String ARRAYS_NOT_SAME_LENGTH = "Arrays not same length";
   public static final String CANNOT_ADD_NAN_TO_T_DIGEST = "Cannot add NaN to t-digest";
   public static final String CANNOT_CAST_TO_BOOLEAN = "\"%s\" cannot be cast to [BOOLEAN]";
+  public static final String CANNOT_CAST_TO_TYPE = "\"%s\" cannot be cast to [%s]";
   public static final String CANNOT_PARSE_STRING_TO_DOUBLE = "Cannot parse String to double: ";
   public static final String CANT_HAPPEN_LOOP_FELL_THROUGH =
       "Can't happen ... loop fell through";
@@ -35,6 +36,20 @@ public final class CalcMessages {
       "CountAllAccumulator does not support statistics.";
   public static final String COUNT_IF_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
       "CountIfAccumulator does not support statistics";
+  public static final String PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "PercentileAccumulator does not support statistics";
+  public static final String PERCENTILE_REQUIRES_TWO_ARGUMENTS =
+      "PERCENTILE requires 2 arguments, but got %d";
+  public static final String APPROX_PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxPercentileAccumulator does not support statistics";
+  public static final String APPROX_COUNT_DISTINCT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxCountDistinctAccumulator does not support statistics";
+  public static final String APPROX_MOST_FREQUENT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxMostFrequentAccumulator does not support statistics";
+  public static final String NO_EXACT_DOUBLE_REPRESENTATION_FOR_LONG =
+      "no exact double representation for long: %s";
+  public static final String APPROX_PERCENTILE_REQUIRES_TWO_OR_THREE_ARGUMENTS =
+      "APPROX_PERCENTILE requires 2 or 3 arguments, but got %d";
   public static final String CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN =
       "current column is not object column";
   public static final String CURRENT_TS_BLOCK_SIZE_IS = "Current tsBlock size is : {}";
@@ -59,6 +74,8 @@ public final class CalcMessages {
   public static final String INITIAL_CAPACITY_EXCEEDS_LIMIT = "Initial capacity (%d) exceeds %d";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils should not be instantiated.";
+  public static final String IN_LIST_LITERAL_FOR_TIMESTAMP_TYPE_RESTRICTION =
+      "InList Literal for TIMESTAMP can only be LongLiteral, DoubleLiteral and GenericLiteral, current is %s";
   public static final String INVALID_AGGREGATION_FUNCTION = "Invalid Aggregation function: ";
   public static final String INVALID_TEXT_INPUT_FOR_BOOLEAN =
       "Invalid text input for boolean type: %s";
@@ -133,6 +150,42 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_COMPARISON_OPERATOR =
       "Unsupported comparison operator: ";
   public static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG =
+      "Unsupported data type in aggregation AVG : %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_SUM_AGGREGATION =
+      "Unsupported data type in SUM Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION =
+      "Unsupported data type in Percentile Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_PERCENTILE_AGGREGATION =
+      "Unsupported data type in APPROX_PERCENTILE Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_COUNT_DISTINCT_AGGREGATION =
+      "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_AGGREGATION =
+      "Unsupported data type in FIRST Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_AGGREGATION =
+      "Unsupported data type in LAST Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION =
+      "Unsupported data type in MAX Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MIN_AGGREGATION =
+      "Unsupported data type in MIN Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION =
+      "Unsupported data type in FIRST_BY Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION =
+      "Unsupported data type in LAST_BY Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION =
+      "Unsupported data type in EXTREME Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION =
+      "Unsupported data type in MAX_BY/MIN_BY Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MODE_AGGREGATION =
+      "Unsupported data type : %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION =
+      "Unsupported data type in CentralMoment Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE =
+      "Unsupported data type in aggregation variance : %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_VARIANCE_AGGREGATION =
+      "Unsupported data type in VARIANCE Aggregation: %s";
+  public static final String UNSUPPORTED_DEFAULT_VALUE_DATA_TYPE_IN_LAG =
+      "Unsupported default value's data type in Lag: ";
   public static final String UNSUPPORTED_DATA_TYPE_LOWER = "unsupported data type: ";
   public static final String UNSUPPORTED_FRAME_BOUND_TYPE = "Unsupported frame bound type: ";
   public static final String UNSUPPORTED_FUNCTION_KIND = "Unsupported function kind: ";
@@ -468,5 +521,65 @@ public final class CalcMessages {
       "Unsupported data type in PERCENTILE Aggregation: %s";
   public static final String EXCEPTION_PERCENTILEACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_66308C79 =
       "PercentileAccumulator does not support statistics";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_REQUIRES_AT_LEAST_TWO_VALID_SAMPLES_1A89901C =
+          "Rate-family aggregate function requires at least two valid samples";
+  public static final String
+      EXCEPTION_THE_FIRST_SAMPLE_TIME_MUST_BE_LESS_THAN_THE_LAST_SAMPLE_TIME_FC4D3517 =
+          "The first sample time must be less than the last sample time";
+  public static final String
+      EXCEPTION_THE_WINDOW_START_MUST_BE_LESS_THAN_THE_WINDOW_END_B1A38C98 =
+          "The window start must be less than the window end";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_REQUIRES_WINDOW_START_FIRST_TIME_LAST_TIME_WINDOW_END_60DE93C8 =
+          "Rate-family aggregate function requires window_start <= first_time < last_time < window_end";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_INTERMEDIATE_RESULT_D46B30CD =
+          "Rate-family aggregate function produced a non-finite intermediate result";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_TIME_INTERVAL_B26C4162 =
+          "Rate-family aggregate function produced a non-finite time interval";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_EXTRAPOLATION_RESULT_6482CF1D =
+          "Rate-family aggregate function produced a non-finite extrapolation result";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC =
+          "Aggregate function [%s] does not support duplicate time_col values in the same aggregation group: %d";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_NON_FINITE_VALUE_COL_ARG_AC2AAC62 =
+          "Aggregate function [%s] does not support non-finite value_col: %s";
+  public static final String
+      EXCEPTION_THE_VALUE_COL_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_MUST_BE_A_NON_NEGATIVE_NUMBER_BUT_GOT_ARG_4D5B7D74 =
+          "The value_col argument of aggregate function [%s] must be a non-negative number, but got: %s";
+  public static final String
+      EXCEPTION_THE_ARGUMENT_ARG_OF_AGGREGATE_FUNCTION_ARG_MUST_NOT_BE_NULL_WHEN_VALUE_COL_IS_NOT_NULL_7F087E99 =
+          "The argument %d of aggregate function [%s] must not be NULL when value_col is not NULL";
+  public static final String
+      EXCEPTION_THE_WINDOW_START_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_MUST_BE_LESS_THAN_WINDOW_END_17D2A79A =
+          "The window_start argument of aggregate function [%s] must be less than window_end";
+  public static final String
+      EXCEPTION_THE_SAMPLE_TIME_OF_AGGREGATE_FUNCTION_ARG_MUST_SATISFY_WINDOW_START_TIME_COL_WINDOW_END_35014D15 =
+          "The sample time of aggregate function [%s] must satisfy window_start <= time_col < window_end";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_CONSISTENT_WINDOW_BOUNDARIES_IN_THE_SAME_AGGREGATION_GROUP_EXPECTED_ARG_ARG_BUT_GOT_ARG_ARG_38631886 =
+          "Aggregate function [%s] requires consistent window boundaries in the same aggregation group: expected [%d, %d), but got [%d, %d)";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_EXPECTED_TIME_COL_IN_STRICTLY_ASCENDING_ORDER_BUT_GOT_ARG_AFTER_ARG_9289E0F9 =
+          "Aggregate function [%s] expected time_col in strictly ascending order, but got %d after %d";
+  public static final String
+      EXCEPTION_ORDERED_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_INTERMEDIATE_STATE_6B4B2B1B =
+          "Ordered aggregate function [%s] does not support intermediate state";
+  public static final String
+      EXCEPTION_INVALID_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_2999C30B =
+          "Invalid intermediate state for aggregate function [%s]";
+  public static final String
+      EXCEPTION_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_EXCEEDS_THE_MAXIMUM_TSBLOCK_SIZE_OF_ARG_BYTES_D53A5546 =
+          "Intermediate state for aggregate function %s exceeds the maximum TsBlock size of %d bytes";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D =
+          "Aggregate function [%s] does not support value type %s";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
+          "Aggregate function [%s] requires %d arguments, but got %d";
 
 }

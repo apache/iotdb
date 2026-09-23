@@ -62,6 +62,7 @@ public class WalDeleteOutdatedNewTest {
   private static final String dataRegionId = "1";
   private WALMode prevMode;
   private String prevConsensus;
+  private boolean prevWalFileListCacheEnabled;
   private WALNode walNode1;
 
   @Before
@@ -69,8 +70,10 @@ public class WalDeleteOutdatedNewTest {
     EnvironmentUtils.cleanDir(logDirectory1);
     prevMode = config.getWalMode();
     prevConsensus = config.getDataRegionConsensusProtocolClass();
+    prevWalFileListCacheEnabled = config.isWalFileListCacheEnabled();
     config.setWalMode(WALMode.SYNC);
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    config.setWalFileListCacheEnabled(true);
     walNode1 = new WALNode(identifier1, logDirectory1);
     DataRegion dataRegion = new DataRegionTest.DummyDataRegion(logDirectory1, databasePath);
     dataRegion.updatePartitionFileVersion(2911, 0);
@@ -82,6 +85,7 @@ public class WalDeleteOutdatedNewTest {
     walNode1.close();
     config.setWalMode(prevMode);
     config.setDataRegionConsensusProtocolClass(prevConsensus);
+    config.setWalFileListCacheEnabled(prevWalFileListCacheEnabled);
     EnvironmentUtils.cleanDir(logDirectory1);
     StorageEngine.getInstance().reset();
   }
@@ -214,6 +218,10 @@ public class WalDeleteOutdatedNewTest {
     Assert.assertEquals(2, memTableIdsOfWal.get(0L).size());
     File[] files = WALFileUtils.listAllWALFiles(new File(logDirectory1));
     Assert.assertEquals(2, files.length);
+    Assert.assertNull(walNode1.getCachedSortedWalFiles());
+    walNode1.getDeletionBoundToFreeAtLeast(1);
+    File[] cachedWalFilesBeforeDeletion = walNode1.getCachedSortedWalFiles();
+    Assert.assertEquals(2, cachedWalFilesBeforeDeletion.length);
 
     walNode1.deleteOutdatedFiles();
     Map<Long, Set<Long>> memTableIdsOfWalAfter = walNode1.getWALBuffer().getMemTableIdsOfWal();
@@ -222,6 +230,10 @@ public class WalDeleteOutdatedNewTest {
     Assert.assertEquals(0, memTableIdsOfWalAfter.size());
     File[] filesAfter = WALFileUtils.listAllWALFiles(new File(logDirectory1));
     Assert.assertEquals(1, filesAfter.length);
+    Assert.assertEquals(1, walNode1.getCachedSortedWalFiles().length);
+    Assert.assertEquals(
+        walNode1.getCurrentWALFileVersion(),
+        WALFileUtils.parseVersionId(walNode1.getCachedSortedWalFiles()[0].getName()));
   }
 
   /**

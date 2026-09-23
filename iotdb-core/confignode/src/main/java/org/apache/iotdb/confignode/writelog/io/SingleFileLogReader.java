@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.writelog.io;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
@@ -29,10 +30,8 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
 
@@ -147,9 +146,8 @@ public class SingleFileLogReader implements ILogReader {
   }
 
   private void truncateBrokenLogs() {
-    try (FileOutputStream outputStream = new FileOutputStream(filepath, true);
-        FileChannel channel = outputStream.getChannel()) {
-      channel.truncate(unbrokenLogsSize);
+    try {
+      FileUtils.truncateFile(new File(filepath), unbrokenLogsSize);
     } catch (IOException e) {
       logger.error(ConfigNodeMessages.FAIL_TO_TRUNCATE_LOG_FILE_TO_SIZE, unbrokenLogsSize, e);
     }

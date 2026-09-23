@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IoTProgressIndex extends ProgressIndex {
@@ -195,6 +196,14 @@ public class IoTProgressIndex extends ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.IOT_PROGRESS_INDEX;
+  }
+
+  @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    return progressIndexClass.isInstance(this)
+        ? Optional.of(progressIndexClass.cast(this))
+        : Optional.empty();
   }
 
   @Override

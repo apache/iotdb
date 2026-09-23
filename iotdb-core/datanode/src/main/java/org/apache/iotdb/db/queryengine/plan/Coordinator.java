@@ -201,7 +201,6 @@ import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 public class Coordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
@@ -285,7 +284,10 @@ public class Coordinator {
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
     this.scheduledExecutor = getScheduledExecutor();
-    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    int dispatchThreadNum = CONFIG.getFragmentInstanceDispatchThreadCount();
+    if (dispatchThreadNum == 0) {
+      dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    }
     this.dispatchExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
@@ -873,7 +875,7 @@ public class Coordinator {
 
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
-        COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
+        CONFIG.getCoordinatorScheduledExecutorSize(),
         ThreadName.MPP_COORDINATOR_SCHEDULED_EXECUTOR.getName());
   }
 

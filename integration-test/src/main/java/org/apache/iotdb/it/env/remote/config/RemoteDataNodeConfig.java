@@ -49,6 +49,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     return this;
@@ -123,6 +128,17 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
     return this;
   }
 }

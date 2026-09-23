@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.LoadTsFilePieceNodeAssembler;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -97,6 +99,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -180,6 +183,8 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
+    TimePartitionUtils.setTimePartitionOrigin(
+        CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
     TimePartitionUtils.setTimePartitionInterval(
         CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
   }
@@ -821,9 +826,9 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void deleteDataRegion(DataRegionId regionId) {
+  public TSStatus deleteDataRegion(DataRegionId regionId) {
     if (!dataRegionMap.containsKey(regionId) || deletingDataRegionMap.containsKey(regionId)) {
-      return;
+      return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
     }
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
@@ -880,10 +885,13 @@ public class StorageEngine implements IService {
             region.getDatabaseName(),
             region.getDataRegionIdString(),
             e);
+        return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
       } finally {
         deletingDataRegionMap.remove(regionId);
       }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
+    return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
   }
 
   /**
@@ -1059,6 +1067,35 @@ public class StorageEngine implements IService {
     }
 
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus writeLoadTsFileNodeSlice(
+      final DataRegionId dataRegionId,
+      final ByteBuffer body,
+      final String uuid,
+      final int sliceIndex,
+      final int sliceCount,
+      final int originBodySize) {
+    final LoadTsFilePieceNodeAssembler.Result result =
+        loadTsFileManager.appendPieceNodeSlice(
+            dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
+    if (!result.isValid()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
+    }
+    if (!result.isComplete()) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
+    try {
+      final Object planNode = PlanNodeType.deserialize(result.getBody());
+      if (!(planNode instanceof LoadTsFilePieceNode)) {
+        return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+      }
+      return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
+    } catch (final Exception e) {
+      return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+    }
   }
 
   public TSStatus executeLoadCommand(

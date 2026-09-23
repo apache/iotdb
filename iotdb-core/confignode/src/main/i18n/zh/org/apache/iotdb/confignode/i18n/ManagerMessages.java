@@ -73,6 +73,7 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s 不存在。";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "减少快照 {} 的引用计数失败。";
+  public static final String DELETING_REGIONS_COSTS_MS = "删除 region 耗时 {}ms";
   public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
       "检测到来自 DataNode {} 的历史 pipe 完成上报，pipe {}。remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
@@ -141,6 +142,8 @@ public final class ManagerMessages {
       "为用户 id {} 收集用户名失败";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "在 consumer group {} 中创建 consumer {} 失败。结果状态：{}。";
+  public static final String EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12 =
+      "订阅 topic %s 失败，因为 consumer %s 不存在于 consumer group 中";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "为 consensus group 创建 peer 失败";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
@@ -284,6 +287,12 @@ public final class ManagerMessages {
       "LoadStatistics 服务已成功启动。";
   public static final String LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "LoadStatistics 服务已成功停止。";
+  public static final String
+      LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69 =
+          "跳过 ReconstructRegion 请求中重复的 Region ID {}，目标 DataNode 为 {}。";
+  public static final String
+      LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
+          "跳过 ReconstructRegion 请求中不存在的 Region ID {}，目标 DataNode 为 {}。";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] 成功提交 RegionMigrateProcedure，Region：{}，原 DataNode：{}，目标 DataNode：{}，新增 Coordinator：{}，移除 Coordinator：{}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
@@ -435,6 +444,8 @@ public final class ManagerMessages {
       "开始在 DataNode: {} 上创建 Region：{}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "开始在 Data Nodes 上创建 UDF [{}]，needToSaveJar[{}]";
+  public static final String START_TO_DELETE_REGION_ON_DATANODE =
+      "开始在 DataNode: {} 上删除 Region：{}";
   public static final String START_TRANSFER_OF = "开始传输 {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "停止提交 CQ {}，原因：{}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -517,8 +528,6 @@ public final class ManagerMessages {
       "等待 configNode leader 就绪过程中发生意外中断。";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "等待获取 cluster id 过程中发生意外中断。";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "RegionMaintainer 队列中出现意外的非 create 任务；跳过处理（该队列目前仅用于重建 region 副本，region 删除由 RemoveRegionGroupProcedure 处理）。";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "waitingProcedureFinished 的 procedure 参数为空";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =

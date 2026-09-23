@@ -161,7 +161,7 @@ public abstract class SystemPropertiesHandler {
       return;
     }
     if (formalFile.exists() && tmpFile.exists()) {
-      if (!tmpFile.delete()) {
+      if (!FileUtils.deleteFileIfExist(tmpFile)) {
         LOGGER.warn(
             CommonMessages
                 .LOG_DELETE_SYSTEM_PROPERTIES_TMP_FILE_FAIL_YOU_MAY_MANUALLY_DELETE_F81C4A53,
@@ -182,7 +182,7 @@ public abstract class SystemPropertiesHandler {
           CommonMessages
               .EXCEPTION_TMP_SYSTEM_PROPERTIES_FILE_MUST_EXIST_CALL_REPLACEFORMALFILE_FA63B976);
     }
-    if (formalFile.exists() && !formalFile.delete()) {
+    if (formalFile.exists() && !FileUtils.deleteFileIfExist(formalFile)) {
       String msg =
           String.format(
               "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
@@ -198,8 +198,8 @@ public abstract class SystemPropertiesHandler {
   }
 
   public void delete() {
-    this.formalFile.delete();
-    this.tmpFile.delete();
+    FileUtils.deleteFileIfExist(this.formalFile);
+    FileUtils.deleteFileIfExist(this.tmpFile);
     if (this.formalFile.exists() || this.tmpFile.exists()) {
       LOGGER.warn(
           CommonMessages

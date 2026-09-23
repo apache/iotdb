@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseTestUtils;
 
@@ -41,19 +42,17 @@ public class ClusterAuthorityFetcherLeaseTest {
   }
 
   @Test
-  public void fencedLeaseDropsPermissionCache() {
+  public void fencedLeaseThrowsException() {
     final ClusterAuthorityFetcher fetcher =
         new TestingClusterAuthorityFetcher(new BasicAuthorityCache(), leaseManager);
-    final User user = new User("user_fenced", "password");
-    fetcher.getAuthorCache().putUserCache(user.getName(), user);
-    Assert.assertNotNull(fetcher.getAuthorCache().getUserCache(user.getName()));
 
     clock.addMillis(T_FENCE_MS + 1);
-    fetcher.checkCacheAvailable();
-
-    Assert.assertNull(
-        "a fenced DataNode must drop its permission cache so a missed REVOKE cannot keep authorizing",
-        fetcher.getAuthorCache().getUserCache(user.getName()));
+    try {
+      fetcher.failIfMetadataLeaseFenced();
+      Assert.fail("Expected MetadataLeaseFencedException");
+    } catch (MetadataLeaseFencedException e) {
+      // Expected.
+    }
   }
 
   @Test
@@ -66,7 +65,7 @@ public class ClusterAuthorityFetcherLeaseTest {
     // An active lease (a ConfigNode heartbeat was just received) must not needlessly drop the
     // cache.
     clock.addMillis(1_000L);
-    fetcher.checkCacheAvailable();
+    fetcher.failIfMetadataLeaseFenced();
 
     Assert.assertNotNull(
         "an active lease must not needlessly drop the permission cache",
@@ -96,8 +95,9 @@ public class ClusterAuthorityFetcherLeaseTest {
     }
 
     @Override
-    boolean isMetadataLeaseFenced() {
-      return MetadataLeaseTestUtils.isFenced(leaseManager);
+    void failIfMetadataLeaseFenced() {
+      MetadataLeaseTestUtils.failIfMetadataLeaseFenced(
+          leaseManager, MetadataLeaseFencedException.LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
     }
   }
 }

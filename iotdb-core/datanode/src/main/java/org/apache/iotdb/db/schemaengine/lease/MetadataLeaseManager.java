@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -106,7 +107,8 @@ public class MetadataLeaseManager {
     return Arrays.asList(
         () -> ClusterPartitionFetcher.getInstance().invalidAllCache(),
         () -> DataNodeTableCache.getInstance().invalidateAll(),
-        () -> TreeDeviceSchemaCacheManager.getInstance().cleanUp());
+        () -> TreeDeviceSchemaCacheManager.getInstance().cleanUp(),
+        AuthorityChecker::invalidateAllCache);
   }
 
   private static List<MetadataAction> defaultPullMetaList() {

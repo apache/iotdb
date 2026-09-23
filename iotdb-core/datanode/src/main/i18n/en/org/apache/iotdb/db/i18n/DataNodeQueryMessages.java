@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s is already %s";
+
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Invalid Thrift maximum frame size %d from %s";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "failed to dispatch load command %s to node %s because of exception: %s";
+
   // --- Common ---
 
   public static final String NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH =
@@ -29,6 +37,18 @@ public final class DataNodeQueryMessages {
       "This node isn't instance of SchemaEntityNode.";
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "This node isn't instance of SchemaMeasurementNode.";
+  public static final String EXCEPTION_TIME_DURATION_IS_OUT_OF_RANGE_A56B1A29 =
+      "Time duration is out of range.";
+  public static final String EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A =
+      "Generated time column is out of range.";
+  public static final String
+      EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32 =
+          "The time predicate does not select any time range: %s";
+  public static final String
+      EXCEPTION_RIGHT_CLOSED_GROUP_BY_TIME_WITH_LONG_MAX_VALUE_END_TIME_CANNOT_BE_REPRESENTED_AS_A_SINGLE_RIGHT_OPEN_TIME_FILTER_772F893F =
+          "Right-closed GROUP BY TIME with Long.MAX_VALUE end time cannot be represented as a single right-open time filter.";
+  public static final String EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1 =
+      "Date expression is out of range: %s";
 
   // --- Execution / Aggregation ---
 
@@ -144,6 +164,9 @@ public final class DataNodeQueryMessages {
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "The matched source columns exceed the estimated current memory capacity by "
           + "at least %,d columns. ";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "The failed memory reservation exceeds available memory by the equivalent of at least "
+          + "%,d columns, estimated from the observed average column size. ";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "Not enough memory while fetching metadata for query analysis. "
           + "The result set may have too many columns. "
@@ -190,6 +213,9 @@ public final class DataNodeQueryMessages {
       "Target file already exists: ";
   public static final String FAILED_TO_CREATE_FILE =
       "Failed to create file: ";
+  public static final String COPY_TO_TARGET_PATH_NOT_ALLOWED =
+      "COPY TO target path is outside the allowed export directories"
+          + " (configure copy_to_allowed_export_dirs to permit it): ";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "Data type of target time column is not TIMESTAMP";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
@@ -516,6 +542,18 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP does not support REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime filter cannot exist in value filter.";
+  public static final String EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC =
+      "\"%s\" cannot be cast to [%s]";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348 =
+      "Unsupported data type %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1 =
+      "Unsupported data type in MaxBy/MinBy: %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB =
+      "Unsupported data type in equal event aggregation : %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388 =
+      "Unsupported data type in variation event aggregation : %s";
+  public static final String EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79 =
+      "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
@@ -1008,6 +1046,8 @@ public final class DataNodeQueryMessages {
       "Unexpected expression: ";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "Failed to Fetch Subquery Result.";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00 =
+      "Unsupported data type for scalar subquery result: %s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
@@ -1381,6 +1421,8 @@ public final class DataNodeQueryMessages {
       "Error occurred during getting UDF access strategy";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils should not be instantiated.";
+  public static final String EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273 =
+      "The data type of the state window strategy is not valid.";
 
   // --- Execution / Exchange (additional) ---
 
@@ -1398,6 +1440,28 @@ public final class DataNodeQueryMessages {
       "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},";
   public static final String FAILED_TO_GET_DATA_BLOCK =
       "failed to get data block [{}, {}), attempt times: {}";
+  public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
+      "Unexpected data block response size.";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "Invalid serialized TsBlock fragment offset %s for block size %s.";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "Accumulated TsBlock fragment length %s does not match totalLength %s.";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "The first fragmented data block response must include totalLength.";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "Next sequence ID %s exceeds requested end sequence ID %s.";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "A completed data block response range must not retain a partial TsBlock.";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock fragment must not be empty.";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "Next fragment offset %s must be greater than current offset %s and match accumulated fragment length %s.";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "failed to send ack data block event [{}, {}), attempt times: {}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
@@ -2424,6 +2488,14 @@ public final class DataNodeQueryMessages {
       "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.";
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
       "Unsupported COPY TO format '%s'. Supported formats: %s";
+  public static final String EXCEPTION_DUPLICATE_TAG_COLUMN_IN_TAGS_CLAUSE_ARG_61FD5422 =
+      "Duplicate tag column in TAGS clause: %s";
+  public static final String EXCEPTION_DUPLICATE_OPTION_IN_COPY_TO_STATEMENT_ARG_99CFE09F =
+      "Duplicate option in COPY TO statement: %s";
+  public static final String EXCEPTION_FAILED_TO_WRITE_THE_TARGET_FILE_ARG_5AC3025D =
+      "Failed to write the target file: %s";
+  public static final String LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37 =
+      "Failed to write the target file during COPY TO";
   public static final String SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "Simultaneous setting of monthly and non-monthly intervals is not supported.";
   public static final String DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT =
@@ -3037,6 +3109,9 @@ public final class DataNodeQueryMessages {
       "Can not find %s on this machine, notice that load can only handle files on this machine.";
   public static final String QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F =
       "Load TsFile source path %s is outside allowed directories %s.";
+  public static final String
+      QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D =
+          "Cannot load files because the specified directory contains IoTDB data.";
   public static final String QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6 =
       "Failed to resolve canonical path for Load TsFile source %s: %s";
   public static final String QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =
@@ -3670,6 +3745,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName is null";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString is null";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath is null";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "The LOAD TSFILE path cannot be empty.";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details is null";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory is null";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName is null";
@@ -3766,6 +3843,10 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "Aggregation functions [%s] should only have two arguments";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "Aggregation functions [%s] should have percentage as decimal type";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08 = "Aggregate function [%s] requires 2 arguments: value, time";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B = "Aggregate function [%s] requires 4 arguments: value, time, window_start, window_end";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434 = "Aggregate function [%s] only supports INT32, INT64, FLOAT and DOUBLE as the first argument";
+  public static final String EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3 = "The time arguments of aggregate function [%s] should be TIMESTAMP or INT64 type";
   public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "Cannot nest aggregations inside aggregation '%s': %s";
   public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "Cannot nest window functions inside aggregation '%s': %s";
   public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY expression '%s' must be an aggregate expression or appear in GROUP BY clause";
@@ -3801,5 +3882,49 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases is null";
   public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
       "Has no permission to execute %s, because only the superuser can alter him/herself.";
+  public static final String
+      LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5 =
+          "Failed to clean DeviceEntry data set asynchronously: queryId=%s, planNodeId=%s";
+  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
+      "Failed to clean DeviceEntry spill directory for query %s";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941 =
+          "Failed to close DeviceEntry spill writer during cleanup: %s";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319 =
+          "Failed to close DeviceEntry data set after index scan failure: %s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
+          "DeviceEntry spill segment is unavailable: %s. The query may have timed out or been killed.";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
+          "DeviceEntry segment count and entry count must be non-negative";
+  public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
+      "Open consuming reader is not supported";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZER_THRESHOLD_MUST_BE_POSITIVE_ARG_35CF53FD =
+          "DeviceEntry materializer threshold must be positive: %d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZATION_MEMORY_LIMIT_MUST_BE_POSITIVE_ARG_2EB63404 =
+          "DeviceEntry materialization memory limit must be positive: %d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_DATA_SET_PATH_ESCAPES_THE_QUERY_DIRECTORY_ARG_394A9840 =
+          "DeviceEntry data set path escapes the query directory: %s";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_ID_MUST_BE_NON_NEGATIVE_ARG_F7653A57 =
+      "DeviceEntry segment ID must be non-negative: %d";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_HAS_INCOMPLETE_RECORD_LENGTH_0A282C19 =
+      "DeviceEntry segment has incomplete record length";
+  public static final String
+      EXCEPTION_INVALID_DEVICEENTRY_RECORD_LENGTH_ARG_REMAINING_BYTES_ARG_F1C43B72 =
+          "Invalid DeviceEntry record length %d, remaining bytes %d";
+  public static final String EXCEPTION_DEVICEENTRY_MATERIALIZER_HAS_ALREADY_FINISHED_5538544E =
+      "DeviceEntry materializer has already finished";
+  public static final String
+      EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
+          "No materializer is available to enforce the DeviceEntry memory limit";
+  public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
+      "No more DeviceEntry records are available";
+  public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
+      "Only InMemoryDeviceEntryDataSet supports get inline device entries";
 
 }

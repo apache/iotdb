@@ -44,10 +44,12 @@
         <module>iotdb-client</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
+        <module>library-pipe</module>
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
         <module>external-service-impl</module>
+        <module>architecture-test</module>
     </modules>
     <properties>
         <airlift-units.version>1.7</airlift-units.version>
@@ -77,6 +79,7 @@
         <enforcer.skip>true</enforcer.skip>
         <felix.version>5.1.9</felix.version>
         <findbugs.jsr305.version>3.0.2</findbugs.jsr305.version>
+        <forbiddenapis.version>3.10</forbiddenapis.version>
         <fusesource-mqtt-client.version>1.16</fusesource-mqtt-client.version>
         <google.java.format.version>1.28.0</google.java.format.version>
         <gson.version>2.13.1</gson.version>
@@ -108,21 +111,20 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>0.6.14</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
-        <netty.version>4.1.136.Final</netty.version>
+        <netty.version>4.1.137.Final</netty.version>
         <openapi.generator.version>7.10.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
-        <ratis-thirdparty-misc.version>1.0.11</ratis-thirdparty-misc.version>
-        <ratis.version>3.3.0-adac7ef-SNAPSHOT</ratis.version>
+        <ratis-thirdparty-misc.version>1.1.0</ratis-thirdparty-misc.version>
+        <ratis.version>3.3.1</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
-        <reactor-netty.version>1.2.9</reactor-netty.version>
-        <reactor.version>3.7.9</reactor.version>
+        <reactor-netty.version>1.2.18</reactor-netty.version>
+        <reactor.version>3.7.19</reactor.version>
         <reflections.version>0.10.2</reflections.version>
         <slf4j.version>2.0.9</slf4j.version>
         <snappy-java.version>1.1.10.5</snappy-java.version>
@@ -142,10 +144,10 @@
         <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
-        <thrift.version>0.23.0</thrift.version>
+        <thrift.version>0.24.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.3.2-260721-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.4.1-260915-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>
@@ -339,16 +341,6 @@
                 <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-common</artifactId>
                 <version>${ratis.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>io.opentelemetry</groupId>
-                        <artifactId>opentelemetry-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>io.opentelemetry</groupId>
-                        <artifactId>opentelemetry-context</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.apache.ratis</groupId>
@@ -380,43 +372,6 @@
                 <artifactId>units</artifactId>
                 <version>${airlift-units.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>stack-core</artifactId>
-                <version>${milo.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.sun.activation</groupId>
-                        <artifactId>jakarta.activation</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>sdk-core</artifactId>
-                <version>${milo.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.sun.activation</groupId>
-                        <artifactId>jakarta.activation</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>stack-server</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>stack-client</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>sdk-client</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -426,17 +381,6 @@
                     <exclusion>
                         <groupId>javax.inject</groupId>
                         <artifactId>javax.inject</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>sdk-server</artifactId>
-                <version>${milo.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.sun.activation</groupId>
-                        <artifactId>jakarta.activation</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -569,6 +513,11 @@
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-http</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-io</artifactId>
                 <version>${jetty.version}</version>
             </dependency>
             <dependency>
@@ -743,7 +692,11 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.1.2</version>
                     <configuration>
-                        <argLine>${argLine} -Xmx1024m</argLine>
+                        <argLine>${argLine} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
+                        <!-- Subscription UT is maintained and executed by the enterprise edition. -->
+                        <excludes>
+                            <exclude>**/subscription/**</exclude>
+                        </excludes>
                         <!-- Force the working directory to be different for each fork, so forks don't trample each other -->
                         <workingDirectory>${project.build.directory}/fork_${surefire.forkNumber}</workingDirectory>
                     </configuration>
@@ -789,6 +742,13 @@
                             <!-- bundled third-party NOTICE / license texts for the C++ client package -->
                             <exclude>**/package-metadata/third_party/NOTICE</exclude>
                             <exclude>**/package-metadata/third_party/licenses/**</exclude>
+                            <!-- generated certificates and private keys used only by C++ TLS tests -->
+                            <exclude>**/client-cpp/test/fixtures/**</exclude>
+                            <exclude>test/fixtures/**/*.crt</exclude>
+                            <exclude>test/fixtures/**/*.key</exclude>
+                            <!-- bundled third-party NOTICE / license texts for the AINode package -->
+                            <exclude>**/ainode/src/assembly/resources/NOTICE-binary</exclude>
+                            <exclude>**/ainode/src/assembly/resources/licenses/**</exclude>
                             <!-- only for Travis CI with WinOS-->
                             <exclude>hadoopbin</exclude>
                             <exclude>windowssystem32</exclude>
@@ -1023,6 +983,33 @@
                 <configuration>
                     <skip>${spotless.skip}</skip>
                 </configuration>
+            </plugin>
+            <!--
+                Enforce provider-compatible file APIs in every Maven module. The configured excludes
+                are paths relative to each module's target/classes directory and are limited to
+                APIs without a direct provider-compatible lifecycle equivalent.
+            -->
+            <plugin>
+                <groupId>de.thetaphi</groupId>
+                <artifactId>forbiddenapis</artifactId>
+                <version>${forbiddenapis.version}</version>
+                <configuration>
+                    <failOnUnsupportedJava>true</failOnUnsupportedJava>
+                    <!-- Some modules reference optional profile-specific classes, such as AINode thrift types. -->
+                    <failOnMissingClasses>false</failOnMissingClasses>
+                    <signaturesFiles>
+                        <signaturesFile>${maven.multiModuleProjectDirectory}/src/main/forbidden-apis/secure-erase</signaturesFile>
+                    </signaturesFiles>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>check-secure-erase-file-apis</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.eluder.coveralls</groupId>
@@ -1954,7 +1941,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->

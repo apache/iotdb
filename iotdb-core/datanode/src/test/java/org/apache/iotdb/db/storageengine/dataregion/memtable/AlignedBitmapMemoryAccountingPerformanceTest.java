@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.ManualPerformanceTestUtils;
 import org.apache.iotdb.db.utils.ManualPerformanceTestUtils.Measurement;
 import org.apache.iotdb.db.utils.ManualPerformanceTestUtils.Summary;
@@ -26,6 +30,7 @@ import org.apache.iotdb.db.utils.ManualPerformanceTestUtils.Summary;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -33,9 +38,12 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class AlignedBitmapMemoryAccountingPerformanceTest {
 
@@ -49,10 +57,12 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
   private static final String ROUNDS_PROPERTY = "iotdb.aligned.bitmap.accounting.perf.rounds";
   private static final int RECONCILIATION_REPETITIONS = 1024;
 
+  private static final TsFileProcessor.AlignedTVListRamCostSnapshot[] SNAPSHOT_BLACKHOLE =
+      new TsFileProcessor.AlignedTVListRamCostSnapshot[RECONCILIATION_REPETITIONS];
   private static volatile long benchmarkBlackhole;
 
   @Test
-  public void alignedTabletBitmapAccountingBenchmark() {
+  public void alignedTabletBitmapAccountingBenchmark() throws IllegalPathException {
     Assume.assumeTrue(
         String.format(
             "Manual performance UT. Enable with -D%s=true, optionally tune -D%s, -D%s, -D%s, -D%s and -D%s.",
@@ -78,12 +88,11 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
     Assert.assertTrue(iterations > 0);
     Assert.assertTrue(rounds > 0);
 
-    runScenario(
-        "dense",
-        createScenario(columnCount, rowCount, false),
-        warmupIterations,
-        iterations,
-        rounds);
+    Scenario denseScenario = createScenario(columnCount, rowCount, false);
+    Summary denseWriteSummary =
+        runScenario("dense", denseScenario, warmupIterations, iterations, rounds);
+    runSingleDeviceSnapshotScenario(
+        denseScenario, warmupIterations, iterations, rounds, denseWriteSummary);
     runScenario(
         "null-heavy",
         createScenario(columnCount, rowCount, true),
@@ -92,7 +101,7 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
         rounds);
   }
 
-  private static void runScenario(
+  private static Summary runScenario(
       String label, Scenario scenario, int warmupIterations, int iterations, int rounds) {
     runReconciliation(
         createAccountingTarget(scenario), warmupIterations * RECONCILIATION_REPETITIONS);
@@ -116,6 +125,107 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
     Summary writeSummary = ManualPerformanceTestUtils.summarize(writeMeasurements, iterations);
     printResult(
         label, scenario, warmupIterations, iterations, rounds, reconciliationSummary, writeSummary);
+    return writeSummary;
+  }
+
+  private static void runSingleDeviceSnapshotScenario(
+      Scenario scenario, int warmupIterations, int iterations, int rounds, Summary writeSummary)
+      throws IllegalPathException {
+    SnapshotTarget target = createSnapshotTarget(scenario);
+    int warmupOperations = Math.multiplyExact(warmupIterations, RECONCILIATION_REPETITIONS);
+    int operations = Math.multiplyExact(iterations, RECONCILIATION_REPETITIONS);
+
+    TsFileProcessor.AlignedTVListRamCostSnapshot legacySnapshot =
+        takeLegacyAlignedTVListRamCostSnapshot(
+            target.memTable, target.insertTabletNode, target.rangeList);
+    TsFileProcessor.AlignedTVListRamCostSnapshot optimizedSnapshot =
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(
+            target.memTable, target.insertTabletNode, target.rangeList);
+    Assert.assertNotNull(legacySnapshot);
+    Assert.assertNotNull(optimizedSnapshot);
+    Assert.assertEquals(
+        legacySnapshot.getMemoryCorrection(0), optimizedSnapshot.getMemoryCorrection(0));
+
+    runLegacySnapshotLifecycle(target, warmupOperations);
+    runOptimizedSnapshotLifecycle(target, warmupOperations);
+
+    Measurement[] legacyMeasurements = new Measurement[rounds];
+    Measurement[] optimizedMeasurements = new Measurement[rounds];
+    for (int i = 0; i < rounds; i++) {
+      if ((i & 1) == 0) {
+        legacyMeasurements[i] = measureLegacySnapshotLifecycle(target, operations);
+        optimizedMeasurements[i] = measureOptimizedSnapshotLifecycle(target, operations);
+      } else {
+        optimizedMeasurements[i] = measureOptimizedSnapshotLifecycle(target, operations);
+        legacyMeasurements[i] = measureLegacySnapshotLifecycle(target, operations);
+      }
+    }
+
+    Summary legacySummary = ManualPerformanceTestUtils.summarize(legacyMeasurements, operations);
+    Summary optimizedSummary =
+        ManualPerformanceTestUtils.summarize(optimizedMeasurements, operations);
+    printSnapshotResult(
+        scenario,
+        warmupOperations,
+        operations,
+        rounds,
+        legacySummary,
+        optimizedSummary,
+        writeSummary);
+  }
+
+  private static Measurement measureLegacySnapshotLifecycle(SnapshotTarget target, int operations) {
+    Arrays.fill(SNAPSHOT_BLACKHOLE, null);
+    return ManualPerformanceTestUtils.measure(
+        1, () -> runLegacySnapshotLifecycle(target, operations));
+  }
+
+  private static Measurement measureOptimizedSnapshotLifecycle(
+      SnapshotTarget target, int operations) {
+    Arrays.fill(SNAPSHOT_BLACKHOLE, null);
+    return ManualPerformanceTestUtils.measure(
+        1, () -> runOptimizedSnapshotLifecycle(target, operations));
+  }
+
+  private static void runLegacySnapshotLifecycle(SnapshotTarget target, int operations) {
+    long correction = 0;
+    for (int i = 0; i < operations; i++) {
+      TsFileProcessor.AlignedTVListRamCostSnapshot snapshot =
+          takeLegacyAlignedTVListRamCostSnapshot(
+              target.memTable, target.insertTabletNode, target.rangeList);
+      correction += snapshot.getMemoryCorrection(0);
+      SNAPSHOT_BLACKHOLE[i % SNAPSHOT_BLACKHOLE.length] = snapshot;
+    }
+    benchmarkBlackhole = correction + operations;
+  }
+
+  private static void runOptimizedSnapshotLifecycle(SnapshotTarget target, int operations) {
+    long correction = 0;
+    for (int i = 0; i < operations; i++) {
+      TsFileProcessor.AlignedTVListRamCostSnapshot snapshot =
+          TsFileProcessor.takeAlignedTVListRamCostSnapshot(
+              target.memTable, target.insertTabletNode, target.rangeList);
+      correction += snapshot.getMemoryCorrection(0);
+      SNAPSHOT_BLACKHOLE[i % SNAPSHOT_BLACKHOLE.length] = snapshot;
+    }
+    benchmarkBlackhole = correction + operations;
+  }
+
+  private static TsFileProcessor.AlignedTVListRamCostSnapshot
+      takeLegacyAlignedTVListRamCostSnapshot(
+          IMemTable memTable, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
+    Set<IDeviceID> alignedDeviceIds = new HashSet<>();
+    if (insertTabletNode.isAligned()) {
+      for (int[] range : rangeList) {
+        for (Pair<IDeviceID, Integer> deviceEndPosition :
+            insertTabletNode.splitByDevice(range[0], range[1])) {
+          alignedDeviceIds.add(deviceEndPosition.getLeft());
+        }
+      }
+    }
+    return alignedDeviceIds.isEmpty()
+        ? null
+        : new TsFileProcessor.AlignedTVListRamCostSnapshot(memTable, alignedDeviceIds);
   }
 
   private static Measurement measureReconciliation(Scenario scenario, int iterations) {
@@ -184,6 +294,26 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
     return new AccountingTarget(memTable, deviceId);
   }
 
+  private static SnapshotTarget createSnapshotTarget(Scenario scenario)
+      throws IllegalPathException {
+    AccountingTarget accountingTarget = createAccountingTarget(scenario);
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("snapshot_perf"),
+            new PartialPath("root.accounting.d0"),
+            true,
+            scenario.measurements,
+            scenario.dataTypes,
+            scenario.times,
+            scenario.bitMaps,
+            scenario.columns,
+            scenario.times.length);
+    return new SnapshotTarget(
+        accountingTarget.memTable,
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, scenario.times.length}));
+  }
+
   private static Scenario createScenario(int columnCount, int rowCount, boolean nullHeavy) {
     String[] measurements = new String[columnCount];
     TSDataType[] dataTypes = new TSDataType[columnCount];
@@ -243,6 +373,60 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
             writeSummary.getAllocatedBytesPerOperation()));
   }
 
+  private static void printSnapshotResult(
+      Scenario scenario,
+      int warmupOperations,
+      int operations,
+      int rounds,
+      Summary legacySummary,
+      Summary optimizedSummary,
+      Summary writeSummary) {
+    System.out.printf(
+        Locale.ROOT,
+        "Aligned single-device snapshot lifecycle benchmark (dense tree tablet): columns=%d, rows=%d, warmup operations=%d, operations/round=%d, rounds=%d%n",
+        scenario.measurements.length,
+        scenario.times.length,
+        warmupOperations,
+        operations,
+        rounds);
+    printSnapshotSummary("legacy", legacySummary);
+    printSnapshotSummary("optimized", optimizedSummary);
+    System.out.printf(
+        Locale.ROOT,
+        "  optimized/legacy CPU ratio=%.2f%%, allocation ratio=%.2f%%%n",
+        percentage(
+            optimizedSummary.getCpuNanosPerOperation(), legacySummary.getCpuNanosPerOperation()),
+        percentage(
+            optimizedSummary.getAllocatedBytesPerOperation(),
+            legacySummary.getAllocatedBytesPerOperation()));
+    System.out.printf(
+        Locale.ROOT,
+        "  optimized-legacy CPU delta=%+.3f ns/tablet, allocation delta=%+.1f bytes/tablet%n",
+        optimizedSummary.getCpuNanosPerOperation() - legacySummary.getCpuNanosPerOperation(),
+        optimizedSummary.getAllocatedBytesPerOperation()
+            - legacySummary.getAllocatedBytesPerOperation());
+    System.out.printf(
+        Locale.ROOT,
+        "  savings/dense-write CPU ratio=%.2f%%, allocation ratio=%.2f%%%n",
+        percentage(
+            legacySummary.getCpuNanosPerOperation() - optimizedSummary.getCpuNanosPerOperation(),
+            writeSummary.getCpuNanosPerOperation()),
+        percentage(
+            legacySummary.getAllocatedBytesPerOperation()
+                - optimizedSummary.getAllocatedBytesPerOperation(),
+            writeSummary.getAllocatedBytesPerOperation()));
+  }
+
+  private static void printSnapshotSummary(String label, Summary summary) {
+    System.out.printf(
+        Locale.ROOT,
+        "  %-10s CPU=%.3f ns/tablet, allocated=%.1f bytes/tablet, peak heap delta=%.3f MiB%n",
+        label,
+        summary.getCpuNanosPerOperation(),
+        summary.getAllocatedBytesPerOperation(),
+        summary.getPeakHeapDeltaBytes() / 1024.0 / 1024.0);
+  }
+
   private static void printSummary(String label, Summary summary) {
     System.out.printf(
         Locale.ROOT,
@@ -265,6 +449,20 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
     private AccountingTarget(IMemTable memTable, IDeviceID deviceId) {
       this.memTable = memTable;
       this.deviceId = deviceId;
+    }
+  }
+
+  private static final class SnapshotTarget {
+
+    private final IMemTable memTable;
+    private final InsertTabletNode insertTabletNode;
+    private final List<int[]> rangeList;
+
+    private SnapshotTarget(
+        IMemTable memTable, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
+      this.memTable = memTable;
+      this.insertTabletNode = insertTabletNode;
+      this.rangeList = rangeList;
     }
   }
 

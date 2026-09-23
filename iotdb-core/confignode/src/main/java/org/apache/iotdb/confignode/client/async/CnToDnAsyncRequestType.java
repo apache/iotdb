@@ -39,6 +39,7 @@ public enum CnToDnAsyncRequestType {
   // Region Maintenance
   CREATE_DATA_REGION,
   CREATE_SCHEMA_REGION,
+  DELETE_REGION,
   RESET_PEER_LIST,
   NOTIFY_REGION_MIGRATION,
   UPDATE_REGION_ROUTE_MAP,
@@ -137,4 +138,7 @@ public enum CnToDnAsyncRequestType {
   // audit log and event write-back
   INSERT_RECORD,
   ENABLE_SEPARATION_OF_ADMIN_POWERS,
+
+  // authority
+  INVALIDATE_PERMISSION_CACHE,
 }

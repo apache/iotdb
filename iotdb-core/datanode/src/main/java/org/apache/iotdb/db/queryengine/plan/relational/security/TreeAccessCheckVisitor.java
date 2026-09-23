@@ -161,6 +161,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -645,10 +646,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             authorType == AuthorType.CREATE_ROLE || authorType == AuthorType.DROP_ROLE
                 ? statement::getRoleName
                 : () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName();
-        return checkGlobalAuth(
-            context.setAuditLogOperation(AuditLogOperation.DDL),
-            PrivilegeType.MANAGE_ROLE,
-            auditObject);
+        TSStatus status =
+            checkGlobalAuth(
+                context.setAuditLogOperation(AuditLogOperation.DDL),
+                PrivilegeType.MANAGE_ROLE,
+                auditObject);
+        if (authorType == AuthorType.GRANT_USER_ROLE || authorType == AuthorType.REVOKE_USER_ROLE) {
+          DNAuditLogger.getInstance()
+              .logUserRoleModificationAuthorizationFailure(statement, context, status);
+        }
+        return status;
 
       case REVOKE_USER:
       case GRANT_USER:
@@ -695,7 +702,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   private TSStatus checkCanAlterUser(AuthorStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
-    if (statement.getUserName().equals(context.getUsername())) {
+    if (Objects.equals(statement.getUserName(), context.getUsername())) {
       // users can change the username and password of themselves
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true), context::getUsername);
@@ -870,6 +877,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {
     // This query cannot be rejected, but will be filtered at configNode
     // Does not need auth check here
+    return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus visitShowReceivers(
+      ShowReceiversStatement statement, TreeAccessCheckContext context) {
+    // This query follows SHOW PIPES: it cannot be rejected here.
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true),
+        () -> "SHOW RECEIVERS");
     return StatusUtils.OK;
   }
 
@@ -1783,7 +1800,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {
-    if (checkHasGlobalAuth(
+    if (!checkHasGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.CONTROL),
         PrivilegeType.MAINTAIN,
         () -> "")) {
@@ -1963,7 +1980,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
-    if (checkHasGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "")) {
+    if (!checkHasGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "")) {
       statement.setAllowedUsername(context.getUsername());
     }
     return SUCCEED;

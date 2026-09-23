@@ -34,6 +34,9 @@ public final class DataNodeSchemaMessages {
   public static final String SCHEMA_REGION_ALREADY_DELETED = "SchemaRegion(id = {}) 已被删除，已跳过";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "计算时间序列数量时获取表 {}.{} 失败，可能是集群正在重启或表正在被删除。";
+  public static final String
+      LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975 =
+          "元数据租约已被隔离，本次心跳跳过上报 schema 使用量。";
   public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
       "表 %s.%s 是树模型视图，不能写入或删除";
   public static final String PEER_IS_SHUTTING_DOWN = "节点正在关闭中。";
@@ -575,8 +578,6 @@ public final class DataNodeSchemaMessages {
       "尝试获取信号量以从 ConfigNode 获取表时被中断，已忽略。";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL = "获取表 {}.{} 信息, {}";
   public static final String UPDATE_TABLE_BY_FETCH = "通过表拉取更新表 {}.{}";
-  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
-      "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
   public static final String COMPARE_TABLE_ADDED = "新增表：";
   public static final String COMPARE_TABLE_REMOVED = "已移除表：";
   public static final String COMPARE_TABLE_NAME = "表名：";

@@ -182,6 +182,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showSubscriptionColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowSubscriptionDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSubscriptionDetailsColumnHeaders, true);
+  }
+
   public static DatasetHeader getGetRegionIdHeader() {
     return new DatasetHeader(ColumnHeaderConstant.getRegionIdColumnHeaders, true);
   }
@@ -210,6 +214,10 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowQueriesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showQueriesColumnHeaders, false);
+  }
+
+  public static DatasetHeader getShowReceiversHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showReceiversColumnHeaders, true);
   }
 
   public static DatasetHeader getShowDiskUsageHeader() {

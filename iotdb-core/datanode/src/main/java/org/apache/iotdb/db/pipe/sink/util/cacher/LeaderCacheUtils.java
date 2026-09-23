@@ -40,30 +40,46 @@ public class LeaderCacheUtils {
    * @param status is the returned status after transferring a batch event.
    * @return a list of pairs, each pair contains a device path and its redirect endpoint.
    */
-  public static List<Pair<String, TEndPoint>> parseRecommendedRedirections(TSStatus status) {
-    // If there is no exception, there should be 2 sub-statuses, one for InsertRowsStatement and one
-    // for InsertMultiTabletsStatement (see IoTDBDataNodeReceiver#handleTransferTabletBatch).
+  public static List<Pair<String, TEndPoint>> parseRecommendedRedirections(final TSStatus status) {
+    // Each top-level sub-status corresponds to one statement constructed by the receiver. V2 batch
+    // requests may contain any number of statements because rows are grouped by database and
+    // table. A direct InsertRowsNode request may instead put the per-device redirect statuses
+    // directly at the top level.
     final List<Pair<String, TEndPoint>> redirectList = new ArrayList<>();
 
-    if (status.getSubStatusSize() != 2) {
+    if (status == null || status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       return redirectList;
     }
 
-    for (final TSStatus subStatus : status.getSubStatus()) {
-      if (subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        continue;
-      }
-
-      for (final TSStatus innerSubStatus : subStatus.getSubStatus()) {
-        if (innerSubStatus.isSetRedirectNode()) {
-          // We assume that innerSubStatus.getMessage() is a device path.
-          // The message field should be a device path.
-          redirectList.add(
-              new Pair<>(innerSubStatus.getMessage(), innerSubStatus.getRedirectNode()));
+    if (status.isSetSubStatus()) {
+      for (final TSStatus subStatus : status.getSubStatus()) {
+        if (subStatus != null) {
+          collectRedirects(subStatus, redirectList);
         }
       }
     }
 
     return redirectList;
+  }
+
+  private static void collectRedirects(
+      final TSStatus status, final List<Pair<String, TEndPoint>> redirectList) {
+    addRedirectIfPresent(redirectList, status);
+    if (status.isSetSubStatus()) {
+      for (final TSStatus subStatus : status.getSubStatus()) {
+        if (subStatus != null) {
+          collectRedirects(subStatus, redirectList);
+        }
+      }
+    }
+  }
+
+  private static void addRedirectIfPresent(
+      final List<Pair<String, TEndPoint>> redirectList, final TSStatus status) {
+    if (status.isSetRedirectNode() && status.isSetMessage() && !status.getMessage().isEmpty()) {
+      // The receiver sets the message to a device path only when it can safely associate the
+      // redirection with a single tree-model device.
+      redirectList.add(new Pair<>(status.getMessage(), status.getRedirectNode()));
+    }
   }
 }

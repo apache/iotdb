@@ -137,7 +137,8 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new DropTopicPlan(topicMeta.getTopicName()));
+              .write(
+                  new DropTopicPlan(topicMeta.getTopicName(), topicMeta.visibleUnderTableModel()));
     } catch (ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
@@ -157,7 +158,8 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       throws SubscriptionException {
     LOGGER.info(ProcedureMessages.CREATETOPICPROCEDURE_ROLLBACKFROMCREATEONDATANODES, topicMeta);
 
-    final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicMeta.getTopicName());
+    final List<TSStatus> statuses =
+        env.dropSingleTopicOnDataNode(topicMeta.getTopicName(), topicMeta.visibleUnderTableModel());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization

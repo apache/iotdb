@@ -232,7 +232,11 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
     if (event.getPipeTaskMeta() != null) {
-      report(event.getPipeTaskMeta(), pipeRuntimeException);
+      report(
+          event.getPipeName(),
+          event.getCreationTime(),
+          event.getPipeTaskMeta(),
+          pipeRuntimeException);
     } else {
       PipeLogger.log(
           LOGGER::warn,
@@ -242,6 +246,14 @@ public class PipeDataNodeRuntimeAgent implements IService {
   }
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+    report(null, Long.MIN_VALUE, pipeTaskMeta, pipeRuntimeException);
+  }
+
+  private void report(
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
     PipeLogger.log(
         LOGGER::warn,
         pipeRuntimeException,
@@ -253,7 +265,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeDataNodeAgent.task()
-          .stopAllPipesWithCriticalExceptionAndTrackException(pipeTaskMeta, pipeRuntimeException);
+          .stopAllPipesWithCriticalExceptionAndTrackException(
+              pipeName, creationTime, pipeTaskMeta, pipeRuntimeException);
     }
   }
 

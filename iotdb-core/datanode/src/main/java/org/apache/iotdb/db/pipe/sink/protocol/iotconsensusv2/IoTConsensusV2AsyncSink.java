@@ -22,9 +22,11 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
@@ -37,6 +39,7 @@ import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferR
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSink;
 import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -63,6 +66,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +75,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -109,6 +114,9 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   private ScheduledExecutorService backgroundTaskService;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private final TEndPoint localEndPoint =
+      new TEndPoint(IOTDB_CONFIG.getInternalAddress(), IOTDB_CONFIG.getDataRegionConsensusPort());
+  private DataRegionId dataRegionId;
   private IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
   private String consensusPipeName;
   private int consensusGroupId;
@@ -138,6 +146,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
 
     // Get consensusGroupId from parameters passed by IoTConsensusV2Impl
     consensusGroupId = parameters.getInt(CONNECTOR_CONSENSUS_GROUP_ID_KEY);
+    dataRegionId = new DataRegionId(consensusGroupId);
     // Get consensusPipeName from parameters passed by IoTConsensusV2Impl
     consensusPipeName = parameters.getString(CONNECTOR_CONSENSUS_PIPE_NAME);
 
@@ -740,10 +749,45 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     }
   }
 
-  private TEndPoint getFollowerUrl() {
+  public TEndPoint getFollowerUrl() {
     // In current iotConsensusV2 design, one connector corresponds to one follower, so the peers is
     // actually a singleton list
     return nodeUrls.get(0);
+  }
+
+  public boolean isUserDataTransferAuditEnabled() {
+    return dataRegionId != null && DataNodeUserDataTransferAuditor.isEnabledFor(dataRegionId);
+  }
+
+  public void recordUserDataTransferAudit(boolean success, String errorCode, Throwable error) {
+    if (!isUserDataTransferAuditEnabled()) {
+      return;
+    }
+    recordUserDataTransferAuditWithoutGroupCheck(success, errorCode, error);
+  }
+
+  public boolean recordUserDataTransferAudit(List<TSStatus> statuses) {
+    if (!isUserDataTransferAuditEnabled()) {
+      return false;
+    }
+    // The batch RPC is one physical transfer attempt. Keep one representative error value in the
+    // minimum audit record instead of concatenating an unbounded number of response details.
+    final TSStatus firstFailedStatus =
+        statuses.stream()
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .findFirst()
+            .orElse(null);
+    recordUserDataTransferAuditWithoutGroupCheck(
+        firstFailedStatus == null,
+        firstFailedStatus == null ? null : String.valueOf(firstFailedStatus.getCode()),
+        null);
+    return true;
+  }
+
+  private void recordUserDataTransferAuditWithoutGroupCheck(
+      boolean success, String errorCode, Throwable error) {
+    DataNodeUserDataTransferAuditor.record(
+        localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
   }
 
   // synchronized to avoid close connector when transfer event

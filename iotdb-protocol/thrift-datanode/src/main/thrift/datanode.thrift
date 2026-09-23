@@ -90,10 +90,16 @@ struct TGetDataBlockRequest {
   3: required i32 endSequenceId
   // Index of upstream SinkChannel
   4: required i32 index
+  // Optional byte range for fetching one serialized TsBlock in fragments.
+  5: optional i32 offset
 }
 
 struct TGetDataBlockResponse {
   1: required list<binary> tsBlocks
+  // The start offset of the next fragment. It is set only when the last element in tsBlocks is a fragment.
+  2: optional i32 offset
+  // Total serialized length of the TsBlock when the response starts its first fragment.
+  3: optional i32 totalLength
 }
 
 struct TAcknowledgeDataBlockEvent {
@@ -318,6 +324,8 @@ struct TDataNodeHeartbeatResp {
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
   18: optional list<i32> pipeDegradedStatusList
+  19: optional list<map<string, i64>> pipeRecentFailureList
+  20: optional list<common.TPipeCompletedDataRegion> pipeCompletedDataRegionList
 }
 
 struct TPipeHeartbeatReq {
@@ -397,6 +405,9 @@ struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    4: optional i32 sliceIndex
+    5: optional i32 sliceCount
+    6: optional i32 originBodySize
 }
 
 struct TLoadCommandReq {
@@ -567,6 +578,7 @@ struct TPushTopicMetaReq {
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
+   3: optional bool isTableModel
 }
 
 struct TPushMultiTopicMetaReq {
@@ -594,6 +606,7 @@ struct TTopicOwnerLeaseEntry {
   2: required string ownerId
   3: required i64 ownerEpoch
   4: required i64 leaseRemainingMs
+  5: optional bool isTableModel
 }
 
 struct TPushTopicOwnerLeaseReq {
@@ -626,6 +639,7 @@ struct TPullCommitProgressReq {
 struct TPullCommitProgressResp {
   1: required common.TSStatus status
   2: optional map<string, binary> commitRegionProgress
+  3: optional map<string, binary> subscriptionProgress
 }
 
 struct TSyncSubscriptionProgressReq {
@@ -876,6 +890,17 @@ struct TKillQueryInstanceReq {
   2: optional string allowedUsername
 }
 
+struct TFetchDeviceEntrySegmentReq {
+  1: required string queryId
+  2: required string planNodeId
+  3: required i32 segmentId
+}
+
+struct TFetchDeviceEntrySegmentResp {
+  1: required common.TSStatus status
+  2: optional binary payload
+}
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -903,6 +928,8 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
+
+  i32 getThriftMaxFrameSize();
 
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
@@ -1436,6 +1463,10 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(TFetchDeviceEntrySegmentReq req);
+
+  common.TSStatus finishDeviceEntrySegment(1: string queryId, 2: string planNodeId);
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()

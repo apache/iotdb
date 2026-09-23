@@ -108,6 +108,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowReceiversNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -347,6 +348,10 @@ public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
   // others -----------------------------------------------------------------------------------
 
   default R visitShowQueries(ShowQueriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  default R visitShowReceivers(ShowReceiversNode node, C context) {
     return visitPlan(node, context);
   }
 

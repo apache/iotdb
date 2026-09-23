@@ -151,4 +151,81 @@ public class PipeSchemaRegionSinkMetricsTest {
       metricServiceField.set(metrics, null);
     }
   }
+
+  @Test
+  public void testBatchHistogramIsIsolatedByPipeIdentity() throws Exception {
+    final String taskId = "schema-pipe-task-" + System.nanoTime();
+    boolean deregistered = false;
+    final AbstractMetricService metricService = Mockito.mock(AbstractMetricService.class);
+    final PipeSinkSubtask subtask = Mockito.mock(PipeSinkSubtask.class);
+    final Rate rate = Mockito.mock(Rate.class);
+    final Histogram eventSizeHistogram = Mockito.mock(Histogram.class);
+
+    when(subtask.getTaskID()).thenReturn(taskId);
+    when(subtask.getAttributeSortedString()).thenReturn("schema_test");
+    when(subtask.getPipeName()).thenReturn("pipe");
+    when(subtask.getCreationTime()).thenReturn(2L);
+    when(metricService.getOrCreateRate(
+            eq(Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString()),
+            eq(MetricLevel.IMPORTANT),
+            eq(Tag.NAME.toString()),
+            eq("schema_test"),
+            eq(Tag.PIPE.toString()),
+            eq("pipe"),
+            eq(Tag.CREATION_TIME.toString()),
+            eq("2")))
+        .thenReturn(rate);
+    when(metricService.getOrCreateHistogram(
+            eq(Metric.PIPE_CONNECTOR_BATCH_SIZE.toString()),
+            eq(MetricLevel.IMPORTANT),
+            eq(Tag.NAME.toString()),
+            eq("schema_test"),
+            eq(Tag.PIPE.toString()),
+            eq("pipe"),
+            eq(Tag.CREATION_TIME.toString()),
+            eq("2")))
+        .thenReturn(eventSizeHistogram);
+
+    final PipeSchemaRegionSinkMetrics metrics = PipeSchemaRegionSinkMetrics.getInstance();
+    final Field metricServiceField =
+        PipeSchemaRegionSinkMetrics.class.getDeclaredField("metricService");
+    metricServiceField.setAccessible(true);
+    final Field connectorMapField =
+        PipeSchemaRegionSinkMetrics.class.getDeclaredField("connectorMap");
+    connectorMapField.setAccessible(true);
+    final Field schemaRateMapField =
+        PipeSchemaRegionSinkMetrics.class.getDeclaredField("schemaRateMap");
+    schemaRateMapField.setAccessible(true);
+
+    ((Map<?, ?>) connectorMapField.get(metrics)).clear();
+    ((Map<?, ?>) schemaRateMapField.get(metrics)).clear();
+    metricServiceField.set(metrics, null);
+
+    try {
+      metrics.register(subtask);
+      metrics.bindTo(metricService);
+
+      verify(subtask).setEventSizeHistogram(eventSizeHistogram);
+
+      metrics.deregister(taskId);
+      verify(metricService)
+          .remove(
+              MetricType.HISTOGRAM,
+              Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+              Tag.NAME.toString(),
+              "schema_test",
+              Tag.PIPE.toString(),
+              "pipe",
+              Tag.CREATION_TIME.toString(),
+              "2");
+      deregistered = true;
+    } finally {
+      if (!deregistered) {
+        metrics.deregister(taskId);
+      }
+      ((Map<?, ?>) connectorMapField.get(metrics)).clear();
+      ((Map<?, ?>) schemaRateMapField.get(metrics)).clear();
+      metricServiceField.set(metrics, null);
+    }
+  }
 }
