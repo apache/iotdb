@@ -101,18 +101,18 @@ public class TimechoConfigNodeRPCServiceProcessor extends ConfigNodeRPCServicePr
 
   @Override
   public TShowSystemInfoResp showSystemInfo() throws TException {
-    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
-        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     List<TConfigNodeLocation> locations = configManager.getNodeManager().getRegisteredConfigNodes();
     locations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
     TShowSystemInfoResp resp = new TShowSystemInfoResp();
     List<String> systemInfoList = new ArrayList<>();
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     try {
       for (TConfigNodeLocation location : locations) {
         if (location.getConfigNodeId()
             == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
-          systemInfoList.add(RegulateManager.generateSystemInfoContentWithVersion());
+          systemInfoList.add(getSystemInfo());
         } else {
           try (SyncConfigNodeIServiceClient client =
               clientManager.borrowClient(location.getInternalEndPoint())) {
@@ -123,6 +123,8 @@ public class TimechoConfigNodeRPCServiceProcessor extends ConfigNodeRPCServicePr
     } catch (Exception e) {
       resp.setStatus(new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode()));
       return resp;
+    } finally {
+      clientManager.close();
     }
     resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     resp.setSystemInfoList(systemInfoList);
