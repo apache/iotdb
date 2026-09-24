@@ -106,9 +106,7 @@ public class WALReader implements Closeable {
     return walInputStream.getFileCurrentPos();
   }
 
-
   /** Returns whether reading stopped because the WAL contents were malformed or truncated. */
-
   public boolean isFileCorrupted() {
     return fileCorrupted;
   }
@@ -116,7 +114,6 @@ public class WALReader implements Closeable {
   public long getLogicalReadOffset() {
     return walInputStream.getLogicalReadOffset();
   }
-
 
   /**
    * Like {@link Iterator#next()}.
