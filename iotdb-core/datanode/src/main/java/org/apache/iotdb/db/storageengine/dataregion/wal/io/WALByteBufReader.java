@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import java.io.Closeable;
@@ -29,6 +30,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+
+import static org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer.ONE_THIRD_WAL_BUFFER_SIZE;
 
 /**
  * This reader returns {@link WALEntry} as {@link ByteBuffer}, the usage of WALByteBufReader is like
@@ -56,7 +59,9 @@ public class WALByteBufReader implements Closeable {
   }
 
   public WALByteBufReader(File logFile, WALMetaData metaDataSnapshot) throws IOException {
-    WALInputStream walInputStream = new WALInputStream(logFile);
+    // A snapshot supplies the entry boundary for active files and recovered prefixes, whose footer
+    // may be absent or damaged.
+    WALInputStream walInputStream = new WALInputStream(logFile, true);
     try {
       this.walInputStream = walInputStream;
       this.logStream = new DataInputStream(walInputStream);
@@ -81,6 +86,14 @@ public class WALByteBufReader implements Closeable {
   public ByteBuffer next() throws IOException {
     currentEntryIndex++;
     int size = sizeIterator.next();
+    if (size > ONE_THIRD_WAL_BUFFER_SIZE) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.OVER_SIZED_WAL_ENTRY,
+              size,
+              ONE_THIRD_WAL_BUFFER_SIZE,
+              walInputStream.logFile));
+    }
     // TODO: Reuse this buffer
     ByteBuffer buffer = ByteBuffer.allocate(size);
     /*

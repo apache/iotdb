@@ -839,6 +839,7 @@ public final class DataNodeQueryMessages {
       "重复的参数名：%s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持设置按月间隔。";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "参数 %s 不能主动填null值";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "过滤下推不支持 CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =
