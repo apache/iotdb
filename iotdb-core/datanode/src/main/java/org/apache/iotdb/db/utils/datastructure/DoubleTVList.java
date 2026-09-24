@@ -28,9 +28,9 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -146,7 +146,8 @@ public abstract class DoubleTVList extends TVList {
   @Override
   public TimeValuePair getTimeValuePair(int index) {
     return new TimeValuePair(
-        getTime(index), TsPrimitiveType.getByType(TSDataType.DOUBLE, getDouble(index)));
+        getTime(index),
+        Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(getDouble(index)));
   }
 
   @Override
@@ -156,7 +157,8 @@ public abstract class DoubleTVList extends TVList {
     if (!Double.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
       value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
-    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.DOUBLE, value));
+    return new TimeValuePair(
+        time, Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(value));
   }
 
   @Override

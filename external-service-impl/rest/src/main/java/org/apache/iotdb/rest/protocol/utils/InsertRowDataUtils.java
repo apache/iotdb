@@ -21,6 +21,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 
 import java.nio.charset.StandardCharsets;
@@ -30,6 +32,58 @@ import java.util.Map;
 import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
 
 public class InsertRowDataUtils {
+
+  private static final TypeService<ValueConverter> VALUE_CONVERTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (value, index, mismatchedInfo) -> {
+                  if (!(value instanceof Boolean)) {
+                    mismatchedInfo.put(index, value);
+                  }
+                  return value;
+                };
+            case INT32, DATE ->
+                (value, index, mismatchedInfo) -> {
+                  if (value instanceof Number number) {
+                    return number.intValue();
+                  }
+                  mismatchedInfo.put(index, value);
+                  return value;
+                };
+            case INT64, TIMESTAMP ->
+                (value, index, mismatchedInfo) -> {
+                  if (value instanceof Number number) {
+                    return number.longValue();
+                  }
+                  mismatchedInfo.put(index, value);
+                  return value;
+                };
+            case FLOAT ->
+                (value, index, mismatchedInfo) -> {
+                  if (value instanceof Number number) {
+                    return number.floatValue();
+                  }
+                  mismatchedInfo.put(index, value);
+                  return value;
+                };
+            case DOUBLE ->
+                (value, index, mismatchedInfo) -> {
+                  if (value instanceof Number number) {
+                    return number.doubleValue();
+                  }
+                  mismatchedInfo.put(index, value);
+                  return value;
+                };
+            case TEXT, BLOB, STRING ->
+                (value, index, mismatchedInfo) ->
+                    new Binary(value.toString().getBytes(StandardCharsets.UTF_8));
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                (value, index, mismatchedInfo) -> {
+                  throw new IoTDBConnectionException(
+                      MSG_UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                };
+          };
 
   private static final String ALL_INSERT_DATA_IS_NULL = "All inserted data is null.";
 
@@ -77,52 +131,19 @@ public class InsertRowDataUtils {
         continue;
       }
       Object val = values.get(i);
-      switch (types.get(i)) {
-        case BOOLEAN:
-          if (!(val instanceof Boolean)) {
-            mismatchedInfo.put(i, val);
-          }
-          break;
-        case INT32:
-        case DATE:
-          if (val instanceof Number) {
-            values.set(i, ((Number) val).intValue());
-          } else {
-            mismatchedInfo.put(i, val);
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          if (val instanceof Number) {
-            values.set(i, ((Number) val).longValue());
-          } else {
-            mismatchedInfo.put(i, val);
-          }
-          break;
-        case FLOAT:
-          if (val instanceof Number) {
-            values.set(i, ((Number) val).floatValue());
-          } else {
-            mismatchedInfo.put(i, val);
-          }
-          break;
-        case DOUBLE:
-          if (val instanceof Number) {
-            values.set(i, ((Number) val).doubleValue());
-          } else {
-            mismatchedInfo.put(i, val);
-          }
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          values.set(i, new Binary(val.toString().getBytes(StandardCharsets.UTF_8)));
-          break;
-        default:
-          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
-      }
+      values.set(
+          i,
+          VALUE_CONVERTER_SERVICE
+              .call(Type.fromTsDataType(types.get(i)))
+              .convert(val, i, mismatchedInfo));
     }
 
     return values;
+  }
+
+  @FunctionalInterface
+  private interface ValueConverter {
+    Object convert(Object value, int index, Map<Integer, Object> mismatchedInfo)
+        throws IoTDBConnectionException;
   }
 }

@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -548,6 +549,24 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
+  }
+
+  @Override
+  protected void onAckedCommitContexts(
+      final Collection<SubscriptionCommitContext> acceptedCommitContexts) {
+    if (!autoCommit
+        || Objects.isNull(uncommittedCommitContexts)
+        || acceptedCommitContexts.isEmpty()) {
+      return;
+    }
+
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
+      entry.getValue().removeAll(acceptedCommitContexts);
+      if (entry.getValue().isEmpty()) {
+        uncommittedCommitContexts.remove(entry.getKey(), entry.getValue());
+      }
+    }
   }
 
   private List<SubscriptionMessage> filterUserVisibleMessages(

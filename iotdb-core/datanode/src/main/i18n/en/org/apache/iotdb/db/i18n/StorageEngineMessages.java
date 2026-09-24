@@ -348,6 +348,8 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CREATE_WAL_NODE_DISKS_FULL = "Fail to create wal node because all disks of wal folders are full.";
   public static final String FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES = "Failed to create WAL node after retries for identifier: ";
   public static final String FAIL_TO_CREATE_WAL_NODE = "Fail to create wal node";
+  public static final String OVER_SIZED_WAL_ENTRY = "The wal entry size %d exceeds the limit %d, which may be a result of file corruption or configuration change."
+      + "Please increase wal_buffer_size_in_byte or quarantine the file %s";
 
   // ======================== Flush ========================
 
@@ -411,6 +413,8 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CLOSE_SNAPSHOT_LOGGER = "Failed to close snapshot logger";
   public static final String SNAPSHOTTING_COMPRESSION_RATIO = "Snapshotting compression ratio {}.";
   public static final String CATCH_IO_EXCEPTION_CREATING_SNAPSHOT = "Catch IOException when creating snapshot";
+  public static final String CANNOT_SNAPSHOT_UNCLOSED_TSFILE =
+      "Cannot create snapshot because TsFile {} is not closed";
   public static final String HARD_LINK_TARGET_DIR_NOT_EXIST = "Hard link target dir {} doesn't exist";
   public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "Hard link source file {} doesn't exist, this file will be ignored.";
   public static final String COPY_TARGET_DIR_NOT_EXIST = "Copy target dir {} doesn't exist";

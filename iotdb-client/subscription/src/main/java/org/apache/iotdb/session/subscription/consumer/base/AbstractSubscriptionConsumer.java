@@ -1526,6 +1526,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       acceptedCount += acceptedCommitContexts.size();
       if (!nack) {
         overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
+        onAckedCommitContexts(acceptedCommitContexts);
       }
       if (acceptedCommitContexts.size() != groupedCommitContexts.size()) {
         final List<SubscriptionCommitContext> failedInGroup =
@@ -1545,6 +1546,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           failedCommitContexts);
       throw new SubscriptionRuntimeNonCriticalException(errorMessage);
     }
+  }
+
+  /** Invoked after the server accepts commit contexts from an acknowledgement request. */
+  protected void onAckedCommitContexts(
+      final Collection<SubscriptionCommitContext> acceptedCommitContexts) {
+    // Do nothing by default.
   }
 
   protected Set<SubscriptionMessage> ackWithPartialProgress(

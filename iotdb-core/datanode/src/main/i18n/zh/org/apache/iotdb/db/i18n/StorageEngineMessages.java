@@ -348,6 +348,8 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CREATE_WAL_NODE_DISKS_FULL = "由于 WAL 目录的所有磁盘已满，无法创建 WAL 节点。";
   public static final String FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES = "重试后仍无法创建 WAL 节点，标识符: ";
   public static final String FAIL_TO_CREATE_WAL_NODE = "创建 WAL 节点失败";
+  public static final String OVER_SIZED_WAL_ENTRY = "WAL条目大小 %d 超过阈值 %d, 可能是由于文件损坏或者系统配置变更."
+      + "请提高 wal_buffer_size_in_byte 或者隔离该文件 %s";
 
   // ======================== Flush ========================
 
@@ -411,6 +413,8 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CLOSE_SNAPSHOT_LOGGER = "关闭快照日志器失败";
   public static final String SNAPSHOTTING_COMPRESSION_RATIO = "正在快照压缩率文件 {}。";
   public static final String CATCH_IO_EXCEPTION_CREATING_SNAPSHOT = "创建快照时捕获到 IOException";
+  public static final String CANNOT_SNAPSHOT_UNCLOSED_TSFILE =
+      "无法创建快照，因为 TsFile {} 尚未关闭";
   public static final String HARD_LINK_TARGET_DIR_NOT_EXIST = "硬链接目标目录 {} 不存在";
   public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "硬链接源文件 {} 不存在，该文件将被忽略。";
   public static final String COPY_TARGET_DIR_NOT_EXIST = "复制目标目录 {} 不存在";

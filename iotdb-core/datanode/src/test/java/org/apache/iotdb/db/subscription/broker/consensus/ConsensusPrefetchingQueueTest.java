@@ -1687,6 +1687,97 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testPrefetchQueueCapacityDoesNotDisableRealtimeAdmission() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
+    final int originalBatchMaxTabletCount =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxTabletCount();
+    final int originalBatchMaxWalEntries =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxWalEntries();
+    final File systemDir = temporaryFolder.newFolder("system-prefetch-queue-capacity");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final int prefetchingQueueCapacity = getMaxPrefetchingQueueSize();
+      final int requestCount = prefetchingQueueCapacity + 1;
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxTabletCount(1);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxWalEntries(prefetchingQueueCapacity);
+
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final AtomicInteger conversionCount = new AtomicInteger();
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenAnswer(
+              ignored -> {
+                conversionCount.incrementAndGet();
+                return Collections.singletonList(createTablet());
+              });
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+
+      reader.currentSearchIndex = requestCount;
+      assertNull(queue.poll("consumer"));
+      for (long searchIndex = 1L; searchIndex <= prefetchingQueueCapacity; searchIndex++) {
+        assertTrue(pendingEntries(queue).offer(createRequest(searchIndex)));
+      }
+
+      queue.drivePrefetchOnce();
+
+      assertEquals(prefetchingQueueCapacity, queue.getPrefetchedEventCount());
+      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
+      assertTrue(pendingEntries(queue).offer(createRequest(requestCount)));
+
+      assertNotNull(queue.poll("consumer"));
+      queue.drivePrefetchOnce();
+
+      assertEquals(prefetchingQueueCapacity, queue.getPrefetchedEventCount());
+      assertEquals(requestCount, conversionCount.get());
+      assertTrue(pendingEntries(queue).isEmpty());
+      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxTabletCount(originalBatchMaxTabletCount);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxWalEntries(originalBatchMaxWalEntries);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testWideTablePausedConsumerKeepsMaterializedMemoryBounded() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("system-wide-table-memory-bound");
@@ -2075,6 +2166,13 @@ public class ConsensusPrefetchingQueueTest {
     final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("pendingEntries");
     field.setAccessible(true);
     return (BlockingQueue<IndexedConsensusRequest>) field.get(queue);
+  }
+
+  private static int getMaxPrefetchingQueueSize() throws Exception {
+    final Field field =
+        ConsensusPrefetchingQueue.class.getDeclaredField("MAX_PREFETCHING_QUEUE_SIZE");
+    field.setAccessible(true);
+    return field.getInt(null);
   }
 
   private static ReentrantReadWriteLock queueLock(final ConsensusPrefetchingQueue queue)

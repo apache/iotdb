@@ -20,18 +20,21 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.IN_TRANSFORMER_COLUMN_TRANSFORMER_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.IN_TRANSFORMER_SET_INITIALIZER_SERVICE;
 
 public class InTransformer extends UnaryTransformer {
 
@@ -51,49 +54,9 @@ public class InTransformer extends UnaryTransformer {
   }
 
   private void initTypedSet(Set<String> values) {
-    switch (layerReaderDataType) {
-      case INT32:
-      case DATE:
-        intSet = new HashSet<>();
-        for (String value : values) {
-          intSet.add(Integer.valueOf(value));
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longSet = new HashSet<>();
-        for (String value : values) {
-          longSet.add(Long.valueOf(value));
-        }
-        break;
-      case FLOAT:
-        floatSet = new HashSet<>();
-        for (String value : values) {
-          floatSet.add(Float.valueOf(value));
-        }
-        break;
-      case DOUBLE:
-        doubleSet = new HashSet<>();
-        for (String value : values) {
-          doubleSet.add(Double.valueOf(value));
-        }
-        break;
-      case BOOLEAN:
-        booleanSet = new HashSet<>();
-        for (String value : values) {
-          booleanSet.add(Boolean.valueOf(value));
-        }
-        break;
-      case TEXT:
-      case STRING:
-        stringSet = values;
-        break;
-      case BLOB:
-      case OBJECT:
-      default:
-        throw new UnsupportedOperationException(
-            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_3 + layerReaderDataType);
-    }
+    IN_TRANSFORMER_SET_INITIALIZER_SERVICE
+        .call(Type.fromTsDataType(layerReaderDataType))
+        .initialize(this, values);
   }
 
   @Override
@@ -104,37 +67,51 @@ public class InTransformer extends UnaryTransformer {
   @Override
   protected void transform(Column[] columns, ColumnBuilder builder)
       throws QueryProcessException, IOException {
-    switch (layerReaderDataType) {
-      case INT32:
-      case DATE:
-        transformInt(columns, builder);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        transformLong(columns, builder);
-        return;
-      case FLOAT:
-        transformFloat(columns, builder);
-        return;
-      case DOUBLE:
-        transformDouble(columns, builder);
-        return;
-      case BOOLEAN:
-        transformBoolean(columns, builder);
-        return;
-      case TEXT:
-      case STRING:
-        transformBinary(columns, builder);
-        return;
-      case BLOB:
-      case OBJECT:
-      default:
-        throw new QueryProcessException(
-            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_3 + layerReaderDataType);
+    IN_TRANSFORMER_COLUMN_TRANSFORMER_SERVICE
+        .call(Type.fromTsDataType(layerReaderDataType))
+        .transform(this, columns, builder);
+  }
+
+  public void initIntSet(final Set<String> values) {
+    intSet = new HashSet<>();
+    for (final String value : values) {
+      intSet.add(Integer.valueOf(value));
     }
   }
 
-  private void transformInt(Column[] columns, ColumnBuilder builder) {
+  public void initLongSet(final Set<String> values) {
+    longSet = new HashSet<>();
+    for (final String value : values) {
+      longSet.add(Long.valueOf(value));
+    }
+  }
+
+  public void initFloatSet(final Set<String> values) {
+    floatSet = new HashSet<>();
+    for (final String value : values) {
+      floatSet.add(Float.valueOf(value));
+    }
+  }
+
+  public void initDoubleSet(final Set<String> values) {
+    doubleSet = new HashSet<>();
+    for (final String value : values) {
+      doubleSet.add(Double.valueOf(value));
+    }
+  }
+
+  public void initBooleanSet(final Set<String> values) {
+    booleanSet = new HashSet<>();
+    for (final String value : values) {
+      booleanSet.add(Boolean.valueOf(value));
+    }
+  }
+
+  public void initStringSet(final Set<String> values) {
+    stringSet = values;
+  }
+
+  public void transformInt(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     int[] values = columns[0].getInts();
     boolean[] isNulls = columns[0].isNull();
@@ -149,7 +126,7 @@ public class InTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformLong(Column[] columns, ColumnBuilder builder) {
+  public void transformLong(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     long[] values = columns[0].getLongs();
     boolean[] isNulls = columns[0].isNull();
@@ -164,7 +141,7 @@ public class InTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformFloat(Column[] columns, ColumnBuilder builder) {
+  public void transformFloat(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     float[] values = columns[0].getFloats();
     boolean[] isNulls = columns[0].isNull();
@@ -179,7 +156,7 @@ public class InTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformDouble(Column[] columns, ColumnBuilder builder) {
+  public void transformDouble(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     double[] values = columns[0].getDoubles();
     boolean[] isNulls = columns[0].isNull();
@@ -194,7 +171,7 @@ public class InTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformBoolean(Column[] columns, ColumnBuilder builder) {
+  public void transformBoolean(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     boolean[] values = columns[0].getBooleans();
     boolean[] isNulls = columns[0].isNull();
@@ -209,7 +186,7 @@ public class InTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformBinary(Column[] columns, ColumnBuilder builder) {
+  public void transformBinary(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     Binary[] values = columns[0].getBinaries();
     boolean[] isNulls = columns[0].isNull();

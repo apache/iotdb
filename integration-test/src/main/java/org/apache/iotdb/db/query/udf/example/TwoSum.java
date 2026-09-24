@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -27,8 +28,24 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.read.common.type.service.TypeService;
+
 public class TwoSum implements UDTF {
-  private Type dataType;
+
+  private static final TypeService<TwoSumTransformer> TWO_SUM_TRANSFORMER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> row -> row.getInt(0) + row.getInt(1);
+            case INT64 -> row -> row.getLong(0) + row.getLong(1);
+            case FLOAT -> row -> row.getFloat(0) + row.getFloat(1);
+            case DOUBLE -> row -> row.getDouble(0) + row.getDouble(1);
+            default ->
+                row -> {
+                  throw new Exception();
+                };
+          };
+
+  private org.apache.tsfile.read.common.type.Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -40,25 +57,22 @@ public class TwoSum implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    dataType = parameters.getDataType(0);
+    final Type udfDataType = parameters.getDataType(0);
+    dataType =
+        org.apache.tsfile.read.common.type.Type.fromTsDataType(
+            UDFDataTypeTransformer.transformToTsDataType(udfDataType));
     configurations
         .setAccessStrategy(new MappableRowByRowAccessStrategy())
-        .setOutputDataType(dataType);
+        .setOutputDataType(udfDataType);
   }
 
   @Override
   public Object transform(Row row) throws Exception {
-    switch (dataType) {
-      case INT32:
-        return row.getInt(0) + row.getInt(1);
-      case INT64:
-        return row.getLong(0) + row.getLong(1);
-      case FLOAT:
-        return row.getFloat(0) + row.getFloat(1);
-      case DOUBLE:
-        return row.getDouble(0) + row.getDouble(1);
-      default:
-        throw new Exception();
-    }
+    return TWO_SUM_TRANSFORMER_SERVICE.call(dataType).transform(row);
+  }
+
+  @FunctionalInterface
+  private interface TwoSumTransformer {
+    Object transform(Row row) throws Exception;
   }
 }

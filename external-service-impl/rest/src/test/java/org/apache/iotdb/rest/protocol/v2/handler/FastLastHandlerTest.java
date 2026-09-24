@@ -28,8 +28,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.Test;
 
 import jakarta.ws.rs.core.Response;
@@ -114,6 +114,7 @@ public class FastLastHandlerTest {
     }
     return new Pair<>(
         TSDataType.INT64,
-        new TimeValuePair(timestamp, TsPrimitiveType.getByType(TSDataType.INT64, timestamp)));
+        new TimeValuePair(
+            timestamp, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(timestamp)));
   }
 }

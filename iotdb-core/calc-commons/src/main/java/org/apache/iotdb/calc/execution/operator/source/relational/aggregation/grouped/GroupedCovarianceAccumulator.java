@@ -33,7 +33,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -85,8 +84,8 @@ public class GroupedCovarianceAccumulator implements GroupedAccumulator {
         if (arguments[0].isNull(i) || arguments[1].isNull(i)) {
           continue;
         }
-        double x = getDoubleValue(arguments[0], i, xDataType);
-        double y = getDoubleValue(arguments[1], i, yDataType);
+        double x = getDoubleValue(arguments[0], i);
+        double y = getDoubleValue(arguments[1], i);
         update(groupIds[i], x, y);
       }
     } else {
@@ -96,31 +95,15 @@ public class GroupedCovarianceAccumulator implements GroupedAccumulator {
         if (arguments[0].isNull(position) || arguments[1].isNull(position)) {
           continue;
         }
-        double x = getDoubleValue(arguments[0], position, xDataType);
-        double y = getDoubleValue(arguments[1], position, yDataType);
+        double x = getDoubleValue(arguments[0], position);
+        double y = getDoubleValue(arguments[1], position);
         update(groupIds[position], x, y);
       }
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_COVARIANCE_AGGREGATION_ARG_643BEDD0,
-                dataType));
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(int groupId, double x, double y) {
