@@ -59,7 +59,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(sinkMap.keySet());
     for (String taskID : taskIDs) {
@@ -247,7 +247,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(sinkMap.keySet());
     for (final String taskID : taskIDs) {
       deregister(taskID);
@@ -335,7 +335,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeSinkSubtask pipeSinkSubtask) {
+  public synchronized void register(final PipeSinkSubtask pipeSinkSubtask) {
     final String taskID = pipeSinkSubtask.getTaskID();
     sinkMap.putIfAbsent(taskID, pipeSinkSubtask);
     if (Objects.nonNull(metricService)) {
@@ -343,7 +343,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!sinkMap.containsKey(taskID)) {
       LOGGER.warn(
           DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_SINK,
