@@ -54,7 +54,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -912,9 +911,9 @@ public class WALBuffer extends AbstractWALBuffer {
         id -> {
           try {
             File file = WALFileUtils.getWALFile(new File(logDirectory), id);
-            return WALMetaData.readFromWALFile(
-                    file, FileChannel.open(file.toPath(), StandardOpenOption.READ))
-                .getMemTablesId();
+            try (FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
+              return WALMetaData.readFromWALFile(file, channel).getMemTablesId();
+            }
           } catch (BrokenWALFileException e) {
             logger.warn(
                 StorageEngineMessages
@@ -931,7 +930,9 @@ public class WALBuffer extends AbstractWALBuffer {
                 e);
             DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           }
-          return Collections.emptySet();
+          // An unreadable WAL may still contain memTables. Treat the ids as unknown so callers
+          // retain the file instead of deleting it as if it were an empty WAL.
+          return null;
         });
   }
 
