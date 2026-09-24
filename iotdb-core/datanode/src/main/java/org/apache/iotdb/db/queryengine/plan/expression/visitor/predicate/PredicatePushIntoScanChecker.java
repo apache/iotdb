@@ -89,6 +89,7 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
 
   @Override
   public Boolean visitLogicNotExpression(LogicNotExpression logicNotExpression, Void context) {
+    // Not should have been removed in analyze stage
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG);
   }
 
