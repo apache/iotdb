@@ -20,39 +20,36 @@ package org.apache.iotdb.db.utils.concurrent;
 
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
-import java.util.concurrent.Semaphore;
-
 /**
  * FiniteSemaphore defines a special Semaphore that the upper limit of permit is capacity. If
  * permits exceed the capacity, the release request will be ignored.
  */
 public class FiniteSemaphore {
   private final int capacity;
-  private final Semaphore semaphore;
   private int permit;
 
   public FiniteSemaphore(int capacity, int permit) {
+    if (capacity < 0 || permit < 0) {
+      throw new IllegalArgumentException("Capacity and initial permits should be non-negative.");
+    }
     if (capacity < permit) {
       throw new IllegalArgumentException(DataNodeMiscMessages.CAPACITY_LARGER_THAN_INITIAL_PERMITS);
     }
     this.capacity = capacity;
-    this.semaphore = new Semaphore(permit);
     this.permit = permit;
   }
 
-  public void release() {
-    synchronized (this) {
-      if (permit < capacity) {
-        permit++;
-        semaphore.release();
-      }
+  public synchronized void release() {
+    if (permit < capacity) {
+      permit++;
+      notifyAll();
     }
   }
 
-  public void acquire() throws InterruptedException {
-    semaphore.acquire();
-    synchronized (this) {
-      permit--;
+  public synchronized void acquire() throws InterruptedException {
+    while (permit == 0) {
+      wait();
     }
+    permit--;
   }
 }

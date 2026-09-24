@@ -90,6 +90,42 @@ public class MultilevelPriorityQueueTest {
   }
 
   @Test
+  public void testPushDuplicateId() throws InterruptedException {
+    IndexedBlockingQueue<DriverTask> queue = new MultilevelPriorityQueue(2, 1000, new DriverTask());
+    DriverTask e1 = mockDriverTask(mockDriverTaskId(), false);
+    DriverTask e2 = mockDriverTask(mockDriverTaskId(), false);
+    queue.push(e1);
+
+    Assert.assertThrows(IllegalStateException.class, () -> queue.push(e2));
+    Assert.assertEquals(1, queue.size());
+    Assert.assertEquals(e1.getDriverTaskId().toString(), queue.poll().getDriverTaskId().toString());
+    Assert.assertEquals(0, queue.size());
+    Assert.assertTrue(queue.isEmpty());
+  }
+
+  @Test
+  public void testRepushDuplicateId() throws InterruptedException {
+    MultilevelPriorityQueue queue = new MultilevelPriorityQueue(2, 1000, new DriverTask());
+    DriverTask e1 = mockDriverTask(mockDriverTaskId(), false);
+    DriverTask e2 =
+        mockDriverTask(
+            new DriverTaskId(
+                new FragmentInstanceId(new PlanFragmentId(new QueryId("test"), 0), "inst-1"), 0),
+            false);
+    queue.push(e1);
+    queue.push(e2);
+
+    DriverTask polledTask = queue.poll();
+    DriverTask queuedTask = polledTask.equals(e1) ? e2 : e1;
+    DriverTask duplicateQueuedTask = mockDriverTask(queuedTask.getDriverTaskId(), false);
+
+    Assert.assertThrows(IllegalStateException.class, () -> queue.repush(duplicateQueuedTask));
+    Assert.assertEquals(1, queue.size());
+    queue.repush(polledTask);
+    Assert.assertEquals(2, queue.size());
+  }
+
+  @Test
   public void testPushAndPoll() {
     try {
       IndexedBlockingQueue<DriverTask> queue =
