@@ -333,8 +333,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   protected void eliminateProgressIndex() {
     if (sourceEvent instanceof PipeTsFileInsertionEvent) {
-      final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) sourceEvent;
-      tsFileInsertionEvent.eliminateProgressIndex();
+      ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
     }
   }
 
