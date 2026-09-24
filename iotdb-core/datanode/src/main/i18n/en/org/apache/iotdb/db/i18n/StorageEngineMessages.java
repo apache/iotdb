@@ -348,6 +348,8 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CREATE_WAL_NODE_DISKS_FULL = "Fail to create wal node because all disks of wal folders are full.";
   public static final String FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES = "Failed to create WAL node after retries for identifier: ";
   public static final String FAIL_TO_CREATE_WAL_NODE = "Fail to create wal node";
+  public static final String OVER_SIZED_WAL_ENTRY = "The wal entry size %d exceeds the limit %d, which may be a result of file corruption or configuration change."
+      + "Please increase wal_buffer_size_in_byte or quarantine the file %s";
 
   // ======================== Flush ========================
 

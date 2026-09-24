@@ -656,9 +656,8 @@ public class WALNode implements IWALNode {
 
     public boolean isContainsActiveOrPinnedMemTable(Long versionId) {
       Set<Long> memTableIdsOfCurrentWal = buffer.getMemTableIds(versionId);
-      // If this set is empty, there is a case where WalEntry has been logged but not persisted,
-      // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
-      // directly, so it is considered active
+      // A null result means that the WAL is still being written or its metadata could not be read.
+      // Keep the file in either case because its memTable ids are unknown.
       if (memTableIdsOfCurrentWal == null) {
         return true;
       }

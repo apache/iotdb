@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRepairWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -47,12 +50,14 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -86,6 +91,8 @@ public class WALFileTest {
     if (walFile.exists()) {
       Files.delete(walFile.toPath());
     }
+    Files.deleteIfExists(new File(walFile + ".broken").toPath());
+    Files.deleteIfExists(new File(walFile + ".broken.1").toPath());
   }
 
   /** Unexpected channel closure must propagate to the buffer instead of acknowledging a write. */
@@ -250,27 +257,224 @@ public class WALFileTest {
   }
 
   @Test
-  public void testReadMetadataFromBrokenFile() throws IOException {
-    ILogWriter walWriter = new WALWriter(walFile);
-    final FileChannel fileChannel1 = FileChannel.open(walFile.toPath());
-    assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, fileChannel1));
-    walWriter.close();
-
-    if (!walFile.exists()) {
-      Files.createFile(walFile.toPath());
-      Files.write(walFile.toPath(), ByteBuffer.wrap(WALFileVersion.V2.getVersionBytes()).array());
+  public void testReadMetadataFromEmptyFile() throws IOException {
+    try (WALWriter walWriter = new WALWriter(walFile);
+        FileChannel fileChannel = FileChannel.open(walFile.toPath())) {
+      WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel);
+      assertTrue(walMetaData.getBuffersSize().isEmpty());
+      assertTrue(walMetaData.getMemTablesId().isEmpty());
     }
-    try {
-      FileChannel fileChannel2 = FileChannel.open(walFile.toPath());
-      WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
-      fileChannel2.close();
-    } catch (Exception e) {
+    assertEquals(WALFileVersion.V3.getVersionBytes().length, walFile.length());
+    try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+      assertFalse(reader.hasNext());
+    }
+  }
+
+  @Test
+  public void testReadMetadataFromTruncatedFile() throws IOException {
+    Files.write(walFile.toPath(), WALFileVersion.V3.getVersionBytes());
+    Files.write(walFile.toPath(), new byte[] {1}, StandardOpenOption.APPEND);
+
+    try (FileChannel fileChannel = FileChannel.open(walFile.toPath())) {
+      assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, fileChannel));
+    }
+    assertFalse(walFile.exists());
+    assertTrue(new File(walFile + ".broken").exists());
+  }
+
+  @Test
+  public void testRecoverEntriesWithCorruptedMetadataLength() throws Exception {
+    for (WALFileVersion version : new WALFileVersion[] {WALFileVersion.V2, WALFileVersion.V3}) {
+      for (int length : new int[] {-1, Integer.MAX_VALUE, 0, 12}) {
+        Files.deleteIfExists(walFile.toPath());
+        WALEntry entry = new WALInfoEntry(42, getInsertRowNode(devicePath));
+        WALMetaData metadata = new WALMetaData();
+        metadata.add(entry.serializedSize(), -1, 42);
+        WALByteBufferForTest buffer =
+            new WALByteBufferForTest(ByteBuffer.allocate(entry.serializedSize()));
+        entry.serialize(buffer);
+        try (WALWriter writer = new WALWriter(walFile, version)) {
+          writer.write(buffer.getBuffer(), metadata);
+        }
+        byte[] bytes = Files.readAllBytes(walFile.toPath());
+        ByteBuffer.wrap(bytes).putInt(bytes.length - version.getVersionBytes().length - 4, length);
+        Files.write(walFile.toPath(), bytes);
+        try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+          assertTrue(reader.getMetaData().isRecoveredFromEntries());
+          assertEquals(Collections.singleton(42L), reader.getMetaData().getMemTablesId());
+          assertTrue(reader.hasNext());
+          assertEquals(
+              entry,
+              WALEntry.deserialize(
+                  new DataInputStream(new ByteArrayInputStream(reader.next().array()))));
+          assertFalse(reader.hasNext());
+        }
+        // Readers reconstruct an in-memory prefix without replacing bytes under other readers.
+        assertArrayEquals(bytes, Files.readAllBytes(walFile.toPath()));
+      }
+    }
+  }
+
+  @Test
+  public void testRecoveryRejectsOversizedCompressedSegment() throws Exception {
+    // Include the declared payload so rejection is caused by its logical size, not a short read.
+    ByteBuffer bytes =
+        ByteBuffer.allocate(WALFileVersion.V3.getVersionBytes().length + 2 + 2 * Integer.BYTES);
+    bytes.put(WALFileVersion.V3.getVersionBytes());
+    bytes.put(CompressionType.LZ4.serialize());
+    bytes.putInt(1);
+    bytes.putInt(64 * 1024 * 1024);
+    bytes.put((byte) 0);
+    Files.write(walFile.toPath(), bytes.array());
+
+    try (WALInputStream input = new WALInputStream(walFile, true)) {
+      // A decompressor failure is wrapped in IOException; this must fail before reaching it.
+      assertThrows(EOFException.class, input::read);
+    }
+  }
+
+  @Test
+  public void testUnrecoverableFileDoesNotOverwriteQuarantine() throws Exception {
+    byte[] previous = new byte[] {9, 8, 7};
+    Files.write(new File(walFile + ".broken").toPath(), previous);
+    byte[] corrupt = new byte[] {99, 98};
+    Files.write(walFile.toPath(), corrupt);
+    assertThrows(IOException.class, () -> new WALByteBufReader(walFile));
+    assertArrayEquals(previous, Files.readAllBytes(new File(walFile + ".broken").toPath()));
+    assertArrayEquals(corrupt, Files.readAllBytes(new File(walFile + ".broken.1").toPath()));
+    assertFalse(walFile.exists());
+  }
+
+  @Test
+  public void testRecoverPrefixFromTruncatedSegment() throws Exception {
+    WALEntry entry = new WALInfoEntry(42, getInsertRowNode(devicePath));
+    WALByteBufferForTest buffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(entry.serializedSize() * 2));
+    entry.serialize(buffer);
+    entry.serialize(buffer);
+    long dataEnd;
+    try (WALWriter writer = new WALWriter(walFile)) {
+      writer.write(buffer.getBuffer(), false);
+      dataEnd = writer.getOffset();
+    }
+    // Preserve the declared segment size but cut the second entry in half, losing the footer too.
+    try (FileChannel channel = FileChannel.open(walFile.toPath(), StandardOpenOption.WRITE)) {
+      channel.truncate(dataEnd - entry.serializedSize() / 2);
+    }
+    byte[] original = Files.readAllBytes(walFile.toPath());
+    WALMetaData recovered;
+    try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+      recovered = reader.getMetaData();
       assertEquals(
-          "Broken wal file "
-              + walFile.getPath()
-              + ", size "
-              + WALFileVersion.V2.getVersionBytes().length,
-          e.getMessage());
+          Collections.singletonList(entry.serializedSize()), reader.getMetaData().getBuffersSize());
+      assertEquals(
+          entry,
+          WALEntry.deserialize(
+              new DataInputStream(new ByteArrayInputStream(reader.next().array()))));
+      assertFalse(reader.hasNext());
+    }
+    assertArrayEquals(original, Files.readAllBytes(walFile.toPath()));
+    assertTrue(new WALRepairWriter(walFile).repair(recovered));
+    try (FileChannel channel = FileChannel.open(walFile.toPath())) {
+      assertEquals(
+          Collections.singletonList(entry.serializedSize()),
+          WALMetaData.readFromWALFileWithoutRecovery(walFile, channel).getBuffersSize());
+    }
+    try (WALReader reader = new WALReader(walFile)) {
+      assertEquals(entry, reader.next());
+      assertFalse(reader.hasNext());
+      assertFalse(reader.isFileCorrupted());
+    }
+  }
+
+  @Test
+  public void testRecoverLegacyEntries() throws Exception {
+    WALEntry entry = new WALInfoEntry(42, getInsertRowNode(devicePath));
+    WALByteBufferForTest buffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(entry.serializedSize() + 1));
+    entry.serialize(buffer);
+    buffer.put(WALEntryType.DELETE_DATA_NODE.getCode());
+    // V1 uses raw entry bytes; the final entry is deliberately incomplete and has no footer.
+    Files.write(walFile.toPath(), buffer.getBuffer().array());
+    WALMetaData recovered;
+    try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+      recovered = reader.getMetaData();
+      assertEquals(Collections.singleton(42L), recovered.getMemTablesId());
+      assertEquals(entry.serializedSize(), reader.next().remaining());
+      assertFalse(reader.hasNext());
+    }
+    assertTrue(new WALRepairWriter(walFile).repair(recovered));
+    assertEquals(WALFileVersion.V1, WALFileVersion.getVersion(walFile));
+    try (WALReader reader = new WALReader(walFile)) {
+      assertEquals(entry, reader.next());
+      assertFalse(reader.hasNext());
+      assertFalse(reader.isFileCorrupted());
+    }
+  }
+
+  @Test
+  public void testRecoverCompressedEntries() throws Exception {
+    CompressionType originalCompression =
+        IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(CompressionType.LZ4);
+      WALEntry entry = new WALInfoEntry(42, getInsertRowNode(devicePath));
+      int count = 400;
+      WALByteBufferForTest buffer =
+          new WALByteBufferForTest(ByteBuffer.allocate(entry.serializedSize() * count));
+      WALMetaData metadata = new WALMetaData();
+      for (int i = 0; i < count; i++) {
+        entry.serialize(buffer);
+        metadata.add(entry.serializedSize(), -1, 42);
+      }
+      try (WALWriter writer = new WALWriter(walFile)) {
+        writer.setCompressedByteBuffer(ByteBuffer.allocate(buffer.getBuffer().capacity() * 2));
+        writer.write(buffer.getBuffer(), metadata);
+      }
+      byte[] bytes = Files.readAllBytes(walFile.toPath());
+      assertEquals(
+          CompressionType.LZ4.serialize(), bytes[WALFileVersion.V3.getVersionBytes().length]);
+      Files.write(walFile.toPath(), Arrays.copyOf(bytes, bytes.length - 1));
+      WALMetaData recovered;
+      try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+        recovered = reader.getMetaData();
+        assertEquals(count, recovered.getBuffersSize().size());
+        for (int i = 0; i < count; i++) {
+          assertEquals(
+              entry,
+              WALEntry.deserialize(
+                  new DataInputStream(new ByteArrayInputStream(reader.next().array()))));
+        }
+        assertFalse(reader.hasNext());
+      }
+      assertTrue(new WALRepairWriter(walFile).repair(recovered));
+      try (WALReader reader = new WALReader(walFile)) {
+        for (int i = 0; i < count; i++) {
+          assertEquals(entry, reader.next());
+        }
+        assertFalse(reader.hasNext());
+        assertFalse(reader.isFileCorrupted());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(originalCompression);
+    }
+  }
+
+  @Test
+  public void testEmptyFilesAcrossVersions() throws Exception {
+    for (byte[] bytes :
+        new byte[][] {
+          new byte[0], WALFileVersion.V2.getVersionBytes(), WALFileVersion.V3.getVersionBytes()
+        }) {
+      Files.write(walFile.toPath(), bytes);
+      try (WALReader reader = new WALReader(walFile, true)) {
+        assertFalse(reader.hasNext());
+        assertFalse(reader.isFileCorrupted());
+      }
+      try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+        assertFalse(reader.hasNext());
+      }
+      assertArrayEquals(bytes, Files.readAllBytes(walFile.toPath()));
     }
   }
 
