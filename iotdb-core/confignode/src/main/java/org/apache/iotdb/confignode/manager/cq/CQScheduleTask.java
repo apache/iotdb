@@ -122,23 +122,18 @@ public class CQScheduleTask implements Runnable {
         configManager,
         firstExecutionTime);
     this.everyDuration =
-        req.isSetEveryDuration()
-            ? new TimeDuration(
-                Math.toIntExact(req.getEveryDuration().getMonthPart()),
-                req.getEveryDuration().getNonMonthDuration())
-            : new TimeDuration(0, req.everyInterval);
+        CQDurationUtils.toTimeDuration(
+            req, req.isSetEveryDuration() ? req.getEveryDuration() : null, req.everyInterval);
     this.startDuration =
-        req.isSetStartOffsetDuration()
-            ? new TimeDuration(
-                Math.toIntExact(req.getStartOffsetDuration().getMonthPart()),
-                req.getStartOffsetDuration().getNonMonthDuration())
-            : new TimeDuration(0, req.startTimeOffset);
+        CQDurationUtils.toTimeDuration(
+            req,
+            req.isSetStartOffsetDuration() ? req.getStartOffsetDuration() : null,
+            req.startTimeOffset);
     this.endDuration =
-        req.isSetEndOffsetDuration()
-            ? new TimeDuration(
-                Math.toIntExact(req.getEndOffsetDuration().getMonthPart()),
-                req.getEndOffsetDuration().getNonMonthDuration())
-            : new TimeDuration(0, req.endTimeOffset);
+        CQDurationUtils.toTimeDuration(
+            req,
+            req.isSetEndOffsetDuration() ? req.getEndOffsetDuration() : null,
+            req.endTimeOffset);
     this.calendarAware =
         everyDuration.monthDuration != 0
             || startDuration.monthDuration != 0
@@ -151,9 +146,7 @@ public class CQScheduleTask implements Runnable {
     if (calendarAware) {
       this.retryWaitTimeInMS = calculateRetryWaitTime(everyDuration);
     }
-    if (scheduleCalendarAware && req.isSetBoundaryExplicit() && !req.isBoundaryExplicit()) {
-      this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
-    }
+    this.boundaryTime = CQDurationUtils.resolveBoundary(req, scheduleZone, everyDuration);
     // The procedure has already selected the first occurrence. Recomputing it from wall clock
     // time here introduces a race around a calendar boundary and can skip an occurrence.
     if (req.isSetDurationEncodingVersion() && req.getDurationEncodingVersion() == 1) {
@@ -216,10 +209,8 @@ public class CQScheduleTask implements Runnable {
           CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone);
     }
     if (entry.getNextOccurrenceIndex() >= 0) {
+      // boundaryTime was already resolved above for calendar EVERY; reuse it unchanged.
       this.occurrenceIndex = entry.getNextOccurrenceIndex();
-      if (!entry.isBoundaryExplicit() && scheduleCalendarAware) {
-        this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
-      }
       this.executionTime = occurrenceAt(this.occurrenceIndex);
     }
   }
@@ -263,7 +254,7 @@ public class CQScheduleTask implements Runnable {
   }
 
   public static long getFirstExecutionTime(long boundaryTime, long everyInterval) {
-    long now = System.currentTimeMillis() * FACTOR;
+    long now = CQDurationUtils.currentTimeInPrecision();
     return getFirstExecutionTime(boundaryTime, everyInterval, now);
   }
 
@@ -283,6 +274,17 @@ public class CQScheduleTask implements Runnable {
 
   @Override
   public void run() {
+    try {
+      runMayThrow();
+    } catch (Throwable t) {
+      LOGGER.error(ManagerMessages.EXECUTE_CQ_FAILED, cqId, t);
+      if (needSubmit()) {
+        submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
+      }
+    }
+  }
+
+  private void runMayThrow() {
     long currentOccurrenceIndex = occurrenceIndex;
     if (cancelled.get()) {
       return;

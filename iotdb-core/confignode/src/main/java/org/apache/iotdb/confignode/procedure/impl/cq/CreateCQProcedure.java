@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.cq.CQCalendarUtils;
+import org.apache.iotdb.confignode.manager.cq.CQDurationUtils;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -49,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -85,32 +87,12 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     this.cqToken = generateCQToken();
     this.executor = executor;
     TimeDuration everyDuration =
-        req.isSetEveryDuration()
-            ? new TimeDuration(
-                Math.toIntExact(req.getEveryDuration().getMonthPart()),
-                req.getEveryDuration().getNonMonthDuration())
-            : new TimeDuration(0, req.everyInterval);
+        CQDurationUtils.toTimeDuration(
+            req, req.isSetEveryDuration() ? req.getEveryDuration() : null, req.everyInterval);
     if (everyDuration.monthDuration != 0) {
-      java.time.ZoneId zone = java.time.ZoneId.of(req.zoneId);
-      long boundary =
-          req.isSetBoundaryExplicit() && !req.isBoundaryExplicit()
-              ? CQCalendarUtils.localEpochBoundary(zone)
-              : req.boundaryTime;
-      long now =
-          System.currentTimeMillis()
-              * ("ns"
-                      .equals(
-                          org.apache.iotdb.commons.conf.CommonDescriptor.getInstance()
-                              .getConfig()
-                              .getTimestampPrecision())
-                  ? 1_000_000L
-                  : "us"
-                          .equals(
-                              org.apache.iotdb.commons.conf.CommonDescriptor.getInstance()
-                                  .getConfig()
-                                  .getTimestampPrecision())
-                      ? 1_000L
-                      : 1L);
+      ZoneId zone = ZoneId.of(req.zoneId);
+      long boundary = CQDurationUtils.resolveBoundary(req, zone, everyDuration);
+      long now = CQDurationUtils.currentTimeInPrecision();
       long index = CQCalendarUtils.firstOccurrenceIndex(boundary, everyDuration, now, zone);
       this.firstExecutionTime = CQCalendarUtils.occurrence(boundary, everyDuration, index, zone);
     } else {

@@ -262,6 +262,11 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   }
 
   public void semanticCheck() {
+    // Positivity first: the lower-bound arithmetic below assumes a non-degenerate EVERY.
+    if (!isPositive(everyDuration)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CQ_EVERY_INTERVAL_MUST_BE_POSITIVE_26259019);
+    }
     long minimumEvery =
         IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval();
     long minimumElapsed =
@@ -289,10 +294,6 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
                       .CQ_EVERY_INTERVAL_SHOULD_NOT_BE_LOWER_THAN_THE_CONTINUOUS_QUERY_MINIMUM_EVERY_INTERVAL,
                   formatDuration(everyDuration),
                   minimumEvery));
-    }
-    if (!isPositive(everyDuration)) {
-      throw new SemanticException(
-          DataNodeQueryMessages.EXCEPTION_CQ_EVERY_INTERVAL_MUST_BE_POSITIVE_26259019);
     }
     if (!isPositive(startTimeOffsetDuration)) {
       throw new SemanticException(DataNodeQueryMessages.CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER);

@@ -49,8 +49,8 @@ public class DataNodeDateTimeUtils {
       Pattern.compile("(\\d+)(y|mo|w|d|h|ms|us|ns|m|s)", Pattern.CASE_INSENSITIVE);
 
   /**
-   * Parses the CQ duration grammar while retaining calendar months. Full aliases are deliberate not
-   * accepted here; CQ uses the same mo/y abbreviations as Tree SQL.
+   * Parses the CQ duration grammar while retaining calendar months. Full aliases are deliberately
+   * not accepted here; CQ uses the same mo/y abbreviations as Tree SQL.
    */
   public static TimeDuration constructTimeDurationForCQ(String duration) {
     if (duration == null || duration.isEmpty()) {

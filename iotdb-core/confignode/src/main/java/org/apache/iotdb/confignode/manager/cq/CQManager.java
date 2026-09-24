@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.cq;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -45,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -219,7 +222,7 @@ public class CQManager {
   }
 
   private boolean allClusterNodesSupportDurationEncodingV1() {
-    java.util.Map<Integer, TNodeVersionInfo> versionInfo =
+    Map<Integer, TNodeVersionInfo> versionInfo =
         configManager.getNodeManager().getNodeVersionInfo();
     if (versionInfo == null || versionInfo.isEmpty()) {
       return false;
@@ -227,20 +230,20 @@ public class CQManager {
     boolean hasRegisteredNode = false;
     // Check every registered node explicitly. A missing heartbeat/version entry must not allow a
     // calendar CQ to be created during a rolling upgrade.
-    List<org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation> configNodes =
+    List<TConfigNodeLocation> configNodes =
         configManager.getNodeManager().getRegisteredConfigNodes();
-    List<org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration> dataNodes =
+    List<TDataNodeConfiguration> dataNodes =
         configManager.getNodeManager().getRegisteredDataNodes();
     if (configNodes == null || dataNodes == null) {
       return false;
     }
-    for (org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation node : configNodes) {
+    for (TConfigNodeLocation node : configNodes) {
       hasRegisteredNode = true;
       if (!supportsDurationEncodingV1(versionInfo.get(node.getConfigNodeId()))) {
         return false;
       }
     }
-    for (org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration node : dataNodes) {
+    for (TDataNodeConfiguration node : dataNodes) {
       hasRegisteredNode = true;
       if (!supportsDurationEncodingV1(versionInfo.get(node.getLocation().getDataNodeId()))) {
         return false;
