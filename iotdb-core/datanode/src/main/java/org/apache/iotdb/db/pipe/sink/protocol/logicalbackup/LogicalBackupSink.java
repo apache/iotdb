@@ -75,12 +75,12 @@ import java.util.UUID;
 public class LogicalBackupSink implements PipeConnector {
 
   private static final int FILE_PIECE_BYTES = 64 * 1024;
-  private LogicalBackupWriter writer;
+  protected LogicalBackupWriter writer;
   private String pipeName;
   private long creationTime;
   private int regionId;
-  private boolean includeHeartbeat;
-  private String unsupportedEventPolicy;
+  protected boolean includeHeartbeat;
+  protected String unsupportedEventPolicy;
   private final String streamType;
 
   public LogicalBackupSink() {
@@ -160,7 +160,7 @@ public class LogicalBackupSink implements PipeConnector {
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_BATCH,
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_PERIODIC,
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_NONE);
-    validateDataRegionResumePolicy(parameters);
+    validateSharedDirectoryResumePolicy(parameters);
     final String policy =
         parameters
             .getStringOrDefault(
@@ -188,9 +188,9 @@ public class LogicalBackupSink implements PipeConnector {
         false);
   }
 
-  private void validateDataRegionResumePolicy(final PipeParameters parameters)
+  private void validateSharedDirectoryResumePolicy(final PipeParameters parameters)
       throws PipeParameterNotValidException {
-    if (!"data".equals(streamType)) {
+    if (!"data".equals(streamType) && !"config".equals(streamType)) {
       return;
     }
     final boolean explicitlyConfigured =
@@ -207,7 +207,7 @@ public class LogicalBackupSink implements PipeConnector {
         || !PipeSinkConstant.LOGICAL_BACKUP_RESUME_APPEND.equalsIgnoreCase(resume)) {
       throw new PipeParameterNotValidException(
           DataNodePipeMessages
-              .EXCEPTION_DATAREGION_LOGICAL_BACKUP_REQUIRES_EXPLICIT_SINK_RESUME_APPEND_OR_CONNECTOR_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_9F7ADEA8);
+              .EXCEPTION_CONFIGREGION_AND_DATAREGION_LOGICAL_BACKUP_REQUIRE_EXPLICIT_SINK_RESUME_APPEND_OR_CONNECTOR_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_B041371B);
     }
   }
 
@@ -277,7 +277,7 @@ public class LogicalBackupSink implements PipeConnector {
                     PipeSinkConstant.SINK_LOGICAL_BACKUP_RESUME_KEY),
                 PipeSinkConstant.LOGICAL_BACKUP_RESUME_DEFAULT_VALUE)
             .toLowerCase(Locale.ROOT);
-    validateDataRegionResumePolicy(parameters);
+    validateSharedDirectoryResumePolicy(parameters);
     final boolean append = PipeSinkConstant.LOGICAL_BACKUP_RESUME_APPEND.equals(resume);
     if (!append
         && !PipeSinkConstant.LOGICAL_BACKUP_RESUME_NEW.equals(resume)
@@ -349,7 +349,7 @@ public class LogicalBackupSink implements PipeConnector {
     manifest.backupId = backupId;
     manifest.pipeName = pipeName;
     manifest.pipeCreationTime = creationTime;
-    manifest.sourceClusterId = IoTDBDescriptor.getInstance().getConfig().getClusterId();
+    manifest.sourceClusterId = getSourceClusterId();
     manifest.sourceVersion = IoTDBConstant.VERSION;
     manifest.timestampPrecision =
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
@@ -367,6 +367,10 @@ public class LogicalBackupSink implements PipeConnector {
             fsyncBatch,
             fsyncPeriod,
             append);
+  }
+
+  protected String getSourceClusterId() {
+    return IoTDBDescriptor.getInstance().getConfig().getClusterId();
   }
 
   @Override
@@ -542,7 +546,7 @@ public class LogicalBackupSink implements PipeConnector {
     return requests;
   }
 
-  private void transferEnriched(final EnrichedEvent event, final RequestSupplier requestSupplier)
+  protected void transferEnriched(final EnrichedEvent event, final RequestSupplier requestSupplier)
       throws Exception {
     if (!event.increaseReferenceCount(getClass().getName())) {
       return;
@@ -556,11 +560,11 @@ public class LogicalBackupSink implements PipeConnector {
   }
 
   @FunctionalInterface
-  private interface RequestSupplier {
+  protected interface RequestSupplier {
     List<TPipeTransferReq> get() throws Exception;
   }
 
-  private void handleUnsupported(final Event event) throws Exception {
+  protected void handleUnsupported(final Event event) throws Exception {
     if (PipeSinkConstant.LOGICAL_BACKUP_UNSUPPORTED_EVENT_SKIP.equals(unsupportedEventPolicy)) {
       writer.recordSkippedEvent(
           System.currentTimeMillis(), event == null ? "null" : event.getClass().getName());
@@ -572,7 +576,7 @@ public class LogicalBackupSink implements PipeConnector {
             event == null ? "null" : event.getClass().getName()));
   }
 
-  private UUID eventId(final EnrichedEvent event) {
+  protected UUID eventId(final EnrichedEvent event) {
     return UUID.nameUUIDFromBytes(
         (event.getClass().getName()
                 + '\0'
@@ -594,7 +598,7 @@ public class LogicalBackupSink implements PipeConnector {
     }
   }
 
-  private String metadata(final Event event) {
+  protected String metadata(final Event event) {
     if (event instanceof EnrichedEvent) {
       final EnrichedEvent enriched = (EnrichedEvent) event;
       return "pipe="

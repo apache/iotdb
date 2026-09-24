@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupFormat;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupRecord;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -536,6 +538,10 @@ public final class PipeLogicalBackupTool {
             "",
             "")) {
       handshake(client, streams.get(0).getManifest().timestampPrecision, user, password);
+      if (containsConfigStream(streams)) {
+        configNodeHandshake(
+            client, streams.get(0).getManifest().timestampPrecision, user, password);
+      }
       long importedGroups = 0;
       for (final BackupStream stream : streams) {
         importedGroups +=
@@ -555,6 +561,11 @@ public final class PipeLogicalBackupTool {
               checkpoint));
     }
     return 0;
+  }
+
+  static boolean containsConfigStream(final List<BackupStream> streams) {
+    return streams.stream()
+        .anyMatch(stream -> "config".equalsIgnoreCase(stream.getManifest().streamType));
   }
 
   static long importStream(
@@ -685,6 +696,37 @@ public final class PipeLogicalBackupTool {
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, "false");
     final TPipeTransferResp response =
         client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params));
+    if (response == null
+        || response.getStatus() == null
+        || response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new IOException(
+          String.format(
+              CliMessages.EXCEPTION_LOGICAL_BACKUP_HANDSHAKE_FAILED_ARG_7CDD4697,
+              response == null ? "null" : response.getStatus()));
+    }
+  }
+
+  private static void configNodeHandshake(
+      final IoTDBSyncClient client,
+      final String timestampPrecision,
+      final String user,
+      final String password)
+      throws IOException, TException {
+    final Map<String, String> params = new HashMap<>();
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, timestampPrecision);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, "-1");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, user);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, "pipe-logical-backup");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, "sync");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE, "false");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST, "true");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, "false");
+    final TPipeTransferResp response =
+        client.pipeTransfer(
+            PipeTransferHandshakeV2Req.toTPipeTransferReq(
+                PipeRequestType.HANDSHAKE_CONFIGNODE_V2, params));
     if (response == null
         || response.getStatus() == null
         || response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

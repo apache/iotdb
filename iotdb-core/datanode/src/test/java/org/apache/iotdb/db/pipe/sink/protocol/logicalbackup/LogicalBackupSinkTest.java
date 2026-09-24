@@ -67,6 +67,20 @@ public class LogicalBackupSinkTest {
         .validate(new PipeParameterValidator(new PipeParameters(attributes)));
   }
 
+  @Test
+  public void testConfigRegionRequiresExplicitAppendResumePolicy() throws Exception {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSinkConstant.SINK_LOGICAL_BACKUP_DIR_KEY, "backup");
+
+    assertInvalid(new LogicalBackupSink("config"), attributes);
+
+    attributes.put(
+        PipeSinkConstant.SINK_LOGICAL_BACKUP_RESUME_KEY,
+        PipeSinkConstant.LOGICAL_BACKUP_RESUME_APPEND);
+    new LogicalBackupSink("config")
+        .validate(new PipeParameterValidator(new PipeParameters(attributes)));
+  }
+
   private static void assertInvalid(
       final LogicalBackupSink sink, final Map<String, String> attributes) throws Exception {
     try {

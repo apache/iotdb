@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -47,16 +48,18 @@ public class LogicalBackupArchiveReaderTest {
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
-  public void testReadCompleteArchiveAndOrderSchemaFirst() throws Exception {
+  public void testReadCompleteArchiveAndOrderConfigThenSchemaThenData() throws Exception {
     final Path root = temporaryFolder.newFolder().toPath();
     writeStream(root.resolve("data"), "data-stream", "data", 4096);
     writeStream(root.resolve("schema"), "schema-stream", "schema", 4096);
+    writeStream(root.resolve("config"), "config-stream", "config", 4096);
 
     final List<BackupStream> streams = new LogicalBackupArchiveReader().read(root, false);
 
-    Assert.assertEquals(2, streams.size());
-    Assert.assertEquals("schema-stream", streams.get(0).getManifest().streamId);
-    Assert.assertEquals("data-stream", streams.get(1).getManifest().streamId);
+    Assert.assertEquals(3, streams.size());
+    Assert.assertEquals("config-stream", streams.get(0).getManifest().streamId);
+    Assert.assertEquals("schema-stream", streams.get(1).getManifest().streamId);
+    Assert.assertEquals("data-stream", streams.get(2).getManifest().streamId);
     Assert.assertEquals(1, streams.get(0).getEventGroups().size());
     Assert.assertEquals(4, streams.get(0).getRecords().size());
     Assert.assertEquals(
@@ -175,12 +178,29 @@ public class LogicalBackupArchiveReaderTest {
           Collections.singletonList(
               new TPipeTransferReq()
                   .setVersion((byte) 1)
-                  .setType((short) 200)
+                  .setType(Short.MAX_VALUE)
                   .setBody(ByteBuffer.wrap(new byte[] {1}))),
           "metadata");
     }
 
     assertReadFails(directory, false);
+  }
+
+  @Test
+  public void testConfigRequestTypesAreReplayable() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    try (final LogicalBackupWriter writer =
+        writer(directory, manifest("config-0", "config"), 4096)) {
+      writer.writeEvent(
+          UUID.randomUUID(),
+          1,
+          Arrays.asList(request((short) 200), request((short) 201), request((short) 202)),
+          "metadata");
+    }
+
+    final List<BackupStream> streams = new LogicalBackupArchiveReader().read(directory, false);
+    Assert.assertEquals(1, streams.size());
+    Assert.assertEquals(3, streams.get(0).getEventGroups().get(0).getRequests().size());
   }
 
   @Test
@@ -239,10 +259,15 @@ public class LogicalBackupArchiveReaderTest {
   }
 
   private static TPipeTransferReq request(final byte[] body) {
-    return new TPipeTransferReq()
-        .setVersion((byte) 1)
-        .setType((short) 10)
-        .setBody(ByteBuffer.wrap(body));
+    return request((short) 10, body);
+  }
+
+  private static TPipeTransferReq request(final short type) {
+    return request(type, new byte[] {1});
+  }
+
+  private static TPipeTransferReq request(final short type, final byte[] body) {
+    return new TPipeTransferReq().setVersion((byte) 1).setType(type).setBody(ByteBuffer.wrap(body));
   }
 
   private static Path onlySegment(final Path directory) throws IOException {

@@ -2654,8 +2654,8 @@ public final class DataNodePipeMessages {
   public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_RESUME_POLICY_ARG_583FCCF9 =
       "Unsupported logical backup resume policy: %s";
   public static final String
-      EXCEPTION_DATAREGION_LOGICAL_BACKUP_REQUIRES_EXPLICIT_SINK_RESUME_APPEND_OR_CONNECTOR_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_9F7ADEA8 =
-          "DataRegion logical backup requires explicit sink.resume=append (or connector.resume=append) and a shared backup directory";
+      EXCEPTION_CONFIGREGION_AND_DATAREGION_LOGICAL_BACKUP_REQUIRE_EXPLICIT_SINK_RESUME_APPEND_OR_CONNECTOR_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_B041371B =
+          "ConfigRegion and DataRegion logical backup require explicit sink.resume=append (or connector.resume=append) and a shared backup directory";
   public static final String EXCEPTION_UNSUPPORTED_PIPE_EVENT_FOR_LOGICAL_BACKUP_ARG_521AEE97 =
       "Unsupported Pipe event for logical backup: %s";
   public static final String

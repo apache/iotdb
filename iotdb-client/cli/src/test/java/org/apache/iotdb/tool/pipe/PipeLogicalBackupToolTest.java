@@ -117,6 +117,22 @@ public class PipeLogicalBackupToolTest {
   }
 
   @Test
+  public void testConfigStreamDetection() throws Exception {
+    final Path root = temporaryFolder.getRoot().toPath();
+    final Path data = root.resolve("data");
+    final Path config = root.resolve("config");
+    writeBackup(data);
+    writeBackup(config, "config-0", "config", Collections.singletonList(request((short) 200)));
+
+    Assert.assertFalse(
+        PipeLogicalBackupTool.containsConfigStream(
+            new LogicalBackupArchiveReader().read(data, false)));
+    Assert.assertTrue(
+        PipeLogicalBackupTool.containsConfigStream(
+            new LogicalBackupArchiveReader().read(config, false)));
+  }
+
+  @Test
   public void testZipSlipIsRejected() throws Exception {
     final Path archive = temporaryFolder.getRoot().toPath().resolve("unsafe.zip");
     try (final ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive))) {
@@ -236,12 +252,21 @@ public class PipeLogicalBackupToolTest {
 
   private static void writeBackup(final Path directory, final List<TPipeTransferReq> requests)
       throws Exception {
+    writeBackup(directory, "data-1", "data", requests);
+  }
+
+  private static void writeBackup(
+      final Path directory,
+      final String streamId,
+      final String streamType,
+      final List<TPipeTransferReq> requests)
+      throws Exception {
     final LogicalBackupManifest manifest = new LogicalBackupManifest();
     manifest.backupId = "backup";
     manifest.pipeName = "pipe";
     manifest.pipeCreationTime = 1;
-    manifest.streamId = "data-1";
-    manifest.streamType = "data";
+    manifest.streamId = streamId;
+    manifest.streamType = streamType;
     manifest.timestampPrecision = "ms";
     try (final LogicalBackupWriter writer =
         new LogicalBackupWriter(
@@ -251,9 +276,17 @@ public class PipeLogicalBackupToolTest {
   }
 
   private static TPipeTransferReq request(final int value) {
+    return request((short) 10, value);
+  }
+
+  private static TPipeTransferReq request(final short type) {
+    return request(type, 1);
+  }
+
+  private static TPipeTransferReq request(final short type, final int value) {
     return new TPipeTransferReq()
         .setVersion((byte) 1)
-        .setType((short) 10)
+        .setType(type)
         .setBody(ByteBuffer.wrap(new byte[] {(byte) value}));
   }
 }

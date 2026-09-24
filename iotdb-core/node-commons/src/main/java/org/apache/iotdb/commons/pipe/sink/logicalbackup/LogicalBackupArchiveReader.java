@@ -52,7 +52,10 @@ public class LogicalBackupArchiveReader {
           PipeRequestType.TRANSFER_TABLET_RAW_V2.getType(),
           PipeRequestType.TRANSFER_PLAN_NODE.getType(),
           PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_PIECE.getType(),
-          PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL.getType());
+          PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL.getType(),
+          PipeRequestType.TRANSFER_CONFIG_PLAN.getType(),
+          PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE.getType(),
+          PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL.getType());
 
   public List<BackupStream> read(final Path source, final boolean allowIncomplete)
       throws IOException {
@@ -84,10 +87,19 @@ public class LogicalBackupArchiveReader {
     }
     streams.sort(
         Comparator.comparingInt(
-                (BackupStream stream) ->
-                    "schema".equalsIgnoreCase(stream.getManifest().streamType) ? 0 : 1)
+                (BackupStream stream) -> streamOrder(stream.getManifest().streamType))
             .thenComparing((BackupStream stream) -> stream.getManifest().streamId));
     return Collections.unmodifiableList(streams);
+  }
+
+  private static int streamOrder(final String streamType) {
+    if ("config".equalsIgnoreCase(streamType)) {
+      return 0;
+    }
+    if ("schema".equalsIgnoreCase(streamType)) {
+      return 1;
+    }
+    return 2;
   }
 
   private static void validateArchiveIdentity(
