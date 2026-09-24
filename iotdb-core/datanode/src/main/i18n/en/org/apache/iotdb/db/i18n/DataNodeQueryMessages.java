@@ -859,6 +859,7 @@ public final class DataNodeQueryMessages {
       "Duplicate argument name: %s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "Setting monthly intervals is not supported.";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "The parameter %s cannot be actively filled with null.";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "Filter push down does not support CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =

@@ -61,6 +61,53 @@ public class LeaderCacheUtilsTest {
   }
 
   @Test
+  public void testParseRecommendedRedirectionsFromDirectMultiDeviceStatus() {
+    final TEndPoint redirectEndPoint = new TEndPoint("127.0.0.3", 6667);
+    final TSStatus directStatus =
+        RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+            .setSubStatus(
+                Arrays.asList(
+                    RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+                    RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+                        .setMessage("root.sg.device2")
+                        .setRedirectNode(redirectEndPoint)));
+
+    final List<Pair<String, TEndPoint>> redirects =
+        LeaderCacheUtils.parseRecommendedRedirections(directStatus);
+
+    Assert.assertEquals(
+        Collections.singletonList(new Pair<>("root.sg.device2", redirectEndPoint)), redirects);
+  }
+
+  @Test
+  public void testParseRecommendedRedirectionsIgnoresTopLevelRedirect() {
+    final TSStatus status =
+        RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+            .setMessage("redirect recommendation")
+            .setRedirectNode(new TEndPoint("127.0.0.4", 6667));
+
+    Assert.assertTrue(LeaderCacheUtils.parseRecommendedRedirections(status).isEmpty());
+    Assert.assertTrue(LeaderCacheUtils.parseRecommendedRedirections(null).isEmpty());
+  }
+
+  @Test
+  public void testParseRecommendedRedirectionsIgnoresNonRedirectionStatus() {
+    final TSStatus status =
+        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+            .setSubStatus(
+                Collections.singletonList(
+                    redirectStatus("root.sg.device3", new TEndPoint("127.0.0.5", 6667))));
+
+    Assert.assertTrue(LeaderCacheUtils.parseRecommendedRedirections(status).isEmpty());
+  }
+
+  private static TSStatus redirectStatus(final String deviceId, final TEndPoint endPoint) {
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+        .setMessage(deviceId)
+        .setRedirectNode(endPoint);
+  }
+
+  @Test
   public void testIgnoreRedirectsWithoutDevicePath() {
     final TEndPoint redirectEndPoint = new TEndPoint("127.0.0.2", 6667);
     final TSStatus tableRowWithoutPath =

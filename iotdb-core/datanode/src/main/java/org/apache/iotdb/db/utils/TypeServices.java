@@ -2936,6 +2936,74 @@ public class TypeServices {
                       .setChecked(true);
             };
 
+    public static final TypeService<TVListTabletValueWriter> TV_LIST_TABLET_VALUE_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((boolean[]) target)[targetIndex] = list.getBoolean(sourceIndex);
+              case INT32 ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((int[]) target)[targetIndex] = list.getInt(sourceIndex);
+              case DATE ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((LocalDate[]) target)[targetIndex] =
+                          DateUtils.parseIntToLocalDate(list.getInt(sourceIndex));
+              case INT64, TIMESTAMP ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((long[]) target)[targetIndex] = list.getLong(sourceIndex);
+              case FLOAT ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((float[]) target)[targetIndex] = list.getFloat(sourceIndex);
+              case DOUBLE ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((double[]) target)[targetIndex] = list.getDouble(sourceIndex);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (target, targetIndex, list, sourceIndex) ->
+                      ((Binary[]) target)[targetIndex] = list.getBinary(sourceIndex);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<AlignedTVListTabletValueWriter>
+        ALIGNED_TV_LIST_TABLET_VALUE_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN ->
+                      (target, targetIndex, list, sourceIndex, columnIndex) ->
+                          ((boolean[]) target)[targetIndex] =
+                              list.getBooleanByValueIndex(sourceIndex, columnIndex);
+                  case INT32 ->
+                      (target, targetIndex, list, sourceIndex, columnIndex) ->
+                          ((int[]) target)[targetIndex] =
+                              list.getIntByValueIndex(sourceIndex, columnIndex);
+                  case DATE ->
+                      (target, targetIndex, list, sourceIndex, columnIndex) ->
+                          ((LocalDate[]) target)[targetIndex] =
+                              DateUtils.parseIntToLocalDate(
+                                  list.getIntByValueIndex(sourceIndex, columnIndex));
+                  case INT64, TIMESTAMP ->
+                      (target, targetIndex, list, sourceIndex, columnIndex) ->
+                          ((long[]) target)[targetIndex] =
+                              list.getLongByValueIndex(sourceIndex, columnIndex);
+                  case FLOAT ->
+                      (target, targetIndex, list, sourceIndex, columnIndex) ->
+                          ((float[]) target)[targetIndex] =
+                              list.getFloatByValueIndex(sourceIndex, columnIndex);
+                  case DOUBLE ->
+                      (target, targetIndex, list, sourceIndex, columnIndex) ->
+                          ((double[]) target)[targetIndex] =
+                              list.getDoubleByValueIndex(sourceIndex, columnIndex);
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (target, targetIndex, list, sourceIndex, columnIndex) ->
+                          ((Binary[]) target)[targetIndex] =
+                              list.getBinaryByValueIndex(sourceIndex, columnIndex);
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                          .setChecked(true);
+                };
+
     public static final TypeService<IntFunction<Object>> EMPTY_TABLET_COLUMN_FACTORY_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -3173,6 +3241,8 @@ public class TypeServices {
       PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
       SOURCE_COLUMN_TO_TABLET_VALUE_WRITER_SERVICE.check();
       TABLET_COLUMN_ALLOCATOR_SERVICE.check();
+      TV_LIST_TABLET_VALUE_WRITER_SERVICE.check();
+      ALIGNED_TV_LIST_TABLET_VALUE_WRITER_SERVICE.check();
       EMPTY_TABLET_COLUMN_FACTORY_SERVICE.check();
       WINDOW_VALUE_ARRAY_BUILDER_SERVICE.check();
       RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE.check();
@@ -4376,6 +4446,17 @@ public class TypeServices {
         int sourceIndex,
         Object targetColumn,
         int targetIndex);
+  }
+
+  @FunctionalInterface
+  public interface TVListTabletValueWriter {
+    void write(Object target, int targetIndex, TVList list, int sourceIndex);
+  }
+
+  @FunctionalInterface
+  public interface AlignedTVListTabletValueWriter {
+    void write(
+        Object target, int targetIndex, AlignedTVList list, int sourceIndex, int columnIndex);
   }
 
   @FunctionalInterface
