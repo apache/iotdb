@@ -34,6 +34,21 @@ import java.io.IOException;
 public class PipePluginMetaTest {
 
   @Test
+  public void testPipePluginMetaHashCodeIncludesAllFields() {
+    PipePluginMeta pipePluginMeta =
+        new PipePluginMeta("test", "org.apache.iotdb.Test", false, "test.jar", "md5");
+    PipePluginMeta samePipePluginMeta =
+        new PipePluginMeta("TEST", "org.apache.iotdb.Test", false, "test.jar", "md5");
+    PipePluginMeta differentClassNamePipePluginMeta =
+        new PipePluginMeta("test", "org.apache.iotdb.AnotherTest", false, "test.jar", "md5");
+
+    Assert.assertEquals(pipePluginMeta, samePipePluginMeta);
+    Assert.assertEquals(pipePluginMeta.hashCode(), samePipePluginMeta.hashCode());
+    Assert.assertNotEquals(pipePluginMeta, differentClassNamePipePluginMeta);
+    Assert.assertNotEquals(pipePluginMeta.hashCode(), differentClassNamePipePluginMeta.hashCode());
+  }
+
+  @Test
   public void testConfigNodePipePluginMetaKeeper() {
     ConfigNodePipePluginMetaKeeper keeper = new ConfigNodePipePluginMetaKeeper();
     Assert.assertFalse(keeper.containsJar("test.jar"));

@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -134,6 +135,58 @@ public class AuthUtilsTest {
     pathWithPri.grantPrivilege(PrivilegeType.WRITE_DATA, false);
     Assert.assertTrue(
         AuthUtils.getPrivileges(path, privilegeList).contains(PrivilegeType.WRITE_DATA));
+  }
+
+  @Test
+  public void authUtilsTest_PathPrivilegeEqualsIncludesGrantOption() throws IllegalPathException {
+    PathPrivilege withGrantOption = new PathPrivilege(new PartialPath("root.t1"));
+    withGrantOption.grantPrivilege(PrivilegeType.WRITE_SCHEMA, true);
+
+    PathPrivilege withoutGrantOption = new PathPrivilege(new PartialPath("root.t1"));
+    withoutGrantOption.grantPrivilege(PrivilegeType.WRITE_SCHEMA, false);
+
+    Assert.assertFalse(withGrantOption.equals(withoutGrantOption));
+
+    withoutGrantOption.grantPrivilege(PrivilegeType.WRITE_SCHEMA, true);
+    Assert.assertEquals(withGrantOption, withoutGrantOption);
+    Assert.assertEquals(withGrantOption.hashCode(), withoutGrantOption.hashCode());
+  }
+
+  @Test
+  public void authUtilsTest_RoleEqualsHashCodeIncludesSysGrantOption() {
+    Role withGrantOption = new Role("role");
+    withGrantOption.grantSysPrivilege(PrivilegeType.MANAGE_USER, true);
+
+    Role withoutGrantOption = new Role("role");
+    withoutGrantOption.grantSysPrivilege(PrivilegeType.MANAGE_USER, false);
+
+    Assert.assertFalse(withGrantOption.equals(withoutGrantOption));
+    Assert.assertNotEquals(withGrantOption.hashCode(), withoutGrantOption.hashCode());
+
+    withoutGrantOption.getSysPriGrantOpt().add(PrivilegeType.MANAGE_USER);
+    Assert.assertEquals(withGrantOption, withoutGrantOption);
+    Assert.assertEquals(withGrantOption.hashCode(), withoutGrantOption.hashCode());
+  }
+
+  @Test
+  public void authUtilsTest_UserEqualsHashCodeIncludesUserState() {
+    User user = new User("user", "password");
+    user.grantSysPrivilege(PrivilegeType.MANAGE_USER, true);
+    user.setOpenIdUser(true);
+
+    User userWithoutGrantOption = new User("user", "password");
+    userWithoutGrantOption.grantSysPrivilege(PrivilegeType.MANAGE_USER, false);
+    userWithoutGrantOption.setOpenIdUser(true);
+
+    Assert.assertFalse(user.equals(userWithoutGrantOption));
+    Assert.assertNotEquals(user.hashCode(), userWithoutGrantOption.hashCode());
+
+    userWithoutGrantOption.getSysPriGrantOpt().add(PrivilegeType.MANAGE_USER);
+    Assert.assertEquals(user, userWithoutGrantOption);
+    Assert.assertEquals(user.hashCode(), userWithoutGrantOption.hashCode());
+
+    userWithoutGrantOption.setOpenIdUser(false);
+    Assert.assertFalse(user.equals(userWithoutGrantOption));
   }
 
   @Test
