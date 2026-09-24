@@ -47,10 +47,22 @@ public final class ConfigNodeMessages {
       "无法为 ConfigNode flushWALForSimpleConsensus 强制写入 logWriter";
   public static final String CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
       "无法为 ConfigNode SimpleConsensus 模式强制写入 logWriter";
-  public static final String
-      CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-          "无法为 ConfigNode SimpleConsensus 模式序列化当前 ConfigPhysicalPlan";
-  public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP = "无法启动 ConfigNode 共识组！";
+  public static final String CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
+      "无法为 ConfigNode SimpleConsensus 模式序列化当前 ConfigPhysicalPlan";
+  public static final String PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "持久化 ConfigNode SimpleConsensus 日志失败：";
+  public static final String PERSIST_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "为 ConfigNode SimpleConsensus 模式持久化当前 ConfigPhysicalPlan 失败";
+  public static final String FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG =
+      "回滚已持久化的 ConfigNode SimpleConsensus 日志失败。该 plan 可能会在重启后被重放。";
+  public static final String ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "回滚 ConfigNode SimpleConsensus 模式下失败的 ConfigPhysicalPlan 失败，planType: {}, logFile: {}, truncateOffset: {}, endIndexBeforeWrite: {}";
+  public static final String SEAL_RECOVERED_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "封存恢复出的 ConfigNode SimpleConsensus 日志失败：{}";
+  public static final String SIMPLECONSENSUS_LOG_WRITER_IS_NOT_INITIALIZED =
+      "SimpleConsensus log writer 未初始化。";
+  public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP =
+      "无法启动 ConfigNode 共识组！";
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
       "在 DataNode: {} 上切换 region leader 失败";
   public static final String CHECK_BEFORE_DROPPING_TOPIC_TOPIC_EXISTS =
