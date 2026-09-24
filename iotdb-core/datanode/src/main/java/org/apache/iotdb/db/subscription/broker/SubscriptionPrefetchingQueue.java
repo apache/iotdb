@@ -872,7 +872,7 @@ public abstract class SubscriptionPrefetchingQueue {
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
           if (Objects.isNull(ev)) {
-            LOGGER.warn(
+            LOGGER.debug(
                 DataNodePipeMessages
                     .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_COMMIT_CONTEXT_DOES_NOT_EXIST_0E4EF990,
                 commitContext,
@@ -949,7 +949,7 @@ public abstract class SubscriptionPrefetchingQueue {
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
           if (Objects.isNull(ev)) {
-            LOGGER.warn(
+            LOGGER.debug(
                 DataNodePipeMessages
                     .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_COMMIT_CONTEXT_DOES_NOT_EXIST_DE907E05,
                 commitContext,
