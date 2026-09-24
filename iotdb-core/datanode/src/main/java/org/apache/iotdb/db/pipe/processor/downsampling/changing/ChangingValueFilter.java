@@ -59,13 +59,13 @@ public class ChangingValueFilter<T> {
   }
 
   private boolean tryFilter(final long timestamp, final T value) {
-    final long timeDiff = Math.abs(timestamp - lastStoredTimestamp);
-
-    if (timeDiff <= processor.getCompressionMinTimeInterval()) {
+    if (isTimeDistanceLessThanOrEqual(
+        timestamp, lastStoredTimestamp, processor.getCompressionMinTimeInterval())) {
       return false;
     }
 
-    if (timeDiff >= processor.getCompressionMaxTimeInterval()) {
+    if (isTimeDistanceGreaterThanOrEqual(
+        timestamp, lastStoredTimestamp, processor.getCompressionMaxTimeInterval())) {
       reset(timestamp, value);
       return true;
     }
@@ -92,6 +92,18 @@ public class ChangingValueFilter<T> {
     }
 
     return false;
+  }
+
+  private boolean isTimeDistanceLessThanOrEqual(
+      final long left, final long right, final long maxDistance) {
+    final long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, maxDistance) <= 0;
+  }
+
+  private boolean isTimeDistanceGreaterThanOrEqual(
+      final long left, final long right, final long minDistance) {
+    final long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, minDistance) >= 0;
   }
 
   private void reset(final long timestamp, final T value) {
