@@ -88,14 +88,6 @@ public final class CQCalendarUtils {
     return low;
   }
 
-  public static long nextAfter(long boundary, TimeDuration every, long previous, ZoneId zone) {
-    long index = firstOccurrenceIndex(boundary, every, previous, zone);
-    if (occurrence(boundary, every, index, zone) <= previous) {
-      index = Math.addExact(index, 1);
-    }
-    return occurrence(boundary, every, index, zone);
-  }
-
   private static long fromInstant(Instant instant) {
     String precision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     try {

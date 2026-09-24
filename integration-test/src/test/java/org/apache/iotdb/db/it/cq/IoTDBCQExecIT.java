@@ -61,7 +61,7 @@ public class IoTDBCQExecIT {
         Statement statement = connection.createStatement()) {
       connection.setClientInfo("time_zone", "UTC");
       long now = System.currentTimeMillis();
-      long firstExecutionTime = now + 10_000;
+      long firstExecutionTime = now + 30_000;
       ZoneId utc = ZoneId.of("UTC");
       long calendarStart =
           ZonedDateTime.ofInstant(Instant.ofEpochMilli(firstExecutionTime), utc)
@@ -98,8 +98,9 @@ public class IoTDBCQExecIT {
               + "END");
 
       if (System.currentTimeMillis() > firstExecutionTime) {
+        // Do not return silently: a vacuous pass would hide a regression in the calendar window.
         statement.execute("DROP CQ cq_calendar_month");
-        return;
+        fail("test setup exceeded the scheduled first execution time; increase the margin");
       }
 
       long targetTime = firstExecutionTime + 10_000;

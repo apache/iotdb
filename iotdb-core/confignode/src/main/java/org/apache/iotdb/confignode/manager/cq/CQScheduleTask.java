@@ -156,7 +156,7 @@ public class CQScheduleTask implements Runnable {
       long expectedExecution = occurrenceAt(this.occurrenceIndex);
       if (expectedExecution != firstExecutionTime) {
         throw new IllegalArgumentException(
-            ManagerMessages.EXCEPTION_CQ_OCCURRENCE_INDEX_DOES_NOT_MATCH_EXECUTION_TIME_7E4B91A2);
+            ManagerMessages.EXCEPTION_CQ_OCCURRENCE_INDEX_DOES_NOT_MATCH_EXECUTION_TIME_B2DE4B0F);
       }
     }
   }
@@ -301,7 +301,7 @@ public class CQScheduleTask implements Runnable {
               boundaryTime, everyDuration, currentOccurrenceIndex, scheduleZone);
       if (expectedExecution != executionTime) {
         throw new IllegalStateException(
-            ManagerMessages.EXCEPTION_CQ_OCCURRENCE_INDEX_DOES_NOT_MATCH_EXECUTION_TIME_7E4B91A2);
+            ManagerMessages.EXCEPTION_CQ_OCCURRENCE_INDEX_DOES_NOT_MATCH_EXECUTION_TIME_B2DE4B0F);
       }
       startTime = calculateCalendarRangeEndpoint(startDuration, currentOccurrenceIndex);
       endTime = calculateCalendarRangeEndpoint(endDuration, currentOccurrenceIndex);

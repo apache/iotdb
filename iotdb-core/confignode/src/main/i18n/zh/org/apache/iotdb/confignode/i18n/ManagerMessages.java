@@ -716,7 +716,7 @@ public final class ManagerMessages {
       "无效的 CQ occurrence index 转换";
   public static final String EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035 =
       "CQ snapshot 条目数量不能为负数：%d";
-  public static final String EXCEPTION_CQ_OCCURRENCE_INDEX_DOES_NOT_MATCH_EXECUTION_TIME_7E4B91A2 =
+  public static final String EXCEPTION_CQ_OCCURRENCE_INDEX_DOES_NOT_MATCH_EXECUTION_TIME_B2DE4B0F =
       "CQ occurrence index 与计划执行时间不匹配";
   public static final String EXCEPTION_CQ_RANGE_END_MUST_BE_GREATER_THAN_START_3C91E8B4 =
       "CQ RANGE 结束时间必须大于开始时间";
