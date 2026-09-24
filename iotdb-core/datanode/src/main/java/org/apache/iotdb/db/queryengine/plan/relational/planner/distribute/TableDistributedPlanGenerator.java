@@ -2899,7 +2899,10 @@ public class TableDistributedPlanGenerator
     if (!isPartitionedGroup(node.getChild())) {
       return false;
     }
-    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName());
+    // LTTB is not mergeable: fragment-local samples cannot be combined into a globally correct
+    // result, so the whole partition must be gathered and ordered before the function runs.
+    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName())
+        && !TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(node.getName());
   }
 
   private boolean isPartitionedGroup(PlanNode node) {
