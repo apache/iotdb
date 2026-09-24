@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import io.netty.util.internal.PlatformDependent;
+import org.apache.ratis.thirdparty.io.netty.util.internal.PlatformDependent;
 
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
