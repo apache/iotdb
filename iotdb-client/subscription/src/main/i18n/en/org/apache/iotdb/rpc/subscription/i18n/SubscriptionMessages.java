@@ -53,6 +53,8 @@ public final class SubscriptionMessages {
 
   // --- SubscriptionExecutorServiceManager ---
   public static final String EXECUTOR_LAUNCHING = "Launching {} with core pool size {}...";
+  public static final String LOG_SUBSCRIPTION_HEARTBEAT_EXECUTOR_REACHED_ITS_THREAD_OR_QUEUE_LIMIT_SKIP_13157249 =
+      "Subscription heartbeat executor reached its thread or queue limit; skipping heartbeat tasks until the next interval (thread limit {}, queue capacity {}).";
   public static final String EXECUTOR_SHUTTING_DOWN = "Shutting down {}...";
   public static final String EXECUTOR_NOT_LAUNCHED_SUBMIT =
       "{} has not been launched, ignore submit task";

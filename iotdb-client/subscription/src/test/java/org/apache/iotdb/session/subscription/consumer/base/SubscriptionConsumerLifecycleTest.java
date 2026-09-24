@@ -125,7 +125,7 @@ public class SubscriptionConsumerLifecycleTest {
       consumer.fenceOnHeartbeat = true;
       providers.heartbeat(consumer);
 
-      Assert.assertTrue(consumer.isFenced());
+      waitUntil(consumer::isFenced);
       providers.sync(consumer);
       providers.heartbeat(consumer);
       Assert.assertEquals(1, consumer.createdProviders.size());
@@ -373,6 +373,14 @@ public class SubscriptionConsumerLifecycleTest {
     final Field field = AbstractSubscriptionConsumer.class.getDeclaredField("providers");
     field.setAccessible(true);
     return (AbstractSubscriptionProviders) field.get(consumer);
+  }
+
+  private void waitUntil(final BooleanSupplier condition) throws InterruptedException {
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (!condition.getAsBoolean() && System.nanoTime() < deadline) {
+      Thread.sleep(10L);
+    }
+    Assert.assertTrue(condition.getAsBoolean());
   }
 
   @Test

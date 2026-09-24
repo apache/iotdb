@@ -52,7 +52,7 @@ public class AbstractSubscriptionConsumerBuilder {
   protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
   protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-  protected int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
+  protected int connectionTimeoutInMs = ConsumerConstant.CONNECTION_TIMEOUT_MS_DEFAULT_VALUE;
   protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
   public AbstractSubscriptionConsumerBuilder host(final String host) {
