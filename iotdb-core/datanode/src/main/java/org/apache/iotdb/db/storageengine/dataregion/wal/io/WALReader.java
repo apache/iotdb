@@ -124,4 +124,8 @@ public class WALReader implements Closeable {
   public void close() throws IOException {
     logStream.close();
   }
+
+  public long getLogicalReadOffset() {
+    return walInputStream.getLogicalReadOffset();
+  }
 }
