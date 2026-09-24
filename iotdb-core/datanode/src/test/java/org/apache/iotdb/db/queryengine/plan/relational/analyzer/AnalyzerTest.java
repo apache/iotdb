@@ -1133,7 +1133,7 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void testPipeTransferredUpdateRejectsFieldTarget() {
+  public void testPipeTransferredUpdateRejectsInvalidTarget() {
     final String database = "testdb";
     final TsTable tsTable = new TsTable(table);
     tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
@@ -1164,6 +1164,30 @@ public class AnalyzerTest {
       assertEquals(
           "Cannot update FIELD column 's1'. UPDATE can only specify ATTRIBUTE columns.",
           exception.getMessage());
+
+      final Update unknownColumnStatement =
+          new Update(
+              null,
+              new Table(QualifiedName.of(database, table)),
+              Collections.singletonList(
+                  new UpdateAssignment(
+                      new SymbolReference("missing_column"), new StringLiteral("invalid"))),
+              null);
+      final MPPQueryContext unknownColumnQueryContext =
+          new MPPQueryContext("", new QueryId("pipe_update_unknown_column"), session, null, null);
+
+      final SemanticException unknownColumnException =
+          assertThrows(
+              SemanticException.class,
+              () ->
+                  analyzeStatement(
+                      unknownColumnStatement,
+                      TEST_MATADATA,
+                      unknownColumnQueryContext,
+                      new SqlParser(),
+                      session));
+      assertEquals(
+          "Column 'missing_column' cannot be resolved", unknownColumnException.getMessage());
     } finally {
       DataNodeTableCache.getInstance().invalid(database);
     }

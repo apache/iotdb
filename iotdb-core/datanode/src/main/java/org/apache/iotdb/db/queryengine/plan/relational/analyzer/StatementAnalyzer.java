@@ -1053,10 +1053,9 @@ public class StatementAnalyzer {
 
       final String columnName = ((SymbolReference) column).getName();
       final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
-      if (Objects.isNull(columnSchema)
-          || columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+      if (Objects.isNull(columnSchema)) {
         throw new SemanticException(
-            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
+            String.format(DataNodeQueryMessages.COLUMN_S_CANNOT_BE_RESOLVED, columnName));
       }
       if (!attributeNames.add(columnName)) {
         throw new SemanticException(
