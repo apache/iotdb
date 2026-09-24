@@ -192,10 +192,14 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1879,6 +1883,42 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());
 
     Assert.assertEquals(updateCQLastExecTimePlan0, updateCQLastExecTimePlan1);
+  }
+
+  @Test
+  public void UpdateCQLastExecTimePlanWithOccurrenceIndexTest() throws IOException {
+    UpdateCQLastExecTimePlan plan0 =
+        new UpdateCQLastExecTimePlan("calendarCq", 1000L, "calendarToken", 5L, 6L);
+    UpdateCQLastExecTimePlan plan1 =
+        (UpdateCQLastExecTimePlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+
+    Assert.assertEquals(plan0, plan1);
+    Assert.assertTrue(plan1.hasOccurrenceIndex());
+    Assert.assertEquals(5L, plan1.getExpectedIndex());
+    Assert.assertEquals(6L, plan1.getTargetIndex());
+  }
+
+  @Test
+  public void UpdateCQLastExecTimePlanLegacyFormatWithoutIndexTest() throws IOException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    // Byte layout written by pre-calendar ConfigNodes: type, cqId, executionTime, cqToken, with
+    // no occurrence-index tail. Ratis log replay must still accept it.
+    outputStream.writeShort(ConfigPhysicalPlanType.UPDATE_CQ_LAST_EXEC_TIME.getPlanType());
+    ReadWriteIOUtils.write("legacyCq", outputStream);
+    ReadWriteIOUtils.write(2000L, outputStream);
+    ReadWriteIOUtils.write("legacyToken", outputStream);
+
+    ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    UpdateCQLastExecTimePlan plan =
+        (UpdateCQLastExecTimePlan) ConfigPhysicalPlan.Factory.create(buffer);
+
+    Assert.assertEquals("legacyCq", plan.getCqId());
+    Assert.assertEquals(2000L, plan.getExecutionTime());
+    Assert.assertEquals("legacyToken", plan.getCqToken());
+    Assert.assertFalse(plan.hasOccurrenceIndex());
   }
 
   @Test

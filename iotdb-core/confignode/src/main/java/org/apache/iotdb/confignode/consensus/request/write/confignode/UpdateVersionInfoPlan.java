@@ -59,6 +59,14 @@ public class UpdateVersionInfoPlan extends ConfigPhysicalPlan {
     ReadWriteIOUtils.write(nodeId, stream);
     ReadWriteIOUtils.write(versionInfo.getVersion(), stream);
     ReadWriteIOUtils.write(versionInfo.getBuildInfo(), stream);
+    // Optional tail keeps this plan readable by pre-calendar-duration ConfigNodes.
+    ReadWriteIOUtils.write(versionInfo.isSetSupportedCQDurationEncodingVersions(), stream);
+    if (versionInfo.isSetSupportedCQDurationEncodingVersions()) {
+      ReadWriteIOUtils.write(versionInfo.getSupportedCQDurationEncodingVersions().size(), stream);
+      for (short version : versionInfo.getSupportedCQDurationEncodingVersions()) {
+        ReadWriteIOUtils.write(version, stream);
+      }
+    }
   }
 
   @Override
@@ -67,6 +75,17 @@ public class UpdateVersionInfoPlan extends ConfigPhysicalPlan {
     versionInfo =
         new TNodeVersionInfo(
             ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readString(buffer));
+    if (buffer.hasRemaining()) {
+      boolean hasCapabilities = ReadWriteIOUtils.readBool(buffer);
+      if (hasCapabilities) {
+        int size = ReadWriteIOUtils.readInt(buffer);
+        java.util.Set<Short> capabilities = new java.util.HashSet<>();
+        for (int i = 0; i < size; i++) {
+          capabilities.add(ReadWriteIOUtils.readShort(buffer));
+        }
+        versionInfo.setSupportedCQDurationEncodingVersions(capabilities);
+      }
+    }
   }
 
   @Override

@@ -36,6 +36,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -400,6 +401,63 @@ public class IoTDBCQIT {
 
       for (String cqId : cqIds) {
         statement.execute(String.format("DROP CQ %s;", cqId));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCalendarMonthCQ() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE CQ calendar_cq_1\n"
+              + "RESAMPLE EVERY 1mo RANGE 1mo\n"
+              + "BEGIN\n"
+              + "  SELECT max_value(s1)\n"
+              + "    INTO root.sg.d1(s1_max)\n"
+              + "    FROM root.sg.d1\n"
+              + "    GROUP BY(1mo)\n"
+              + "END");
+      try (ResultSet resultSet = statement.executeQuery("show CQS")) {
+        boolean found = false;
+        while (resultSet.next()) {
+          if ("calendar_cq_1".equals(resultSet.getString(1))) {
+            found = true;
+            assertEquals("ACTIVE", resultSet.getString(3));
+          }
+        }
+        assertTrue(found);
+      }
+      statement.execute("DROP CQ calendar_cq_1");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRejectIncomparableCalendarAndFixedCQDurations() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "CREATE CQ calendar_cq_incomparable\n"
+                + "RESAMPLE EVERY 1mo RANGE 30d\n"
+                + "BEGIN\n"
+                + "  SELECT max_value(s1)\n"
+                + "    INTO root.sg.d1(s1_max)\n"
+                + "    FROM root.sg.d1\n"
+                + "    GROUP BY(1mo)\n"
+                + "END");
+        fail();
+      } catch (Exception e) {
+        assertEquals(
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+                + ": CQ: The start time offset should be greater than or equal to every interval.",
+            e.getMessage());
       }
     } catch (Exception e) {
       e.printStackTrace();
