@@ -674,7 +674,7 @@ public abstract class AbstractSubscriptionProvider {
 
     private final Map<String, TopicProgress> committedProgressByTopic;
 
-    private CommitResult(
+    CommitResult(
         final List<SubscriptionCommitContext> acceptedCommitContexts,
         final Map<String, TopicProgress> committedProgressByTopic) {
       this.acceptedCommitContexts =

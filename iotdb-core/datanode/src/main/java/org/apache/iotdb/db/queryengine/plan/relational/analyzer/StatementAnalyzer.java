@@ -6418,11 +6418,16 @@ public class StatementAnalyzer {
               DataNodeQueryMessages.SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
         }
       }
-
       // currently, only constant arguments are supported
       Object constantValue =
           evaluateConstantExpression(
               expression, new PlannerContext(metadata, typeManager), sessionContext);
+      if (constantValue == null) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.THE_ARGUMENT_CANNOT_BE_NULL,
+                argumentSpecification.getName()));
+      }
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)
                 || argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.TEXT))
