@@ -52,6 +52,8 @@ public final class SubscriptionMessages {
 
   // --- SubscriptionExecutorServiceManager ---
   public static final String EXECUTOR_LAUNCHING = "正在启动 {}，核心线程池大小：{}...";
+  public static final String LOG_SUBSCRIPTION_HEARTBEAT_EXECUTOR_REACHED_ITS_THREAD_OR_QUEUE_LIMIT_SKIP_13157249 =
+      "Subscription heartbeat executor 达到线程数或队列容量上限；本轮跳过 heartbeat 任务，下个周期重试（线程上限 {}，队列容量 {}）。";
   public static final String EXECUTOR_SHUTTING_DOWN = "正在关闭 {}...";
   public static final String EXECUTOR_NOT_LAUNCHED_SUBMIT =
       "{} 尚未启动，忽略提交任务";
