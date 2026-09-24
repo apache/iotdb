@@ -67,7 +67,9 @@ public class WALWriter extends LogWriter {
   }
 
   private synchronized void endFile() throws IOException {
-    if (logFile.length() == version.getVersionBytes().length) {
+    // The writer channel is write-only; its known version and size identify an empty header.
+    if (version != WALFileVersion.V1 && logChannel.size() == version.getVersionBytes().length) {
+      // A WAL with no entries is valid and has no marker or metadata trailer to append.
       super.close();
       return;
     }
@@ -98,7 +100,18 @@ public class WALWriter extends LogWriter {
 
   @Override
   public void close() throws IOException {
-    endFile();
+    try {
+      endFile();
+    } catch (IOException | RuntimeException e) {
+      // In particular, failed recovery-file sealing must release the handle before its temporary
+      // file can be removed on Windows, while preserving the original failure.
+      try {
+        super.close();
+      } catch (IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
+    }
     super.close();
   }
 

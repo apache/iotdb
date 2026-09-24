@@ -79,4 +79,23 @@ public enum WALFileVersion {
       channel.position(originalPosition);
     }
   }
+
+  /**
+   * Returns whether the channel contains no bytes or only the V2/V3 header magic.
+   *
+   * <p>A WAL writer creates the header before the first entry is available and deliberately leaves
+   * that header-only file in place when it is closed. Such a file has no metadata trailer to read,
+   * but it is still a valid empty WAL file.
+   */
+  public static boolean isEmptyOrHeaderOnly(FileChannel channel) throws IOException {
+    long size = channel.size();
+    if (size == 0) {
+      return true;
+    }
+    if (size != V2.versionBytes.length && size != V3.versionBytes.length) {
+      return false;
+    }
+    WALFileVersion version = getVersion(channel);
+    return version == V2 || version == V3;
+  }
 }
