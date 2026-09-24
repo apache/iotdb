@@ -46,6 +46,98 @@ public final class StorageEngineMessages {
   // ======================== StorageEngine ========================
 
   public static final String FAIL_TO_RECOVER_WAL = "Fail to recover wal.";
+  public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
+      "Write LOAD consensus node to region {} via protocol {}";
+  public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
+      "LOAD consensus route of region {} is stale: write node {} is not in replica set {}.";
+  public static final String LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21 =
+      "Failed to look the route of region {} up again, attempt {} of {}: {}";
+  public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_FILE_ARG_ARG_9105BFC5 =
+      "Failed to enumerate the LOAD snapshot file %s: %s";
+  public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70 =
+      "Failed to enumerate the LOAD snapshot directory %s: %s";
+  public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
+      "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
+      "Unexpected end of file when reading staged piece %s at offset %s.";
+  public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
+      "Staged piece file %s is missing and cannot be read back.";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =
+      "Invalid LOAD consensus chunk payload ref: path %s, offset %d, size %d";
+  public static final String EXCEPTION_THE_CHUNK_PAYLOAD_OF_ARG_BYTES_AT_OFFSET_ARG_IS_LONGER_THAN_THE_STAGED_FILE_ARG_14081256 =
+      "The chunk payload of %d bytes at offset %d is longer than the staged file %s";
+  public static final String EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9 =
+      "Invalid inline chunk payload length %d, the maximum is %d";
+  public static final String LOG_DROPPED_THE_TRAILING_ENTRY_OF_THE_LOAD_PROGRESS_FILE_ARG_FROM_OFFSET_ARG_ON_WHICH_WAS_NOT_FULLY_APPENDED_05C8341B =
+      "Dropped the trailing entry of the LOAD progress file {} from offset {} on, which was not fully appended";
+  public static final String EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06 =
+      "The staged file %s of LOAD task %s already exists but no writer could resume it, so the piece cannot be staged";
+  public static final String EXCEPTION_FAILED_TO_READ_BACK_THE_STAGED_PIECE_FILE_ARG_ARG_3F54CB90 =
+      "Failed to read back the staged piece file %s: %s";
+  public static final String
+      EXCEPTION_STAGED_PIECE_FILE_ARG_IS_OUTSIDE_THE_CONFIGURED_LOAD_DIRECTORIES_ARG_322721A9 =
+          "Staged piece file %s is outside the configured LOAD directories %s.";
+  public static final String
+      LOG_FAILED_TO_READ_BACK_THE_STAGED_CONTENT_OF_LOAD_PIECE_LOAD_ARG_PIECE_INDEX_ARG_SENDING_THE_REFERENCE_ONLY_D054333F =
+          "Failed to read back the staged content of LOAD piece (load {}, piece index {}), sending "
+              + "the reference only.";
+  public static final String MESSAGE_LOAD_CONSENSUS_PIECE_DATA_MISSING_AFTER_PULL_8269CB0B =
+      "LOAD piece %d data of load %s is still missing after pulling from the write node.";
+  public static final String MESSAGE_LOAD_CONSENSUS_PULL_PIECE_NOT_SUPPORTED_71EC4B46 =
+      "Fetching piece from leader is not supported.";
+  public static final String EXCEPTION_LOAD_CONSENSUS_PIECE_DATA_MISSING_OR_CHECKSUM_MISMATCH_AFTER_PULL_35F4972E =
+      "LOAD task %s piece %d data is missing or its checksum mismatches after pull.";
+  public static final String LOG_LOAD_CONSENSUS_RETAINED_PIECE_READ_FAILED_0659D19B =
+      "Failed to read retained LOAD piece {} of load {} from {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_RETAINED_PIECE_WRITE_FAILED_99697608 =
+      "Failed to write retained LOAD piece {} of load {} to {}: {}";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19 =
+      "Staged file %s of load %s is not continuous: expected offset %d but current file length is %d.";
+  public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_WITHOUT_STAGED_DATA_FE8ADC37 =
+      "Cannot prepare load %s because no staged data exists on this node.";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_RESUMED_WRITER_176BEE0F =
+      "Resumed the staged writer of LOAD task {} at offset {}.";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_RESTORED_MODIFICATION_5F4D7D89 =
+      "Restored the modification file {} of LOAD task {} from disk.";
+
+  public static final String EXCEPTION_LOAD_PIECE_OF_THE_TASK_ARG_ARRIVED_WITHOUT_ITS_CHUNK_PAYLOAD_ARG_04664404 =
+      "Failed to write a piece of the LOAD task %s because the payload of its chunk is only referenced at %s and has not been read back.";
+  public static final String LOG_LOAD_CONSENSUS_RECOVERED_TASK_02824CE6 =
+      "Recovered in-progress LOAD task {} from disk; staged data is kept until COMMIT or ABORT.";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB =
+      "Failed to recover the task meta of LOAD task {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_TASK_META_WRITE_FAILED_5D2420BF =
+      "Failed to persist the task meta of LOAD task {} to {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433 =
+      "Failed to write the terminal marker of LOAD task {} to {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_ARG_FROM_STAGED_FILE_ARG_3AF462A6 =
+      "Cannot resume LOAD task {} from staged file {}: its durable task meta is missing or corrupt; the next command will re-create it.";
+  public static final String
+      LOG_KEEPING_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_UNTIL_THE_SAFE_DELETION_SEARCH_INDEX_ARG_IS_REACHED_AFE2BC88 =
+          "Keeping the staged directory {} of LOAD task {} until the safe deletion search index {} "
+              + "is reached.";
+  public static final String
+      LOG_RELEASED_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_BECAUSE_THE_SAFE_DELETION_SEARCH_INDEX_ARG_IS_REACHED_0CF83F8A =
+          "Released the staged directory {} of LOAD task {} because the safe deletion search index "
+              + "{} is reached.";
+  public static final String
+      LOG_DELETING_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_WHICH_ALREADY_REACHED_COMMIT_OR_ABORT_EAB095CA =
+          "Deleting staged directory {} of LOAD task {}, which already reached COMMIT or ABORT.";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_SHORT_WRITE_E7392FAD =
+      "Staged file %s of load %s was not fully written: expected %d bytes at offset %d, wrote %d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_PROGRESS_SERIALIZE_FAILED_28EFD091 =
+      "Failed to serialize LOAD progress index for time partition %d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B =
+      "Staged file %s of load %s is incomplete and cannot be committed.";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C =
+      "Snapshotted %d in-progress LOAD task(s) with %d staged file(s) for region %s into %s.";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_90ABC1BF =
+      "Restored %d in-progress LOAD task(s) with %d staged file(s) from snapshot %s.";
+  public static final String EXCEPTION_LOAD_CONSENSUS_SNAPSHOT_RESTORE_FAILED_F8C29C64 =
+      "Failed to restore LOAD snapshot from %s: %s";
+  public static final String EXCEPTION_LOAD_TSFILE_ALIGNED_VALUE_CHUNK_TIME_CHUNK_EEB00760 =
+      "Cannot attach value chunk of measurement %s in file %s: expected exactly one buffered "
+          + "aligned time chunk, found %d.";
   public static final String STORAGE_ENGINE_FAILED_TO_SET_UP = "Storage engine failed to set up.";
   public static final String SEQ_MEMTABLE_FLUSH_CHECK_THREAD_STARTED = "start sequence memtable timed flush check thread successfully.";
   public static final String UNSEQ_MEMTABLE_FLUSH_CHECK_THREAD_STARTED = "start unsequence memtable timed flush check thread successfully.";
@@ -496,9 +588,18 @@ public final class StorageEngineMessages {
   public static final String UNSUPPORTED_TSFILE_DATA_TYPE = "Unsupported TsFileData type: ";
   public static final String DELETE_AFTER_LOADING_ERROR = "Delete After Loading {} error.";
   public static final String LOAD_TSFILE_DIR_CREATED = "Load TsFile dir {} is created.";
-  public static final String CANNOT_CREATE_TSFILE_FOR_WRITING = "Can not create TsFile {} for writing.";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "Close TsFileIOWriter {} error.";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "Close ModificationFile {} error.";
+  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =
+      "Preparing LOAD TsFile {}: sealing staged resources.";
+  public static final String LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335 =
+      "Committing LOAD TsFile {}: loading prepared resources into DataRegion.";
+  public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_ARG_C36E832B =
+      "Receive LOAD TsFile node: {}.";
+  public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6 =
+      "Receive LOAD TsFile node success: {}.";
+  public static final String EXCEPTION_TABLE_ARG_ARG_DOES_NOT_EXIST_WHEN_APPLYING_LOAD_CHUNK_DATA_IT_MAY_HAVE_BEEN_DROPPED_AFTER_THE_LOAD_WAS_ANALYZED_DDB35F93 =
+      "Table '%s.%s' does not exist when applying LOAD chunk data. It may have been dropped after the LOAD was analyzed.";
   public static final String TASK_DIR_NOT_EMPTY_SKIP_DELETE = "Task dir {} is not empty, skip deleting.";
   public static final String LOAD_CLEANUP_TASK_CANCELED = "Load cleanup task {} is canceled.";
   public static final String LOAD_CLEANUP_TASK_STARTS = "Load cleanup task {} starts.";
@@ -1521,4 +1622,36 @@ public final class StorageEngineMessages {
   public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "The associated resource file of {} is not found in the snapshot";
   public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "Evicted non-existing/existing series count: {}/{}({}), total request: {}";
 
+  public static final String EXCEPTION_CHUNK_LAYOUT_IS_MISSING_E87C71C0 = "Chunk layout is missing";
+  public static final String EXCEPTION_CHUNK_HEADER_LIST_IS_EMPTY_5DE68C78 =
+      "Chunk header list is empty.";
+  public static final String EXCEPTION_FAILED_TO_ENCODE_CHUNK_USING_ALIGNEDCHUNKWRITERIMPL_5AAF9AA8 =
+      "Failed to encode chunk using AlignedChunkWriterImpl";
+  public static final String EXCEPTION_FAILED_TO_ENCODE_CHUNK_USING_CHUNKWRITERIMPL_260BF917 =
+      "Failed to encode chunk using ChunkWriterImpl";
+  public static final String LOG_RECOVERED_LOAD_WRITER_MANAGER_FOR_UUID_ARG_E0430FB8 =
+      "Recovered LOAD writer manager for uuid {}";
+  public static final String LOG_FAILED_TO_RECOVER_LOAD_WRITER_MANAGER_FOR_UUID_ARG_CBB34D4B =
+      "Failed to recover LOAD writer manager for uuid {}";
+  public static final String EXCEPTION_INVALID_LOAD_PROGRESS_FILE_ARG_15643A3E =
+      "Invalid load progress file: %s";
+  public static final String EXCEPTION_INVALID_PROGRESS_ENTRY_LENGTH_ARG_E9A96035 =
+      "Invalid progress entry length: %d";
+  public static final String LOG_SKIPPING_UNSUPPORTED_LOAD_PROGRESS_ENTRY_VERSION_ARG_IN_ARG_7AAA404C =
+      "Skipping unsupported load progress entry version {} in {}";
+  public static final String EXCEPTION_UNEXPECTED_CHUNK_HEADER_SIZE_OF_ARG_SERIALIZED_ARG_BYTE_S_BODY_ARG_0A3F7B17 =
+      "Unexpected chunk header size of %s: serialized %d byte(s), body %d";
+  public static final String EXCEPTION_NEGATIVE_BYTE_ARRAY_LENGTH_IN_PROGRESS_FILE_C397A4DC =
+      "Negative byte array length in progress file";
+  public static final String LOG_FILLED_PHYSICAL_HOLE_BEFORE_WRITING_CHUNK_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_FILLBYTES_ARG_9EDA3EB6 =
+      "Filled physical hole before writing chunk: file={}, device={}, measurement={}, expectedOffset={}, actualOffset={}, fillBytes={}";
+  public static final String LOG_PRECALCULATED_OFFSET_IS_BEHIND_ACTUAL_FILE_POSITION_USING_ACTUAL_POSITION_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_DELTA_ARG_F05C873F =
+      "Precalculated offset is behind actual file position; using actual position: file={}, device={}, measurement={}, expectedOffset={}, actualOffset={}, delta={}";
+  public static final String EXCEPTION_THIS_WRITER_IS_NOT_BACKED_BY_A_FILE_7103C187 =
+      "This writer is not backed by a file";
+  public static final String LOG_SKIPPING_THE_CHUNKS_OF_ARG_BECAUSE_THEIR_PAYLOAD_IS_ALREADY_STAGED_IN_ARG_OF_THE_LOAD_TASK_ARG_BAFEEE84 =
+      "Skipping the chunks of {} because their payload is already staged in {} of the LOAD task {}";
+
+  public static final String LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D =
+      "Failed to sweep the staged directories of the finished LOAD tasks.";
 }

@@ -1,0 +1,425 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.storageengine.load;
+
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+
+import org.apache.tsfile.external.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Snapshot support for the in-progress LOAD staged files.
+ *
+ * <p>LOAD keeps its staging files in a dedicated directory tree ({@link
+ * LoadTsFileManager#getLoadBaseDirs()}) that is independent of the DataRegion {@code
+ * sequence}/{@code unsequence} data layout. Its snapshot/restore is therefore kept here, in the
+ * {@code load} package, instead of being mixed into the general DataRegion snapshot logic ({@code
+ * SnapshotTaker}/{@code SnapshotLoader}), which only knows about regular storage files.
+ */
+public final class LoadTsFileSnapshot {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileSnapshot.class);
+
+  /**
+   * The dedicated sub-directory under a snapshot dir that holds the staged files of in-progress
+   * LOAD tasks. Keeping it apart from {@code sequence}/{@code unsequence} ensures LOAD never mixes
+   * with regular storage files inside a snapshot.
+   */
+  public static final String SNAPSHOT_SUBDIR_NAME = IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+
+  /** The infix of a file that is still being copied into the snapshot, see {@link #copy}. */
+  private static final String TEMP_FILE_SUFFIX = ".copying.";
+
+  /**
+   * The manifest that records which staging root each task of the snapshot was staged in: one
+   * {@code <task directory name> <root index>} line per task. A DataNode may stage its tasks in
+   * several roots, and the roots of the node that restores the snapshot need not be the same ones,
+   * so the index is a hint that keeps a restored task on the disk it came from; the references of a
+   * task resolve under whichever root it ends up in, see {@link
+   * LoadStagingDirs#recordedPath(File)}.
+   */
+  private static final String ROOTS_MANIFEST_NAME = "roots";
+
+  private LoadTsFileSnapshot() {}
+
+  /**
+   * The protocols whose snapshot carries the staging directory of a region.
+   *
+   * <p>A consensus LOAD stages its pieces on the write node, and a replica of IoTConsensus rebuilds
+   * the staged files from the entries of the log it applies while it is a member of the region. A
+   * replica that joins the region in the middle of a task is not a member for the pieces that were
+   * applied before it joined, so it inherits the staged state - and the progress its recovery
+   * resumes - from the snapshot that the migration transfers. Ratis replicates the full piece
+   * payload to every replica instead, so a payload reaches the staging area of a replica without a
+   * transfer of that area, and the load is restarted anyway when a migration is detected while it
+   * is running (see {@code LoadTsFileScheduler}).
+   */
+  private static final Set<String> PROTOCOLS_WITH_STAGING_SNAPSHOT =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  ConsensusFactory.IOT_CONSENSUS,
+                  ConsensusFactory.IOT_CONSENSUS_V2,
+                  ConsensusFactory.LEGACY_IOT_CONSENSUS_V2,
+                  ConsensusFactory.REAL_IOT_CONSENSUS_V2)));
+
+  /**
+   * Copies the staged files of the in-progress LOAD tasks of {@code dataRegion} into {@code
+   * snapshotDir/load/}. Returns {@code false} on an IO error so the caller can fail and clean up
+   * the whole snapshot, mirroring the other snapshot steps.
+   */
+  public static boolean snapshot(final DataRegion dataRegion, final File snapshotDir) {
+    if (!PROTOCOLS_WITH_STAGING_SNAPSHOT.contains(
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
+      return true;
+    }
+    final LoadTsFileManager manager = dataRegion.getLoadTsFileManagerIfPresent().orElse(null);
+    if (manager == null) {
+      return true;
+    }
+    final List<File> taskDirs = manager.getActiveTaskDirs();
+    if (taskDirs.isEmpty()) {
+      return true;
+    }
+    final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
+    try {
+      writeRootsManifest(loadSnapshotDir, taskDirs);
+      for (final File taskDir : taskDirs) {
+        final File targetDir = new File(loadSnapshotDir, taskDir.getName());
+        // The progress logs are copied first, so a log never refers to bytes that the copy of its
+        // staged file does not hold: the pieces of the region keep being applied while this copy
+        // runs, and a staged file only ever grows at its end. The copy of the staged file is taken
+        // afterwards, and the trailing entry of a log can still be caught half appended there; the
+        // reader of the restored copy drops that fragment, see
+        // LoadTsFileProgress#readAllRecordsRepairingTornTail.
+        copyProgressLogs(taskDir, targetDir);
+        copyStagedFiles(taskDir, targetDir);
+      }
+      LOGGER.info(
+          String.format(
+              StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C,
+              taskDirs.size(),
+              countFiles(loadSnapshotDir),
+              dataRegion.getDatabaseName()
+                  + IoTDBConstant.FILE_NAME_SEPARATOR
+                  + dataRegion.getDataRegionIdString(),
+              snapshotDir.getAbsolutePath()));
+      return true;
+    } catch (final IOException e) {
+      LOGGER.warn(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
+      return false;
+    }
+  }
+
+  private static void copyProgressLogs(final File taskDir, final File targetDir)
+      throws IOException {
+    // The directory is listed again here on purpose: a time partition whose first piece arrived
+    // after the task was enumerated still contributes its progress log.
+    for (final File file : listFiles(taskDir)) {
+      if (file.isFile() && isProgressLog(file)) {
+        copy(new File(targetDir, file.getName()), file);
+      }
+    }
+  }
+
+  private static void copyStagedFiles(final File taskDir, final File targetDir) throws IOException {
+    for (final File file : listFiles(taskDir)) {
+      if (file.isFile() && !isProgressLog(file)) {
+        copy(new File(targetDir, file.getName()), file);
+      }
+    }
+  }
+
+  private static boolean isProgressLog(final File file) {
+    return file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX);
+  }
+
+  /**
+   * Records the staging root of every task of the snapshot, before any of their files is copied.
+   */
+  private static void writeRootsManifest(final File loadSnapshotDir, final List<File> taskDirs)
+      throws IOException {
+    final StringBuilder manifest = new StringBuilder();
+    for (final File taskDir : taskDirs) {
+      manifest
+          .append(taskDir.getName())
+          .append(' ')
+          .append(LoadStagingDirs.baseDirIndexOf(taskDir))
+          .append(System.lineSeparator());
+    }
+    final File manifestFile = File.createTempFile(ROOTS_MANIFEST_NAME, TEMP_FILE_SUFFIX);
+    try {
+      Files.write(manifestFile.toPath(), manifest.toString().getBytes(StandardCharsets.UTF_8));
+      copy(new File(loadSnapshotDir, ROOTS_MANIFEST_NAME), manifestFile);
+    } finally {
+      Files.deleteIfExists(manifestFile.toPath());
+    }
+  }
+
+  /** Reads the recorded staging root of every task of the snapshot, empty when it holds none. */
+  private static Map<String, Integer> readRootsManifest(final File loadSnapshotDir) {
+    final File manifestFile = new File(loadSnapshotDir, ROOTS_MANIFEST_NAME);
+    if (!manifestFile.isFile()) {
+      return Collections.emptyMap();
+    }
+    final Map<String, Integer> taskRoots = new HashMap<>();
+    try {
+      for (final String line :
+          new String(Files.readAllBytes(manifestFile.toPath()), StandardCharsets.UTF_8)
+              .split(System.lineSeparator())) {
+        final int separator = line.lastIndexOf(' ');
+        if (separator <= 0) {
+          continue;
+        }
+        try {
+          taskRoots.put(
+              line.substring(0, separator), Integer.parseInt(line.substring(separator + 1)));
+        } catch (final NumberFormatException ignored) {
+          // A line this node cannot read is a hint it does without, not a failure.
+        }
+      }
+    } catch (final IOException e) {
+      LOGGER.warn(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
+      return Collections.emptyMap();
+    }
+    return taskRoots;
+  }
+
+  /** The root a task of the snapshot is restored into, on a node that may hold fewer roots. */
+  private static int rootOf(
+      final Map<String, Integer> taskRoots, final String taskName, final int rootCount) {
+    final Integer recorded = taskRoots.get(taskName);
+    if (recorded == null || recorded < 0) {
+      return 0;
+    }
+    return recorded < rootCount ? recorded : recorded % rootCount;
+  }
+
+  private static File[] listFiles(final File dir) {
+    final File[] files = dir.listFiles();
+    return files == null ? new File[0] : files;
+  }
+
+  private static int countFiles(final File dir) {
+    int count = 0;
+    for (final File file : listFiles(dir)) {
+      count += file.isDirectory() ? countFiles(file) : 1;
+    }
+    return count;
+  }
+
+  /**
+   * Clears this region's LOAD staging directory before restoring a snapshot, so stale in-progress
+   * tasks from before the snapshot cannot leak into the recovered region.
+   */
+  public static void clear(final String databaseName, final String dataRegionIdString)
+      throws IOException {
+    for (final String loadBaseDir : LoadStagingDirs.baseDirs()) {
+      final File regionLoadDir =
+          LoadStagingDirs.regionLoadDir(new File(loadBaseDir), databaseName, dataRegionIdString);
+      if (regionLoadDir.exists()) {
+        FileUtils.forceDelete(regionLoadDir);
+      }
+    }
+  }
+
+  /**
+   * Restores the staged files from {@code snapshotDir/load/} into this region's LOAD staging
+   * directory. When a snapshot is spread across several receive folders this is called once per
+   * folder, and each call merges its {@code load} folder into the same target directory.
+   */
+  public static void restore(
+      final String databaseName, final String dataRegionIdString, final File snapshotDir)
+      throws IOException {
+    final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
+    if (!loadSnapshotDir.isDirectory()) {
+      return;
+    }
+    final String[] loadBaseDirs = LoadStagingDirs.baseDirs();
+    if (loadBaseDirs.length == 0) {
+      return;
+    }
+    final Map<String, Integer> taskRoots = readRootsManifest(loadSnapshotDir);
+    final File[] loadIdDirs = loadSnapshotDir.listFiles();
+    if (loadIdDirs == null) {
+      return;
+    }
+    int taskCount = 0;
+    int fileCount = 0;
+    for (final File loadIdDir : loadIdDirs) {
+      if (!loadIdDir.isDirectory()) {
+        continue;
+      }
+      final File[] files = loadIdDir.listFiles();
+      if (files == null) {
+        continue;
+      }
+      // The task goes back to the root it was staged in when this node has it, and to the roots it
+      // has otherwise: the recorded references are relative to a root, so they describe the files
+      // wherever they land.
+      final File targetDir =
+          new File(
+              LoadStagingDirs.regionLoadDir(
+                  new File(
+                      loadBaseDirs[rootOf(taskRoots, loadIdDir.getName(), loadBaseDirs.length)]),
+                  databaseName,
+                  dataRegionIdString),
+              loadIdDir.getName());
+      taskCount++;
+      for (final File file : files) {
+        if (!file.isFile()) {
+          continue;
+        }
+        copy(new File(targetDir, file.getName()), file);
+        fileCount++;
+      }
+    }
+    if (taskCount > 0) {
+      LOGGER.info(
+          String.format(
+              StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_90ABC1BF,
+              taskCount,
+              fileCount,
+              snapshotDir.getAbsolutePath()));
+    }
+  }
+
+  /**
+   * Collects every file under the dedicated {@code load} folder of a snapshot dir, regardless of
+   * suffix, so the snapshot-transfer layer includes the {@code .progress} bitmaps together with the
+   * staged TsFiles and their modification files.
+   */
+  public static List<File> collectSnapshotFiles(final File snapshotDir) throws IOException {
+    final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
+    if (!loadSnapshotDir.isDirectory()) {
+      return Collections.emptyList();
+    }
+    final List<File> fileList = new LinkedList<>();
+    Files.walkFileTree(
+        loadSnapshotDir.toPath(),
+        new FileVisitor<Path>() {
+          @Override
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+              throws IOException {
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            if (!file.getFileName().toString().contains(TEMP_FILE_SUFFIX)) {
+              // A file that is still being copied is not part of the snapshot: it is published
+              // under its final name once its copy is complete.
+              fileList.add(file.toFile());
+            }
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            // A staged file that cannot be enumerated would be missing from the snapshot while the
+            // snapshot still reports success, and restoring it would resume a task with holes. The
+            // failure has to abort the snapshot instead of shortening it silently.
+            throw new IOException(
+                String.format(
+                    StorageEngineMessages
+                        .EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_FILE_ARG_ARG_9105BFC5,
+                    file,
+                    exc.getMessage()),
+                exc);
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            if (exc != null) {
+              throw new IOException(
+                  String.format(
+                      StorageEngineMessages
+                          .EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70,
+                      dir,
+                      exc.getMessage()),
+                  exc);
+            }
+            return FileVisitResult.CONTINUE;
+          }
+        });
+    return fileList;
+  }
+
+  /**
+   * Copies one file into the snapshot, publishing it under its final name only once it is complete.
+   *
+   * <p>The snapshot directory is read by the transfer layer while it is still being filled, so a
+   * file that appears under its final name has to be complete: a partially copied staged TsFile
+   * would otherwise be transferred as if it were whole.
+   */
+  private static void copy(final File target, final File source) throws IOException {
+    if (!target.getParentFile().exists() && !target.getParentFile().mkdirs()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.FAILED_TO_CREATE_DIR,
+              target.getParentFile().getAbsolutePath()));
+    }
+    final File tempTarget =
+        new File(target.getParentFile(), target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
+    try {
+      Files.copy(source.toPath(), tempTarget.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      try {
+        Files.move(
+            tempTarget.toPath(),
+            target.toPath(),
+            StandardCopyOption.REPLACE_EXISTING,
+            StandardCopyOption.ATOMIC_MOVE);
+      } catch (final AtomicMoveNotSupportedException e) {
+        // The snapshot may live on a file system without atomic renames; the copy is complete at
+        // this point, so a plain move publishes the same bytes.
+        Files.move(tempTarget.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+    } catch (final IOException e) {
+      Files.deleteIfExists(tempTarget.toPath());
+      throw e;
+    }
+  }
+}

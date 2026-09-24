@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
 import java.util.List;
+import java.util.function.LongConsumer;
 
 /** This interface provides uniform interface for writing wal and making checkpoints. */
 public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqReader, DataSet {
@@ -57,8 +59,17 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
 
   WALFlushListener log(long memTableId, ObjectNode objectNode);
 
+  WALFlushListener log(long memTableId, LoadTsFileConsensusNode node);
+
   /** Callback when memTable created. */
   void onMemTableCreated(IMemTable memTable, String targetTsFile);
+
+  /**
+   * Registers a listener that is notified whenever the consensus layer advances {@link
+   * ConsensusReqReader#getSafelyDeletedSearchIndex()}. LOAD uses it to release staged directories
+   * that must survive until no follower can still need the WAL entries referring to them.
+   */
+  default void setSafeDeletedSearchIndexListener(final LongConsumer listener) {}
 
   @Override
   void close();

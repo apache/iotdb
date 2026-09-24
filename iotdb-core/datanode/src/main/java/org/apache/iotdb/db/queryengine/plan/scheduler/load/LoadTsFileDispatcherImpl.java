@@ -22,23 +22,18 @@ package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -52,7 +47,6 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -66,20 +60,24 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
-
+/**
+ * LOAD dispatcher: legacy local dispatcher of the LOAD local-load path (no decode needed) and the
+ * per-file uuid holder used for executor naming and log correlation.
+ *
+ * <p>A piece that is dispatched to a replica over the network is split into slices that fit into
+ * one internal RPC frame, because an oversized frame is rejected by the receiver's transport before
+ * its handler runs. The slice size is bounded by the smaller frame limit of the two nodes, which is
+ * asked for once per endpoint and cached, and the receiver reassembles the piece from the slices.
+ */
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
@@ -373,111 +371,6 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
     final TEndPoint localEndPoint = new TEndPoint(localhostIpAddr, localhostInternalPort);
     DataNodeUserDataTransferAuditor.record(
         localEndPoint, localEndPoint, target, success, errorCode, error);
-  }
-
-  public Future<FragInstanceDispatchResult> dispatchCommand(
-      TLoadCommandReq originalLoadCommandReq, Set<TRegionReplicaSet> replicaSets) {
-    Set<TEndPoint> allEndPoint = new HashSet<>();
-    for (TRegionReplicaSet replicaSet : replicaSets) {
-      for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        allEndPoint.add(dataNodeLocation.getInternalEndPoint());
-      }
-    }
-
-    for (TEndPoint endPoint : allEndPoint) {
-      // duplicate for progress index binary serialization
-      final TLoadCommandReq duplicatedLoadCommandReq = originalLoadCommandReq.deepCopy();
-      try (SetThreadName threadName =
-          new SetThreadName(
-              "load-dispatcher"
-                  + "-"
-                  + LoadTsFileScheduler.LoadCommand.values()[duplicatedLoadCommandReq.commandType]
-                  + "-"
-                  + duplicatedLoadCommandReq.uuid)) {
-        if (isDispatchedToLocal(endPoint)) {
-          dispatchLocally(duplicatedLoadCommandReq);
-        } else {
-          dispatchRemote(duplicatedLoadCommandReq, endPoint);
-        }
-      } catch (FragmentInstanceDispatchException e) {
-        LOGGER.warn(
-            DataNodeQueryMessages.CANNOT_DISPATCH_LOADCOMMAND_FOR_LOAD_OPERATION_ARG,
-            duplicatedLoadCommandReq,
-            e);
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Exception t) {
-        LOGGER.warn(
-            DataNodeQueryMessages.CANNOT_DISPATCH_LOADCOMMAND_FOR_LOAD_OPERATION_ARG,
-            duplicatedLoadCommandReq,
-            t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR,
-                    String.format(
-                        DataNodeQueryMessages.MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800,
-                        t.getMessage()))));
-      }
-    }
-    return immediateFuture(new FragInstanceDispatchResult(true));
-  }
-
-  private void dispatchLocally(TLoadCommandReq loadCommandReq)
-      throws FragmentInstanceDispatchException {
-    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
-    if (loadCommandReq.isSetTimePartition2ProgressIndex()) {
-      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
-          loadCommandReq.getTimePartition2ProgressIndex().entrySet()) {
-        timePartitionProgressIndexMap.put(
-            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
-      }
-    } else {
-      final TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-      status.setMessage(
-          DataNodeMiscMessages.LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP);
-      throw new FragmentInstanceDispatchException(status);
-    }
-
-    final TSStatus resultStatus =
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
-                loadCommandReq.uuid,
-                loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe,
-                timePartitionProgressIndexMap);
-    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
-      throw new FragmentInstanceDispatchException(resultStatus);
-    }
-  }
-
-  private void dispatchRemote(TLoadCommandReq loadCommandReq, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      client.setTimeout(CONNECTION_TIMEOUT_MS.get());
-
-      final TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-      if (!loadResp.isAccepted()) {
-        LOGGER.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
-      }
-    } catch (Exception e) {
-      adjustTimeoutIfNecessary(e);
-
-      final String exceptionMessage =
-          String.format(
-              DataNodeQueryMessages
-                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D,
-              loadCommandReq,
-              endPoint,
-              e);
-      LOGGER.warn(exceptionMessage, e);
-      throw new FragmentInstanceDispatchException(
-          new TSStatus()
-              .setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode())
-              .setMessage(exceptionMessage));
-    }
   }
 
   private boolean isDispatchedToLocal(TEndPoint endPoint) {
