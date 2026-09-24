@@ -56,6 +56,16 @@ public class ConsensusLogToTabletConverterTest {
   private static final String DATABASE_NAME = "db";
 
   @Test
+  public void testDataModelIsDerivedFromImmutableConversionPattern() {
+    final ConsensusLogToTabletConverter tableConverter = createConverter("id1");
+    final ConsensusLogToTabletConverter treeConverter =
+        new ConsensusLogToTabletConverter(new IoTDBTreePattern("root.**"), null, null, null);
+
+    Assert.assertTrue(tableConverter.isTableModel());
+    Assert.assertFalse(treeConverter.isTableModel());
+  }
+
+  @Test
   public void testConvertRelationalInsertRowNodeWithSingleMatchedColumn() {
     final ConsensusLogToTabletConverter converter = createConverter("id1");
 
