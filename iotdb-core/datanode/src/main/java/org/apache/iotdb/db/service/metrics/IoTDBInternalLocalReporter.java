@@ -148,6 +148,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
+    service.shutdownNow();
     clear();
     LOGGER.info("IoTDBInternalReporter stop!");
     return true;
