@@ -333,6 +333,25 @@ public final class CommonMessages {
           "XCorr requires exactly two calculation columns, but found %d.";
   public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "the column in table lack of the name";
   public static final String
+      EXCEPTION_EXACTLY_ONE_OF_THE_N_AND_SIZE_ARGUMENTS_MUST_BE_SPECIFIED_FOR_LTTB_54AF0733 =
+          "Exactly one of the N and SIZE arguments must be specified for LTTB.";
+  public static final String EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_AT_LEAST_3_29CE2B87 =
+      "The N argument of LTTB must be at least 3.";
+  public static final String
+      EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E =
+          "The N argument of LTTB must be a positive integer.";
+  public static final String
+      EXCEPTION_THE_N_ARGUMENT_OF_LTTB_CANNOT_BE_COMBINED_WITH_THE_SLIDE_OR_ORIGIN_ARGUMENTS_C2FF1FE1 =
+          "The N argument of LTTB cannot be combined with the SLIDE or ORIGIN arguments.";
+  public static final String
+      EXCEPTION_INVALID_SCALAR_ARGUMENT_SIZE_SHOULD_BE_A_POSITIVE_VALUE_3ECF76E0 =
+          "Invalid scalar argument SIZE, should be a positive value";
+  public static final String
+      EXCEPTION_LTTB_BUFFERS_AT_MOST_ARG_ELIGIBLE_POINTS_PER_COLUMN_IN_ONE_PARTITION_OR_WINDOW_4C746D82 =
+          "LTTB buffers at most %d eligible points per column in one partition or window.";
+  public static final String EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE =
+      "Unsupported LTTB value type: %s";
+  public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";
   public static final String EXCEPTION_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROP_TABLE_IF_IT_IS_STUCK_7E22D78F =

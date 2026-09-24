@@ -230,6 +230,25 @@ public final class CommonMessages {
           "XCorr 要求必须正好有两列计算列，但实际找到 %d 列。";
   public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "表参数中列缺少名字";
   public static final String
+      EXCEPTION_EXACTLY_ONE_OF_THE_N_AND_SIZE_ARGUMENTS_MUST_BE_SPECIFIED_FOR_LTTB_54AF0733 =
+          "LTTB 必须且只能指定 N 和 SIZE 参数中的一个。";
+  public static final String EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_AT_LEAST_3_29CE2B87 =
+      "LTTB 的 N 参数必须至少为 3。";
+  public static final String
+      EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E =
+          "LTTB 的 N 参数必须是正整数。";
+  public static final String
+      EXCEPTION_THE_N_ARGUMENT_OF_LTTB_CANNOT_BE_COMBINED_WITH_THE_SLIDE_OR_ORIGIN_ARGUMENTS_C2FF1FE1 =
+          "LTTB 的 N 参数不能与 SLIDE 或 ORIGIN 参数同时使用。";
+  public static final String
+      EXCEPTION_INVALID_SCALAR_ARGUMENT_SIZE_SHOULD_BE_A_POSITIVE_VALUE_3ECF76E0 =
+          "无效的标量参数 SIZE，应为正数";
+  public static final String
+      EXCEPTION_LTTB_BUFFERS_AT_MOST_ARG_ELIGIBLE_POINTS_PER_COLUMN_IN_ONE_PARTITION_OR_WINDOW_4C746D82 =
+          "LTTB 在单个分区或窗口内每列最多缓存 %d 个有效点。";
+  public static final String EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE =
+      "不支持的 LTTB 值类型：%s";
+  public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";
   public static final String EXCEPTION_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROP_TABLE_IF_IT_IS_STUCK_7E22D78F =

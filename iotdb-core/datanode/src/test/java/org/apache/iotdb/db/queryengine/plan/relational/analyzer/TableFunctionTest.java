@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.LTTBTableFunction;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
@@ -841,5 +842,162 @@ public class TableFunctionTest {
           "The ORDER BY clause of the DATA argument must sort the time column in ascending order.",
           e.getMessage());
     }
+  }
+
+  // Aliases use the planner's actual symbol names so the same matcher also resolves them through
+  // the ExchangeNodes of the distributed plan (which bind symbols to their own names).
+  private static final ImmutableMap<String, String> TABLE1_COLUMNS =
+      ImmutableMap.<String, String>builder()
+          .put("time", "time")
+          .put("tag1_0", "tag1")
+          .put("tag2_1", "tag2")
+          .put("tag3_2", "tag3")
+          .put("attr1_3", "attr1")
+          .put("attr2_4", "attr2")
+          .put("s1_5", "s1")
+          .put("s2_6", "s2")
+          .put("s3_7", "s3")
+          .buildOrThrow();
+
+  private static final String LTTB_DATA_ARGUMENT =
+      "DATA => table1 PARTITION BY (tag1, tag2, tag3, attr1, attr2) ORDER BY time";
+
+  private static MapTableFunctionHandle.Builder lttbHandle(String mode) {
+    return new MapTableFunctionHandle.Builder()
+        .addProperty(LTTBTableFunction.MODE_PROPERTY, mode)
+        .addProperty(
+            LTTBTableFunction.PARTITION_TYPES_PROPERTY, "STRING,STRING,STRING,STRING,STRING")
+        .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "INT64,INT64,DOUBLE");
+  }
+
+  private static TableFunctionProcessorMatcher.Builder lttbMatcher(
+      TableFunctionProcessorMatcher.Builder builder, String... windowColumns) {
+    ImmutableList.Builder<String> properOutputs = ImmutableList.builder();
+    properOutputs.add(windowColumns);
+    properOutputs.add(
+        "lttb_tag1",
+        "lttb_tag2",
+        "lttb_tag3",
+        "lttb_attr1",
+        "lttb_attr2",
+        "lttb_s1_time",
+        "lttb_s1",
+        "lttb_s2_time",
+        "lttb_s2",
+        "lttb_s3_time",
+        "lttb_s3");
+    return builder
+        .name("lttb")
+        .properOutputs(properOutputs.build().toArray(new String[0]))
+        .requiredSymbols(
+            "time", "tag1_0", "tag2_1", "tag3_2", "attr1_3", "attr2_4", "s1_5", "s2_6", "s3_7");
+  }
+
+  @Test
+  public void testLTTBTargetCountMode() {
+    PlanTester planTester = new PlanTester();
+    String sql = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', N => 100)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1", TABLE1_COLUMNS);
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            lttbMatcher(builder, "window_index")
+                .handle(
+                    lttbHandle("TARGET_COUNT")
+                        .addProperty(LTTBTableFunction.N_PARAMETER_NAME, 100L)
+                        .build());
+
+    // PARTITION BY several columns plans a GroupNode (a SortNode subclass) below the function
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, group(tableScan))));
+    // LTTB is not mergeable: the whole partition is gathered and ordered before the function runs
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher, mergeSort(exchange(), exchange(), exchange()))));
+  }
+
+  @Test
+  public void testLTTBTimeWindowMode() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM LTTB("
+            + LTTB_DATA_ARGUMENT
+            + ", TIMECOL => 'time', SIZE => 1h, SLIDE => 30m, "
+            + "ORIGIN => 1970-01-01T00:00:00.000+00:00)";
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            lttbMatcher(builder, "window_start", "window_end")
+                .handle(
+                    lttbHandle("TIME_WINDOW")
+                        .addProperty(LTTBTableFunction.SIZE_PARAMETER_NAME, 3600000L)
+                        .addProperty(LTTBTableFunction.SLIDE_PARAMETER_NAME, 1800000L)
+                        .addProperty(LTTBTableFunction.ORIGIN_PARAMETER_NAME, 0L)
+                        .build());
+    assertPlan(
+        planTester.createPlan(sql),
+        anyTree(
+            tableFunctionProcessor(
+                tableFunctionMatcher, group(tableScan("testdb.table1", TABLE1_COLUMNS)))));
+  }
+
+  @Test
+  public void testLTTBCountWindowMode() {
+    PlanTester planTester = new PlanTester();
+    String sql = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', SIZE => 5)";
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            lttbMatcher(builder, "window_index")
+                .handle(
+                    lttbHandle("COUNT_WINDOW")
+                        .addProperty(LTTBTableFunction.SIZE_PARAMETER_NAME, 5L)
+                        .addProperty(LTTBTableFunction.SLIDE_PARAMETER_NAME, 5L)
+                        .build());
+    assertPlan(
+        planTester.createPlan(sql),
+        anyTree(
+            tableFunctionProcessor(
+                tableFunctionMatcher, group(tableScan("testdb.table1", TABLE1_COLUMNS)))));
+  }
+
+  @Test
+  public void testLTTBRejectsInvalidArguments() {
+    String data = "DATA => (SELECT time, tag1, s3 FROM table1) PARTITION BY tag1 ORDER BY time";
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(" + data + ", TIMECOL => 'time')",
+        "Exactly one of the N and SIZE arguments must be specified for LTTB.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(" + data + ", TIMECOL => 'time', N => 10, SIZE => 1h)",
+        "Exactly one of the N and SIZE arguments must be specified for LTTB.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(" + data + ", TIMECOL => 'time', N => 2)",
+        "The N argument of LTTB must be at least 3.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(" + data + ", TIMECOL => 'time', N => 1h)",
+        "The N argument of LTTB must be a positive integer.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB("
+            + data
+            + ", TIMECOL => 'time', N => 10, ORIGIN => 1970-01-01T00:00:00.000+00:00)",
+        "The N argument of LTTB cannot be combined with the SLIDE or ORIGIN arguments.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(" + data + ", TIMECOL => 'time', SLIDE => 1h)",
+        "Exactly one of the N and SIZE arguments must be specified for LTTB.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB("
+            + data
+            + ", TIMECOL => 'time', SIZE => 5, ORIGIN => 1970-01-01T00:00:00.000+00:00)",
+        "The ORIGIN argument is only supported in time window mode.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(" + data + ", TIMECOL => 'time', SIZE => 1h, SLIDE => 5)",
+        "The SLIDE argument must have the same window mode as the SIZE argument.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(DATA => (SELECT time, tag1, s3 FROM table1) PARTITION BY tag1 ORDER BY time DESC, TIMECOL => 'time', N => 10)",
+        "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+    assertAnalyzeFails(
+        "SELECT * FROM LTTB(DATA => (SELECT time, tag1, attr1, s3 FROM table1) PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', N => 10)",
+        "Only column with double, float, int32, int64 can be calculated by the function, attr1 is the STRING.");
   }
 }
