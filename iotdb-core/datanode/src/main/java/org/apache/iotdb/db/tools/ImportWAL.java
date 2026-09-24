@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.tools.TableWALDeleteConverter.ConversionException;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -60,9 +61,9 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -74,7 +75,6 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1599,16 +1599,10 @@ public class ImportWAL {
     }
 
     private static Object createValueArray(final TSDataType type, final int rowCount) {
-      return switch (type) {
-        case BOOLEAN -> new boolean[rowCount];
-        case INT32 -> new int[rowCount];
-        case DATE -> new LocalDate[rowCount];
-        case INT64, TIMESTAMP -> new long[rowCount];
-        case FLOAT -> new float[rowCount];
-        case DOUBLE -> new double[rowCount];
-        case TEXT, STRING, BLOB, OBJECT -> new Binary[rowCount];
-        case VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type);
-      };
+      ensureSupportedSnapshotDataType(type);
+      return TypeServices.StorageEngine.TABLET_COLUMN_ALLOCATOR_SERVICE
+          .call(Type.fromTsDataType(type))
+          .apply(rowCount);
     }
 
     private static Object[] createValueArrays(
@@ -1626,19 +1620,10 @@ public class ImportWAL {
         final TSDataType type,
         final TVList list,
         final int sourceIndex) {
-      switch (type) {
-        case BOOLEAN -> ((boolean[]) target)[targetIndex] = list.getBoolean(sourceIndex);
-        case INT32 -> ((int[]) target)[targetIndex] = list.getInt(sourceIndex);
-        case DATE ->
-            ((LocalDate[]) target)[targetIndex] =
-                DateUtils.parseIntToLocalDate(list.getInt(sourceIndex));
-        case INT64, TIMESTAMP -> ((long[]) target)[targetIndex] = list.getLong(sourceIndex);
-        case FLOAT -> ((float[]) target)[targetIndex] = list.getFloat(sourceIndex);
-        case DOUBLE -> ((double[]) target)[targetIndex] = list.getDouble(sourceIndex);
-        case TEXT, STRING, BLOB, OBJECT ->
-            ((Binary[]) target)[targetIndex] = list.getBinary(sourceIndex);
-        case VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type);
-      }
+      ensureSupportedSnapshotDataType(type);
+      TypeServices.StorageEngine.TV_LIST_TABLET_VALUE_WRITER_SERVICE
+          .call(Type.fromTsDataType(type))
+          .write(target, targetIndex, list, sourceIndex);
     }
 
     private static void putValue(
@@ -1648,24 +1633,15 @@ public class ImportWAL {
         final AlignedTVList list,
         final int sourceIndex,
         final int columnIndex) {
-      switch (type) {
-        case BOOLEAN ->
-            ((boolean[]) target)[targetIndex] =
-                list.getBooleanByValueIndex(sourceIndex, columnIndex);
-        case INT32 ->
-            ((int[]) target)[targetIndex] = list.getIntByValueIndex(sourceIndex, columnIndex);
-        case DATE ->
-            ((LocalDate[]) target)[targetIndex] =
-                DateUtils.parseIntToLocalDate(list.getIntByValueIndex(sourceIndex, columnIndex));
-        case INT64, TIMESTAMP ->
-            ((long[]) target)[targetIndex] = list.getLongByValueIndex(sourceIndex, columnIndex);
-        case FLOAT ->
-            ((float[]) target)[targetIndex] = list.getFloatByValueIndex(sourceIndex, columnIndex);
-        case DOUBLE ->
-            ((double[]) target)[targetIndex] = list.getDoubleByValueIndex(sourceIndex, columnIndex);
-        case TEXT, STRING, BLOB, OBJECT ->
-            ((Binary[]) target)[targetIndex] = list.getBinaryByValueIndex(sourceIndex, columnIndex);
-        case VECTOR, UNKNOWN -> throw unsupportedSnapshotDataType(type);
+      ensureSupportedSnapshotDataType(type);
+      TypeServices.StorageEngine.ALIGNED_TV_LIST_TABLET_VALUE_WRITER_SERVICE
+          .call(Type.fromTsDataType(type))
+          .write(target, targetIndex, list, sourceIndex, columnIndex);
+    }
+
+    private static void ensureSupportedSnapshotDataType(final TSDataType type) {
+      if (type == TSDataType.VECTOR || type == TSDataType.UNKNOWN) {
+        throw unsupportedSnapshotDataType(type);
       }
     }
 

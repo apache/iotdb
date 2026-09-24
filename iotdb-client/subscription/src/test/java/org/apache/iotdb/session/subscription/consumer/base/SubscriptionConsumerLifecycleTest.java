@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -40,10 +41,12 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -279,6 +282,92 @@ public class SubscriptionConsumerLifecycleTest {
     }
   }
 
+  @Test
+  public void testSyncCommitClearsAcceptedContextsFromAutoCommitBuffer() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(true);
+    final SubscriptionCommitContext commitContext =
+        new SubscriptionCommitContext(0, 0, "topic", CONSUMER_GROUP_ID, 1L);
+    try {
+      consumer.open();
+      addUncommittedCommitContexts(consumer, commitContext);
+
+      consumer.commitSync(new SubscriptionMessage(commitContext, 1L));
+
+      Assert.assertTrue(getUncommittedCommitContexts(consumer).isEmpty());
+      Assert.assertEquals(1, consumer.commitRequestCount);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testAsyncCommitClearsAcceptedContextsFromAutoCommitBuffer() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(true);
+    final SubscriptionCommitContext commitContext =
+        new SubscriptionCommitContext(0, 0, "topic", CONSUMER_GROUP_ID, 1L);
+    try {
+      consumer.open();
+      addUncommittedCommitContexts(consumer, commitContext);
+
+      consumer.commitAsync(new SubscriptionMessage(commitContext, 1L)).get(5, TimeUnit.SECONDS);
+
+      Assert.assertTrue(getUncommittedCommitContexts(consumer).isEmpty());
+      Assert.assertEquals(1, consumer.commitRequestCount);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testPartialCommitKeepsRejectedContextsInAutoCommitBuffer() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(true);
+    final SubscriptionCommitContext acceptedCommitContext =
+        new SubscriptionCommitContext(0, 0, "topic", CONSUMER_GROUP_ID, 1L);
+    final SubscriptionCommitContext rejectedCommitContext =
+        new SubscriptionCommitContext(0, 0, "topic", CONSUMER_GROUP_ID, 2L);
+    consumer.rejectedCommitContexts.add(rejectedCommitContext);
+    try {
+      consumer.open();
+      addUncommittedCommitContexts(consumer, acceptedCommitContext, rejectedCommitContext);
+
+      try {
+        consumer.commitSync(
+            Arrays.asList(
+                new SubscriptionMessage(acceptedCommitContext, 1L),
+                new SubscriptionMessage(rejectedCommitContext, 2L)));
+        Assert.fail("A partially accepted commit must fail");
+      } catch (final SubscriptionRuntimeNonCriticalException expected) {
+        Assert.assertTrue(expected.getMessage().contains("partially accepted"));
+      }
+
+      final SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts =
+          getUncommittedCommitContexts(consumer);
+      Assert.assertEquals(1, uncommittedCommitContexts.size());
+      Assert.assertEquals(
+          Collections.singleton(rejectedCommitContext), uncommittedCommitContexts.get(0L));
+      Assert.assertEquals(1, consumer.commitRequestCount);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  private static void addUncommittedCommitContexts(
+      final TestPullConsumer consumer, final SubscriptionCommitContext... commitContexts)
+      throws Exception {
+    getUncommittedCommitContexts(consumer)
+        .computeIfAbsent(0L, ignored -> new HashSet<>())
+        .addAll(Arrays.asList(commitContexts));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static SortedMap<Long, Set<SubscriptionCommitContext>> getUncommittedCommitContexts(
+      final TestPullConsumer consumer) throws Exception {
+    final Field field =
+        AbstractSubscriptionPullConsumer.class.getDeclaredField("uncommittedCommitContexts");
+    field.setAccessible(true);
+    return (SortedMap<Long, Set<SubscriptionCommitContext>>) field.get(consumer);
+  }
+
   private AbstractSubscriptionProviders getProviders(final AbstractSubscriptionConsumer consumer)
       throws Exception {
     final Field field = AbstractSubscriptionConsumer.class.getDeclaredField("providers");
@@ -374,6 +463,7 @@ public class SubscriptionConsumerLifecycleTest {
           () -> {},
           () -> {},
           () -> {},
+          Collections.emptySet(),
           null,
           null);
     }
@@ -391,15 +481,27 @@ public class SubscriptionConsumerLifecycleTest {
     private int closeRequestCount;
     private int sessionCloseCount;
     private int commitRequestCount;
+    private final Set<SubscriptionCommitContext> rejectedCommitContexts = new HashSet<>();
     private final CountDownLatch providerCloseStarted;
     private final CountDownLatch allowProviderClose;
 
     private TestPullConsumer() {
-      this(null, null);
+      this(false, null, null);
+    }
+
+    private TestPullConsumer(final boolean autoCommit) {
+      this(autoCommit, null, null);
     }
 
     private TestPullConsumer(
         final CountDownLatch providerCloseStarted, final CountDownLatch allowProviderClose) {
+      this(false, providerCloseStarted, allowProviderClose);
+    }
+
+    private TestPullConsumer(
+        final boolean autoCommit,
+        final CountDownLatch providerCloseStarted,
+        final CountDownLatch allowProviderClose) {
       super(
           new AbstractSubscriptionPullConsumerBuilder()
               .host(HOST)
@@ -408,7 +510,8 @@ public class SubscriptionConsumerLifecycleTest {
               .consumerGroupId(CONSUMER_GROUP_ID)
               .heartbeatIntervalMs(LONG_INTERVAL_MS)
               .endpointsSyncIntervalMs(LONG_INTERVAL_MS)
-              .autoCommit(false));
+              .autoCommit(autoCommit)
+              .autoCommitIntervalMs(LONG_INTERVAL_MS));
       this.providerCloseStarted = providerCloseStarted;
       this.allowProviderClose = allowProviderClose;
     }
@@ -449,6 +552,7 @@ public class SubscriptionConsumerLifecycleTest {
               () -> closeRequestCount++,
               () -> commitRequestCount++,
               () -> sessionCloseCount++,
+              rejectedCommitContexts,
               providerCloseStarted,
               allowProviderClose);
       createdProviders.add(provider);
@@ -468,6 +572,7 @@ public class SubscriptionConsumerLifecycleTest {
     private final Runnable closeRequest;
     private final Runnable commitRequest;
     private final Runnable sessionClose;
+    private final Set<SubscriptionCommitContext> rejectedCommitContexts;
     private final CountDownLatch providerCloseStarted;
     private final CountDownLatch allowProviderClose;
 
@@ -493,6 +598,7 @@ public class SubscriptionConsumerLifecycleTest {
         final Runnable closeRequest,
         final Runnable commitRequest,
         final Runnable sessionClose,
+        final Set<SubscriptionCommitContext> rejectedCommitContexts,
         final CountDownLatch providerCloseStarted,
         final CountDownLatch allowProviderClose) {
       super(
@@ -517,6 +623,7 @@ public class SubscriptionConsumerLifecycleTest {
       this.closeRequest = closeRequest;
       this.commitRequest = commitRequest;
       this.sessionClose = sessionClose;
+      this.rejectedCommitContexts = rejectedCommitContexts;
       this.providerCloseStarted = providerCloseStarted;
       this.allowProviderClose = allowProviderClose;
     }
@@ -611,7 +718,13 @@ public class SubscriptionConsumerLifecycleTest {
     CommitResult commit(
         final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack) {
       commitRequest.run();
-      return CommitResult.empty();
+      final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
+      for (final SubscriptionCommitContext commitContext : subscriptionCommitContexts) {
+        if (!rejectedCommitContexts.contains(commitContext)) {
+          acceptedCommitContexts.add(commitContext);
+        }
+      }
+      return new CommitResult(acceptedCommitContexts, Collections.emptyMap());
     }
   }
 }
