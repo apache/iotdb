@@ -440,6 +440,7 @@ public class StorageEngine implements IService {
       }
     }
     syncCloseAllProcessor();
+    dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     ThreadUtils.stopThreadPool(
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
@@ -462,6 +463,8 @@ public class StorageEngine implements IService {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);
+    } finally {
+      dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     }
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
@@ -517,6 +520,7 @@ public class StorageEngine implements IService {
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
+    dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     dataRegionMap.clear();
   }
 

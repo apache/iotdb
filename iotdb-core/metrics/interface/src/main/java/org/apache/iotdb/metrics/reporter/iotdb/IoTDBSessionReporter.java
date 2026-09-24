@@ -137,6 +137,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
       currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
+    service.shutdownNow();
     if (sessionPool != null) {
       sessionPool.close();
     }
