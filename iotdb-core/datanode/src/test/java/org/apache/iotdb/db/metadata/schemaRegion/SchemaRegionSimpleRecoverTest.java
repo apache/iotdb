@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -331,6 +332,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     final String database = "sg";
     final String tableName = "t";
     final TsTable testTable = new TsTable(tableName);
+    testTable.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
     testTable.addColumnSchema(new TagColumnSchema("tag", TSDataType.STRING));
     testTable.addColumnSchema(new AttributeColumnSchema("attr", TSDataType.STRING));
     testTable.addColumnSchema(new FieldColumnSchema("field", TSDataType.STRING));
@@ -357,7 +359,37 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
                                   new SymbolReference("field"), new StringLiteral("invalid"))),
                           new SessionInfo(0, SessionConfig.DEFAULT_USER, ZoneId.systemDefault()))));
       Assert.assertEquals(
-          DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS, exception.getMessage());
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6,
+              "FIELD",
+              "field"),
+          exception.getMessage());
+
+      final MetadataException valueException =
+          Assert.assertThrows(
+              MetadataException.class,
+              () ->
+                  schemaRegion.updateTableDeviceAttribute(
+                      new TableDeviceAttributeUpdateNode(
+                          new PlanNodeId(""),
+                          database,
+                          tableName,
+                          Collections.singletonList(Collections.emptyList()),
+                          null,
+                          Collections.singletonList(new ColumnHeader("tag", TSDataType.STRING)),
+                          null,
+                          Collections.singletonList(
+                              new UpdateAssignment(
+                                  new SymbolReference("attr"), new SymbolReference("field"))),
+                          new SessionInfo(0, SessionConfig.DEFAULT_USER, ZoneId.systemDefault()))));
+      Assert.assertEquals(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A,
+              "FIELD",
+              "field"),
+          valueException.getMessage());
     } finally {
       DataNodeTableCache.getInstance().invalid(database);
     }

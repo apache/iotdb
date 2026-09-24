@@ -58,6 +58,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -1160,10 +1161,79 @@ public class AnalyzerTest {
               () ->
                   analyzeStatement(
                       statement, TEST_MATADATA, queryContext, new SqlParser(), session));
-      assertEquals("Update can only specify attribute columns.", exception.getMessage());
+      assertEquals(
+          "Cannot update FIELD column 's1'. UPDATE can only specify ATTRIBUTE columns.",
+          exception.getMessage());
     } finally {
       DataNodeTableCache.getInstance().invalid(database);
     }
+  }
+
+  @Test
+  public void testSqlUpdateRejectsInvalidColumnsWithExplicitErrors() {
+    final String database = "testdb";
+    final TsTable tsTable = new TsTable(table);
+    tsTable.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+
+    try {
+      assertUpdateSemanticException(
+          "UPDATE table1 SET S1 = 'invalid'",
+          "Cannot update FIELD column 's1'. UPDATE can only specify ATTRIBUTE columns.",
+          "sql_update_field_target");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET tag1 = 'invalid'",
+          "Cannot update TAG column 'tag1'. UPDATE can only specify ATTRIBUTE columns.",
+          "sql_update_tag_target");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET time = 1",
+          "Cannot update TIME column 'time'. UPDATE can only specify ATTRIBUTE columns.",
+          "sql_update_time_target");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET attr1 = s1",
+          "Cannot reference FIELD column 's1' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.",
+          "sql_update_field_value");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET attr1 = time",
+          "Cannot reference TIME column 'time' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.",
+          "sql_update_time_value");
+      assertUpdateSemanticExceptionContains(
+          "UPDATE table1 SET attr1 = missing_column",
+          "Column 'missing_column' is not an attribute or tag column",
+          "sql_update_unknown_value");
+
+      final String validSql = "UPDATE table1 SET attr1 = tag1";
+      assertNotNull(
+          analyzeSQL(
+              validSql,
+              TEST_MATADATA,
+              new MPPQueryContext(
+                  validSql, new QueryId("sql_update_tag_value"), sessionInfo, null, null)));
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
+  }
+
+  private void assertUpdateSemanticException(
+      final String sql, final String expectedMessage, final String queryId) {
+    final MPPQueryContext queryContext =
+        new MPPQueryContext(sql, new QueryId(queryId), sessionInfo, null, null);
+    final SemanticException exception =
+        assertThrows(SemanticException.class, () -> analyzeSQL(sql, TEST_MATADATA, queryContext));
+    assertEquals(expectedMessage, exception.getMessage());
+  }
+
+  private void assertUpdateSemanticExceptionContains(
+      final String sql, final String expectedMessage, final String queryId) {
+    final MPPQueryContext queryContext =
+        new MPPQueryContext(sql, new QueryId(queryId), sessionInfo, null, null);
+    final SemanticException exception =
+        assertThrows(SemanticException.class, () -> analyzeSQL(sql, TEST_MATADATA, queryContext));
+    assertTrue(exception.getMessage(), exception.getMessage().contains(expectedMessage));
   }
 
   @Test

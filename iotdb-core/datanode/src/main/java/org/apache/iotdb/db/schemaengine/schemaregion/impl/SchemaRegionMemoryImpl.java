@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -1559,6 +1560,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       final String attributeName = ((SymbolReference) assignment.getName()).getName();
       final TsTableColumnSchema columnSchema = table.getColumnSchema(attributeName);
+      if (Objects.nonNull(columnSchema)
+          && columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        throw new MetadataException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6,
+                columnSchema.getColumnCategory(),
+                attributeName),
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
       if (Objects.isNull(columnSchema)
           || columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
         throw new MetadataException(
@@ -1569,6 +1580,20 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         throw new MetadataException(
             DataNodeQueryMessages.UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE,
             TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
+      for (final Symbol symbol : SymbolsExtractor.extractUnique(assignment.getValue())) {
+        final TsTableColumnSchema referencedColumnSchema = table.getColumnSchema(symbol.getName());
+        if (Objects.nonNull(referencedColumnSchema)
+            && (referencedColumnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
+                || referencedColumnSchema.getColumnCategory() == TsTableColumnCategory.TIME)) {
+          throw new MetadataException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A,
+                  referencedColumnSchema.getColumnCategory(),
+                  symbol.getName()),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+        }
       }
       attributeNames.add(attributeName);
     }
