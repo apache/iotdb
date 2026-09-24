@@ -47,6 +47,7 @@ public final class SubscriptionExecutorServiceManager {
       "SubscriptionUpstreamDataFlowExecutor";
   private static final String DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME =
       "SubscriptionDownstreamDataFlowExecutor";
+  private static final String HEARTBEAT_EXECUTOR_NAME = "SubscriptionHeartbeatExecutor";
 
   /** Control Flow Executor: execute heartbeat worker, endpoints syncer and auto poll worker */
   private static final SubscriptionScheduledExecutorService CONTROL_FLOW_EXECUTOR =
@@ -64,6 +65,33 @@ public final class SubscriptionExecutorServiceManager {
       new SubscriptionExecutorService(
           DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME,
           Math.max(Runtime.getRuntime().availableProcessors(), 1));
+
+  /** Heartbeat Executor: isolate a slow provider from the heartbeat control-flow scheduler. */
+  private static final SubscriptionExecutorService HEARTBEAT_EXECUTOR =
+      new SubscriptionExecutorService(HEARTBEAT_EXECUTOR_NAME, 0) {
+        @Override
+        void launchIfNeeded() {
+          if (isShutdown()) {
+            synchronized (this) {
+              if (isShutdown()) {
+                LOGGER.info(SubscriptionMessages.EXECUTOR_LAUNCHING, this.name, this.corePoolSize);
+                this.executor =
+                    Executors.newCachedThreadPool(
+                        r -> {
+                          final Thread t =
+                              new Thread(
+                                  Thread.currentThread().getThreadGroup(),
+                                  r,
+                                  HEARTBEAT_EXECUTOR_NAME,
+                                  0);
+                          t.setDaemon(true);
+                          return t;
+                        });
+              }
+            }
+          }
+        }
+      };
 
   /////////////////////////////// set core pool size ///////////////////////////////
 
@@ -98,6 +126,7 @@ public final class SubscriptionExecutorServiceManager {
       CONTROL_FLOW_EXECUTOR.shutdown();
       UPSTREAM_DATA_FLOW_EXECUTOR.shutdown();
       DOWNSTREAM_DATA_FLOW_EXECUTOR.shutdown();
+      HEARTBEAT_EXECUTOR.shutdown();
     }
   }
 
@@ -150,6 +179,11 @@ public final class SubscriptionExecutorServiceManager {
   public static void submitAsyncCommitWorker(final Runnable task) {
     UPSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
     UPSTREAM_DATA_FLOW_EXECUTOR.submit(task);
+  }
+
+  static Future<?> submitProviderHeartbeat(final Runnable task) {
+    HEARTBEAT_EXECUTOR.launchIfNeeded();
+    return HEARTBEAT_EXECUTOR.submit(task);
   }
 
   public static <T> List<Future<T>> submitMultiplePollTasks(
