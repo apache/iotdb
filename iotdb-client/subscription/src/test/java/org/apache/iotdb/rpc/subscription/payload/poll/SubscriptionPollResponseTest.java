@@ -30,7 +30,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class SubscriptionPollResponseTest {
@@ -120,6 +123,77 @@ public class SubscriptionPollResponseTest {
             timeSelectedByTable);
 
     assertFalse(response.getTimeSelectedByTable().get("root.sg").get("table1"));
+  }
+
+  @Test
+  public void testAllResponsePayloadTypesRoundTrip() throws IOException {
+    assertEquals(
+        new TabletsPayload(Collections.emptyMap(), -1),
+        roundTrip(
+                SubscriptionPollResponseType.TABLETS,
+                new TabletsPayload(Collections.emptyMap(), -1))
+            .getPayload());
+
+    final FileInitPayload fileInit =
+        (FileInitPayload)
+            roundTrip(SubscriptionPollResponseType.FILE_INIT, new FileInitPayload("data.tsfile"))
+                .getPayload();
+    assertEquals("data.tsfile", fileInit.getFileName());
+
+    final FilePiecePayload filePiece =
+        (FilePiecePayload)
+            roundTrip(
+                    SubscriptionPollResponseType.FILE_PIECE,
+                    new FilePiecePayload("data.tsfile", 3L, new byte[] {1, 2, 3}))
+                .getPayload();
+    assertEquals("data.tsfile", filePiece.getFileName());
+    assertEquals(3L, filePiece.getNextWritingOffset());
+    assertArrayEquals(new byte[] {1, 2, 3}, filePiece.getFilePiece());
+
+    final FileSealPayload fileSeal =
+        (FileSealPayload)
+            roundTrip(
+                    SubscriptionPollResponseType.FILE_SEAL,
+                    new FileSealPayload("data.tsfile", 123L, "database"))
+                .getPayload();
+    assertEquals("data.tsfile", fileSeal.getFileName());
+    assertEquals(123L, fileSeal.getFileLength());
+    assertEquals("database", fileSeal.getDatabaseName());
+
+    final ErrorPayload error =
+        (ErrorPayload)
+            roundTrip(SubscriptionPollResponseType.ERROR, new ErrorPayload("retry", true))
+                .getPayload();
+    assertEquals("retry", error.getErrorMessage());
+    assertTrue(error.isCritical());
+
+    assertNull(
+        roundTrip(SubscriptionPollResponseType.TERMINATION, new TerminationPayload()).getPayload());
+
+    final WatermarkPayload watermark =
+        (WatermarkPayload)
+            roundTrip(SubscriptionPollResponseType.WATERMARK, new WatermarkPayload(999L, 7))
+                .getPayload();
+    assertEquals(999L, watermark.getWatermarkTimestamp());
+    assertEquals(7, watermark.getDataNodeId());
+  }
+
+  @Test
+  public void testTypeLookupRejectsUnknownValues() {
+    assertTrue(
+        SubscriptionPollResponseType.isValidatedResponseType(
+            SubscriptionPollResponseType.WATERMARK.getType()));
+    assertFalse(SubscriptionPollResponseType.isValidatedResponseType(Short.MAX_VALUE));
+    assertNull(SubscriptionPollResponseType.valueOf(Short.MAX_VALUE));
+  }
+
+  private static SubscriptionPollResponse roundTrip(
+      final SubscriptionPollResponseType type, final SubscriptionPollPayload payload)
+      throws IOException {
+    final SubscriptionPollResponse response =
+        new SubscriptionPollResponse(
+            type.getType(), payload, new SubscriptionCommitContext(1, 2, "topic", "group", 3L));
+    return SubscriptionPollResponse.deserialize(SubscriptionPollResponse.serialize(response));
   }
 
   private static ByteBuffer serializeWithoutTimeSelected(
