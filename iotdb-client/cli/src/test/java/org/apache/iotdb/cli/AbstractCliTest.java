@@ -22,9 +22,13 @@ package org.apache.iotdb.cli;
 import org.apache.iotdb.cli.AbstractCli.OperationResult;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.jdbc.IoTDBConnectionParams;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -44,6 +48,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -52,6 +57,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class AbstractCliTest {
@@ -71,6 +77,44 @@ public class AbstractCliTest {
   public void tearDown() throws Exception {
     setStaticField("lineCount", 0);
     setStaticField("isReachEnd", false);
+    AbstractCli.lastProcessStatus = AbstractCli.CODE_OK;
+  }
+
+  @Test
+  public void testRegionValidationErrorIsPrintedAndReturnsErrorStatus() throws Exception {
+    String[] statements = {
+      "MIGRATE REGION 12,99 FROM 6 TO 7",
+      "RECONSTRUCT REGION 12,99 ON 7",
+      "EXTEND REGION 12,99 TO 7",
+      "REMOVE REGION 12,99 FROM 7"
+    };
+    TSStatusCode[] codes = {
+      TSStatusCode.MIGRATE_REGION_ERROR,
+      TSStatusCode.RECONSTRUCT_REGION_ERROR,
+      TSStatusCode.EXTEND_REGION_ERROR,
+      TSStatusCode.REMOVE_REGION_PEER_ERROR
+    };
+    when(connection.getParams())
+        .thenReturn(new IoTDBConnectionParams("jdbc:iotdb://localhost:6667/"));
+    for (int i = 0; i < statements.length; i++) {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      try (PrintStream printer = new PrintStream(out, true, StandardCharsets.UTF_8.name())) {
+        CliContext ctx = new CliContext(System.in, printer, System.err, ExitType.EXCEPTION);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        TSStatus status =
+            new TSStatus(codes[i].getStatusCode()).setMessage("Region 99 does not exist");
+        when(statement.execute(statements[i]))
+            .thenThrow(new IoTDBSQLException(status.getMessage(), status));
+
+        AbstractCli.handleInputCmd(ctx, statements[i], connection);
+
+        assertEquals(AbstractCli.CODE_ERROR, AbstractCli.lastProcessStatus);
+        String output = new String(out.toByteArray(), StandardCharsets.UTF_8);
+        assertTrue(output.contains(status.getMessage()));
+        assertFalse(output.contains("The statement is executed successfully"));
+      }
+    }
   }
 
   @Test
