@@ -39,5 +39,9 @@
             <artifactId>iotdb-server</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+        </dependency>
     </dependencies>
 </project>
