@@ -44,6 +44,8 @@ public class SubscriptionQueueRegistry {
   private final String consensusGroupId;
   private final Map<BlockingQueue<IndexedConsensusRequest>, SubscriptionQueueRegistration> queues =
       new ConcurrentHashMap<>();
+  private final Map<String, SubscriptionQueueRegistration> detachedRetentionRegistrations =
+      new ConcurrentHashMap<>();
   private final AtomicLong droppedEntries = new AtomicLong();
   private final AtomicLong lastDropLogTimeMs = new AtomicLong();
 
@@ -78,8 +80,47 @@ public class SubscriptionQueueRegistry {
     queues.remove(queue);
   }
 
+  public synchronized void replaceQueueWithDetachedRetention(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    queues.remove(queue);
+    detachedRetentionRegistrations.put(
+        retentionId,
+        new SubscriptionQueueRegistration(retentionPolicy, committedRetainedMinVersionIdSupplier));
+  }
+
+  public synchronized void replaceDetachedRetentionWithQueue(
+      final String retentionId,
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    detachedRetentionRegistrations.remove(retentionId);
+    queues.put(
+        queue,
+        new SubscriptionQueueRegistration(retentionPolicy, committedRetainedMinVersionIdSupplier));
+  }
+
+  public synchronized void registerDetachedRetention(
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    detachedRetentionRegistrations.put(
+        retentionId,
+        new SubscriptionQueueRegistration(retentionPolicy, committedRetainedMinVersionIdSupplier));
+  }
+
+  public synchronized void unregisterDetachedRetention(final String retentionId) {
+    detachedRetentionRegistrations.remove(retentionId);
+  }
+
   public synchronized boolean isEmpty() {
-    return queues.isEmpty();
+    return queues.isEmpty() && detachedRetentionRegistrations.isEmpty();
+  }
+
+  public synchronized boolean hasQueues() {
+    return !queues.isEmpty();
   }
 
   public synchronized int size() {
@@ -91,6 +132,10 @@ public class SubscriptionQueueRegistry {
     for (final SubscriptionQueueRegistration registration : queues.values()) {
       retentionPolicies.add(registration.retentionPolicy);
     }
+    for (final SubscriptionQueueRegistration registration :
+        detachedRetentionRegistrations.values()) {
+      retentionPolicies.add(registration.retentionPolicy);
+    }
     return retentionPolicies;
   }
 
@@ -98,6 +143,10 @@ public class SubscriptionQueueRegistry {
     final Collection<LongSupplier> suppliers = new ArrayList<>();
     synchronized (this) {
       for (final SubscriptionQueueRegistration registration : queues.values()) {
+        suppliers.add(registration.committedRetainedMinVersionIdSupplier);
+      }
+      for (final SubscriptionQueueRegistration registration :
+          detachedRetentionRegistrations.values()) {
         suppliers.add(registration.committedRetainedMinVersionIdSupplier);
       }
     }

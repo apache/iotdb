@@ -634,6 +634,9 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_1_POSITIVE_A33070FB =
           "创建或修改 topic 失败，非法参数 %s=%s，期望为 -1 或正 long 值";
+  public static final String
+      EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_TRUE_OR_FALSE_855A6926 =
+          "创建或修改 topic 失败，非法参数 %s=%s，期望为 true 或 false";
   public static final String LOG_TRYING_GET_MAX_TTL_UNDER_ONE_DATABASE_USE_LONG_MAX_9D70ACB2 =
       " 尝试获取单个数据库下的最大 ttl 时，使用 Long.MAX_VALUE。";
   public static final String
@@ -718,6 +721,9 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ATTRIBUTES_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_55CB0BF2 =
+          "创建或修改 topic 失败，属性 %s 仅支持 incremental 模式的 topic";
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
           "创建或修改 topic 失败，不允许仅订阅 __audit 数据库或其下的路径";

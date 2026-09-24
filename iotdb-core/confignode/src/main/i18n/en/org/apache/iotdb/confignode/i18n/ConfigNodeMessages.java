@@ -613,6 +613,9 @@ public final class ConfigNodeMessages {
   public static final String EXCEPTION_NO_SUCH_USER_ID_99CA691B = "No such user id: ";
   public static final String LOG_HANDLING_COMMIT_PROGRESS_META_CHANGES_FA21A080 = "Handling commit progress meta changes ...";
   public static final String EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_1_POSITIVE_A33070FB = "Failed to create or alter topic, illegal %s=%s, expected -1 or a positive long value";
+  public static final String
+      EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_TRUE_OR_FALSE_855A6926 =
+          "Failed to create or alter topic, illegal %s=%s, expected true or false";
   public static final String LOG_TRYING_GET_MAX_TTL_UNDER_ONE_DATABASE_USE_LONG_MAX_9D70ACB2 = " when trying to get max ttl under one database, use Long.MAX_VALUE.";
   public static final String MESSAGE_ENABLE_IOTDB_CLUSTER_S_DATA_SERVICE_PLEASE_REGISTER_ARG_MORE_F48F3890 = "To enable IoTDB-Cluster's data service, please register %d more IoTDB-DataNode";
   public static final String MESSAGE_APPLY_NEW_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_1BB6A6BF = "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.";
@@ -675,6 +678,9 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ATTRIBUTES_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_55CB0BF2 =
+          "Failed to create or alter topic, attributes %s are only supported for incremental topics";
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
           "Failed to create or alter topic, subscribing only to the __audit database or paths under it is not allowed";

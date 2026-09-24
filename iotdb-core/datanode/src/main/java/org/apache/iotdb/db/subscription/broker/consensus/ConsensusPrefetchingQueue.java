@@ -533,6 +533,36 @@ public class ConsensusPrefetchingQueue {
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
       final boolean initialActive) {
+    this(
+        consumerGroupId,
+        topicName,
+        orderMode,
+        consensusGroupId,
+        serverImpl,
+        retentionPolicy,
+        converter,
+        commitManager,
+        fallbackCommittedRegionProgress,
+        tailStartSearchIndex,
+        initialRuntimeVersion,
+        initialActive,
+        false);
+  }
+
+  public ConsensusPrefetchingQueue(
+      final String consumerGroupId,
+      final String topicName,
+      final String orderMode,
+      final ConsensusGroupId consensusGroupId,
+      final IoTConsensusServerImpl serverImpl,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final ConsensusLogToTabletConverter converter,
+      final ConsensusSubscriptionCommitManager commitManager,
+      final RegionProgress fallbackCommittedRegionProgress,
+      final long tailStartSearchIndex,
+      final long initialRuntimeVersion,
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     this.consumerGroupId = consumerGroupId;
     this.topicName = topicName;
     this.consensusGroupId = consensusGroupId;
@@ -559,8 +589,17 @@ public class ConsensusPrefetchingQueue {
     this.pendingEntries =
         new WakeableIndexedConsensusQueue(
             PENDING_QUEUE_CAPACITY, this::requestPrefetch, this::canAcceptRealtimeEntry);
-    serverImpl.registerSubscriptionQueue(
-        pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
+    if (replaceDetachedRetention) {
+      serverImpl.replaceDetachedSubscriptionRetentionWithQueue(
+          ConsensusSubscriptionWalRetention.generateRetentionId(
+              consumerGroupId, topicName, consensusGroupId),
+          pendingEntries,
+          retentionPolicy,
+          this::getCommittedRetainedMinVersionId);
+    } else {
+      serverImpl.registerSubscriptionQueue(
+          pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
+    }
 
     LOGGER.info(
         DataNodePipeMessages
@@ -3674,6 +3713,10 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void close() {
+    close(false);
+  }
+
+  public void close(final boolean retainProgressAfterUnsubscribe) {
     final PendingSeekRequest seekRequestToFail;
     final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding;
 
@@ -3693,7 +3736,7 @@ public class ConsensusPrefetchingQueue {
     // Stop receiving real-time in-memory writes before flushing close-time batches. Requests that
     // remain in pendingEntries have not advanced subscription progress and can be replayed from WAL
     // if this queue is created again.
-    deregisterPendingEntriesFromConsensusServer();
+    deregisterPendingEntriesFromConsensusServer(retainProgressAfterUnsubscribe);
 
     prefetchBinding = detachPrefetchSubtask();
 
@@ -3747,9 +3790,24 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private void deregisterPendingEntriesFromConsensusServer() {
+  private void deregisterPendingEntriesFromConsensusServer(
+      final boolean retainProgressAfterUnsubscribe) {
     try {
-      serverImpl.deregisterSubscriptionQueue(pendingEntries);
+      if (retainProgressAfterUnsubscribe) {
+        serverImpl.replaceSubscriptionQueueWithDetachedRetention(
+            pendingEntries,
+            ConsensusSubscriptionWalRetention.generateRetentionId(
+                consumerGroupId, topicName, consensusGroupId),
+            retentionPolicy,
+            () ->
+                ConsensusSubscriptionWalRetention.computeCommittedRetainedMinVersionId(
+                    consensusReqReader,
+                    consensusGroupId,
+                    commitManager.getCommittedRegionProgress(
+                        consumerGroupId, topicName, consensusGroupId)));
+      } else {
+        serverImpl.deregisterSubscriptionQueue(pendingEntries);
+      }
     } catch (final Exception e) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7,

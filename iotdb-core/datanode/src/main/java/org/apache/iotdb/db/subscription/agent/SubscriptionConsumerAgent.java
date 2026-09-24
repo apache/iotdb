@@ -113,6 +113,7 @@ public class SubscriptionConsumerAgent {
     // if the creation time of consumer group meta on local agent is inconsistent with meta from
     // coordinator
     if (metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
+      cleanupConsumerGroupSubscriptions(consumerGroupId, metaInAgent);
       if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
         LOGGER.warn(
             DataNodePipeMessages
@@ -244,6 +245,12 @@ public class SubscriptionConsumerAgent {
   }
 
   private void handleDropConsumerGroupInternal(final String consumerGroupId) {
+    final ConsumerGroupMeta consumerGroupMeta =
+        consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+    if (Objects.nonNull(consumerGroupMeta)) {
+      cleanupConsumerGroupSubscriptions(consumerGroupId, consumerGroupMeta);
+    }
+
     if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
       if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
         final String exceptionMessage =
@@ -259,6 +266,22 @@ public class SubscriptionConsumerAgent {
     }
 
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+  }
+
+  private void cleanupConsumerGroupSubscriptions(
+      final String consumerGroupId, final ConsumerGroupMeta consumerGroupMeta) {
+    final Set<String> consensusTopics = new LinkedHashSet<>();
+    for (final String topicName : consumerGroupMeta.getSubscribedTopicNames()) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          topicName, consumerGroupMeta.visibleUnder(true))) {
+        consensusTopics.add(topicName);
+      } else {
+        SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
+      }
+    }
+    ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
+        consumerGroupId, consensusTopics, false);
+    ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForConsumerGroup(consumerGroupId);
   }
 
   public boolean isConsumerExisted(final String consumerGroupId, final String consumerId) {
@@ -288,6 +311,25 @@ public class SubscriptionConsumerAgent {
       final ConsumerGroupMeta consumerGroupMeta =
           consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
       return Objects.nonNull(consumerGroupMeta) && consumerGroupMeta.visibleUnder(true);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean containsConsumerGroup(final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.containsConsumerGroupMeta(consumerGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isTopicSubscribedByConsumerGroup(
+      final String consumerGroupId, final String topicName) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.isTopicSubscribedByConsumerGroup(topicName, consumerGroupId);
     } finally {
       releaseReadLock();
     }

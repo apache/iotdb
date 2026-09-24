@@ -359,7 +359,7 @@ public class IoTConsensusServerImpl {
               subscriptionQueueRegistry.offer(indexedConsensusRequest);
           logDispatcher.offer(indexedConsensusRequest, offeredToSubscription);
           if (!offeredToSubscription
-              && subscriptionQueueRegistry.isEmpty()
+              && !subscriptionQueueRegistry.hasQueues()
               && logger.isDebugEnabled()
               && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
@@ -1106,7 +1106,7 @@ public class IoTConsensusServerImpl {
   }
 
   public boolean hasSubscriptionConsumers() {
-    return !subscriptionQueueRegistry.isEmpty();
+    return subscriptionQueueRegistry.hasQueues();
   }
 
   private long assignPhysicalTimeInMs() {
@@ -1281,6 +1281,16 @@ public class IoTConsensusServerImpl {
         System.identityHashCode(this));
   }
 
+  public void replaceDetachedSubscriptionRetentionWithQueue(
+      final String retentionId,
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.replaceDetachedRetentionWithQueue(
+        retentionId, queue, retentionPolicy, committedRetainedMinVersionIdSupplier);
+    checkAndUpdateSafeDeletedSearchIndex();
+  }
+
   public void deregisterSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
     subscriptionQueueRegistry.unregister(queue);
     // Re-evaluate: with fewer subscribers, more WAL may be deletable
@@ -1290,6 +1300,30 @@ public class IoTConsensusServerImpl {
             .LOG_DEREGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_REMAINING_SUBSCRIPTION_QUEUES_ARG_B86E31AF,
         consensusGroupId,
         subscriptionQueueRegistry.size());
+  }
+
+  public void replaceSubscriptionQueueWithDetachedRetention(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.replaceQueueWithDetachedRetention(
+        queue, retentionId, retentionPolicy, committedRetainedMinVersionIdSupplier);
+    checkAndUpdateSafeDeletedSearchIndex();
+  }
+
+  public void registerDetachedSubscriptionRetention(
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.registerDetachedRetention(
+        retentionId, retentionPolicy, committedRetainedMinVersionIdSupplier);
+    checkAndUpdateSafeDeletedSearchIndex();
+  }
+
+  public void deregisterDetachedSubscriptionRetention(final String retentionId) {
+    subscriptionQueueRegistry.unregisterDetachedRetention(retentionId);
+    checkAndUpdateSafeDeletedSearchIndex();
   }
 
   public long getSyncLag() {

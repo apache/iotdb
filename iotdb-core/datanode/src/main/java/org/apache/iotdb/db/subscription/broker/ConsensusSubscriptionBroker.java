@@ -646,7 +646,8 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
-      final boolean initialActive) {
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     synchronized (queueLifecycleLock) {
       // Get or create the list of queues for this topic
       final List<ConsensusPrefetchingQueue> queues =
@@ -680,7 +681,8 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
               fallbackCommittedRegionProgress,
               tailStartSearchIndex,
               initialRuntimeVersion,
-              initialActive);
+              initialActive,
+              replaceDetachedRetention);
       queues.add(consensusQueue);
       LOGGER.info(
           DataNodePipeMessages
@@ -709,13 +711,14 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
   }
 
-  public void unbindConsensusPrefetchingQueue(final String topicName) {
-    closeAndRemoveConsensusPrefetchingQueues(topicName, true);
+  public void unbindConsensusPrefetchingQueue(
+      final String topicName, final boolean retainProgressAfterUnsubscribe) {
+    closeAndRemoveConsensusPrefetchingQueues(topicName, true, retainProgressAfterUnsubscribe);
   }
 
   @Override
   public void unbind(final String topicName) {
-    unbindConsensusPrefetchingQueue(topicName);
+    unbindConsensusPrefetchingQueue(topicName, false);
   }
 
   public int unbindByRegion(final ConsensusGroupId regionId) {
@@ -816,11 +819,13 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           topicName,
           brokerId);
     }
-    closeAndRemoveConsensusPrefetchingQueues(topicName, false);
+    closeAndRemoveConsensusPrefetchingQueues(topicName, false, false);
   }
 
   private void closeAndRemoveConsensusPrefetchingQueues(
-      final String topicName, final boolean warnIfMissing) {
+      final String topicName,
+      final boolean warnIfMissing,
+      final boolean retainProgressAfterUnsubscribe) {
     final List<ConsensusPrefetchingQueue> queuesToClose;
     synchronized (queueLifecycleLock) {
       final List<ConsensusPrefetchingQueue> queues =
@@ -841,7 +846,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
 
     for (final ConsensusPrefetchingQueue q : queuesToClose) {
-      q.close();
+      q.close(retainProgressAfterUnsubscribe);
     }
     LOGGER.info(
         DataNodePipeMessages

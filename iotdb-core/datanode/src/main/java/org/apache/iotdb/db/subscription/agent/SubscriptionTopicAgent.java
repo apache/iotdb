@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -121,6 +122,8 @@ public class SubscriptionTopicAgent {
     SubscriptionAgent.broker()
         .refreshConsensusQueueOrderMode(
             topicName, isTableModel, metaFromCoordinator.getConfig().getOrderMode());
+    ConsensusSubscriptionSetupHandler.refreshDetachedRetentionsForTopic(
+        topicName, isTableModel, metaFromCoordinator.getConfig());
   }
 
   static boolean shouldRefreshColumnFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
@@ -225,6 +228,8 @@ public class SubscriptionTopicAgent {
         Objects.isNull(isTableModel)
             ? topicMetaKeeper.getTopicMeta(topicName)
             : topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+    ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForDroppedTopic(
+        topicName, Objects.nonNull(topicMeta) ? topicMeta.visibleUnderTableModel() : isTableModel);
     if (Objects.isNull(isTableModel)) {
       topicMetaKeeper.removeTopicMeta(topicName);
     } else {
