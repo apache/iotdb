@@ -33,32 +33,45 @@ echo "target_files=$target_files"
 
 function process_single(){
 	local key_value="$1"
-	local filename=$2
-	local key=$(echo $key_value|cut -d = -f1)
-	local line=$(grep -ni "${key}=" ${filename})
+	local filename="$2"
+	local key="${key_value%%=*}"
+	local line=$(grep -ni "${key}=" "${filename}")
 	#echo "line=$line"
 	if [[ -n "${line}" ]]; then
     echo "update $key_value $filename"
-    local line_no=$(echo $line|cut -d : -f1)
-    local content=$(echo $line|cut -d : -f2)
+    local line_no=$(echo "$line"|cut -d : -f1)
+    local content=$(echo "$line"|cut -d : -f2)
     if [[ "${content:0:1}" != "#" ]]; then
-      sed -i "${line_no}d" ${filename}
+      # Replace the line in place. Deleting it and appending after the same
+      # line number lost the value when the key was on the last line.
+      sed -i "${line_no}c${key_value}" "${filename}"
+    else
+      sed -i "${line_no}a${key_value}" "${filename}"
     fi
-    sed -i "${line_no}a${key_value}" ${filename}
   else
     echo "append $key_value $filename"
-    line_no=$(wc -l $filename|cut -d ' ' -f1)
-    sed -i "${line_no}a${key_value}" ${filename}
+    sed -i "\$a${key_value}" "${filename}"
 	fi
 }
 
 function replace_configs(){
-  for v in $(env); do
-    key_name="${v%%=*}"
-    if [[ "${key_name}" == "${key_name,,}" && ! 2w$key_name =~ ^_ ]]; then
-#      echo "###### $v ####"
+  # Iterate over the exported variable names instead of the output of `env`:
+  # a value that contains whitespace (e.g. JAVA_TOOL_OPTIONS="-Xms1g -Xmx2g")
+  # would otherwise be split into words, and every lowercase word would be
+  # appended to the properties file as a junk line, shifting the line
+  # numbers the sed edits below rely on.
+  local key_name value
+  for key_name in $(compgen -e); do
+    # Only lowercase names are IoTDB config keys; skip bash internals such as `_`.
+    if [[ "${key_name}" == "${key_name,,}" && "${key_name}" != _* ]]; then
+      value="${!key_name}"
+      if [[ "${value}" == *$'\n'* ]]; then
+        echo "skip ${key_name}: multi-line values are not supported"
+        continue
+      fi
+#      echo "###### $key_name=$value ####"
       for f in ${target_files}; do
-          process_single $v ${conf_path}/$f
+          process_single "${key_name}=${value}" "${conf_path}/$f"
       done
     fi
   done
