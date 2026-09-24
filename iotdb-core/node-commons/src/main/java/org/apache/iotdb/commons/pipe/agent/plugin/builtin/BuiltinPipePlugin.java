@@ -93,6 +93,7 @@ public enum BuiltinPipePlugin {
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketSink.class),
   OPC_DA_CONNECTOR("opc-da-connector", OpcDaSink.class),
   WRITE_BACK_CONNECTOR("write-back-connector", WriteBackSink.class),
+  LOGICAL_BACKUP_CONNECTOR("logical-backup-connector", LogicalBackupSink.class),
 
   DO_NOTHING_SINK("do-nothing-sink", DoNothingSink.class),
   IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftSink.class),
@@ -104,6 +105,7 @@ public enum BuiltinPipePlugin {
   WEBSOCKET_SINK("websocket-sink", WebSocketSink.class),
   OPC_DA_SINK("opc-da-sink", OpcDaSink.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackSink.class),
+  LOGICAL_BACKUP_SINK("logical-backup-sink", LogicalBackupSink.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingSink.class),
   IOT_CONSENSUS_V2_ASYNC_SINK("iot-consensus-v2-async-sink", IoTConsensusV2AsyncSink.class),
   // Legacy alias for stale PipeMeta written before the PipeConsensus -> IoTConsensusV2 rename.
@@ -205,6 +207,7 @@ public enum BuiltinPipePlugin {
                   WEBSOCKET_CONNECTOR.getPipePluginName().toUpperCase(),
                   OPC_DA_CONNECTOR.getPipePluginName().toUpperCase(),
                   WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
+                  LOGICAL_BACKUP_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
                   // Sinks
@@ -213,6 +216,7 @@ public enum BuiltinPipePlugin {
                   IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toUpperCase(),
                   WEBSOCKET_SINK.getPipePluginName().toUpperCase(),
                   OPC_DA_SINK.getPipePluginName().toUpperCase(),
+                  LOGICAL_BACKUP_SINK.getPipePluginName().toUpperCase(),
                   SUBSCRIPTION_SINK.getPipePluginName().toUpperCase(),
                   IOT_CONSENSUS_V2_ASYNC_SINK.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toUpperCase())));

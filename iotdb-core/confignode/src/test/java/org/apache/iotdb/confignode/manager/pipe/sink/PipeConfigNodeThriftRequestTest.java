@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHand
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
@@ -93,12 +94,18 @@ public class PipeConfigNodeThriftRequestTest {
 
     final PipeTransferConfigNodeHandshakeV2Req req =
         PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferReq(params);
+    final TPipeTransferReq commonReq =
+        PipeTransferHandshakeV2Req.toTPipeTransferReq(
+            PipeRequestType.HANDSHAKE_CONFIGNODE_V2, params);
     final int originalBodyPosition = req.body.position();
     final PipeTransferConfigNodeHandshakeV2Req deserializeReq =
         PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(req.getVersion(), commonReq.getVersion());
+    Assert.assertEquals(req.getType(), commonReq.getType());
+    Assert.assertArrayEquals(req.getBody(), commonReq.getBody());
     Assert.assertEquals(originalBodyPosition, req.body.position());
     Assert.assertEquals(params, deserializeReq.getParams());
   }
