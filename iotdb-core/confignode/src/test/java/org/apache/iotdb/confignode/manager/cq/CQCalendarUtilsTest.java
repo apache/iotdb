@@ -25,12 +25,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public class CQCalendarUtilsTest {
 
@@ -331,6 +333,73 @@ public class CQCalendarUtilsTest {
         3,
         CQScheduleTask.calculateNextOccurrenceIndex(
             TimeoutPolicy.DISCARD, 2, callbackTime, executionTime, 0, 2, boundary, every, UTC));
+  }
+
+  @Test
+  public void testExplicitBoundaryZeroStaysUnixEpochWhileOmittedBoundaryUsesLocalEpoch()
+      throws Exception {
+    ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+    long unixEpoch = epochTimestamp(1970, 1, 1, 0, 0, UTC);
+    long shanghaiLocalEpoch = epochTimestamp(1970, 1, 1, 0, 0, shanghai);
+    // The two anchors differ by exactly the zone offset; a flipped explicit-flag check would
+    // silently shift every occurrence of a BOUNDARY 0 CQ by 8 hours in Asia/Shanghai.
+    assertEquals(
+        TimestampPrecisionUtils.currPrecision.convert(8, TimeUnit.HOURS),
+        unixEpoch - shanghaiLocalEpoch);
+
+    // Explicit BOUNDARY 0: the anchor is the Unix epoch instant, observed in the CQ zone.
+    CQScheduleTask explicitTask =
+        new CQScheduleTask(shanghaiMonthlyReq(true), unixEpoch, "token", null, null);
+    assertEquals(0L, boundaryTimeOf(explicitTask));
+    assertEquals(unixEpoch, executionTimeOf(explicitTask));
+
+    // Omitted BOUNDARY: the anchor is local 1970-01-01 00:00 in the persisted CQ zone.
+    CQScheduleTask omittedTask =
+        new CQScheduleTask(shanghaiMonthlyReq(false), shanghaiLocalEpoch, "token", null, null);
+    assertEquals(shanghaiLocalEpoch, boundaryTimeOf(omittedTask));
+    assertEquals(shanghaiLocalEpoch, executionTimeOf(omittedTask));
+    assertEquals(CQCalendarUtils.localEpochBoundary(shanghai), boundaryTimeOf(omittedTask));
+
+    // Cross-wiring the two anchors must be rejected by the occurrence/execution-time check.
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CQScheduleTask(shanghaiMonthlyReq(true), shanghaiLocalEpoch, "t", null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CQScheduleTask(shanghaiMonthlyReq(false), unixEpoch, "t", null, null));
+  }
+
+  private static TCreateCQReq shanghaiMonthlyReq(boolean boundaryExplicit) {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "boundaryCq",
+            0,
+            0,
+            0,
+            0,
+            TimeoutPolicy.BLOCKED.getType(),
+            "select 1",
+            "create cq boundaryCq",
+            "Asia/Shanghai",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(1, 0));
+    req.setStartOffsetDuration(new TCQDuration(1, 0));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(boundaryExplicit);
+    return req;
+  }
+
+  private static long boundaryTimeOf(CQScheduleTask task) throws Exception {
+    Field field = CQScheduleTask.class.getDeclaredField("boundaryTime");
+    field.setAccessible(true);
+    return field.getLong(task);
+  }
+
+  private static long executionTimeOf(CQScheduleTask task) throws Exception {
+    Field field = CQScheduleTask.class.getDeclaredField("executionTime");
+    field.setAccessible(true);
+    return field.getLong(task);
   }
 
   private static long epochTimestamp(
