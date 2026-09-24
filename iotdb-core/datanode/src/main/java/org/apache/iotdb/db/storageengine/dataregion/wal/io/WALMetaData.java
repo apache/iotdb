@@ -22,7 +22,10 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRepairWriter;
 import org.apache.iotdb.db.utils.SerializedSize;
 
 import org.slf4j.Logger;
@@ -60,6 +63,7 @@ public class WALMetaData implements SerializedSize {
   // memTable ids of this wal file
   private final Set<Long> memTablesId;
   private long truncateOffSet = 0;
+  private boolean recoveredFromEntries;
 
   // V3 fields: file-level data timestamp range for timestamp-based seek
   private long minDataTs = Long.MAX_VALUE;
@@ -218,9 +222,17 @@ public class WALMetaData implements SerializedSize {
   public static WALMetaData deserialize(ByteBuffer buffer, WALFileVersion version) {
     long firstSearchIndex = buffer.getLong();
     int entriesNum = buffer.getInt();
+    // Reject corrupted counts before allocating arrays from an untrusted footer.
+    if (entriesNum < 0 || entriesNum > buffer.remaining() / Integer.BYTES) {
+      throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+    }
     List<Integer> buffersSize = new ArrayList<>(entriesNum);
     for (int i = 0; i < entriesNum; ++i) {
-      buffersSize.add(buffer.getInt());
+      int size = buffer.getInt();
+      if (size <= 0) {
+        throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+      }
+      buffersSize.add(size);
     }
     Set<Long> memTablesId = new HashSet<>();
     final boolean serializedEmptyV3WithoutMemTableCount =
@@ -229,6 +241,9 @@ public class WALMetaData implements SerializedSize {
             && buffer.remaining() == V3_EMPTY_METADATA_REMAINING_WITHOUT_MEMTABLE_COUNT;
     if (buffer.hasRemaining() && !serializedEmptyV3WithoutMemTableCount) {
       int memTablesIdNum = buffer.getInt();
+      if (memTablesIdNum < 0 || memTablesIdNum > buffer.remaining() / Long.BYTES) {
+        throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+      }
       for (int i = 0; i < memTablesIdNum; ++i) {
         memTablesId.add(buffer.getLong());
       }
@@ -244,6 +259,11 @@ public class WALMetaData implements SerializedSize {
         }
         final short defaultNodeId = buffer.getShort();
         final int overrideCount = buffer.getInt();
+        if (overrideCount < 0
+            || overrideCount > entriesNum
+            || overrideCount > buffer.remaining() / (Integer.BYTES + Short.BYTES)) {
+          throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+        }
         final int[] overrideIndexes = new int[overrideCount];
         final short[] overrideNodeIds = new short[overrideCount];
         for (int i = 0; i < overrideCount; i++) {
@@ -324,6 +344,7 @@ public class WALMetaData implements SerializedSize {
     WALMetaData copy =
         new WALMetaData(firstSearchIndex, new ArrayList<>(buffersSize), new HashSet<>(memTablesId));
     copy.truncateOffSet = truncateOffSet;
+    copy.recoveredFromEntries = recoveredFromEntries;
     copy.physicalTimes.addAll(physicalTimes);
     copy.nodeIds.addAll(nodeIds);
     copy.localSeqs.addAll(localSeqs);
@@ -352,8 +373,56 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALFileVersion.V2.getVersionBytes().length
-        || !isValidMagicString(channel)) {
+    try {
+      return readFromWALFileWithoutRecovery(logFile, channel);
+    } catch (IOException metadataFailure) {
+      logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_LOGS_SKIP, logFile, metadataFailure);
+      // Keep the original file when some entries are readable. The reconstructed metadata is an
+      // in-memory view of that prefix; rewriting compressed segments while readers hold the file
+      // open would invalidate their offsets.
+      // Writer progress that exists only in a V3 footer cannot be recovered from entry bodies;
+      // add() supplies the existing unknown/default progress values for those fields.
+      WALMetaData recovered = new WALMetaData();
+      try (WALReader reader = new WALReader(logFile, true)) {
+        long previousOffset = 0;
+        while (reader.hasNext()) {
+          WALEntry entry = reader.next();
+          long offset = reader.getLogicalReadOffset();
+          long searchIndex =
+              entry.getType().needSearch() && entry.getValue() instanceof SearchNode searchNode
+                  ? searchNode.getSearchIndex()
+                  : ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+          // Use bytes consumed, since reserializing a legacy entry may change its encoded size.
+          recovered.add(
+              Math.toIntExact(offset - previousOffset), searchIndex, entry.getMemTableId());
+          recovered.setTruncateOffSet(reader.getWALCurrentReadOffset());
+          previousOffset = offset;
+        }
+        if (!recovered.getBuffersSize().isEmpty() || !reader.isFileCorrupted()) {
+          recovered.recoveredFromEntries = true;
+          return recovered;
+        }
+      }
+      // Do not turn an unreadable nonempty file into an empty metadata result, which would let
+      // WAL cleanup delete it. The suffix also excludes it from subsequent WAL enumeration.
+      new WALRepairWriter(logFile).quarantine();
+      throw metadataFailure;
+    }
+  }
+
+  public boolean isRecoveredFromEntries() {
+    return recoveredFromEntries;
+  }
+
+  /** Reads the footer only, so repair can validate it without recursively triggering recovery. */
+  public static WALMetaData readFromWALFileWithoutRecovery(File logFile, FileChannel channel)
+      throws IOException {
+    if (WALFileVersion.isEmptyOrHeaderOnly(channel)) {
+      return new WALMetaData();
+    }
+    WALFileVersion version = WALFileVersion.getVersion(channel);
+    if (channel.size() < version.getVersionBytes().length + Integer.BYTES
+        || !isValidMagicString(channel, version)) {
       throw new BrokenWALFileException(logFile);
     }
 
@@ -362,12 +431,15 @@ public class WALMetaData implements SerializedSize {
     long position;
     try {
       ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-      WALFileVersion version = WALFileVersion.getVersion(channel);
       position = channel.size() - Integer.BYTES - (version.getVersionBytes().length);
       IOUtils.readFully(channel, metadataSizeBuf, position);
       metadataSizeBuf.flip();
       // load metadata
       int metadataSize = metadataSizeBuf.getInt();
+      long dataStart = version == WALFileVersion.V1 ? 0 : version.getVersionBytes().length;
+      if (metadataSize < FIXED_SERIALIZED_SIZE || metadataSize > position - dataStart) {
+        throw new BrokenWALFileException(logFile);
+      }
       ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
       IOUtils.readFully(channel, metadataBuf, position - metadataSize);
       metadataBuf.flip();
@@ -394,22 +466,18 @@ public class WALMetaData implements SerializedSize {
     return metaData;
   }
 
-  private static boolean isValidMagicString(FileChannel channel) throws IOException {
-    // V3 magic string is the longest; read enough bytes to check all versions
-    int maxMagicLen =
-        Math.max(
-            WALFileVersion.V3.getVersionBytes().length, WALFileVersion.V2.getVersionBytes().length);
-    if (channel.size() < maxMagicLen) {
+  private static boolean isValidMagicString(FileChannel channel, WALFileVersion version)
+      throws IOException {
+    int magicLength = version.getVersionBytes().length;
+    if (channel.size() < magicLength) {
       return false;
     }
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(maxMagicLen);
-    IOUtils.readFully(channel, magicStringBytes, channel.size() - maxMagicLen);
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(magicLength);
+    IOUtils.readFully(channel, magicStringBytes, channel.size() - magicLength);
 
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
-    return magicString.contains(WALFileVersion.V3.getVersionString())
-        || magicString.contains(WALFileVersion.V2.getVersionString())
-        || magicString.contains(WALFileVersion.V1.getVersionString());
+    return version.getVersionString().equals(magicString);
   }
 
   public void setTruncateOffSet(long offset) {
