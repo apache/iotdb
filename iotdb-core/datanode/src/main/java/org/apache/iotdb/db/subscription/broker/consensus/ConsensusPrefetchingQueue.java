@@ -563,7 +563,9 @@ public class ConsensusPrefetchingQueue {
     // Register pending queue early so we don't miss real-time writes
     this.pendingEntries =
         new WakeableIndexedConsensusQueue(
-            PENDING_QUEUE_CAPACITY, this::requestPrefetch, this::canAcceptRealtimeEntry);
+            PENDING_QUEUE_CAPACITY,
+            this::requestPrefetchForRealtimeEntry,
+            this::canAcceptRealtimeEntry);
     serverImpl.registerSubscriptionQueue(
         pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
 
@@ -621,12 +623,17 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
+  private void requestPrefetchForRealtimeEntry() {
+    if (prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      requestPrefetch();
+    }
+  }
+
   private boolean canAcceptRealtimeEntry() {
     return isActive
         && !closeRequested
         && !isClosed
         && !realtimeAdmissionBlocked.get()
-        && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE
         && subscriptionMemoryManager.getFreeMemorySizeInBytes() > 0L;
   }
 
@@ -1404,8 +1411,11 @@ public class ConsensusPrefetchingQueue {
       applyPendingSubscriptionWalReset(observedSeekGeneration);
       recycleInFlightEvents();
 
-      if (!isActive || prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+      if (!isActive) {
         blockRealtimeAdmission();
+        return computeIdleRoundResult();
+      }
+      if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
         return computeIdleRoundResult();
       }
 
@@ -1424,7 +1434,9 @@ public class ConsensusPrefetchingQueue {
       }
       if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE
           || !realtimeEntriesByWriter.isEmpty()) {
-        blockRealtimeAdmission();
+        if (!realtimeEntriesByWriter.isEmpty()) {
+          blockRealtimeAdmission();
+        }
         return computeIdleRoundResult();
       }
       if (shouldWaitForSubscriptionMemory()) {
@@ -1587,7 +1599,6 @@ public class ConsensusPrefetchingQueue {
       return PrefetchRoundResult.dormant();
     }
     if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
-      blockRealtimeAdmission();
       return PrefetchRoundResult.dormant();
     }
     if (hasImmediatePrefetchableWork()) {
