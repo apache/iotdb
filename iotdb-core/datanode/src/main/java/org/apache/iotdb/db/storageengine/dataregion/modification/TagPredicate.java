@@ -201,6 +201,10 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
       super(TagPredicateType.FULL_EXACT_MATCH);
     }
 
+    public IDeviceID getDeviceID() {
+      return deviceID;
+    }
+
     @Override
     public int serializedSize() {
       return super.serializedSize() + deviceID.serializedSize();
@@ -278,6 +282,14 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
 
     public SegmentExactMatch() {
       super(TagPredicateType.SEGMENT_EXACT_MATCH);
+    }
+
+    public String getPattern() {
+      return pattern;
+    }
+
+    public int getSegmentIndex() {
+      return segmentIndex;
     }
 
     @Override
@@ -366,6 +378,10 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
 
     public DeviceIn() {
       super(TagPredicateType.DEVICE_IN);
+    }
+
+    public Set<IDeviceID> getDeviceIDs() {
+      return Collections.unmodifiableSet(deviceIDs);
     }
 
     @Override
@@ -462,6 +478,10 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
       super(TagPredicateType.SEGMENT_NOT_NULL);
     }
 
+    public int getSegmentIndex() {
+      return segmentIndex;
+    }
+
     @Override
     public int serializedSize() {
       return super.serializedSize() + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
@@ -536,6 +556,10 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
 
     public void add(TagPredicate predicate) {
       predicates.add(predicate);
+    }
+
+    public List<TagPredicate> getPredicates() {
+      return Collections.unmodifiableList(predicates);
     }
 
     @Override

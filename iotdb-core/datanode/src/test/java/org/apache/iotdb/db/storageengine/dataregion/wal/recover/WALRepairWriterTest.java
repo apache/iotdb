@@ -40,6 +40,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -48,9 +49,11 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.stream.Stream;
 
 public class WALRepairWriterTest {
   private final File logFile =
@@ -58,9 +61,19 @@ public class WALRepairWriterTest {
           TestConstant.BASE_OUTPUT_PATH.concat(
               WALFileUtils.getLogFileName(1, 1, WALFileStatus.CONTAINS_SEARCH_INDEX)));
 
+  @Before
+  public void setUp() throws IOException {
+    Files.createDirectories(logFile.toPath().getParent());
+  }
+
   @After
   public void tearDown() throws Exception {
     logFile.delete();
+    File brokenFile = new File(logFile.getPath() + ".broken");
+    brokenFile.delete();
+    for (int suffix = 1; suffix < 10; suffix++) {
+      new File(logFile.getPath() + ".broken." + suffix).delete();
+    }
   }
 
   @Test
@@ -71,19 +84,10 @@ public class WALRepairWriterTest {
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
     // repair
     new WALRepairWriter(logFile).repair(walMetaData);
-    // verify file, marker(header size + marker buffer size) + metadata(search index + size number)
-    // + metadata size + head magic
-    // string + tail magic string
-    // empty file will be assumed as V1 (because of no header magic)
-    Assert.assertEquals(
-        (Byte.BYTES + Integer.BYTES + Byte.BYTES)
-            + (Long.BYTES + Integer.BYTES)
-            + Integer.BYTES
-            + WALFileVersion.V1.getVersionBytes().length,
-        logFile.length());
+    Assert.assertEquals(0, logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
-      Assert.assertEquals(firstSearchIndex, reader.getFirstSearchIndex());
+      Assert.assertTrue(reader.getMetaData().getMemTablesId().isEmpty());
     }
   }
 
@@ -97,20 +101,10 @@ public class WALRepairWriterTest {
     long firstSearchIndex = WALFileUtils.parseStartSearchIndex(logFile.getName());
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
     // repair
-    new WALRepairWriter(logFile).repair(walMetaData);
-    // verify file, marker(header size + marker buffer size) + metadata(search index + size number)
-    // + metadata size + magic string
-    // file too small will be assumed as V1 (because of no header magic)
-    Assert.assertEquals(
-        (Byte.BYTES + Integer.BYTES + Byte.BYTES)
-            + (Long.BYTES + Integer.BYTES)
-            + Integer.BYTES
-            + WALFileVersion.V1.getVersionBytes().length,
-        logFile.length());
-    try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
-      Assert.assertFalse(reader.hasNext());
-      Assert.assertEquals(firstSearchIndex, reader.getFirstSearchIndex());
-    }
+    Assert.assertFalse(new WALRepairWriter(logFile).repair(walMetaData));
+    Assert.assertFalse(logFile.exists());
+    Assert.assertArrayEquals(
+        new byte[] {1}, Files.readAllBytes(new File(logFile + ".broken").toPath()));
   }
 
   @Test
@@ -184,6 +178,102 @@ public class WALRepairWriterTest {
       Assert.assertEquals(size, reader.next().capacity());
       Assert.assertFalse(reader.hasNext());
       Assert.assertEquals(1, reader.getFirstSearchIndex());
+    }
+  }
+
+  @Test
+  public void testUnrecoverableFileIsQuarantined() throws IOException {
+    Files.write(logFile.toPath(), new byte[] {1, 2, 3, 4});
+
+    Assert.assertFalse(new WALRepairWriter(logFile).repair(new WALMetaData()));
+    Assert.assertFalse(logFile.exists());
+    Assert.assertTrue(new File(logFile.getPath() + ".broken").exists());
+  }
+
+  @Test
+  public void testCorruptedMetadataIsRebuilt() throws IOException, IllegalPathException {
+    WALMetaData walMetaData = new WALMetaData();
+    WALEntry walEntry = new WALInfoEntry(1, getInsertRowNode());
+    int size = walEntry.serializedSize();
+    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+    walEntry.serialize(buffer);
+    walMetaData.add(size, 1, walEntry.getMemTableId());
+
+    long truncateOffset;
+    try (WALWriter walWriter = new WALWriter(logFile)) {
+      walWriter.write(buffer.getBuffer(), walMetaData);
+      truncateOffset = walWriter.getOffset();
+    }
+
+    byte[] fileBytes = Files.readAllBytes(logFile.toPath());
+    int metadataSizeOffset =
+        fileBytes.length - WALFileVersion.V3.getVersionBytes().length - Integer.BYTES;
+    int metadataSize = ByteBuffer.wrap(fileBytes, metadataSizeOffset, Integer.BYTES).getInt();
+    int metadataOffset = metadataSizeOffset - metadataSize;
+    ByteBuffer.wrap(fileBytes).putInt(metadataOffset + Long.BYTES, -1);
+    Files.write(logFile.toPath(), fileBytes);
+
+    WALMetaData recoveredMetadata = walMetaData.copy();
+    recoveredMetadata.setTruncateOffSet(truncateOffset);
+    Assert.assertTrue(new WALRepairWriter(logFile).repair(recoveredMetadata));
+
+    try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
+      Assert.assertTrue(reader.hasNext());
+      Assert.assertEquals(size, reader.next().capacity());
+      Assert.assertFalse(reader.hasNext());
+    }
+  }
+
+  @Test
+  public void testFailedRepairPreservesOriginalFile() throws Exception {
+    WALEntry entry = new WALInfoEntry(1, getInsertRowNode());
+    WALByteBufferForTest buffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(entry.serializedSize()));
+    entry.serialize(buffer);
+    long dataEnd;
+    try (WALWriter writer = new WALWriter(logFile)) {
+      writer.write(buffer.getBuffer(), false);
+      dataEnd = writer.getOffset();
+    }
+    try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.WRITE)) {
+      channel.truncate(dataEnd);
+    }
+    byte[] original = Files.readAllBytes(logFile.toPath());
+    WALMetaData invalidSnapshot = new WALMetaData();
+    invalidSnapshot.add(entry.serializedSize(), 1, 1);
+    invalidSnapshot.add(entry.serializedSize(), 2, 1);
+    // A stale snapshot requests one entry beyond EOF. The original must survive a failed rewrite.
+    Assert.assertThrows(
+        IOException.class, () -> new WALRepairWriter(logFile).repair(invalidSnapshot));
+    Assert.assertArrayEquals(original, Files.readAllBytes(logFile.toPath()));
+    try (Stream<Path> files = Files.list(logFile.toPath().getParent())) {
+      Assert.assertFalse(
+          files.anyMatch(path -> path.getFileName().toString().startsWith("wal-repair-")));
+    }
+  }
+
+  @Test
+  public void testStartupCleanupRetainsQuarantinedFile() throws Exception {
+    Path directory = Files.createTempDirectory(logFile.toPath().getParent(), "wal-cleanup-");
+    Path broken = directory.resolve(logFile.getName() + ".broken.1");
+    Path wal = directory.resolve(logFile.getName());
+    Path checkpoint = directory.resolve("_0.checkpoint");
+    try {
+      Files.write(broken, new byte[] {1, 2});
+      Files.write(wal, new byte[] {3});
+      Files.write(checkpoint, new byte[] {4});
+      Assert.assertFalse(WALNodeRecoverTask.cleanupRecoveredDirectory(directory.toFile()));
+      Assert.assertArrayEquals(new byte[] {1, 2}, Files.readAllBytes(broken));
+      Assert.assertFalse(Files.exists(wal));
+      Assert.assertFalse(Files.exists(checkpoint));
+      Files.delete(broken);
+      Assert.assertTrue(WALNodeRecoverTask.cleanupRecoveredDirectory(directory.toFile()));
+      Assert.assertFalse(Files.exists(directory));
+    } finally {
+      Files.deleteIfExists(broken);
+      Files.deleteIfExists(wal);
+      Files.deleteIfExists(checkpoint);
+      Files.deleteIfExists(directory);
     }
   }
 

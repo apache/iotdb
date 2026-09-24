@@ -76,7 +76,11 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
             .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
       }
       event.decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
-      if (status.isSetRedirectNode()) {
+      // A multi-device InsertRowsNode response stores redirect endpoints in per-device
+      // sub-statuses instead of on the top-level status.
+      if (status.isSetRedirectNode()
+          || (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+              && status.isSetSubStatus())) {
         updateLeaderCache(status);
       }
     } catch (final Exception e) {

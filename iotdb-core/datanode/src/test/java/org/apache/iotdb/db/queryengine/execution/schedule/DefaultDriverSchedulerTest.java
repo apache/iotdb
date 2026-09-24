@@ -18,14 +18,21 @@
  */
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
+import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFinishedException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
@@ -50,6 +57,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.calc.execution.operator.Operator.NOT_BLOCKED;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
 public class DefaultDriverSchedulerTest {
@@ -527,6 +535,79 @@ public class DefaultDriverSchedulerTest {
       Mockito.verify(mockDriver2, Mockito.times(1)).failed(Mockito.any());
 
       clear();
+    }
+  }
+
+  @Test
+  public void testFinishedFragmentDoesNotAbortOtherTasks() throws Exception {
+    int previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+    IMPPDataExchangeManager exchangeManager = Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(exchangeManager);
+    QueryId queryId = new QueryId("finished_scan");
+    FragmentInstanceId finishedId = new FragmentInstanceId(new PlanFragmentId(queryId, 0), "0");
+    FragmentInstanceContext context =
+        createFragmentInstanceContext(
+            finishedId, new FragmentInstanceStateMachine(finishedId, Runnable::run));
+    context.initializeNumOfDrivers(1);
+    Operator operator = Mockito.mock(Operator.class);
+    Mockito.doReturn(NOT_BLOCKED).when(operator).isBlocked();
+    Mockito.when(operator.hasNextWithTimer()).thenReturn(true);
+    Mockito.when(operator.nextWithTimer())
+        .thenAnswer(
+            invocation -> {
+              context.finished();
+              throw new FragmentInstanceFinishedException(finishedId);
+            });
+    ISink sink = Mockito.mock(ISink.class);
+    Mockito.doReturn(NOT_BLOCKED).when(sink).isFull();
+    DataDriverContext driverContext = new DataDriverContext(context, 0);
+    driverContext.setSink(sink);
+    DataDriver driver = new DataDriver(operator, driverContext, 0);
+    try {
+      DriverTaskHandle handle =
+          new DriverTaskHandle(
+              1,
+              (MultilevelPriorityQueue) manager.getReadyQueue(),
+              OptionalInt.of(Integer.MAX_VALUE));
+      DriverTask task = new DriverTask(driver, 30000, DriverTaskStatus.READY, handle, 0, false);
+      manager.registerTaskToQueryMap(queryId, task);
+      manager.getTimeoutQueue().push(task);
+      manager.submitTaskToReadyQueue(task);
+      Assert.assertSame(task, manager.getReadyQueue().poll());
+
+      FragmentInstanceId siblingId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
+      IDriver siblingDriver = Mockito.mock(IDriver.class);
+      Mockito.when(siblingDriver.getDriverTaskId()).thenReturn(new DriverTaskId(siblingId, 0));
+      DriverTask sibling =
+          new DriverTask(siblingDriver, 30000, DriverTaskStatus.READY, handle, 0, false);
+      manager.registerTaskToQueryMap(queryId, sibling);
+      manager.getTimeoutQueue().push(sibling);
+      manager.submitTaskToReadyQueue(sibling);
+
+      DriverTaskThread worker =
+          new DriverTaskThread("finished-scan", null, null, manager.getScheduler(), null);
+      worker.execute(task);
+
+      Assert.assertEquals(FragmentInstanceState.FINISHED, context.getStateMachine().getState());
+      Assert.assertTrue(context.getStateMachine().getFailureCauses().isEmpty());
+      Assert.assertEquals(DriverTaskStatus.FINISHED, task.getStatus());
+      Assert.assertFalse(task.getAbortCause().isPresent());
+      Assert.assertNull(manager.getTimeoutQueue().get(task.getDriverTaskId()));
+      Assert.assertFalse(manager.getQueryMap().get(queryId).containsKey(finishedId));
+      Assert.assertEquals(DriverTaskStatus.READY, sibling.getStatus());
+      Assert.assertFalse(sibling.getAbortCause().isPresent());
+      Assert.assertEquals(1, manager.getReadyQueueTaskCount());
+      Assert.assertSame(sibling, manager.getReadyQueue().poll());
+      Assert.assertSame(sibling, manager.getTimeoutQueue().get(sibling.getDriverTaskId()));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(siblingId).contains(sibling));
+      Mockito.verify(operator).close();
+      Mockito.verify(siblingDriver, Mockito.never()).failed(Mockito.any());
+      Mockito.verify(exchangeManager, Mockito.never())
+          .forceDeregisterFragmentInstance(Mockito.any());
+    } finally {
+      driver.close();
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
     }
   }
 

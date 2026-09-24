@@ -1005,6 +1005,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             nack,
             commitContexts);
       }
+    } else if (acceptedCommitContexts.isEmpty()) {
+      LOGGER.debug(
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_PARTIALLY_ACCEPTED_REQUESTED_87D0C038,
+          consumerConfig,
+          nack,
+          summarizeCommitContexts(commitContexts),
+          summarizeCommitContexts(acceptedCommitContexts),
+          summarizeCommitContexts(staleUnsubscribedCommitContexts));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_FULL_REQUESTED_COMMIT_1E67E8A3,
+            consumerConfig,
+            nack,
+            commitContexts,
+            acceptedCommitContexts,
+            staleUnsubscribedCommitContexts);
+      }
     } else {
       LOGGER.warn(
           DataNodePipeMessages
