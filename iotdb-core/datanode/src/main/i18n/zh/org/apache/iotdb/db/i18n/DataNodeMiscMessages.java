@@ -21,6 +21,8 @@ package org.apache.iotdb.db.i18n;
 
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "请求的查询不属于当前会话。";
 
   public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
       "缺少 Load TsFile 分片元数据：%s";
@@ -606,7 +608,12 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "输入的双精度数值为 Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "BOOLEAN 值应为 true/TRUE、false/FALSE 或 0/1";
-  public static final String UNSUPPORTED_DATA_TYPE_FMT = "不支持的数据类型：%s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3 =
+      "数据类型不一致，输入值 %s，注册类型 %s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858 =
+      "数据类型不一致，输入值 %s，注册类型 %s，原因：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "不支持的数据类型：%s";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
       "聚合函数名称不能为空";

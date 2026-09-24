@@ -21,6 +21,8 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "The requested query does not belong to the current session.";
 
   public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
       "Missing Load TsFile slice metadata: %s";
@@ -606,7 +608,12 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "The input double value is Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "The BOOLEAN should be true/TRUE, false/FALSE or 0/1";
-  public static final String UNSUPPORTED_DATA_TYPE_FMT = "Unsupported data type:%s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3 =
+      "data type is not consistent, input %s, registered %s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858 =
+      "data type is not consistent, input %s, registered %s because %s";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "Unsupported data type:%s";
   public static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
       "AggregateFunction Name must not be null";

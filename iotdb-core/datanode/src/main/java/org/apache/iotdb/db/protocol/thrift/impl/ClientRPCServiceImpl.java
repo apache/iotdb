@@ -48,14 +48,9 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
@@ -143,6 +138,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
@@ -218,6 +214,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.utils.Binary;
@@ -701,34 +698,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return new Pair<>(new NullLiteral(), "NULL");
       }
 
-      switch (param.type) {
-        case BOOLEAN:
-          String boolStr = (Boolean) param.value ? "true" : "false";
-          return new Pair<>(new BooleanLiteral(boolStr), boolStr);
-        case INT32:
-        case INT64:
-          String numStr = String.valueOf(param.value);
-          return new Pair<>(new LongLiteral(numStr), numStr);
-        case FLOAT:
-          String floatStr = String.valueOf(param.value);
-          return new Pair<>(new DoubleLiteral((Float) param.value), floatStr);
-        case DOUBLE:
-          String doubleStr = String.valueOf(param.value);
-          return new Pair<>(new DoubleLiteral((Double) param.value), doubleStr);
-        case TEXT:
-        case STRING:
-          String strVal = (String) param.value;
-          // Escape single quotes for SQL
-          String escapedStr = "'" + strVal.replace("'", "''") + "'";
-          return new Pair<>(new StringLiteral(strVal), escapedStr);
-        case BLOB:
-          byte[] bytes = (byte[]) param.value;
-          String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
-          return new Pair<>(new BinaryLiteral(bytes), hexStr);
-        default:
-          throw new IllegalArgumentException(
-              DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + param.type);
-      }
+      return TypeServices.ValueConversion.PREPARED_PARAMETER_LITERAL_SERVICE
+          .call(Type.fromTsDataType(param.type))
+          .apply(param.value);
     }
   }
 
@@ -1561,6 +1533,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    boolean queryOwnedBySession = false;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
@@ -1570,12 +1543,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       queryExecution = COORDINATOR.getQueryExecution(req.queryId);
-
       if (queryExecution == null) {
         TSStatus noQueryExecutionStatus = new TSStatus(QUERY_WAS_KILLED.getStatusCode());
         noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
         return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+
+      if (!clientSession.containsQueryId(statementId, req.queryId)) {
+        // The query is still running, but it was submitted by another session: do not stream its
+        // result and do not release it, so that the query which owns it is left untouched.
+        return RpcUtils.getTSFetchResultsResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION,
+                DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237));
+      }
+      queryOwnedBySession = true;
 
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
 
@@ -1605,19 +1587,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throw error;
     } finally {
 
-      long currentOperationCost = System.nanoTime() - startTime;
-      COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
+      if (queryOwnedBySession) {
+        long currentOperationCost = System.nanoTime() - startTime;
+        COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
 
-      // record each operation time cost
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.FETCH_RESULTS, statementType, currentOperationCost);
+        // record each operation time cost
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
-      if (finished) {
-        // record total time cost for one query
-        long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
-        CommonUtils.addQueryLatency(
-            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, req.queryId, req, t);
+        if (finished) {
+          // record total time cost for one query
+          long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
+          CommonUtils.addQueryLatency(
+              StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
+          clearUp(clientSession, statementId, req.queryId, req, t);
+        }
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -1711,8 +1695,27 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (req.isSetQueryId()
+        && req.isSetStatementId()
+        && clientSession != null
+        && clientSession.isLogin()
+        && !clientSession.containsQueryId(req.getStatementId(), req.queryId)) {
+      // The queryId indexes the process-wide map of running queries, so only the session that
+      // submitted the query may release it.
+      if (COORDINATOR.getQueryExecution(req.queryId) != null) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION,
+            DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237);
+      }
+      // A queryId that is no longer running keeps the previous behaviour: releasing it stays a
+      // no-op. It must not fall through to the global cleanup below: query ids are allocated
+      // before their execution is published, so the session that owns this queryId can register
+      // it between the lookup above and the cleanup.
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
     return SESSION_MANAGER.closeOperation(
-        SESSION_MANAGER.getCurrSession(),
+        clientSession,
         req.queryId,
         req.statementId,
         req.isSetStatementId(),
@@ -2319,6 +2322,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    boolean queryOwnedBySession = false;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
@@ -2333,6 +2337,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
         return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+
+      if (!clientSession.containsQueryId(statementId, req.queryId)) {
+        // The query is still running, but it was submitted by another session: do not stream its
+        // result and do not release it, so that the query which owns it is left untouched.
+        return RpcUtils.getTSFetchResultsResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION,
+                DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237));
+      }
+      queryOwnedBySession = true;
+
       queryExecution.updateCurrentRpcStartTime(startTime);
       statementType = queryExecution.getStatementType();
 
@@ -2360,19 +2375,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throw error;
     } finally {
 
-      long currentOperationCost = System.nanoTime() - startTime;
-      COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
+      if (queryOwnedBySession) {
+        long currentOperationCost = System.nanoTime() - startTime;
+        COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
 
-      // record each operation time cost
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.FETCH_RESULTS, statementType, currentOperationCost);
+        // record each operation time cost
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
-      if (finished) {
-        // record total time cost for one query
-        long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
-        CommonUtils.addQueryLatency(
-            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, req.queryId, req, t);
+        if (finished) {
+          // record total time cost for one query
+          long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
+          CommonUtils.addQueryLatency(
+              StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
+          clearUp(clientSession, statementId, req.queryId, req, t);
+        }
       }
 
       SESSION_MANAGER.updateIdleTime();

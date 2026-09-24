@@ -36,6 +36,7 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -115,7 +116,8 @@ public class PipeMemoryWeightUtil {
           totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
           totalSizeInBytes +=
-              roundUpToMultiple(TsPrimitiveType.getByType(tsDataType).getSize() + 8, 8);
+              roundUpToMultiple(
+                  Type.fromTsDataType(tsDataType).getTsPrimitiveType().getSize() + 8, 8);
         }
       }
     }
@@ -163,7 +165,8 @@ public class PipeMemoryWeightUtil {
           final Binary binary = batchData.getBinary();
           totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
-          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
+          totalSizeInBytes +=
+              roundUpToMultiple(Type.fromTsDataType(type).getTsPrimitiveType().getSize() + 8, 8);
         }
       }
     }
@@ -279,7 +282,8 @@ public class PipeMemoryWeightUtil {
           totalSizeInBytes +=
               roundUpToMultiple((binary == null ? 8 : binary.getLength() + 8) + 8, 8);
         } else {
-          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
+          totalSizeInBytes +=
+              roundUpToMultiple(Type.fromTsDataType(type).getTsPrimitiveType().getSize() + 8, 8);
         }
       }
     }

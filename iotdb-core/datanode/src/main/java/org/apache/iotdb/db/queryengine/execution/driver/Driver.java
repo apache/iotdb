@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFinishedException;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.queryengine.metric.QueryMetricsManager;
@@ -247,6 +248,11 @@ public abstract class Driver implements IDriver {
           sink.send(tsBlock);
         }
       }
+      return NOT_BLOCKED;
+    } catch (FragmentInstanceFinishedException e) {
+      // The fragment may finish before its notification thread closes this driver. Release the
+      // driver through the normal cleanup path without aborting other fragments of the query.
+      state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION);
       return NOT_BLOCKED;
     } catch (Throwable t) {
       Throwable actualCause = t;

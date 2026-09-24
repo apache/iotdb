@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -60,6 +62,74 @@ public class IoTDBDataNodeReceiverTest {
   @After
   public void tearDown() {
     registry.clear();
+  }
+
+  @Test
+  public void testTableModelTabletRedirectDoesNotCachePerRowLeader() {
+    final InsertTabletStatement statement = new InsertTabletStatement();
+    statement.setWriteToTable(true);
+    statement.setRowCount(2);
+
+    final TSStatus firstRow =
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setRedirectNode(new TEndPoint("127.0.0.2", 6667));
+    final TSStatus secondRow =
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setRedirectNode(new TEndPoint("127.0.0.3", 6667));
+    final TSStatus result =
+        new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
+            .setSubStatus(Arrays.asList(firstRow, secondRow));
+
+    Assert.assertSame(result, IoTDBDataNodeReceiver.addRedirectInfoForBatch(statement, result, 1));
+    Assert.assertFalse(firstRow.isSetMessage());
+    Assert.assertFalse(secondRow.isSetMessage());
+  }
+
+  @Test
+  public void testTableModelRowsRedirectDoesNotCachePerRowLeader() throws Exception {
+    final InsertRowStatement firstRow = new InsertRowStatement();
+    firstRow.setDevicePath(new PartialPath("table1"));
+    final InsertRowStatement secondRow = new InsertRowStatement();
+    secondRow.setDevicePath(new PartialPath("table1"));
+    final InsertRowsStatement statement = new InsertRowsStatement();
+    statement.setWriteToTable(true);
+    statement.setInsertRowStatementList(Arrays.asList(firstRow, secondRow));
+
+    final TSStatus firstRowStatus =
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setRedirectNode(new TEndPoint("127.0.0.2", 6667));
+    final TSStatus secondRowStatus =
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setRedirectNode(new TEndPoint("127.0.0.3", 6667));
+    final TSStatus result =
+        new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
+            .setSubStatus(Arrays.asList(firstRowStatus, secondRowStatus));
+
+    Assert.assertSame(result, IoTDBDataNodeReceiver.addRedirectInfoForBatch(statement, result, 1));
+    Assert.assertFalse(firstRowStatus.isSetMessage());
+    Assert.assertFalse(secondRowStatus.isSetMessage());
+  }
+
+  @Test
+  public void testTreeModelBatchRedirectHasDevicePath() throws Exception {
+    final InsertRowStatement firstRow = new InsertRowStatement();
+    firstRow.setDevicePath(new PartialPath("root.sg.d1"));
+    final InsertRowStatement secondRow = new InsertRowStatement();
+    secondRow.setDevicePath(new PartialPath("root.sg.d2"));
+    final InsertRowsStatement statement = new InsertRowsStatement();
+    statement.setInsertRowStatementList(Arrays.asList(firstRow, secondRow));
+
+    final TSStatus local = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    final TSStatus redirected =
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setRedirectNode(new TEndPoint("127.0.0.2", 6667));
+    final TSStatus result =
+        new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
+            .setSubStatus(Arrays.asList(local, redirected));
+
+    Assert.assertSame(result, IoTDBDataNodeReceiver.addRedirectInfoForBatch(statement, result, 1));
+    Assert.assertFalse(local.isSetMessage());
+    Assert.assertEquals("root.sg.d2", redirected.getMessage());
   }
 
   @Test
