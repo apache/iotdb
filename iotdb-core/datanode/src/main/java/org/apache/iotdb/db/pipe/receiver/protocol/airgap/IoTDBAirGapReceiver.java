@@ -169,7 +169,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   private void handleReq(final AirGapPseudoTPipeTransferRequest req, final long startTime)
       throws IOException {
-    final TPipeTransferResp resp = agent.receive(req);
+    final TPipeTransferResp resp = agent.receive(duplicateReq(req));
 
     final TSStatus status = resp.getStatus();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -202,6 +202,15 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           req);
       fail();
     }
+  }
+
+  private AirGapPseudoTPipeTransferRequest duplicateReq(
+      final AirGapPseudoTPipeTransferRequest req) {
+    return (AirGapPseudoTPipeTransferRequest)
+        new AirGapPseudoTPipeTransferRequest()
+            .setVersion(req.getVersion())
+            .setType(req.getType())
+            .setBody(req.body.duplicate());
   }
 
   private void ok() throws IOException {
