@@ -282,7 +282,7 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
     private boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
+    private int connectionTimeoutInMs = ConsumerConstant.CONNECTION_TIMEOUT_MS_DEFAULT_VALUE;
     private int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
