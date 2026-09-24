@@ -408,19 +408,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     final List<SubscriptionCommitContext> processorBufferedCommitContexts =
         req.getProcessorBufferedCommitContexts();
-    final int refreshedCount =
-        SubscriptionAgent.broker()
-            .refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
-    if (Objects.nonNull(processorBufferedCommitContexts)
-        && !processorBufferedCommitContexts.isEmpty()) {
-      LOGGER.debug(
-          DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTION_CONSUMER_REFRESHED_OF_PROCESSOR_BUFFERED_COMMIT_8C7A352A,
-          consumerConfig,
-          refreshedCount,
-          processorBufferedCommitContexts.size());
-    }
-
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
@@ -437,6 +424,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .checkTopicReadPermissions(authenticatedUsername, consumerConfig, subscribedTopicNames);
     if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
+
+    final int refreshedCount =
+        refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
+    if (Objects.nonNull(processorBufferedCommitContexts)
+        && !processorBufferedCommitContexts.isEmpty()) {
+      LOGGER.debug(
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_CONSUMER_REFRESHED_OF_PROCESSOR_BUFFERED_COMMIT_8C7A352A,
+          consumerConfig,
+          refreshedCount,
+          processorBufferedCommitContexts.size());
     }
 
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS, consumerConfig);
@@ -485,6 +484,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS, topics, endPoints, topicNamesToUnsubscribe);
+  }
+
+  protected int refreshInFlightEventLeases(
+      final ConsumerConfig consumerConfig,
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
+    return SubscriptionAgent.broker()
+        .refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
