@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -188,7 +187,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -196,7 +194,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -963,7 +960,7 @@ public class ProcedureManager {
 
     if (failMessage != null) {
       LOGGER.warn(failMessage);
-      TSStatus failStatus = new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode());
+      TSStatus failStatus = new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode());
       failStatus.setMessage(failMessage);
       return failStatus;
     }
@@ -973,7 +970,7 @@ public class ProcedureManager {
   private TSStatus checkRemoveRegion(
       TRemoveRegionReq req,
       TConsensusGroupId regionId,
-      @Nullable TDataNodeLocation targetDataNode,
+      TDataNodeLocation targetDataNode,
       TDataNodeLocation coordinator) {
     String failMessage =
         regionOperationCommonCheck(
@@ -991,12 +988,11 @@ public class ProcedureManager {
             .getDataNodeLocationsSize()
         == 1) {
       failMessage = String.format("%s only has 1 replica, it cannot be removed", regionId);
-    } else if (targetDataNode != null
-        && configManager
-            .getPartitionManager()
-            .getAllReplicaSets(targetDataNode.getDataNodeId())
-            .stream()
-            .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(targetDataNode.getDataNodeId())
+        .stream()
+        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
       failMessage =
           String.format(
               "Target DataNode %s doesn't contain Region %s", req.getDataNodeId(), regionId);
@@ -1152,132 +1148,67 @@ public class ProcedureManager {
 
   // end region
 
-  public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
+  public TSStatus migrateRegion(TMigrateRegionReq req) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
-      // The source and destination DataNodes are fixed for the whole statement, so resolve them
-      // once and reuse them for every region.
-      final TDataNodeConfiguration originalDataNodeConfiguration =
-          configManager.getNodeManager().getRegisteredDataNode(migrateRegionReq.getFromId());
-      final TDataNodeConfiguration destDataNodeConfiguration =
-          configManager.getNodeManager().getRegisteredDataNode(migrateRegionReq.getToId());
-      if (originalDataNodeConfiguration == null) {
+      final TDataNodeLocation originalDataNode =
+          getRegisteredDataNodeLocationOrNull(req.getFromId());
+      final TDataNodeLocation destDataNode = getRegisteredDataNodeLocationOrNull(req.getToId());
+      if (originalDataNode == null) {
         return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Source DataNode %s does not exist in the cluster",
-                    migrateRegionReq.getFromId()));
+                    ManagerMessages
+                        .MESSAGE_SOURCE_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_2255633C,
+                    req.getFromId()));
       }
-      if (destDataNodeConfiguration == null) {
+      if (destDataNode == null) {
         return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Target DataNode %s does not exist in the cluster",
-                    migrateRegionReq.getToId()));
+                    ManagerMessages
+                        .MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF,
+                    req.getToId()));
       }
-      final TDataNodeLocation originalDataNode = originalDataNodeConfiguration.getLocation();
-      final TDataNodeLocation destDataNode = destDataNodeConfiguration.getLocation();
+      if (req.getFromId() == req.getToId()) {
+        return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages
+                        .MESSAGE_SOURCE_AND_TARGET_DATANODE_IDS_MUST_BE_DIFFERENT_ARG_286D3838,
+                    req.getFromId()));
+      }
+
+      List<TConsensusGroupId> regionIds = new ArrayList<>();
+      TSStatus status =
+          checkRegionIds(req.getRegionIds(), regionIds, TSStatusCode.MIGRATE_REGION_ERROR);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
       final RegionMaintainHandler handler = env.getRegionMaintainHandler();
-
-      TSStatus resp = new TSStatus();
-      StringBuilder messageBuilder = new StringBuilder();
-      int total = 0, success = 0;
-      // dedup region ids while preserving the user-specified order
-      for (int theRegionId : new LinkedHashSet<>(migrateRegionReq.getRegionIds())) {
-        total++;
-        TSStatus subStatus =
-            migrateOneRegion(
-                migrateRegionReq, theRegionId, originalDataNode, destDataNode, handler);
-        if (subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          messageBuilder.append("region ").append(theRegionId).append(": Successfully submitted\n");
-          success++;
-        } else {
-          messageBuilder
-              .append("region ")
-              .append(theRegionId)
-              .append(": ")
-              .append(subStatus.getMessage())
-              .append('\n');
+      List<RegionMigrateProcedure> procedures = new ArrayList<>();
+      for (TConsensusGroupId regionId : regionIds) {
+        final TDataNodeLocation coordinator =
+            handler
+                .filterDataNodeWithOtherRegionReplica(
+                    regionId,
+                    destDataNode,
+                    NodeStatus.Running,
+                    NodeStatus.Removing,
+                    NodeStatus.ReadOnly)
+                .orElse(null);
+        status =
+            checkMigrateRegion(
+                req, regionId.getId(), regionId, originalDataNode, destDataNode, coordinator);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
         }
-        resp.addToSubStatus(subStatus);
+        procedures.add(
+            new RegionMigrateProcedure(
+                regionId, originalDataNode, destDataNode, coordinator, destDataNode));
       }
-
-      messageBuilder.insert(
-          0,
-          String.format(
-              "Total regions: %d, successfully submitted: %d, failed to submit: %d\n",
-              total, success, total - success));
-      resp.setCode(
-          total == success
-              ? TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              : TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      resp.setMessage(messageBuilder.toString());
-      return resp;
+      return submitRegionOperationProcedures(procedures);
     }
-  }
-
-  private TSStatus migrateOneRegion(
-      TMigrateRegionReq migrateRegionReq,
-      int theRegionId,
-      TDataNodeLocation originalDataNode,
-      TDataNodeLocation destDataNode,
-      RegionMaintainHandler handler) {
-    TConsensusGroupId regionGroupId;
-    Optional<TConsensusGroupId> optional =
-        configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
-    if (optional.isPresent()) {
-      regionGroupId = optional.get();
-    } else {
-      LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
-      return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
-          .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
-    }
-
-    // select coordinator for adding peer
-    // (future improvement: choose the DataNode which has the lowest load)
-    final TDataNodeLocation coordinatorForAddPeer =
-        handler
-            .filterDataNodeWithOtherRegionReplica(
-                regionGroupId,
-                destDataNode,
-                NodeStatus.Running,
-                NodeStatus.Removing,
-                NodeStatus.ReadOnly)
-            .orElse(null);
-    // Select coordinator for removing peer
-    // For now, destDataNode temporarily acts as the coordinatorForRemovePeer
-    final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
-
-    TSStatus status =
-        checkMigrateRegion(
-            migrateRegionReq,
-            theRegionId,
-            regionGroupId,
-            originalDataNode,
-            destDataNode,
-            coordinatorForAddPeer);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return status;
-    }
-
-    // finally, submit procedure
-    this.executor.submitProcedure(
-        new RegionMigrateProcedure(
-            regionGroupId,
-            originalDataNode,
-            destDataNode,
-            coordinatorForAddPeer,
-            coordinatorForRemovePeer));
-    LOGGER.info(
-        ManagerMessages
-            .MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE,
-        regionGroupId,
-        originalDataNode,
-        destDataNode,
-        coordinatorForAddPeer,
-        coordinatorForRemovePeer);
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**
@@ -1288,45 +1219,34 @@ public class ProcedureManager {
    * dereference the result blindly.
    */
   private TDataNodeLocation getRegisteredDataNodeLocationOrNull(int dataNodeId) {
-    return configManager.getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
+    final TDataNodeConfiguration dataNodeConfiguration =
+        configManager.getNodeManager().getRegisteredDataNode(dataNodeId);
+    return dataNodeConfiguration == null ? null : dataNodeConfiguration.getLocation();
   }
 
   public TSStatus reconstructRegion(TReconstructRegionReq req) {
-    RegionMaintainHandler handler = env.getRegionMaintainHandler();
-    final TDataNodeLocation targetDataNode =
-        getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
-    if (targetDataNode == null) {
-      // The target id is not a registered DataNode. Reject here instead of pushing a null down into
-      // checkReconstructRegion, which would otherwise throw a NullPointerException.
-      return new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode())
-          .setMessage(
-              String.format(
-                  "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
-    }
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
+      final TDataNodeLocation targetDataNode =
+          getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+      if (targetDataNode == null) {
+        return new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages
+                        .MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF,
+                    req.getDataNodeId()));
+      }
+
+      List<TConsensusGroupId> regionIds = new ArrayList<>();
+      TSStatus status =
+          checkRegionIds(req.getRegionIds(), regionIds, TSStatusCode.RECONSTRUCT_REGION_ERROR);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      final RegionMaintainHandler handler = env.getRegionMaintainHandler();
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
-      Set<Integer> seenRegionIds = new HashSet<>();
-      for (int x : req.getRegionIds()) {
-        if (!seenRegionIds.add(x)) {
-          LOGGER.info(
-              ManagerMessages
-                  .LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69,
-              x,
-              req.getDataNodeId());
-          continue;
-        }
-        Optional<TConsensusGroupId> regionIdOptional =
-            configManager.getPartitionManager().findTConsensusGroupIdByRegionId(x);
-        if (!regionIdOptional.isPresent()) {
-          LOGGER.info(
-              ManagerMessages
-                  .LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789,
-              x,
-              req.getDataNodeId());
-          continue;
-        }
-        TConsensusGroupId regionId = regionIdOptional.get();
+      for (TConsensusGroupId regionId : regionIds) {
         final TDataNodeLocation coordinator =
             handler
                 .filterDataNodeWithOtherRegionReplica(
@@ -1336,194 +1256,142 @@ public class ProcedureManager {
                     NodeStatus.Removing,
                     NodeStatus.ReadOnly)
                 .orElse(null);
-        TSStatus status = checkReconstructRegion(req, regionId, targetDataNode, coordinator);
+        status = checkReconstructRegion(req, regionId, targetDataNode, coordinator);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
         procedures.add(new ReconstructRegionProcedure(regionId, targetDataNode, coordinator));
       }
-      // all checks pass, submit all procedures
-      procedures.forEach(
-          reconstructRegionProcedure -> {
-            this.executor.submitProcedure(reconstructRegionProcedure);
-            LOGGER.info(
-                ManagerMessages.RECONSTRUCTREGION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_SUCCESSFULLY,
-                reconstructRegionProcedure);
-          });
+      return submitRegionOperationProcedures(procedures);
     }
-    return RpcUtils.SUCCESS_STATUS;
   }
 
   public TSStatus extendRegions(TExtendRegionReq req) {
-    return processExtendOrRemoveRegions(
-        req.getRegionId(), req, this::extendOneRegion, TSStatusCode.EXTEND_REGION_ERROR);
-  }
-
-  public TSStatus removeRegions(TRemoveRegionReq req) {
-    return processExtendOrRemoveRegions(
-        req.getRegionId(), req, this::removeOneRegion, TSStatusCode.REMOVE_REGION_PEER_ERROR);
-  }
-
-  private <R> TSStatus processExtendOrRemoveRegions(
-      Iterable<Integer> regionIds,
-      R req,
-      BiFunction<Integer, R, TSStatus> regionAction,
-      TSStatusCode errorCode) {
-    TSStatus resp = new TSStatus();
-    StringBuilder messageBuilder = new StringBuilder();
-
-    int total = 0, success = 0;
-    for (int regionId : regionIds) {
-      total++;
-      TSStatus subStatus = regionAction.apply(regionId, req);
-      if (subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        messageBuilder.append("region ").append(regionId).append(": Successfully submitted\n");
-        success++;
-      } else {
-        messageBuilder
-            .append("region ")
-            .append(regionId)
-            .append(": ")
-            .append(subStatus.getMessage())
-            .append('\n');
-      }
-      resp.addToSubStatus(subStatus);
-    }
-
-    messageBuilder.insert(
-        0,
-        String.format(
-            "Total regions: %d, successfully submitted: %d, failed to submit: %d\n",
-            total, success, total - success));
-
-    resp.setCode(
-        total == success ? TSStatusCode.SUCCESS_STATUS.getStatusCode() : errorCode.getStatusCode());
-    resp.setMessage(messageBuilder.toString());
-    return resp;
-  }
-
-  private TSStatus extendOneRegion(int theRegionId, TExtendRegionReq req) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
-      TConsensusGroupId regionId;
-      Optional<TConsensusGroupId> optional =
-          configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
-      if (optional.isPresent()) {
-        regionId = optional.get();
-      } else {
-        LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
-        return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
-            .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
-      }
-
-      // find target dn
       final TDataNodeLocation targetDataNode =
           getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
       if (targetDataNode == null) {
-        // The target id is not a registered DataNode. Reject here instead of pushing a null down
-        // into checkExtendRegion, which would otherwise throw a NullPointerException.
         return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
+                    ManagerMessages
+                        .MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF,
+                    req.getDataNodeId()));
       }
-      // select coordinator for adding peer
-      RegionMaintainHandler handler = env.getRegionMaintainHandler();
-      // TODO: choose the DataNode which has lowest load
-      final TDataNodeLocation coordinator =
-          handler
-              .filterDataNodeWithOtherRegionReplica(
-                  regionId,
-                  targetDataNode,
-                  NodeStatus.Running,
-                  NodeStatus.Removing,
-                  NodeStatus.ReadOnly)
-              .orElse(null);
-      // do the check
-      TSStatus status = checkExtendRegion(req, regionId, targetDataNode, coordinator);
+
+      List<TConsensusGroupId> regionIds = new ArrayList<>();
+      TSStatus status =
+          checkRegionIds(req.getRegionId(), regionIds, TSStatusCode.EXTEND_REGION_ERROR);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-      // submit procedure
-      AddRegionPeerProcedure procedure =
-          new AddRegionPeerProcedure(regionId, coordinator, targetDataNode);
-      this.executor.submitProcedure(procedure);
-      LOGGER.info(
-          ManagerMessages.EXTENDREGION_SUBMIT_ADDREGIONPEERPROCEDURE_SUCCESSFULLY, procedure);
-
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      final RegionMaintainHandler handler = env.getRegionMaintainHandler();
+      List<AddRegionPeerProcedure> procedures = new ArrayList<>();
+      for (TConsensusGroupId regionId : regionIds) {
+        final TDataNodeLocation coordinator =
+            handler
+                .filterDataNodeWithOtherRegionReplica(
+                    regionId,
+                    targetDataNode,
+                    NodeStatus.Running,
+                    NodeStatus.Removing,
+                    NodeStatus.ReadOnly)
+                .orElse(null);
+        status = checkExtendRegion(req, regionId, targetDataNode, coordinator);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        procedures.add(new AddRegionPeerProcedure(regionId, coordinator, targetDataNode));
+      }
+      return submitRegionOperationProcedures(procedures);
     }
   }
 
-  private TSStatus removeOneRegion(int theRegionId, TRemoveRegionReq req) {
+  public TSStatus removeRegions(TRemoveRegionReq req) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
-      TConsensusGroupId regionId;
-      Optional<TConsensusGroupId> optional =
-          configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
-      if (optional.isPresent()) {
-        regionId = optional.get();
-      } else {
-        LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
+      final TDataNodeLocation targetDataNode =
+          getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+      if (targetDataNode == null) {
         return new TSStatus(TSStatusCode.REMOVE_REGION_PEER_ERROR.getStatusCode())
-            .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
+            .setMessage(
+                String.format(
+                    ManagerMessages
+                        .MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF,
+                    req.getDataNodeId()));
       }
 
-      // find target dn
-      final TDataNodeLocation targetDataNode =
-          configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
-
-      // select coordinator for removing peer
-      RegionMaintainHandler handler = env.getRegionMaintainHandler();
-      final TDataNodeLocation coordinator =
-          handler
-              .filterDataNodeWithOtherRegionReplica(
-                  regionId,
-                  targetDataNode,
-                  NodeStatus.Running,
-                  NodeStatus.Removing,
-                  NodeStatus.ReadOnly)
-              .orElse(null);
-
-      // do the check
-      TSStatus status = checkRemoveRegion(req, regionId, targetDataNode, coordinator);
+      List<TConsensusGroupId> regionIds = new ArrayList<>();
+      TSStatus status =
+          checkRegionIds(req.getRegionId(), regionIds, TSStatusCode.REMOVE_REGION_PEER_ERROR);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-
-      // SPECIAL CASE
-      if (targetDataNode == null) {
-        // If targetDataNode is null, it means the target DataNode does not exist in the
-        // NodeManager.
-        // In this case, simply clean up the partition table once and do nothing else.
-        LOGGER.warn(
-            ManagerMessages.REMOVE_REGION_TARGET_DATANODE_NOT_FOUND_WILL_SIMPLY_CLEAN_UP,
-            req.getDataNodeId(),
-            req.getRegionId());
-        this.executor
-            .getEnvironment()
-            .getRegionMaintainHandler()
-            .removeRegionLocation(
-                regionId, buildFakeDataNodeLocation(req.getDataNodeId(), "FakeIpForRemoveRegion"));
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      final RegionMaintainHandler handler = env.getRegionMaintainHandler();
+      List<RemoveRegionPeerProcedure> procedures = new ArrayList<>();
+      for (TConsensusGroupId regionId : regionIds) {
+        final TDataNodeLocation coordinator =
+            handler
+                .filterDataNodeWithOtherRegionReplica(
+                    regionId,
+                    targetDataNode,
+                    NodeStatus.Running,
+                    NodeStatus.Removing,
+                    NodeStatus.ReadOnly)
+                .orElse(null);
+        status = checkRemoveRegion(req, regionId, targetDataNode, coordinator);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        procedures.add(new RemoveRegionPeerProcedure(regionId, coordinator, targetDataNode));
       }
-
-      // submit procedure
-      RemoveRegionPeerProcedure procedure =
-          new RemoveRegionPeerProcedure(regionId, coordinator, targetDataNode);
-      this.executor.submitProcedure(procedure);
-      LOGGER.info(
-          ManagerMessages.REMOVEREGIONPEER_SUBMIT_REMOVEREGIONPEERPROCEDURE_SUCCESSFULLY,
-          procedure);
-
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return submitRegionOperationProcedures(procedures);
     }
   }
 
-  private static TDataNodeLocation buildFakeDataNodeLocation(int dataNodeId, String message) {
-    TEndPoint fakeEndPoint = new TEndPoint(message, -1);
-    return new TDataNodeLocation(
-        dataNodeId, fakeEndPoint, fakeEndPoint, fakeEndPoint, fakeEndPoint, fakeEndPoint);
+  /** Resolve every region ID before preparing or submitting any region operation. */
+  private TSStatus checkRegionIds(
+      List<Integer> requestedRegionIds, List<TConsensusGroupId> regionIds, TSStatusCode errorCode) {
+    if (requestedRegionIds == null || requestedRegionIds.isEmpty()) {
+      return new TSStatus(errorCode.getStatusCode())
+          .setMessage(ManagerMessages.MESSAGE_REGION_IDS_MUST_NOT_BE_EMPTY_B42DAAFD);
+    }
+    Set<Integer> seenRegionIds = new HashSet<>();
+    for (int regionId : requestedRegionIds) {
+      if (!seenRegionIds.add(regionId)) {
+        return new TSStatus(errorCode.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages.MESSAGE_DUPLICATE_REGION_ID_ARG_IN_THE_REQUEST_B6FFCCFC,
+                    regionId));
+      }
+      Optional<TConsensusGroupId> resolvedRegionId =
+          configManager.getPartitionManager().findTConsensusGroupIdByRegionId(regionId);
+      if (!resolvedRegionId.isPresent()) {
+        return new TSStatus(errorCode.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages.MESSAGE_REGION_ARG_DOES_NOT_EXIST_3C8400C9, regionId));
+      }
+      regionIds.add(resolvedRegionId.get());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Called with the submission lock held, only after every region has passed validation. This
+   * prevents validation failures from leaving a partially submitted request.
+   */
+  private TSStatus submitRegionOperationProcedures(
+      List<? extends RegionOperationProcedure<?>> procedures) {
+    for (RegionOperationProcedure<?> procedure : procedures) {
+      executor.submitProcedure(procedure);
+      LOGGER.info(
+          ManagerMessages.LOG_SUBMIT_REGION_OPERATION_PROCEDURE_SUCCESSFULLY_ARG_90468B38,
+          procedure);
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   // endregion

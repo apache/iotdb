@@ -293,6 +293,20 @@ public final class ManagerMessages {
   public static final String
       LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
           "跳过 ReconstructRegion 请求中不存在的 Region ID {}，目标 DataNode 为 {}。";
+  public static final String MESSAGE_DUPLICATE_REGION_ID_ARG_IN_THE_REQUEST_B6FFCCFC =
+      "请求中包含重复的 Region ID %d";
+  public static final String MESSAGE_REGION_IDS_MUST_NOT_BE_EMPTY_B42DAAFD =
+      "Region ID 列表不能为空";
+  public static final String MESSAGE_SOURCE_AND_TARGET_DATANODE_IDS_MUST_BE_DIFFERENT_ARG_286D3838 =
+      "源和目标 DataNode ID 不能相同：%d";
+  public static final String LOG_SUBMIT_REGION_OPERATION_PROCEDURE_SUCCESSFULLY_ARG_90468B38 =
+      "成功提交 Region 运维 procedure：{}";
+  public static final String MESSAGE_REGION_ARG_DOES_NOT_EXIST_3C8400C9 =
+      "Region %d 不存在";
+  public static final String MESSAGE_SOURCE_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_2255633C =
+      "源 DataNode %s 不存在于集群中";
+  public static final String MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF =
+      "目标 DataNode %s 不存在于集群中";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] 成功提交 RegionMigrateProcedure，Region：{}，原 DataNode：{}，目标 DataNode：{}，新增 Coordinator：{}，移除 Coordinator：{}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
