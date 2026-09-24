@@ -31,6 +31,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -102,6 +104,68 @@ public class SubscriptionConsumerHeartbeatIsolationTest {
       executor.shutdownNow();
       executor.awaitTermination(5, TimeUnit.SECONDS);
     }
+  }
+
+  @Test
+  public void testHeartbeatExecutorIsBounded() throws Exception {
+    final ThreadPoolExecutor heartbeatExecutor = getHeartbeatExecutor();
+    waitUntilHeartbeatExecutorIdle(heartbeatExecutor);
+    final int maximumPoolSize = heartbeatExecutor.getMaximumPoolSize();
+    final int queueCapacity =
+        heartbeatExecutor.getQueue().size() + heartbeatExecutor.getQueue().remainingCapacity();
+    Assert.assertTrue(maximumPoolSize >= 4);
+    Assert.assertTrue(maximumPoolSize <= 16);
+    Assert.assertEquals(maximumPoolSize, queueCapacity);
+
+    final CountDownLatch releaseTasks = new CountDownLatch(1);
+    final List<Future<?>> futures = new ArrayList<>();
+    try {
+      for (int i = 0; i < maximumPoolSize; i++) {
+        futures.add(
+            SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> await(releaseTasks)));
+      }
+      for (int i = 0; i < queueCapacity; i++) {
+        futures.add(
+            SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> await(releaseTasks)));
+      }
+
+      Assert.assertNull(SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> {}));
+    } finally {
+      releaseTasks.countDown();
+      for (final Future<?> future : futures) {
+        future.get(5, TimeUnit.SECONDS);
+      }
+    }
+  }
+
+  private void await(final CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  private ThreadPoolExecutor getHeartbeatExecutor() throws Exception {
+    SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> {});
+    final Field holderField =
+        SubscriptionExecutorServiceManager.class.getDeclaredField("HEARTBEAT_EXECUTOR");
+    holderField.setAccessible(true);
+    final Object holder = holderField.get(null);
+    final Field executorField = holder.getClass().getSuperclass().getDeclaredField("executor");
+    executorField.setAccessible(true);
+    return (ThreadPoolExecutor) executorField.get(holder);
+  }
+
+  private void waitUntilHeartbeatExecutorIdle(final ThreadPoolExecutor executor)
+      throws InterruptedException {
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while ((executor.getActiveCount() != 0 || !executor.getQueue().isEmpty())
+        && System.nanoTime() < deadline) {
+      Thread.sleep(10L);
+    }
+    Assert.assertEquals(0, executor.getActiveCount());
+    Assert.assertTrue(executor.getQueue().isEmpty());
   }
 
   private AbstractSubscriptionProviders getProviders(final AbstractSubscriptionConsumer consumer)

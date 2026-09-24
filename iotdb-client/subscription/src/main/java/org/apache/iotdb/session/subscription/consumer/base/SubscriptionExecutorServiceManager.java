@@ -27,13 +27,18 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class SubscriptionExecutorServiceManager {
 
@@ -41,6 +46,8 @@ public final class SubscriptionExecutorServiceManager {
       LoggerFactory.getLogger(SubscriptionExecutorServiceManager.class);
 
   private static final long AWAIT_TERMINATION_TIMEOUT_MS = 15_000L;
+  private static final long HEARTBEAT_EXECUTOR_REJECTION_LOG_INTERVAL_NANOS =
+      TimeUnit.MINUTES.toNanos(1);
 
   private static final String CONTROL_FLOW_EXECUTOR_NAME = "SubscriptionControlFlowExecutor";
   private static final String UPSTREAM_DATA_FLOW_EXECUTOR_NAME =
@@ -48,6 +55,21 @@ public final class SubscriptionExecutorServiceManager {
   private static final String DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME =
       "SubscriptionDownstreamDataFlowExecutor";
   private static final String HEARTBEAT_EXECUTOR_NAME = "SubscriptionHeartbeatExecutor";
+  private static final int HEARTBEAT_EXECUTOR_MIN_THREAD_COUNT = 4;
+  private static final int HEARTBEAT_EXECUTOR_MAX_THREAD_COUNT = 16;
+  private static final int HEARTBEAT_EXECUTOR_THREAD_COUNT =
+      Math.min(
+          Math.max(Runtime.getRuntime().availableProcessors(), HEARTBEAT_EXECUTOR_MIN_THREAD_COUNT),
+          HEARTBEAT_EXECUTOR_MAX_THREAD_COUNT);
+  private static final int HEARTBEAT_EXECUTOR_QUEUE_CAPACITY = HEARTBEAT_EXECUTOR_THREAD_COUNT;
+  private static final AtomicLong LAST_HEARTBEAT_EXECUTOR_REJECTION_LOG_TIME = new AtomicLong();
+  private static final ThreadFactory HEARTBEAT_EXECUTOR_THREAD_FACTORY =
+      r -> {
+        final Thread t =
+            new Thread(Thread.currentThread().getThreadGroup(), r, HEARTBEAT_EXECUTOR_NAME, 0);
+        t.setDaemon(true);
+        return t;
+      };
 
   /** Control Flow Executor: execute heartbeat worker, endpoints syncer and auto poll worker */
   private static final SubscriptionScheduledExecutorService CONTROL_FLOW_EXECUTOR =
@@ -68,7 +90,7 @@ public final class SubscriptionExecutorServiceManager {
 
   /** Heartbeat Executor: isolate a slow provider from the heartbeat control-flow scheduler. */
   private static final SubscriptionExecutorService HEARTBEAT_EXECUTOR =
-      new SubscriptionExecutorService(HEARTBEAT_EXECUTOR_NAME, 0) {
+      new SubscriptionExecutorService(HEARTBEAT_EXECUTOR_NAME, HEARTBEAT_EXECUTOR_THREAD_COUNT) {
         @Override
         void launchIfNeeded() {
           if (isShutdown()) {
@@ -76,17 +98,15 @@ public final class SubscriptionExecutorServiceManager {
               if (isShutdown()) {
                 LOGGER.info(SubscriptionMessages.EXECUTOR_LAUNCHING, this.name, this.corePoolSize);
                 this.executor =
-                    Executors.newCachedThreadPool(
-                        r -> {
-                          final Thread t =
-                              new Thread(
-                                  Thread.currentThread().getThreadGroup(),
-                                  r,
-                                  HEARTBEAT_EXECUTOR_NAME,
-                                  0);
-                          t.setDaemon(true);
-                          return t;
-                        });
+                    new ThreadPoolExecutor(
+                        HEARTBEAT_EXECUTOR_THREAD_COUNT,
+                        HEARTBEAT_EXECUTOR_THREAD_COUNT,
+                        60L,
+                        TimeUnit.SECONDS,
+                        new ArrayBlockingQueue<>(HEARTBEAT_EXECUTOR_QUEUE_CAPACITY),
+                        HEARTBEAT_EXECUTOR_THREAD_FACTORY,
+                        new ThreadPoolExecutor.AbortPolicy());
+                ((ThreadPoolExecutor) this.executor).allowCoreThreadTimeOut(true);
               }
             }
           }
@@ -183,7 +203,21 @@ public final class SubscriptionExecutorServiceManager {
 
   static Future<?> submitProviderHeartbeat(final Runnable task) {
     HEARTBEAT_EXECUTOR.launchIfNeeded();
-    return HEARTBEAT_EXECUTOR.submit(task);
+    try {
+      return HEARTBEAT_EXECUTOR.submit(task);
+    } catch (final RejectedExecutionException e) {
+      final long now = System.nanoTime();
+      final long previous = LAST_HEARTBEAT_EXECUTOR_REJECTION_LOG_TIME.get();
+      if ((previous == 0 || now - previous >= HEARTBEAT_EXECUTOR_REJECTION_LOG_INTERVAL_NANOS)
+          && LAST_HEARTBEAT_EXECUTOR_REJECTION_LOG_TIME.compareAndSet(previous, now)) {
+        LOGGER.warn(
+            SubscriptionMessages
+                .LOG_SUBSCRIPTION_HEARTBEAT_EXECUTOR_REACHED_ITS_THREAD_OR_QUEUE_LIMIT_SKIP_13157249,
+            HEARTBEAT_EXECUTOR_THREAD_COUNT,
+            HEARTBEAT_EXECUTOR_QUEUE_CAPACITY);
+      }
+      return null;
+    }
   }
 
   public static <T> List<Future<T>> submitMultiplePollTasks(
