@@ -55,6 +55,7 @@ public class UDTFQLB implements UDTF {
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     m = parameters.getIntOrDefault("lag", 0);
+    qlb = 0.0f;
     valueArrayList.clear();
   }
 

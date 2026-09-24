@@ -29,7 +29,9 @@ public class ARFill extends ValueFill {
 
   public ARFill(RowIterator dataIterator) throws Exception {
     super(dataIterator);
-    calMeanAndVar();
+    if (hasValidValue()) {
+      calMeanAndVar();
+    }
   }
 
   @Override
@@ -49,12 +51,17 @@ public class ARFill extends ValueFill {
       acf += left * right;
       factor += left * left;
     }
-    if (factor == 0d || this.theta >= 1) {
+    if (factor == 0d) {
       this.time = new long[] {0};
       this.repaired = new double[] {0D};
       throw new UDFException(LibraryUdfMessages.CANNOT_FIT_AR1_MODEL);
     }
     this.theta = acf / factor;
+    if (!Double.isFinite(this.theta) || this.theta >= 1) {
+      this.time = new long[] {0};
+      this.repaired = new double[] {0D};
+      throw new UDFException(LibraryUdfMessages.CANNOT_FIT_AR1_MODEL);
+    }
     double meanEpsilon = 0;
     double cntEpsilon = 0;
     for (int i = 0; i < original.length - 1; i++) {

@@ -35,18 +35,24 @@ public abstract class ValueFill {
   protected double mean = 0;
   protected double variance = 0;
   protected int notNanNumber = 0;
+  private int validNumber = 0;
 
   protected ValueFill(RowIterator dataIterator) throws Exception {
     ArrayList<Long> timeList = new ArrayList<>();
     ArrayList<Double> originList = new ArrayList<>();
     while (dataIterator.hasNextRow()) {
       Row row = dataIterator.next();
-      double v = Util.getValueAsDouble(row);
       timeList.add(row.getTime());
+      if (row.isNull(0)) {
+        originList.add(Double.NaN);
+        continue;
+      }
+      double v = Util.getValueAsDouble(row);
       if (!Double.isFinite(v)) {
         originList.add(Double.NaN);
       } else {
         originList.add(v);
+        validNumber++;
       }
     }
     time = Util.toLongArray(timeList);
@@ -57,6 +63,10 @@ public abstract class ValueFill {
 
   public abstract void fill() throws UDFException;
 
+  public boolean hasValidValue() {
+    return validNumber > 0;
+  }
+
   public long[] getTime() {
     return time;
   }
@@ -66,6 +76,9 @@ public abstract class ValueFill {
   }
 
   public void calMeanAndVar() throws UDFException {
+    mean = 0;
+    variance = 0;
+    notNanNumber = 0;
     for (double v : original) {
       if (!Double.isNaN(v)) {
         mean += v;

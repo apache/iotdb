@@ -33,6 +33,9 @@ public class BooleanCircularQueue {
   private boolean[] data;
 
   public BooleanCircularQueue(int capacity) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException("Capacity should be larger than 0.");
+    }
     head = tail = size = 0;
     data = new boolean[capacity];
     minLen = Math.max(INITCAP, capacity);

@@ -92,6 +92,10 @@ public class ConsecutiveUtil {
 
   /** calculate standard timestamp gap in given window. */
   public void calculateGap() {
+    if (window.size() < 2) {
+      gap = 0;
+      return;
+    }
     long[] time = new long[window.size() - 1];
     for (int i = 0; i < time.length; i++) {
       time[i] = window.get(i + 1).getLeft() - window.get(i).getLeft();

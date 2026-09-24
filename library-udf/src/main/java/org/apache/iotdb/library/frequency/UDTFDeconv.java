@@ -37,7 +37,8 @@ public class UDTFDeconv implements UDTF {
 
   private final ArrayList<Double> list1 = new ArrayList<>();
   private final ArrayList<Double> list2 = new ArrayList<>();
-  private static final String QUOTINENT_RESULT = "quotinent";
+  private static final String QUOTIENT_RESULT = "quotient";
+  private static final String LEGACY_QUOTINENT_RESULT = "quotinent";
   private static final String REMAINDER_RESULT = "remainder";
   private String result;
 
@@ -48,11 +49,9 @@ public class UDTFDeconv implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validateInputSeriesDataType(1, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x ->
-                ((String) x).equalsIgnoreCase(QUOTINENT_RESULT)
-                    || ((String) x).equalsIgnoreCase(REMAINDER_RESULT),
+            x -> isQuotientResult((String) x) || ((String) x).equalsIgnoreCase(REMAINDER_RESULT),
             "Result should be 'quotient' or 'remainder'.",
-            validator.getParameters().getStringOrDefault("result", QUOTINENT_RESULT));
+            validator.getParameters().getStringOrDefault("result", QUOTIENT_RESULT));
   }
 
   @Override
@@ -61,7 +60,7 @@ public class UDTFDeconv implements UDTF {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     list1.clear();
     list2.clear();
-    this.result = parameters.getStringOrDefault("result", QUOTINENT_RESULT);
+    this.result = parameters.getStringOrDefault("result", QUOTIENT_RESULT);
   }
 
   @Override
@@ -76,20 +75,33 @@ public class UDTFDeconv implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (list1.isEmpty() && list2.isEmpty()) {
+      return;
+    }
     if (list2.isEmpty()) { // Exception: divided by zero
       throw new ArithmeticException(LibraryUdfMessages.DIVIDED_BY_ZERO);
-    } else if (list2.size() > list1.size()) { // order of divisor is larger than dividend
-      if (result.equalsIgnoreCase(QUOTINENT_RESULT)) { // quotient
+    }
+    int divisorDegree = list2.size() - 1;
+    while (divisorDegree >= 0 && list2.get(divisorDegree) == 0.0D) {
+      divisorDegree--;
+    }
+    if (divisorDegree < 0) {
+      throw new ArithmeticException(LibraryUdfMessages.DIVIDED_BY_ZERO);
+    }
+    if (divisorDegree + 1 > list1.size()) { // order of divisor is larger than dividend
+      if (isQuotientResult(result)) { // quotient
         collector.putDouble(0, 0);
       } else { // residue
         for (int i = 0; i < list1.size(); i++) {
-          collector.putDouble(i, list1.get(i));
+          if (Double.isFinite(list1.get(i))) {
+            collector.putDouble(i, list1.get(i));
+          }
         }
       }
     } else { // order of divisor is no larger than dividend
-      double[] q = new double[list1.size() - list2.size() + 1];
+      double[] q = new double[list1.size() - divisorDegree];
       Double[] r = list1.toArray(new Double[0]);
-      int m = list2.size() - 1;
+      int m = divisorDegree;
       for (int i = q.length - 1; i >= 0; i--) {
         q[i] = r[i + m] / list2.get(m);
         r[i + m] = 0.0D;
@@ -97,15 +109,24 @@ public class UDTFDeconv implements UDTF {
           r[i + j] -= q[i] * list2.get(j);
         }
       }
-      if (result.equalsIgnoreCase(QUOTINENT_RESULT)) { // quotient
+      if (isQuotientResult(result)) { // quotient
         for (int i = 0; i < q.length; i++) {
-          collector.putDouble(i, q[i]);
+          if (Double.isFinite(q[i])) {
+            collector.putDouble(i, q[i]);
+          }
         }
       } else { // residue
         for (int i = 0; i < r.length; i++) {
-          collector.putDouble(i, r[i]);
+          if (Double.isFinite(r[i])) {
+            collector.putDouble(i, r[i]);
+          }
         }
       }
     }
+  }
+
+  private static boolean isQuotientResult(String result) {
+    return QUOTIENT_RESULT.equalsIgnoreCase(result)
+        || LEGACY_QUOTINENT_RESULT.equalsIgnoreCase(result);
   }
 }

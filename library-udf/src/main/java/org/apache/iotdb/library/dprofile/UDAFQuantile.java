@@ -60,6 +60,10 @@ public class UDAFQuantile implements UDTF {
       };
   private static final QuantileOperations FLOAT_OPERATIONS =
       new QuantileOperations() {
+        public boolean isValid(Row row) throws IOException {
+          return Float.isFinite(row.getFloat(0));
+        }
+
         public long encode(Row row) throws IOException {
           float value = row.getFloat(0);
           long bits = Float.floatToIntBits(value);
@@ -73,6 +77,10 @@ public class UDAFQuantile implements UDTF {
       };
   private static final QuantileOperations DOUBLE_OPERATIONS =
       new QuantileOperations() {
+        public boolean isValid(Row row) throws IOException {
+          return Double.isFinite(row.getDouble(0));
+        }
+
         public long encode(Row row) throws IOException {
           double value = row.getDouble(0);
           long bits = Double.doubleToLongBits(value);
@@ -133,27 +141,34 @@ public class UDAFQuantile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0) || !operations.isValid(row)) {
+      return;
+    }
     sketch.update(operations.encode(row));
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     long n = sketch.getN();
+    if (n == 0) {
+      return;
+    }
     // Nearest-rank: k-th smallest uses getApproxRank (strictly-less-than count) in [0, n-1];
     // rank=1 must map to k=n-1, not k=n which is unreachable and can overshoot the max sample.
-    long k = 0;
-    if (n > 0) {
-      k = (long) Math.ceil(rank * n) - 1;
-      if (k < 0) {
-        k = 0;
-      } else if (k >= n) {
-        k = n - 1;
-      }
+    long k = (long) Math.ceil(rank * n) - 1;
+    if (k < 0) {
+      k = 0;
+    } else if (k >= n) {
+      k = n - 1;
     }
-    operations.write(sketch.findMinValueWithRank(k), collector);
+    operations.write(sketch.findMaxValueWithRank(k), collector);
   }
 
   private interface QuantileOperations {
+    default boolean isValid(Row row) throws IOException {
+      return true;
+    }
+
     long encode(Row row) throws IOException;
 
     void write(long result, PointCollector collector) throws IOException;

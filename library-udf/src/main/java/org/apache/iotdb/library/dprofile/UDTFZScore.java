@@ -58,9 +58,19 @@ public class UDTFZScore implements UDTF {
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
-            x -> ((Double) x) > 0,
-            "Parameter \"sd\" is illegal. It should be larger than 0.",
+            x -> Double.isFinite((double) x),
+            "Parameter \"avg\" is illegal. It should be finite.",
+            validator.getParameters().getDoubleOrDefault("avg", 0.0))
+        .validate(
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            "Parameter \"sd\" is illegal. It should be finite and larger than 0.",
             validator.getParameters().getDoubleOrDefault("sd", 1.0));
+    if (validator
+        .getParameters()
+        .getStringOrDefault("compute", BATCH_COMPUTE)
+        .equalsIgnoreCase(STREAM_COMPUTE)) {
+      validator.validateRequiredAttribute("avg").validateRequiredAttribute("sd");
+    }
   }
 
   @Override
@@ -80,8 +90,14 @@ public class UDTFZScore implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && sd > 0) {
-      collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - avg) / sd);
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        collector.putDouble(row.getTime(), (v - avg) / sd);
+      }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
@@ -96,10 +112,23 @@ public class UDTFZScore implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
+      if (value.isEmpty()) {
+        return;
+      }
       avg = sum / value.size();
-      sd = Math.sqrt(squareSum / value.size() - avg * avg);
+      double variance = squareSum / value.size() - avg * avg;
+      if (!Double.isFinite(variance) || variance <= 0) {
+        return;
+      }
+      sd = Math.sqrt(variance);
+      if (!Double.isFinite(sd) || sd <= 0) {
+        return;
+      }
       for (int i = 0; i < value.size(); i++) {
-        collector.putDouble(timestamp.get(i), (value.get(i) - avg) / sd);
+        double zScore = (value.get(i) - avg) / sd;
+        if (Double.isFinite(zScore)) {
+          collector.putDouble(timestamp.get(i), zScore);
+        }
       }
     }
   }

@@ -40,6 +40,13 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to interpolate time series. */
 public class UDTFValueFill implements UDTF {
+  private static final String METHOD_PREVIOUS = "previous";
+  private static final String METHOD_LINEAR = "linear";
+  private static final String METHOD_MEAN = "mean";
+  private static final String METHOD_AR = "ar";
+  private static final String METHOD_SCREEN = "screen";
+  private static final String METHOD_LIKELIHOOD = "likelihood";
+
   private String method;
   private TypeServices.NumericWindowWriter windowWriter;
 
@@ -47,7 +54,20 @@ public class UDTFValueFill implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64);
+        .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64)
+        .validate(
+            method -> isValidMethod((String) method),
+            "Illegal fill method.",
+            validator.getParameters().getStringOrDefault("method", METHOD_LINEAR));
+  }
+
+  private static boolean isValidMethod(String method) {
+    return METHOD_PREVIOUS.equalsIgnoreCase(method)
+        || METHOD_LINEAR.equalsIgnoreCase(method)
+        || METHOD_MEAN.equalsIgnoreCase(method)
+        || METHOD_AR.equalsIgnoreCase(method)
+        || METHOD_SCREEN.equalsIgnoreCase(method)
+        || METHOD_LIKELIHOOD.equalsIgnoreCase(method);
   }
 
   @Override
@@ -56,7 +76,7 @@ public class UDTFValueFill implements UDTF {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
-    method = parameters.getStringOrDefault("method", "linear");
+    method = parameters.getStringOrDefault("method", METHOD_LINEAR);
     windowWriter =
         TypeServices.NUMERIC_WINDOW_WRITER_SERVICE.call(
             TypeServices.toReadType(parameters.getDataType(0)));
@@ -65,24 +85,47 @@ public class UDTFValueFill implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     ValueFill vf;
-    if ("previous".equalsIgnoreCase(method)) {
+    if (METHOD_PREVIOUS.equalsIgnoreCase(method)) {
       vf = new PreviousFill(rowWindow.getRowIterator());
-    } else if ("linear".equalsIgnoreCase(method)) {
+    } else if (METHOD_LINEAR.equalsIgnoreCase(method)) {
       vf = new LinearFill(rowWindow.getRowIterator());
-    } else if ("mean".equalsIgnoreCase(method)) {
+    } else if (METHOD_MEAN.equalsIgnoreCase(method)) {
       vf = new MeanFill(rowWindow.getRowIterator());
-    } else if ("ar".equalsIgnoreCase(method)) {
+    } else if (METHOD_AR.equalsIgnoreCase(method)) {
       vf = new ARFill(rowWindow.getRowIterator());
-    } else if ("screen".equalsIgnoreCase(method)) {
+    } else if (METHOD_SCREEN.equalsIgnoreCase(method)) {
       vf = new ScreenFill(rowWindow.getRowIterator());
-    } else if ("likelihood".equalsIgnoreCase(method)) {
+    } else if (METHOD_LIKELIHOOD.equalsIgnoreCase(method)) {
       vf = new LikelihoodFill(rowWindow.getRowIterator());
     } else {
       throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD);
     }
+    if (!vf.hasValidValue()) {
+      return;
+    }
     vf.fill();
     double[] repaired = vf.getFilled();
     long[] time = vf.getTime();
-    windowWriter.write(time, repaired, collector);
+    writeFinite(time, repaired, collector);
+  }
+
+  private void writeFinite(long[] time, double[] values, PointCollector collector)
+      throws Exception {
+    int count = 0;
+    for (double value : values) {
+      if (Double.isFinite(value)) {
+        count++;
+      }
+    }
+    long[] validTime = new long[count];
+    double[] validValues = new double[count];
+    int index = 0;
+    for (int i = 0; i < values.length; i++) {
+      if (Double.isFinite(values[i])) {
+        validTime[index] = time[i];
+        validValues[index++] = values[i];
+      }
+    }
+    windowWriter.write(validTime, validValues, collector);
   }
 }

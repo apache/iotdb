@@ -40,6 +40,7 @@ public class UDAFIntegral implements UDTF {
 
   long unitTime;
   long lastTime = -1;
+  boolean hasLastValue;
   double lastValue;
   double integralValue = 0;
 
@@ -47,12 +48,11 @@ public class UDAFIntegral implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
-            x -> (long) x > 0,
+            x -> Util.isPositiveTime((String) x, validator.getParameters()),
             "Unknown time unit input. Supported units are ns, us, ms, s, m, h, d.",
-            Util.parseTime(
-                validator.getParameters().getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S),
-                validator.getParameters()));
+            validator.getParameters().getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S));
   }
 
   @Override
@@ -61,20 +61,28 @@ public class UDAFIntegral implements UDTF {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     unitTime =
         Util.parseTime(parameters.getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S), parameters);
+    lastTime = -1;
+    hasLastValue = false;
+    lastValue = 0;
+    integralValue = 0;
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     long nowTime = row.getTime();
     double nowValue = Util.getValueAsDouble(row);
     if (Double.isFinite(nowValue)) {
       // calculate the ladder-shaped area between last point and this one
       // skip and initialize the memory if no existing previous point is available
-      if (lastTime >= 0) {
+      if (hasLastValue) {
         integralValue += (lastValue + nowValue) * (nowTime - lastTime) / 2.0 / unitTime;
       }
       lastTime = nowTime;
       lastValue = nowValue;
+      hasLastValue = true;
     }
   }
 

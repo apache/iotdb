@@ -54,10 +54,19 @@ public class UDTFMinMax implements UDTF {
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
-            params -> (double) params[0] < (double) params[1],
-            "parameter $min$ should be smaller than $max$.",
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter $min$ and $max$ should be finite, and $min$ should be smaller than $max$.",
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
+    if (validator
+        .getParameters()
+        .getStringOrDefault("compute", BATCH_COMPUTE)
+        .equalsIgnoreCase(STREAM_COMPUTE)) {
+      validator.validateRequiredAttribute("min").validateRequiredAttribute("max");
+    }
   }
 
   @Override
@@ -78,23 +87,29 @@ public class UDTFMinMax implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && max > min) {
-      collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - min) / (max - min));
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        collector.putDouble(row.getTime(), (v - min) / (max - min));
+      }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
-      }
-      timestamp.add(row.getTime());
-      if (flag) {
-        min = v;
-        max = v;
-        flag = false;
-      } else {
-        if (v > max) {
-          max = v;
-        } else if (v < min) {
+        timestamp.add(row.getTime());
+        if (flag) {
           min = v;
+          max = v;
+          flag = false;
+        } else {
+          if (v > max) {
+            max = v;
+          } else if (v < min) {
+            min = v;
+          }
         }
       }
     }
