@@ -119,6 +119,10 @@ public class ConsensusLogToTabletConverter {
         : databaseName;
   }
 
+  boolean isTableModel() {
+    return Objects.nonNull(tablePattern);
+  }
+
   static String safeDeviceIdForLog(final InsertNode node) {
     try {
       final Object deviceId = node.getDeviceID();
