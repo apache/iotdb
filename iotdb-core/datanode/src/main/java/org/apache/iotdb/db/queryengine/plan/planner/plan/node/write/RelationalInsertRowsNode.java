@@ -198,17 +198,17 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     List<WritePlanNode> writePlanNodeList = new ArrayList<>();
     Map<TRegionReplicaSet, RelationalInsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
+    String databaseName = getDatabaseName(analysis);
     for (int i = 0; i < getInsertRowNodeList().size(); i++) {
       InsertRowNode insertRowNode = getInsertRowNodeList().get(i);
       // Data region for insert row node
-      // each row may belong to different database, pass null for auto-detection
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.getDeviceID(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
-                  analysis.getDatabaseName());
+                  databaseName);
 
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
@@ -229,6 +229,14 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     writePlanNodeList.addAll(splitMap.values());
 
     return writePlanNodeList;
+  }
+
+  private String getDatabaseName(IAnalysis analysis) {
+    if (analysis.getDataPartitionInfo() != null
+        && analysis.getDataPartitionInfo().getDataPartitionMap().size() == 1) {
+      return analysis.getDataPartitionInfo().getDataPartitionMap().keySet().iterator().next();
+    }
+    return analysis.getDatabaseName();
   }
 
   public RelationalInsertRowsNode emptyClone() {
