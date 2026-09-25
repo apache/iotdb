@@ -46,6 +46,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -265,6 +266,21 @@ public class DatabasePartitionTable {
     return Math.max(
         schemaPartitionTable.getSchemaPartitionMap().size(),
         dataPartitionTable.getDataPartitionMap().size());
+  }
+
+  /** Count distinct series slots after allocation, independently for schema and data partitions. */
+  public int getSeriesPartitionSlotsCount(
+      TConsensusGroupType type, Collection<TSeriesPartitionSlot> unassignedSlots) {
+    final Set<TSeriesPartitionSlot> assignedSlots =
+        type == TConsensusGroupType.SchemaRegion
+            ? schemaPartitionTable.getSchemaPartitionMap().keySet()
+            : dataPartitionTable.getDataPartitionMap().entrySet().stream()
+                .filter(entry -> !entry.getValue().getSeriesPartitionMap().isEmpty())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+    final Set<TSeriesPartitionSlot> newSlots = new HashSet<>(unassignedSlots);
+    newSlots.removeAll(assignedSlots);
+    return assignedSlots.size() + newSlots.size();
   }
 
   /**

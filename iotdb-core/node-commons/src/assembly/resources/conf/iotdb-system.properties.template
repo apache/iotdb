@@ -678,51 +678,86 @@ series_slot_num=1000
 # Datatype: String
 series_partition_executor_class=org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor
 
-# The policy of extension SchemaRegionGroup for each Database.
+# The policy of extending SchemaRegionGroups for each Database.
 # These policies are currently supported:
-# 1. CUSTOM(Each Database will allocate schema_region_group_per_database RegionGroups as soon as created)
-# 2. AUTO(Each Database will automatically extend SchemaRegionGroups based on the data it has)
+# 1. CUSTOM: For known workloads that need manual resource allocation; creates the configured target
+#    number of SchemaRegionGroups per Database when schema partitions are first allocated.
+# 2. AUTO: For most routine workloads (roughly 80% as an approximate planning guideline); gradually
+#    meets the configured minimum and expands with slot occupancy up to the resource-based maximum,
+#    balancing parallelism and RegionGroup management overhead.
+# 3. PROACTIVE: Complements AUTO where it does not expand eagerly enough, such as very few devices with
+#    many measurements and a high load; creates groups earlier for more parallelism at the cost of
+#    additional RegionGroup management overhead.
+# AUTO and PROACTIVE use the same per-Database maximum calculation, including resource sharing across
+# Databases. PROACTIVE expands more eagerly within this limit; both have the same group count once
+# they reach the same maximum.
+# PROACTIVE targets one SchemaRegionGroup per distinct schema series slot, not per measurement,
+# and grows toward the configured minimum incrementally like AUTO, without exceeding the maximum.
+# If all SchemaRegionGroups are disabled, PROACTIVE may add one group above this target,
+# without exceeding the maximum, to allow partition allocation to continue.
+# Switching policies does not remove existing RegionGroups.
 # effectiveMode: hot_reload
 # Datatype: String
-schema_region_group_extension_policy=AUTO
+schema_region_group_extension_policy=PROACTIVE
 
 # When set schema_region_group_extension_policy=CUSTOM,
 # this parameter is the default number of SchemaRegionGroups for each Database.
-# When set schema_region_group_extension_policy=AUTO,
-# this parameter is the default minimal number of SchemaRegionGroups for each Database.
+# When set schema_region_group_extension_policy=AUTO or PROACTIVE,
+# this parameter is the default minimum number of SchemaRegionGroups and a lower bound for the per-Database maximum.
+# Both policies grow toward this minimum incrementally, adding at most the number of pending series slots
+# to satisfy the minimum. PROACTIVE also grows with the number of active series slots.
 # effectiveMode: hot_reload
 # Datatype: Integer
 default_schema_region_group_num_per_database=1
 
-# Only take effect when set schema_region_group_extension_policy=AUTO.
-# This parameter is the maximum number of SchemaRegions expected to be managed by each DataNode.
-# Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
-# this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
+# Only takes effect when schema_region_group_extension_policy=AUTO or PROACTIVE.
+# The expected number of SchemaRegions per DataNode, used to calculate the same per-Database maximum
+# for AUTO and PROACTIVE. This is not a hard limit on node or cluster totals: per-Database minimums,
+# rounding, and existing groups can raise the total above this resource estimate.
 # effectiveMode: hot_reload
 # Datatype: Integer
 schema_region_per_data_node=1
 
-# The policy of extension DataRegionGroup for each Database.
+# The policy of extending DataRegionGroups for each Database.
 # These policies are currently supported:
-# 1. CUSTOM(Each Database will allocate data_region_group_per_database DataRegionGroups as soon as created)
-# 2. AUTO(Each Database will automatically extend DataRegionGroups based on the data it has)
+# 1. CUSTOM: For known workloads that need manual resource allocation; creates the configured target
+#    number of DataRegionGroups per Database when data partitions are first allocated.
+# 2. AUTO: For most routine workloads (roughly 80% as an approximate planning guideline); gradually
+#    meets the configured minimum and expands with slot occupancy up to the resource-based maximum,
+#    balancing parallelism and RegionGroup management overhead.
+# 3. PROACTIVE: Complements AUTO where it does not expand eagerly enough, such as very few devices with
+#    many measurements and a high load; creates groups earlier for more parallelism at the cost of
+#    additional RegionGroup management overhead.
+# AUTO and PROACTIVE use the same per-Database maximum calculation, including resource sharing across
+# Databases. PROACTIVE expands more eagerly within this limit; both have the same group count once
+# they reach the same maximum.
+# PROACTIVE targets one DataRegionGroup per distinct data series slot, not per measurement,
+# and grows toward the configured minimum incrementally like AUTO, without exceeding the maximum.
+# New time partitions in an existing slot can also trigger this incremental growth toward the minimum.
+# If all DataRegionGroups are disabled, PROACTIVE may add one group above this target,
+# without exceeding the maximum, to allow partition allocation to continue.
+# PROACTIVE balances active slots in its allocation policy table so new time partitions can use new groups.
+# Existing time-partition assignments are retained.
+# Switching policies does not remove existing RegionGroups.
 # effectiveMode: hot_reload
 # Datatype: String
-data_region_group_extension_policy=AUTO
+data_region_group_extension_policy=PROACTIVE
 
 # When set data_region_group_extension_policy=CUSTOM,
 # this parameter is the default number of DataRegionGroups for each Database.
-# When set data_region_group_extension_policy=AUTO,
-# this parameter is the default minimal number of DataRegionGroups for each Database.
+# When set data_region_group_extension_policy=AUTO or PROACTIVE,
+# this parameter is the default minimum number of DataRegionGroups and a lower bound for the per-Database maximum.
+# Both policies grow toward this minimum incrementally, adding at most the number of pending series slots
+# to satisfy the minimum. PROACTIVE also grows with the number of active series slots.
 # effectiveMode: hot_reload
 # Datatype: Integer
 default_data_region_group_num_per_database=2
 
-# Only take effect when set data_region_group_extension_policy=AUTO.
-# This parameter is the maximum number of DataRegions expected to be managed by each DataNode.
-# Set to 0 means that each node automatically has the number of CPU cores / 2 regions
-# Notice: Since each Database requires at least two DataRegionGroups to manage its data,
-# this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
+# Only takes effect when data_region_group_extension_policy=AUTO or PROACTIVE.
+# The expected number of DataRegions per DataNode, used to calculate the same per-Database maximum
+# for AUTO and PROACTIVE. Set to 0 to use half the CPU core count as the expected number for each DataNode.
+# This is not a hard limit on node or cluster totals: per-Database minimums, rounding, and existing
+# groups can raise the total above this resource estimate.
 # effectiveMode: hot_reload
 # Datatype: Integer
 data_region_per_data_node=0
