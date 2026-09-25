@@ -45,7 +45,7 @@ import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -166,7 +166,7 @@ public class CompactionFileGeneratorUtils {
       newTsFileResource.getTsFile().getParentFile().mkdirs();
     }
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
-    Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
+    Map<IDeviceID, List<String>> deviceMeasurementMap = new LinkedHashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new MeasurementPath(fullPath);
       List<String> sensors =
@@ -224,7 +224,7 @@ public class CompactionFileGeneratorUtils {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer.MAX_VALUE);
 
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
-    Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
+    Map<IDeviceID, List<String>> deviceMeasurementMap = new LinkedHashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new MeasurementPath(fullPath);
       List<String> sensors =
@@ -313,7 +313,7 @@ public class CompactionFileGeneratorUtils {
       newTsFileResource.getTsFile().getParentFile().mkdirs();
     }
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
-    Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
+    Map<IDeviceID, List<String>> deviceMeasurementMap = new LinkedHashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
