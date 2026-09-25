@@ -39,6 +39,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceGreaterThanOrEqualTo;
 
 public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
@@ -113,7 +114,8 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
       final Long lastSampleTime = pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
       if (lastSampleTime == null
-          || Math.abs(currentRowTime - lastSampleTime) >= intervalInCurrentPrecision) {
+          || isTimeDistanceGreaterThanOrEqualTo(
+              currentRowTime, lastSampleTime, intervalInCurrentPrecision)) {
         try {
           rowCollector.collectRow(row);
 

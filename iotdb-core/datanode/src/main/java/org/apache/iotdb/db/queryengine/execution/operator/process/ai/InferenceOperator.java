@@ -45,6 +45,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -57,6 +58,9 @@ import java.util.stream.Collectors;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class InferenceOperator implements ProcessOperator {
+
+  private static final String GENERATED_TIME_COLUMN_OUT_OF_RANGE_MESSAGE =
+      "Generated time column is out of range.";
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InferenceOperator.class);
@@ -160,7 +164,7 @@ public class InferenceOperator implements ProcessOperator {
     Column timeColumn = tsBlock.getTimeColumn();
     long[] time = timeColumn.getLongs();
     for (int i = 0; i < time.length; i++) {
-      time[i] = maxTimestamp + interval * currentRowIndex;
+      time[i] = calculateGeneratedTime(maxTimestamp, interval, currentRowIndex);
       currentRowIndex++;
     }
   }
@@ -296,7 +300,7 @@ public class InferenceOperator implements ProcessOperator {
   private void submitInferenceTask() {
 
     if (generateTimeColumn) {
-      interval = (maxTimestamp - minTimestamp) / totalRow;
+      interval = calculateGeneratedTimeInterval(minTimestamp, maxTimestamp, totalRow);
     }
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
@@ -373,5 +377,35 @@ public class InferenceOperator implements ProcessOperator {
         + (targetColumnNames == null
             ? 0
             : targetColumnNames.stream().mapToLong(RamUsageEstimator::sizeOf).sum());
+  }
+
+  static long calculateGeneratedTimeInterval(long minTimestamp, long maxTimestamp, long totalRow) {
+    try {
+      BigInteger interval =
+          BigInteger.valueOf(maxTimestamp)
+              .subtract(BigInteger.valueOf(minTimestamp))
+              .divide(BigInteger.valueOf(totalRow));
+      if (interval.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+        throw new ArithmeticException();
+      }
+      return interval.longValue();
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException(GENERATED_TIME_COLUMN_OUT_OF_RANGE_MESSAGE);
+    }
+  }
+
+  static long calculateGeneratedTime(long maxTimestamp, long interval, long currentRowIndex) {
+    try {
+      BigInteger generatedTime =
+          BigInteger.valueOf(maxTimestamp)
+              .add(BigInteger.valueOf(interval).multiply(BigInteger.valueOf(currentRowIndex)));
+      if (generatedTime.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0
+          || generatedTime.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+        throw new ArithmeticException();
+      }
+      return generatedTime.longValue();
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException(GENERATED_TIME_COLUMN_OUT_OF_RANGE_MESSAGE);
+    }
   }
 }
