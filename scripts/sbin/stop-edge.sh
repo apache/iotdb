@@ -20,7 +20,19 @@
 
 # Stop IoTDB Edge (the merged ConfigNode + DataNode process).
 
-IOTDB_HOME="$(cd "$(dirname "$0")"/.. && pwd)"
+if [ -z "${IOTDB_HOME}" ]; then
+    IOTDB_HOME="$(cd "$(dirname "$0")"/.. && pwd)"
+fi
+
+# Resolve to a physical absolute path so that the same installation reached
+# through a different path still compares equal. "cd -P" is required: a plain
+# "cd" collapses ".." logically, which would resolve "<symlink>/../x" against the
+# symlink's parent instead of its target.
+resolve_home() {
+    (cd -P -- "$1" 2>/dev/null && pwd -P) || printf '%s' "$1"
+}
+
+IOTDB_HOME_RESOLVED="$(resolve_home "${IOTDB_HOME}")"
 
 PID_FILE="${IOTDB_HOME}/edge.pid"
 
@@ -31,9 +43,27 @@ is_same_edge_home() {
             return 0
             ;;
         *)
-            return 1
             ;;
     esac
+    # Fall back to comparing resolved paths, so that a start-edge.sh invoked with
+    # IOTDB_HOME pointing at a symlink is still recognised here. The value is
+    # delimited by the next " -D", which start-edge.sh always emits after
+    # -DIOTDB_HOME. If a hand-built command line ends with -DIOTDB_HOME, the
+    # extraction keeps the trailing arguments, the resolution below fails and the
+    # process is simply not matched -- never matched to the wrong installation.
+    local home="${command_line#*-DIOTDB_HOME=}"
+    home="${home%% -D*}"
+    [ -n "$home" ] && [ "$home" != "$command_line" ] || return 1
+    # Only absolute values can be resolved from here. A relative one such as "."
+    # is meaningful in the started process's working directory, not in ours, so
+    # resolving it here could match an unrelated installation. The emptiness check
+    # above matters for the same reason: "cd" succeeds on an empty argument and
+    # yields our own working directory.
+    case "$home" in
+        /*) ;;
+        *) return 1 ;;
+    esac
+    [ "$(resolve_home "$home")" = "${IOTDB_HOME_RESOLVED}" ]
 }
 
 is_edge_process() {
