@@ -116,6 +116,8 @@ public class ErrorHandlingUtils {
         if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
+            || (status.getCode() >= TSStatusCode.LBAC_ACCESS_DENIED.getStatusCode()
+                && status.getCode() <= TSStatusCode.INVALID_LABEL_VALUE.getStatusCode())
             || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
             || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
             || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()

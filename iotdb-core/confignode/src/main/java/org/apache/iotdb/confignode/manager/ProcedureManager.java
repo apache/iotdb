@@ -112,6 +112,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTableColumnPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
@@ -2286,6 +2287,25 @@ public class ProcedureManager {
                 false));
   }
 
+  public TSStatus alterTableSetColumnProperties(final TAlterOrDropTableReq req) {
+    final String columnName = ReadWriteIOUtils.readString(req.updateInfo);
+    final SetTableColumnPropertiesProcedure procedure =
+        new SetTableColumnPropertiesProcedure(
+            req.database,
+            req.tableName,
+            columnName,
+            req.queryId,
+            ReadWriteIOUtils.readMap(req.updateInfo),
+            false);
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.SET_TABLE_COLUMN_PROPERTIES_PROCEDURE,
+        procedure);
+  }
+
   public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
@@ -2538,6 +2558,7 @@ public class ProcedureManager {
         case ADD_VIEW_COLUMN_PROCEDURE:
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case SET_VIEW_PROPERTIES_PROCEDURE:
+        case SET_TABLE_COLUMN_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case RENAME_VIEW_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:

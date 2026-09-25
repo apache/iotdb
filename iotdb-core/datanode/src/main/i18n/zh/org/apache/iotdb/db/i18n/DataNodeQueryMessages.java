@@ -263,6 +263,10 @@ public final class DataNodeQueryMessages {
       "此处不应调用 getPageReader()";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "不支持的列类型：";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "不支持的列属性：";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "列属性值必须是字符串字面量。";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "关闭 CteDataReader 失败";
   public static final String UNKNOWN_TABLE =

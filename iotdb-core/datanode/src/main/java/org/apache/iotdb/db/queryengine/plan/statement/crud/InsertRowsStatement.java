@@ -53,6 +53,15 @@ public class InsertRowsStatement extends InsertBaseStatement {
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
 
+  /**
+   * Whether this statement is assembled by pipe batching ({@code
+   * PipeTransferTabletBatchReqV2#constructStatements()}). A pipe batch merges rows that originate
+   * from different source insert statements, so the rows of such a statement may target different
+   * tables and must be traversed row by row. Rows of any other insert share the same target table,
+   * so the first row is representative.
+   */
+  private boolean fromPipeBatch;
+
   public InsertRowsStatement() {
     super();
     statementType = StatementType.BATCH_INSERT_ROWS;
@@ -97,6 +106,14 @@ public class InsertRowsStatement extends InsertBaseStatement {
 
   public void setInsertRowStatementList(List<InsertRowStatement> insertRowStatementList) {
     this.insertRowStatementList = insertRowStatementList;
+  }
+
+  public boolean isFromPipeBatch() {
+    return fromPipeBatch;
+  }
+
+  public void setFromPipeBatch(final boolean fromPipeBatch) {
+    this.fromPipeBatch = fromPipeBatch;
   }
 
   @Override

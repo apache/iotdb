@@ -1865,6 +1865,61 @@ public class ClusterSchemaManager {
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
+  public synchronized Pair<TSStatus, TsTable> updateTableColumnProperties(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final Map<String, String> originalProperties,
+      final Map<String, String> updatedProperties)
+      throws MetadataException {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    final Optional<Pair<TSStatus, TsTable>> result =
+        checkTable4View(database, originalTable, false);
+    if (result.isPresent()) {
+      return result.get();
+    }
+
+    if (Objects.isNull(originalTable.getColumnSchema(columnName))) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_NOT_EXISTS,
+              String.format("Column '%s' does not exist", columnName)),
+          null);
+    }
+
+    final TsTable updatedTable = new TsTable(originalTable);
+    final TsTableColumnSchema updatedColumn = updatedTable.getColumnSchema(columnName);
+    updatedProperties
+        .keySet()
+        .removeIf(
+            key -> Objects.equals(updatedProperties.get(key), updatedColumn.getProps().get(key)));
+    if (updatedProperties.isEmpty()) {
+      return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
+    }
+
+    for (final Map.Entry<String, String> entry : updatedProperties.entrySet()) {
+      final String key = entry.getKey();
+      final String value = entry.getValue();
+      originalProperties.put(key, updatedColumn.getProps().get(key));
+      if (Objects.nonNull(value)) {
+        updatedColumn.getProps().put(key, value);
+      } else {
+        updatedColumn.getProps().remove(key);
+      }
+    }
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
+  }
+
   private void invalidateLastCache(final String database) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         getNodeManager().getRegisteredDataNodeLocations();

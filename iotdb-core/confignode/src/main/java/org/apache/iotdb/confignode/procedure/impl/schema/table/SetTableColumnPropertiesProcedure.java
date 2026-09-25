@@ -23,32 +23,36 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 
-public class SetTablePropertiesProcedure extends AbstractSetPropertiesProcedure {
+public class SetTableColumnPropertiesProcedure extends AbstractSetPropertiesProcedure {
 
-  public SetTablePropertiesProcedure(final boolean isGeneratedByPipe) {
+  private String columnName;
+
+  public SetTableColumnPropertiesProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
-  public SetTablePropertiesProcedure(
+  public SetTableColumnPropertiesProcedure(
       final String database,
       final String tableName,
+      final String columnName,
       final String queryId,
       final Map<String, String> properties,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, properties, isGeneratedByPipe);
+    this.columnName = columnName;
   }
 
   @Override
@@ -56,39 +60,48 @@ public class SetTablePropertiesProcedure extends AbstractSetPropertiesProcedure 
       throws MetadataException {
     return env.getConfigManager()
         .getClusterSchemaManager()
-        .updateTableProperties(
-            database,
-            tableName,
-            originalProperties,
-            updatedProperties,
-            this instanceof SetViewPropertiesProcedure);
+        .updateTableColumnProperties(
+            database, tableName, columnName, originalProperties, updatedProperties);
   }
 
   @Override
   protected ConfigPhysicalPlan createSetPropertiesPlan(
       final Map<String, String> properties, final boolean isRollback) {
-    return this instanceof SetViewPropertiesProcedure
-        ? new SetViewPropertiesPlan(database, tableName, properties)
-        : new SetTablePropertiesPlan(database, tableName, properties);
+    return new SetTableColumnPropertiesPlan(
+        database, tableName, columnName, properties, isRollback);
   }
 
   @Override
   protected String getActionMessage() {
-    return "set table properties";
+    return "set table column properties";
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
-            ? ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode()
-            : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
-    innerSerialize(stream);
+            ? ProcedureType.PIPE_ENRICHED_SET_TABLE_COLUMN_PROPERTIES_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_TABLE_COLUMN_PROPERTIES_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    ReadWriteIOUtils.write(columnName, stream);
+    serializeProperties(stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
+    this.columnName = ReadWriteIOUtils.readString(byteBuffer);
     deserializeProperties(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    return super.equals(o)
+        && Objects.equals(columnName, ((SetTableColumnPropertiesProcedure) o).columnName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), columnName);
   }
 }

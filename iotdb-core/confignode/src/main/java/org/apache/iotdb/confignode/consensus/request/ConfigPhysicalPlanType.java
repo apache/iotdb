@@ -234,6 +234,7 @@ public enum ConfigPhysicalPlanType {
   PreAlterColumnDataType((short) 879),
   RollbackPreDeleteTable((short) 880),
   RollbackPreAlterColumnDataType((short) 881),
+  SetTableColumnProperties((short) 882),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

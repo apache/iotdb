@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorS
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -386,6 +387,30 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
         .append(" SET PROPERTIES ")
         .append(joinProperties(node.getProperties()));
 
+    return null;
+  }
+
+  @Override
+  public Void visitSetColumnProperties(SetColumnProperties node, Integer context) {
+    builder.append("ALTER TABLE ");
+    if (node.tableIfExists()) {
+      builder.append("IF EXISTS ");
+    }
+    builder
+        .append(CommonQuerySqlFormatter.formatName(node.getTableName()))
+        .append(" ALTER COLUMN ");
+    if (node.columnIfExists()) {
+      builder.append("IF EXISTS ");
+    }
+    builder.append(CommonQuerySqlFormatter.formatName(node.getColumnName()));
+    for (final Property property : node.getProperties()) {
+      switch (property.getName().getValue()) {
+        // No column property key is supported in this edition.
+        default:
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_COLUMN_PROPERTY + property.getName().getValue());
+      }
+    }
     return null;
   }
 

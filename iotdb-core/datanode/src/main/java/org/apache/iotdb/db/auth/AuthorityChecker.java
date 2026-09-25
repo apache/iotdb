@@ -41,6 +41,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.lbac.AllowAllLBACAccessControl;
+import org.apache.iotdb.db.lbac.ILBACAccessControl;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -109,6 +111,8 @@ public class AuthorityChecker {
   private static volatile AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
 
+  private static volatile ILBACAccessControl lbacAccessControl = new AllowAllLBACAccessControl();
+
   private AuthorityChecker() {
     // empty constructor
   }
@@ -120,6 +124,16 @@ public class AuthorityChecker {
   @TestOnly
   public static void setAccessControl(AccessControl accessControl) {
     AuthorityChecker.accessControl = accessControl;
+  }
+
+  @SuppressWarnings("java:S100")
+  public static ILBACAccessControl getLBACAccessControl() {
+    return lbacAccessControl;
+  }
+
+  @SuppressWarnings("java:S100")
+  public static void setLBACAccessControl(final ILBACAccessControl lbacAccessControl) {
+    AuthorityChecker.lbacAccessControl = lbacAccessControl;
   }
 
   public static void setSuperUser(String superUser) {

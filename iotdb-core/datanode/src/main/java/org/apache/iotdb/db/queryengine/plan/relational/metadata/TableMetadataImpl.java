@@ -142,10 +142,13 @@ public class TableMetadataImpl implements Metadata {
                   return schema;
                 })
             .collect(Collectors.toList());
-    return Optional.of(
-        TreeViewSchema.isTreeViewTable(table)
-            ? new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps())
-            : new TableSchema(table.getTableName(), columnSchemaList));
+    if (TreeViewSchema.isTreeViewTable(table)) {
+      return Optional.of(
+          new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps()));
+    }
+    final TableSchema tableSchema = new TableSchema(table.getTableName(), columnSchemaList);
+    tableSchema.setProps(table.getProps());
+    return Optional.of(tableSchema);
   }
 
   @Override
