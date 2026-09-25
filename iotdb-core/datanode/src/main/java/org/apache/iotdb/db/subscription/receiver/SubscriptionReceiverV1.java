@@ -67,6 +67,8 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqHandler;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
@@ -110,6 +112,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private static final double POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD = 0.9;
   private static final long HEARTBEAT_TIMEOUT_MULTIPLIER = 3L;
+  private static final long MAX_REASSEMBLED_REQUEST_BODY_SIZE = 256L * 1024 * 1024;
+  private static final int MAX_REASSEMBLED_REQUEST_FRAME_COUNT = 4;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -131,6 +135,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ACK_RESP =
+      new TPipeSubscribeResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
+  private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ERROR_RESP =
+      new TPipeSubscribeResp(
+          new TSStatus(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode()),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
   private volatile String authenticatedUsername;
@@ -139,6 +155,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private volatile boolean consumerFenced;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
+  private final PipeSubscribeSliceReqHandler sliceReqHandler =
+      new PipeSubscribeSliceReqHandler(getMaxReassembledRequestBodySize());
   private long consumerStateVersion;
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
@@ -146,6 +164,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public final TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
     final short reqType = req.getType();
+    if (PipeSubscribeRequestType.SLICE.getType() != reqType) {
+      sliceReqHandler.clear();
+    }
     final boolean isFencedRequest = beforeHandle(reqType);
     try {
       if (isFencedRequest) {
@@ -172,6 +193,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
           case SEEK:
             return handleSubscriptionSeek(SubscriptionSeekReq.fromThriftReq(req));
+          case SLICE:
+            return handlePipeSubscribeSlice(req);
           default:
             break;
         }
@@ -228,6 +251,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   public void invalidateConsumer() {
     synchronized (this) {
       consumerFenced = true;
+      sliceReqHandler.clear();
       clearSharedConsumerState();
     }
   }
@@ -253,11 +277,39 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           }
         }
       } finally {
+        sliceReqHandler.clear();
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
         authenticatedUsername = null;
       }
     }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeSlice(final TPipeSubscribeReq thriftReq) {
+    final PipeSubscribeSliceReq sliceReq;
+    try {
+      sliceReq = PipeSubscribeSliceReq.fromTPipeSubscribeReq(thriftReq);
+    } catch (final RuntimeException e) {
+      sliceReqHandler.clear();
+      return SUBSCRIPTION_SLICE_ERROR_RESP;
+    }
+    if (!sliceReqHandler.receiveSlice(sliceReq)) {
+      return SUBSCRIPTION_SLICE_ERROR_RESP;
+    }
+    return sliceReqHandler
+        .makeReqIfComplete()
+        .map(this::handle)
+        .orElse(SUBSCRIPTION_SLICE_ACK_RESP);
+  }
+
+  private static int getMaxReassembledRequestBodySize() {
+    final long maxFrameSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    final long desiredSize =
+        Math.min(
+            MAX_REASSEMBLED_REQUEST_BODY_SIZE, maxFrameSize * MAX_REASSEMBLED_REQUEST_FRAME_COUNT);
+    final long memoryLimit = Math.max(maxFrameSize, Runtime.getRuntime().maxMemory() / 16);
+    return (int)
+        Math.min(Integer.MAX_VALUE, Math.max(maxFrameSize, Math.min(desiredSize, memoryLimit)));
   }
 
   @Override
