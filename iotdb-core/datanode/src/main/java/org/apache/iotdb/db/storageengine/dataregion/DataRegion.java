@@ -289,7 +289,7 @@ public class DataRegion implements IDataRegionForQuery {
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
 
-  /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
+  /** Condition used to wait until all TsFileProcessors currently closing have finished. */
   private final Object closeStorageGroupCondition = new Object();
 
   /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */

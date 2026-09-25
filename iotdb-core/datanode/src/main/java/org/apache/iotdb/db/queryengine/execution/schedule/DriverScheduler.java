@@ -67,7 +67,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** The manager of fragment instances scheduling. */
+/**
+ * Schedules DataNode DriverTasks across ready, blocked, and timeout queues.
+ *
+ * <p>The scheduler enforces query and task capacity, accounts for CPU and memory quotas, moves
+ * blocked tasks back to the ready queue, and aborts tasks when their query or fragment instance is
+ * cancelled or timed out.
+ */
 public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);

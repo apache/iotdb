@@ -73,6 +73,13 @@ import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanc
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
 import static org.apache.iotdb.rpc.TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR;
 
+/**
+ * Creates, tracks, executes, and cleans up fragment instances on this DataNode.
+ *
+ * <p>The manager owns fragment contexts and executions, constructs local pipeline drivers, rejects
+ * repeated dispatches, schedules timeout cleanup, and releases query-level resources when an
+ * instance reaches a terminal state.
+ */
 @SuppressWarnings("squid:S6548")
 public class FragmentInstanceManager {
 
