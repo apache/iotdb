@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -54,14 +55,6 @@ public class AbstractRepairDataTest extends AbstractCompactionTest {
   }
 
   private void deleteRepairDataLogDir() throws IOException {
-    if (repairDataLogDir.exists()) {
-      if (repairDataLogDir.isDirectory()) {
-        File[] files = repairDataLogDir.listFiles();
-        for (File file : files == null ? new File[] {} : files) {
-          Files.deleteIfExists(file.toPath());
-        }
-      }
-      Files.deleteIfExists(repairDataLogDir.toPath());
-    }
+    EnvironmentUtils.cleanDir(repairDataLogDir.getPath());
   }
 }
