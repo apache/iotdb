@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -61,6 +62,47 @@ public class SubscriptionQueueRegistryTest {
     assertEquals(1, request.getSerializedRequests().size());
     assertEquals(1, queue.getSerializedRequestCountAtOffer());
     assertSame(request, queue.poll());
+  }
+
+  @Test
+  public void testDetachedRetentionProtectsWalWithoutReceivingRequests() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final SubscriptionWalRetentionPolicy policy =
+        new SubscriptionWalRetentionPolicy("topic", 100, 200);
+    registry.registerDetachedRetention("retention", policy, () -> 7L);
+    final IndexedConsensusRequest request = newRequest();
+
+    assertFalse(registry.isEmpty());
+    assertFalse(registry.hasQueues());
+    assertFalse(registry.offer(request));
+    assertTrue(request.getSerializedRequests().isEmpty());
+    assertEquals(Collections.singletonList(policy), registry.getRetentionPolicies());
+    assertEquals(Collections.singletonList(7L), registry.getCommittedRetainedMinVersionIds());
+  }
+
+  @Test
+  public void testReplaceQueueAndDetachedRetentionAtomically() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final InspectingQueue firstQueue = new InspectingQueue();
+    final InspectingQueue secondQueue = new InspectingQueue();
+    final SubscriptionWalRetentionPolicy policy =
+        new SubscriptionWalRetentionPolicy("topic", 100, 200);
+    final AtomicLong retainedVersion = new AtomicLong(3L);
+    registry.register(firstQueue, policy, retainedVersion::get);
+
+    registry.replaceQueueWithDetachedRetention(
+        firstQueue, "retention", policy, retainedVersion::get);
+    assertFalse(registry.hasQueues());
+    assertFalse(registry.isEmpty());
+    assertFalse(registry.offer(newRequest()));
+
+    retainedVersion.set(9L);
+    registry.replaceDetachedRetentionWithQueue(
+        "retention", secondQueue, policy, retainedVersion::get);
+    assertTrue(registry.hasQueues());
+    assertTrue(registry.offer(newRequest()));
+    assertEquals(1, secondQueue.size());
+    assertEquals(Collections.singletonList(9L), registry.getCommittedRetainedMinVersionIds());
   }
 
   private static IndexedConsensusRequest newRequest() {

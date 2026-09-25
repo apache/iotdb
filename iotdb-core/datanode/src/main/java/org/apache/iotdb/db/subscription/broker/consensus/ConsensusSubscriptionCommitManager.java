@@ -722,6 +722,46 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
+  public void removeAllStatesForConsumerGroup(final String consumerGroupId) {
+    recoverAllTopicStatesIfNeeded();
+    final Set<String> topicNames = new java.util.HashSet<>();
+    for (final CommitStateKey stateKey : commitStateKeys.values()) {
+      if (Objects.equals(stateKey.consumerGroupId, consumerGroupId)) {
+        topicNames.add(stateKey.topicName);
+      }
+    }
+    for (final String topicName : topicNames) {
+      removeAllStatesForTopic(consumerGroupId, topicName);
+    }
+  }
+
+  public void removeAllStatesForRegion(final ConsensusGroupId regionId) {
+    final String regionIdStr = regionId.toString();
+    for (final PersistedStateKey stateKey : getPersistedStateKeys()) {
+      if (Objects.equals(stateKey.regionId, regionIdStr)) {
+        removeState(
+            stateKey.consumerGroupId,
+            stateKey.topicName,
+            ConsensusGroupId.Factory.createFromString(stateKey.regionId));
+      }
+    }
+  }
+
+  public List<PersistedStateKey> getPersistedStateKeys() {
+    recoverAllTopicStatesIfNeeded();
+    final List<PersistedStateKey> result = new java.util.ArrayList<>();
+    for (final CommitStateKey stateKey : commitStateKeys.values()) {
+      if (topicProgressIndexes
+          .getOrDefault(stateKey.topicFileKey, Collections.emptyMap())
+          .containsKey(stateKey.regionIdStr)) {
+        result.add(
+            new PersistedStateKey(
+                stateKey.consumerGroupId, stateKey.topicName, stateKey.regionIdStr));
+      }
+    }
+    return Collections.unmodifiableList(result);
+  }
+
   public void resetState(
       final String consumerGroupId,
       final String topicName,
@@ -1484,6 +1524,13 @@ public class ConsensusSubscriptionCommitManager {
       this.consumerGroupId = consumerGroupId;
       this.topicSnapshots = topicSnapshots;
     }
+
+    Set<String> getRegionIds(final String topicName) {
+      final TopicSetupSnapshot topicSnapshot = topicSnapshots.get(topicName);
+      return Objects.isNull(topicSnapshot)
+          ? Collections.emptySet()
+          : Collections.unmodifiableSet(topicSnapshot.stateSnapshots.keySet());
+    }
   }
 
   private static final class TopicSetupSnapshot {
@@ -1553,6 +1600,34 @@ public class ConsensusSubscriptionCommitManager {
     private boolean sameTopic(final String consumerGroupId, final String topicName) {
       return Objects.equals(this.consumerGroupId, consumerGroupId)
           && Objects.equals(this.topicName, topicName);
+    }
+  }
+
+  public static final class PersistedStateKey {
+
+    private final String consumerGroupId;
+
+    private final String topicName;
+
+    private final String regionId;
+
+    private PersistedStateKey(
+        final String consumerGroupId, final String topicName, final String regionId) {
+      this.consumerGroupId = consumerGroupId;
+      this.topicName = topicName;
+      this.regionId = regionId;
+    }
+
+    public String getConsumerGroupId() {
+      return consumerGroupId;
+    }
+
+    public String getTopicName() {
+      return topicName;
+    }
+
+    public String getRegionId() {
+      return regionId;
     }
   }
 

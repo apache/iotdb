@@ -545,6 +545,41 @@ public class ConsensusSubscriptionCommitStateTest {
   }
 
   @Test
+  public void testPersistedStateKeysAndRegionCleanup() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("persistedStateKeys");
+    try {
+      final ConsensusSubscriptionCommitManager manager = newCommitManager(systemDir);
+      final DataRegionId firstRegion = new DataRegionId(31);
+      final DataRegionId secondRegion = new DataRegionId(32);
+      manager.receiveProgressBroadcast(
+          "cg",
+          "topic",
+          firstRegion.toString(),
+          new WriterId(firstRegion.toString(), 7),
+          new WriterProgress(100L, 1L));
+      manager.receiveProgressBroadcast(
+          "cg",
+          "topic",
+          secondRegion.toString(),
+          new WriterId(secondRegion.toString(), 7),
+          new WriterProgress(200L, 2L));
+
+      assertEquals(2, manager.getPersistedStateKeys().size());
+      manager.removeAllStatesForRegion(firstRegion);
+
+      assertFalse(manager.hasPersistedState("cg", "topic", firstRegion));
+      assertTrue(manager.hasPersistedState("cg", "topic", secondRegion));
+      assertEquals(1, manager.getPersistedStateKeys().size());
+
+      manager.removeAllStatesForConsumerGroup("cg");
+      assertTrue(manager.getPersistedStateKeys().isEmpty());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testProgressFileNameEncodesForbiddenTopicComponents() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("systemWithForbiddenTopicComponents");
