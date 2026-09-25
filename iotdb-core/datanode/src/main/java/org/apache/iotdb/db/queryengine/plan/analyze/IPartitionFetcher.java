@@ -100,6 +100,13 @@ public interface IPartitionFetcher {
   DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName);
 
+  default DataPartition getOrCreateDataPartition(
+      final List<DataPartitionQueryParam> dataPartitionQueryParams,
+      final String userName,
+      final int preferredDataNodeId) {
+    return getOrCreateDataPartition(dataPartitionQueryParams, userName);
+  }
+
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
       PathPatternTree patternTree, PathPatternTree scope, boolean needAuditDB) {

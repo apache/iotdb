@@ -279,6 +279,7 @@ struct TTimeSlotList {
 struct TDataPartitionReq {
   // map<DatabaseName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
   1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
+  2: optional i32 preferredDataNodeId
 }
 
 struct TDataPartitionTableResp {

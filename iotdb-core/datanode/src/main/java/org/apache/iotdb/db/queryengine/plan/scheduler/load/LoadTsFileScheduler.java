@@ -947,9 +947,12 @@ public class LoadTsFileScheduler implements IScheduler {
   private static class DataPartitionBatchFetcher {
     private final IPartitionFetcher fetcher;
     private String database;
+    private final int preferredDataNodeId;
 
     public DataPartitionBatchFetcher(IPartitionFetcher fetcher) {
       this.fetcher = fetcher;
+      final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      this.preferredDataNodeId = config.isLoadTsFilePreferLocalNode() ? config.getDataNodeId() : -1;
     }
 
     public void setDatabase(String database) {
@@ -965,7 +968,8 @@ public class LoadTsFileScheduler implements IScheduler {
         List<Pair<IDeviceID, TTimePartitionSlot>> subSlotList =
             slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
         DataPartition dataPartition =
-            fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
+            fetcher.getOrCreateDataPartition(
+                toQueryParam(subSlotList), userName, preferredDataNodeId);
         for (final Pair<IDeviceID, TTimePartitionSlot> pair : subSlotList) {
           // database is an explicit database hint for table-model loads and
           // pipe-generated tree-model loads.
