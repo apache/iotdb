@@ -28,6 +28,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class SubscriptionPollRequestTest {
 
@@ -58,5 +61,47 @@ public class SubscriptionPollRequestTest {
     assertEquals(original.getMaxBytes(), parsed.getMaxBytes());
     assertEquals(original.getPayload(), parsed.getPayload());
     assertEquals(progressByTopic, parsed.getProgressByTopic());
+  }
+
+  @Test
+  public void testAllRequestPayloadTypesRoundTrip() throws IOException {
+    final SubscriptionCommitContext context =
+        new SubscriptionCommitContext(1, 2, "topic", "group", 3L);
+    assertRequestPayloadRoundTrip(
+        SubscriptionPollRequestType.POLL, new PollPayload(Collections.singleton("topic")));
+    assertRequestPayloadRoundTrip(
+        SubscriptionPollRequestType.POLL_FILE, new PollFilePayload(context, 99L));
+    assertRequestPayloadRoundTrip(
+        SubscriptionPollRequestType.POLL_TABLETS, new PollTabletsPayload(context, 7));
+  }
+
+  @Test
+  public void testNullProgressDefaultsToEmptyAndTypeLookupRejectsUnknownValues() {
+    final SubscriptionPollRequest request =
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL.getType(),
+            new PollPayload(Collections.singleton("topic")),
+            1L,
+            2L,
+            null);
+    assertTrue(request.getProgressByTopic().isEmpty());
+    assertTrue(
+        SubscriptionPollRequestType.isValidatedRequestType(
+            SubscriptionPollRequestType.POLL.getType()));
+    assertFalse(SubscriptionPollRequestType.isValidatedRequestType(Short.MAX_VALUE));
+    assertNull(SubscriptionPollRequestType.valueOf(Short.MAX_VALUE));
+  }
+
+  private static void assertRequestPayloadRoundTrip(
+      final SubscriptionPollRequestType type, final SubscriptionPollPayload payload)
+      throws IOException {
+    final SubscriptionPollRequest original =
+        new SubscriptionPollRequest(type.getType(), payload, 123L, 456L);
+    final SubscriptionPollRequest parsed =
+        SubscriptionPollRequest.deserialize(SubscriptionPollRequest.serialize(original));
+    assertEquals(type.getType(), parsed.getRequestType());
+    assertEquals(payload, parsed.getPayload());
+    assertEquals(123L, parsed.getTimeoutMs());
+    assertEquals(456L, parsed.getMaxBytes());
   }
 }
