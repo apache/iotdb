@@ -39,12 +39,13 @@ public class LoadTsFileParserMemoryManager implements TsFileInsertionEventParser
 
   @Override
   public TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
-      final long sizeInBytes) {
+      final String name, final long sizeInBytes) {
     return new LoadParserMemoryBlock(sizeInBytes);
   }
 
   @Override
-  public TsFileInsertionEventParserMemoryBlock forceAllocate(final long sizeInBytes) {
+  public TsFileInsertionEventParserMemoryBlock forceAllocate(
+      final String name, final long sizeInBytes) {
     return new LoadParserMemoryBlock(sizeInBytes);
   }
 

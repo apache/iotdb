@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import jakarta.validation.constraints.NotNull;
 
@@ -49,6 +50,14 @@ import jakarta.validation.constraints.NotNull;
  * and TSFile does not support this.
  */
 public abstract class PipeInsertionEvent extends EnrichedEvent {
+
+  /**
+   * Returns the event-level memory block used as the parent of parser/converted-data blocks. Events
+   * that do not retain a dedicated block return {@code null}.
+   */
+  public PipeMemoryBlock getEventMemoryBlock() {
+    return null;
+  }
 
   // Record the database name of the DataRegion corresponding to the SourceEvent
   private final String sourceDatabaseNameFromDataRegion;

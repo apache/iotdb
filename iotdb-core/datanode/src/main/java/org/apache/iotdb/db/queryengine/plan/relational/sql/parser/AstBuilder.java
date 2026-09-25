@@ -1357,6 +1357,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitShowPipeMemoryStatement(
+      final RelationalSqlParser.ShowPipeMemoryStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.PIPE_MEMORY,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  @Override
   public Node visitShowCreatePipeStatement(RelationalSqlParser.ShowCreatePipeStatementContext ctx) {
     return new ShowCreatePipe(((Identifier) visit(ctx.pipeName)).getValue());
   }
