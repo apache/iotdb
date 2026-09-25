@@ -133,6 +133,8 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TAG_FILTER_STATUS = "TagFilterStatus";
+  public static final String TAG_FILTER_MESSAGE = "TagFilterMessage";
   public static final String TOPIC = "Topic";
   public static final String CREATE_TOPIC = "Create Topic";
 
@@ -674,6 +676,13 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTableTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_STATUS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showCreateTopicColumnHeaders =
       ImmutableList.of(

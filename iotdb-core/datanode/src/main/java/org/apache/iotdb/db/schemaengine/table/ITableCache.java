@@ -62,6 +62,11 @@ public interface ITableCache {
 
   Map<String, Map<String, TsTable>> getTableSnapshot();
 
+  /** Returns the schema-cache version, or a negative value when unavailable. */
+  default long getInstanceVersion() {
+    return -1L;
+  }
+
   String tryGetInternColumnName(
       final @Nonnull String database,
       final @Nonnull String tableName,

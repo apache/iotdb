@@ -783,7 +783,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    rejectColumnFilterForTreeTopic(createTopicStatement.getTopicAttributes());
+    rejectTableOnlyFiltersForTreeTopic(createTopicStatement.getTopicAttributes());
 
     return new CreateTopicTask(createTopicStatement);
   }
@@ -794,18 +794,21 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    rejectColumnFilterForTreeTopic(alterTopicStatement.getTopicAttributes());
+    rejectTableOnlyFiltersForTreeTopic(alterTopicStatement.getTopicAttributes());
 
     return new AlterTopicTask(alterTopicStatement);
   }
 
-  private static void rejectColumnFilterForTreeTopic(final Map<String, String> topicAttributes) {
+  private static void rejectTableOnlyFiltersForTreeTopic(
+      final Map<String, String> topicAttributes) {
     for (final String key : topicAttributes.keySet()) {
-      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)
+          || TopicConstant.TAG_FILTER_KEY.equalsIgnoreCase(key)) {
         throw new SemanticException(
             String.format(
-                "Failed to create or alter topic, %s is only supported for table topics",
-                TopicConstant.COLUMN_FILTER_KEY));
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607,
+                key));
       }
     }
   }
