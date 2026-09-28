@@ -245,7 +245,7 @@ final class LoadTaskRetention {
             break;
           }
         } catch (final IOException e) {
-          LOGGER.warn(LoadStagingDirs.MESSAGE_DELETE_FAIL, file.getPath(), e);
+          LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, file.getPath(), e);
         }
       }
     }

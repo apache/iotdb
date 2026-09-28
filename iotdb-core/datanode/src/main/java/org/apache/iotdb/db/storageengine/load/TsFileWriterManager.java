@@ -89,9 +89,6 @@ final class TsFileWriterManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileWriterManager.class);
 
-  private static final String MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED =
-      "%s TsFileWriterManager has been closed.";
-
   /** The region whose partitions are written, and which imports the staged files on COMMIT. */
   private final DataRegion dataRegion;
 
@@ -358,7 +355,10 @@ final class TsFileWriterManager {
   private void write(DataPartitionInfo partitionInfo, ChunkData chunkData)
       throws IOException, PageException {
     if (isClosed) {
-      throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.EXCEPTION_TSFILEWRITERMANAGER_OF_ARG_HAS_BEEN_CLOSED_2FA43AAB,
+              taskDir));
     }
     if (!dataPartition2Writer.containsKey(partitionInfo)) {
       File newTsFile =
@@ -483,7 +483,10 @@ final class TsFileWriterManager {
 
   private void writeDeletion(DataRegion dataRegion, DeletionData deletionData) throws IOException {
     if (isClosed) {
-      throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.EXCEPTION_TSFILEWRITERMANAGER_OF_ARG_HAS_BEEN_CLOSED_2FA43AAB,
+              taskDir));
     }
     for (Map.Entry<DataPartitionInfo, TsFilePrecalculatedChunkWriter> entry :
         dataPartition2Writer.entrySet()) {
@@ -539,7 +542,10 @@ final class TsFileWriterManager {
       Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     if (isClosed) {
-      throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.EXCEPTION_TSFILEWRITERMANAGER_OF_ARG_HAS_BEEN_CLOSED_2FA43AAB,
+              taskDir));
     }
     for (final Map.Entry<DataPartitionInfo, ModificationFile> entry :
         dataPartition2ModificationFile.entrySet()) {
@@ -789,7 +795,9 @@ final class TsFileWriterManager {
           }
         } catch (IOException e) {
           LOGGER.warn(
-              LoadStagingDirs.MESSAGE_DELETE_FAIL, progress.getProgressFile().getAbsolutePath(), e);
+              StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD,
+              progress.getProgressFile().getAbsolutePath(),
+              e);
         }
       }
     }
@@ -812,7 +820,7 @@ final class TsFileWriterManager {
     } catch (DirectoryNotEmptyException e) {
       LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
     } catch (IOException e) {
-      LOGGER.warn(LoadStagingDirs.MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
+      LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, taskDir.getPath(), e);
     }
     dataPartition2Writer = null;
     dataPartition2Resource = null;

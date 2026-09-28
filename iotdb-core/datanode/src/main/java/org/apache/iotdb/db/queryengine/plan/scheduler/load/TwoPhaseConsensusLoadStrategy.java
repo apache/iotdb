@@ -240,22 +240,24 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
    * the next attempt - with the local cache dropped first, see {@code
    * LoadConsensusSubmitter#resolveRoute} - and a route that changed is adopted by the whole
    * transaction, so the commands that follow a switched write node or a finished migration are sent
-   * where the staged bytes of the task are. A route that cannot be resolved at all is no route
-   * either: the attempt is repeated on the one that failed, and the answer of that attempt is what
-   * the caller decides from, instead of the transaction quietly continuing on a route that the
-   * partition table no longer knows.
+   * where the staged bytes of the task are.
+   *
+   * <p>A route that cannot be resolved at all is the end of the command: repeating it on the route
+   * that just failed would keep sending PREPARE, COMMIT or ABORT to a node that the partition table
+   * does not recognize as the owner of the region any more, which is exactly the node a region
+   * migration or a write-node switch took the region away from. The attempt that failed is reported
+   * instead, so the caller fails the load and the task is retried from a route it resolves again,
+   * rather than being half applied on a route nobody can commit.
    */
   private TSStatus submitWithRetry(
       final TConsensusGroupId regionId,
       final LoadTsFileConsensusNode node,
       final boolean retryEveryFailure) {
     TRegionReplicaSet replicaSet = currentRoute(regionId);
-    TSStatus status = null;
-    for (int attempt = 1; attempt <= LOAD_CONSENSUS_SUBMIT_MAX_RETRIES; attempt++) {
-      status = consensusSubmitter.submit(replicaSet, node);
+    TSStatus status = consensusSubmitter.submit(replicaSet, node);
+    for (int attempt = 1; attempt < LOAD_CONSENSUS_SUBMIT_MAX_RETRIES; attempt++) {
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || (!retryEveryFailure && !isTransientConsensusFailure(status))
-          || attempt == LOAD_CONSENSUS_SUBMIT_MAX_RETRIES) {
+          || (!retryEveryFailure && !isTransientConsensusFailure(status))) {
         break;
       }
       LOGGER.warn(
@@ -267,10 +269,19 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
           LOAD_CONSENSUS_SUBMIT_MAX_RETRIES,
           status.getMessage());
       // The route of the region may be the reason the command did not reach it: look it up again
-      // and follow it when it changed.
+      // and follow it when it changed. A route that cannot be looked up ends the command here.
       final TRegionReplicaSet resolved =
           consensusSubmitter.resolveRoute(regionId, LOAD_CONSENSUS_ROUTE_RESOLVE_MAX_ATTEMPTS);
-      if (resolved != null && !resolved.equals(replicaSet)) {
+      if (resolved == null) {
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_B7269F99,
+            regionId,
+            node.getOp(),
+            node.getLoadId());
+        break;
+      }
+      if (!resolved.equals(replicaSet)) {
         LOGGER.info(
             DataNodeQueryMessages
                 .LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B,
@@ -286,6 +297,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         Thread.currentThread().interrupt();
         break;
       }
+      status = consensusSubmitter.submit(replicaSet, node);
     }
     return status;
   }
@@ -453,15 +465,24 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
   /**
    * The commit round: every touched region agreed to commit, so the decision can no longer be taken
-   * back. A region whose commit failed is therefore not rolled back either - it may have imported
-   * its files before the failure was reported - and the regions behind it are still committed, so
-   * the transaction reaches as many of its participants as it can.
+   * back. A region whose commit failed is therefore not rolled back on the data it already
+   * imported, and the regions behind it are still committed, so the transaction reaches as many of
+   * its participants as it can.
    *
    * <p>A transient failure is retried, and the retry settles what the first attempt left open: the
    * region answers a COMMIT of a task it already imported with success, see {@code
    * LoadTsFileManager#loadAll}, so a command whose answer was lost is not reported as a failure
    * while a command that truly failed still is. A region that fails for another reason keeps its
    * answer: it is left as it is, which the load reports.
+   *
+   * <p>Whatever the region answered, its task must not be left half decided, because nothing else
+   * ever revisits it: the caller reports the load as failed and moves on, and the coordinator has
+   * no record to retry from. The region is therefore sent the terminal ABORT of the task as well.
+   * An ABORT is the idempotent side of a decision that may or may not have been applied - it drops
+   * the staged directory of a task whose COMMIT never landed, and it is acknowledged as success for
+   * a task that already reached a terminal record, see {@code LoadTsFileManager#deleteAll} - so the
+   * region ends the load in exactly one of the two states it can be in, instead of keeping staged
+   * data that only a scan of the staging directories could reclaim.
    */
   private boolean commitAllRegions(
       LoadSingleTsFileNode node,
@@ -490,9 +511,33 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             TSStatusCode.representOf(commitStatus.getCode()).name(),
             commitStatus.getMessage());
         allCommitted = false;
+        resolveTheCommitOutcomeOf(regionId, loadId);
       }
     }
     return allCommitted;
+  }
+
+  /**
+   * Ends a task whose COMMIT was not acknowledged, so the region does not keep a staged directory
+   * that no later command refers to. The ABORT is idempotent with respect to the COMMIT: a region
+   * that did commit answers it with success as well, see {@code LoadTsFileManager#deleteAll}.
+   */
+  private void resolveTheCommitOutcomeOf(final TConsensusGroupId regionId, final String loadId) {
+    final LoadTsFileConsensusNode abort =
+        LoadTsFileConsensusNode.abort(
+            new PlanNodeId("load-abort-unresolved-commit-" + loadId),
+            loadId,
+            null,
+            isGeneratedByPipe);
+    final TSStatus abortStatus = submitTerminalCommandWithRetry(regionId, abort);
+    if (abortStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          DataNodeQueryMessages
+              .LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_935B3C4F,
+          loadId,
+          regionId,
+          abortStatus.getMessage());
+    }
   }
 
   /**

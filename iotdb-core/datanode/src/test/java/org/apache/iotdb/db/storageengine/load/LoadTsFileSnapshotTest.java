@@ -280,14 +280,43 @@ public class LoadTsFileSnapshotTest {
   }
 
   /**
+   * A task whose directory is gone by the time the snapshot reads it holds nothing: the task
+   * finished while the snapshot was being taken and its directory was deleted, which is not a
+   * failure of the snapshot and must not turn into one. The snapshot still records the task in its
+   * manifest, and restoring it puts nothing back.
+   */
+  @Test
+  public void testATaskThatDisappearedWhileTheSnapshotRunsIsNotAFailure() throws Exception {
+    final LoadTsFileManager manager = Mockito.mock(LoadTsFileManager.class);
+    Mockito.when(manager.getActiveTaskDirs())
+        .thenReturn(Collections.singletonList(new File(tempDir, "finished-task")));
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final File snapshotDir = new File(tempDir, "snapshot");
+
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+    final Set<String> collected = new HashSet<>();
+    for (final File file : LoadTsFileSnapshot.collectSnapshotFiles(snapshotDir)) {
+      collected.add(file.getName());
+    }
+    assertEquals(
+        "the snapshot holds the manifest and no file of the task",
+        Collections.singleton("roots"),
+        collected);
+
+    LoadTsFileSnapshot.restore(DATABASE_NAME, REGION_ID, snapshotDir);
+    assertFalse(new File(new File(tempDir, REGION_DIR_NAME), "finished-task").exists());
+  }
+
+  /**
    * A snapshot taken while pieces are still being applied has to be restorable: every range a
    * copied progress log describes has to be inside the bytes that were copied with it.
    *
    * <p>The copy is not serialized with the pieces - the route of a task cannot be locked against
    * the thread that applies them without stopping the region - so the order of the copy is what
-   * makes it safe: the logs are copied before the staged files they describe, and a staged file
-   * only ever grows at its end. A trailing log entry can still be caught half appended, and reading
-   * the copied log drops that fragment.
+   * makes it safe: the staged files are copied before the logs that describe them, so a log that
+   * arrives while the copy runs is copied on top of a staged file that is already there, and the
+   * staged file is grown afterwards when its log records more bytes than the copy holds.
    */
   @Test
   public void testSnapshotTakenWhilePiecesAreAppliedStaysRestorable() throws Exception {
@@ -366,7 +395,12 @@ public class LoadTsFileSnapshotTest {
     return -1L;
   }
 
-  /** Every range of a copied log has to be inside the staged file that was copied with it. */
+  /**
+   * Every range of a copied log has to be inside the staged file that was copied with it, and every
+   * copied log has to have that staged file: a log whose staged file is missing from the snapshot
+   * is the state the copy cannot leave behind, because the restoring node only replays the commands
+   * that follow its snapshot point and would never rebuild the piece that file holds.
+   */
   private static void assertEveryCopiedLogFitsItsCopiedFile(final File snapshotDir)
       throws Exception {
     final File[] taskDirs =
@@ -389,6 +423,8 @@ public class LoadTsFileSnapshotTest {
                 file.getName()
                     .substring(
                         0, file.getName().length() - LoadTsFileProgress.PROGRESS_SUFFIX.length()));
+        assertTrue(
+            "a copied log has no staged file next to it: " + file.getName(), staged.isFile());
         final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
         // Reading a copied log repairs the fragment of an entry that was caught half appended,
         // exactly as the node that restores this snapshot does.

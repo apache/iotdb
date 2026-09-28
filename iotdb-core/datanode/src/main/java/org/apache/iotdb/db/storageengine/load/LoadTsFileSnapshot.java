@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileVisitResult;
@@ -38,6 +39,7 @@ import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import static org.apache.iotdb.db.storageengine.load.LoadTsFileProgress.PROGRESS_SUFFIX;
 
 /**
  * Snapshot support for the in-progress LOAD staged files.
@@ -71,6 +75,21 @@ public final class LoadTsFileSnapshot {
 
   /** The infix of a file that is still being copied into the snapshot, see {@link #copy}. */
   private static final String TEMP_FILE_SUFFIX = ".copying.";
+
+  /**
+   * How many times a copied staged file is re-copied because a progress log that arrived while the
+   * snapshot was running describes bytes past the end of the copy. Every repetition copies the
+   * prefix the log asks for, so each one either settles the pair or grows the copy towards the
+   * length the log already had on disk; the loop below is bounded because a staged file only ever
+   * grows.
+   */
+  private static final int MAX_STAGED_FILE_REPAIRS = 8;
+
+  /**
+   * How long a repair of a copied staged file waits for the bytes its progress log already names to
+   * appear in it, so a piece caught in the middle of its own write is not snapshotted short.
+   */
+  private static final long STAGED_FILE_CATCH_UP_WAIT_MS = 5L;
 
   /**
    * The manifest that records which staging root each task of the snapshot was staged in: one
@@ -128,14 +147,7 @@ public final class LoadTsFileSnapshot {
       writeRootsManifest(loadSnapshotDir, taskDirs);
       for (final File taskDir : taskDirs) {
         final File targetDir = new File(loadSnapshotDir, taskDir.getName());
-        // The progress logs are copied first, so a log never refers to bytes that the copy of its
-        // staged file does not hold: the pieces of the region keep being applied while this copy
-        // runs, and a staged file only ever grows at its end. The copy of the staged file is taken
-        // afterwards, and the trailing entry of a log can still be caught half appended there; the
-        // reader of the restored copy drops that fragment, see
-        // LoadTsFileProgress#readAllRecordsRepairingTornTail.
-        copyProgressLogs(taskDir, targetDir);
-        copyStagedFiles(taskDir, targetDir);
+        copyTask(taskDir, targetDir);
       }
       LOGGER.info(
           String.format(
@@ -153,18 +165,46 @@ public final class LoadTsFileSnapshot {
     }
   }
 
-  private static void copyProgressLogs(final File taskDir, final File targetDir)
-      throws IOException {
-    // The directory is listed again here on purpose: a time partition whose first piece arrived
-    // after the task was enumerated still contributes its progress log.
-    for (final File file : listFiles(taskDir)) {
-      if (file.isFile() && isProgressLog(file)) {
-        copy(new File(targetDir, file.getName()), file);
-      }
-    }
+  /**
+   * Copies one task directory into a snapshot that is read while the task keeps being applied.
+   *
+   * <p>The copy cannot be serialized with the piece writer - holding the write path while a
+   * snapshot is transferred would stall the region - so what makes it safe is which files are
+   * copied in which order, and that the bytes of a staged file that are copied are at least the
+   * bytes its own progress log claims:
+   *
+   * <ol>
+   *   <li>the staged files and their modification files are copied first, so the set of staged
+   *       files of the snapshot is taken before the logs that describe them are looked at;
+   *   <li>the progress logs are copied afterwards, so a log is copied no earlier than the staged
+   *       file it describes: the reverse order can catch a log whose staged file is not enumerated
+   *       afterwards, which is the one combination a reader cannot repair - the bytes of that piece
+   *       are lost from the snapshot while the WAL of the restoring node replays the commands that
+   *       follow its snapshot point, not the piece itself;
+   *   <li>every copied log is then checked against the copied staged file: a log that arrived while
+   *       the copy was running can describe bytes past the end of the copy, and the staged file is
+   *       copied again up to the length the log needs. A piece writes its bytes and only then
+   *       appends the entry that records them, so a log never describes bytes that are not in the
+   *       staged file.
+   * </ol>
+   *
+   * <p>A staged file that arrived between the two scans is therefore never left without its log,
+   * and a log is never left describing bytes the snapshot does not hold. What the snapshot does not
+   * have to be is a complete task: a piece whose command the restoring node replays is written into
+   * the restored staged file at the absolute offsets its layout defines, and a piece whose command
+   * the restoring node does not replay was never applied here either.
+   */
+  private static void copyTask(final File taskDir, final File targetDir) throws IOException {
+    copyContentFiles(taskDir, targetDir);
+    // The directory is listed again for the logs on purpose: a time partition whose first piece
+    // arrived after the task was enumerated still contributes its progress log, and its staged file
+    // was picked up by the scan above.
+    copyProgressLogs(taskDir, targetDir);
+    repairStagedFilesAgainstProgressLogs(targetDir);
   }
 
-  private static void copyStagedFiles(final File taskDir, final File targetDir) throws IOException {
+  private static void copyContentFiles(final File taskDir, final File targetDir)
+      throws IOException {
     for (final File file : listFiles(taskDir)) {
       if (file.isFile() && !isProgressLog(file)) {
         copy(new File(targetDir, file.getName()), file);
@@ -172,8 +212,96 @@ public final class LoadTsFileSnapshot {
     }
   }
 
+  private static void copyProgressLogs(final File taskDir, final File targetDir)
+      throws IOException {
+    for (final File file : listFiles(taskDir)) {
+      if (file.isFile() && isProgressLog(file)) {
+        copy(new File(targetDir, file.getName()), file);
+      }
+    }
+  }
+
+  /**
+   * Grows every copied staged file that a copied progress log describes beyond its end, so that the
+   * snapshot never holds a log whose recorded ranges reach past the bytes that were copied with it.
+   *
+   * <p>A log that records more bytes than the staged file holds is the state a piece is in while it
+   * is being written: the writer emits the header, the payload and the entry that records them one
+   * after the other, so a log can name bytes that a reader does not see in the file yet. The copy
+   * is repeated for as long as the bytes the log needs keep appearing, and a log that stays ahead
+   * of its file is left as it is: the restoring node reads the same short file, sees the recorded
+   * ranges it cannot back with bytes, and refuses to seal it (see {@code
+   * LoadTsFileProgress#isReady}) instead of importing a file with a hole in it.
+   */
+  private static void repairStagedFilesAgainstProgressLogs(final File targetDir)
+      throws IOException {
+    for (final File progressFile : listFiles(targetDir)) {
+      if (!progressFile.isFile() || !isProgressLog(progressFile)) {
+        continue;
+      }
+      final File stagedFile =
+          new File(
+              targetDir,
+              progressFile
+                  .getName()
+                  .substring(0, progressFile.getName().length() - PROGRESS_SUFFIX.length()));
+      if (!stagedFile.isFile()) {
+        // A log without its staged file: the log is copied after the file scan, so the file existed
+        // then and the failure belongs to that copy rather than to this repair.
+        continue;
+      }
+      long recordedLength = recordedLengthOf(stagedFile);
+      for (int repair = 0;
+          repair < MAX_STAGED_FILE_REPAIRS && recordedLength > stagedFile.length();
+          repair++) {
+        copyRange(stagedFile, recordedLength);
+        if (recordedLength > stagedFile.length()) {
+          waitForTheStagedFileToCatchUp();
+        }
+        recordedLength = recordedLengthOf(stagedFile);
+      }
+    }
+  }
+
+  /**
+   * The end of the ranges a copied progress log records, or {@code -1} when it records none or
+   * cannot be read at all.
+   *
+   * <p>The tail is repaired rather than rejected: the log of a task that keeps being applied can be
+   * copied in the middle of an entry, and the entries before that fragment describe bytes that are
+   * in the staged file. Reading the copy the way the restoring node reads it keeps the two agreeing
+   * on what the task staged.
+   */
+  private static long recordedLengthOf(final File stagedFile) {
+    try {
+      return new LoadTsFileProgress(stagedFile)
+          .readAllRecordsRepairingTornTail().stream()
+              .mapToLong(LoadTsFileProgress.ChunkRangeRecord::physicalEnd)
+              .max()
+              .orElse(-1L);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_509E36FD,
+          stagedFile.getAbsolutePath(),
+          e.getMessage());
+      return -1L;
+    }
+  }
+
+  /**
+   * Waits out the window in which a piece has appended the entry that describes its bytes but has
+   * not reached the end of the staged file with the bytes themselves.
+   */
+  private static void waitForTheStagedFileToCatchUp() {
+    try {
+      Thread.sleep(STAGED_FILE_CATCH_UP_WAIT_MS);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
   private static boolean isProgressLog(final File file) {
-    return file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX);
+    return file.getName().endsWith(PROGRESS_SUFFIX);
   }
 
   /**
@@ -237,12 +365,33 @@ public final class LoadTsFileSnapshot {
     return recorded < rootCount ? recorded : recorded % rootCount;
   }
 
-  private static File[] listFiles(final File dir) {
+  /**
+   * Lists a directory of the staging area.
+   *
+   * <p>A directory that is not there holds no file, which is a state the staging area reaches on
+   * its own: the directory of a task that finished while the snapshot was being taken is deleted,
+   * and the snapshot then holds nothing for it. A directory that is there and still cannot be
+   * listed is a failure instead - an unreadable task directory is not an empty one, and a snapshot
+   * that silently skipped its files would be transferred as if the task held none of them, leaving
+   * the replica that resumes from it without the pieces those files hold.
+   */
+  private static File[] listFiles(final File dir) throws IOException {
     final File[] files = dir.listFiles();
-    return files == null ? new File[0] : files;
+    if (files == null && !dir.exists()) {
+      return new File[0];
+    }
+    if (files == null) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70,
+              dir.getAbsolutePath(),
+              StorageEngineMessages.MESSAGE_THE_DIRECTORY_IS_UNREADABLE_OR_MISSING_54036A44));
+    }
+    return files;
   }
 
-  private static int countFiles(final File dir) {
+  private static int countFiles(final File dir) throws IOException {
     int count = 0;
     for (final File file : listFiles(dir)) {
       count += file.isDirectory() ? countFiles(file) : 1;
@@ -420,6 +569,49 @@ public final class LoadTsFileSnapshot {
     } catch (final IOException e) {
       Files.deleteIfExists(tempTarget.toPath());
       throw e;
+    }
+  }
+
+  /**
+   * Re-copies the first {@code length} bytes of a staged file of the snapshot over the copy that is
+   * already published there, so that the copy covers the bytes its progress log describes.
+   *
+   * <p>Only the prefix is taken, and it is taken from the staged file of the region: the bytes of a
+   * logged chunk are written before its entry is appended, so the prefix the log needs is on disk
+   * whenever the log that names it was already copied.
+   */
+  private static void copyRange(final File target, final long length) throws IOException {
+    final File tempTarget =
+        new File(target.getParentFile(), target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
+    try (final FileChannel source = FileChannel.open(target.toPath(), StandardOpenOption.READ);
+        final FileChannel destination =
+            FileChannel.open(
+                tempTarget.toPath(),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING)) {
+      long position = 0L;
+      while (position < length) {
+        final long copied = source.transferTo(position, length - position, destination);
+        if (copied <= 0L) {
+          // The staged file of the region is shorter than the log describes: there is nothing more
+          // to copy, and the truncation below leaves the snapshot saying exactly that.
+          break;
+        }
+        position += copied;
+      }
+    } catch (final IOException e) {
+      Files.deleteIfExists(tempTarget.toPath());
+      throw e;
+    }
+    try {
+      Files.move(
+          tempTarget.toPath(),
+          target.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.ATOMIC_MOVE);
+    } catch (final AtomicMoveNotSupportedException e) {
+      Files.move(tempTarget.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
   }
 }

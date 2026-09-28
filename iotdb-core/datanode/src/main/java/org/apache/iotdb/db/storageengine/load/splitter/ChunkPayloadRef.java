@@ -49,15 +49,19 @@ public class ChunkPayloadRef {
 
   public ChunkPayloadRef(final String filePath, final long offset, final long size) {
     // Bounds and overflow guard before the reference is ever used to seek the staged file: a
-    // malformed or hostile reference must fail here instead of allocating a negative, oversized or
-    // overflowing byte array when its payload is read back. The same guard as the piece references
-    // of LoadTsFileConsensusNode.PieceRef.
+    // malformed or hostile reference must fail here instead of allocating a negative or oversized
+    // byte array when its payload is read back. The same guard as the piece references of
+    // LoadTsFileConsensusNode.PieceRef.
+    //
+    // The offset is deliberately not bounded: it is an absolute position inside the staged TsFile,
+    // which is routinely larger than 2 GiB even when every single payload it holds is small. What
+    // has to hold is that the end of the referenced range does not overflow, which is what the
+    // subtraction-free form below checks for an offset of any magnitude.
     if (filePath == null
         || offset < 0
         || size < 0
         || size > Integer.MAX_VALUE
-        || offset + size < 0
-        || offset + size > Integer.MAX_VALUE) {
+        || Long.MAX_VALUE - offset < size) {
       throw new IllegalArgumentException(
           String.format(
               StorageEngineMessages

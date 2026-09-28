@@ -52,8 +52,6 @@ final class LoadStagingDirs {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
-
   private static final AtomicReference<String[]> LOAD_BASE_DIRS =
       new AtomicReference<>(CONFIG.getLoadTsFileDirs());
   private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
@@ -134,7 +132,7 @@ final class LoadStagingDirs {
         } catch (final DirectoryNotEmptyException e) {
           LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, child.getPath());
         } catch (final IOException e) {
-          LOGGER.warn(MESSAGE_DELETE_FAIL, child.getPath(), e);
+          LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, child.getPath(), e);
         }
       }
     }
@@ -147,7 +145,7 @@ final class LoadStagingDirs {
     } catch (final DirectoryNotEmptyException e) {
       LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
     } catch (final IOException e) {
-      LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
+      LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, taskDir.getPath(), e);
     }
   }
 

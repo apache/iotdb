@@ -4631,6 +4631,12 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "测点 %s%s%s 的数据类型不匹配，TsFile 中类型：%s，IoTDB 中类型：%s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "释放外部 TsFile 查询资源失败";
   public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2 = "未知的 LoadTsFileConsensusOp 序号：";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_EC07D9BE =
+      "未知的 LoadTsFileConsensusOp 序号：%s";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_B7269F99 =
+      "无法重新查询 region %s 的路由：LOAD 任务 %s 的 %s 不会在失败的路由上重试。";
+  public static final String LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_935B3C4F =
+      "LOAD 任务 %s 在 region %s 的提交结果无法确定：%s";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "在 IoTDBLocal 查询开始前，外层查询已超时";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "关闭索引 {} 处的 UDF 结果集失败";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "未找到内部查询执行";

@@ -287,7 +287,7 @@ public class LoadTsFileManagerTest {
       {-1L, 10L},
       {0L, -1L},
       {0L, (long) Integer.MAX_VALUE + 1L},
-      {(long) Integer.MAX_VALUE, 10L}
+      {Long.MAX_VALUE, 1L}
     };
     for (final long[] bounds : invalidBounds) {
       try {
@@ -304,6 +304,14 @@ public class LoadTsFileManagerTest {
       assertTrue(e.getMessage().contains("null"));
     }
 
+    // The offset names a position inside the staged file, which is routinely larger than 2 GiB, so
+    // it is not bounded by the size of the buffer the payload needs: only the end of the referenced
+    // range has to stay representable.
+    final ChunkPayloadRef aboveTwoGigabytes =
+        new ChunkPayloadRef(path, (long) Integer.MAX_VALUE + 4096L, 1024L);
+    assertEquals((long) Integer.MAX_VALUE + 4096L, aboveTwoGigabytes.getOffset());
+    assertEquals(1024L, aboveTwoGigabytes.getSize());
+
     // The same reference arriving over the wire is malformed input rather than a programming error:
     // deserializing it has to fail as an I/O failure of the request that carries it.
     final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -317,6 +325,35 @@ public class LoadTsFileManagerTest {
       fail("deserializing a malformed reference must fail");
     } catch (final IOException e) {
       assertTrue(e.getMessage().contains(path));
+    }
+  }
+
+  /**
+   * A piece reference names a staged TsFile or a payload inside it, and a staged TsFile larger than
+   * 2 GiB is ordinary: the offset is not bounded by the size of the buffer a payload needs, only
+   * the end of the referenced range has to stay representable.
+   */
+  @Test
+  public void testPieceRefOfAStagedFileLargerThanTwoGigabytes() throws Exception {
+    final String path = "database-0/load-id/partition.tsfile";
+    final long largeOffset = (long) Integer.MAX_VALUE + 4096L;
+    final LoadTsFileConsensusNode.PieceRef large =
+        new LoadTsFileConsensusNode.PieceRef(path, largeOffset, 1024L);
+    assertEquals(largeOffset, large.getOffset());
+    assertEquals(1024L, large.getSize());
+
+    for (final long[] invalid : new long[][] {{-1L, 10L}, {0L, -1L}, {Long.MAX_VALUE, 1L}}) {
+      try {
+        new LoadTsFileConsensusNode.PieceRef(path, invalid[0], invalid[1]);
+        fail(
+            "a piece ref of offset "
+                + invalid[0]
+                + " and size "
+                + invalid[1]
+                + " must be rejected");
+      } catch (final IllegalArgumentException e) {
+        assertTrue(e.getMessage().contains(path));
+      }
     }
   }
 

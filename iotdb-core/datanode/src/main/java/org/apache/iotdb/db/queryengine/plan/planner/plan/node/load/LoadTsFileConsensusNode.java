@@ -578,8 +578,10 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
         final int read = stream.read(bytes, offset, len - offset);
         if (read < 0) {
           throw new IOException(
-              DataNodeQueryMessages.EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2
-                  + "progressIndex");
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_EC07D9BE,
+                  "progressIndex"));
         }
         offset += read;
       }
@@ -733,11 +735,12 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       // Bounds/overflow guard before the reference is used to seek the staged file: a malformed or
       // hostile ref must fail here instead of truncating, overflowing or escaping into an
       // arbitrary byte array.
-      if (offset < 0
-          || size < 0
-          || size > Integer.MAX_VALUE
-          || offset + size < 0
-          || offset + size > Integer.MAX_VALUE) {
+      //
+      // The offset is deliberately not bounded: this reference names a staged TsFile (offset 0, the
+      // whole file) or a payload inside it, and a staged TsFile larger than 2 GiB is ordinary. Only
+      // the end of the referenced range has to stay representable, which the subtraction-free form
+      // below checks for an offset of any magnitude.
+      if (offset < 0 || size < 0 || size > Integer.MAX_VALUE || Long.MAX_VALUE - offset < size) {
         throw new IllegalArgumentException(
             String.format(
                 DataNodeQueryMessages.EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507,

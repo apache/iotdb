@@ -66,7 +66,11 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
   private static final TConsensusGroupId REGION_2 =
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
 
-  /** Fails the given operation for the given region with a permanent error, accepts the rest. */
+  /**
+   * Fails the given operation for the given region with a permanent error, accepts the rest. The
+   * route of a region stays resolvable, so a command that is retried is retried on the route the
+   * transaction pinned.
+   */
   private static LoadConsensusSubmitter submitterFailingOn(
       final LoadTsFileConsensusOp op,
       final TConsensusGroupId regionId,
@@ -99,7 +103,16 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
               }
               return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
             });
+    when(submitter.resolveRoute(any(), any(Integer.class)))
+        .thenAnswer(invocation -> currentRoute(invocation.getArgument(0)));
     return submitter;
+  }
+
+  /** The route a region is pinned to while the commands of its task are being retried. */
+  private static TRegionReplicaSet currentRoute(final TConsensusGroupId regionId) {
+    return regionId.equals(REGION_1)
+        ? new TRegionReplicaSet(REGION_1, Collections.singletonList(location(11)))
+        : new TRegionReplicaSet(REGION_2, Collections.singletonList(location(12)));
   }
 
   private static TwoPhaseConsensusLoadStrategy strategy(
@@ -216,12 +229,12 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
   }
 
   /**
-   * A route that cannot be looked up is no route at all: the command is repeated on the route it
-   * had instead of being moved to one that could not be read, and the answer of that attempt is
-   * what the caller decides from.
+   * A route that cannot be looked up ends the command: the attempt that failed is reported instead
+   * of the command being repeated on a route the partition table no longer knows, which is the
+   * route a migration or a write-node switch took the region away from.
    */
   @Test
-  public void testARouteThatCannotBeLookedUpIsNotAdopted() throws Exception {
+  public void testARouteThatCannotBeLookedUpEndsTheCommand() throws Exception {
     final TRegionReplicaSet pinnedRoute =
         new TRegionReplicaSet(REGION_1, Collections.singletonList(location(11)));
     final List<String> submitted = new ArrayList<>();
@@ -247,7 +260,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     final TSStatusCode status = submitPiece(strategy, REGION_1);
 
     assertEquals(TSStatusCode.DISPATCH_ERROR, status);
-    assertEquals(Arrays.asList("1@11", "1@11", "1@11"), submitted);
+    assertEquals(Collections.singletonList("1@11"), submitted);
   }
 
   /** Submits a piece for a region through the bounded submission of the strategy. */
@@ -335,7 +348,10 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
 
   /**
    * Once every region agreed, the decision cannot be undone: a commit that fails on one region must
-   * not roll the other regions back, so the remaining regions are committed as well.
+   * not roll the other regions back, so the remaining regions are committed as well. The region
+   * whose commit was not acknowledged is still sent the terminal ABORT of its task: a COMMIT that
+   * failed can mean that it never landed, in which case the region would keep its staged directory
+   * for a task nobody ever finishes.
    */
   @Test
   public void testCommitFailureDoesNotRollBackTheRegionsThatAgreed() throws Exception {
@@ -348,12 +364,64 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             pieceCounts());
 
     assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
-    assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@2"), submitted);
+    // The unresolved commit of region 1 is resolved before the next region is committed, so the
+    // task of that region is left in exactly one of its two terminal states.
+    assertEquals(
+        Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "ABORT@1", "COMMIT@2"), submitted);
+  }
+
+  /**
+   * A COMMIT whose answer is a permanent rejection is resolved as well: the task of that region is
+   * ended one way or the other, so a region that never applied the COMMIT does not keep staged data
+   * that nothing else refers to.
+   */
+  @Test
+  public void testCommitRejectionIsResolvedWithTheTerminalAbort() throws Exception {
+    final List<String> submitted = new ArrayList<>();
+    final TwoPhaseConsensusLoadStrategy strategy =
+        strategy(
+            submitterFailingOn(LoadTsFileConsensusOp.COMMIT, REGION_2, submitted),
+            twoRegionsInOrder(),
+            loadIds(),
+            pieceCounts());
+
+    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertEquals(
+        Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@2", "ABORT@2"), submitted);
+  }
+
+  /**
+   * An ABORT that cannot reach the region does not turn into a wrong answer, and the attempts stay
+   * bounded: the load reports the failure it hit rather than repeating a command forever on a route
+   * that cannot be resolved.
+   */
+  @Test
+  public void testAnUnresolvableRouteBoundsTheAttemptsOfTheRollback() throws Exception {
+    final List<String> submitted = Collections.synchronizedList(new ArrayList<>());
+    final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
+    when(submitter.submit(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              final TRegionReplicaSet replicaSet = invocation.getArgument(0);
+              final LoadTsFileConsensusNode node = invocation.getArgument(1);
+              submitted.add(node.getOp().name() + "@" + replicaSet.getRegionId().getId());
+              return RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR);
+            });
+    when(submitter.resolveRoute(any(), any(Integer.class))).thenReturn(null);
+
+    final TwoPhaseConsensusLoadStrategy strategy =
+        strategy(submitter, twoRegionsInOrder(), loadIds(), pieceCounts());
+
+    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    // One failed attempt per region: the route is looked up again, comes back empty, and the
+    // command is not repeated on a route the partition table does not know any more.
+    assertEquals(Arrays.asList("PREPARE@1", "ABORT@1", "ABORT@2"), submitted);
   }
 
   /**
    * A COMMIT that failed transiently is repeated: the decision was taken, so a region that did not
-   * answer yet must still receive it instead of keeping staged data nobody commits.
+   * answer yet must still receive it instead of keeping staged data nobody commits. Only once the
+   * attempts are used up is the outcome resolved with the terminal ABORT of the task.
    */
   @Test
   public void testCommitIsRetriedOnTransientFailure() throws Exception {
@@ -367,7 +435,8 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
 
     assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
     assertEquals(
-        Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@1", "COMMIT@1", "COMMIT@2"),
+        Arrays.asList(
+            "PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@1", "COMMIT@1", "ABORT@1", "COMMIT@2"),
         submitted);
   }
 
@@ -378,7 +447,8 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
    */
   @Test
   public void testAbortIsRetriedOnFailure() throws Exception {
-    // Two regions, both unable to prepare: each of them must be told to drop its staged data.
+    // Two regions, both unable to prepare: each of them must be told to drop its staged data. The
+    // route of each region stays resolvable, which is what a retry is allowed to happen on.
     final List<String> submitted = Collections.synchronizedList(new ArrayList<>());
     final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
     when(submitter.submit(any(), any()))
@@ -389,6 +459,8 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
               submitted.add(node.getOp().name() + "@" + replicaSet.getRegionId().getId());
               return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
             });
+    when(submitter.resolveRoute(any(), any(Integer.class)))
+        .thenAnswer(invocation -> currentRoute(invocation.getArgument(0)));
     final TwoPhaseConsensusLoadStrategy strategy =
         strategy(submitter, twoRegionsInOrder(), loadIds(), pieceCounts());
 
