@@ -44,7 +44,6 @@
         <module>iotdb-client</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
-        <module>library-pipe</module>
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
