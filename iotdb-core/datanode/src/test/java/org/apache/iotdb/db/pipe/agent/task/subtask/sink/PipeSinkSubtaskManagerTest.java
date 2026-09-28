@@ -165,7 +165,8 @@ public class PipeSinkSubtaskManagerTest {
     final Map<String, String> singleThreadAttributes = new HashMap<>();
     singleThreadAttributes.put(
         PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, Boolean.FALSE.toString());
-    singleThreadAttributes.put(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.OPC_UA_SINK_NAME);
+    singleThreadAttributes.put(
+        PipeSinkConstant.CONNECTOR_KEY, BuiltinPipePlugin.OPC_DA_SINK.getPipePluginName());
     Assert.assertEquals(
         1,
         PipeSinkSubtaskManager.calculateSinkSubtaskNum(
