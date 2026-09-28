@@ -1518,7 +1518,11 @@ public class DataRegion implements IDataRegionForQuery {
         insertTabletNode.shouldCheckTTL()
             ? insertTabletNode.checkTTL(results, getTTL(insertTabletNode))
             : 0;
-    noFailure = loc == 0;
+    noFailure =
+        loc == 0
+            && Arrays.stream(results)
+                .allMatch(
+                    status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
     noFailure =

@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -299,6 +300,44 @@ public class DataRegionTest {
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
+  }
+
+  @Test
+  public void testRelationalTabletFiltersTTLFailureAfterAliveRow() throws WriteProcessException {
+    final TsTable table = StatementTestUtils.genTsTable();
+    table.addProp(TsTable.TTL_PROPERTY, "1000");
+    DataNodeTableCache.getInstance().preUpdateTable(dataRegion.getDatabaseName(), table, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null);
+
+    final RelationalInsertTabletNode insertTabletNode = genInsertTabletNode(2, 0);
+    final long currentTime = System.currentTimeMillis();
+    insertTabletNode.getTimes()[0] = currentTime;
+    insertTabletNode.getTimes()[1] = currentTime - 2000;
+
+    try {
+      dataRegion.insertTablet(insertTabletNode);
+      Assert.fail("The expired row should make the tablet insertion fail");
+    } catch (final BatchProcessException e) {
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), e.getFailingStatus()[0].getCode());
+      Assert.assertEquals(
+          TSStatusCode.OUT_OF_TTL.getStatusCode(), e.getFailingStatus()[1].getCode());
+    }
+
+    long insertedPoints = 0;
+    for (final TsFileProcessor processor : dataRegion.getWorkSequenceTsFileProcessors()) {
+      if (processor.getWorkMemTable() != null) {
+        insertedPoints += processor.getWorkMemTable().getTotalPointsNum();
+      }
+    }
+    for (final TsFileProcessor processor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
+      if (processor.getWorkMemTable() != null) {
+        insertedPoints += processor.getWorkMemTable().getTotalPointsNum();
+      }
+    }
+    // The alive relational row contains one ATTRIBUTE column and one FIELD column.
+    Assert.assertEquals(2, insertedPoints);
   }
 
   @Test
