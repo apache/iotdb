@@ -23,6 +23,7 @@ import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -38,6 +39,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The one cleanup service of a DataNode for the staged directories of LOAD tasks.
@@ -48,6 +50,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * any more, that is, once every replica has applied that index. This service scans the directories
  * of every DataRegion, reads those tails, and deletes the directory once the region reports that
  * the index has been reached.
+ *
+ * <p>The scan is a periodical job of the node rather than a thread of this service: it runs on the
+ * periodical job executor the low frequency background jobs of the DataNode share, so a node with
+ * many DataRegions still sweeps with that one thread, and the job needs no lifecycle of its own -
+ * the executor is started and stopped with the node.
  */
 public class LoadTsFileCleaner {
 
@@ -56,10 +63,26 @@ public class LoadTsFileCleaner {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final LoadTsFileCleaner INSTANCE = new LoadTsFileCleaner();
 
+  /** The id this service is registered under in the periodical job executor of the node. */
+  private static final String SWEEP_JOB_ID = "LoadTsFileCleaner#sweep";
+
   /** Tasks whose directory is known to be finished, so that a scan is not always needed. */
   private final Map<String, RetainedTask> loadId2RetainedTask = new ConcurrentHashMap<>();
 
-  private volatile Thread sweepThread;
+  /**
+   * Whether the sweep was handed to the periodical job executor. That executor runs every
+   * periodical job of the node on one shared thread and offers no way to unregister a single job,
+   * so the job is registered at most once and {@link #stop()} pauses it through {@link #sweeping}
+   * instead.
+   */
+  private final AtomicBoolean sweepJobRegistered = new AtomicBoolean(false);
+
+  /**
+   * Whether the periodical job still sweeps. The sweep is also asked for directly, by the region
+   * that just learned that a command reached every replica, and those calls are not affected by
+   * this flag.
+   */
+  private volatile boolean sweeping;
 
   private LoadTsFileCleaner() {}
 
@@ -68,24 +91,33 @@ public class LoadTsFileCleaner {
   }
 
   /**
-   * Starts the DataNode level sweeping thread. The thread is a daemon: a node that goes down
-   * mid-sweep leaves nothing but directories that the next scan finds again.
+   * Lets the periodical job executor of this DataNode sweep the staged directories from now on. The
+   * job itself is registered only once; the executor is started and stopped with the node, so a
+   * node that goes down mid-sweep leaves nothing but directories that the next scan finds again.
    */
-  public synchronized void start() {
-    if (sweepThread != null) {
+  public void start() {
+    sweeping = true;
+    if (!sweepJobRegistered.compareAndSet(false, true)) {
       return;
     }
-    sweepThread = new Thread(this::sweepLoop, "load-tsfile-cleaner");
-    sweepThread.setDaemon(true);
-    sweepThread.start();
+    // The former cleanup task of LOAD used the same configuration for its own delay, and the
+    // executor rounds the interval up to its own resolution: unlike the sleep this replaces, an
+    // interval shorter than that resolution sweeps less often than configured, never more.
+    PipeDataNodeAgent.runtime()
+        .registerPeriodicalJob(
+            SWEEP_JOB_ID,
+            this::sweepSafely,
+            Math.max(1L, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds()));
   }
 
-  public synchronized void stop() {
-    final Thread thread = sweepThread;
-    sweepThread = null;
-    if (thread != null) {
-      thread.interrupt();
-    }
+  /**
+   * Stops the periodical sweep. A single job cannot be dropped from the shared executor, so it
+   * stays registered and the rounds that follow find nothing to do until the next {@link #start()};
+   * a directory that is still waiting by then is deleted by the next run that sweeps, which is the
+   * one of the next node start at the latest.
+   */
+  public void stop() {
+    sweeping = false;
     loadId2RetainedTask.clear();
   }
 
@@ -103,21 +135,18 @@ public class LoadTsFileCleaner {
         loadId, new RetainedTask(loadId, dataRegion, taskDir, searchIndex, terminalOp));
   }
 
-  private void sweepLoop() {
-    final long intervalInMs =
-        Math.max(1000L, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000L);
-    while (!Thread.currentThread().isInterrupted()) {
-      try {
-        Thread.sleep(intervalInMs);
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return;
-      }
-      try {
-        sweep();
-      } catch (final Throwable t) {
-        LOGGER.warn(StorageEngineMessages.LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D, t);
-      }
+  /**
+   * One round of the periodical job: a sweep that fails is confined to the round that caused it,
+   * because a directory that survives a failed sweep is found again by the next one.
+   */
+  private void sweepSafely() {
+    if (!sweeping) {
+      return;
+    }
+    try {
+      sweep();
+    } catch (final Throwable t) {
+      LOGGER.warn(StorageEngineMessages.LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D, t);
     }
   }
 
@@ -180,7 +209,7 @@ public class LoadTsFileCleaner {
       try {
         return LoadTsFileProgress.readTerminal(file);
       } catch (final IOException e) {
-        LOGGER.warn(LoadStagingDirs.MESSAGE_DELETE_FAIL, file.getPath(), e);
+        LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, file.getPath(), e);
         return null;
       }
     }
@@ -212,9 +241,6 @@ public class LoadTsFileCleaner {
   }
 
   /**
-   * Whether every replica already applied the command, so that nobody reads these bytes any more.
-   */
-  /**
    * Whether every staged TsFile of a directory arrived completely: its progress records cover the
    * file without a hole, up to its end. A hole means a piece never arrived, and deleting the
    * directory then would lose the bytes a replica still has to read back.
@@ -236,7 +262,7 @@ public class LoadTsFileCleaner {
           return false;
         }
       } catch (final IOException e) {
-        LOGGER.warn(LoadStagingDirs.MESSAGE_DELETE_FAIL, tsFile.getPath(), e);
+        LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, tsFile.getPath(), e);
         return false;
       }
     }
@@ -285,7 +311,7 @@ public class LoadTsFileCleaner {
         try {
           Files.deleteIfExists(file.toPath());
         } catch (final IOException e) {
-          LOGGER.warn(LoadStagingDirs.MESSAGE_DELETE_FAIL, file.getPath(), e);
+          LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, file.getPath(), e);
         }
       }
     }
@@ -303,7 +329,8 @@ public class LoadTsFileCleaner {
           new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
       Files.deleteIfExists(LoadTsFileProgress.progressFileFor(tsFile).toPath());
     } catch (final IOException e) {
-      LOGGER.warn(LoadStagingDirs.MESSAGE_DELETE_FAIL, tsFile.getAbsolutePath(), e);
+      LOGGER.warn(
+          StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, tsFile.getAbsolutePath(), e);
     }
   }
 

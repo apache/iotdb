@@ -56,6 +56,10 @@ public final class StorageEngineMessages {
       "Failed to enumerate the LOAD snapshot file %s: %s";
   public static final String EXCEPTION_FAILED_TO_ENUMERATE_THE_LOAD_SNAPSHOT_DIRECTORY_ARG_ARG_E2890E70 =
       "Failed to enumerate the LOAD snapshot directory %s: %s";
+  public static final String MESSAGE_THE_DIRECTORY_IS_UNREADABLE_OR_MISSING_54036A44 =
+      "the directory is unreadable or missing";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_509E36FD =
+      "The LOAD snapshot progress file %s cannot be read back: %s";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
@@ -601,6 +605,9 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_TABLE_ARG_ARG_DOES_NOT_EXIST_WHEN_APPLYING_LOAD_CHUNK_DATA_IT_MAY_HAVE_BEEN_DROPPED_AFTER_THE_LOAD_WAS_ANALYZED_DDB35F93 =
       "Table '%s.%s' does not exist when applying LOAD chunk data. It may have been dropped after the LOAD was analyzed.";
   public static final String TASK_DIR_NOT_EMPTY_SKIP_DELETE = "Task dir {} is not empty, skip deleting.";
+  public static final String LOG_FAILED_TO_DELETE_ARG_3A7BD6FD = "failed to delete {}.";
+  public static final String EXCEPTION_TSFILEWRITERMANAGER_OF_ARG_HAS_BEEN_CLOSED_2FA43AAB =
+      "%s TsFileWriterManager has been closed.";
   public static final String LOAD_CLEANUP_TASK_CANCELED = "Load cleanup task {} is canceled.";
   public static final String LOAD_CLEANUP_TASK_STARTS = "Load cleanup task {} starts.";
   public static final String LOAD_CLEANUP_TASK_ERROR = "Load cleanup task {} error.";
