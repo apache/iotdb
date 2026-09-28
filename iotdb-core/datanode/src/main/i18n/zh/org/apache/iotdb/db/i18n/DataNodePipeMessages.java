@@ -2062,8 +2062,15 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：打开 near-live WAL 文件 {} 失败，不加入黑名单并重试";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator：读取 WAL 出错";
-  public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
-      "ProgressWALIterator：打开 WAL 文件 {} 失败，跳过该文件";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
+      "ProgressWALIterator：处理 WAL 文件 {} 失败，跳过该文件的剩余条目";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_IDENTIFY_UNREADABLE_WAL_FILE_7BA9F422 =
+          "重放时无法确定不可读的 WAL 文件";
+  public static final String
+      SUBSCRIPTION_ERROR_WAL_REPLAY_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_D60C5FB2 =
+          "订阅 WAL 重放跳过了 %d 个无法读取的保留 WAL 文件。这些文件中的历史数据无法投递。";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
       "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
           + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";

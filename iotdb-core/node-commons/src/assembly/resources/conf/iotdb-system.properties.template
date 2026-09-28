@@ -1752,6 +1752,12 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
+# Maximum size of one WAL entry
+# If it is non-positive, follow wal_buffer_size_in_byte.
+# effectiveMode: restart
+# Datatype: int
+wal_entry_size_limit_in_byte=-1
+
 # Whether to cache the sorted WAL file list in each WAL node.
 # Enabling this avoids scanning and sorting the WAL directory whenever the file list is accessed,
 # including when a consensus request reader updates its files to search.

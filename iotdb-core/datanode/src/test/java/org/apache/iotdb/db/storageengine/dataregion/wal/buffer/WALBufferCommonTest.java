@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -48,7 +50,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static org.apache.iotdb.rpc.TSStatusCode.WAL_ENTRY_TOO_LARGE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public abstract class WALBufferCommonTest {
@@ -167,11 +171,34 @@ public abstract class WALBufferCommonTest {
   public void testHugeWrite() throws Exception {
     // use small buffer (only 32 bytes) to simulate huge write request
     int prevWalBufferSize = config.getWalBufferSize();
+    int prevWalEntrySizeLimit = config.getWalEntrySizeLimitInByte();
     config.setWalBufferSize(32);
+    config.setWalEntrySizeLimitInByte(Integer.MAX_VALUE);
     try {
       testConcurrentWrite();
     } finally {
       config.setWalBufferSize(prevWalBufferSize);
+      config.setWalEntrySizeLimitInByte(prevWalEntrySizeLimit);
+    }
+  }
+
+  @Test
+  public void testRejectEntryExceedingConfiguredSizeLimit() throws Exception {
+    final InsertRowNode insertRowNode = getInsertRowNode(devicePath, 1L);
+    final WALEntry walEntry = new WALInfoEntry(1L, insertRowNode, true);
+    final int previousEntrySizeLimit = config.getWalEntrySizeLimitInByte();
+    try {
+      config.setWalEntrySizeLimitInByte(walEntry.serializedSize() - 1);
+      walBuffer.write(walEntry);
+
+      assertEquals(WALFlushListener.Status.FAILURE, walEntry.getWalFlushListener().waitForResult());
+      assertTrue(walEntry.getWalFlushListener().getCause() instanceof IoTDBRuntimeException);
+      assertEquals(
+          WAL_ENTRY_TOO_LARGE.getStatusCode(),
+          ((IoTDBRuntimeException) walEntry.getWalFlushListener().getCause()).getErrorCode());
+      assertTrue(walBuffer.isAllWALEntriesConsumed());
+    } finally {
+      config.setWalEntrySizeLimitInByte(previousEntrySizeLimit);
     }
   }
 }
