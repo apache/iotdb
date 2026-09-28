@@ -93,6 +93,12 @@ public class PipeSinkSubtaskManager {
                   PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
                   PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
+      realTimeFirst |=
+          pipeSinkParameters.getBooleanOrDefault(
+              Arrays.asList(
+                  PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY,
+                  PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY),
+              PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_DEFAULT_VALUE);
     }
     final String attributeDisplayStringWithPrefix =
         isDataRegionSink

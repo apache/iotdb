@@ -274,6 +274,16 @@ public class PipeDataNodeTaskBuilder {
 
   private static void injectParameters(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+    if (Boolean.TRUE
+            .toString()
+            .equals(sinkParameters.getStringByKeys(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY))
+        && sinkParameters.getBooleanByKeys(
+                PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY,
+                PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY)
+            == null) {
+      sinkParameters.addAttribute(
+          PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.TRUE.toString());
+    }
     final String sourcePluginName =
         sourceParameters
             .getStringOrDefault(

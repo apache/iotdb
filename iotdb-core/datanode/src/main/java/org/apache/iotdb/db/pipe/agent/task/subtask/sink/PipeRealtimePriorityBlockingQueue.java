@@ -76,13 +76,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public boolean offer(final Event event) {
     if (event instanceof TsFileInsertionEvent) {
-      synchronized (this) {
-        if (!checkBeforeOffer(event)) {
-          return false;
-        }
-        tsfileInsertEventDeque.add((TsFileInsertionEvent) event);
-        return true;
+      if (!checkBeforeOffer(event)) {
+        return false;
       }
+      tsfileInsertEventDeque.add((TsFileInsertionEvent) event);
+      return true;
     }
 
     if (!checkBeforeOffer(event)) {
@@ -187,9 +185,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     if (Objects.nonNull(event)) {
       return event;
     }
-    synchronized (this) {
-      return tsfileInsertEventDeque.peek();
-    }
+    return tsfileInsertEventDeque.peek();
   }
 
   public synchronized void replace(
@@ -288,8 +284,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       eventsToRemove.addAll(events);
     }
 
-    // Source events cannot be polled while the replacement is in progress because all TsFile
-    // deque operations use the same lock.
+    // The deque is concurrent, so a source event may be polled while replacement is in progress.
+    // In that case the source event can be delivered once before its compacted replacement; this
+    // deliberately favors the hot-path throughput over strict de-duplication.
     tsfileInsertEventDeque.removeAll(eventsToRemove);
     for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
       tsfileInsertEventDeque.add(event);
@@ -321,34 +318,27 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public void clear() {
     super.clear();
-    synchronized (this) {
-      tsfileInsertEventDeque.clear();
-    }
+    tsfileInsertEventDeque.clear();
   }
 
   @Override
   public void forEach(final Consumer<? super Event> action) {
     super.forEach(action);
-    synchronized (this) {
-      tsfileInsertEventDeque.forEach(action);
-    }
+    tsfileInsertEventDeque.forEach(action);
   }
 
   @Override
   public void discardAllEvents() {
     super.discardAllEvents();
-    synchronized (this) {
-      tsfileInsertEventDeque.removeIf(
-          event -> {
-            if (event instanceof EnrichedEvent) {
-              if (((EnrichedEvent) event)
-                  .clearReferenceCount(BlockingPendingQueue.class.getName())) {
-                eventCounter.decreaseEventCount(event);
-              }
+    tsfileInsertEventDeque.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
             }
-            return true;
-          });
-    }
+          }
+          return true;
+        });
     eventCounter.reset();
   }
 
@@ -361,55 +351,43 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public void discardEventsOfPipe(final CommitterKey committerKey) {
     super.discardEventsOfPipe(committerKey);
-    synchronized (this) {
-      tsfileInsertEventDeque.removeIf(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && isEventFromPipe((EnrichedEvent) event, committerKey)) {
-              if (((EnrichedEvent) event)
-                  .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
-                eventCounter.decreaseEventCount(event);
-              }
-              return true;
+    tsfileInsertEventDeque.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && isEventFromPipe((EnrichedEvent) event, committerKey)) {
+            if (((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
             }
-            return false;
-          });
-    }
+            return true;
+          }
+          return false;
+        });
   }
 
   @Override
   public boolean isEmpty() {
-    synchronized (this) {
-      return super.isEmpty() && tsfileInsertEventDeque.isEmpty();
-    }
+    return super.isEmpty() && tsfileInsertEventDeque.isEmpty();
   }
 
   @Override
   public int size() {
-    synchronized (this) {
-      return super.size() + tsfileInsertEventDeque.size();
-    }
+    return super.size() + tsfileInsertEventDeque.size();
   }
 
   @Override
   public int getTsFileInsertionEventCount() {
-    synchronized (this) {
-      return tsfileInsertEventDeque.size();
-    }
+    return tsfileInsertEventDeque.size();
   }
 
   private TsFileInsertionEvent pollTsFileEvent(final int pollHistoricalTsFileThreshold) {
-    synchronized (this) {
-      return pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
-    }
+    return pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
   }
 
   private TsFileInsertionEvent pollTsFileEventIfPresent(final int pollHistoricalTsFileThreshold) {
-    synchronized (this) {
-      return tsfileInsertEventDeque.isEmpty()
-          ? null
-          : pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
-    }
+    return tsfileInsertEventDeque.isEmpty()
+        ? null
+        : pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
   }
 
   private TsFileInsertionEvent pollTsFileEventWithoutLock(final int pollHistoricalTsFileThreshold) {

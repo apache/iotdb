@@ -93,6 +93,48 @@ public class PipeDataNodeTaskBuilderTest {
   }
 
   @Test
+  public void testPreprocessParametersEnablesCompactionForNewPipe() {
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+
+    PipeDataNodeTaskBuilder.preprocessParameters(
+        new PipeParameters(new HashMap<>()), sinkParameters);
+
+    Assert.assertEquals(
+        Boolean.TRUE.toString(),
+        sinkParameters.getStringByKeys(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY));
+  }
+
+  @Test
+  public void testPreprocessParametersKeepsCompactionDisabledForRestoredPipe() {
+    final PipeParameters sinkParameters = new PipeParameters(new HashMap<>());
+
+    PipeDataNodeTaskBuilder.preprocessParameters(
+        new PipeParameters(new HashMap<>()), sinkParameters);
+
+    Assert.assertNull(
+        sinkParameters.getBooleanByKeys(
+            PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY,
+            PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY));
+  }
+
+  @Test
+  public void testPreprocessParametersKeepsExplicitCompactionValue() {
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
+    sinkAttributes.put(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.FALSE.toString());
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+
+    PipeDataNodeTaskBuilder.preprocessParameters(
+        new PipeParameters(new HashMap<>()), sinkParameters);
+
+    Assert.assertEquals(
+        Boolean.FALSE,
+        sinkParameters.getBooleanByKeys(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY));
+  }
+
+  @Test
   public void testPreprocessParametersInjectsEventUserForExternalWriteBackSink() {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put(PipeSourceConstant.EXTRACTOR_KEY, "external-source");
