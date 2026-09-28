@@ -89,6 +89,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
@@ -180,6 +181,10 @@ public class ConsensusPrefetchingQueue {
       SubscriptionConfig.getInstance().getSubscriptionConsensusPrefetchingQueueCapacity();
 
   private final AtomicLong walGapSkippedEntries = new AtomicLong(0);
+
+  private final AtomicReference<String> pendingWalReplayError = new AtomicReference<>();
+
+  private int reportedSkippedBrokenWalFileCount = 0;
 
   /**
    * Guards queue state transitions that touch replay positioning, seek state, and writer buffers.
@@ -750,6 +755,10 @@ public class ConsensusPrefetchingQueue {
     try {
       if (isClosed || closeRequested || !isActive) {
         return null;
+      }
+      final String walReplayError = pendingWalReplayError.getAndSet(null);
+      if (Objects.nonNull(walReplayError)) {
+        return generateErrorResponse(walReplayError);
       }
       if (!prefetchInitialized && !initPrefetch(regionProgress)) {
         return null;
@@ -1935,11 +1944,13 @@ public class ConsensusPrefetchingQueue {
     }
 
     ensureSubscriptionWalReadable();
+    reportUnreadableWalReplayIfNecessary();
 
     int entriesRead = 0;
     while (entriesRead < maxWalEntries
         && subscriptionWALIterator.hasNext()
         && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      reportUnreadableWalReplayIfNecessary();
       try {
         final IndexedConsensusRequest walEntry = subscriptionWALIterator.next();
         entriesRead++;
@@ -1976,6 +1987,7 @@ public class ConsensusPrefetchingQueue {
         break;
       }
     }
+    reportUnreadableWalReplayIfNecessary();
 
     if (entriesRead > 0) {
       LOGGER.debug(
@@ -1986,6 +1998,22 @@ public class ConsensusPrefetchingQueue {
           nextExpectedSearchIndex.get());
     }
     return MaterializationResult.SUCCESS;
+  }
+
+  private void reportUnreadableWalReplayIfNecessary() {
+    if (Objects.isNull(subscriptionWALIterator)) {
+      return;
+    }
+    final int skippedBrokenWalFileCount = subscriptionWALIterator.getSkippedBrokenWalFileCount();
+    if (skippedBrokenWalFileCount <= reportedSkippedBrokenWalFileCount) {
+      return;
+    }
+    reportedSkippedBrokenWalFileCount = skippedBrokenWalFileCount;
+    pendingWalReplayError.set(
+        String.format(
+            DataNodePipeMessages
+                .SUBSCRIPTION_ERROR_WAL_REPLAY_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_D60C5FB2,
+            skippedBrokenWalFileCount));
   }
 
   private void advanceWalReplayCursorIfPresent(final IndexedConsensusRequest request) {
@@ -2011,14 +2039,24 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void ensureSubscriptionWalReadable() {
-    if (Objects.isNull(subscriptionWALIterator) || subscriptionWALIterator.hasNext()) {
+    if (Objects.isNull(subscriptionWALIterator)) {
       return;
     }
+    if (subscriptionWALIterator.hasNext()) {
+      reportUnreadableWalReplayIfNecessary();
+      return;
+    }
+    reportUnreadableWalReplayIfNecessary();
 
     // Listing and sorting all retained WAL files is only necessary after the iterator is
     // exhausted. While it still has a readable request, refreshing cannot affect the next result.
     subscriptionWALIterator.refresh();
-    if (subscriptionWALIterator.hasNext() || !(consensusReqReader instanceof WALNode)) {
+    if (subscriptionWALIterator.hasNext()) {
+      reportUnreadableWalReplayIfNecessary();
+      return;
+    }
+    reportUnreadableWalReplayIfNecessary();
+    if (!(consensusReqReader instanceof WALNode)) {
       return;
     }
 
@@ -2039,6 +2077,7 @@ public class ConsensusPrefetchingQueue {
 
   private void resetSubscriptionWALPosition(final long startSearchIndex) {
     closeSubscriptionWALIterator();
+    reportedSkippedBrokenWalFileCount = 0;
     subscriptionWALIterator = createSubscriptionWALIterator(startSearchIndex);
   }
 

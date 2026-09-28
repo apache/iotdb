@@ -214,6 +214,9 @@ public class IoTDBConfig {
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
 
+  /** Maximum size of one WAL entry. A non-positive value follows walBufferSize. Unit: byte */
+  private int walEntrySizeLimitInByte = -1;
+
   /** Blocking queue capacity of each delete ahead log buffer */
   private int deletionAheadLogBufferQueueCapacity = 500;
 
@@ -2233,6 +2236,14 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
+  }
+
+  public int getWalEntrySizeLimitInByte() {
+    return walEntrySizeLimitInByte > 0 ? walEntrySizeLimitInByte : walBufferSize;
+  }
+
+  public void setWalEntrySizeLimitInByte(int walEntrySizeLimitInByte) {
+    this.walEntrySizeLimitInByte = walEntrySizeLimitInByte;
   }
 
   public int getDeletionAheadLogBufferQueueCapacity() {

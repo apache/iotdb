@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.ResidualDataProtectionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -69,6 +70,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFAULT_SEARCH_INDEX;
+import static org.apache.iotdb.rpc.TSStatusCode.WAL_ENTRY_TOO_LARGE;
 
 /**
  * This buffer guarantees the concurrent safety and uses double buffers mechanism to accelerate
@@ -252,6 +254,23 @@ public class WALBuffer extends AbstractWALBuffer {
           identifier);
       walEntry.getWalFlushListener().fail(new WALNodeClosedException(identifier));
       return;
+    }
+    if (!walEntry.isSignal() && walEntry.getType() != WALEntryType.MEMORY_TABLE_CHECKPOINT) {
+      final int serializedSize = walEntry.serializedSize();
+      final int entrySizeLimit = config.getWalEntrySizeLimitInByte();
+      if (serializedSize > entrySizeLimit) {
+        walEntry
+            .getWalFlushListener()
+            .fail(
+                new IoTDBRuntimeException(
+                    String.format(
+                        StorageEngineMessages
+                            .EXCEPTION_THE_WAL_ENTRY_SIZE_ARG_EXCEEDS_WAL_ENTRY_SIZE_LIMIT_IN_BYTE_ARG_691BB408,
+                        serializedSize,
+                        entrySizeLimit),
+                    WAL_ENTRY_TOO_LARGE.getStatusCode()));
+        return;
+      }
     }
     // just add this WALEntry to queue
     try {
