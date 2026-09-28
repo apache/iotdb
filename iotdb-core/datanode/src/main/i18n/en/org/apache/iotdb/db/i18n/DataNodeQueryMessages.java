@@ -799,6 +799,12 @@ public final class DataNodeQueryMessages {
       "Show Index statement is not supported yet.";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "Update can only specify attribute columns.";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "Cannot update %s column '%s'. UPDATE can only specify ATTRIBUTE columns.";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
