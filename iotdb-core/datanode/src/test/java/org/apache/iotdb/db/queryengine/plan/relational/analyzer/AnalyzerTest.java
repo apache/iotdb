@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -45,13 +46,19 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -78,6 +85,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -137,6 +146,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -1120,6 +1130,134 @@ public class AnalyzerTest {
   @Test
   public void testCountDeviceWithWhereCanBeAnalyzedAgain() {
     assertDeviceQueryCanBeAnalyzedAgain("COUNT DEVICES FROM table1 WHERE tag1 = 'shanghai'");
+  }
+
+  @Test
+  public void testPipeTransferredUpdateRejectsInvalidTarget() {
+    final String database = "testdb";
+    final TsTable tsTable = new TsTable(table);
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+
+    try {
+      final Update statement =
+          new Update(
+              null,
+              new Table(QualifiedName.of(database, table)),
+              Collections.singletonList(
+                  new UpdateAssignment(new SymbolReference("s1"), new StringLiteral("invalid"))),
+              null);
+      final SessionInfo session =
+          new SessionInfo(0, "test", ZoneId.systemDefault(), database, SqlDialect.TABLE);
+      final MPPQueryContext queryContext =
+          new MPPQueryContext("", new QueryId("pipe_update_field"), session, null, null);
+
+      final SemanticException exception =
+          assertThrows(
+              SemanticException.class,
+              () ->
+                  analyzeStatement(
+                      statement, TEST_MATADATA, queryContext, new SqlParser(), session));
+      assertEquals(
+          "Cannot update FIELD column 's1'. UPDATE can only specify ATTRIBUTE columns.",
+          exception.getMessage());
+
+      final Update unknownColumnStatement =
+          new Update(
+              null,
+              new Table(QualifiedName.of(database, table)),
+              Collections.singletonList(
+                  new UpdateAssignment(
+                      new SymbolReference("missing_column"), new StringLiteral("invalid"))),
+              null);
+      final MPPQueryContext unknownColumnQueryContext =
+          new MPPQueryContext("", new QueryId("pipe_update_unknown_column"), session, null, null);
+
+      final SemanticException unknownColumnException =
+          assertThrows(
+              SemanticException.class,
+              () ->
+                  analyzeStatement(
+                      unknownColumnStatement,
+                      TEST_MATADATA,
+                      unknownColumnQueryContext,
+                      new SqlParser(),
+                      session));
+      assertEquals(
+          "Column 'missing_column' cannot be resolved", unknownColumnException.getMessage());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
+  }
+
+  @Test
+  public void testSqlUpdateRejectsInvalidColumnsWithExplicitErrors() {
+    final String database = "testdb";
+    final TsTable tsTable = new TsTable(table);
+    tsTable.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+
+    try {
+      assertUpdateSemanticException(
+          "UPDATE table1 SET S1 = 'invalid'",
+          "Cannot update FIELD column 's1'. UPDATE can only specify ATTRIBUTE columns.",
+          "sql_update_field_target");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET tag1 = 'invalid'",
+          "Cannot update TAG column 'tag1'. UPDATE can only specify ATTRIBUTE columns.",
+          "sql_update_tag_target");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET time = 1",
+          "Cannot update TIME column 'time'. UPDATE can only specify ATTRIBUTE columns.",
+          "sql_update_time_target");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET attr1 = s1",
+          "Cannot reference FIELD column 's1' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.",
+          "sql_update_field_value");
+      assertUpdateSemanticException(
+          "UPDATE table1 SET attr1 = time",
+          "Cannot reference TIME column 'time' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.",
+          "sql_update_time_value");
+      assertUpdateSemanticExceptionContains(
+          "UPDATE table1 SET attr1 = missing_column",
+          "Column 'missing_column' is not an attribute or tag column",
+          "sql_update_unknown_value");
+
+      final String validSql = "UPDATE table1 SET attr1 = tag1";
+      assertNotNull(
+          analyzeSQL(
+              validSql,
+              TEST_MATADATA,
+              new MPPQueryContext(
+                  validSql, new QueryId("sql_update_tag_value"), sessionInfo, null, null)));
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
+  }
+
+  private void assertUpdateSemanticException(
+      final String sql, final String expectedMessage, final String queryId) {
+    final MPPQueryContext queryContext =
+        new MPPQueryContext(sql, new QueryId(queryId), sessionInfo, null, null);
+    final SemanticException exception =
+        assertThrows(SemanticException.class, () -> analyzeSQL(sql, TEST_MATADATA, queryContext));
+    assertEquals(expectedMessage, exception.getMessage());
+  }
+
+  private void assertUpdateSemanticExceptionContains(
+      final String sql, final String expectedMessage, final String queryId) {
+    final MPPQueryContext queryContext =
+        new MPPQueryContext(sql, new QueryId(queryId), sessionInfo, null, null);
+    final SemanticException exception =
+        assertThrows(SemanticException.class, () -> analyzeSQL(sql, TEST_MATADATA, queryContext));
+    assertTrue(exception.getMessage(), exception.getMessage().contains(expectedMessage));
   }
 
   @Test
