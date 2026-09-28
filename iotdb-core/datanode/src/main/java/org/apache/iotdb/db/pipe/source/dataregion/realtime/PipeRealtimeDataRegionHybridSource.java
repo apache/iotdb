@@ -34,6 +34,8 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -49,6 +51,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -65,7 +69,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final Set<TsFileEpoch> degradedTsFileEpochs =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private final Deque<TsFileEpoch> regionLevelDegradedTsFileEpochs = new ArrayDeque<>();
+  private final Queue<TsFileEpoch> regionLevelDegradedTsFileEpochs =
+      new PriorityQueue<>(PipeRealtimeDataRegionHybridSource::compareTsFileEpochsByQueryPriority);
   private final Deque<PipeRealtimeEvent> eventsBeforeRegionLevelDowngrading = new ArrayDeque<>();
   private final Deque<PipeRealtimeEvent> regionLevelBufferedEvents = new ArrayDeque<>();
 
@@ -342,6 +347,11 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
         regionLevelTailTsFileEpoch = null;
       }
       markTsFileEpochDegradedUnderLock(tsFileEpoch);
+      if (isRegionLevelDowngradingEnabled
+          && shouldPreservePendingEvents
+          && !wasRegionLevelDegraded) {
+        eventsBeforeRegionLevelDowngrading.forEach(this::markTsFileEpochDegradedIfNeededUnderLock);
+      }
       if (isRegionLevelDowngradingEnabled) {
         // A downgrade discovered while supplying an event happens after all remaining pending
         // events. Track those events as the possible realtime tail before rebalancing the queues.
@@ -356,12 +366,61 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   private void markTsFileEpochDegradedUnderLock(final TsFileEpoch tsFileEpoch) {
     activeTsFileEpochs.add(tsFileEpoch);
     if (degradedTsFileEpochs.add(tsFileEpoch) && isRegionLevelDowngradingEnabled) {
-      regionLevelDegradedTsFileEpochs.offerLast(tsFileEpoch);
+      regionLevelDegradedTsFileEpochs.offer(tsFileEpoch);
     }
     if (isRegionLevelDowngradingEnabled) {
       isRegionLevelDegraded = true;
     }
     reportTsFileEpochDegradedStatusUnderLock();
+  }
+
+  private static int compareTsFileEpochsByQueryPriority(
+      final TsFileEpoch epoch1, final TsFileEpoch epoch2) {
+    final TsFileResource resource1 = epoch1.getResource();
+    final TsFileResource resource2 = epoch2.getResource();
+
+    int result =
+        new MergeReaderPriority(
+                resource1.getTsFileID().getTimestamp(),
+                resource1.getVersion(),
+                0,
+                resource1.isSeq())
+            .compareTo(
+                new MergeReaderPriority(
+                    resource2.getTsFileID().getTimestamp(),
+                    resource2.getVersion(),
+                    0,
+                    resource2.isSeq()));
+    if (result != 0) {
+      return result;
+    }
+
+    result =
+        Long.compare(
+            resource1.getTsFileID().compactionVersion, resource2.getTsFileID().compactionVersion);
+    return result != 0 ? result : resource1.getTsFilePath().compareTo(resource2.getTsFilePath());
+  }
+
+  private boolean shouldOrderTsFileEventUnderLock(final PipeRealtimeEvent event) {
+    if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
+      return false;
+    }
+
+    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    return degradedTsFileEpochs.contains(event.getTsFileEpoch())
+        || state == TsFileEpoch.State.USING_TSFILE
+        || state == TsFileEpoch.State.USING_BOTH;
+  }
+
+  private void markTsFileEpochDegradedIfNeededUnderLock(final PipeRealtimeEvent event) {
+    if (!shouldOrderTsFileEventUnderLock(event)) {
+      return;
+    }
+
+    if (regionLevelTailTsFileEpoch == event.getTsFileEpoch()) {
+      regionLevelTailTsFileEpoch = null;
+    }
+    markTsFileEpochDegradedUnderLock(event.getTsFileEpoch());
   }
 
   private void prepareRegionLevelTailTsFileEpochUnderLock(final TsFileEpoch tsFileEpoch) {
@@ -383,11 +442,34 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       return;
     }
 
-    regionLevelTailTsFileEpoch = null;
+    promoteTsFileEpochUnderLock(tsFileEpoch);
+  }
+
+  private void promoteTsFileEpochUnderLock(final TsFileEpoch tsFileEpoch) {
+    if (regionLevelTailTsFileEpoch == tsFileEpoch) {
+      regionLevelTailTsFileEpoch = null;
+    }
     tsFileEpoch.migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     PipeTsFileEpochProgressIndexKeeper.getInstance()
         .registerProgressIndex(dataRegionId, getTsFileDedupScopeID(), tsFileEpoch.getResource());
     markTsFileEpochDegradedUnderLock(tsFileEpoch);
+  }
+
+  private void promoteLowerPriorityActiveTsFileEpochsUnderLock() {
+    final TsFileEpoch nextDegradedTsFileEpoch = regionLevelDegradedTsFileEpochs.peek();
+    if (nextDegradedTsFileEpoch == null) {
+      return;
+    }
+
+    // An active epoch may be discovered as degraded only when its queued tablet is supplied. Make
+    // every known lower-priority epoch enter the ordered TsFile queue before allowing the current
+    // head to pass, including the realtime tail and epochs whose TsFile has not been flushed yet.
+    for (final TsFileEpoch activeTsFileEpoch : activeTsFileEpochs.toArray(new TsFileEpoch[0])) {
+      if (!degradedTsFileEpochs.contains(activeTsFileEpoch)
+          && compareTsFileEpochsByQueryPriority(activeTsFileEpoch, nextDegradedTsFileEpoch) < 0) {
+        promoteTsFileEpochUnderLock(activeTsFileEpoch);
+      }
+    }
   }
 
   private void bufferPendingEventsAndTrackRegionLevelTailUnderLock() {
@@ -407,8 +489,9 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private void rebalanceRegionLevelBufferedEventsUnderLock() {
     bufferPendingEventsForRegionLevelExitUnderLock();
+    promoteLowerPriorityActiveTsFileEpochsUnderLock();
 
-    final TsFileEpoch nextDegradedTsFileEpoch = regionLevelDegradedTsFileEpochs.peekFirst();
+    final TsFileEpoch nextDegradedTsFileEpoch = regionLevelDegradedTsFileEpochs.peek();
     final Deque<PipeRealtimeEvent> retainedEvents = new ArrayDeque<>();
     boolean nextDegradedTsFileEventPromoted = false;
     PipeRealtimeEvent bufferedEvent;
@@ -461,6 +544,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   private void bufferPendingEventsForRegionLevelExitUnderLock() {
     PipeRealtimeEvent event;
     while ((event = (PipeRealtimeEvent) pendingQueue.directPoll()) != null) {
+      markTsFileEpochDegradedIfNeededUnderLock(event);
       regionLevelBufferedEvents.offerLast(event);
     }
   }
@@ -670,7 +754,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
             || state == TsFileEpoch.State.USING_TSFILE
             || state == TsFileEpoch.State.USING_BOTH) {
           markTsFileEpochDegraded(realtimeEvent.getTsFileEpoch());
-          if (regionLevelDegradedTsFileEpochs.peekFirst() != realtimeEvent.getTsFileEpoch()) {
+          if (regionLevelDegradedTsFileEpochs.peek() != realtimeEvent.getTsFileEpoch()) {
             regionLevelBufferedEvents.offerLast(realtimeEvent);
             realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
             continue;
@@ -705,6 +789,12 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
           continue;
         }
 
+        if (shouldOrderTsFileEventUnderLock(realtimeEvent)) {
+          markTsFileEpochDegradedIfNeededUnderLock(realtimeEvent);
+          regionLevelBufferedEvents.offerLast(realtimeEvent);
+          continue;
+        }
+
         final Event suppliedEvent = supplyExtractedEvent(realtimeEvent);
         if (suppliedEvent != null) {
           return suppliedEvent;
@@ -729,7 +819,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
             || state == TsFileEpoch.State.USING_TSFILE
             || state == TsFileEpoch.State.USING_BOTH) {
           markTsFileEpochDegraded(realtimeEvent.getTsFileEpoch());
-          if (regionLevelDegradedTsFileEpochs.peekFirst() != realtimeEvent.getTsFileEpoch()) {
+          if (regionLevelDegradedTsFileEpochs.peek() != realtimeEvent.getTsFileEpoch()) {
             regionLevelBufferedEvents.offerLast(realtimeEvent);
             continue;
           }
@@ -746,6 +836,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     }
 
     canSupplyEventsBeforeRegionLevelDowngrading = false;
+    rebalanceRegionLevelBufferedEventsUnderLock();
     return null;
   }
 

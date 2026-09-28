@@ -1027,7 +1027,7 @@ public class PipeRealtimeExtractTest {
           TsFileEpoch.State.USING_TABLET, thirdTabletEvent.getTsFileEpoch().getState(extractor));
       Assert.assertFalse(thirdTabletEvent.getEvent().isReleased());
 
-      // Extract the first TsFile after the second one to verify that downgrade order, rather than
+      // Extract the first TsFile after the second one to verify that query priority, rather than
       // flush completion order, decides which file can pass downstream.
       final PipeRealtimeEvent firstTsFileEvent =
           bindToTestPipe(
@@ -1063,6 +1063,129 @@ public class PipeRealtimeExtractTest {
 
       Assert.assertNull(extractor.supply());
       Assert.assertNull(getGlobalTsFileEpochDegraded());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testHybridSourceRegionLevelDowngradingFollowsQueryPriority() throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try (final PipeRealtimeDataRegionHybridSource extractor =
+        new PipeRealtimeDataRegionHybridSource()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+
+      final TsFileResource loadedUnseqResource =
+          createTsFileResource(dataRegion1, "100-3-0-0.tsfile");
+      loadedUnseqResource.setSeq(false);
+      final PipeRealtimeEvent loadedUnseqTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false, "root.sg", loadedUnseqResource, true),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(loadedUnseqTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(loadedUnseqTsFileEvent);
+
+      final TsFileResource firstUnseqResource =
+          createTsFileResource(dataRegion1, "200-2-0-0.tsfile");
+      firstUnseqResource.setSeq(false);
+      final PipeRealtimeEvent firstUnseqTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("first-unseq-degraded-tablet", "a"),
+                  firstUnseqResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(firstUnseqTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+
+      CommonDescriptor.getInstance().getConfig().setPipeTotalFloatingMemoryProportion(0);
+      try {
+        extractor.extract(firstUnseqTabletEvent);
+      } finally {
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setPipeTotalFloatingMemoryProportion(pipeTotalFloatingMemoryProportion);
+      }
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TSFILE,
+          firstUnseqTabletEvent.getTsFileEpoch().getState(extractor));
+      firstUnseqTabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+
+      final TsFileResource seqResource = createTsFileResource(dataRegion1, "300-10-0-0.tsfile");
+      seqResource.setSeq(true);
+      final PipeRealtimeEvent seqTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("lower-priority-seq-tail", "a"),
+                  seqResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(seqTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(seqTabletEvent);
+
+      final PipeRealtimeEvent seqTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", seqResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(seqTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(seqTsFileEvent);
+
+      final PipeRealtimeEvent firstUnseqTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false, "root.sg", firstUnseqResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(firstUnseqTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(firstUnseqTsFileEvent);
+
+      // Seq has lower query priority than every unseq file, so the previously undegraded realtime
+      // tail must be promoted and sent before either unseq file. Within unseq, version 2 precedes
+      // version 3 even though the loaded version-3 event was queued before downgrading started.
+      final Event firstSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(firstSuppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertSame(seqTsFileEvent.getEvent(), firstSuppliedTsFile);
+      seqTabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      commitSuppliedEvent(firstSuppliedTsFile, commitManager);
+
+      final Event secondSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(secondSuppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertSame(firstUnseqTsFileEvent.getEvent(), secondSuppliedTsFile);
+      commitSuppliedEvent(secondSuppliedTsFile, commitManager);
+
+      final Event thirdSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(thirdSuppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertSame(loadedUnseqTsFileEvent.getEvent(), thirdSuppliedTsFile);
+      commitSuppliedEvent(thirdSuppliedTsFile, commitManager);
+
+      Assert.assertNull(getGlobalTsFileEpochDegraded());
+      Assert.assertNull(extractor.supply());
     } finally {
       commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
     }
