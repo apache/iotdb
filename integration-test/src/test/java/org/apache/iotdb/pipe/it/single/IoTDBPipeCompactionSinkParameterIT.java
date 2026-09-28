@@ -34,6 +34,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
@@ -41,24 +42,43 @@ import java.util.Map;
 public class IoTDBPipeCompactionSinkParameterIT extends AbstractPipeSingleIT {
 
   @Test
-  public void testCompactionSinkParameterIsPersisted() throws Exception {
+  public void testCompactionSinkParameterDefaultAndExplicitValueArePersisted() throws Exception {
     final Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.ip", "127.0.0.1");
     connectorAttributes.put("connector.port", "6667");
-    connectorAttributes.put(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.TRUE.toString());
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.createPipe(new TCreatePipeReq("compactionPipe", connectorAttributes)).getCode());
-      final TShowPipeInfo pipeInfo =
-          client.showPipe(new TShowPipeReq().setUserName("root")).getPipeInfoList().stream()
-              .filter(info -> "compactionPipe".equals(info.getId()))
+          client
+              .createPipe(new TCreatePipeReq("defaultCompactionPipe", connectorAttributes))
+              .getCode());
+
+      final Map<String, String> disabledConnectorAttributes = new HashMap<>(connectorAttributes);
+      disabledConnectorAttributes.put(
+          PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.FALSE.toString());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(new TCreatePipeReq("disabledCompactionPipe", disabledConnectorAttributes))
+              .getCode());
+
+      final List<TShowPipeInfo> pipeInfoList =
+          client.showPipe(new TShowPipeReq().setUserName("root")).getPipeInfoList();
+      final TShowPipeInfo defaultPipeInfo =
+          pipeInfoList.stream()
+              .filter(info -> "defaultCompactionPipe".equals(info.getId()))
               .findFirst()
               .orElseThrow();
-      Assert.assertTrue(pipeInfo.getPipeConnector().contains("enable-compaction=true"));
+      final TShowPipeInfo disabledPipeInfo =
+          pipeInfoList.stream()
+              .filter(info -> "disabledCompactionPipe".equals(info.getId()))
+              .findFirst()
+              .orElseThrow();
+      Assert.assertTrue(defaultPipeInfo.getPipeConnector().contains("enable-compaction=true"));
+      Assert.assertTrue(disabledPipeInfo.getPipeConnector().contains("enable-compaction=false"));
     }
   }
 }

@@ -90,9 +90,8 @@ public class PipeRealtimePriorityBlockingQueueTest {
   public void testPollCanRaceWithReplacementWithoutCorruptingQueue() throws Exception {
     final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
     final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
-    final PipeTsFileInsertionEvent event =
-        createEvent(temporaryFolder.newFile("queued.tsfile"), committerKey, 1L);
     final File sourceFile = temporaryFolder.newFile("source.tsfile");
+    final PipeTsFileInsertionEvent event = createEvent(sourceFile, committerKey, 1L);
     final CountDownLatch sourcePathRead = new CountDownLatch(1);
     final CountDownLatch allowReplacementToContinue = new CountDownLatch(1);
     final ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -102,7 +101,7 @@ public class PipeRealtimePriorityBlockingQueueTest {
               invocation -> {
                 sourcePathRead.countDown();
                 Assert.assertTrue(allowReplacementToContinue.await(5, TimeUnit.SECONDS));
-                return event.getTsFile();
+                return sourceFile;
               })
           .when(event)
           .getSourceTsFile();
@@ -120,7 +119,9 @@ public class PipeRealtimePriorityBlockingQueueTest {
 
       allowReplacementToContinue.countDown();
       replacementFuture.get(5, TimeUnit.SECONDS);
-      Assert.assertNotNull(pollFuture.get(5, TimeUnit.SECONDS));
+      Assert.assertSame(event, pollFuture.get(5, TimeUnit.SECONDS));
+      verify(event, never())
+          .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
     } finally {
       allowReplacementToContinue.countDown();
       executor.shutdownNow();

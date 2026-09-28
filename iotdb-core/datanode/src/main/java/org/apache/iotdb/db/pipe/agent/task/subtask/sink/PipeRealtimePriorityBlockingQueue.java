@@ -285,15 +285,17 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
 
     // The deque is concurrent, so a source event may be polled while replacement is in progress.
-    // In that case the source event can be delivered once before its compacted replacement; this
-    // deliberately favors the hot-path throughput over strict de-duplication.
-    tsfileInsertEventDeque.removeAll(eventsToRemove);
+    // Only release events that are still owned by this queue. If a poll wins the race, both the
+    // source event and its compacted replacement may be delivered; this deliberately favors the
+    // hot-path throughput over strict de-duplication.
+    final Set<PipeTsFileInsertionEvent> removedEvents =
+        eventsToRemove.stream().filter(tsfileInsertEventDeque::remove).collect(Collectors.toSet());
     for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
       tsfileInsertEventDeque.add(event);
       eventCounter.increaseEventCount(event);
     }
 
-    for (final PipeTsFileInsertionEvent event : eventsToRemove) {
+    for (final PipeTsFileInsertionEvent event : removedEvents) {
       try {
         event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
       } catch (final Exception e) {
