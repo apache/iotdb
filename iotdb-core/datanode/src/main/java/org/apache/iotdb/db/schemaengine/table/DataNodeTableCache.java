@@ -513,6 +513,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @Override
   public long getInstanceVersion() {
     return instanceVersion.get();
   }

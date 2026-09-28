@@ -54,6 +54,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -86,6 +87,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.apache.iotdb.db.storageengine.dataregion.DataRegionTest.buildInsertRowNodeByTSRecord;
@@ -142,6 +144,58 @@ public class TsFileProcessorTest {
     }
     config.setTargetChunkPointNum(defaultTargetChunkPointNum);
     config.setTargetChunkSize(defaultTargetChunkSize);
+  }
+
+  @Test
+  public void testRegisterToTsFileCachesTableSchemaByVersion() throws IOException {
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+
+    final AtomicInteger supplierCalls = new AtomicInteger();
+    final AtomicInteger secondTableSupplierCalls = new AtomicInteger();
+    final TableSchema firstSchema = new TableSchema("table1");
+    final TableSchema updatedSchema = new TableSchema("table1");
+    final TableSchema secondTableSchema = new TableSchema("table2");
+
+    processor.registerToTsFile(
+        "table1",
+        1,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+    processor.registerToTsFile(
+        "table1",
+        1,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+
+    Assert.assertEquals(1, supplierCalls.get());
+    Assert.assertSame(
+        firstSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table1"));
+
+    processor.registerToTsFile(
+        "table2",
+        1,
+        tableName -> {
+          secondTableSupplierCalls.incrementAndGet();
+          return secondTableSchema;
+        });
+
+    Assert.assertEquals(1, secondTableSupplierCalls.get());
+    Assert.assertSame(
+        secondTableSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table2"));
+
+    processor.registerToTsFile(
+        "table1",
+        2,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+
+    Assert.assertEquals(2, supplierCalls.get());
+    Assert.assertSame(
+        updatedSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table1"));
   }
 
   @Test
