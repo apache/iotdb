@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
-import org.apache.iotdb.db.utils.ManualPerformanceTestUtils;
-import org.apache.iotdb.db.utils.ManualPerformanceTestUtils.Measurement;
-import org.apache.iotdb.db.utils.ManualPerformanceTestUtils.Summary;
+import org.apache.iotdb.pipe.plugin.sink.opcua.ManualPerformanceTestUtils.Measurement;
+import org.apache.iotdb.pipe.plugin.sink.opcua.ManualPerformanceTestUtils.Summary;
 import org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace;
 import org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace.TabletRowConsumer;
 
