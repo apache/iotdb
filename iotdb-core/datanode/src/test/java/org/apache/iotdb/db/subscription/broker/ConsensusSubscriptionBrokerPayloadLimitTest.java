@@ -35,6 +35,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +43,7 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
 
   private static final String CONSUMER_GROUP_ID = "consumerGroup";
   private static final String CONSUMER_ID = "consumer";
+  private static final String OTHER_CONSUMER_ID = "otherConsumer";
   private static final String TOPIC_NAME = "topic";
 
   @Test
@@ -71,6 +73,57 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
     assertEquals(1, events.size());
     assertSame(firstEvent, events.get(0));
     verify(secondQueue).requeue(CONSUMER_ID, secondCommitContext);
+  }
+
+  @Test
+  public void testPollBorrowsReadyEventWhenAssignedQueueIsEmpty() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue fallbackQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue assignedQueue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent fallbackEvent = mock(SubscriptionEvent.class);
+
+    when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
+    when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
+    when(fallbackQueue.poll(CONSUMER_ID, null)).thenReturn(fallbackEvent);
+    when(fallbackEvent.getCurrentResponseSize()).thenReturn(30);
+    bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
+
+    // The first consumer initially owns both regions. After the second consumer joins, the stable
+    // ownership balancer moves DataRegion[2] to it and keeps DataRegion[1] with the first consumer.
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    final List<SubscriptionEvent> events =
+        broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+
+    assertEquals(1, events.size());
+    assertSame(fallbackEvent, events.get(0));
+    verify(assignedQueue).poll(CONSUMER_ID, null);
+    verify(fallbackQueue).poll(CONSUMER_ID, null);
+  }
+
+  @Test
+  public void testPollKeepsOwnershipAffinityWhenAssignedQueueHasData() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue fallbackQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue assignedQueue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent fallbackEvent = mock(SubscriptionEvent.class);
+    final SubscriptionEvent assignedEvent = mock(SubscriptionEvent.class);
+
+    when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
+    when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
+    when(fallbackQueue.poll(CONSUMER_ID, null)).thenReturn(fallbackEvent);
+    when(assignedQueue.poll(CONSUMER_ID, null)).thenReturn(assignedEvent);
+    when(assignedEvent.getCurrentResponseSize()).thenReturn(30);
+    bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
+
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    final List<SubscriptionEvent> events =
+        broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+
+    assertEquals(1, events.size());
+    assertSame(assignedEvent, events.get(0));
+    verify(fallbackQueue, never()).poll(CONSUMER_ID, null);
   }
 
   private static SubscriptionCommitContext newCommitContext(
