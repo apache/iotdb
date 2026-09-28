@@ -730,4 +730,7 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5 =
           "IoTDB Edge：ConfigNode 内部端口 %s 在 %s ms 内未就绪";
+  public static final String
+      LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
+          "关闭前转移 ConfigNode leader 失败，继续关闭。";
 }

@@ -151,6 +151,10 @@ public class NodeManager {
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
+  public NodeInfo getNodeInfo() {
+    return nodeInfo;
+  }
+
   /**
    * Get system configurations.
    *

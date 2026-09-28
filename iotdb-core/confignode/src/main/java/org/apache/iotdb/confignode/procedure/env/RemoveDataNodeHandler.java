@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -43,7 +42,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -55,6 +53,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -114,9 +113,11 @@ public class RemoveDataNodeHandler {
         (int)
             removedDataNodes.stream()
                 .filter(
-                    x ->
-                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
-                            != NodeStatus.Unknown)
+                    node ->
+                        !configManager
+                            .getLoadManager()
+                            .getNodeStatus(node.getDataNodeId())
+                            .isOffline())
                 .count();
 
     return availableDatanodeSize - removedDataNodeSize >= NodeInfo.getMinimumDataNode();
@@ -132,7 +133,8 @@ public class RemoveDataNodeHandler {
    *     Removing, Running, etc.)
    */
   public void changeDataNodeStatus(
-      List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap) {
+      List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap)
+      throws IOException {
     LOGGER.info(
         ProcedureMessages.BEGIN_TO_CHANGE_DATANODE_STATUS_NODESTATUSMAP,
         REMOVE_DATANODE_PROCESS,
@@ -150,27 +152,44 @@ public class RemoveDataNodeHandler {
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(changeDataNodeStatusContext);
 
+    StringBuilder statusChangeFailures = new StringBuilder();
     for (Map.Entry<Integer, TSStatus> entry :
         changeDataNodeStatusContext.getResponseMap().entrySet()) {
       int dataNodeId = entry.getKey();
       NodeStatus nodeStatus = nodeStatusMap.get(dataNodeId);
-      RegionStatus regionStatus = RegionStatus.valueOf(nodeStatus.getStatus());
 
-      if (!isSucceed(entry.getValue())) {
+      // Removing or restoring an offline status does not require a DataNode acknowledgement.
+      // Persistence is still required below, even if the RPC failed.
+      if (!isSucceed(entry.getValue()) && !nodeStatus.mayBeOffline()) {
         LOGGER.error(
             ProcedureMessages.FAILED_TO_CHANGE_DATANODE_STATUS_DATANODEID_NODESTATUS,
             REMOVE_DATANODE_PROCESS,
             dataNodeId,
             nodeStatus);
+        statusChangeFailures.append(
+            String.format(
+                ProcedureMessages
+                    .EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F,
+                dataNodeId,
+                nodeStatus,
+                entry.getValue()));
         continue;
       }
 
       // Force updating NodeStatus
       long currentTime = System.nanoTime();
-      configManager
-          .getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
+      TSStatus status =
+          configManager.getLoadManager().trySetNodeStatus(dataNodeId, nodeStatus, true);
+      if (!isSucceed(status)) {
+        // Do not advance the persisted procedure state before its node status is durable.
+        statusChangeFailures.append(
+            String.format(
+                ProcedureMessages.EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4,
+                dataNodeId,
+                nodeStatus,
+                status));
+        continue;
+      }
 
       LOGGER.info(
           ProcedureMessages.FORCE_UPDATE_NODECACHE_DATANODEID_NODESTATUS_CURRENTTIME,
@@ -180,6 +199,7 @@ public class RemoveDataNodeHandler {
           currentTime);
 
       // Force update RegionStatus
+      RegionStatus regionStatus = RegionStatus.fromNodeStatus(nodeStatus);
       if (regionStatus != RegionStatus.Removing) {
         Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
             new TreeMap<>();
@@ -194,6 +214,9 @@ public class RemoveDataNodeHandler {
                             dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
         configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
       }
+    }
+    if (statusChangeFailures.length() > 0) {
+      throw new IOException(statusChangeFailures.toString());
     }
   }
 
@@ -234,7 +257,7 @@ public class RemoveDataNodeHandler {
     final List<TDataNodeConfiguration> availableDataNodes =
         configManager
             .getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown)
+            .filterDataNodeThroughStatus(NodeStatus::isRegionCandidate)
             .stream()
             .filter(node -> !removedDataNodesSet.contains(node.getLocation().getDataNodeId()))
             .collect(Collectors.toList());
@@ -440,12 +463,18 @@ public class RemoveDataNodeHandler {
    *
    * @param removedDataNodes the list of DataNodeLocations to be removed
    */
-  public void removeDataNodePersistence(List<TDataNodeLocation> removedDataNodes) {
+  public void removeDataNodePersistence(List<TDataNodeLocation> removedDataNodes)
+      throws IOException {
     // Remove consensus record
     try {
-      configManager.getConsensusManager().write(new RemoveDataNodePlan(removedDataNodes));
+      TSStatus status =
+          configManager.getConsensusManager().write(new RemoveDataNodePlan(removedDataNodes));
+      if (!isSucceed(status)) {
+        throw new IOException(status.toString());
+      }
     } catch (ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      throw new IOException(e);
     }
 
     // Adjust maxRegionGroupNum
@@ -596,9 +625,11 @@ public class RemoveDataNodeHandler {
         (int)
             removeDataNodePlan.getDataNodeLocations().stream()
                 .filter(
-                    x ->
-                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
-                            != NodeStatus.Unknown)
+                    node ->
+                        !configManager
+                            .getLoadManager()
+                            .getNodeStatus(node.getDataNodeId())
+                            .isOffline())
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());

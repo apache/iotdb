@@ -1422,9 +1422,11 @@ service IConfigNodeRPCService {
 
   /**
    * Report that the specified DataNode will be shutdown.
-   * The ConfigNode-leader will mark it as Unknown.
+   * The leader requests Stopped, retaining Removing if set. Success confirms persistence.
+   * Without a report, heartbeat timeout produces Unknown only if no Stopped or Removing
+   * status can be retained, including a status restored from persistence.
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return SUCCESS_STATUS if the resulting status is persisted
    */
   common.TSStatus reportDataNodeShutdown(common.TDataNodeLocation dataNodeLocation)
 
@@ -1657,9 +1659,11 @@ service IConfigNodeRPCService {
 
   /**
    * Report that the specified ConfigNode will be shutdown.
-   * The ConfigNode-leader will mark it as Unknown.
+   * The leader requests Stopped, retaining Removing if set. Success confirms persistence.
+   * Without a report, heartbeat timeout produces Unknown only if no Stopped or Removing
+   * status can be retained, including a status restored from persistence.
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return SUCCESS_STATUS if the resulting status is persisted
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
