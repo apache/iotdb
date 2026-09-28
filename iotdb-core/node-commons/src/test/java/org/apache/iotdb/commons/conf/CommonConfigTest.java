@@ -39,4 +39,12 @@ public class CommonConfigTest {
         Boolean.FALSE.toString(),
         ConfigurationFileUtils.getConfigurationDefaultValue("subscription_enabled"));
   }
+
+  @Test
+  public void testConsensusSubscriptionCatchUpBatchDefaults() {
+    final CommonConfig config = new CommonConfig();
+
+    assertEquals(512, config.getSubscriptionConsensusBatchMaxTabletCount());
+    assertEquals(1024, config.getSubscriptionConsensusBatchMaxWalEntries());
+  }
 }
