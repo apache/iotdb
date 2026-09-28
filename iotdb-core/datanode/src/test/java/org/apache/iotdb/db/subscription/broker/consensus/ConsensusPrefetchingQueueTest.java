@@ -43,6 +43,8 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionConsumerAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
+import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutor;
+import org.apache.iotdb.db.subscription.task.subtask.ConsensusPrefetchSubtask;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
@@ -90,13 +92,87 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ConsensusPrefetchingQueueTest {
 
+  private static final long TEST_TIMEOUT_SECONDS = 5L;
+
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testCloseDetachesBlockedPrefetchCleanup() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("async-prefetch-close");
+    final CountDownLatch cleanupStarted = new CountDownLatch(1);
+    final CountDownLatch releaseCleanup = new CountDownLatch(1);
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.isTableModel()).thenReturn(true);
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final ConsensusPrefetchSubtask subtask = mock(ConsensusPrefetchSubtask.class);
+      final ConsensusSubscriptionPrefetchExecutor prefetchExecutor =
+          mock(ConsensusSubscriptionPrefetchExecutor.class);
+      when(subtask.isScheduledOrRunning()).thenReturn(true);
+      when(prefetchExecutor.isShutdown()).thenReturn(true);
+      doAnswer(
+              invocation -> {
+                cleanupStarted.countDown();
+                releaseCleanup.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                return null;
+              })
+          .when(subtask)
+          .awaitIdle();
+      setPrefetchBinding(queue, prefetchExecutor, subtask);
+
+      final long closeStartNanos = System.nanoTime();
+      queue.close();
+      final long closeElapsedMillis =
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - closeStartNanos);
+
+      assertTrue(closeElapsedMillis < 1000L);
+      assertTrue(cleanupStarted.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+      assertFalse(queue.isClosed());
+
+      releaseCleanup.countDown();
+      verify(subtask, timeout(TimeUnit.SECONDS.toMillis(TEST_TIMEOUT_SECONDS))).close();
+      assertTrue(queue.isClosed());
+    } finally {
+      releaseCleanup.countDown();
+      if (queue != null && !queue.isClosed()) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
 
   @Test
   public void testInitializationAndActivationUseIndependentMonitors() throws Exception {
@@ -2248,6 +2324,20 @@ public class ConsensusPrefetchingQueueTest {
     final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("lock");
     field.setAccessible(true);
     return (ReentrantReadWriteLock) field.get(queue);
+  }
+
+  private static void setPrefetchBinding(
+      final ConsensusPrefetchingQueue queue,
+      final ConsensusSubscriptionPrefetchExecutor executor,
+      final ConsensusPrefetchSubtask subtask)
+      throws Exception {
+    final Field executorField =
+        ConsensusPrefetchingQueue.class.getDeclaredField("prefetchExecutor");
+    executorField.setAccessible(true);
+    executorField.set(queue, executor);
+    final Field subtaskField = ConsensusPrefetchingQueue.class.getDeclaredField("prefetchSubtask");
+    subtaskField.setAccessible(true);
+    subtaskField.set(queue, subtask);
   }
 
   private static ProgressWALIterator subscriptionWalIterator(final ConsensusPrefetchingQueue queue)

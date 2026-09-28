@@ -34,12 +34,17 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class SubscriptionConsumerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumerAgent.class);
 
   private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
+
+  private final ConcurrentHashMap<String, ConsumerGroupOperationLock> consumerGroupOperationLocks =
+      new ConcurrentHashMap<>();
 
   public SubscriptionConsumerAgent() {
     this.consumerGroupMetaKeeper = new ConsumerGroupMetaKeeper();
@@ -67,16 +72,19 @@ public class SubscriptionConsumerAgent {
 
   public TPushConsumerGroupMetaRespExceptionMessage handleSingleConsumerGroupMetaChanges(
       final ConsumerGroupMeta consumerGroupMetaFromCoordinator) {
-    acquireWriteLock();
+    final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
     try {
-      if (consumerGroupMetaFromCoordinator.isEmpty()) {
-        handleDropConsumerGroupInternal(consumerGroupMetaFromCoordinator.getConsumerGroupId());
-      } else {
-        handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
-      }
+      executeWithConsumerGroupLock(
+          consumerGroupId,
+          () -> {
+            if (consumerGroupMetaFromCoordinator.isEmpty()) {
+              handleDropConsumerGroupInternal(consumerGroupId);
+            } else {
+              handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
+            }
+          });
       return null;
     } catch (final Exception e) {
-      final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C,
@@ -88,16 +96,13 @@ public class SubscriptionConsumerAgent {
               consumerGroupId, e);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
-    } finally {
-      releaseWriteLock();
     }
   }
 
   private void handleSingleConsumerGroupMetaChangesInternal(
       final ConsumerGroupMeta metaFromCoordinator) {
     final String consumerGroupId = metaFromCoordinator.getConsumerGroupId();
-    final ConsumerGroupMeta metaInAgent =
-        consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+    final ConsumerGroupMeta metaInAgent = getConsumerGroupMeta(consumerGroupId);
 
     // if consumer group meta does not exist on local agent
     if (Objects.isNull(metaInAgent)) {
@@ -106,7 +111,7 @@ public class SubscriptionConsumerAgent {
           consumerGroupId,
           metaFromCoordinator.getSubscribedTopicNames(),
           metaFromCoordinator.visibleUnder(true));
-      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+      replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       return;
     }
 
@@ -133,8 +138,7 @@ public class SubscriptionConsumerAgent {
           consumerGroupId,
           metaFromCoordinator.getSubscribedTopicNames(),
           metaFromCoordinator.visibleUnder(true));
-      consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
-      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+      replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       // no need to create broker manually
       return;
     }
@@ -182,8 +186,7 @@ public class SubscriptionConsumerAgent {
         () -> {
           // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully
           // checking the changes in its fields.
-          consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
-          consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+          replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
         });
   }
 
@@ -198,38 +201,35 @@ public class SubscriptionConsumerAgent {
 
   public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(
       final List<ConsumerGroupMeta> consumerGroupMetasFromCoordinator) {
-    acquireWriteLock();
-    try {
-      for (final ConsumerGroupMeta consumerGroupMetaFromCoordinator :
-          consumerGroupMetasFromCoordinator) {
-        try {
-          handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
-        } catch (final Exception e) {
-          final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
-          LOGGER.warn(
-              DataNodePipeMessages
-                  .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C,
-              consumerGroupId,
-              e);
-          final String exceptionMessage =
-              String.format(
-                  "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
-                  consumerGroupId, e);
-          return new TPushConsumerGroupMetaRespExceptionMessage(
-              consumerGroupId, exceptionMessage, System.currentTimeMillis());
-        }
+    for (final ConsumerGroupMeta consumerGroupMetaFromCoordinator :
+        consumerGroupMetasFromCoordinator) {
+      final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
+      try {
+        executeWithConsumerGroupLock(
+            consumerGroupId,
+            () -> handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator));
+      } catch (final Exception e) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C,
+            consumerGroupId,
+            e);
+        final String exceptionMessage =
+            String.format(
+                "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
+                consumerGroupId, e);
+        return new TPushConsumerGroupMetaRespExceptionMessage(
+            consumerGroupId, exceptionMessage, System.currentTimeMillis());
       }
-      return null;
-    } finally {
-      releaseWriteLock();
     }
+    return null;
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleDropConsumerGroup(
       final String consumerGroupId) {
-    acquireWriteLock();
     try {
-      handleDropConsumerGroupInternal(consumerGroupId);
+      executeWithConsumerGroupLock(
+          consumerGroupId, () -> handleDropConsumerGroupInternal(consumerGroupId));
       return null;
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.EXCEPTION_DROPPING_CONSUMER_GROUP, consumerGroupId, e);
@@ -238,8 +238,6 @@ public class SubscriptionConsumerAgent {
               "Subscription: Failed to drop consumer group %s, because %s", consumerGroupId, e);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
-    } finally {
-      releaseWriteLock();
     }
   }
 
@@ -258,7 +256,68 @@ public class SubscriptionConsumerAgent {
           consumerGroupId);
     }
 
-    consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+    removeConsumerGroupMeta(consumerGroupId);
+  }
+
+  private ConsumerGroupMeta getConsumerGroupMeta(final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void replaceConsumerGroupMeta(
+      final String consumerGroupId, final ConsumerGroupMeta consumerGroupMeta) {
+    acquireWriteLock();
+    try {
+      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, consumerGroupMeta);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void removeConsumerGroupMeta(final String consumerGroupId) {
+    acquireWriteLock();
+    try {
+      consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  void executeWithConsumerGroupLock(final String consumerGroupId, final Runnable operation) {
+    final ConsumerGroupOperationLock operationLock =
+        consumerGroupOperationLocks.compute(
+            consumerGroupId,
+            (ignored, existingLock) -> {
+              if (Objects.isNull(existingLock)) {
+                return new ConsumerGroupOperationLock();
+              }
+              existingLock.referenceCount++;
+              return existingLock;
+            });
+    operationLock.lock.lock();
+    try {
+      operation.run();
+    } finally {
+      operationLock.lock.unlock();
+      consumerGroupOperationLocks.computeIfPresent(
+          consumerGroupId,
+          (ignored, existingLock) -> {
+            if (existingLock != operationLock) {
+              return existingLock;
+            }
+            return --existingLock.referenceCount == 0 ? null : existingLock;
+          });
+    }
+  }
+
+  private static final class ConsumerGroupOperationLock {
+
+    private final ReentrantLock lock = new ReentrantLock(true);
+    private int referenceCount = 1;
   }
 
   public boolean isConsumerExisted(final String consumerGroupId, final String consumerId) {
