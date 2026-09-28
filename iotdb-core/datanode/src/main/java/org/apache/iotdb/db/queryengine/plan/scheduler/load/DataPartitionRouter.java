@@ -21,74 +21,125 @@ package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
- * LOAD chunk router: maps chunks to their target regions. {@link #route(List)} takes the
- * directionless chunk buffer and:
- *
- * <ol>
- *   <li>deduplicates the (device, time-partition) pairs, so many chunks over the same slot issue
- *       only one partition query per distinct slot;
- *   <li>resolves every distinct pair through {@link DataPartitionBatchFetcher};
- *   <li>returns the replica set of every input chunk, preserving the input order.
- * </ol>
- *
- * The caller ({@code TsFileSplitConsumer.routeChunkData()}) feeds the result to {@link
- * PieceDispatcher}, which performs the replica-set-change detection and appends the chunk to the
- * per-region piece.
+ * Routes unordered chunk data to designated data region replica sets. Deduplicates (device,
+ * time-partition) slots, queries partitions in batch, and reconstructs the mapped target replica
+ * set for every chunk in original input order.
  */
 class DataPartitionRouter {
 
   private final DataPartitionBatchFetcher partitionFetcher;
   private final String userName;
 
-  DataPartitionRouter(DataPartitionBatchFetcher partitionFetcher, String userName) {
-    this.partitionFetcher = partitionFetcher;
+  DataPartitionRouter(final DataPartitionBatchFetcher partitionFetcher, final String userName) {
+    this.partitionFetcher =
+        Objects.requireNonNull(
+            partitionFetcher,
+            DataNodeQueryMessages.EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8);
     this.userName = userName;
   }
 
+  // -------------------------------------------------------------------------
+  // Chunk Routing Pipeline
+  // -------------------------------------------------------------------------
+
   /**
-   * Returns, for every chunk in the input list (same order), the region replica set it must be
-   * written to.
+   * Resolves target region replica sets for the input chunk list, preserving input order.
+   *
+   * @param chunkDataList chunks to be routed
+   * @return mapped target replica sets matching the chunkDataList 1:1
    */
-  List<TRegionReplicaSet> route(List<ChunkData> chunkDataList) {
-    if (chunkDataList.isEmpty()) {
-      return new ArrayList<>();
+  List<TRegionReplicaSet> route(final List<ChunkData> chunkDataList) {
+    if (chunkDataList == null || chunkDataList.isEmpty()) {
+      return Collections.emptyList();
     }
 
-    final List<Pair<IDeviceID, TTimePartitionSlot>> partitionSlotList = new ArrayList<>();
-    final int[] chunkPartitionIndexes = new int[chunkDataList.size()];
-    final Map<IDeviceID, Map<TTimePartitionSlot, Integer>> partitionSlotIndexes = new HashMap<>();
-    for (int i = 0, size = chunkDataList.size(); i < size; i++) {
+    final int totalChunks = chunkDataList.size();
+    final int[] chunkPartitionIndexes = new int[totalChunks];
+    final List<Pair<IDeviceID, TTimePartitionSlot>> distinctSlotList = new ArrayList<>();
+    final Map<SlotKey, Integer> slotToIndexMap = new HashMap<>(totalChunks);
+
+    // 1. Deduplicate (device, time-partition) pairs and record mapping index per chunk
+    for (int i = 0; i < totalChunks; i++) {
       final ChunkData chunkData = chunkDataList.get(i);
-      final IDeviceID device = chunkData.getDevice();
-      final TTimePartitionSlot timePartitionSlot = chunkData.getTimePartitionSlot();
-      final Map<TTimePartitionSlot, Integer> slotIndexes =
-          partitionSlotIndexes.computeIfAbsent(device, key -> new HashMap<>());
-      Integer partitionSlotIndex = slotIndexes.get(timePartitionSlot);
-      if (partitionSlotIndex == null) {
-        partitionSlotIndex = partitionSlotList.size();
-        slotIndexes.put(timePartitionSlot, partitionSlotIndex);
-        partitionSlotList.add(new Pair<>(device, timePartitionSlot));
+      if (chunkData == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B, i));
       }
-      chunkPartitionIndexes[i] = partitionSlotIndex;
+
+      final IDeviceID device =
+          Objects.requireNonNull(
+              chunkData.getDevice(),
+              DataNodeQueryMessages.EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC);
+      final TTimePartitionSlot slot =
+          Objects.requireNonNull(
+              chunkData.getTimePartitionSlot(),
+              DataNodeQueryMessages.EXCEPTION_CHUNK_TIME_PARTITION_SLOT_CANNOT_BE_NULL_E5B04C6F);
+
+      final SlotKey slotKey = new SlotKey(device, slot);
+      final Integer existingIndex = slotToIndexMap.get(slotKey);
+
+      if (existingIndex == null) {
+        final int newIndex = distinctSlotList.size();
+        slotToIndexMap.put(slotKey, newIndex);
+        distinctSlotList.add(new Pair<>(device, slot));
+        chunkPartitionIndexes[i] = newIndex;
+      } else {
+        chunkPartitionIndexes[i] = existingIndex;
+      }
     }
 
+    // 2. Fetch data partition replica sets in batch
     final List<TRegionReplicaSet> replicaSets =
-        partitionFetcher.queryDataPartition(partitionSlotList, userName);
-    final List<TRegionReplicaSet> routedReplicaSets = new ArrayList<>(chunkDataList.size());
-    for (int i = 0, size = chunkDataList.size(); i < size; i++) {
-      routedReplicaSets.add(replicaSets.get(chunkPartitionIndexes[i]));
+        partitionFetcher.queryDataPartition(distinctSlotList, userName);
+
+    if (replicaSets == null || replicaSets.size() != distinctSlotList.size()) {
+      throw new IllegalStateException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_PARTITION_FETCHER_RETURNED_MISMATCHED_REPLICA_SET_SIZE_EXPECTED_ARG_ACTUAL_ARG_B7A988CD,
+              distinctSlotList.size(),
+              replicaSets == null ? 0 : replicaSets.size()));
     }
+
+    // 3. Map resolved replica sets back to original input order
+    final List<TRegionReplicaSet> routedReplicaSets = new ArrayList<>(totalChunks);
+    for (int i = 0; i < totalChunks; i++) {
+      final int partitionIndex = chunkPartitionIndexes[i];
+      final TRegionReplicaSet replicaSet = replicaSets.get(partitionIndex);
+      if (replicaSet == null) {
+        final Pair<IDeviceID, TTimePartitionSlot> slotPair = distinctSlotList.get(partitionIndex);
+        throw new IllegalStateException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2,
+                slotPair.left,
+                slotPair.right));
+      }
+      routedReplicaSets.add(replicaSet);
+    }
+
     return routedReplicaSets;
   }
+
+  // -------------------------------------------------------------------------
+  // Internal Model
+  // -------------------------------------------------------------------------
+
+  /** Compact composite key for slot deduplication within a single route pass. */
+  private record SlotKey(IDeviceID device, TTimePartitionSlot slot) {}
 }

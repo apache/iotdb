@@ -24,32 +24,25 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
- * Batch partition fetcher for LOAD. It wraps the query-engine {@link IPartitionFetcher} and hides
- * two details from the rest of the pipeline:
- *
- * <ul>
- *   <li><b>Transmit limit.</b> The requested (device, time-partition) pairs are split into batches
- *       of at most {@code TTimePartitionSlotTransmitLimit} entries; each batch is resolved with one
- *       {@code getOrCreateDataPartition} call.
- *   <li><b>Database hint.</b> {@link #setDatabase(String)} enables the explicit database lookup
- *       used by table-model loads and pipe-generated tree-model loads.
- * </ul>
- *
- * {@link #queryDataPartition(List, String)} returns one {@link TRegionReplicaSet} per input pair,
- * in the same order, which {@link DataPartitionRouter} maps back onto chunks.
+ * Batched data-partition fetcher for the LOAD execution pipeline. Splits high-volume partition
+ * requests into chunks bounded by transmission limits and resolves corresponding region replica
+ * sets in consistent order.
  */
 class DataPartitionBatchFetcher {
 
@@ -57,58 +50,102 @@ class DataPartitionBatchFetcher {
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
 
   private final IPartitionFetcher fetcher;
-  private String database;
+  private volatile String database;
 
-  DataPartitionBatchFetcher(IPartitionFetcher fetcher) {
-    this.fetcher = fetcher;
+  DataPartitionBatchFetcher(final IPartitionFetcher fetcher) {
+    this.fetcher =
+        Objects.requireNonNull(
+            fetcher, DataNodeQueryMessages.EXCEPTION_FETCHER_CANNOT_BE_NULL_6C143C90);
   }
 
-  void setDatabase(String database) {
+  void setDatabase(final String database) {
     this.database = database;
   }
 
-  List<TRegionReplicaSet> queryDataPartition(
-      List<Pair<IDeviceID, TTimePartitionSlot>> slotList, String userName) {
-    List<TRegionReplicaSet> replicaSets = new ArrayList<>(slotList.size());
-    int size = slotList.size();
+  String getDatabase() {
+    return database;
+  }
 
-    for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
-      List<Pair<IDeviceID, TTimePartitionSlot>> subSlotList =
-          slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
-      DataPartition dataPartition =
-          fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
-      for (final Pair<IDeviceID, TTimePartitionSlot> pair : subSlotList) {
-        // database is an explicit database hint for table-model loads and
-        // pipe-generated tree-model loads.
-        replicaSets.add(
-            database != null
-                ? dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right, database)
-                : dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right));
+  // -------------------------------------------------------------------------
+  // Partition Querying
+  // -------------------------------------------------------------------------
+
+  /**
+   * Queries or creates data partition replica sets for the supplied (device, time-partition) slots.
+   * Guarantees 1:1 order-matching between input slots and returned replica sets.
+   */
+  List<TRegionReplicaSet> queryDataPartition(
+      final List<Pair<IDeviceID, TTimePartitionSlot>> slotList, final String userName) {
+    if (slotList == null || slotList.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final int totalSlots = slotList.size();
+    final List<TRegionReplicaSet> replicaSets = new ArrayList<>(totalSlots);
+    final String currentDatabase = this.database;
+
+    for (int fromIndex = 0; fromIndex < totalSlots; fromIndex += TRANSMIT_LIMIT) {
+      final int toIndex = Math.min(totalSlots, fromIndex + TRANSMIT_LIMIT);
+      final List<Pair<IDeviceID, TTimePartitionSlot>> batchSlots =
+          slotList.subList(fromIndex, toIndex);
+
+      final List<DataPartitionQueryParam> queryParams = toQueryParams(batchSlots, currentDatabase);
+      final DataPartition dataPartition = fetcher.getOrCreateDataPartition(queryParams, userName);
+
+      if (dataPartition == null) {
+        throw new IllegalStateException(
+            DataNodeQueryMessages
+                .EXCEPTION_FAILED_TO_RETRIEVE_PARTITION_FROM_FETCHER_PARTITION_RESULT_IS_NULL_9CD4434D);
+      }
+
+      for (final Pair<IDeviceID, TTimePartitionSlot> slot : batchSlots) {
+        final TRegionReplicaSet replicaSet =
+            currentDatabase != null
+                ? dataPartition.getDataRegionReplicaSetForWriting(
+                    slot.left, slot.right, currentDatabase)
+                : dataPartition.getDataRegionReplicaSetForWriting(slot.left, slot.right);
+
+        if (replicaSet == null) {
+          throw new IllegalStateException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_MISSING_DATA_REGION_REPLICA_SET_FOR_DEVICE_ARG_AT_PARTITION_ARG_18A9E160,
+                  slot.left,
+                  slot.right));
+        }
+        replicaSets.add(replicaSet);
       }
     }
+
     return replicaSets;
   }
 
-  private List<DataPartitionQueryParam> toQueryParam(
-      List<Pair<IDeviceID, TTimePartitionSlot>> slots) {
-    final Map<IDeviceID, Set<TTimePartitionSlot>> device2TimePartitionSlots = new HashMap<>();
+  // -------------------------------------------------------------------------
+  // Parameter Transformation
+  // -------------------------------------------------------------------------
+
+  /** Deduplicates slots per device into RPC query parameters with preserved database scope. */
+  private List<DataPartitionQueryParam> toQueryParams(
+      final List<Pair<IDeviceID, TTimePartitionSlot>> slots, final String databaseScope) {
+    final Map<IDeviceID, Set<TTimePartitionSlot>> deviceToSlotsMap = new HashMap<>();
+
     for (final Pair<IDeviceID, TTimePartitionSlot> slot : slots) {
-      device2TimePartitionSlots.computeIfAbsent(slot.left, key -> new HashSet<>()).add(slot.right);
+      if (slot != null && slot.left != null && slot.right != null) {
+        deviceToSlotsMap.computeIfAbsent(slot.left, k -> new HashSet<>()).add(slot.right);
+      }
     }
 
-    final List<DataPartitionQueryParam> queryParams =
-        new ArrayList<>(device2TimePartitionSlots.size());
-    for (final Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry :
-        device2TimePartitionSlots.entrySet()) {
+    final List<DataPartitionQueryParam> queryParams = new ArrayList<>(deviceToSlotsMap.size());
+    for (final Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry : deviceToSlotsMap.entrySet()) {
       final DataPartitionQueryParam queryParam =
           new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
-      // database is an explicit database hint for table-model loads and
-      // pipe-generated tree-model loads.
-      if (database != null) {
-        queryParam.setDatabaseName(database);
+
+      if (databaseScope != null) {
+        queryParam.setDatabaseName(databaseScope);
       }
       queryParams.add(queryParam);
     }
+
     return queryParams;
   }
 }

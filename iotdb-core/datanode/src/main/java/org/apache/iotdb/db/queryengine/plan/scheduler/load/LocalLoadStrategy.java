@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -30,14 +31,18 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -48,31 +53,21 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * LOAD local-load strategy: loads a TsFile without decoding it, used when the file's device/time
- * ranges map to a single local region. The whole file is wrapped into one {@code FragmentInstance}
- * (reusing the scheduler's fragment id) and dispatched to the local data region through {@link
- * LoadTsFileDispatcherImpl#dispatchLocally}; nothing crosses the network.
- *
- * <p>The strategy also:
- *
- * <ul>
- *   <li>rejects loads while the node is read-only ({@link LoadReadOnlyException});
- *   <li>converts a {@code PlainDeviceTimeIndex} into an {@code ArrayDeviceTimeIndex} so the local
- *       writer can use the time index directly;
- *   <li>records flush/points metrics on the target data region;
- *   <li>measures the whole execution as the {@code LOAD_LOCALLY} phase metric.
- * </ul>
+ * Executes fast local loading of whole TsFiles without decoding chunks or network transport.
+ * Bypasses network RPC when all data partitions route to the target DataRegion hosted on the local
+ * DataNode.
  */
 public class LocalLoadStrategy implements TsFileLoadStrategy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalLoadStrategy.class);
 
-  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+  private static final LoadTsFileCostMetricsSet COST_METRICS =
       LoadTsFileCostMetricsSet.getInstance();
 
   private final MPPQueryContext queryContext;
@@ -80,124 +75,167 @@ public class LocalLoadStrategy implements TsFileLoadStrategy {
   private final LoadTsFileDispatcherImpl dispatcher;
 
   public LocalLoadStrategy(
-      MPPQueryContext queryContext,
-      PlanFragmentId fragmentId,
-      LoadTsFileDispatcherImpl dispatcher) {
-    this.queryContext = queryContext;
-    this.fragmentId = fragmentId;
-    this.dispatcher = dispatcher;
+      final MPPQueryContext queryContext,
+      final PlanFragmentId fragmentId,
+      final LoadTsFileDispatcherImpl dispatcher) {
+    this.queryContext =
+        Objects.requireNonNull(
+            queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22);
+    this.fragmentId =
+        Objects.requireNonNull(
+            fragmentId, DataNodeQueryMessages.EXCEPTION_FRAGMENTID_CANNOT_BE_NULL_7726B33B);
+    this.dispatcher =
+        Objects.requireNonNull(
+            dispatcher, DataNodeQueryMessages.EXCEPTION_DISPATCHER_CANNOT_BE_NULL_6118319E);
   }
 
+  // -------------------------------------------------------------------------
+  // Execution Entrypoint
+  // -------------------------------------------------------------------------
+
   @Override
-  public boolean execute(LoadSingleTsFileNode node) throws IoTDBException {
+  public boolean execute(final LoadSingleTsFileNode node) throws IoTDBException {
+    Objects.requireNonNull(node, StorageEngineMessages.EXCEPTION_NODE_CANNOT_BE_NULL_BC7D5BB9);
     final long startTime = System.nanoTime();
     try {
       return loadLocally(node);
     } finally {
-      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+      COST_METRICS.recordPhaseTimeCost(
           LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
     }
   }
 
-  private boolean loadLocally(LoadSingleTsFileNode node) throws IoTDBException {
-    LOGGER.info(
-        DataNodeQueryMessages.START_LOAD_TSFILE_LOCALLY,
-        node.getTsFileResource().getTsFile().getPath());
+  private boolean loadLocally(final LoadSingleTsFileNode node) throws IoTDBException {
+    final TsFileResource resource =
+        Objects.requireNonNull(
+            node.getTsFileResource(),
+            DataNodeQueryMessages.EXCEPTION_TSFILERESOURCE_CANNOT_BE_NULL_C63F7B08);
+
+    LOGGER.info(DataNodeQueryMessages.START_LOAD_TSFILE_LOCALLY, resource.getTsFile().getPath());
 
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new LoadReadOnlyException();
     }
 
-    // if the time index is PlainDeviceTimeIndex, convert it to ArrayDeviceTimeIndex
-    if (node.getTsFileResource().getTimeIndex() instanceof PlainDeviceTimeIndex) {
-      final PlainDeviceTimeIndex timeIndex =
-          (PlainDeviceTimeIndex) node.getTsFileResource().getTimeIndex();
-      final Map<IDeviceID, Integer> convertedDeviceToIndex = new ConcurrentHashMap<>();
-      for (final Map.Entry<IDeviceID, Integer> entry : timeIndex.getDeviceToIndex().entrySet()) {
-        convertedDeviceToIndex.put(
-            entry.getKey() instanceof StringArrayDeviceID
-                ? entry.getKey()
-                : new StringArrayDeviceID(entry.getKey().toString()),
-            entry.getValue());
-      }
-      node.getTsFileResource()
-          .setTimeIndex(
-              new ArrayDeviceTimeIndex(
-                  convertedDeviceToIndex, timeIndex.getStartTimes(), timeIndex.getEndTimes()));
-    }
+    normalizeTimeIndex(resource);
+
+    final long remainingTimeOutMs =
+        Math.max(
+            1L,
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()));
 
     try {
-      FragmentInstance instance =
+      final FragmentInstance instance =
           new FragmentInstance(
               new PlanFragment(fragmentId, node),
               fragmentId.genFragmentInstanceId(),
               null,
               queryContext.getQueryType(),
-              queryContext.getTimeOut()
-                  - (System.currentTimeMillis() - queryContext.getStartTime()),
+              remainingTimeOutMs,
               queryContext.getSession(),
               queryContext.isDebug(),
               queryContext.isVerbose());
+
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
-    } catch (FragmentInstanceDispatchException e) {
+    } catch (final FragmentInstanceDispatchException e) {
+      final TSStatus failureStatus = e.getFailureStatus();
+      final TSStatusCode statusCode =
+          failureStatus != null ? TSStatusCode.representOf(failureStatus.getCode()) : null;
+      final String codeName = statusCode != null ? statusCode.name() : "UNKNOWN_STATUS";
+      final String message = failureStatus != null ? failureStatus.getMessage() : "null";
+
       LOGGER.warn(
           String.format(
               DataNodeQueryMessages.DISPATCH_TSFILE_S_ERROR_TO_LOCAL_ERROR_RESULT_STATUS_CODE_S
                   + DataNodeQueryMessages.RESULT_STATUS_MESSAGE_S,
-              node.getTsFileResource().getTsFile(),
-              TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
-              e.getFailureStatus().getMessage()));
+              resource.getTsFile(),
+              codeName,
+              message));
       return false;
     }
 
-    // add metrics
-    Optional.ofNullable(
-            StorageEngine.getInstance()
-                .getDataRegion(
-                    (DataRegionId)
-                        ConsensusGroupId.Factory.createFromTConsensusGroupId(
-                            node.getLocalRegionReplicaSet().getRegionId())))
+    recordMetrics(node);
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // TimeIndex Normalization & Metrics
+  // -------------------------------------------------------------------------
+
+  /**
+   * Converts a PlainDeviceTimeIndex to ArrayDeviceTimeIndex for high-efficiency local writer
+   * access.
+   */
+  private void normalizeTimeIndex(final TsFileResource resource) {
+    final ITimeIndex timeIndex = resource.getTimeIndex();
+    if (timeIndex instanceof PlainDeviceTimeIndex plainTimeIndex) {
+      final Map<IDeviceID, Integer> sourceMap = plainTimeIndex.getDeviceToIndex();
+      final Map<IDeviceID, Integer> convertedDeviceToIndex = new HashMap<>(sourceMap.size());
+
+      for (final Map.Entry<IDeviceID, Integer> entry : sourceMap.entrySet()) {
+        final IDeviceID originalId = entry.getKey();
+        final IDeviceID normalizedId =
+            originalId instanceof StringArrayDeviceID
+                ? originalId
+                : new StringArrayDeviceID(originalId.toString());
+        convertedDeviceToIndex.put(normalizedId, entry.getValue());
+      }
+
+      resource.setTimeIndex(
+          new ArrayDeviceTimeIndex(
+              convertedDeviceToIndex,
+              plainTimeIndex.getStartTimes(),
+              plainTimeIndex.getEndTimes()));
+    }
+  }
+
+  private void recordMetrics(final LoadSingleTsFileNode node) {
+    final ConsensusGroupId consensusGroupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(
+            node.getLocalRegionReplicaSet().getRegionId());
+
+    Optional.ofNullable(StorageEngine.getInstance().getDataRegion((DataRegionId) consensusGroupId))
         .ifPresent(
             dataRegion ->
                 dataRegion
                     .getNonSystemDatabaseName()
                     .ifPresent(
-                        databaseName -> {
-                          // Report load tsFile points to IoTDB flush metrics
-                          MemTableFlushTask.recordFlushPointsMetricInternal(
-                              node.getWritePointCount(),
-                              databaseName,
-                              dataRegion.getDataRegionIdString());
+                        databaseName -> reportPointCountMetrics(node, dataRegion, databaseName)));
+  }
 
-                          MetricService.getInstance()
-                              .count(
-                                  node.getWritePointCount(),
-                                  Metric.QUANTITY.toString(),
-                                  MetricLevel.CORE,
-                                  Tag.NAME.toString(),
-                                  Metric.POINTS_IN.toString(),
-                                  Tag.DATABASE.toString(),
-                                  databaseName,
-                                  Tag.REGION.toString(),
-                                  dataRegion.getDataRegionIdString(),
-                                  Tag.TYPE.toString(),
-                                  Metric.LOAD_POINT_COUNT.toString());
-                          MetricService.getInstance()
-                              .count(
-                                  node.getWritePointCount(),
-                                  Metric.LEADER_QUANTITY.toString(),
-                                  MetricLevel.CORE,
-                                  Tag.NAME.toString(),
-                                  Metric.POINTS_IN.toString(),
-                                  Tag.DATABASE.toString(),
-                                  databaseName,
-                                  Tag.REGION.toString(),
-                                  dataRegion.getDataRegionIdString(),
-                                  Tag.TYPE.toString(),
-                                  Metric.LOAD_POINT_COUNT.toString());
-                        }));
+  private void reportPointCountMetrics(
+      final LoadSingleTsFileNode node, final DataRegion dataRegion, final String databaseName) {
+    final long pointCount = node.getWritePointCount();
+    final String regionIdStr = dataRegion.getDataRegionIdString();
 
-    return true;
+    MemTableFlushTask.recordFlushPointsMetricInternal(pointCount, databaseName, regionIdStr);
+
+    final MetricService metricService = MetricService.getInstance();
+    metricService.count(
+        pointCount,
+        Metric.QUANTITY.toString(),
+        MetricLevel.CORE,
+        Tag.NAME.toString(),
+        Metric.POINTS_IN.toString(),
+        Tag.DATABASE.toString(),
+        databaseName,
+        Tag.REGION.toString(),
+        regionIdStr,
+        Tag.TYPE.toString(),
+        Metric.LOAD_POINT_COUNT.toString());
+
+    metricService.count(
+        pointCount,
+        Metric.LEADER_QUANTITY.toString(),
+        MetricLevel.CORE,
+        Tag.NAME.toString(),
+        Metric.POINTS_IN.toString(),
+        Tag.DATABASE.toString(),
+        databaseName,
+        Tag.REGION.toString(),
+        regionIdStr,
+        Tag.TYPE.toString(),
+        Metric.LOAD_POINT_COUNT.toString());
   }
 }

@@ -65,6 +65,15 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
   void onMemTableCreated(IMemTable memTable, String targetTsFile);
 
   /**
+   * @return the highest search index every replica already synchronized, or {@link
+   *     ConsensusReqReader#DEFAULT_SAFELY_DELETED_SEARCH_INDEX} when the consensus layer reported
+   *     none, as on a single replica.
+   */
+  default long getSafelyDeletedSearchIndex() {
+    return ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  }
+
+  /**
    * Registers a listener that is notified whenever the consensus layer advances {@link
    * ConsensusReqReader#getSafelyDeletedSearchIndex()}. LOAD uses it to release staged directories
    * that must survive until no follower can still need the WAL entries referring to them.

@@ -36,25 +36,20 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * The one cleanup service of a DataNode for the staged directories of LOAD tasks.
- *
- * <p>A task writes its staged TsFiles into its own directory and records, in the tail of every
- * progress file, the COMMIT or ABORT command it finished with together with the consensus index of
- * that command. From then on the directory is garbage as soon as no replica can read its bytes back
- * any more, that is, once every replica has applied that index. This service scans the directories
- * of every DataRegion, reads those tails, and deletes the directory once the region reports that
- * the index has been reached.
- *
- * <p>The scan is a periodical job of the node rather than a thread of this service: it runs on the
- * periodical job executor the low frequency background jobs of the DataNode share, so a node with
- * many DataRegions still sweeps with that one thread, and the job needs no lifecycle of its own -
- * the executor is started and stopped with the node.
+ * Singleton cleanup service for staged LOAD TsFile directories. Periodically cleans up completed or
+ * aborted staged directories once WAL watermarks permit.
  */
 public class LoadTsFileCleaner {
 
@@ -62,26 +57,11 @@ public class LoadTsFileCleaner {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final LoadTsFileCleaner INSTANCE = new LoadTsFileCleaner();
-
-  /** The id this service is registered under in the periodical job executor of the node. */
   private static final String SWEEP_JOB_ID = "LoadTsFileCleaner#sweep";
 
-  /** Tasks whose directory is known to be finished, so that a scan is not always needed. */
   private final Map<String, RetainedTask> loadId2RetainedTask = new ConcurrentHashMap<>();
-
-  /**
-   * Whether the sweep was handed to the periodical job executor. That executor runs every
-   * periodical job of the node on one shared thread and offers no way to unregister a single job,
-   * so the job is registered at most once and {@link #stop()} pauses it through {@link #sweeping}
-   * instead.
-   */
   private final AtomicBoolean sweepJobRegistered = new AtomicBoolean(false);
 
-  /**
-   * Whether the periodical job still sweeps. The sweep is also asked for directly, by the region
-   * that just learned that a command reached every replica, and those calls are not affected by
-   * this flag.
-   */
   private volatile boolean sweeping;
 
   private LoadTsFileCleaner() {}
@@ -90,19 +70,16 @@ public class LoadTsFileCleaner {
     return INSTANCE;
   }
 
-  /**
-   * Lets the periodical job executor of this DataNode sweep the staged directories from now on. The
-   * job itself is registered only once; the executor is started and stopped with the node, so a
-   * node that goes down mid-sweep leaves nothing but directories that the next scan finds again.
-   */
+  // -------------------------------------------------------------------------
+  // Service Lifecycle & Task Registration
+  // -------------------------------------------------------------------------
+
+  /** Starts the background cleanup job by registering with the runtime executor. */
   public void start() {
     sweeping = true;
     if (!sweepJobRegistered.compareAndSet(false, true)) {
       return;
     }
-    // The former cleanup task of LOAD used the same configuration for its own delay, and the
-    // executor rounds the interval up to its own resolution: unlike the sleep this replaces, an
-    // interval shorter than that resolution sweeps less often than configured, never more.
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             SWEEP_JOB_ID,
@@ -110,35 +87,32 @@ public class LoadTsFileCleaner {
             Math.max(1L, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds()));
   }
 
-  /**
-   * Stops the periodical sweep. A single job cannot be dropped from the shared executor, so it
-   * stays registered and the rounds that follow find nothing to do until the next {@link #start()};
-   * a directory that is still waiting by then is deleted by the next run that sweeps, which is the
-   * one of the next node start at the latest.
-   */
+  /** Stops the background cleaning loop and clears tracked tasks. */
   public void stop() {
     sweeping = false;
     loadId2RetainedTask.clear();
   }
 
-  /**
-   * Remembers a directory that belongs to a task which already reached COMMIT or ABORT, so that the
-   * next scan can delete it as soon as its consensus index has been applied everywhere.
-   */
+  /** Registers a finished load task for delayed physical directory deletion. */
   public void register(
       final String loadId,
       final DataRegion dataRegion,
       final File taskDir,
       final long searchIndex,
       final LoadTsFileConsensusOp terminalOp) {
+    Objects.requireNonNull(loadId, StorageEngineMessages.EXCEPTION_LOADID_CANNOT_BE_NULL_22AFCDC7);
+    Objects.requireNonNull(
+        dataRegion, StorageEngineMessages.EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879);
+    Objects.requireNonNull(
+        taskDir, StorageEngineMessages.EXCEPTION_TASKDIR_CANNOT_BE_NULL_11671FD9);
     loadId2RetainedTask.put(
         loadId, new RetainedTask(loadId, dataRegion, taskDir, searchIndex, terminalOp));
   }
 
-  /**
-   * One round of the periodical job: a sweep that fails is confined to the round that caused it,
-   * because a directory that survives a failed sweep is found again by the next one.
-   */
+  // -------------------------------------------------------------------------
+  // Periodic & Manual Sweeping
+  // -------------------------------------------------------------------------
+
   private void sweepSafely() {
     if (!sweeping) {
       return;
@@ -150,58 +124,119 @@ public class LoadTsFileCleaner {
     }
   }
 
-  /** Scans the staged directories of every DataRegion and deletes the ones that are finished. */
+  /** Sweeps both in-memory registered tasks and unmanaged disk staging directories. */
   public void sweep() {
+    // 1. Clean registered memory-tracked tasks
     for (final Map.Entry<String, RetainedTask> entry : loadId2RetainedTask.entrySet()) {
       final RetainedTask retainedTask = entry.getValue();
       if (canDelete(retainedTask) && loadId2RetainedTask.remove(entry.getKey(), retainedTask)) {
         delete(retainedTask);
       }
     }
+
+    // 2. Discover and sweep unmanaged directories left behind by unexpected crashes
     scanRegions();
   }
 
-  /**
-   * Looks for finished directories that the registry does not know about, which is what a restart
-   * leaves behind when the sweep did not get to run.
-   */
   private void scanRegions() {
-    for (final DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
+    final List<DataRegion> regions = StorageEngine.getInstance().getAllDataRegions();
+    if (regions == null || regions.isEmpty()) {
+      return;
+    }
+
+    for (final DataRegion dataRegion : regions) {
       for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
         final File regionDir =
             LoadStagingDirs.regionLoadDir(
                 new File(baseDir),
                 dataRegion.getDatabaseName(),
                 dataRegion.getDataRegionIdString());
+
         final File[] taskDirs = regionDir.listFiles();
         if (taskDirs == null) {
           continue;
         }
+
         for (final File taskDir : taskDirs) {
-          if (!taskDir.isDirectory()) {
+          if (!taskDir.isDirectory() || loadId2RetainedTask.containsKey(taskDir.getName())) {
             continue;
           }
+
           final LoadTsFileProgress.TerminalRecord terminal = readTerminal(taskDir);
           if (terminal == null) {
             continue;
           }
-          final RetainedTask found =
+
+          final RetainedTask unmanagedTask =
               new RetainedTask(
                   taskDir.getName(), dataRegion, taskDir, terminal.searchIndex(), terminal.op());
-          if (canDelete(found)) {
-            delete(found);
+
+          if (canDelete(unmanagedTask)) {
+            delete(unmanagedTask);
           }
         }
       }
     }
   }
 
-  /** Reads the tail of the finished task that owns a staged directory, or null when it has none. */
+  // -------------------------------------------------------------------------
+  // Deletion Qualification & Safety Checks
+  // -------------------------------------------------------------------------
+
+  /** Evaluates if a staged directory can be safely reclaimed. */
+  private static boolean canDelete(final RetainedTask retainedTask) {
+    if (!replicasReached(retainedTask.dataRegion(), retainedTask.searchIndex())) {
+      return false;
+    }
+    // Aborted tasks are pure garbage once synchronized; committed tasks must also be complete
+    return retainedTask.terminalOp() == LoadTsFileConsensusOp.ABORT
+        || isComplete(retainedTask.taskDir());
+  }
+
+  /** Verifies that every staged TsFile in the directory has no missing chunks. */
+  private static boolean isComplete(final File taskDir) {
+    final File[] files = taskDir.listFiles();
+    if (files == null) {
+      return false;
+    }
+
+    for (final File file : files) {
+      final String name = file.getName();
+      final int progressSuffixAt = name.lastIndexOf(LoadTsFileProgress.PROGRESS_SUFFIX);
+      if (progressSuffixAt < 0) {
+        continue;
+      }
+
+      final File tsFile = new File(file.getParentFile(), name.substring(0, progressSuffixAt));
+      try {
+        if (!new LoadTsFileProgress(tsFile).isReady(tsFile.length())) {
+          return false;
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, tsFile.getPath(), e);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean replicasReached(final DataRegion dataRegion, final long searchIndex) {
+    final long safelyDeletedSearchIndex =
+        dataRegion
+            .getWALNode()
+            .map(wal -> wal.getSafelyDeletedSearchIndex())
+            .orElse(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
+
+    return safelyDeletedSearchIndex == ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+        || safelyDeletedSearchIndex >= searchIndex;
+  }
+
   private static LoadTsFileProgress.TerminalRecord readTerminal(final File taskDir) {
     final File[] files = taskDir.listFiles();
     if (files == null) {
       return null;
     }
+
     for (final File file : files) {
       if (!file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
         continue;
@@ -216,110 +251,57 @@ public class LoadTsFileCleaner {
     return null;
   }
 
-  /**
-   * The two ways a staged directory becomes garbage.
-   *
-   * <p>An aborted task is never imported, so its bytes are plain garbage as soon as the ABORT
-   * command was applied - which is also the moment the command is on its way to the followers and
-   * is recorded in the tail of the progress files. A committed task, on the other hand, is imported
-   * from a copy of those bytes and a replica that catches up by reading this node's WAL expands its
-   * entries from them, so it is deleted only once the staged files are complete and the
-   * safe-deletion watermark reports that every replica got past the COMMIT.
-   */
-  private static boolean canDelete(final RetainedTask retainedTask) {
-    if (!replicasReached(retainedTask.dataRegion, retainedTask.searchIndex)) {
-      // The command is not on every replica yet: a replica that catches up by reading this node's
-      // WAL still reads these bytes back to build the request it receives, whether the task was
-      // committed or aborted. An ABORT therefore waits for its own synchronization too.
-      return false;
-    }
-    // Once every replica got past the command an aborted task is plain garbage, because an aborted
-    // task is never imported. A committed one is imported from a copy of those bytes, so it is kept
-    // until the staged files are known to be complete as well.
-    return retainedTask.terminalOp == LoadTsFileConsensusOp.ABORT
-        || isComplete(retainedTask.taskDir);
-  }
-
-  /**
-   * Whether every staged TsFile of a directory arrived completely: its progress records cover the
-   * file without a hole, up to its end. A hole means a piece never arrived, and deleting the
-   * directory then would lose the bytes a replica still has to read back.
-   */
-  private static boolean isComplete(final File taskDir) {
-    final File[] files = taskDir.listFiles();
-    if (files == null) {
-      return false;
-    }
-    for (final File file : files) {
-      final String name = file.getName();
-      final int progressSuffixAt = name.lastIndexOf(LoadTsFileProgress.PROGRESS_SUFFIX);
-      if (progressSuffixAt < 0) {
-        continue;
-      }
-      final File tsFile = new File(file.getParentFile(), name.substring(0, progressSuffixAt));
-      try {
-        if (!new LoadTsFileProgress(tsFile).isReady(tsFile.length())) {
-          return false;
-        }
-      } catch (final IOException e) {
-        LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, tsFile.getPath(), e);
-        return false;
-      }
-    }
-    // A finished task drops its progress files - they exist only while a file is still being
-    // written, and a file that is still being written keeps them until the task ends - so a
-    // directory without them has nothing left to verify. A directory that still holds them has to
-    // cover its staged files without a hole: a hole means a piece never arrived, and deleting the
-    // directory then would lose the bytes a replica still has to read back.
-    return true;
-  }
-
-  private static boolean replicasReached(final DataRegion dataRegion, final long searchIndex) {
-    final long safelyDeletedSearchIndex =
-        dataRegion
-            .getWALNode()
-            .map(wal -> wal.getSafelyDeletedSearchIndex())
-            .orElse(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
-    // Consensus V2, and every protocol without a WAL watermark, reports the default index: there is
-    // no follower to wait for, so a COMMIT or an ABORT may be deleted as soon as it was executed.
-    return safelyDeletedSearchIndex == ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-        || safelyDeletedSearchIndex >= searchIndex;
-  }
+  // -------------------------------------------------------------------------
+  // Physical Deletion Operations
+  // -------------------------------------------------------------------------
 
   private static void delete(final RetainedTask retainedTask) {
     LOGGER.info(
         StorageEngineMessages
             .LOG_RELEASED_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_BECAUSE_THE_SAFE_DELETION_SEARCH_INDEX_ARG_IS_REACHED_0CF83F8A,
-        retainedTask.taskDir.getAbsolutePath(),
-        retainedTask.loadId,
-        retainedTask.searchIndex);
-    cleanTaskDir(retainedTask.taskDir);
+        retainedTask.taskDir().getAbsolutePath(),
+        retainedTask.loadId(),
+        retainedTask.searchIndex());
+    cleanTaskDir(retainedTask.taskDir());
   }
 
-  /**
-   * Deletes a staged directory and every file that belongs to the TsFile it holds: the file itself,
-   * its resource, both flavours of its modification file and its progress files.
-   */
+  /** Recursively deletes an entire staged directory and all its files using NIO walkFileTree. */
   public static void cleanTaskDir(final File taskDir) {
-    final File[] files = taskDir.listFiles();
-    if (files != null) {
-      for (final File file : files) {
-        if (file.isDirectory()) {
-          cleanTaskDir(file);
-          continue;
-        }
-        try {
-          Files.deleteIfExists(file.toPath());
-        } catch (final IOException e) {
-          LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, file.getPath(), e);
-        }
-      }
+    if (taskDir == null || !taskDir.exists()) {
+      return;
+    }
+    try {
+      Files.walkFileTree(
+          taskDir.toPath(),
+          new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs)
+                throws IOException {
+              Files.deleteIfExists(file);
+              return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(final Path dir, final IOException exc)
+                throws IOException {
+              if (exc != null) {
+                throw exc;
+              }
+              Files.deleteIfExists(dir);
+              return FileVisitResult.CONTINUE;
+            }
+          });
+    } catch (final IOException e) {
+      LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, taskDir.getPath(), e);
     }
     LoadStagingDirs.deleteTaskDir(taskDir);
   }
 
-  /** Deletes the staged files that belong to one TsFile, the way unloading a TsFile does. */
+  /** Deletes the artifacts belonging to a single staged TsFile. */
   public static void cleanTsFile(final File tsFile) {
+    if (tsFile == null) {
+      return;
+    }
     try {
       Files.deleteIfExists(tsFile.toPath());
       Files.deleteIfExists(
@@ -334,24 +316,14 @@ public class LoadTsFileCleaner {
     }
   }
 
-  private static class RetainedTask {
-    private final String loadId;
-    private final DataRegion dataRegion;
-    private final File taskDir;
-    private final long searchIndex;
-    private final LoadTsFileConsensusOp terminalOp;
+  // -------------------------------------------------------------------------
+  // Model Record
+  // -------------------------------------------------------------------------
 
-    private RetainedTask(
-        final String loadId,
-        final DataRegion dataRegion,
-        final File taskDir,
-        final long searchIndex,
-        final LoadTsFileConsensusOp terminalOp) {
-      this.loadId = loadId;
-      this.dataRegion = dataRegion;
-      this.taskDir = taskDir;
-      this.searchIndex = searchIndex;
-      this.terminalOp = terminalOp;
-    }
-  }
+  private record RetainedTask(
+      String loadId,
+      DataRegion dataRegion,
+      File taskDir,
+      long searchIndex,
+      LoadTsFileConsensusOp terminalOp) {}
 }

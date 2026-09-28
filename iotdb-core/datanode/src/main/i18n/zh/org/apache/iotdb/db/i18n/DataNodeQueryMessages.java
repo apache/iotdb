@@ -26,6 +26,62 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
       "Thrift 最大帧大小 %d 无效，来源：%s";
+  public static final String EXCEPTION_CLIENTMANAGER_CANNOT_BE_NULL_FAF70317 =
+      "clientManager 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_QUERY_FRAME_SIZE_FROM_ARG_4A82B38D =
+      "从 %s 查询帧大小失败";
+  public static final String EXCEPTION_BODYSIZELIMIT_MUST_BE_POSITIVE_EECFA175 =
+      "bodySizeLimit 必须为正数";
+  public static final String EXCEPTION_INVALID_SLICE_COUNT_ARGUMENTS_5ADCE8CC =
+      "分片数量参数无效";
+  public static final String EXCEPTION_FETCHER_CANNOT_BE_NULL_6C143C90 = "fetcher 不能为 null";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRIEVE_PARTITION_FROM_FETCHER_PARTITION_RESULT_IS_NULL_9CD4434D =
+          "从 fetcher 获取分区失败：分区结果为 null";
+  public static final String
+      EXCEPTION_MISSING_DATA_REGION_REPLICA_SET_FOR_DEVICE_ARG_AT_PARTITION_ARG_18A9E160 =
+          "device %s 在分区 %s 上缺少 data region 副本集";
+  public static final String EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8 =
+      "partitionFetcher 不能为 null";
+  public static final String EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B =
+      "索引 %d 处的 ChunkData 不能为 null";
+  public static final String EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC =
+      "chunk 的 device 不能为 null";
+  public static final String EXCEPTION_CHUNK_TIME_PARTITION_SLOT_CANNOT_BE_NULL_E5B04C6F =
+      "chunk 的时间分区槽不能为 null";
+  public static final String
+      EXCEPTION_PARTITION_FETCHER_RETURNED_MISMATCHED_REPLICA_SET_SIZE_EXPECTED_ARG_ACTUAL_ARG_B7A988CD =
+          "分区获取器返回的副本集数量不匹配：期望 %d，实际 %d";
+  public static final String
+      EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2 =
+          "device %s 在分区 %s 上解析到 null 副本集";
+  public static final String EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22 =
+      "queryContext 不能为 null";
+  public static final String EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4 =
+      "tsFileNodeList 不能为 null";
+  public static final String EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6 =
+      "failedTsFileNodeIndexes 不能为 null";
+  public static final String EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790 =
+      "stateMachine 不能为 null";
+  public static final String LOG_ILLEGAL_FAILED_NODE_INDEX_ARG_OUT_OF_BOUNDS_0_ARG_285B9862 =
+      "非法的失败节点索引 {}，超出范围 [0, {})";
+  public static final String EXCEPTION_FRAGMENTID_CANNOT_BE_NULL_7726B33B =
+      "fragmentId 不能为 null";
+  public static final String EXCEPTION_DISPATCHER_CANNOT_BE_NULL_6118319E =
+      "dispatcher 不能为 null";
+  public static final String EXCEPTION_TSFILERESOURCE_CANNOT_BE_NULL_C63F7B08 =
+      "TsFileResource 不能为 null";
+  public static final String EXCEPTION_SINGLETSFILENODE_CANNOT_BE_NULL_4EA6CF51 =
+      "singleTsFileNode 不能为 null";
+  public static final String EXCEPTION_MEMORYBUFFER_CANNOT_BE_NULL_77101F0C =
+      "memoryBuffer 不能为 null";
+  public static final String EXCEPTION_DISPATCHCALLBACK_CANNOT_BE_NULL_C7A1AC6A =
+      "dispatchCallback 不能为 null";
+  public static final String EXCEPTION_BLOCK_CANNOT_BE_NULL_7E31451D = "block 不能为 null";
+  public static final String EXCEPTION_TSFILEDATA_CANNOT_BE_NULL_EE1DDEC2 =
+      "tsFileData 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_OFFER_CHUNK_TO_DISPATCHER_0300D5DD =
+      "向 dispatcher 提交 chunk 失败";
   public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
       "向节点派发 Load 命令失败，命令：%s，节点：%s，异常：%s";
 
@@ -4712,6 +4768,13 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData 中不包含任何物理 chunk";
+  public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device 不能为 null";
+  public static final String EXCEPTION_CHUNK_CANNOT_BE_NULL_280ECF98 = "chunk 不能为 null";
+  public static final String EXCEPTION_CHUNKDATA_CANNOT_BE_NULL_7D931C4D = "chunkData 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_GROUP_HEADER_SIZE_E6B40B2C =
+      "计算 chunk group header 大小失败";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_HEADER_SIZE_2E88289A =
+      "计算 chunk header 大小失败";
   public static final String LOG_DISPATCH_LOAD_PIECE_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_TSFILE_ARG_DATASIZE_ARG_REPLICASET_ARG_D9C87EB7 =
       "下发 LOAD piece：loadId={}，regionId={}，pieceIndex={}，tsFile={}，dataSize={}，replicaSet={}";
   public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =

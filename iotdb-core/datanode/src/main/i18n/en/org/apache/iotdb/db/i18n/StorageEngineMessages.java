@@ -48,6 +48,27 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_RECOVER_WAL = "Fail to recover wal.";
   public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
       "Write LOAD consensus node to region {} via protocol {}";
+  public static final String EXCEPTION_REPLICASET_CANNOT_BE_NULL_A7340AC3 =
+      "replicaSet cannot be null";
+  public static final String EXCEPTION_NODE_CANNOT_BE_NULL_BC7D5BB9 = "node cannot be null";
+  public static final String MESSAGE_TREGIONREPLICASET_HAS_NULL_TCONSENSUSGROUPID_B7172B9E =
+      "TRegionReplicaSet has null TConsensusGroupId";
+  public static final String MESSAGE_UNABLE_TO_RESOLVE_VALID_WRITE_PEER_FOR_REGION_ARG_76190FB5 =
+      "Unable to resolve valid write peer for region %s";
+  public static final String MESSAGE_NULL_LOCAL_EXECUTION_RESULT_E58C362F =
+      "Null local execution result";
+  public static final String MESSAGE_EMPTY_BATCH_RESPONSE_FROM_ARG_770449BB =
+      "Empty batch response from %s";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_COMMAND_WITHOUT_STATUS_12009B10 =
+      "Target node rejected command without status";
+  public static final String MESSAGE_RPC_COMMUNICATION_FAILURE_TO_ARG_ARG_1B429913 =
+      "RPC communication failure to %s: %s";
+  public static final String LOG_ROUTE_RESOLUTION_INTERRUPTED_FOR_REGION_ARG_F8799966 =
+      "Route resolution interrupted for region {}";
+  public static final String LOG_FAILED_TO_EXECUTE_CONSENSUS_NODE_LOCALLY_ON_REGION_ARG_3B675D32 =
+      "Failed to execute consensus node locally on region {}";
+  public static final String LOG_FAILED_TO_DISPATCH_LOAD_COMMAND_TO_REMOTE_ENDPOINT_ARG_142A712A =
+      "Failed to dispatch load command to remote endpoint {}";
   public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
       "LOAD consensus route of region {} is stale: write node {} is not in replica set {}.";
   public static final String LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21 =
@@ -1656,6 +1677,31 @@ public final class StorageEngineMessages {
       "Precalculated offset is behind actual file position; using actual position: file={}, device={}, measurement={}, expectedOffset={}, actualOffset={}, delta={}";
   public static final String EXCEPTION_THIS_WRITER_IS_NOT_BACKED_BY_A_FILE_7103C187 =
       "This writer is not backed by a file";
+  public static final String EXCEPTION_FILE_CANNOT_BE_NULL_29A83D70 = "file cannot be null";
+  public static final String EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB = "channel cannot be null";
+  public static final String EXCEPTION_OUT_CANNOT_BE_NULL_E8C2DE32 = "out cannot be null";
+  public static final String EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879 =
+      "dataRegion cannot be null";
+  public static final String EXCEPTION_LOADID_CANNOT_BE_NULL_22AFCDC7 = "loadId cannot be null";
+  public static final String EXCEPTION_TASKDIR_CANNOT_BE_NULL_11671FD9 = "taskDir cannot be null";
+  public static final String EXCEPTION_SNAPSHOTDIR_CANNOT_BE_NULL_283211CB =
+      "snapshotDir cannot be null";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_WRITER_FOR_ARG_ABAF37F1 =
+      "Failed to initialize writer for %s";
+  public static final String EXCEPTION_FAILED_TO_CREATE_MODIFICATION_FILE_0D020A0C =
+      "Failed to create modification file";
+  public static final String LOG_OPENED_PRECALCULATED_CHUNK_WRITER_FILE_ARG_DATAOFFSET_ARG_B966A48E =
+      "Opened precalculated chunk writer: file={}, dataOffset={}";
+  public static final String LOG_RESUMED_PRECALCULATED_CHUNK_WRITER_FILE_ARG_RESUMEOFFSET_ARG_39701150 =
+      "Resumed precalculated chunk writer: file={}, resumeOffset={}";
+  public static final String LOG_WROTE_CHUNK_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_OFFSET_ARG_LENGTH_ARG_FIRSTOFGROUP_ARG_C2FEBACD =
+      "Wrote chunk: file={}, device={}, measurement={}, offset={}, length={}, firstOfGroup={}";
+  public static final String LOG_RESTORED_CHUNK_METADATA_FILE_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_49CF51D0 =
+      "Restored chunk metadata: file={}, chunkCount={}, seriesCount={}";
+  public static final String LOG_SEALED_PRECALCULATED_CHUNK_FILE_FILE_ARG_METAOFFSET_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_FILELENGTH_ARG_D837F9C1 =
+      "Sealed precalculated chunk file: file={}, metaOffset={}, chunkCount={}, seriesCount={}, fileLength={}";
+  public static final String LOG_PRECALCULATED_CHUNK_WRITER_IS_ALREADY_SEALED_IGNORING_CLOSE_FILE_ARG_A5E3C6CE =
+      "Precalculated chunk writer is already sealed, ignoring close: file={}";
   public static final String LOG_SKIPPING_THE_CHUNKS_OF_ARG_BECAUSE_THEIR_PAYLOAD_IS_ALREADY_STAGED_IN_ARG_OF_THE_LOAD_TASK_ARG_BAFEEE84 =
       "Skipping the chunks of {} because their payload is already staged in {} of the LOAD task {}";
 

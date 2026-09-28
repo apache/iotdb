@@ -40,16 +40,29 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
+/** Represents chunk-level TsFile data during load splitting. */
 public interface ChunkData extends TsFileData {
+
+  ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
+  byte[] EMPTY_BYTES = new byte[0];
+
+  // -------------------------------------------------------------------------
+  // Metadata & Status
+  // -------------------------------------------------------------------------
+
   IDeviceID getDevice();
 
   TTimePartitionSlot getTimePartitionSlot();
 
-  void setNotDecode();
-
   boolean isAligned();
 
   boolean isEntireChunk();
+
+  void setNotDecode();
+
+  // -------------------------------------------------------------------------
+  // Write Operations
+  // -------------------------------------------------------------------------
 
   void writeEntireChunk(ByteBuffer chunkData, IChunkMetadata chunkMetadata) throws IOException;
 
@@ -61,18 +74,22 @@ public interface ChunkData extends TsFileData {
 
   default void endChunk() {}
 
+  // -------------------------------------------------------------------------
+  // Chunks & References
+  // -------------------------------------------------------------------------
+
   default List<Chunk> getChunks() {
     return Collections.emptyList();
   }
 
-  /**
-   * Payload references of {@link #getChunks()}, in the same order. They are set once the chunks
-   * have been written into the staged TsFile, and are present (instead of the payload itself) on a
-   * piece that was read back from the WAL.
-   */
+  /** Gets staged file payload references corresponding to {@link #getChunks()}. */
   List<ChunkPayloadRef> getChunkPayloadRefs();
 
   void setChunkPayloadRefs(List<ChunkPayloadRef> chunkPayloadRefs);
+
+  // -------------------------------------------------------------------------
+  // Layout
+  // -------------------------------------------------------------------------
 
   record ChunkLayout(
       long chunkGroupIndex,
@@ -86,79 +103,14 @@ public interface ChunkData extends TsFileData {
 
   void setChunkLayout(ChunkLayout layout);
 
-  /**
-   * Writes the payload slot of one chunk: its bytes when they are available in memory, otherwise
-   * the reference that points at them in the staged file.
-   *
-   * @param includeContent whether the payload must be inlined. When the payload only exists as a
-   *     reference and inlining was requested, it is read back from the staged file.
-   */
-  static void serializeChunkPayload(
-      final DataOutputStream stream,
-      final ByteBuffer data,
-      final ChunkPayloadRef ref,
-      final boolean includeContent)
-      throws IOException {
-    if (!includeContent && ref != null) {
-      ReadWriteIOUtils.write(true, stream);
-      ref.serializeTo(stream);
-      return;
-    }
-    final byte[] payload;
-    if (data != null && data.hasRemaining()) {
-      payload = new byte[data.remaining()];
-      data.duplicate().get(payload);
-    } else if (ref != null) {
-      payload = ref.readPayload();
-    } else {
-      payload = new byte[0];
-    }
-    ReadWriteIOUtils.write(false, stream);
-    ReadWriteIOUtils.write(payload.length, stream);
-    stream.write(payload);
-  }
-
-  /**
-   * Reads the payload slot of one chunk, appending the reference to {@code refs} when the payload
-   * is referenced instead of inlined.
-   *
-   * @return the payload, or an empty buffer when it has to be read back later
-   */
-  static ByteBuffer deserializeChunkPayload(
-      final InputStream stream, final List<ChunkPayloadRef> refs) throws IOException {
-    if (ReadWriteIOUtils.readBool(stream)) {
-      refs.add(ChunkPayloadRef.deserializeFrom(stream));
-      return ByteBuffer.wrap(new byte[0]);
-    }
-    // The length is read from the request, so it is validated before it sizes a buffer: a negative
-    // length must be reported as malformed input instead of escaping as an unchecked exception, and
-    // a length the transport could not have carried is rejected as well.
-    final int payloadLength = ReadWriteIOUtils.readInt(stream);
-    final int maxPayloadLength = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
-    if (payloadLength < 0 || payloadLength > maxPayloadLength) {
-      throw new IOException(
-          String.format(
-              StorageEngineMessages
-                  .EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9,
-              payloadLength,
-              maxPayloadLength));
-    }
-    final byte[] payload = new byte[payloadLength];
-    new DataInputStream(stream).readFully(payload);
-    return ByteBuffer.wrap(payload);
-  }
-
   @Override
   default TsFileDataType getType() {
     return TsFileDataType.CHUNK;
   }
 
-  static ChunkData deserialize(InputStream stream) throws PageException, IOException {
-    boolean isAligned = ReadWriteIOUtils.readBool(stream);
-    return isAligned
-        ? AlignedChunkData.deserialize(stream)
-        : NonAlignedChunkData.deserialize(stream);
-  }
+  // -------------------------------------------------------------------------
+  // Factory Methods
+  // -------------------------------------------------------------------------
 
   static ChunkData createChunkData(
       boolean isAligned,
@@ -168,5 +120,68 @@ public interface ChunkData extends TsFileData {
     return isAligned
         ? new AlignedChunkData(device, chunkHeader, timePartitionSlot)
         : new NonAlignedChunkData(device, chunkHeader, timePartitionSlot);
+  }
+
+  static ChunkData deserialize(InputStream stream) throws PageException, IOException {
+    return ReadWriteIOUtils.readBool(stream)
+        ? AlignedChunkData.deserialize(stream)
+        : NonAlignedChunkData.deserialize(stream);
+  }
+
+  // -------------------------------------------------------------------------
+  // Payload Ser/De Helpers
+  // -------------------------------------------------------------------------
+
+  /** Serializes payload as an external {@link ChunkPayloadRef} reference or raw inline bytes. */
+  static void serializeChunkPayload(
+      DataOutputStream stream, ByteBuffer data, ChunkPayloadRef ref, boolean includeContent)
+      throws IOException {
+    // 1. Write as reference if inlining is not required
+    if (!includeContent && ref != null) {
+      ReadWriteIOUtils.write(true, stream); // isRef = true
+      ref.serializeTo(stream);
+      return;
+    }
+
+    // 2. Write inline payload bytes
+    ReadWriteIOUtils.write(false, stream); // isRef = false
+    byte[] payload = extractPayloadBytes(data, ref);
+    ReadWriteIOUtils.write(payload.length, stream);
+    stream.write(payload);
+  }
+
+  /** Deserializes payload, appending to {@code refs} if referenced externally. */
+  static ByteBuffer deserializeChunkPayload(InputStream stream, List<ChunkPayloadRef> refs)
+      throws IOException {
+    boolean isRef = ReadWriteIOUtils.readBool(stream);
+    if (isRef) {
+      refs.add(ChunkPayloadRef.deserializeFrom(stream));
+      return EMPTY_BUFFER;
+    }
+
+    int length = ReadWriteIOUtils.readInt(stream);
+    int maxLength = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    if (length < 0 || length > maxLength) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9,
+              length,
+              maxLength));
+    }
+
+    byte[] payload = new byte[length];
+    (stream instanceof DataInputStream dis ? dis : new DataInputStream(stream)).readFully(payload);
+    return ByteBuffer.wrap(payload);
+  }
+
+  private static byte[] extractPayloadBytes(ByteBuffer data, ChunkPayloadRef ref)
+      throws IOException {
+    if (data != null && data.hasRemaining()) {
+      byte[] bytes = new byte[data.remaining()];
+      data.duplicate().get(bytes);
+      return bytes;
+    }
+    return ref != null ? ref.readPayload() : EMPTY_BYTES;
   }
 }

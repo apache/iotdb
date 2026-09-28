@@ -37,33 +37,19 @@ import java.io.FileNotFoundException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Failure fallback of the LOAD scheduler: when at least one TsFile fails, this handler converts the
- * failed files into tablets and retries the insertion, then resolves the final result. Extracted
- * from the scheduler so the failure path is a single, testable component.
- *
- * <p>Flow ({@link #convertFailedTsFilesToTablets()}):
- *
- * <ol>
- *   <li>builds the comma-separated list of failed file paths for logging;
- *   <li>for every failed file, converts it with {@link LoadTsFileDataTypeConverter} - table-model
- *       files through {@code convertForTableModel}, tree-model files through {@code
- *       convertForTreeModel} with a retry statement built by {@code buildRetryTreeLoadStatement};
- *   <li>removes successfully converted files from the failure list;
- *   <li>if no failure remains the load is considered successful (FINISHED); otherwise the state
- *       machine transitions to FAILED with the remaining file list.
- * </ol>
- *
- * The whole conversion is measured as the {@code SCHEDULER_CAST_TABLETS} phase metric.
+ * Fallback execution handler for the LOAD scheduler. When direct chunk staging fails, converts
+ * failed TsFiles into In-Memory Tablets, retries insertion through the regular write pipeline, and
+ * updates query state accordingly.
  */
 public class LoadFallbackHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadFallbackHandler.class);
 
-  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+  private static final LoadTsFileCostMetricsSet COST_METRICS =
       LoadTsFileCostMetricsSet.getInstance();
 
   private final MPPQueryContext queryContext;
@@ -73,122 +59,162 @@ public class LoadFallbackHandler {
   private final QueryStateMachine stateMachine;
 
   public LoadFallbackHandler(
-      MPPQueryContext queryContext,
-      boolean isGeneratedByPipe,
-      List<LoadSingleTsFileNode> tsFileNodeList,
-      List<Integer> failedTsFileNodeIndexes,
-      QueryStateMachine stateMachine) {
-    this.queryContext = queryContext;
+      final MPPQueryContext queryContext,
+      final boolean isGeneratedByPipe,
+      final List<LoadSingleTsFileNode> tsFileNodeList,
+      final List<Integer> failedTsFileNodeIndexes,
+      final QueryStateMachine stateMachine) {
+    this.queryContext =
+        Objects.requireNonNull(
+            queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22);
     this.isGeneratedByPipe = isGeneratedByPipe;
-    this.tsFileNodeList = tsFileNodeList;
-    this.failedTsFileNodeIndexes = failedTsFileNodeIndexes;
-    this.stateMachine = stateMachine;
+    this.tsFileNodeList =
+        Objects.requireNonNull(
+            tsFileNodeList, DataNodeQueryMessages.EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4);
+    this.failedTsFileNodeIndexes =
+        Objects.requireNonNull(
+            failedTsFileNodeIndexes,
+            DataNodeQueryMessages.EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6);
+    this.stateMachine =
+        Objects.requireNonNull(
+            stateMachine, DataNodeQueryMessages.EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790);
   }
 
+  // -------------------------------------------------------------------------
+  // Conversion Entrypoint
+  // -------------------------------------------------------------------------
+
+  /** Orchestrates fallback conversion of failed TsFiles into Tablets with metric tracking. */
   public void convertFailedTsFilesToTablets() {
-    final StringBuilder failedTsFiles =
-        new StringBuilder(
-            !tsFileNodeList.isEmpty()
-                ? tsFileNodeList
-                    .get(failedTsFileNodeIndexes.get(0))
-                    .getTsFileResource()
-                    .getTsFilePath()
-                : "");
-    final ListIterator<Integer> iterator = failedTsFileNodeIndexes.listIterator(1);
-    while (iterator.hasNext()) {
-      failedTsFiles
-          .append(", ")
-          .append(tsFileNodeList.get(iterator.next()).getTsFileResource().getTsFilePath());
+    if (failedTsFileNodeIndexes.isEmpty()) {
+      stateMachine.transitionToFinished();
+      return;
     }
+
+    final String initialFailedFiles = getFailedFilePathsString();
+    LOGGER.info(
+        DataNodeQueryMessages
+            .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
+        initialFailedFiles);
 
     final long startTime = System.nanoTime();
     try {
-      // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
-      LOGGER.info(
-          DataNodeQueryMessages
-              .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
-          failedTsFiles);
-      convertFailedTsFilesToTabletsAndRetry();
+      convertAndRetry();
     } finally {
-      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+      COST_METRICS.recordPhaseTimeCost(
           LoadTsFileCostMetricsSet.SCHEDULER_CAST_TABLETS, System.nanoTime() - startTime);
     }
   }
 
-  private void convertFailedTsFilesToTabletsAndRetry() {
-    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+  // -------------------------------------------------------------------------
+  // Conversion Loop & State Transition
+  // -------------------------------------------------------------------------
+
+  private void convertAndRetry() {
+    final LoadTsFileDataTypeConverter converter =
         new LoadTsFileDataTypeConverter(queryContext, isGeneratedByPipe);
 
-    final Iterator<Integer> iterator = failedTsFileNodeIndexes.listIterator();
+    final Iterator<Integer> iterator = failedTsFileNodeIndexes.iterator();
     while (iterator.hasNext()) {
-      final int failedLoadTsFileIndex = iterator.next();
-      final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
+      final int nodeIndex = iterator.next();
+      if (nodeIndex < 0 || nodeIndex >= tsFileNodeList.size()) {
+        LOGGER.warn(
+            DataNodeQueryMessages.LOG_ILLEGAL_FAILED_NODE_INDEX_ARG_OUT_OF_BOUNDS_0_ARG_285B9862,
+            nodeIndex,
+            tsFileNodeList.size());
+        continue;
+      }
+
+      final LoadSingleTsFileNode failedNode = tsFileNodeList.get(nodeIndex);
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 
       try {
         final TSStatus status =
             failedNode.isTableModel()
-                ? loadTsFileDataTypeConverter
-                    .convertForTableModel(
-                        (isGeneratedByPipe
-                                ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
-                                : LoadTsFile.createUnchecked(
-                                    null, filePath, Collections.emptyMap()))
-                            .setDatabase(failedNode.getDatabase())
-                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
-                            .setConvertOnTypeMismatch(true))
-                    .orElse(null)
-                : loadTsFileDataTypeConverter
-                    .convertForTreeModel(
-                        buildRetryTreeLoadStatement(
-                            filePath,
-                            failedNode.isDeleteAfterLoad(),
-                            LoadTsFileScheduler.getPartitionQueryDatabase(
-                                failedNode, isGeneratedByPipe)))
-                    .orElse(null);
+                ? executeTableModelConversion(converter, failedNode, filePath)
+                : executeTreeModelConversion(converter, failedNode, filePath);
 
-        if (loadTsFileDataTypeConverter.isSuccessful(status)) {
+        if (converter.isSuccessful(status)) {
           iterator.remove();
           LOGGER.info(
               DataNodeQueryMessages
                   .LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED,
-              failedNode.getTsFileResource().getTsFilePath());
+              filePath);
         } else {
           LOGGER.warn(
               DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_TSFILE_ARG_STATUS_ARG,
-              failedNode.getTsFileResource().getTsFilePath(),
+              filePath,
               status);
         }
       } catch (final Exception e) {
         LOGGER.warn(
             DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_TSFILE_ARG_EXCEPTION_ARG,
-            failedNode.getTsFileResource().getTsFilePath(),
+            filePath,
             e.getMessage(),
             e);
       }
     }
 
-    // If all failed TsFiles are converted into tablets and inserted,
-    // we can consider the load process as successful.
+    resolveFinalState();
+  }
+
+  private TSStatus executeTableModelConversion(
+      final LoadTsFileDataTypeConverter converter,
+      final LoadSingleTsFileNode node,
+      final String filePath) {
+    final LoadTsFile statement =
+        (isGeneratedByPipe
+                ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
+                : LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap()))
+            .setDatabase(node.getDatabase())
+            .setDeleteAfterLoad(node.isDeleteAfterLoad())
+            .setConvertOnTypeMismatch(true);
+
+    return converter.convertForTableModel(statement).orElse(null);
+  }
+
+  private TSStatus executeTreeModelConversion(
+      final LoadTsFileDataTypeConverter converter,
+      final LoadSingleTsFileNode node,
+      final String filePath)
+      throws FileNotFoundException {
+    final String database = LoadTsFileScheduler.getPartitionQueryDatabase(node, isGeneratedByPipe);
+    final LoadTsFileStatement statement =
+        buildRetryTreeLoadStatement(filePath, node.isDeleteAfterLoad(), database);
+
+    return converter.convertForTreeModel(statement).orElse(null);
+  }
+
+  private void resolveFinalState() {
     if (failedTsFileNodeIndexes.isEmpty()) {
       LOGGER.info(DataNodeQueryMessages.LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS);
       stateMachine.transitionToFinished();
-    } else {
-      final String failedFiles =
-          failedTsFileNodeIndexes.stream()
-              .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
-              .collect(Collectors.joining(", "));
-      LOGGER.warn(
-          DataNodeQueryMessages
-              .LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3,
-          failedFiles);
-      stateMachine.transitionToFailed(
-          new LoadFileException(
-              String.format(
-                  DataNodeQueryMessages
-                      .LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3,
-                  failedFiles)));
+      return;
     }
+
+    final String remainingFailedFiles = getFailedFilePathsString();
+    LOGGER.warn(
+        DataNodeQueryMessages
+            .LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3,
+        remainingFailedFiles);
+
+    stateMachine.transitionToFailed(
+        new LoadFileException(
+            String.format(
+                DataNodeQueryMessages
+                    .LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3,
+                remainingFailedFiles)));
+  }
+
+  // -------------------------------------------------------------------------
+  // Helper Methods
+  // -------------------------------------------------------------------------
+
+  private String getFailedFilePathsString() {
+    return failedTsFileNodeIndexes.stream()
+        .filter(index -> index >= 0 && index < tsFileNodeList.size())
+        .map(index -> tsFileNodeList.get(index).getTsFileResource().getTsFilePath())
+        .collect(Collectors.joining(", "));
   }
 
   private LoadTsFileStatement buildRetryTreeLoadStatement(
@@ -200,6 +226,7 @@ public class LoadFallbackHandler {
                 : LoadTsFileStatement.createUnchecked(filePath))
             .setDeleteAfterLoad(deleteAfterLoad)
             .setConvertOnTypeMismatch(true);
+
     if (database != null) {
       statement.setDatabase(database);
       statement.updateDatabaseLevelByTreeDatabase();

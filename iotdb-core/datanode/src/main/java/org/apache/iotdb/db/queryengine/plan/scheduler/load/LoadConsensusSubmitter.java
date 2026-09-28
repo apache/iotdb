@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
@@ -38,8 +39,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -47,68 +50,48 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
- * Transport for LOAD consensus commands (BEGIN / PIECE / PREPARE / COMMIT / ABORT). One instance is
- * shared by all files of a scheduler; it is stateless besides the local endpoint and the client
- * manager.
- *
- * <p>{@link #submit(TRegionReplicaSet, LoadTsFileConsensusNode)}:
- *
- * <ol>
- *   <li>stamps the target {@code regionReplicaSet} onto the node for correlation only - no follower
- *       endpoints are carried, replicas receive the command through consensus log replication
- *       exactly like ordinary writes;
- *   <li>resolves the single write peer of the partition within that set: the current Ratis leader
- *       when the protocol is Ratis, otherwise the first replica-set location (the IoTConsensus
- *       write node, the same target the normal write path dispatches to);
- *   <li>writes the command through {@link RegionWriteExecutor} (local) or the internal RPC ({@code
- *       sendBatchPlanNode}) on that peer, which applies it via {@code
- *       DataRegionConsensusImpl.write} like any other write plan.
- * </ol>
- *
- * <p>IoTConsensus replicates the WAL entries (marker-only for LOAD pieces) to the followers, whose
- * own {@code TsFileWriterManager} rebuilds the staged files; the chunk bytes are pulled back from
- * the write node on demand. Ratis replicates the full command through its own log, so every replica
- * applies the chunk data directly and keeps its own writer.
+ * Submits LOAD consensus lifecycle commands (PIECE, PREPARE, COMMIT, ABORT) to target DataRegions
+ * via local execution or internal sync Thrift RPC.
  */
 public class LoadConsensusSubmitter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadConsensusSubmitter.class);
 
-  /** How long a route lookup that failed is waited out before it is tried again. */
-  private static final long LOAD_CONSENSUS_ROUTE_RESOLVE_BACKOFF_MS = 100L;
+  private static final long ROUTE_RESOLVE_BASE_BACKOFF_MS = 100L;
 
-  private final String localhostIp;
-  private final int localhostPort;
+  private final TEndPoint localEndPoint;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
   public LoadConsensusSubmitter(
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager) {
-    this.clientManager = clientManager;
-    this.localhostIp = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
-    this.localhostPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+      final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager) {
+    this.clientManager =
+        Objects.requireNonNull(
+            clientManager, DataNodeQueryMessages.EXCEPTION_CLIENTMANAGER_CANNOT_BE_NULL_FAF70317);
+    final String localIp = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    final int localPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    this.localEndPoint = new TEndPoint(localIp, localPort);
   }
 
-  /**
-   * Looks the route of a region up again and returns the freshest replica set, or null when it
-   * cannot be resolved within the attempts.
-   *
-   * <p>What this DataNode has cached is dropped first: a lookup answers with the route the cache
-   * holds, and the route that has to be looked up again is exactly the one that may have changed
-   * under a write-node switch or a region migration. That is what the query path does before it
-   * re-analyzes a statement it was redirected for. A route that resolves to nothing within the
-   * attempts is reported as no route at all, so the caller repeats its command on the route it had
-   * instead of silently replacing it with one that could not be read.
-   */
-  public TRegionReplicaSet resolveRoute(final TConsensusGroupId regionId, final int attempts) {
-    for (int attempt = 1; attempt <= attempts; attempt++) {
+  // -------------------------------------------------------------------------
+  // Route Resolution
+  // -------------------------------------------------------------------------
+
+  /** Re-resolves target region replica route with exponential backoff on stale topology. */
+  public TRegionReplicaSet resolveRoute(final TConsensusGroupId regionId, final int maxAttempts) {
+    if (regionId == null || maxAttempts <= 0) {
+      return null;
+    }
+
+    final ClusterPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        ClusterPartitionFetcher.getInstance().invalidAllCache();
+        partitionFetcher.invalidAllCache();
         final List<TRegionReplicaSet> replicaSets =
-            ClusterPartitionFetcher.getInstance()
-                .getRegionReplicaSet(Collections.singletonList(regionId));
-        if (!replicaSets.isEmpty()) {
+            partitionFetcher.getRegionReplicaSet(Collections.singletonList(regionId));
+        if (replicaSets != null && !replicaSets.isEmpty()) {
           return replicaSets.get(0);
         }
       } catch (final Exception e) {
@@ -117,75 +100,83 @@ public class LoadConsensusSubmitter {
                 .LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21,
             regionId,
             attempt,
-            attempts,
+            maxAttempts,
             e.getMessage());
       }
-      try {
-        Thread.sleep(LOAD_CONSENSUS_ROUTE_RESOLVE_BACKOFF_MS * attempt);
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return null;
+
+      if (attempt < maxAttempts) {
+        try {
+          Thread.sleep(ROUTE_RESOLVE_BASE_BACKOFF_MS * attempt);
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn(
+              StorageEngineMessages.LOG_ROUTE_RESOLUTION_INTERRUPTED_FOR_REGION_ARG_F8799966,
+              regionId);
+          return null;
+        }
       }
     }
     return null;
   }
 
-  public TSStatus submit(TRegionReplicaSet replicaSet, LoadTsFileConsensusNode node) {
+  // -------------------------------------------------------------------------
+  // Command Submission Pipeline
+  // -------------------------------------------------------------------------
+
+  /** Submits a consensus command node to the resolved active write peer of the replica set. */
+  public TSStatus submit(final TRegionReplicaSet replicaSet, final LoadTsFileConsensusNode node) {
+    Objects.requireNonNull(
+        replicaSet, StorageEngineMessages.EXCEPTION_REPLICASET_CANNOT_BE_NULL_A7340AC3);
+    Objects.requireNonNull(node, StorageEngineMessages.EXCEPTION_NODE_CANNOT_BE_NULL_BC7D5BB9);
+
+    if (replicaSet.getRegionId() == null) {
+      return RpcUtils.getStatus(
+          TSStatusCode.DISPATCH_ERROR,
+          StorageEngineMessages.MESSAGE_TREGIONREPLICASET_HAS_NULL_TCONSENSUSGROUPID_B7172B9E);
+    }
+
     final ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(replicaSet.getRegionId());
-    // The route is pinned for the whole transaction: the pieces of a task are already staged under
-    // the replica set the splitter resolved, and the PREPARE, COMMIT and ABORT of that task are
-    // sent
-    // to the same one. Re-resolving it per command would let a migration between two pieces move
-    // the
-    // rest of the task to a route whose regions hold a different plan, and a route that is merely
-    // refreshed while the pinned one is still the one holding the staged bytes tells nothing about
-    // whether those bytes may be committed. A pinned route that has become obsolete fails the
-    // dispatch instead, and the load is retried from the start, which is what the migration check
-    // of
-    // the scheduler asks for as well.
     node.setRegionReplicaSet(replicaSet);
 
-    final String protocol =
+    final String consensusProtocol =
         IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
     LOGGER.info(
         StorageEngineMessages.LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042,
         regionId,
-        protocol);
+        consensusProtocol);
 
-    final TDataNodeLocation writePeer = resolveWritePeer(replicaSet, regionId, protocol);
-    if (writePeer == null) {
-      return new TSStatus(TSStatusCode.DISPATCH_ERROR.getStatusCode())
-          .setMessage(String.valueOf(replicaSet));
+    final TDataNodeLocation writePeer = resolveWritePeer(replicaSet, regionId, consensusProtocol);
+    if (writePeer == null || writePeer.getInternalEndPoint() == null) {
+      return RpcUtils.getStatus(
+          TSStatusCode.DISPATCH_ERROR,
+          String.format(
+              StorageEngineMessages
+                  .MESSAGE_UNABLE_TO_RESOLVE_VALID_WRITE_PEER_FOR_REGION_ARG_76190FB5,
+              regionId));
     }
-    return isLocal(writePeer.getInternalEndPoint())
+
+    final TEndPoint targetEndPoint = writePeer.getInternalEndPoint();
+    return isLocal(targetEndPoint)
         ? writeLocal(regionId, node)
-        : writeRemote(writePeer.getInternalEndPoint(), regionId, node);
+        : writeRemote(targetEndPoint, regionId, node);
   }
 
   /**
-   * Resolves the single write peer of the partition. Ratis writes must land on the current leader,
-   * so the leader is matched against the replica-set locations by its DataNode id first: a Ratis
-   * leader is reported as a node id, without an endpoint to compare, so the node id is the only
-   * thing that identifies it. When the leader is known but the route does not hold it, the route is
-   * stale and no peer is returned at all - sending the command to another replica would leave the
-   * pieces staged on a node that cannot commit them. When the leader is not known (the coordinator
-   * does not host the partition, or Ratis has not elected one yet), IoTConsensus-like routing to
-   * the first location is used: that is the partition's write node, the same target normal writes
-   * use.
-   *
-   * <p>Package-private so that the resolution can be pinned by a test without a cluster around it.
+   * Resolves the primary write peer: Ratis matches active elected leader, IoTConsensus routes to
+   * index 0.
    */
   TDataNodeLocation resolveWritePeer(
-      TRegionReplicaSet replicaSet, ConsensusGroupId regionId, String protocol) {
+      final TRegionReplicaSet replicaSet, final ConsensusGroupId regionId, final String protocol) {
     final List<TDataNodeLocation> locations = replicaSet.getDataNodeLocations();
     if (locations == null || locations.isEmpty()) {
       return null;
     }
+
     if (ConsensusFactory.RATIS_CONSENSUS.equals(protocol)) {
       final Peer leader = DataRegionConsensusImpl.getInstance().getLeader(regionId);
       if (leader != null) {
-        for (TDataNodeLocation location : locations) {
+        for (final TDataNodeLocation location : locations) {
           if (location.getDataNodeId() == leader.getNodeId()) {
             return location;
           }
@@ -202,40 +193,75 @@ public class LoadConsensusSubmitter {
     return locations.get(0);
   }
 
-  private TSStatus writeLocal(ConsensusGroupId regionId, LoadTsFileConsensusNode node) {
-    final RegionWriteExecutor executor = new RegionWriteExecutor();
-    final RegionExecutionResult result = executor.execute(regionId, node);
-    return result.getStatus();
-  }
+  // -------------------------------------------------------------------------
+  // Local & Remote Invocations
+  // -------------------------------------------------------------------------
 
-  private TSStatus writeRemote(
-      TEndPoint endPoint, ConsensusGroupId regionId, LoadTsFileConsensusNode node) {
-    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-      final TSendSinglePlanNodeReq singleReq =
-          new TSendSinglePlanNodeReq(
-              new TPlanNode(node.serializeToByteBuffer()), regionId.convertToTConsensusGroupId());
-      final TSendBatchPlanNodeReq batchReq =
-          new TSendBatchPlanNodeReq(Collections.singletonList(singleReq));
-      final List<TSendSinglePlanNodeResp> responses =
-          client.sendBatchPlanNode(batchReq).getResponses();
-      if (responses == null || responses.isEmpty()) {
-        return new TSStatus(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      }
-      final TSendSinglePlanNodeResp resp = responses.get(0);
-      if (resp.isAccepted()) {
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      }
-      return resp.getStatus() != null
-          ? resp.getStatus()
-          : new TSStatus(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.DISPATCH_ERROR.getStatusCode()).setMessage(e.getMessage());
+  private TSStatus writeLocal(final ConsensusGroupId regionId, final LoadTsFileConsensusNode node) {
+    try {
+      final RegionWriteExecutor executor = new RegionWriteExecutor();
+      final RegionExecutionResult result = executor.execute(regionId, node);
+      return result != null && result.getStatus() != null
+          ? result.getStatus()
+          : RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR,
+              StorageEngineMessages.MESSAGE_NULL_LOCAL_EXECUTION_RESULT_E58C362F);
+    } catch (final Exception e) {
+      LOGGER.error(
+          StorageEngineMessages.LOG_FAILED_TO_EXECUTE_CONSENSUS_NODE_LOCALLY_ON_REGION_ARG_3B675D32,
+          regionId,
+          e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
   }
 
-  private boolean isLocal(TEndPoint endPoint) {
-    return endPoint != null
-        && localhostIp.equals(endPoint.getIp())
-        && localhostPort == endPoint.getPort();
+  private TSStatus writeRemote(
+      final TEndPoint endPoint,
+      final ConsensusGroupId regionId,
+      final LoadTsFileConsensusNode node) {
+    try (final SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+      final TSendSinglePlanNodeReq singleReq =
+          new TSendSinglePlanNodeReq(
+              new TPlanNode(node.serializeToByteBuffer()), regionId.convertToTConsensusGroupId());
+
+      final TSendBatchPlanNodeReq batchReq =
+          new TSendBatchPlanNodeReq(Collections.singletonList(singleReq));
+
+      final TSendBatchPlanNodeResp batchResp = client.sendBatchPlanNode(batchReq);
+      if (batchResp == null
+          || batchResp.getResponses() == null
+          || batchResp.getResponses().isEmpty()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.DISPATCH_ERROR,
+            String.format(
+                StorageEngineMessages.MESSAGE_EMPTY_BATCH_RESPONSE_FROM_ARG_770449BB, endPoint));
+      }
+
+      final TSendSinglePlanNodeResp singleResp = batchResp.getResponses().get(0);
+      if (singleResp.isAccepted()) {
+        return RpcUtils.SUCCESS_STATUS;
+      }
+
+      return singleResp.getStatus() != null
+          ? singleResp.getStatus()
+          : RpcUtils.getStatus(
+              TSStatusCode.DISPATCH_ERROR,
+              StorageEngineMessages.MESSAGE_TARGET_NODE_REJECTED_COMMAND_WITHOUT_STATUS_12009B10);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          StorageEngineMessages.LOG_FAILED_TO_DISPATCH_LOAD_COMMAND_TO_REMOTE_ENDPOINT_ARG_142A712A,
+          endPoint,
+          e);
+      return RpcUtils.getStatus(
+          TSStatusCode.DISPATCH_ERROR,
+          String.format(
+              StorageEngineMessages.MESSAGE_RPC_COMMUNICATION_FAILURE_TO_ARG_ARG_1B429913,
+              endPoint,
+              e.getMessage()));
+    }
+  }
+
+  private boolean isLocal(final TEndPoint endPoint) {
+    return localEndPoint.equals(endPoint);
   }
 }

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -34,17 +34,19 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * The physical layout of the LOAD staging area, and the deletion of a staged directory.
- *
- * <p>Every DataNode stages the pieces of a LOAD under {@code <load dir>/<database-region>/<load
- * id>/}. This class resolves those directories, hands out the writable ones, and deletes a
- * directory a finished task no longer needs.
+ * Resolves staging roots, normalizes cross-node payload paths, and handles physical task directory
+ * cleanup.
  */
 final class LoadStagingDirs {
 
@@ -52,127 +54,156 @@ final class LoadStagingDirs {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final AtomicReference<String[]> LOAD_BASE_DIRS =
-      new AtomicReference<>(CONFIG.getLoadTsFileDirs());
-  private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
+  private static final AtomicReference<StagingDirectoryContext> CONTEXT_REF =
+      new AtomicReference<>(new StagingDirectoryContext(CONFIG.getLoadTsFileDirs()));
+  private static final Object INIT_LOCK = new Object();
 
   private LoadStagingDirs() {}
 
-  /**
-   * The directories this DataNode stages the files of LOAD tasks in, as currently configured. A
-   * scan of the staging area must use this form: the cached array below is only refreshed when the
-   * writable directories are rebuilt.
-   */
+  // -------------------------------------------------------------------------
+  // Path Resolution & Introspection
+  // -------------------------------------------------------------------------
+
+  /** Returns current configured root directory strings from system descriptor. */
   static String[] configuredBaseDirs() {
     return CONFIG.getLoadTsFileDirs();
   }
 
-  /** The directories this DataNode stages the files of LOAD tasks in. */
+  /** Returns active staging root directory strings. */
   static String[] baseDirs() {
-    return LOAD_BASE_DIRS.get();
+    return CONTEXT_REF.get().baseDirs();
   }
 
   /**
-   * The path of a staged file as a piece or a payload reference records it: relative to the staging
-   * root the file lives under.
-   *
-   * <p>A DataNode can stage its tasks in several roots, the roots of two nodes need not have the
-   * same names, and a restored snapshot may place a task under a different root than the one it was
-   * staged in. A reference that names the file by its absolute path therefore stops describing it
-   * as soon as it leaves the node that wrote it. Resolving the recorded path under the roots of the
-   * node that reads it describes the file wherever it ended up. A file outside every root keeps its
-   * absolute path, which both readers still accept.
+   * Normalizes a staged file path relative to its enclosing staging root for network transport.
+   * Falls back to absolute path if file does not reside within any configured base directory.
    */
   static String recordedPath(final File file) {
-    final Path path = file.toPath().toAbsolutePath();
-    for (final String baseDir : baseDirs()) {
-      final Path base = new File(baseDir).toPath().toAbsolutePath();
-      if (path.startsWith(base)) {
-        return base.relativize(path).toString();
+    Objects.requireNonNull(file, StorageEngineMessages.EXCEPTION_FILE_CANNOT_BE_NULL_29A83D70);
+    final Path targetPath = file.toPath().toAbsolutePath().normalize();
+    final StagingDirectoryContext context = CONTEXT_REF.get();
+    final Path[] basePaths = context.basePaths();
+
+    for (final Path basePath : basePaths) {
+      if (targetPath.startsWith(basePath)) {
+        return basePath.relativize(targetPath).toString();
       }
     }
     return file.getAbsolutePath();
   }
 
-  /**
-   * @return the index of the staging root that holds this directory, or -1 when no root does
-   */
+  /** Resolves index of the staging root containing the target file, or -1 if uncontained. */
   static int baseDirIndexOf(final File file) {
-    final Path path = file.toPath().toAbsolutePath();
-    final String[] baseDirs = baseDirs();
-    for (int i = 0; i < baseDirs.length; i++) {
-      if (path.startsWith(new File(baseDirs[i]).toPath().toAbsolutePath())) {
+    Objects.requireNonNull(file, StorageEngineMessages.EXCEPTION_FILE_CANNOT_BE_NULL_29A83D70);
+    final Path targetPath = file.toPath().toAbsolutePath().normalize();
+    final StagingDirectoryContext context = CONTEXT_REF.get();
+    final Path[] basePaths = context.basePaths();
+
+    for (int i = 0; i < basePaths.length; i++) {
+      if (targetPath.startsWith(basePaths[i])) {
         return i;
       }
     }
     return -1;
   }
 
-  /** The staging directory of one region, the only place its staged payloads may be read from. */
+  /** Constructs the DataRegion-scoped staging directory. */
   static File regionLoadDir(
       final File baseDir, final String databaseName, final String dataRegionIdString) {
     return new File(baseDir, databaseName + IoTDBConstant.FILE_NAME_SEPARATOR + dataRegionIdString);
   }
 
-  /**
-   * Deletes a staged directory together with everything inside it. A directory that is still being
-   * written to is skipped rather than forced, so a concurrent writer never loses its files.
-   */
+  // -------------------------------------------------------------------------
+  // Physical Cleanup Operations
+  // -------------------------------------------------------------------------
+
+  /** Recursively deletes a task directory and all its contents using safe post-order traversal. */
   static void deleteTaskDir(final File taskDir) {
-    // A retained directory still holds the staged TsFiles, so its content is deleted first.
-    final File[] children = taskDir.listFiles();
-    if (children != null) {
-      for (final File child : children) {
-        try {
-          RetryUtils.retryOnException(
-              () -> {
-                Files.deleteIfExists(child.toPath());
-                return null;
-              });
-        } catch (final DirectoryNotEmptyException e) {
-          LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, child.getPath());
-        } catch (final IOException e) {
-          LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, child.getPath(), e);
-        }
-      }
+    if (taskDir == null || !taskDir.exists()) {
+      return;
     }
+
     try {
-      RetryUtils.retryOnException(
-          () -> {
-            Files.deleteIfExists(taskDir.toPath());
-            return null;
+      Files.walkFileTree(
+          taskDir.toPath(),
+          new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
+              deleteWithRetry(file);
+              return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(final Path dir, final IOException exc) {
+              deleteWithRetry(dir);
+              return FileVisitResult.CONTINUE;
+            }
           });
-    } catch (final DirectoryNotEmptyException e) {
-      LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
     } catch (final IOException e) {
       LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, taskDir.getPath(), e);
     }
   }
 
+  private static void deleteWithRetry(final Path target) {
+    try {
+      RetryUtils.retryOnException(
+          () -> {
+            Files.deleteIfExists(target);
+            return null;
+          });
+    } catch (final DirectoryNotEmptyException e) {
+      LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, target.toString());
+    } catch (final IOException e) {
+      LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, target.toString(), e);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Staging Context & FolderManager Lifecycle
+  // -------------------------------------------------------------------------
+
+  /** Retrieves or initializes the shared FolderManager with double-checked locking. */
   static FolderManager folderManager() throws DiskSpaceInsufficientException {
-    if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
-      synchronized (FOLDER_MANAGER) {
-        if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
-          LOAD_BASE_DIRS.set(CONFIG.getLoadTsFileDirs());
-          FOLDER_MANAGER.set(
+    final String[] currentConfiguredDirs = CONFIG.getLoadTsFileDirs();
+    StagingDirectoryContext currentContext = CONTEXT_REF.get();
+
+    if (!Arrays.equals(currentConfiguredDirs, currentContext.baseDirs())
+        || currentContext.folderManager() == null) {
+      synchronized (INIT_LOCK) {
+        currentContext = CONTEXT_REF.get();
+        if (!Arrays.equals(currentConfiguredDirs, currentContext.baseDirs())
+            || currentContext.folderManager() == null) {
+          final FolderManager newFolderManager =
               new FolderManager(
-                  Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
-          return FOLDER_MANAGER.get();
+                  Arrays.asList(currentConfiguredDirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
+          CONTEXT_REF.set(new StagingDirectoryContext(currentConfiguredDirs, newFolderManager));
+          return newFolderManager;
         }
       }
     }
+    return currentContext.folderManager();
+  }
 
-    if (FOLDER_MANAGER.get() == null) {
-      synchronized (FOLDER_MANAGER) {
-        if (FOLDER_MANAGER.get() == null) {
-          FOLDER_MANAGER.set(
-              new FolderManager(
-                  Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
-          return FOLDER_MANAGER.get();
-        }
-      }
+  /**
+   * Immutable snapshot holding synchronized base directories, parsed normalized paths, and folder
+   * manager.
+   */
+  private record StagingDirectoryContext(
+      String[] baseDirs, Path[] basePaths, FolderManager folderManager) {
+
+    private StagingDirectoryContext(final String[] baseDirs) {
+      this(baseDirs, null);
     }
 
-    return FOLDER_MANAGER.get();
+    private StagingDirectoryContext(final String[] baseDirs, final FolderManager folderManager) {
+      this(
+          baseDirs != null ? baseDirs.clone() : new String[0],
+          baseDirs != null
+              ? Arrays.stream(baseDirs)
+                  .map(dir -> Paths.get(dir).toAbsolutePath().normalize())
+                  .toArray(Path[]::new)
+              : new Path[0],
+          folderManager);
+    }
   }
 }

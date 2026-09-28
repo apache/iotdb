@@ -48,6 +48,26 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_RECOVER_WAL = "WAL 恢复失败。";
   public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
       "通过协议 {} 向 Region {} 写入 LOAD 共识节点";
+  public static final String EXCEPTION_REPLICASET_CANNOT_BE_NULL_A7340AC3 =
+      "replicaSet 不能为 null";
+  public static final String EXCEPTION_NODE_CANNOT_BE_NULL_BC7D5BB9 = "node 不能为 null";
+  public static final String MESSAGE_TREGIONREPLICASET_HAS_NULL_TCONSENSUSGROUPID_B7172B9E =
+      "TRegionReplicaSet 的 TConsensusGroupId 为 null";
+  public static final String MESSAGE_UNABLE_TO_RESOLVE_VALID_WRITE_PEER_FOR_REGION_ARG_76190FB5 =
+      "无法为 Region %s 解析出有效的写入节点";
+  public static final String MESSAGE_NULL_LOCAL_EXECUTION_RESULT_E58C362F = "本地执行结果为 null";
+  public static final String MESSAGE_EMPTY_BATCH_RESPONSE_FROM_ARG_770449BB =
+      "来自 %s 的批量响应为空";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_COMMAND_WITHOUT_STATUS_12009B10 =
+      "目标节点拒绝了命令但未返回状态";
+  public static final String MESSAGE_RPC_COMMUNICATION_FAILURE_TO_ARG_ARG_1B429913 =
+      "与 %s 的 RPC 通信失败：%s";
+  public static final String LOG_ROUTE_RESOLUTION_INTERRUPTED_FOR_REGION_ARG_F8799966 =
+      "Region {} 的路由解析被中断";
+  public static final String LOG_FAILED_TO_EXECUTE_CONSENSUS_NODE_LOCALLY_ON_REGION_ARG_3B675D32 =
+      "在 Region {} 上本地执行共识节点失败";
+  public static final String LOG_FAILED_TO_DISPATCH_LOAD_COMMAND_TO_REMOTE_ENDPOINT_ARG_142A712A =
+      "向远端 %s 下发 LOAD 命令失败";
   public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
       "LOAD 共识路由已过期：region {} 的写节点 {} 不在副本集 {} 中。";
   public static final String LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21 =
@@ -1577,6 +1597,31 @@ public final class StorageEngineMessages {
       "预计算偏移落后于实际文件位置，改用实际位置：file={}，device={}，measurement={}，expectedOffset={}，actualOffset={}，delta={}";
   public static final String EXCEPTION_THIS_WRITER_IS_NOT_BACKED_BY_A_FILE_7103C187 =
       "该 writer 未关联文件";
+  public static final String EXCEPTION_FILE_CANNOT_BE_NULL_29A83D70 = "file 不能为 null";
+  public static final String EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB = "channel 不能为 null";
+  public static final String EXCEPTION_OUT_CANNOT_BE_NULL_E8C2DE32 = "out 不能为 null";
+  public static final String EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879 =
+      "dataRegion 不能为 null";
+  public static final String EXCEPTION_LOADID_CANNOT_BE_NULL_22AFCDC7 = "loadId 不能为 null";
+  public static final String EXCEPTION_TASKDIR_CANNOT_BE_NULL_11671FD9 = "taskDir 不能为 null";
+  public static final String EXCEPTION_SNAPSHOTDIR_CANNOT_BE_NULL_283211CB =
+      "snapshotDir 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_WRITER_FOR_ARG_ABAF37F1 =
+      "为 %s 初始化 writer 失败";
+  public static final String EXCEPTION_FAILED_TO_CREATE_MODIFICATION_FILE_0D020A0C =
+      "创建 modification file 失败";
+  public static final String LOG_OPENED_PRECALCULATED_CHUNK_WRITER_FILE_ARG_DATAOFFSET_ARG_B966A48E =
+      "已打开预计算 chunk writer：file={}，dataOffset={}";
+  public static final String LOG_RESUMED_PRECALCULATED_CHUNK_WRITER_FILE_ARG_RESUMEOFFSET_ARG_39701150 =
+      "已续写预计算 chunk writer：file={}，resumeOffset={}";
+  public static final String LOG_WROTE_CHUNK_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_OFFSET_ARG_LENGTH_ARG_FIRSTOFGROUP_ARG_C2FEBACD =
+      "已写入 chunk：file={}，device={}，measurement={}，offset={}，length={}，firstOfGroup={}";
+  public static final String LOG_RESTORED_CHUNK_METADATA_FILE_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_49CF51D0 =
+      "已恢复 chunk 元数据：file={}，chunkCount={}，seriesCount={}";
+  public static final String LOG_SEALED_PRECALCULATED_CHUNK_FILE_FILE_ARG_METAOFFSET_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_FILELENGTH_ARG_D837F9C1 =
+      "已封口预计算 chunk 文件：file={}，metaOffset={}，chunkCount={}，seriesCount={}，fileLength={}";
+  public static final String LOG_PRECALCULATED_CHUNK_WRITER_IS_ALREADY_SEALED_IGNORING_CLOSE_FILE_ARG_A5E3C6CE =
+      "预计算 chunk writer 已封口，忽略本次 close：file={}";
   public static final String LOG_SKIPPING_THE_CHUNKS_OF_ARG_BECAUSE_THEIR_PAYLOAD_IS_ALREADY_STAGED_IN_ARG_OF_THE_LOAD_TASK_ARG_BAFEEE84 =
       "跳过 {} 的 chunk：其 payload 已暂存于 LOAD 任务 {} 的 {} 中";
 

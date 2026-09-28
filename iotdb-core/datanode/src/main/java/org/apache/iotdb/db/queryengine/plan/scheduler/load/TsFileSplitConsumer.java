@@ -33,27 +33,12 @@ import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * LOAD split consumer: receives every {@link TsFileData} of one source TsFile's split output from
- * {@link TsFileSplitter} and routes -&gt; buffers -&gt; dispatches it as per-region consensus
- * pieces.
- *
- * <ul>
- *   <li>{@code CHUNK} data is buffered directionless first; before dispatch {@link
- *       DataPartitionRouter} resolves the target regions and {@link PieceDispatcher} appends every
- *       chunk to its per-region piece.
- *   <li>{@code DELETION} data is replicated into every buffered piece (chunks are routed first so a
- *       deletion never overtakes chunk data).
- *   <li>{@link MemoryBoundedBuffer} guards the shared data cache; over budget, the largest piece is
- *       dispatched immediately.
- *   <li>At end of file {@link #sendAllTsFileData()} flushes the remainder.
- * </ul>
- *
- * The pipeline also notifies the progress-index callback for every chunk's time partition, so the
- * strategy can track pipe progress while splitting. {@link #clear()} releases all buffered
- * accounting and piece references.
+ * Split consumer that receives parsed chunk/deletion data from {@link TsFileSplitter}, resolves
+ * target data regions, buffers chunks within memory limits, and drives piece dispatch.
  */
 public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
 
@@ -66,21 +51,37 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
   private final List<ChunkData> nonDirectionalChunkData = new ArrayList<>();
 
   public TsFileSplitConsumer(
-      LoadSingleTsFileNode singleTsFileNode,
-      LoadTsFileDataCacheMemoryBlock block,
-      DataPartitionBatchFetcher partitionFetcher,
-      String userName,
-      Consumer<TTimePartitionSlot> progressIndexCallback,
-      PieceDispatcher.DispatchCallback dispatchCallback) {
-    this.singleTsFileNode = singleTsFileNode;
+      final LoadSingleTsFileNode singleTsFileNode,
+      final LoadTsFileDataCacheMemoryBlock block,
+      final DataPartitionBatchFetcher partitionFetcher,
+      final String userName,
+      final Consumer<TTimePartitionSlot> progressIndexCallback,
+      final PieceDispatcher.DispatchCallback dispatchCallback) {
+    this.singleTsFileNode =
+        Objects.requireNonNull(
+            singleTsFileNode,
+            DataNodeQueryMessages.EXCEPTION_SINGLETSFILENODE_CANNOT_BE_NULL_4EA6CF51);
+    Objects.requireNonNull(block, DataNodeQueryMessages.EXCEPTION_BLOCK_CANNOT_BE_NULL_7E31451D);
+    Objects.requireNonNull(
+        partitionFetcher, DataNodeQueryMessages.EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8);
+    Objects.requireNonNull(
+        dispatchCallback, DataNodeQueryMessages.EXCEPTION_DISPATCHCALLBACK_CANNOT_BE_NULL_C7A1AC6A);
+
     this.router = new DataPartitionRouter(partitionFetcher, userName);
     this.memoryBuffer = new MemoryBoundedBuffer(block);
     this.dispatcher = new PieceDispatcher(singleTsFileNode, memoryBuffer, dispatchCallback);
     this.progressIndexCallback = progressIndexCallback;
   }
 
+  // -------------------------------------------------------------------------
+  // Ingestion Pipeline
+  // -------------------------------------------------------------------------
+
   @Override
-  public boolean apply(TsFileData tsFileData) throws LoadFileException {
+  public boolean apply(final TsFileData tsFileData) throws LoadFileException {
+    Objects.requireNonNull(
+        tsFileData, DataNodeQueryMessages.EXCEPTION_TSFILEDATA_CANNOT_BE_NULL_EE1DDEC2);
+
     return switch (tsFileData.getType()) {
       case CHUNK -> addOrSendChunkData((ChunkData) tsFileData);
       case DELETION -> addOrSendDeletionData((DeletionData) tsFileData);
@@ -92,10 +93,13 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
     };
   }
 
-  private boolean addOrSendChunkData(ChunkData chunkData) throws LoadFileException {
+  private boolean addOrSendChunkData(final ChunkData chunkData) throws LoadFileException {
     nonDirectionalChunkData.add(chunkData);
     memoryBuffer.add(chunkData.getDataSize());
-    progressIndexCallback.accept(chunkData.getTimePartitionSlot());
+
+    if (progressIndexCallback != null) {
+      progressIndexCallback.accept(chunkData.getTimePartitionSlot());
+    }
 
     if (!memoryBuffer.isMemoryEnough()) {
       routeChunkData();
@@ -106,37 +110,54 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
     return true;
   }
 
-  private boolean addOrSendDeletionData(DeletionData deletionData) throws LoadFileException {
-    routeChunkData(); // ensure chunk data will be added before deletion
+  private boolean addOrSendDeletionData(final DeletionData deletionData) throws LoadFileException {
+    // Route pending chunks first to ensure deletions never precede the chunks they apply to
+    routeChunkData();
     dispatcher.addDeletionToAll(deletionData);
     return true;
   }
 
+  // -------------------------------------------------------------------------
+  // Routing & Dispatch Triggers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Resolves target replica sets for all directionless chunks and transfers them to the dispatcher.
+   */
   private void routeChunkData() throws LoadFileException {
     if (nonDirectionalChunkData.isEmpty()) {
       return;
     }
 
     final List<TRegionReplicaSet> replicaSets = router.route(nonDirectionalChunkData);
-    for (int i = 0, size = nonDirectionalChunkData.size(); i < size; i++) {
-      try {
+    final int size = nonDirectionalChunkData.size();
+
+    try {
+      for (int i = 0; i < size; i++) {
         dispatcher.offerChunk(nonDirectionalChunkData.get(i), replicaSets.get(i));
-      } catch (final IOException e) {
-        throw new LoadFileException(e);
       }
+    } catch (final IOException e) {
+      throw new LoadFileException(
+          DataNodeQueryMessages.EXCEPTION_FAILED_TO_OFFER_CHUNK_TO_DISPATCHER_0300D5DD, e);
+    } finally {
+      nonDirectionalChunkData.clear();
     }
-    nonDirectionalChunkData.clear();
   }
 
+  /** Flushes all remaining buffered chunks and deletions at the end of the source TsFile. */
   boolean sendAllTsFileData() throws LoadFileException {
     routeChunkData();
     return dispatcher.flushAll();
   }
 
-  /** Last-chance cleanup: returns all buffered accounting and drops every piece reference. */
+  // -------------------------------------------------------------------------
+  // Teardown
+  // -------------------------------------------------------------------------
+
+  /** Drops all unrouted chunks, clears partition buffers, and releases cached memory accounting. */
   void clear() {
-    memoryBuffer.clear();
     nonDirectionalChunkData.clear();
     dispatcher.clear();
+    memoryBuffer.clear();
   }
 }

@@ -8,7 +8,15 @@
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.tsfile.write;
 
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -44,30 +52,36 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import static org.apache.tsfile.file.metadata.MetadataIndexConstructor.checkAndBuildLevelIndex;
 import static org.apache.tsfile.file.metadata.MetadataIndexConstructor.splitDeviceByTable;
 
-/** Low-level Chunk writer that writes precalculated physical Chunks directly by absolute offset. */
+/**
+ * High-performance low-level chunk writer that writes precalculated physical chunks directly by
+ * absolute offset, allowing sparse out-of-order writes and forcing durability per chunk.
+ */
 public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFilePrecalculatedChunkWriter.class);
+
+  private static final int ZERO_BUFFER_CAPACITY = 64 * 1024;
+  private static final byte[] ZERO_CHUNK = new byte[ZERO_BUFFER_CAPACITY];
 
   private final TsFileOutput out;
   private final File file;
   private final Map<IDeviceID, Map<String, List<IChunkMetadata>>> device2MetadataMap =
       new TreeMap<>();
 
-  /** Set once {@link #close()} has written the metadata zone, so it is never written twice. */
+  private long maxPhysicalFileSize;
   private boolean sealed;
 
-  public TsFilePrecalculatedChunkWriter(File file) throws IOException {
-    this.file = file;
-    // The file is opened as a channel rather than as a stream because chunks are written at the
-    // absolute offsets of the layout: a piece that reaches this node after a piece the layout puts
-    // behind it has to be written at its own offset, see alignToOffset.
+  public TsFilePrecalculatedChunkWriter(final File file) throws IOException {
+    this.file =
+        Objects.requireNonNull(file, StorageEngineMessages.EXCEPTION_FILE_CANNOT_BE_NULL_29A83D70);
     this.out =
         new WritableFileChannelOutput(
             FileChannel.open(
@@ -77,32 +91,42 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
                 StandardOpenOption.TRUNCATE_EXISTING));
     this.sealed = false;
     startFile();
+    this.maxPhysicalFileSize = out.getPosition();
+    LOGGER.debug(
+        StorageEngineMessages
+            .LOG_OPENED_PRECALCULATED_CHUNK_WRITER_FILE_ARG_DATAOFFSET_ARG_B966A48E,
+        getFileForLog(),
+        maxPhysicalFileSize);
   }
 
-  /**
-   * Resumes a staged file that was left behind by an interrupted LOAD. The file already carries its
-   * header, so nothing is prepended; the data zone simply continues where the last completely
-   * written chunk of that file ends.
-   *
-   * <p>The caller owns the file up to that point: it must have dropped whatever the interrupted
-   * writer left beyond it and positioned the channel there, so that the data zone stays aligned
-   * with the absolute chunk offsets that every replica computes independently.
-   *
-   * @param file the staged file being continued, used for logging
-   * @param channel the channel of that file, already positioned where the next chunk belongs
-   */
   public TsFilePrecalculatedChunkWriter(final File file, final FileChannel channel)
       throws IOException {
     this.file = file;
-    this.out = new WritableFileChannelOutput(channel);
+    this.out =
+        new WritableFileChannelOutput(
+            Objects.requireNonNull(
+                channel, StorageEngineMessages.EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB));
     this.sealed = false;
+    this.maxPhysicalFileSize = channel.size();
+    LOGGER.info(
+        StorageEngineMessages
+            .LOG_RESUMED_PRECALCULATED_CHUNK_WRITER_FILE_ARG_RESUMEOFFSET_ARG_39701150,
+        getFileForLog(),
+        maxPhysicalFileSize);
   }
 
-  public TsFilePrecalculatedChunkWriter(TsFileOutput out) throws IOException {
+  public TsFilePrecalculatedChunkWriter(final TsFileOutput out) throws IOException {
     this.file = null;
-    this.out = out;
+    this.out =
+        Objects.requireNonNull(out, StorageEngineMessages.EXCEPTION_OUT_CANNOT_BE_NULL_E8C2DE32);
     this.sealed = false;
     startFile();
+    this.maxPhysicalFileSize = out.getPosition();
+    LOGGER.debug(
+        StorageEngineMessages
+            .LOG_OPENED_PRECALCULATED_CHUNK_WRITER_FILE_ARG_DATAOFFSET_ARG_B966A48E,
+        getFileForLog(),
+        maxPhysicalFileSize);
   }
 
   private void startFile() throws IOException {
@@ -110,70 +134,41 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
     out.write(new byte[] {TSFileConfig.VERSION_NUMBER});
   }
 
-  /**
-   * Restores the in-memory metadata of a resumed writer from the chunk headers and statistics that
-   * were persisted next to the staged file while it was written.
-   *
-   * <p>Without this the writer would seal the file with an empty metadata zone, which would make
-   * the chunks already on disk unreachable. The chunks must be supplied in the order they were
-   * written, because the order of a measurement's chunk list is the order they are serialized in.
-   *
-   * @param device2Measurement2ChunkMetadata the restored chunks, grouped by device and measurement
-   */
-  public void restoreChunkMetadata(
-      final Map<IDeviceID, Map<String, List<IChunkMetadata>>> device2Measurement2ChunkMetadata) {
-    device2MetadataMap.clear();
-    device2Measurement2ChunkMetadata.forEach(
-        (device, measurementMap) ->
-            measurementMap.forEach(
-                (measurement, chunkMetadatas) ->
-                    device2MetadataMap
-                        .computeIfAbsent(device, k -> new TreeMap<>())
-                        .computeIfAbsent(measurement, k -> new ArrayList<>())
-                        .addAll(chunkMetadatas)));
-  }
+  // -------------------------------------------------------------------------
+  // Chunk Writing, Hole Expansion & Per-Chunk Disk Sync
+  // -------------------------------------------------------------------------
 
   /**
-   * @return the number of chunks the writer currently knows about, restored ones included. Every
-   *     measurement of every device may hold several of them, so the lists are what is counted and
-   *     not the measurements holding them.
+   * Writes a chunk and its optional group header at predetermined absolute offsets, immediately
+   * flushing written bytes to the underlying storage medium.
    */
-  public int getChunkMetadataCount() {
-    int count = 0;
-    for (final Map<String, List<IChunkMetadata>> measurementMap : device2MetadataMap.values()) {
-      for (final List<IChunkMetadata> chunks : measurementMap.values()) {
-        count += chunks.size();
-      }
-    }
-    return count;
-  }
-
-  public boolean isSealed() {
-    return sealed;
-  }
-
   public ChunkWriteResult writeChunk(
-      IDeviceID device,
-      boolean isAligned,
-      long chunkGroupHeaderOffset,
-      boolean isFirstChunkOfGroup,
-      Chunk chunk,
+      final IDeviceID device,
+      final boolean isAligned,
+      final long chunkGroupHeaderOffset,
+      final boolean isFirstChunkOfGroup,
+      final Chunk chunk,
       long chunkOffset)
       throws IOException {
-    OutputStream stream = out.wrapAsStream();
+    final OutputStream stream = out.wrapAsStream();
     long actualChunkGroupHeaderOffset = -1L;
 
     if (isFirstChunkOfGroup) {
       actualChunkGroupHeaderOffset = alignToOffset(chunkGroupHeaderOffset, device, chunk);
       new ChunkGroupHeader(device).serializeTo(stream);
+      updateMaxPhysicalFileSize(out.getPosition());
     }
 
     chunkOffset = alignToOffset(chunkOffset, device, chunk);
     chunk.getHeader().serializeTo(stream);
     out.write(chunk.getData().duplicate());
     final long actualChunkEndOffset = out.getPosition();
+    updateMaxPhysicalFileSize(actualChunkEndOffset);
 
-    ChunkMetadata metadata =
+    // Force data contents onto the physical storage medium immediately per chunk
+    out.force();
+
+    final ChunkMetadata metadata =
         new ChunkMetadata(
             chunk.getHeader().getMeasurementID(),
             chunk.getHeader().getDataType(),
@@ -185,24 +180,60 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
         (byte)
             (chunk.getHeader().getChunkType()
                 & (TsFileConstant.TIME_COLUMN_MASK | TsFileConstant.VALUE_COLUMN_MASK)));
+
     device2MetadataMap
         .computeIfAbsent(device, k -> new TreeMap<>())
         .computeIfAbsent(chunk.getHeader().getMeasurementID(), k -> new ArrayList<>())
         .add(metadata);
 
+    LOGGER.debug(
+        StorageEngineMessages
+            .LOG_WROTE_CHUNK_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_OFFSET_ARG_LENGTH_ARG_FIRSTOFGROUP_ARG_C2FEBACD,
+        getFileForLog(),
+        device,
+        chunk.getHeader().getMeasurementID(),
+        chunkOffset,
+        actualChunkEndOffset - chunkOffset,
+        isFirstChunkOfGroup);
+
     return new ChunkWriteResult(actualChunkGroupHeaderOffset, chunkOffset, actualChunkEndOffset);
   }
 
+  /**
+   * Positions writer to target offset. Pads zeros only when expected offset exceeds physical file
+   * length.
+   */
   private long alignToOffset(final long expectedOffset, final IDeviceID device, final Chunk chunk)
       throws IOException {
+    if (out instanceof WritableFileChannelOutput channelOutput) {
+      // 1. Expand file with zeros if jumping past current physical maximum bound
+      if (expectedOffset > maxPhysicalFileSize) {
+        final long paddingStartOffset = maxPhysicalFileSize;
+        channelOutput.position(paddingStartOffset);
+        final long paddingBytes = expectedOffset - paddingStartOffset;
+        writeZeros(paddingBytes);
+        maxPhysicalFileSize = expectedOffset;
+        LOGGER.warn(
+            StorageEngineMessages
+                .LOG_FILLED_PHYSICAL_HOLE_BEFORE_WRITING_CHUNK_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_FILLBYTES_ARG_9EDA3EB6,
+            getFileForLog(),
+            device,
+            chunk.getHeader().getMeasurementID(),
+            expectedOffset,
+            paddingStartOffset,
+            paddingBytes);
+      }
+
+      // 2. Reposition directly to expected offset within allocated file range
+      channelOutput.position(expectedOffset);
+      return expectedOffset;
+    }
+
+    // Fallback for sequential non-channel stream output
     final long currentOffset = out.getPosition();
     if (currentOffset < expectedOffset) {
-      long remaining = expectedOffset - currentOffset;
-      while (remaining > 0) {
-        final int step = (int) Math.min(Integer.MAX_VALUE, remaining);
-        out.write(new byte[step]);
-        remaining -= step;
-      }
+      final long paddingBytes = expectedOffset - currentOffset;
+      writeZeros(paddingBytes);
       LOGGER.warn(
           StorageEngineMessages
               .LOG_FILLED_PHYSICAL_HOLE_BEFORE_WRITING_CHUNK_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_FILLBYTES_ARG_9EDA3EB6,
@@ -211,20 +242,12 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
           chunk.getHeader().getMeasurementID(),
           expectedOffset,
           currentOffset,
-          expectedOffset - currentOffset);
+          paddingBytes);
       return expectedOffset;
     }
     if (currentOffset > expectedOffset) {
-      // This piece arrived after a piece the layout puts behind it, which is what a writer resumed
-      // from a snapshot that already held the later pieces sees. The offset of a chunk is part of
-      // the layout every replica computes on its own, so the chunk has to be written where the
-      // layout puts it: the bytes that arrived earlier are elsewhere in the file, and the region in
-      // between stays the zeros this writer pads with. Appending it instead would leave the planned
-      // range as a hole, which is indistinguishable from a piece that never arrived.
-      if (out instanceof WritableFileChannelOutput) {
-        ((WritableFileChannelOutput) out).position(expectedOffset);
-        return expectedOffset;
-      }
+      // A non-seekable output cannot place the piece at its own offset, so the bytes land where the
+      // stream already is.
       LOGGER.warn(
           StorageEngineMessages
               .LOG_PRECALCULATED_OFFSET_IS_BEHIND_ACTUAL_FILE_POSITION_USING_ACTUAL_POSITION_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_DELTA_ARG_F05C873F,
@@ -234,80 +257,152 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
           expectedOffset,
           currentOffset,
           currentOffset - expectedOffset);
-      return currentOffset;
     }
     return expectedOffset;
+  }
+
+  private void writeZeros(final long byteCount) throws IOException {
+    long remaining = byteCount;
+    while (remaining > 0) {
+      final int step = (int) Math.min(ZERO_BUFFER_CAPACITY, remaining);
+      // TsFileOutput exposes no write(byte[], int, int), and wrapping the shared buffer hands out a
+      // view of it instead of copying the zeros.
+      out.write(ByteBuffer.wrap(ZERO_CHUNK, 0, step));
+      remaining -= step;
+    }
+  }
+
+  private void updateMaxPhysicalFileSize(final long currentPosition) {
+    if (currentPosition > maxPhysicalFileSize) {
+      maxPhysicalFileSize = currentPosition;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Metadata Restoration & Sealing
+  // -------------------------------------------------------------------------
+
+  public void restoreChunkMetadata(
+      final Map<IDeviceID, Map<String, List<IChunkMetadata>>> device2Measurement2ChunkMetadata) {
+    device2MetadataMap.clear();
+    device2Measurement2ChunkMetadata.forEach(
+        (device, measurementMap) ->
+            measurementMap.forEach(
+                (measurement, chunkMetadatas) ->
+                    device2MetadataMap
+                        .computeIfAbsent(device, k -> new TreeMap<>())
+                        .computeIfAbsent(measurement, k -> new ArrayList<>())
+                        .addAll(chunkMetadatas)));
+    LOGGER.info(
+        StorageEngineMessages
+            .LOG_RESTORED_CHUNK_METADATA_FILE_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_49CF51D0,
+        getFileForLog(),
+        getChunkMetadataCount(),
+        getSeriesCount());
+  }
+
+  public int getChunkMetadataCount() {
+    int count = 0;
+    for (final Map<String, List<IChunkMetadata>> measurementMap : device2MetadataMap.values()) {
+      for (final List<IChunkMetadata> chunks : measurementMap.values()) {
+        count += chunks.size();
+      }
+    }
+    return count;
+  }
+
+  private int getSeriesCount() {
+    return device2MetadataMap.values().stream().mapToInt(Map::size).sum();
   }
 
   @Override
   public void close() throws IOException {
     if (sealed) {
+      LOGGER.debug(
+          StorageEngineMessages
+              .LOG_PRECALCULATED_CHUNK_WRITER_IS_ALREADY_SEALED_IGNORING_CLOSE_FILE_ARG_A5E3C6CE,
+          getFileForLog());
       return;
     }
     sealed = true;
-    // Writing a chunk behind the end of the file leaves the position there, so the metadata zone
-    // has to be placed after the last byte of the data zone rather than after the last write:
-    // sealing at a position inside the data zone would overwrite chunks with the metadata index.
-    if (out instanceof WritableFileChannelOutput) {
-      ((WritableFileChannelOutput) out).positionToEndOfFile();
-    }
-    final long metaOffset = out.getPosition();
-    final OutputStream stream = out.wrapAsStream();
-    ReadWriteIOUtils.write(MetaMarker.SEPARATOR, stream);
-    final Map<IDeviceID, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
 
-    int seriesCount = device2MetadataMap.values().stream().mapToInt(Map::size).sum();
-    BloomFilter bloomFilter =
-        BloomFilter.getEmptyBloomFilter(
-            TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
-            Math.max(seriesCount, 1));
-
-    for (Map.Entry<IDeviceID, Map<String, List<IChunkMetadata>>> deviceEntry :
-        device2MetadataMap.entrySet()) {
-      IDeviceID deviceId = deviceEntry.getKey();
-      Map<String, List<IChunkMetadata>> measurementMap = deviceEntry.getValue();
-
-      MetadataIndexNode measurementNode =
-          new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
-      for (Map.Entry<String, List<IChunkMetadata>> measEntry : measurementMap.entrySet()) {
-        String measurementId = measEntry.getKey();
-        List<IChunkMetadata> chunkMetadatas = measEntry.getValue();
-
-        final TimeseriesMetadata tsMetadata =
-            TSMIterator.constructOneTimeseriesMetadata(measurementId, chunkMetadatas);
-        final long tsMetadataOffset = out.getPosition();
-        measurementNode.addEntry(
-            new MeasurementMetadataIndexEntry(measurementId, tsMetadataOffset));
-        tsMetadata.serializeTo(stream);
-        bloomFilter.add(deviceId + "." + measurementId);
+    try {
+      // Seek past the highest written data zone byte before building indices
+      if (out instanceof WritableFileChannelOutput channelOutput) {
+        channelOutput.position(maxPhysicalFileSize);
       }
 
-      measurementNode.setEndOffset(out.getPosition());
-      deviceMetadataIndexMap.put(deviceId, measurementNode);
+      final long metaOffset = out.getPosition();
+      final OutputStream stream = out.wrapAsStream();
+      ReadWriteIOUtils.write(MetaMarker.SEPARATOR, stream);
+
+      final Map<IDeviceID, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
+      final int seriesCount = getSeriesCount();
+      final BloomFilter bloomFilter =
+          BloomFilter.getEmptyBloomFilter(
+              TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
+              Math.max(seriesCount, 1));
+
+      for (final Map.Entry<IDeviceID, Map<String, List<IChunkMetadata>>> deviceEntry :
+          device2MetadataMap.entrySet()) {
+        final IDeviceID deviceId = deviceEntry.getKey();
+        final MetadataIndexNode measurementNode =
+            new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
+
+        for (final Map.Entry<String, List<IChunkMetadata>> measEntry :
+            deviceEntry.getValue().entrySet()) {
+          final String measurementId = measEntry.getKey();
+          final TimeseriesMetadata tsMetadata =
+              TSMIterator.constructOneTimeseriesMetadata(measurementId, measEntry.getValue());
+          measurementNode.addEntry(
+              new MeasurementMetadataIndexEntry(measurementId, out.getPosition()));
+          tsMetadata.serializeTo(stream);
+          bloomFilter.add(deviceId + "." + measurementId);
+        }
+
+        measurementNode.setEndOffset(out.getPosition());
+        deviceMetadataIndexMap.put(deviceId, measurementNode);
+      }
+
+      final TsFileMetadata tsFileMetadata = new TsFileMetadata();
+      final Map<String, MetadataIndexNode> tableIndexNodeMap = new TreeMap<>();
+      for (final Map.Entry<String, Map<IDeviceID, MetadataIndexNode>> tableEntry :
+          splitDeviceByTable(deviceMetadataIndexMap).entrySet()) {
+        tableIndexNodeMap.put(
+            tableEntry.getKey(), checkAndBuildLevelIndex(tableEntry.getValue(), out));
+      }
+
+      tsFileMetadata.setTableMetadataIndexNodeMap(tableIndexNodeMap);
+      tsFileMetadata.setMetaOffset(metaOffset);
+      tsFileMetadata.setBloomFilter(bloomFilter);
+
+      final long tsFileMetadataOffset = out.getPosition();
+      tsFileMetadata.serializeTo(stream);
+      final int tsFileMetadataSize = (int) (out.getPosition() - tsFileMetadataOffset);
+
+      ReadWriteIOUtils.write(tsFileMetadataSize, stream);
+      out.write(BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING));
+      out.force();
+
+      LOGGER.info(
+          StorageEngineMessages
+              .LOG_SEALED_PRECALCULATED_CHUNK_FILE_FILE_ARG_METAOFFSET_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_FILELENGTH_ARG_D837F9C1,
+          getFileForLog(),
+          metaOffset,
+          getChunkMetadataCount(),
+          seriesCount,
+          out.getPosition());
+    } finally {
+      out.close();
     }
-
-    final TsFileMetadata tsFileMetadata = new TsFileMetadata();
-    final Map<String, MetadataIndexNode> tableIndexNodeMap = new TreeMap<>();
-    for (final Map.Entry<String, Map<IDeviceID, MetadataIndexNode>> tableEntry :
-        splitDeviceByTable(deviceMetadataIndexMap).entrySet()) {
-      tableIndexNodeMap.put(
-          tableEntry.getKey(), checkAndBuildLevelIndex(tableEntry.getValue(), out));
-    }
-    tsFileMetadata.setTableMetadataIndexNodeMap(tableIndexNodeMap);
-    tsFileMetadata.setMetaOffset(metaOffset);
-    tsFileMetadata.setBloomFilter(bloomFilter);
-
-    long tsFileMetadataOffset = out.getPosition();
-    tsFileMetadata.serializeTo(stream);
-    int tsFileMetadataSize = (int) (out.getPosition() - tsFileMetadataOffset);
-
-    ReadWriteIOUtils.write(tsFileMetadataSize, stream);
-    out.write(BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING));
-    out.close();
   }
 
-  private String getFileForLog() {
-    return file == null ? "<memory-output>" : file.getAbsolutePath();
+  // -------------------------------------------------------------------------
+  // Accessors & Models
+  // -------------------------------------------------------------------------
+
+  public boolean isSealed() {
+    return sealed;
   }
 
   public TsFileOutput getOutput() {
@@ -330,25 +425,25 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
                 device,
                 measurementMap.values().stream()
                     .flatMap(List::stream)
-                    .collect(java.util.stream.Collectors.toList())));
+                    .collect(Collectors.toList())));
     return result;
+  }
+
+  private String getFileForLog() {
+    return file == null ? "<memory-output>" : file.getAbsolutePath();
   }
 
   public record ChunkWriteResult(
       long actualChunkGroupHeaderOffset, long actualChunkOffset, long actualChunkEndOffset) {}
 
-  /**
-   * A {@link TsFileOutput} that continues an existing staged file at a given offset.
-   *
-   * <p>It exists because {@link LocalTsFileOutput} can only be created on a {@code
-   * FileOutputStream}, which either truncates (plain constructor) or appends at the current end of
-   * file — and the end of file is exactly what an interrupted LOAD cannot trust: the interrupted
-   * write may have left a partially written chunk behind it. Positioning by offset keeps the data
-   * zone aligned with the absolute chunk offsets that every replica computes independently.
-   */
+  // -------------------------------------------------------------------------
+  // Channel Wrapper
+  // -------------------------------------------------------------------------
+
   private static final class WritableFileChannelOutput implements TsFileOutput {
 
     private final FileChannel channel;
+    private final ByteBuffer singleByteBuffer = ByteBuffer.allocateDirect(1);
 
     private WritableFileChannelOutput(final FileChannel channel) {
       this.channel = channel;
@@ -356,12 +451,19 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
     @Override
     public void write(final byte[] bytes) throws IOException {
-      write(ByteBuffer.wrap(bytes));
+      write(bytes, 0, bytes.length);
+    }
+
+    public void write(final byte[] bytes, final int offset, final int length) throws IOException {
+      write(ByteBuffer.wrap(bytes, offset, length));
     }
 
     @Override
-    public void write(final byte b) throws IOException {
-      write(new byte[] {b});
+    public synchronized void write(final byte b) throws IOException {
+      singleByteBuffer.clear();
+      singleByteBuffer.put(b);
+      singleByteBuffer.flip();
+      write(singleByteBuffer);
     }
 
     @Override
@@ -376,41 +478,35 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
       return channel.position();
     }
 
-    /** Positions the channel at an absolute offset, so a late chunk lands where it was laid out. */
     private void position(final long offset) throws IOException {
       channel.position(offset);
-    }
-
-    /** Positions the channel after the last byte of the file. */
-    private void positionToEndOfFile() throws IOException {
-      channel.position(channel.size());
     }
 
     @Override
     public OutputStream wrapAsStream() {
       return new OutputStream() {
-
         @Override
         public void write(final int b) throws IOException {
-          WritableFileChannelOutput.this.write(new byte[] {(byte) b});
+          WritableFileChannelOutput.this.write((byte) b);
         }
 
         @Override
         public void write(final byte[] bytes, final int offset, final int length)
             throws IOException {
-          WritableFileChannelOutput.this.write(ByteBuffer.wrap(bytes, offset, length).slice());
+          WritableFileChannelOutput.this.write(bytes, offset, length);
         }
       };
     }
 
     @Override
-    public void flush() {
-      // Unbuffered: every write reaches the channel immediately.
+    public void flush() throws IOException {
+      force();
     }
 
     @Override
     public void force() throws IOException {
-      channel.force(true);
+      // Pass false to fsync file content without blocking on OS metadata modifications
+      channel.force(false);
     }
 
     @Override
