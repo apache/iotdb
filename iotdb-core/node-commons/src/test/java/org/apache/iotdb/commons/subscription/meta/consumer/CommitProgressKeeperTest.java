@@ -50,6 +50,7 @@ public class CommitProgressKeeperTest {
   @Test
   public void testStateAccessUsesOneInstanceMonitor() throws Exception {
     assertSynchronized("removeTopicProgress", String.class, String.class);
+    assertSynchronized("removeConsumerGroupProgress", String.class);
     assertSynchronized("updateRegionProgress", String.class, ByteBuffer.class);
     assertSynchronized("getRegionProgress", String.class);
     assertSynchronized("getAllRegionProgress");
@@ -114,6 +115,24 @@ public class CommitProgressKeeperTest {
     assertNotNull(keeper.getRegionProgress(ambiguousLegacyKey));
     assertNotNull(keeper.getRegionProgress(otherTopicKey));
     assertNotNull(keeper.getRegionProgress(masqueradingLegacyKey));
+  }
+
+  @Test
+  public void testRemoveConsumerGroupProgressRemovesAllTopics() {
+    final CommitProgressKeeper keeper = new CommitProgressKeeper();
+    final ByteBuffer progress = ByteBuffer.wrap(new byte[] {1});
+    final String firstTopicKey = CommitProgressKeeper.generateKey("cg", "topic1", "1_1", 1);
+    final String secondTopicKey = CommitProgressKeeper.generateLegacyKey("cg", "topic2", "1_2", 2);
+    final String otherGroupKey = CommitProgressKeeper.generateKey("other", "topic1", "1_1", 1);
+    keeper.updateRegionProgress(firstTopicKey, progress);
+    keeper.updateRegionProgress(secondTopicKey, progress);
+    keeper.updateRegionProgress(otherGroupKey, progress);
+
+    keeper.removeConsumerGroupProgress("cg");
+
+    assertNull(keeper.getRegionProgress(firstTopicKey));
+    assertNull(keeper.getRegionProgress(secondTopicKey));
+    assertNotNull(keeper.getRegionProgress(otherGroupKey));
   }
 
   @Test

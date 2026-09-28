@@ -110,6 +110,18 @@ public class TopicConfigTest {
     Assert.assertTrue(new TopicConfig(attributes).isColumnFilterTrivial());
   }
 
+  @Test
+  public void testRetainProgressAfterUnsubscribeDefaultsToFalse() {
+    Assert.assertFalse(new TopicConfig().isProgressRetainedAfterUnsubscribe());
+  }
+
+  @Test
+  public void testRetainProgressAfterUnsubscribeIsCaseInsensitiveAndTrimmed() {
+    Assert.assertTrue(
+        new TopicConfig(Collections.singletonMap("Retain.Progress.After.Unsubscribe", " TRUE "))
+            .isProgressRetainedAfterUnsubscribe());
+  }
+
   private static TopicConfig topicConfigWithMode(final String mode) {
     return new TopicConfig(Collections.singletonMap(TopicConstant.MODE_KEY, mode));
   }
