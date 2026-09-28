@@ -2386,6 +2386,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public void shutdownUpgradeModFileThreadPool() {
+    if (upgradeModFileThreadPool != null) {
+      upgradeModFileThreadPool.shutdown();
+    }
+  }
+
   public void deleteDALFolderAndClose() {
     Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId.getId()))
         .ifPresent(
@@ -5319,6 +5325,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      shutdownUpgradeModFileThreadPool();
       releaseDirectBufferMemory();
       MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();

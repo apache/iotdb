@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -168,14 +169,13 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
         Assert.assertFalse(
             "ConfigNode should not throw NullPointerException, but got: " + message,
             message.contains("NullPointerException"));
-        // ... and the submission must be rejected cleanly. "extend region" wraps every region's
-        // result, so the top-level message only reports the aggregate counts; the concrete "does
-        // not
-        // exist in the cluster" reason is carried in the per-region sub-status.
+        // The operation-specific error and the concrete reason must reach the JDBC client.
+        Assert.assertEquals(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode(), e.getErrorCode());
         Assert.assertTrue(
             "Expected the extend submission to be rejected but got: " + message,
-            message.contains("failed to submit: 1"));
+            message.contains("Target DataNode " + invalidDataNodeId + " does not exist"));
       }
+      assertRegionMapUnchanged(statement, regionMap);
     }
   }
 
@@ -314,7 +314,7 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
     }
   }
 
-  /** Test multi-region expand with partial regions already in target DataNode */
+  /** Reject the entire expansion when a later region already exists on the target DataNode. */
   @Test
   public void multiRegionExpandPartialExistTest() throws Exception {
     EnvFactory.getEnv()
@@ -338,40 +338,33 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
       Set<Integer> allDataNodeId = getAllDataNodes(statement);
 
-      List<Integer> allRegions = new ArrayList<>(regionMap.keySet());
-      List<Integer> selectedRegions = allRegions.subList(0, Math.min(3, allRegions.size()));
+      Assert.assertEquals(2, regionMap.size());
+      List<Integer> selectedRegions = new ArrayList<>(regionMap.keySet());
 
       int targetDataNode =
           findDataNodeNotContainsAnyRegion(allDataNodeId, regionMap, selectedRegions);
 
-      // first expand some regions individually
-      List<Integer> preExpandRegions =
-          selectedRegions.subList(0, Math.min(2, selectedRegions.size()));
-      for (int regionId : preExpandRegions) {
-        regionGroupExpand(statement, client, regionId, targetDataNode);
-      }
-
-      // now try to expand all regions (including already expanded ones)
-      LOGGER.info(
-          "Testing multi-expand with regions {} to DataNode {}, where {} already exist",
-          selectedRegions,
-          targetDataNode,
-          preExpandRegions);
-
-      multiRegionGroupExpand(statement, client, selectedRegions, targetDataNode);
-
-      // verify all regions are in target DataNode
+      // Keep the first region valid so this also catches submission during validation.
+      regionGroupExpand(statement, client, selectedRegions.get(1), targetDataNode);
       regionMap = getAllRegionMap(statement);
-      for (int regionId : selectedRegions) {
-        Assert.assertTrue(
-            "Region " + regionId + " should contain target DataNode " + targetDataNode,
-            regionMap.get(regionId).contains(targetDataNode));
-      }
-      LOGGER.info("Multi-region expand partial exist test passed");
+      Assert.assertFalse(regionMap.get(selectedRegions.get(0)).contains(targetDataNode));
+      Assert.assertTrue(regionMap.get(selectedRegions.get(1)).contains(targetDataNode));
+
+      SQLException exception =
+          Assert.assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      buildMultiRegionCommand(
+                          MULTI_EXPAND_FORMAT, selectedRegions, targetDataNode)));
+      Assert.assertEquals(
+          TSStatusCode.EXTEND_REGION_ERROR.getStatusCode(), exception.getErrorCode());
+      Assert.assertTrue(exception.getMessage().contains("already contains region"));
+      assertRegionMapUnchanged(statement, regionMap);
     }
   }
 
-  /** Test multi-region shrink with partial regions not in target DataNode */
+  /** Reject the entire removal when a later region does not exist on the target DataNode. */
   @Test
   public void multiRegionShrinkPartialNotExistTest() throws Exception {
     EnvFactory.getEnv()
@@ -379,8 +372,8 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1);
+        .setDataReplicationFactor(2)
+        .setSchemaReplicationFactor(2);
 
     EnvFactory.getEnv().initClusterEnvironment(1, 5);
 
@@ -395,8 +388,8 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
       Set<Integer> allDataNodeId = getAllDataNodes(statement);
 
-      List<Integer> allRegions = new ArrayList<>(regionMap.keySet());
-      List<Integer> selectedRegions = allRegions.subList(0, Math.min(3, allRegions.size()));
+      Assert.assertEquals(2, regionMap.size());
+      List<Integer> selectedRegions = new ArrayList<>(regionMap.keySet());
 
       int targetDataNode =
           findDataNodeNotContainsAnyRegion(allDataNodeId, regionMap, selectedRegions);
@@ -404,31 +397,32 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       // first expand all regions to target DataNode
       multiRegionGroupExpand(statement, client, selectedRegions, targetDataNode);
 
-      // then shrink some regions individually
-      List<Integer> preShrinkRegions =
-          selectedRegions.subList(0, Math.min(2, selectedRegions.size()));
-      for (int regionId : preShrinkRegions) {
-        regionGroupShrink(statement, client, regionId, targetDataNode);
-      }
-
-      // now try to shrink all regions (including already shrunk ones)
-      LOGGER.info(
-          "Testing multi-shrink with regions {} from DataNode {}, where {} already removed",
-          selectedRegions,
-          targetDataNode,
-          preShrinkRegions);
-
-      multiRegionGroupShrink(statement, client, selectedRegions, targetDataNode);
-
-      // verify all regions are not in target DataNode
+      // Keep the first region valid and leave two replicas of the second region elsewhere.
+      regionGroupShrink(statement, client, selectedRegions.get(1), targetDataNode);
       regionMap = getAllRegionMap(statement);
-      for (int regionId : selectedRegions) {
-        Assert.assertFalse(
-            "Region " + regionId + " should not contain target DataNode " + targetDataNode,
-            regionMap.get(regionId).contains(targetDataNode));
-      }
-      LOGGER.info("Multi-region shrink partial not exist test passed");
+      Assert.assertTrue(regionMap.get(selectedRegions.get(0)).contains(targetDataNode));
+      Assert.assertFalse(regionMap.get(selectedRegions.get(1)).contains(targetDataNode));
+
+      SQLException exception =
+          Assert.assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      buildMultiRegionCommand(
+                          MULTI_SHRINK_FORMAT, selectedRegions, targetDataNode)));
+      Assert.assertEquals(
+          TSStatusCode.REMOVE_REGION_PEER_ERROR.getStatusCode(), exception.getErrorCode());
+      Assert.assertTrue(exception.getMessage().contains("doesn't contain Region"));
+      assertRegionMapUnchanged(statement, regionMap);
     }
+  }
+
+  private void assertRegionMapUnchanged(
+      Statement statement, Map<Integer, Set<Integer>> expectedRegionMap) {
+    Awaitility.await()
+        .during(3, TimeUnit.SECONDS)
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(() -> Assert.assertEquals(expectedRegionMap, getAllRegionMap(statement)));
   }
 
   private void multiRegionGroupExpand(
@@ -519,17 +513,8 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
               try {
                 statement.execute(command);
                 return true;
-              } catch (Exception e) {
+              } catch (SQLException e) {
                 String errorMessage = e.getMessage();
-                // If error message contains both "successfully submitted" and "failed to submit",
-                // consider it as partial success and continue
-                if (errorMessage != null
-                    && errorMessage.contains("successfully submitted")
-                    && errorMessage.contains("failed to submit")) {
-                  LOGGER.warn(
-                      "Multi-region {} partially succeeded: {}", operationType, errorMessage);
-                  return true;
-                }
                 LOGGER.warn(
                     "Multi-region {} command execution failed, retrying: {}",
                     operationType,

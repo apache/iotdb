@@ -296,7 +296,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 (Integer)
                     properties.getOrDefault(
                         ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY,
-                        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS))
+                        ConsumerConstant.CONNECTION_TIMEOUT_MS_DEFAULT_VALUE))
             .maxPollParallelism(
                 (Integer)
                     properties.getOrDefault(

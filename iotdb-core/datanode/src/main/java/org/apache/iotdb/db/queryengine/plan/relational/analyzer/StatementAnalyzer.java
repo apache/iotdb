@@ -169,6 +169,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
@@ -971,46 +972,22 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
-      if (!node.parseWhere(
-          null,
-          table,
-          table.getColumnList().stream()
-              .filter(
-                  columnSchema ->
-                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
-          queryContext)) {
-        analysis.setFinishQueryAfterAnalyze();
-        return null;
-      }
 
       // If node.location is absent, this is a pipe-transferred update, namely the assignments are
-      // already parsed at the sender
+      // already parsed at the sender. Still validate the target columns at the receiver.
       if (node.getLocation().isPresent()) {
-        final Set<SymbolReference> attributeNames = new HashSet<>();
+        final Set<String> attributeNames = new HashSet<>();
         node.setAssignments(
             node.getAssignments().stream()
                 .map(
                     assignment -> {
+                      validateUpdateTargetColumn(assignment.getName(), table);
                       final Expression parsedColumn =
                           analyzeAndRewriteExpression(
                                   translationMap, translationMap.getScope(), assignment.getName())
                               .getRight();
-                      if (!(parsedColumn instanceof SymbolReference)
-                          || table
-                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                  .getColumnCategory()
-                              != TsTableColumnCategory.ATTRIBUTE) {
-                        throw new SemanticException(
-                            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
-                      }
-                      if (attributeNames.contains(parsedColumn)) {
-                        throw new SemanticException(
-                            DataNodeQueryMessages
-                                .UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE);
-                      }
-                      attributeNames.add((SymbolReference) parsedColumn);
+                      validateUpdateAttributeColumn(parsedColumn, table, attributeNames);
+                      validateUpdateValueExpression(assignment.getValue(), table);
 
                       final Pair<Type, Expression> expressionPair;
                       try {
@@ -1040,8 +1017,128 @@ public class StatementAnalyzer {
                       return new UpdateAssignment(parsedColumn, expressionPair.getRight());
                     })
                 .collect(Collectors.toList()));
+      } else {
+        final Set<String> attributeNames = new HashSet<>();
+        node.getAssignments()
+            .forEach(
+                assignment -> {
+                  validateUpdateAttributeColumn(assignment.getName(), table, attributeNames);
+                  validateUpdateValueExpression(assignment.getValue(), table);
+                });
+      }
+
+      if (!node.parseWhere(
+          null,
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext)) {
+        analysis.setFinishQueryAfterAnalyze();
+        return null;
       }
       return null;
+    }
+
+    private void validateUpdateAttributeColumn(
+        final Expression column, final TsTable table, final Set<String> attributeNames) {
+      validateUpdateTargetColumn(column, table);
+      if (!(column instanceof SymbolReference)) {
+        throw new SemanticException(
+            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
+      }
+
+      final String columnName = ((SymbolReference) column).getName();
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+      if (Objects.isNull(columnSchema)) {
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.COLUMN_S_CANNOT_BE_RESOLVED, columnName));
+      }
+      if (!attributeNames.add(columnName)) {
+        throw new SemanticException(
+            DataNodeQueryMessages.UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE);
+      }
+    }
+
+    private void validateUpdateTargetColumn(final Expression column, final TsTable table) {
+      final String columnName;
+      if (column instanceof Identifier) {
+        columnName = ((Identifier) column).getValue().toLowerCase(ENGLISH);
+      } else if (column instanceof SymbolReference) {
+        columnName = ((SymbolReference) column).getName();
+      } else {
+        return;
+      }
+
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+      if (Objects.nonNull(columnSchema)
+          && columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6,
+                columnSchema.getColumnCategory(),
+                columnName));
+      }
+    }
+
+    private void validateUpdateValueExpression(final Expression expression, final TsTable table) {
+      final Set<String> unknownColumnNames = new HashSet<>();
+      final Map<String, TsTableColumnCategory> invalidColumns = new LinkedHashMap<>();
+      new DefaultExpressionTraversalVisitor<Void>() {
+        @Override
+        public Void visitIdentifier(final Identifier node, final Void context) {
+          collectUpdateValueColumn(
+              node.getValue().toLowerCase(ENGLISH), table, unknownColumnNames, invalidColumns);
+          return null;
+        }
+
+        @Override
+        public Void visitSymbolReference(final SymbolReference node, final Void context) {
+          collectUpdateValueColumn(node.getName(), table, unknownColumnNames, invalidColumns);
+          return null;
+        }
+
+        @Override
+        public Void visitDereferenceExpression(
+            final DereferenceExpression node, final Void context) {
+          final QualifiedName qualifiedName = DereferenceExpression.getQualifiedName(node);
+          if (Objects.nonNull(qualifiedName)) {
+            collectUpdateValueColumn(
+                qualifiedName.getSuffix(), table, unknownColumnNames, invalidColumns);
+            return null;
+          }
+          return super.visitDereferenceExpression(node, context);
+        }
+      }.process(expression);
+
+      if (unknownColumnNames.isEmpty() && !invalidColumns.isEmpty()) {
+        final Map.Entry<String, TsTableColumnCategory> invalidColumn =
+            invalidColumns.entrySet().iterator().next();
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A,
+                invalidColumn.getValue(),
+                invalidColumn.getKey()));
+      }
+    }
+
+    private void collectUpdateValueColumn(
+        final String columnName,
+        final TsTable table,
+        final Set<String> unknownColumnNames,
+        final Map<String, TsTableColumnCategory> invalidColumns) {
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+      if (Objects.isNull(columnSchema)) {
+        unknownColumnNames.add(columnName);
+      } else if (columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
+          || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
+        invalidColumns.putIfAbsent(columnName, columnSchema.getColumnCategory());
+      }
     }
 
     @Override
