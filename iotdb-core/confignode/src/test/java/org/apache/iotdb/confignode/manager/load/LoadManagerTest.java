@@ -19,22 +19,30 @@
 
 package org.apache.iotdb.confignode.manager.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
@@ -49,8 +57,16 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class LoadManagerTest {
   private static LoadManager LOAD_MANAGER;
@@ -65,6 +81,9 @@ public class LoadManagerTest {
     IManager CONFIG_MANAGER = new ConfigManager();
     LOAD_MANAGER = CONFIG_MANAGER.getLoadManager();
     LOAD_CACHE = LOAD_MANAGER.getLoadCache();
+    // These cache/event tests use successful stub writes without starting consensus.
+    LOAD_CACHE.setNodeStatusPersistence(
+        nodeId -> null, plan -> new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   @Before
@@ -90,7 +109,7 @@ public class LoadManagerTest {
     // Simulate update to Running status
     LOAD_CACHE.cacheConfigNodeHeartbeatSample(0, new NodeHeartbeatSample(NodeStatus.Running));
     LOAD_CACHE.cacheDataNodeHeartbeatSample(1, new NodeHeartbeatSample(NodeStatus.Running));
-    LOAD_CACHE.updateNodeStatistics(false);
+    LOAD_CACHE.updateNodeStatistics();
     LOAD_MANAGER.getEventService().checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     NODE_SEMAPHORE.acquire();
     Assert.assertEquals(NodeStatus.Running, LOAD_CACHE.getNodeStatus(0));
@@ -105,8 +124,7 @@ public class LoadManagerTest {
         differentNodeStatisticsMap.get(1));
 
     // Force update to Removing status
-    LOAD_MANAGER.forceUpdateNodeCache(
-        NodeType.DataNode, 1, new NodeHeartbeatSample(NodeStatus.Removing));
+    LOAD_MANAGER.trySetNodeStatus(1, NodeStatus.Removing, true);
     NODE_SEMAPHORE.acquire();
     Assert.assertEquals(NodeStatus.Removing, LOAD_CACHE.getNodeStatus(1));
     differentNodeStatisticsMap = FAKE_SUBSCRIBER.getDifferentNodeStatisticsMap();
@@ -118,7 +136,7 @@ public class LoadManagerTest {
 
     // Removing status can't be updated to any other status automatically
     LOAD_CACHE.cacheDataNodeHeartbeatSample(1, new NodeHeartbeatSample(NodeStatus.ReadOnly));
-    LOAD_CACHE.updateNodeStatistics(false);
+    LOAD_CACHE.updateNodeStatistics();
     LOAD_MANAGER.getEventService().checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     Assert.assertEquals(NodeStatus.Removing, LOAD_CACHE.getNodeStatus(1));
 
@@ -316,7 +334,7 @@ public class LoadManagerTest {
         dataNodeId ->
             loadCache.cacheDataNodeHeartbeatSample(
                 dataNodeId, new NodeHeartbeatSample(NodeStatus.Running)));
-    loadCache.updateNodeStatistics(false);
+    loadCache.updateNodeStatistics();
 
     Assert.assertTrue(loadCache.getNodeHeartbeatUnreadyReasons().isEmpty());
   }
@@ -335,11 +353,61 @@ public class LoadManagerTest {
           loadCache.cacheDataNodeHeartbeatSample(
               dataNodeId, new NodeHeartbeatSample(NodeStatus.Running));
         });
-    loadCache.updateNodeStatistics(false);
+    loadCache.updateNodeStatistics();
     loadCache.updateRegionGroupStatistics();
     loadCache.updateConsensusGroupStatistics();
 
     Assert.assertTrue(loadCache.getNodeHeartbeatUnreadyReasons().isEmpty());
+  }
+
+  @Test
+  public void testLoadWarmUpWaitsForLeaderStoppedMarkerToBeCleared() throws Exception {
+    int leaderId = ConfigNodeHeartbeatCache.CURRENT_NODE_ID;
+    IManager configManager = mock(IManager.class, RETURNS_DEEP_STUBS);
+    NodeManager nodeManager = configManager.getNodeManager();
+    when(nodeManager.getRegisteredConfigNodes())
+        .thenReturn(Collections.singletonList(new TConfigNodeLocation().setConfigNodeId(leaderId)));
+    when(nodeManager.getRegisteredDataNodes()).thenReturn(Collections.emptyList());
+    when(nodeManager.getRegisteredAINodes()).thenReturn(Collections.emptyList());
+    when(configManager.getClusterSchemaManager().getDatabaseNames(null))
+        .thenReturn(Collections.emptyList());
+    AtomicReference<NodeStatus> persistedLeaderStatus = new AtomicReference<>(NodeStatus.Stopped);
+    Function<UpdateNodeStatusPlan, TSStatus> nodeStatusWriter = mock(Function.class);
+    when(nodeStatusWriter.apply(new UpdateNodeStatusPlan(leaderId, Operation.CLEAR)))
+        .thenReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
+        .thenReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
+        .thenAnswer(
+            invocation -> {
+              persistedLeaderStatus.set(null);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    LoadManager loadManager = new LoadManager(configManager);
+    when(configManager.getLoadManager()).thenReturn(loadManager);
+    LoadCache loadCache = loadManager.getLoadCache();
+    loadCache.setNodeStatusPersistence(id -> persistedLeaderStatus.get(), nodeStatusWriter::apply);
+    loadCache.initHeartbeatCache(configManager);
+
+    try {
+      Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(leaderId));
+      Assert.assertTrue(loadCache.getNodeHeartbeatUnreadyReasons().isEmpty());
+      loadManager.markLoadServicesStartedForTest(
+          System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(31));
+
+      Assert.assertFalse(loadManager.isLoadReady());
+      Assert.assertEquals(NodeStatus.Stopped, persistedLeaderStatus.get());
+      Assert.assertEquals(
+          ManagerMessages.MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809,
+          loadManager.getLoadReadyReason());
+      // The first-heartbeat timeout must not bypass a repeated persistence failure.
+      Assert.assertFalse(loadManager.isLoadReady());
+      Assert.assertEquals(NodeStatus.Stopped, persistedLeaderStatus.get());
+
+      Assert.assertTrue(loadManager.isLoadReady());
+      Assert.assertNull(persistedLeaderStatus.get());
+      verify(nodeStatusWriter, times(3)).apply(new UpdateNodeStatusPlan(leaderId, Operation.CLEAR));
+    } finally {
+      loadManager.stopLoadServices();
+    }
   }
 
   @Test

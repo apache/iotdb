@@ -73,6 +73,8 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -213,6 +215,19 @@ import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegio
 import static org.junit.Assert.assertEquals;
 
 public class ConfigPhysicalPlanSerDeTest {
+
+  @Test
+  public void testUpdateNodeStatusPlan() throws IOException {
+    for (Operation operation : Operation.values()) {
+      UpdateNodeStatusPlan original = new UpdateNodeStatusPlan(37, operation);
+      UpdateNodeStatusPlan restored =
+          (UpdateNodeStatusPlan)
+              ConfigPhysicalPlan.Factory.create(original.serializeToByteBuffer());
+      Assert.assertEquals(original, restored);
+      Assert.assertEquals(37, restored.getNodeId());
+      Assert.assertEquals(operation, restored.getOperation());
+    }
+  }
 
   @Test
   public void RegisterDataNodePlanTest() throws IOException {
