@@ -39,6 +39,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.agent.SubscriptionConsumerAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -67,6 +69,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -105,6 +110,69 @@ public class ConsensusPrefetchingQueueTest {
             ConsensusPrefetchingQueue.class
                 .getDeclaredMethod("setActive", boolean.class)
                 .getModifiers()));
+  }
+
+  @Test
+  public void testPrefetchDoesNotDependOnConsumerMetaReadLock() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("prefetch-with-consumer-meta-write-lock");
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    ConsensusPrefetchingQueue queue = null;
+    boolean consumerMetaWriteLockAcquired = false;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 1L;
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any())).thenReturn(Collections.singletonList(createTablet()));
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.isTableModel()).thenReturn(true);
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      // Consumer-group metadata pushes hold this write lock while closing consensus queues and
+      // waiting for an in-flight prefetch round to finish. The prefetch round must therefore not
+      // try to reacquire the metadata read lock when it materializes an event.
+      acquireConsumerMetaWriteLock();
+      consumerMetaWriteLockAcquired = true;
+
+      final ConsensusPrefetchingQueue queueToMaterialize = queue;
+      final Future<Boolean> materialized =
+          executor.submit(
+              () ->
+                  invokeCreateAndEnqueueEvent(
+                      queueToMaterialize, Collections.singletonList(createTablet())));
+      assertTrue(materialized.get(5, TimeUnit.SECONDS));
+      assertEquals(1, queue.getPrefetchedEventCount());
+    } finally {
+      if (consumerMetaWriteLockAcquired) {
+        releaseConsumerMetaWriteLock();
+      }
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
   @Test
@@ -1687,6 +1755,97 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testPrefetchQueueCapacityDoesNotDisableRealtimeAdmission() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
+    final int originalBatchMaxTabletCount =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxTabletCount();
+    final int originalBatchMaxWalEntries =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxWalEntries();
+    final File systemDir = temporaryFolder.newFolder("system-prefetch-queue-capacity");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final int prefetchingQueueCapacity = getMaxPrefetchingQueueSize();
+      final int requestCount = prefetchingQueueCapacity + 1;
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxTabletCount(1);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxWalEntries(prefetchingQueueCapacity);
+
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final AtomicInteger conversionCount = new AtomicInteger();
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenAnswer(
+              ignored -> {
+                conversionCount.incrementAndGet();
+                return Collections.singletonList(createTablet());
+              });
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+
+      reader.currentSearchIndex = requestCount;
+      assertNull(queue.poll("consumer"));
+      for (long searchIndex = 1L; searchIndex <= prefetchingQueueCapacity; searchIndex++) {
+        assertTrue(pendingEntries(queue).offer(createRequest(searchIndex)));
+      }
+
+      queue.drivePrefetchOnce();
+
+      assertEquals(prefetchingQueueCapacity, queue.getPrefetchedEventCount());
+      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
+      assertTrue(pendingEntries(queue).offer(createRequest(requestCount)));
+
+      assertNotNull(queue.poll("consumer"));
+      queue.drivePrefetchOnce();
+
+      assertEquals(prefetchingQueueCapacity, queue.getPrefetchedEventCount());
+      assertEquals(requestCount, conversionCount.get());
+      assertTrue(pendingEntries(queue).isEmpty());
+      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxTabletCount(originalBatchMaxTabletCount);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxWalEntries(originalBatchMaxWalEntries);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testWideTablePausedConsumerKeepsMaterializedMemoryBounded() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("system-wide-table-memory-bound");
@@ -2077,6 +2236,13 @@ public class ConsensusPrefetchingQueueTest {
     return (BlockingQueue<IndexedConsensusRequest>) field.get(queue);
   }
 
+  private static int getMaxPrefetchingQueueSize() throws Exception {
+    final Field field =
+        ConsensusPrefetchingQueue.class.getDeclaredField("MAX_PREFETCHING_QUEUE_SIZE");
+    field.setAccessible(true);
+    return field.getInt(null);
+  }
+
   private static ReentrantReadWriteLock queueLock(final ConsensusPrefetchingQueue queue)
       throws Exception {
     final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("lock");
@@ -2193,6 +2359,35 @@ public class ConsensusPrefetchingQueueTest {
       final ConsensusSubscriptionCommitManager.ConfigNodeProgressFetcher progressFetcher) {
     IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
     return new ConsensusSubscriptionCommitManager(progressFetcher);
+  }
+
+  private static void acquireConsumerMetaWriteLock() throws Exception {
+    invokeConsumerMetaLockMethod("acquireWriteLock");
+  }
+
+  private static void releaseConsumerMetaWriteLock() throws Exception {
+    invokeConsumerMetaLockMethod("releaseWriteLock");
+  }
+
+  private static void invokeConsumerMetaLockMethod(final String methodName) throws Exception {
+    final Method method = SubscriptionConsumerAgent.class.getDeclaredMethod(methodName);
+    method.setAccessible(true);
+    method.invoke(SubscriptionAgent.consumer());
+  }
+
+  private static boolean invokeCreateAndEnqueueEvent(
+      final ConsensusPrefetchingQueue queue, final List<Tablet> tablets) throws Exception {
+    final Method method =
+        ConsensusPrefetchingQueue.class.getDeclaredMethod(
+            "createAndEnqueueEvent",
+            List.class,
+            long.class,
+            long.class,
+            long.class,
+            long.class,
+            long.class);
+    method.setAccessible(true);
+    return (Boolean) method.invoke(queue, tablets, 1L, 1L, 1L, 0L, 0L);
   }
 
   private static final class FakeConsensusReqReader implements ConsensusReqReader {

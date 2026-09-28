@@ -1426,6 +1426,15 @@ public class IoTDBWindowTVFIT {
   }
 
   @Test
+  public void testLowPassWithNullArgument() {
+    tableAssertTestFail(
+        "SELECT * FROM LOWPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => null)",
+        "701: The parameter WPASS cannot be actively filled with null.",
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testHighWithOnePartition() {
     String[] expectedHeader = new String[] {"stock_id", "time", "highpass(price)", "highpass(s1)"};
     String[] retArray =

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -58,6 +60,31 @@ public class ConfigExecutionTest {
     execution.start();
     ExecutionResult result = execution.getStatus();
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+  }
+
+  @Test
+  public void regionValidationErrorRetainsStatusAndMessage() {
+    ExecutorService executor = getExecutor();
+    try {
+      for (TSStatusCode code :
+          new TSStatusCode[] {
+            TSStatusCode.MIGRATE_REGION_ERROR,
+            TSStatusCode.RECONSTRUCT_REGION_ERROR,
+            TSStatusCode.EXTEND_REGION_ERROR,
+            TSStatusCode.REMOVE_REGION_PEER_ERROR
+          }) {
+        TSStatus status = new TSStatus(code.getStatusCode()).setMessage("Region 99 does not exist");
+        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+        future.setException(new IoTDBException(status));
+        IConfigTask task = clientManager -> future;
+        ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), executor, task);
+        execution.start();
+
+        assertEquals(status, execution.getStatus().status);
+      }
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   @Test

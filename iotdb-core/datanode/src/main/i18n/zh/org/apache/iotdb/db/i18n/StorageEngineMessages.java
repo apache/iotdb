@@ -348,6 +348,8 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CREATE_WAL_NODE_DISKS_FULL = "由于 WAL 目录的所有磁盘已满，无法创建 WAL 节点。";
   public static final String FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES = "重试后仍无法创建 WAL 节点，标识符: ";
   public static final String FAIL_TO_CREATE_WAL_NODE = "创建 WAL 节点失败";
+  public static final String OVER_SIZED_WAL_ENTRY = "WAL条目大小 %d 超过阈值 %d, 可能是由于文件损坏或者系统配置变更."
+      + "请提高 wal_buffer_size_in_byte 或者隔离该文件 %s";
 
   // ======================== Flush ========================
 

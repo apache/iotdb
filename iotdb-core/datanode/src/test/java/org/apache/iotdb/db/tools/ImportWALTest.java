@@ -58,6 +58,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -75,6 +76,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1528,16 +1530,27 @@ public class ImportWALTest {
     final List<IMeasurementSchema> schemas =
         Arrays.asList(
             new MeasurementSchema("s1", TSDataType.INT32),
-            new MeasurementSchema("s2", TSDataType.INT64));
+            new MeasurementSchema("s2", TSDataType.INT64),
+            new MeasurementSchema("s3", TSDataType.DATE));
+    final LocalDate firstDate = LocalDate.of(2026, 9, 23);
+    final LocalDate secondDate = LocalDate.of(2026, 9, 24);
     final StringArrayDeviceID deviceId = new StringArrayDeviceID("root.sg.d1");
-    memTable.write(deviceId, schemas, 3, new Object[] {30, 300L});
-    memTable.write(deviceId, schemas, 1, new Object[] {10, null});
+    memTable.write(
+        deviceId,
+        schemas,
+        3,
+        new Object[] {30, 300L, DateUtils.parseDateExpressionToInt(secondDate)});
+    memTable.write(
+        deviceId,
+        schemas,
+        1,
+        new Object[] {10, null, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
     new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
-    verify(treeSession, times(2)).insertTablet(tabletCaptor.capture());
+    verify(treeSession, times(3)).insertTablet(tabletCaptor.capture());
     final Tablet s1Tablet =
         tabletCaptor.getAllValues().stream()
             .filter(tablet -> "s1".equals(tablet.getSchemas().get(0).getMeasurementName()))
@@ -1547,6 +1560,13 @@ public class ImportWALTest {
     assertEquals(1, s1Tablet.getTimestamp(0));
     assertEquals(3, s1Tablet.getTimestamp(1));
     assertArrayEquals(new int[] {10, 30}, (int[]) s1Tablet.getValues()[0]);
+    final Tablet s3Tablet =
+        tabletCaptor.getAllValues().stream()
+            .filter(tablet -> "s3".equals(tablet.getSchemas().get(0).getMeasurementName()))
+            .findFirst()
+            .orElseThrow(AssertionError::new);
+    assertArrayEquals(
+        new LocalDate[] {firstDate, secondDate}, (LocalDate[]) s3Tablet.getValues()[0]);
   }
 
   /** Covers an aligned snapshot with nulls and verifies the aligned Session API is used. */
@@ -1556,10 +1576,21 @@ public class ImportWALTest {
     final List<IMeasurementSchema> schemas =
         Arrays.asList(
             new MeasurementSchema("s1", TSDataType.INT32),
-            new MeasurementSchema("s2", TSDataType.INT64));
+            new MeasurementSchema("s2", TSDataType.INT64),
+            new MeasurementSchema("s3", TSDataType.DATE));
+    final LocalDate firstDate = LocalDate.of(2026, 9, 23);
+    final LocalDate secondDate = LocalDate.of(2026, 9, 24);
     final StringArrayDeviceID deviceId = new StringArrayDeviceID("root.sg.d1");
-    memTable.writeAlignedRow(deviceId, schemas, 2, new Object[] {20, null});
-    memTable.writeAlignedRow(deviceId, schemas, 1, new Object[] {10, 100L});
+    memTable.writeAlignedRow(
+        deviceId,
+        schemas,
+        2,
+        new Object[] {20, null, DateUtils.parseDateExpressionToInt(secondDate)});
+    memTable.writeAlignedRow(
+        deviceId,
+        schemas,
+        1,
+        new Object[] {10, 100L, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
     new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
@@ -1573,6 +1604,7 @@ public class ImportWALTest {
     assertEquals(2, tablet.getTimestamp(1));
     assertArrayEquals(new int[] {10, 20}, (int[]) tablet.getValues()[0]);
     assertTrue(tablet.getBitMaps()[1].isMarked(1));
+    assertArrayEquals(new LocalDate[] {firstDate, secondDate}, (LocalDate[]) tablet.getValues()[2]);
   }
 
   /** Covers snapshot serialization and deserialization through a real WAL file. */

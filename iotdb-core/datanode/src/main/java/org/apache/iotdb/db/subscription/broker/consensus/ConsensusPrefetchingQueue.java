@@ -135,6 +135,10 @@ public class ConsensusPrefetchingQueue {
 
   private final ConsensusLogToTabletConverter converter;
 
+  // Consumer-group meta pushes hold the meta write lock while waiting for prefetch shutdown, so
+  // the prefetch path must use this immutable value instead of acquiring the meta read lock.
+  private final boolean tableModel;
+
   private final ConsensusSubscriptionCommitManager commitManager;
 
   private SubscriptionMemoryManager subscriptionMemoryManager;
@@ -540,6 +544,7 @@ public class ConsensusPrefetchingQueue {
     this.consensusReqReader = serverImpl.getConsensusReqReader();
     this.retentionPolicy = retentionPolicy;
     this.converter = converter;
+    this.tableModel = converter.isTableModel();
     this.commitManager = commitManager;
     this.subscriptionMemoryManager = SubscriptionDataNodeResourceManager.memory();
     this.fallbackCommittedRegionProgress = fallbackCommittedRegionProgress;
@@ -558,7 +563,9 @@ public class ConsensusPrefetchingQueue {
     // Register pending queue early so we don't miss real-time writes
     this.pendingEntries =
         new WakeableIndexedConsensusQueue(
-            PENDING_QUEUE_CAPACITY, this::requestPrefetch, this::canAcceptRealtimeEntry);
+            PENDING_QUEUE_CAPACITY,
+            this::requestPrefetchForRealtimeEntry,
+            this::canAcceptRealtimeEntry);
     serverImpl.registerSubscriptionQueue(
         pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
 
@@ -616,12 +623,17 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
+  private void requestPrefetchForRealtimeEntry() {
+    if (prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      requestPrefetch();
+    }
+  }
+
   private boolean canAcceptRealtimeEntry() {
     return isActive
         && !closeRequested
         && !isClosed
         && !realtimeAdmissionBlocked.get()
-        && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE
         && subscriptionMemoryManager.getFreeMemorySizeInBytes() > 0L;
   }
 
@@ -1399,8 +1411,11 @@ public class ConsensusPrefetchingQueue {
       applyPendingSubscriptionWalReset(observedSeekGeneration);
       recycleInFlightEvents();
 
-      if (!isActive || prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+      if (!isActive) {
         blockRealtimeAdmission();
+        return computeIdleRoundResult();
+      }
+      if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
         return computeIdleRoundResult();
       }
 
@@ -1419,7 +1434,9 @@ public class ConsensusPrefetchingQueue {
       }
       if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE
           || !realtimeEntriesByWriter.isEmpty()) {
-        blockRealtimeAdmission();
+        if (!realtimeEntriesByWriter.isEmpty()) {
+          blockRealtimeAdmission();
+        }
         return computeIdleRoundResult();
       }
       if (shouldWaitForSubscriptionMemory()) {
@@ -1582,7 +1599,6 @@ public class ConsensusPrefetchingQueue {
       return PrefetchRoundResult.dormant();
     }
     if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
-      blockRealtimeAdmission();
       return PrefetchRoundResult.dormant();
     }
     if (hasImmediatePrefetchableWork()) {
@@ -2159,8 +2175,7 @@ public class ConsensusPrefetchingQueue {
             payload,
             commitContext,
             SubscriptionAgent.broker()
-                .getColumnFilterMatcher(
-                    topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))
+                .getColumnFilterMatcher(topicName, tableModel)
                 .isTimeSelected(),
             getTimeSelectedByTable(converter.getDatabaseName(), tablets));
 
@@ -2187,9 +2202,7 @@ public class ConsensusPrefetchingQueue {
       return Collections.emptyMap();
     }
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker()
-            .getColumnFilterMatcher(
-                topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
+        SubscriptionAgent.broker().getColumnFilterMatcher(topicName, tableModel);
     final Map<String, Boolean> tableMap = new HashMap<>();
     for (final Tablet tablet : tablets) {
       if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {
