@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -39,6 +40,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -145,6 +147,39 @@ public class IoTDBTablePreparedStatementIT {
           cnt++;
         }
         assertEquals(expectedRetArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void testInsertTimeParameterRejected() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute(
+          "CREATE TABLE prepared_insert_time "
+              + "(device_id STRING TAG, temperature DOUBLE FIELD, humidity DOUBLE FIELD)");
+      for (String columns : new String[] {" (time, device_id, temperature, humidity)", ""}) {
+        String insert = "INSERT INTO prepared_insert_time" + columns + " VALUES (?, ?, ?, ?)";
+        String[] statements = {
+          "PREPARE rejected_insert_time FROM " + insert,
+          "EXECUTE IMMEDIATE '" + insert + "' USING 1735660960000, 'd023', 1.0, 1.0"
+        };
+        for (String sql : statements) {
+          SQLException exception = assertThrows(SQLException.class, () -> statement.execute(sql));
+          assertEquals(sql, TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getErrorCode());
+          String message = exception.getMessage();
+          assertTrue(message, message.contains("Unsupported expression: ?"));
+          assertFalse(message, message.contains("ClassCastException"));
+          assertFalse(message, message.contains("cannot be cast"));
+          assertFalse(message, message.contains("org.apache.iotdb"));
+        }
+      }
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT count(*) FROM prepared_insert_time")) {
+        assertTrue(resultSet.next());
+        assertEquals(0, resultSet.getLong(1));
+        assertFalse(resultSet.next());
       }
     }
   }
