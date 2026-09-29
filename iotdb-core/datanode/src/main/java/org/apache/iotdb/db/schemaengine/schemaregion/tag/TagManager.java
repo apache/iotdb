@@ -307,7 +307,10 @@ public class TagManager {
           private void getNext() throws IOException {
             nextMatched = null;
             while (allMatchedNodes.hasNext()) {
-              IMeasurementMNode<?> node = allMatchedNodes.next();
+              final IMeasurementMNode<?> node = allMatchedNodes.next();
+              if (node.isPreDeleted()) {
+                continue;
+              }
               if (plan.isPrefixMatch()
                   ? pathPattern.prefixMatchFullPath(node.getPartialPath())
                   : pathPattern.matchFullPath(node.getPartialPath())) {
