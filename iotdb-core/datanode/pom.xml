@@ -293,6 +293,7 @@
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
     <build>
