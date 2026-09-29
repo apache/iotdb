@@ -128,9 +128,6 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       createPipeRequest
           .getConnectorAttributes()
           .put(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.TRUE.toString());
-      createPipeRequest
-          .getConnectorAttributes()
-          .put(SystemConstant.SINK_ENABLE_COMPACTION_INJECTED_KEY, Boolean.TRUE.toString());
     }
     return createPipeRequest;
   }

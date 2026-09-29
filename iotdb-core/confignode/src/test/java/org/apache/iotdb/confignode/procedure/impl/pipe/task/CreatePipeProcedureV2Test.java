@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -55,9 +54,6 @@ public class CreatePipeProcedureV2Test {
     assertEquals(
         Boolean.TRUE.toString(),
         request.getConnectorAttributes().get(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY));
-    assertEquals(
-        Boolean.TRUE.toString(),
-        request.getConnectorAttributes().get(SystemConstant.SINK_ENABLE_COMPACTION_INJECTED_KEY));
   }
 
   @Test
@@ -75,10 +71,6 @@ public class CreatePipeProcedureV2Test {
         request.getConnectorAttributes().get(PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY));
     assertFalse(
         request.getConnectorAttributes().containsKey(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY));
-    assertFalse(
-        request
-            .getConnectorAttributes()
-            .containsKey(SystemConstant.SINK_ENABLE_COMPACTION_INJECTED_KEY));
   }
 
   @Test

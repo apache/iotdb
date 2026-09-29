@@ -93,7 +93,6 @@ public class ShowCreateTaskTest {
 
     final Map<String, String> sinkAttributes = new HashMap<>();
     sinkAttributes.put(PipeSinkConstant.SINK_KEY, "write-back-sink");
-    sinkAttributes.put(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.TRUE.toString());
     sinkAttributes.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, "true");
     sinkAttributes.put("__audit.sink", "audit");
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_USER_ID, "1");
@@ -101,7 +100,6 @@ public class ShowCreateTaskTest {
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, "hashed-password");
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME, "host");
     sinkAttributes.put(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
-    sinkAttributes.put(SystemConstant.SINK_ENABLE_COMPACTION_INJECTED_KEY, Boolean.TRUE.toString());
 
     final PipeMeta pipeMeta =
         new PipeMeta(
@@ -113,24 +111,6 @@ public class ShowCreateTaskTest {
         "CREATE PIPE \"test_pipe\" WITH SOURCE ('source'='iotdb-source')"
             + " WITH PROCESSOR ('processor'='do-nothing-processor')"
             + " WITH SINK ('sink'='write-back-sink')",
-        ShowCreatePipeTask.getShowCreatePipeSQL(pipeMeta));
-  }
-
-  @Test
-  public void testShowCreatePipeSQLShouldKeepExplicitCompactionAttribute() {
-    final Map<String, String> sinkAttributes = new HashMap<>();
-    sinkAttributes.put(PipeSinkConstant.SINK_KEY, "do-nothing-sink");
-    sinkAttributes.put(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.TRUE.toString());
-    sinkAttributes.put(
-        SystemConstant.SINK_ENABLE_COMPACTION_INJECTED_KEY, Boolean.FALSE.toString());
-
-    final PipeMeta pipeMeta =
-        new PipeMeta(
-            new PipeStaticMeta("test_pipe", 1L, new HashMap<>(), new HashMap<>(), sinkAttributes),
-            new PipeRuntimeMeta());
-
-    assertEquals(
-        "CREATE PIPE \"test_pipe\" WITH SINK ('sink'='do-nothing-sink','sink.enable-compaction'='true')",
         ShowCreatePipeTask.getShowCreatePipeSQL(pipeMeta));
   }
 

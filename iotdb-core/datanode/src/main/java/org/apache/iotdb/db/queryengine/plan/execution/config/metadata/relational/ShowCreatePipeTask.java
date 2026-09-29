@@ -143,12 +143,7 @@ public class ShowCreatePipeTask implements IConfigTask {
   private static Map<String, String> sanitizeSinkAttributes(final Map<String, String> sink) {
     final boolean hasInjectedSinkAuthentication =
         Boolean.parseBoolean(sink.get(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY));
-    final boolean hasInjectedSinkCompaction =
-        Boolean.parseBoolean(sink.get(SystemConstant.SINK_ENABLE_COMPACTION_INJECTED_KEY));
     final Map<String, String> result = sanitizeCommonAttributes(sink);
-    if (hasInjectedSinkCompaction) {
-      result.remove(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY);
-    }
     result.remove(PipeSinkConstant.CONNECTOR_IOTDB_USER_ID);
     result.remove(PipeSinkConstant.SINK_IOTDB_USER_ID);
     result.remove(PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME);

@@ -134,16 +134,6 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 PipeSinkConstant.SINK_IOTDB_USERNAME_KEY,
                 PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
                 PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
-    final boolean hasExplicitSinkCompaction =
-        new PipeParameters(alterPipeRequest.getConnectorAttributes())
-            .hasAnyAttributes(
-                PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY,
-                PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY);
-    if (hasExplicitSinkCompaction) {
-      alterPipeRequest
-          .getConnectorAttributes()
-          .put(SystemConstant.SINK_ENABLE_COMPACTION_INJECTED_KEY, Boolean.FALSE.toString());
-    }
 
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 
