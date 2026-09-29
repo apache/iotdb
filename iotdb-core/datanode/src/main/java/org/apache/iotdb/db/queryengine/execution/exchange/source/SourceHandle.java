@@ -702,7 +702,9 @@ public class SourceHandle implements ISourceHandle {
                     indexOfUpstreamSinkHandle);
               }
               if (tsBlockNum == 0) {
-                fail(new IllegalStateException());
+                fail(
+                    new IllegalStateException(
+                        DataNodeQueryMessages.EXCEPTION_EMPTY_DATA_BLOCK_RESPONSE_B057C83C));
                 return;
               }
               throw new TException(
