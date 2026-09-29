@@ -120,7 +120,13 @@ public class DataPartitionTableGenerator {
     }
 
     status = TaskStatus.IN_PROGRESS;
-    return CompletableFuture.runAsync(this::generateDataPartitionTableByMemory);
+    return CompletableFuture.runAsync(this::generateDataPartitionTableByMemory)
+        .whenComplete((ignored, throwable) -> close());
+  }
+
+  /** Close the executor owned by this generator after generation has finished. */
+  public void close() {
+    executor.shutdownNow();
   }
 
   private void generateDataPartitionTableByMemory() {
