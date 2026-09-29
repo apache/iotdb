@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -29,6 +33,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 
 public class DataNodeTableCacheTest {
@@ -109,6 +118,52 @@ public class DataNodeTableCacheTest {
     } finally {
       cache.invalid(TABLE_CACHE_TEST_DATABASE);
     }
+  }
+
+  @Test
+  public void fetchingPreDeleteTableReportsDedicatedStatusCode() throws Exception {
+    final ITableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(DATABASE);
+    try {
+      // Hold the table as pending-delete, which is what makes the fetch below conclude that the
+      // table is still being deleted.
+      cache.preUpdateTable(DATABASE, new PreDeleteTsTable(TABLE_NAME), null);
+
+      final Map<String, Map<String, TsTable>> fetchedTables = new HashMap<>();
+      fetchedTables.put(
+          DATABASE, Collections.singletonMap(TABLE_NAME, new PreDeleteTsTable(TABLE_NAME)));
+
+      final InvocationTargetException thrown =
+          Assert.assertThrows(
+              InvocationTargetException.class,
+              () -> updateDeleteTable(cache, fetchedTables, TABLE_NAME));
+
+      final SemanticException cause = (SemanticException) thrown.getCause();
+      Assert.assertEquals(TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode(), cause.getErrorCode());
+    } finally {
+      cache.invalid(DATABASE);
+    }
+  }
+
+  /**
+   * The pre-delete branch lives in the private {@code updateDeleteTable}, which is only reachable
+   * through a ConfigNode fetch, so invoke it directly.
+   */
+  private static void updateDeleteTable(
+      final ITableCache cache,
+      final Map<String, Map<String, TsTable>> fetchedTables,
+      final String tableName)
+      throws Exception {
+    final Method method =
+        DataNodeTableCache.class.getDeclaredMethod(
+            "updateDeleteTable",
+            Map.class,
+            String.class,
+            String.class,
+            LeaseFencedRetryPolicy.class);
+    method.setAccessible(true);
+    method.invoke(
+        cache, fetchedTables, DATABASE, tableName, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   private Semaphore getFetchTableSemaphore(final ITableCache cache) throws Exception {

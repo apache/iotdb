@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -711,9 +712,11 @@ public class DataNodeTableCache implements ITableCache {
       if (targetTableIsStillDeleting) {
         throw new SemanticException(
             String.format(
-                DataNodeSchemaMessages.THE_TABLE_IS_IN_PRE_DELETE_STATE,
+                CommonMessages
+                    .EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F,
                 targetDatabase,
-                targetTable));
+                targetTable),
+            TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode());
       }
     } finally {
       readWriteLock.writeLock().unlock();

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -35,9 +37,14 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -221,6 +228,59 @@ public class ClusterSchemaInfoTest {
             .stream()
             .map(TTableInfo::getTableName)
             .collect(Collectors.toList()));
+  }
+
+  @Test
+  public void testModificationOfTableInPreDeleteIsRejected() {
+    final String database = "root.pre_delete_modification_test";
+    final String table = "table1";
+    final String column = "field";
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema(database).setIsTableModel(true)));
+    final TsTable created = new TsTable(table);
+    created.addColumnSchema(
+        new FieldColumnSchema(column, TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4));
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, created));
+    clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, table));
+    clusterSchemaInfo.preDeleteTable(new PreDeleteTablePlan(database, table));
+
+    // Every modification entry point must reject a table that is in the pre-delete status, and
+    // report the dedicated status code.
+    assertInPreDelete(
+        table,
+        clusterSchemaInfo.setTableComment(new SetTableCommentPlan(database, table, "comment")));
+    assertInPreDelete(
+        table,
+        clusterSchemaInfo.setTableColumnComment(
+            new SetTableColumnCommentPlan(database, table, column, "comment")));
+    assertInPreDelete(
+        table, clusterSchemaInfo.preDeleteColumn(new PreDeleteColumnPlan(database, table, column)));
+    assertInPreDelete(
+        table,
+        clusterSchemaInfo.preAlterColumnDataType(
+            new PreAlterColumnDataTypePlan(database, table, column, TSDataType.INT64)));
+
+    // Pre-delete is not a terminal status: after a rollback the same operations must work again.
+    assertSuccess(
+        clusterSchemaInfo.rollbackPreDeleteTable(new RollbackPreDeleteTablePlan(database, table)));
+    assertSuccess(
+        clusterSchemaInfo.setTableComment(new SetTableCommentPlan(database, table, "comment")));
+    assertSuccess(
+        clusterSchemaInfo.preDeleteColumn(new PreDeleteColumnPlan(database, table, column)));
+  }
+
+  private static void assertInPreDelete(final String table, final TSStatus status) {
+    Assert.assertEquals(TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode(), status.getCode());
+    // Assert on the table name rather than on the wording, which differs between the en and zh
+    // message bundles.
+    Assert.assertTrue(status.getMessage(), status.getMessage().contains(table));
+  }
+
+  private static void assertSuccess(final TSStatus status) {
+    Assert.assertEquals(
+        status.getMessage(), TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 
   @Test
