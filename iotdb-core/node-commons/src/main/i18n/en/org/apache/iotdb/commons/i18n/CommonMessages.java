@@ -315,6 +315,9 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 =
           "disk_space_warning_threshold must be in [0, 1), but was ";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66 =
+          "subscription_cache_memory_usage_percentage must be in [0, 1], but was %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION =
       "the value of wpass should be in (0, 1)";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "No columns could be calculated.";
