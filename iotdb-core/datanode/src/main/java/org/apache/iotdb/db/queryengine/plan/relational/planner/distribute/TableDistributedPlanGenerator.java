@@ -3385,7 +3385,14 @@ public class TableDistributedPlanGenerator
       node.setChild(collectNode);
       return Collections.singletonList(node);
     } else {
-      return splitForEachChild(node, childrenNodes);
+      // ready-first Collect 无序合并会打散窗口所需的 partition 连续，下推后必须用 MergeSort
+      // 按 GroupNode 的排序键（partition key + order key）全局归并。
+      List<PlanNode> result = splitForEachChild(node, childrenNodes);
+      OrderingScheme windowOrdering = ((GroupNode) node.getChild()).getOrderingScheme();
+      for (PlanNode child : result) {
+        nodeOrderingMap.put(child.getPlanNodeId(), windowOrdering);
+      }
+      return result;
     }
   }
 
@@ -3415,7 +3422,14 @@ public class TableDistributedPlanGenerator
       node.setChild(collectNode);
       return Collections.singletonList(node);
     } else {
-      return splitForEachChild(node, childrenNodes);
+      // RowNumber 编号依赖 partition 连续，下推后必须用 MergeSort 按 GroupNode 的排序键
+      // 全局归并，否则 ready-first Collect 无序合并会打散 partition，编号出错。
+      List<PlanNode> result = splitForEachChild(node, childrenNodes);
+      OrderingScheme rowNumberOrdering = ((GroupNode) node.getChild()).getOrderingScheme();
+      for (PlanNode child : result) {
+        nodeOrderingMap.put(child.getPlanNodeId(), rowNumberOrdering);
+      }
+      return result;
     }
   }
 
@@ -3454,7 +3468,14 @@ public class TableDistributedPlanGenerator
       node.setChild(collectNode);
       return Collections.singletonList(node);
     } else {
-      return splitForEachChild(node, childrenNodes);
+      // 排名结果依赖 ORDER BY 顺序，下推后必须用 MergeSort 按 GroupNode 的排序键全局归并，
+      // 否则 ready-first Collect 无序合并会打散 partition 连续，编号/排名出错。
+      List<PlanNode> result = splitForEachChild(node, childrenNodes);
+      OrderingScheme rankingOrdering = ((GroupNode) node.getChild()).getOrderingScheme();
+      for (PlanNode child : result) {
+        nodeOrderingMap.put(child.getPlanNodeId(), rankingOrdering);
+      }
+      return result;
     }
   }
 
