@@ -306,8 +306,14 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
-    // LocalSinkChannel
+    // The queue limit is configured by its corresponding LocalSinkChannel. A grouped queue
+    // restores its fragment-instance limit in setMemoryReservationGroupId before the shared
+    // reservation key is applied.
+  }
+
+  @Override
+  public void setMemoryReservationGroupId(String reservationPlanNodeId) {
+    queue.setMemoryReservationGroupId(reservationPlanNodeId);
   }
 
   @Override

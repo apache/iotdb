@@ -2956,6 +2956,12 @@ public class TableDistributedPlanGenerator
     return new OrderingScheme(symbols, orderings);
   }
 
+  private static boolean isStreamingAggregationEnabled(AggregationNode node) {
+    // Keep an explicit ordering boundary for plans whose logical grouping property is streamable.
+    // The local operator generator still chooses blocking HashAggregation for these inputs.
+    return node.isStreamable();
+  }
+
   private PlanNode mergeChildrenViaCollectOrMergeSort(
       final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
     checkArgument(

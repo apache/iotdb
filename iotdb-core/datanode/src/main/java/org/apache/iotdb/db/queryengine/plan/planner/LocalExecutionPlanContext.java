@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -53,8 +54,12 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.time.ZoneId;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +88,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private List<PipelineDriverFactory> pipelineDriverFactories;
   private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
+  private List<CollectQuotaGroup> collectQuotaGroups = new ArrayList<>();
+  private Deque<CollectQuotaGroup> activeCollectQuotaGroups = new ArrayDeque<>();
 
   private List<TSDataType> cachedDataTypes;
 
@@ -129,6 +136,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.degreeOfParallelism = parentContext.degreeOfParallelism;
     this.exchangeSumNum = parentContext.exchangeSumNum;
     this.exchangeOperatorList = parentContext.exchangeOperatorList;
+    this.collectQuotaGroups = parentContext.collectQuotaGroups;
+    this.activeCollectQuotaGroups = parentContext.activeCollectQuotaGroups;
     this.cachedDataTypes = parentContext.cachedDataTypes;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
@@ -261,6 +270,26 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.exchangeOperatorList.add(exchangeOperator);
   }
 
+  public CollectQuotaGroup enterCollectQuotaGroup(String planNodeId) {
+    CollectQuotaGroup group = new CollectQuotaGroup("collect-fan-in-" + planNodeId);
+    collectQuotaGroups.add(group);
+    activeCollectQuotaGroups.push(group);
+    return group;
+  }
+
+  public void exitCollectQuotaGroup(CollectQuotaGroup group) {
+    if (activeCollectQuotaGroups.peek() != group) {
+      throw new IllegalStateException();
+    }
+    activeCollectQuotaGroups.pop();
+  }
+
+  public void registerExchangeSourceHandle(ISourceHandle sourceHandle) {
+    if (!activeCollectQuotaGroups.isEmpty()) {
+      activeCollectQuotaGroups.peek().addSourceHandle(sourceHandle);
+    }
+  }
+
   public void setMaxBytesOneHandleCanReserve() {
     long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
     LOGGER.debug(
@@ -268,9 +297,22 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
             .MAXBYTESONEHANDLECANRESERVE_FOR_EXCHANGEOPERATOR_IS_ARG_EXCHANGESUMNUM_IS_ARG,
         maxBytesOneHandleCanReserve,
         exchangeSumNum);
+    java.util.Set<ISourceHandle> groupedSourceHandles =
+        Collections.newSetFromMap(new IdentityHashMap<>());
+    long maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    for (CollectQuotaGroup group : collectQuotaGroups) {
+      for (ISourceHandle sourceHandle : group.getSourceHandles()) {
+        groupedSourceHandles.add(sourceHandle);
+        sourceHandle.setMemoryReservationGroupId(group.getReservationPlanNodeId());
+        sourceHandle.setMaxBytesCanReserve(maxBytesPerFI);
+      }
+    }
     exchangeOperatorList.forEach(
-        exchangeOperator ->
-            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
+        exchangeOperator -> {
+          if (!groupedSourceHandles.contains(exchangeOperator.getSourceHandle())) {
+            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve);
+          }
+        });
   }
 
   public Set<String> getAllSensors(IDeviceID deviceId, String sensorId) {

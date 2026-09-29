@@ -166,6 +166,28 @@ public class SharedTsBlockQueueTest {
     }
   }
 
+  @Test
+  public void groupedQueueAllowsOnlyOneInFlightBlock() {
+    LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(
+            new TFragmentInstanceId("q0", 0, "0"),
+            "exchange_0",
+            mockLocalMemoryManager,
+            newDirectExecutorService());
+    queue.setMemoryReservationGroupId("collect-fan-in-0");
+    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
+
+    ListenableFuture<Void> producerMayContinue = queue.add(Utils.createMockTsBlock(1024L));
+    Assert.assertFalse(producerMayContinue.isDone());
+    Assert.assertTrue(queue.isBlocked().isDone());
+
+    queue.remove();
+    Assert.assertTrue(producerMayContinue.isDone());
+  }
+
   private static class SendTask implements Runnable {
 
     private final SharedTsBlockQueue queue;

@@ -2578,6 +2578,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       context.addExchangeSumNum(1);
     }
     sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    context.registerExchangeSourceHandle(sourceHandle);
     ExchangeOperator exchangeOperator =
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     context.addExchangeOperator(exchangeOperator);

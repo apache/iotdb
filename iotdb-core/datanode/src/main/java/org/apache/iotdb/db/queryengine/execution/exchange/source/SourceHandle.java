@@ -85,6 +85,8 @@ public class SourceHandle implements ISourceHandle {
 
   private final String fullFragmentInstanceId;
   private final String localPlanNodeId;
+  private String memoryReservationPlanNodeId;
+  private boolean usesSharedMemoryReservationGroup;
 
   private final int indexOfUpstreamSinkHandle;
   private final LocalMemoryManager localMemoryManager;
@@ -200,6 +202,8 @@ public class SourceHandle implements ISourceHandle {
         Validate.notNull(
             localPlanNodeId,
             DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
+    this.memoryReservationPlanNodeId = this.localPlanNodeId;
+    this.usesSharedMemoryReservationGroup = false;
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
     this.localMemoryManager =
         Validate.notNull(
@@ -223,7 +227,7 @@ public class SourceHandle implements ISourceHandle {
     localMemoryManager
         .getQueryPool()
         .registerPlanNodeIdToQueryMemoryMap(
-            localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+            localFragmentInstanceId.queryId, fullFragmentInstanceId, memoryReservationPlanNodeId);
   }
 
   @Override
@@ -271,7 +275,7 @@ public class SourceHandle implements ISourceHandle {
             .free(
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
-                localPlanNodeId,
+                memoryReservationPlanNodeId,
                 retainedSize);
       }
 
@@ -305,7 +309,10 @@ public class SourceHandle implements ISourceHandle {
     long reservedBytes = 0L;
     Pair<ListenableFuture<Void>, Boolean> pair = null;
     long blockedSize = 0L;
-    while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
+    // Keep one in-flight block per source handle when it participates in a shared Collect quota.
+    // Standalone exchanges retain their existing batching behavior.
+    while (sequenceIdToDataBlockSize.containsKey(endSequenceId)
+        && (!usesSharedMemoryReservationGroup || endSequenceId == startSequenceId)) {
       Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
       if (bytesToReserve == null) {
         throw new IllegalStateException(DataNodeQueryMessages.DATA_BLOCK_SIZE_IS_NULL);
@@ -316,7 +323,7 @@ public class SourceHandle implements ISourceHandle {
               .reserveWithPriority(
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
-                  localPlanNodeId,
+                  memoryReservationPlanNodeId,
                   bytesToReserve,
                   maxBytesCanReserve,
                   isHighestPriority);
@@ -446,7 +453,7 @@ public class SourceHandle implements ISourceHandle {
             .free(
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
-                localPlanNodeId,
+                memoryReservationPlanNodeId,
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
@@ -474,7 +481,7 @@ public class SourceHandle implements ISourceHandle {
             .free(
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
-                localPlanNodeId,
+                memoryReservationPlanNodeId,
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
@@ -502,7 +509,7 @@ public class SourceHandle implements ISourceHandle {
             .free(
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
-                localPlanNodeId,
+                memoryReservationPlanNodeId,
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
@@ -549,6 +556,23 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     this.maxBytesCanReserve = Math.min(this.maxBytesCanReserve, maxBytesCanReserve);
+  }
+
+  @Override
+  public synchronized void setMemoryReservationGroupId(String reservationPlanNodeId) {
+    this.memoryReservationPlanNodeId = Validate.notNull(reservationPlanNodeId);
+    this.usesSharedMemoryReservationGroup = !localPlanNodeId.equals(reservationPlanNodeId);
+    if (usesSharedMemoryReservationGroup) {
+      // The planner may first apply the legacy per-exchange limit before it knows this handle's
+      // Collect group. Restore the fragment-instance limit so the shared reservation key, rather
+      // than an individual handle, is the group-wide limit.
+      this.maxBytesCanReserve =
+          IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    }
+    localMemoryManager
+        .getQueryPool()
+        .registerPlanNodeIdToQueryMemoryMap(
+            localFragmentInstanceId.queryId, fullFragmentInstanceId, memoryReservationPlanNodeId);
   }
 
   @Override
@@ -677,6 +701,7 @@ public class SourceHandle implements ISourceHandle {
                     indexOfUpstreamSinkHandle);
               }
               if (tsBlockNum == 0) {
+                fail(new IllegalStateException());
                 return;
               }
               throw new TException(
@@ -787,7 +812,7 @@ public class SourceHandle implements ISourceHandle {
               .free(
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
-                  localPlanNodeId,
+                  memoryReservationPlanNodeId,
                   reservedBytes);
         }
         sourceHandleListener.onFailure(SourceHandle.this, t);

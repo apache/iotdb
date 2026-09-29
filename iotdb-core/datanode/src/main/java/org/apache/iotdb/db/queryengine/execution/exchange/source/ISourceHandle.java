@@ -90,4 +90,9 @@ public interface ISourceHandle extends Accountable {
 
   /** Set max bytes this handle can reserve from memory pool. */
   void setMaxBytesCanReserve(long maxBytesCanReserve);
+
+  /** Use a shared memory reservation key with the sibling inputs of a Collect node. */
+  default void setMemoryReservationGroupId(String reservationPlanNodeId) {
+    // Handles that do not reserve query memory can ignore the group.
+  }
 }
