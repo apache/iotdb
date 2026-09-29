@@ -1276,20 +1276,9 @@ public class ConsensusPrefetchingQueueTest {
     try {
       final DataRegionId regionId = new DataRegionId(9);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
-      reader.currentSearchIndex = 4L;
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(reader);
       when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
-
-      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
-      when(converter.convert(any())).thenReturn(Collections.singletonList(createTablet()));
-      when(converter.getDatabaseName()).thenReturn("db");
-
-      final Iterator<IndexedConsensusRequest> retainedWalEntries =
-          Arrays.asList(createRequest(1L), createRequest(4L)).iterator();
-      final ProgressWALIterator walIterator = mock(ProgressWALIterator.class);
-      when(walIterator.hasNext()).thenAnswer(ignored -> retainedWalEntries.hasNext());
-      when(walIterator.next()).thenAnswer(ignored -> retainedWalEntries.next());
 
       queue =
           new ConsensusPrefetchingQueue(
@@ -1302,23 +1291,23 @@ public class ConsensusPrefetchingQueueTest {
                   "topic",
                   SubscriptionWalRetentionPolicy.UNBOUNDED,
                   SubscriptionWalRetentionPolicy.UNBOUNDED),
-              converter,
+              mock(ConsensusLogToTabletConverter.class),
               newCommitManager(systemDir),
               new RegionProgress(Collections.emptyMap()),
               1L,
               1L,
-              true) {
-            @Override
-            protected ProgressWALIterator createSubscriptionWALIterator(
-                final long startSearchIndex) {
-              return walIterator;
-            }
-          };
+              true);
 
-      assertNull(queue.poll("consumer"));
-      queue.drivePrefetchOnce();
+      final Method advanceWalReplayCursorIfPresent =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "advanceWalReplayCursorIfPresent", IndexedConsensusRequest.class);
+      advanceWalReplayCursorIfPresent.setAccessible(true);
 
-      assertEquals(2L, queue.getWalPathAcceptedEntries());
+      advanceWalReplayCursorIfPresent.invoke(queue, createRequest(1L));
+      assertEquals(0L, queue.getWalGapSkippedEntries());
+      assertEquals(2L, queue.getCurrentReadSearchIndex());
+
+      advanceWalReplayCursorIfPresent.invoke(queue, createRequest(4L));
       assertEquals(2L, queue.getWalGapSkippedEntries());
       assertEquals(5L, queue.getCurrentReadSearchIndex());
     } finally {
