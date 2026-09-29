@@ -1786,8 +1786,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           databaseToTTL.putAll(resp.getPathTTLMap());
           continue;
         }
+        PathPatternTree queryScope = new PathPatternTree();
+        queryScope.appendPathPattern(pathPattern);
+        queryScope.constructTree();
         for (PartialPath overlappedPathPattern :
-            authorityScope.getOverlappedPathPatterns(pathPattern)) {
+            authorityScope.intersectWithFullPathPrefixTree(queryScope).getAllPathPatterns()) {
           List<String> nodes = Arrays.asList(overlappedPathPattern.getNodes());
           TShowTTLReq req = new TShowTTLReq(nodes);
           TShowTTLResp resp = client.showTTL(req);

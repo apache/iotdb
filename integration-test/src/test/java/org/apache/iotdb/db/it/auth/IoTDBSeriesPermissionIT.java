@@ -355,6 +355,34 @@ public class IoTDBSeriesPermissionIT {
   }
 
   @Test
+  public void showTTLWithMultiLevelWildcardTest() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set ttl to root.ttl_scope_a 3600000");
+      statement.execute("set ttl to root.ttl_scope_b 7200000");
+
+      try (ResultSet resultSet = statement.executeQuery("show ttl on root.ttl_scope_a.g_0.**")) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute("set ttl to root.ttl_scope_a.g_0.** 10000");
+      String[] headers =
+          showTTLColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new);
+      resultSetEqualTest(
+          "show ttl on root.ttl_scope_a.g_0.**",
+          headers,
+          new String[] {"root.ttl_scope_a.g_0.**,10000,"});
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        executeQuietly(statement, "unset ttl from root.ttl_scope_a.g_0.**");
+        executeQuietly(statement, "unset ttl from root.ttl_scope_a");
+        executeQuietly(statement, "unset ttl from root.ttl_scope_b");
+      }
+    }
+  }
+
+  @Test
   public void ttlOperationsTest() {
     try {
       try (Connection connection = EnvFactory.getEnv().getConnection("test2", "test123123456");
