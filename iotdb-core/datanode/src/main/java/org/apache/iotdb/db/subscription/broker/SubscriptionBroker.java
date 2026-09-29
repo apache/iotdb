@@ -393,6 +393,13 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   }
 
   @Override
+  public int requeueInFlightEvents(final String consumerId) {
+    return topicNameToPrefetchingQueue.values().stream()
+        .mapToInt(queue -> queue.requeueInFlightEvents(consumerId))
+        .sum();
+  }
+
+  @Override
   public int refreshInFlightEventLeases(
       final String consumerId, final List<SubscriptionCommitContext> commitContexts) {
     int refreshedCount = 0;

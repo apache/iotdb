@@ -52,6 +52,9 @@ public interface ISubscriptionBroker {
   /** Returns an in-flight event to its prefetching queue without incrementing its nack count. */
   boolean requeue(String consumerId, SubscriptionCommitContext commitContext);
 
+  /** Returns all in-flight events held by a consumer without incrementing their nack counts. */
+  int requeueInFlightEvents(String consumerId);
+
   default List<SubscriptionCommitContext> selectAcceptedCommitContexts(
       final List<SubscriptionCommitContext> commitContexts) {
     if (Objects.isNull(commitContexts) || commitContexts.isEmpty()) {

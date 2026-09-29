@@ -2710,6 +2710,16 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
+  public int requeueInFlightEvents(final String consumerId) {
+    int requeuedCount = 0;
+    for (final InFlightEventKey key : new ArrayList<>(inFlightEvents.keySet())) {
+      if (Objects.equals(consumerId, key.consumerId) && requeue(consumerId, key.commitContext)) {
+        requeuedCount++;
+      }
+    }
+    return requeuedCount;
+  }
+
   private boolean canAcceptCommitContext(
       final SubscriptionCommitContext commitContext, final String action, final boolean silent) {
     if (isClosed || closeRequested || pendingSeekRequest != null) {
