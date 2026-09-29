@@ -3387,7 +3387,7 @@ public class ConsensusPrefetchingQueue {
     }
     final WALNode walNode = (WALNode) consensusReqReader;
     return findReplayRetainedMinVersionId(
-        WALFileUtils.listAllWALFiles(walNode.getLogDirectory()), nextExpectedSearchIndex.get());
+        walNode.getSortedWalFilesSnapshot(), nextExpectedSearchIndex.get());
   }
 
   static long findReplayRetainedMinVersionId(

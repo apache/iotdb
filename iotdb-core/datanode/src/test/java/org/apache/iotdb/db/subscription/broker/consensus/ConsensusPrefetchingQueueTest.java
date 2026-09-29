@@ -381,6 +381,8 @@ public class ConsensusPrefetchingQueueTest {
       final DataRegionId regionId = new DataRegionId(1);
       final WALNode walNode = mock(WALNode.class);
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
+      when(walNode.getSortedWalFilesSnapshot())
+          .thenReturn(new File[] {firstWal, unreadWal, liveWal});
       when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
 
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
