@@ -129,7 +129,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     // Iterate over each sorted topic name and poll the corresponding events
     int remainingTopicSize = sortedTopicNames.size();
     for (final String topicName : sortedTopicNames) {
-      remainingTopicSize -= 1;
+      final int currentTopicCount = remainingTopicSize--;
       // Check pipe-based queue
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
@@ -146,7 +146,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         final PollTimer timer =
             new PollTimer(
                 System.currentTimeMillis(),
-                SubscriptionAgent.receiver().remainingMs() / Math.max(1, remainingTopicSize));
+                SubscriptionAgent.receiver().remainingMs() / Math.max(1, currentTopicCount));
         event = prefetchingQueue.pollV2(consumerId, timer);
       } else {
         // TODO: migrate poll to pollV2
