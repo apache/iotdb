@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
@@ -84,6 +86,7 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -102,6 +105,10 @@ import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitC
 public class ConsensusPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusPrefetchingQueue.class);
+
+  private static final ExecutorService CLOSE_CLEANUP_EXECUTOR =
+      IoTDBThreadPoolFactory.newCachedThreadPoolWithDaemon(
+          ThreadName.SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL.getName() + "-Close-Cleanup");
 
   private final String consumerGroupId;
   private final String topicName;
@@ -3726,6 +3733,10 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void close() {
+    close(false);
+  }
+
+  public void close(final boolean removeProgressAfterClose) {
     final PendingSeekRequest seekRequestToFail;
     final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding;
 
@@ -3760,9 +3771,32 @@ public class ConsensusPrefetchingQueue {
 
     if (Objects.nonNull(prefetchBinding.right)) {
       prefetchBinding.right.cancelPendingExecution();
-      prefetchBinding.right.awaitIdle();
+      if (prefetchBinding.right.isScheduledOrRunning()) {
+        CLOSE_CLEANUP_EXECUTOR.execute(
+            () -> finishCloseInBackground(prefetchBinding, removeProgressAfterClose));
+        return;
+      }
     }
 
+    finishClose(prefetchBinding, removeProgressAfterClose);
+  }
+
+  private void finishCloseInBackground(
+      final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding,
+      final boolean removeProgressAfterClose) {
+    try {
+      finishClose(prefetchBinding, removeProgressAfterClose);
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to finish closing consensus prefetching queue {}", this, e);
+    }
+  }
+
+  private void finishClose(
+      final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding,
+      final boolean removeProgressAfterClose) {
+    if (Objects.nonNull(prefetchBinding.right)) {
+      prefetchBinding.right.awaitIdle();
+    }
     try {
       acquireWriteLock();
       try {
@@ -3790,8 +3824,12 @@ public class ConsensusPrefetchingQueue {
       try {
         cleanUp();
       } finally {
-        // Persist progress before closing
-        commitManager.persistAll();
+        if (removeProgressAfterClose) {
+          commitManager.removeAllStatesForTopic(consumerGroupId, topicName);
+        } else {
+          // Persist progress before closing.
+          commitManager.persistAll();
+        }
       }
       closeCleanupPending = false;
     } finally {
