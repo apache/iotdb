@@ -22,16 +22,21 @@ package org.apache.iotdb.confignode.persistence.schema;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
@@ -40,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -57,12 +63,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
@@ -162,6 +170,57 @@ public class ClusterSchemaInfoTest {
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
     Assert.assertEquals(2, statistics.getTableDatabaseNum());
     Assert.assertEquals(0, statistics.getBaseTableNum(database));
+  }
+
+  @Test
+  public void testShowTablesIncludesPreDeleteButNotPreCreate() {
+    final String database = "root.pre_delete_test";
+    final String table = "table1";
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema(database).setIsTableModel(true)));
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable("using_table")));
+    clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, "using_table"));
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(table)));
+    clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, table));
+    // the table with pre-create status should not be listed in SHOW TABLES
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable("creating")));
+    // the table with pre-delete status should be listed in SHOW TABLES
+    clusterSchemaInfo.preDeleteTable(new PreDeleteTablePlan(database, table));
+
+    Assert.assertEquals(
+        Arrays.asList(table, "using_table"),
+        clusterSchemaInfo
+            .showTables(new ShowTablePlan(database, false))
+            .convertToTShowTableResp()
+            .getTableInfoList()
+            .stream()
+            .map(TTableInfo::getTableName)
+            .sorted()
+            .collect(Collectors.toList()));
+
+    final Map<String, Integer> states =
+        clusterSchemaInfo
+            .showTables(new ShowTablePlan(database, true))
+            .convertToTShowTableResp()
+            .getTableInfoList()
+            .stream()
+            .collect(Collectors.toMap(TTableInfo::getTableName, TTableInfo::getState));
+    Assert.assertEquals(Integer.valueOf(TableNodeStatus.PRE_DELETE.ordinal()), states.get(table));
+    Assert.assertEquals(
+        Integer.valueOf(TableNodeStatus.PRE_CREATE.ordinal()), states.get("creating"));
+
+    clusterSchemaInfo.dropTable(new CommitDeleteTablePlan(database, table));
+    Assert.assertEquals(
+        Collections.singletonList("using_table"),
+        clusterSchemaInfo
+            .showTables(new ShowTablePlan(database, false))
+            .convertToTShowTableResp()
+            .getTableInfoList()
+            .stream()
+            .map(TTableInfo::getTableName)
+            .collect(Collectors.toList()));
   }
 
   @Test
