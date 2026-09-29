@@ -74,11 +74,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
  * Manages the physical writing, crash recovery, and consensus transitions (PIECE, PREPARE, COMMIT,
- * ABORT) of staged files for a single LOAD task.
+ * ABORT) of staged files for a single LOAD task within one DataRegion.
  */
 final class TsFileWriterManager {
 
@@ -87,12 +88,19 @@ final class TsFileWriterManager {
   private final DataRegion dataRegion;
   private final File taskDir;
 
+  /** Physical writer instances appending chunks to staged TsFiles per data partition. */
   private final Map<DataPartitionInfo, TsFilePrecalculatedChunkWriter> dataPartition2Writer =
       new ConcurrentHashMap<>();
+
+  /** Metadata resource tracking time indices and progress indices per data partition. */
   private final Map<DataPartitionInfo, TsFileResource> dataPartition2Resource =
       new ConcurrentHashMap<>();
+
+  /** Resumption ledger tracking recorded chunks and physical byte coverage. */
   private final Map<DataPartitionInfo, LoadTsFileProgress> dataPartition2Progress =
       new ConcurrentHashMap<>();
+
+  /** Exclusive modification file handles writing deletions for staged TsFiles. */
   private final Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile =
       new ConcurrentHashMap<>();
 
@@ -127,6 +135,10 @@ final class TsFileWriterManager {
   // Piece Writing Pipeline
   // -------------------------------------------------------------------------
 
+  /**
+   * Applies chunks and deletions of an incoming piece stamped with the given consensus search
+   * index.
+   */
   List<LoadTsFileConsensusNode.PieceRef> writePiece(
       final List<TsFileData> tsFileDataList, final long searchIndex)
       throws IOException, PageException {
@@ -134,6 +146,10 @@ final class TsFileWriterManager {
     return writePiece(tsFileDataList);
   }
 
+  /**
+   * Writes all TsFileData records, flushes memory buffers to disk, and computes generated payload
+   * refs.
+   */
   List<LoadTsFileConsensusNode.PieceRef> writePiece(final List<TsFileData> tsFileDataList)
       throws IOException, PageException {
     checkNotClosed();
@@ -158,38 +174,15 @@ final class TsFileWriterManager {
     return createPieceRefs(taskDir, previousLengths);
   }
 
+  /** Writes a chunk into the target staged file or skips if the byte range was already recorded. */
   private void write(final DataPartitionInfo partitionInfo, final ChunkData chunkData)
       throws IOException, PageException {
     checkNotClosed();
 
-    final TsFilePrecalculatedChunkWriter writer =
-        dataPartition2Writer.computeIfAbsent(
-            partitionInfo,
-            info -> {
-              try {
-                final File newTsFile =
-                    SystemFileFactory.INSTANCE.getFile(
-                        taskDir, info.toString() + TsFileConstant.TSFILE_SUFFIX);
-                if (!newTsFile.createNewFile()) {
-                  throw new IOException(
-                      String.format(
-                          StorageEngineMessages
-                              .EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06,
-                          newTsFile.getPath(),
-                          uuidDirName(newTsFile)));
-                }
-                dataPartition2Resource.put(info, new TsFileResource(newTsFile));
-                dataPartition2Progress.put(info, new LoadTsFileProgress(newTsFile));
-                return new TsFilePrecalculatedChunkWriter(newTsFile);
-              } catch (final IOException e) {
-                throw new IllegalStateException(
-                    String.format(
-                        StorageEngineMessages
-                            .EXCEPTION_FAILED_TO_INITIALIZE_WRITER_FOR_ARG_ABAF37F1,
-                        info),
-                    e);
-              }
-            });
+    TsFilePrecalculatedChunkWriter writer = dataPartition2Writer.get(partitionInfo);
+    if (writer == null) {
+      writer = openWriter(partitionInfo);
+    }
 
     final LoadTsFileProgress progress = dataPartition2Progress.get(partitionInfo);
     final ChunkData.ChunkLayout layout = chunkData.getChunkLayout();
@@ -222,7 +215,6 @@ final class TsFileWriterManager {
       final long chunkLength = chunkHeaderSize + (long) payloadSize;
 
       if (progress.hasChunkAt(chunkOffset)) {
-        // Chunk is already durable in staged file; skip redundant write
         LOGGER.info(
             StorageEngineMessages
                 .LOG_SKIPPING_THE_CHUNKS_OF_ARG_BECAUSE_THEIR_PAYLOAD_IS_ALREADY_STAGED_IN_ARG_OF_THE_LOAD_TASK_ARG_BAFEEE84,
@@ -282,6 +274,62 @@ final class TsFileWriterManager {
     chunkData.setChunkPayloadRefs(chunkPayloadRefs);
   }
 
+  /**
+   * Opens the staged writer atomically, safely propagating checked IOExceptions out of
+   * computeIfAbsent.
+   */
+  private TsFilePrecalculatedChunkWriter openWriter(final DataPartitionInfo partitionInfo)
+      throws IOException {
+    final AtomicReference<IOException> openFailure = new AtomicReference<>();
+    final TsFilePrecalculatedChunkWriter writer =
+        dataPartition2Writer.computeIfAbsent(
+            partitionInfo,
+            info -> {
+              try {
+                return createStagedWriter(info);
+              } catch (final IOException e) {
+                openFailure.set(e);
+                return null;
+              }
+            });
+    if (openFailure.get() != null) {
+      throw openFailure.get();
+    }
+    return writer;
+  }
+
+  /**
+   * Initializes the staged TsFile, resource, and progress file on disk. Fails fast if the file
+   * exists.
+   */
+  private TsFilePrecalculatedChunkWriter createStagedWriter(final DataPartitionInfo partitionInfo)
+      throws IOException {
+    final File newTsFile =
+        SystemFileFactory.INSTANCE.getFile(
+            taskDir, partitionInfo.toString() + TsFileConstant.TSFILE_SUFFIX);
+    if (!newTsFile.createNewFile()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06,
+              newTsFile.getPath(),
+              uuidDirName(newTsFile)));
+    }
+
+    try {
+      dataPartition2Resource.put(partitionInfo, new TsFileResource(newTsFile));
+      dataPartition2Progress.put(partitionInfo, new LoadTsFileProgress(newTsFile));
+      return new TsFilePrecalculatedChunkWriter(newTsFile);
+    } catch (final IOException e) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.EXCEPTION_FAILED_TO_INITIALIZE_WRITER_FOR_ARG_ABAF37F1,
+              partitionInfo),
+          e);
+    }
+  }
+
+  /** Dispatches deletion data to matching target partition modification files. */
   private void writeDeletion(final DataRegion dataRegion, final DeletionData deletionData)
       throws IOException {
     checkNotClosed();
@@ -332,16 +380,21 @@ final class TsFileWriterManager {
   // Consensus Lifecycle: PREPARE & LOAD
   // -------------------------------------------------------------------------
 
+  /**
+   * Seals modification files, validates chunk continuity, and seals TsFiles in the PREPARE round.
+   */
   void prepare(
       final boolean isGeneratedByPipe,
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     checkNotClosed();
 
+    // 1. Close modification files first to freeze deletion views
     for (final ModificationFile modFile : dataPartition2ModificationFile.values()) {
       modFile.close();
     }
 
+    // 2. Validate continuity and seal writer metadata zone
     for (final Map.Entry<DataPartitionInfo, TsFilePrecalculatedChunkWriter> entry :
         dataPartition2Writer.entrySet()) {
       final TsFilePrecalculatedChunkWriter writer = entry.getValue();
@@ -375,6 +428,7 @@ final class TsFileWriterManager {
     }
   }
 
+  /** Formally imports sealed staged TsFiles into the target storage engine data regions. */
   void loadAll(final boolean isGeneratedByPipe, final boolean deleteStagedSource)
       throws LoadFileException {
     for (final Map.Entry<DataPartitionInfo, TsFileResource> entry :
@@ -405,6 +459,10 @@ final class TsFileWriterManager {
     }
   }
 
+  /**
+   * Finalizes TsFileResource timestamps, updates device time index, caches last values, and
+   * serializes resource metadata.
+   */
   private void endTsFileResource(
       final TsFilePrecalculatedChunkWriter writer,
       final TsFileResource tsFileResource,
@@ -505,6 +563,10 @@ final class TsFileWriterManager {
   // Crash Recovery & State Reconstruction
   // -------------------------------------------------------------------------
 
+  /**
+   * Scans staged task directory, repairs torn tails, truncates half-written bytes, and resumes
+   * writers.
+   */
   TsFileWriterManager recoverFromDisk() throws IOException {
     final File[] files = taskDir.listFiles();
     if (files == null) {
@@ -606,7 +668,7 @@ final class TsFileWriterManager {
           try {
             channel.close();
           } catch (final IOException ignored) {
-            // Suppress channel close failure during aborted recovery
+            // Suppress secondary close exceptions during recovery abandonment
           }
         }
         LOGGER.warn(
@@ -618,6 +680,10 @@ final class TsFileWriterManager {
     return this;
   }
 
+  /**
+   * Replays serialized chunk headers and statistics to restore writer metadata state without
+   * physical pages.
+   */
   private static Map<IDeviceID, Map<String, List<IChunkMetadata>>> restoreChunkMetadata(
       final List<LoadTsFileProgress.ChunkRangeRecord> records) throws IOException {
     final Map<IDeviceID, Map<String, List<IChunkMetadata>>> device2Measurement2ChunkMetadata =
@@ -658,6 +724,10 @@ final class TsFileWriterManager {
     close(false);
   }
 
+  /**
+   * Closes all writers, releases system handles, and cleans up staged files unless retained for
+   * lagging followers.
+   */
   void close(final boolean retainStagedFiles) {
     if (isClosed) {
       return;
