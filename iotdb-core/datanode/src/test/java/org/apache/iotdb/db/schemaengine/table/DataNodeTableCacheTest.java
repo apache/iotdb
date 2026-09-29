@@ -119,8 +119,8 @@ public class DataNodeTableCacheTest {
       ((FieldColumnSchema) alteredTable.getColumnSchema("s1")).setDataType(TSDataType.DOUBLE);
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, alteredTable, null);
 
-      // A concurrent fetch may promote the pending table into the regular cache before rollback.
-      // Keep that path covered because rollback must still restore the pre-update schema.
+      // Exercise rollback after a fetched result has already been applied to the regular cache.
+      // The ordinary fetch path does not return a table schema while its procedure is running.
       final Method updateUsingTable =
           DataNodeTableCache.class.getDeclaredMethod(
               "updateUsingTable", Map.class, Map.class, LeaseFencedRetryPolicy.class);
