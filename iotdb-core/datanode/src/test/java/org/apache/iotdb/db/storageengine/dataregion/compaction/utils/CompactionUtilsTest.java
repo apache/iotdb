@@ -21,14 +21,16 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -38,6 +40,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class CompactionUtilsTest extends AbstractCompactionTest {
   @Override
@@ -52,13 +55,37 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testCompactionPathUtils() {
-    try {
-      IDeviceID deviceID = new StringArrayDeviceID(new String[] {"db.table1", null, "tag1"});
-      PartialPath path = CompactionPathUtils.getPath(deviceID, "s1");
-    } catch (Exception e) {
-      Assert.fail();
-    }
+  public void testCompactionPathUtilsForTableModelDevice() throws Exception {
+    IDeviceID deviceID = new StringArrayDeviceID(new String[] {"db.table1", null, "tag1"});
+
+    Assert.assertArrayEquals(
+        new String[] {"db.table1", null, "tag1"}, CompactionPathUtils.getPath(deviceID).getNodes());
+    Assert.assertArrayEquals(
+        new String[] {"db.table1", null, "tag1", "s1"},
+        CompactionPathUtils.getPath(deviceID, "s1").getNodes());
+  }
+
+  @Test
+  public void testCompactionPathUtilsForTwoLevelTreeDevice() throws Exception {
+    MeasurementPath deletionPath = new MeasurementPath("root.repro.s1");
+    IDeviceID deviceID = deletionPath.getIDeviceID();
+
+    Assert.assertArrayEquals(
+        new String[] {"root", "repro"}, CompactionPathUtils.getPath(deviceID).getNodes());
+    Assert.assertArrayEquals(
+        deletionPath.getNodes(), CompactionPathUtils.getPath(deviceID, "s1").getNodes());
+
+    TreeDeletionEntry deletion =
+        new TreeDeletionEntry(deletionPath, Long.MIN_VALUE, Long.MAX_VALUE);
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    modifications.append(deletion.keyOfPatternTree(), deletion);
+
+    List<ModEntry> matchedModifications =
+        CompactionUtils.getMatchedModifications(modifications, deviceID, "s1", null);
+    Assert.assertEquals(1, matchedModifications.size());
+    Assert.assertEquals(
+        deletionPath, ((TreeDeletionEntry) matchedModifications.get(0)).getPathPattern());
   }
 
   @Test

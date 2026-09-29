@@ -38,7 +38,7 @@ public class CompactionPathUtils {
 
   public static PartialPath getPath(final IDeviceID device) throws IllegalPathException {
     if (device.isTableModel()) {
-      final String[] nodes = new String[device.segmentNum() + 1];
+      final String[] nodes = new String[device.segmentNum()];
       nodes[0] = device.getTableName();
       for (int i = 0; i < device.segmentNum() - 1; i++) {
         nodes[i + 1] = device.segment(i + 1) == null ? null : device.segment(i + 1).toString();

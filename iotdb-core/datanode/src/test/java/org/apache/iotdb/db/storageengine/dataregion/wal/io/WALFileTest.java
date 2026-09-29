@@ -95,6 +95,40 @@ public class WALFileTest {
     Files.deleteIfExists(new File(walFile + ".broken.1").toPath());
   }
 
+  @Test
+  public void testReadEntryLargerThanOneThirdWalBufferWithinIndependentLimit() throws Exception {
+    final int originalWalBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+    final int originalEntrySizeLimit =
+        IoTDBDescriptor.getInstance().getConfig().getWalEntrySizeLimitInByte();
+    final int entrySize = originalWalBufferSize / 3 + 1;
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setWalEntrySizeLimitInByte(originalWalBufferSize);
+
+      final ByteBuffer entry = ByteBuffer.allocate(entrySize);
+      entry.put(WALEntryType.INSERT_ROW_NODE.getCode());
+      entry.position(entrySize);
+      final WALMetaData metadata = new WALMetaData();
+      metadata.add(entrySize, -1, 42);
+      try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
+        writer.write(entry, metadata);
+      }
+
+      try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+        assertTrue(reader.hasNext());
+        assertArrayEquals(entry.array(), reader.next().array());
+        assertFalse(reader.hasNext());
+      }
+
+      IoTDBDescriptor.getInstance().getConfig().setWalEntrySizeLimitInByte(entrySize - 1);
+      try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
+        final IOException exception = assertThrows(IOException.class, reader::next);
+        assertTrue(exception.getMessage().contains("wal_entry_size_limit_in_byte"));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setWalEntrySizeLimitInByte(originalEntrySizeLimit);
+    }
+  }
+
   /** Unexpected channel closure must propagate to the buffer instead of acknowledging a write. */
   @Test
   public void testClosedChannelWriteAndForceFail() throws IOException {

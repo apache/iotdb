@@ -16,36 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.partition;
 
-import org.apache.iotdb.confignode.i18n.ManagerMessages;
+package org.apache.iotdb.jdbc;
 
-import java.io.IOException;
+import org.junit.Test;
 
-public enum RegionGroupExtensionPolicy {
-  CUSTOM("CUSTOM"),
+import java.sql.Driver;
+import java.util.ServiceLoader;
 
-  AUTO("AUTO"),
+import static org.junit.Assert.assertTrue;
 
-  PROACTIVE("PROACTIVE");
+public class DriverServiceRegistrationTest {
 
-  private final String policy;
-
-  RegionGroupExtensionPolicy(String policy) {
-    this.policy = policy;
-  }
-
-  public String getPolicy() {
-    return policy;
-  }
-
-  public static RegionGroupExtensionPolicy parse(String policy) throws IOException {
-    for (RegionGroupExtensionPolicy extensionPolicy : RegionGroupExtensionPolicy.values()) {
-      if (extensionPolicy.policy.equals(policy)) {
-        return extensionPolicy;
+  /**
+   * JDBC 4 drivers are loaded by DriverManager through ServiceLoader, from
+   * META-INF/services/java.sql.Driver. Asking ServiceLoader directly keeps this independent of
+   * whether another test has already loaded IoTDBDriver, which registers it with DriverManager as a
+   * side effect.
+   */
+  @Test
+  public void driverIsListedAsAJdbcServiceProvider() {
+    boolean found = false;
+    for (Driver driver : ServiceLoader.load(Driver.class)) {
+      if (driver instanceof IoTDBDriver) {
+        found = true;
       }
     }
-    throw new IOException(
-        String.format(ManagerMessages.DATAREGIONGROUPEXTENSIONPOLICY_DOESN_T_EXIST, policy));
+    assertTrue("META-INF/services/java.sql.Driver should name IoTDBDriver", found);
   }
 }
