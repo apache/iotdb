@@ -77,7 +77,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>The interfaces are divided as following:
  *
  * <ol>
- *   <li>Interfaces for initialization、recover and clear
+ *   <li>Interfaces for initialization閵嗕购ecover and clear
  *   <li>Interfaces for schema region Info query and operation
  *   <li>Interfaces for Timeseries operation
  *   <li>Interfaces for metadata info Query
@@ -91,7 +91,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public interface ISchemaRegion {
 
-  // region Interfaces for initialization、recover and clear
+  // region Interfaces for initialization閵嗕购ecover and clear
   void init() throws MetadataException;
 
   /** clear all metadata components of this schemaRegion */
@@ -154,10 +154,8 @@ public interface ISchemaRegion {
    * @param aliasList a list of alias that you want to check
    * @return returns a map contains index of the measurements or alias that threw the exception, and
    *     exception details. The exceptions describe whether the measurement or alias exists. For
-   *     example, a MeasurementAlreadyExistException means this measurement exists. If there are
-   *     exceptions during check, this may return an empty map, then all the measurements will be
-   *     re-checked under consensus layer, which guarantees safety(Yet may cause unnecessary replay
-   *     of raft log)
+   *     example, a MeasurementAlreadyExistException means this measurement exists. An empty map
+   *     means that no measurement exists and can be created.
    */
   Map<Integer, MetadataException> checkMeasurementExistence(
       final PartialPath devicePath,
