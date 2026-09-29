@@ -1752,10 +1752,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     @Override
     public void run() {
       try {
-        checkIfFenced();
-        if (isClosed()) {
-          return;
-        }
+        checkIfOpened();
         ack(messages);
         callback.onComplete();
       } catch (final Exception e) {
@@ -1769,10 +1766,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     SubscriptionExecutorServiceManager.submitAsyncCommitWorker(
         () -> {
           try {
-            checkIfFenced();
-            if (isClosed()) {
-              return;
-            }
+            checkIfOpened();
             ack(messages);
             future.complete(null);
           } catch (final Throwable e) {
