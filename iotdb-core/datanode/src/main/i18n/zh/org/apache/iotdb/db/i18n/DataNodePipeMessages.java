@@ -774,10 +774,16 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_TRANSFER_TSFILE_BATCH = "传输 tsfile batch ({}) 失败。";
   public static final String FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY =
       "传输 tsfile event {} asynchronously 失败。";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_ARG_BECAUSE_FILE_ARG_IS_MISSING_AFTER_ARG_RETRIES_B656E84E =
+          "TsFile {} 传输失败，文件 {} 重试 {} 次后仍不存在。";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
       "传输 TsFileInsertionEvent {}（committer key {}，commit id {}）失败。";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS =
       "传输 TsFileInsertionEvent {}（批量 TableInsertionEvent）失败。";
+  public static final String
+      LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9 =
+          "TsFile {}：修改文件 {} 不存在，将不带修改记录传输 TsFile。";
   public static final String FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE =
       "更新 leader cache for device {} with endpoint {}:{} 失败。";
   public static final String FAILED_TO_WRITE = "写入失败 ";
