@@ -357,7 +357,8 @@ public class IoTDBCteIT {
         "explain with cte1 as (select * from testtb), "
             + "cte2 as materialized (select time, voltage from cte1) "
             + "select * from cte2";
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    try (Connection connection =
+            EnvFactory.getEnv().getAvailableConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE testdb");
 
@@ -384,7 +385,8 @@ public class IoTDBCteIT {
         "explain with cte1 as materialized (select * from testtb), "
             + "cte2 as materialized (select time, voltage from cte1) "
             + "select * from cte2";
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    try (Connection connection =
+            EnvFactory.getEnv().getAvailableConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE testdb");
 

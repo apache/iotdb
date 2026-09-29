@@ -140,7 +140,8 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
     tableResultSetEqualTest(
         "(SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd1' ORDER BY time DESC LIMIT 1)"
             + " UNION ALL"
-            + " (SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd3' ORDER BY time DESC LIMIT 1)",
+            + " (SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd3' ORDER BY time DESC LIMIT 1)"
+            + " ORDER BY time, device_id",
         expectedHeader,
         retArray,
         TABLE_DATABASE);
