@@ -1397,6 +1397,7 @@ public class ConsensusPrefetchingQueue {
   private static final long WAL_GAP_RETRY_SLEEP_MS = 10L;
   private static final long MEMORY_RETRY_SLEEP_MS = 100L;
   private static final long WAL_GAP_WAIT_LOG_INTERVAL_MS = 5_000L;
+  private static final long WAL_GAP_MAX_WAIT_MS = 30_000L;
 
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
 
@@ -2031,6 +2032,7 @@ public class ConsensusPrefetchingQueue {
 
     if (walGapRetryExpectedSearchIndex != expectedSearchIndex) {
       walGapRetryExpectedSearchIndex = expectedSearchIndex;
+      walGapWaitStartTimeMs = System.currentTimeMillis();
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_FOUND_UNAVAILABLE_SEARCH_INDEXES_E0CBFFFA,
@@ -2040,6 +2042,30 @@ public class ConsensusPrefetchingQueue {
           actualSearchIndex);
       if (consensusReqReader instanceof WALNode) {
         ((WALNode) consensusReqReader).rollWALFile();
+      }
+      resetSubscriptionWALPosition(expectedSearchIndex);
+      onWalGapRetryScheduled();
+      pendingWalGapRetryRequested = true;
+      return MaterializationResult.WAL_GAP;
+    }
+
+    final long nowMs = System.currentTimeMillis();
+    final long currentWalSearchIndex = consensusReqReader.getCurrentSearchIndex();
+    if (currentWalSearchIndex >= actualSearchIndex
+        && nowMs - walGapWaitStartTimeMs < WAL_GAP_MAX_WAIT_MS) {
+      if (lastWalGapWaitLogTimeMs == 0L
+          || nowMs - lastWalGapWaitLogTimeMs >= WAL_GAP_WAIT_LOG_INTERVAL_MS) {
+        LOGGER.info(
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5,
+            this,
+            nowMs - walGapWaitStartTimeMs,
+            expectedSearchIndex,
+            actualSearchIndex,
+            expectedSearchIndex,
+            currentWalSearchIndex,
+            seekGeneration.get());
+        lastWalGapWaitLogTimeMs = nowMs;
       }
       resetSubscriptionWALPosition(expectedSearchIndex);
       onWalGapRetryScheduled();
