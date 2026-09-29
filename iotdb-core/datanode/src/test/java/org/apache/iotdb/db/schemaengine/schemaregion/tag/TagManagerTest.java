@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.tag;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -34,6 +39,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -186,6 +192,24 @@ public class TagManagerTest {
 
     tagManager.removeIndex(tagKey, tagValue, node);
     Assert.assertEquals(0, regionStatistics.getRegionMemoryUsage());
+  }
+
+  @Test
+  public void preDeletedMeasurementIsSkippedByIndexReader() throws Exception {
+    initTagManager();
+    final IMeasurementMNode<?> node = newMeasurementMNode("s0");
+    node.setPreDeleted(true);
+    tagManager.addIndex("key", "value", node);
+
+    final IShowTimeSeriesPlan plan = Mockito.mock(IShowTimeSeriesPlan.class);
+    Mockito.when(plan.getSchemaFilter()).thenReturn(new TagFilter("key", "value", false));
+    Mockito.when(plan.getPath()).thenReturn(new PartialPath("s0"));
+
+    final ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        tagManager.getTimeSeriesReaderWithIndex(plan);
+    Assert.assertFalse(reader.hasNext());
+    Assert.assertTrue(reader.isSuccess());
+    reader.close();
   }
 
   private void initTagManager() throws Exception {
