@@ -42,6 +42,9 @@ public final class DataNodeSchemaMessages {
   public static final String PEER_IS_SHUTTING_DOWN = "节点正在关闭中。";
   public static final String SCHEMA_REGION_DUPLICATED =
       "SchemaRegion [%s] 在 [%s] 和 [%s] 之间重复，前者已被恢复。";
+  public static final String
+      EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05 =
+          "无法恢复重复的 SchemaRegion [%s]，其同时存在于数据库 [%s] 和 [%s] 中。";
 
   // ======================== MemSchemaEngineStatistics 相关消息 ========================
 
