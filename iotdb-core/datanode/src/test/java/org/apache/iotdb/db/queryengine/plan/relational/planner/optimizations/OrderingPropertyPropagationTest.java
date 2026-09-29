@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
@@ -293,6 +294,98 @@ public class OrderingPropertyPropagationTest {
         }
       }
     }
+  }
+
+  @Test
+  public void testFillGroupKeepsGroupAndTimeOrdering() {
+    String window = ", lag(s1) OVER (PARTITION BY " + TAGS + " ORDER BY time) AS lg";
+    for (String extraColumn : List.of("", window)) {
+      for (String source : List.of("table1", "HOP(DATA => table1, SLIDE => 5m, SIZE => 10m)")) {
+        for (String method : statefulFillMethods()) {
+          for (String[] group : new String[][] {{"2,3,4", TAGS}, {"2", "tag1"}}) {
+            String input =
+                "SELECT time, "
+                    + TAGS
+                    + ", s1"
+                    + extraColumn
+                    + " FROM "
+                    + source
+                    + " FILL METHOD "
+                    + method
+                    + " TIME_COLUMN 1 FILL_GROUP "
+                    + group[0];
+            for (String order : List.of(group[1], group[1] + ", time")) {
+              String sql = input + " ORDER BY " + order;
+              PlanTester tester = plan(sql);
+              assertFalse(sql, findNodes(tester, FillNode.class).isEmpty());
+              assertTrue(sql, sortsAbove(tester, FillNode.class).isEmpty());
+            }
+            assertFalse(
+                input,
+                sortsAbove(plan(input + " ORDER BY " + group[1] + ", time DESC"), FillNode.class)
+                    .isEmpty());
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testFillGroupKeepsAggregateBucketOrdering() {
+    for (String bucket : List.of("date_bin", "date_bin_gapfill")) {
+      for (String method : statefulFillMethods()) {
+        String sql =
+            "SELECT "
+                + bucket
+                + "(1h, time) AS t, "
+                + TAGS
+                + ", avg(s1) AS v FROM table1 WHERE time >= 0 AND time < 7200000"
+                + " GROUP BY 1,2,3,4 FILL METHOD "
+                + method
+                + " TIME_COLUMN 1 FILL_GROUP 2,3,4 ORDER BY "
+                + TAGS
+                + ", t";
+        PlanTester tester = plan(sql);
+        assertFalse(sql, findNodes(tester, FillNode.class).isEmpty());
+        assertTrue(sql, sortsAbove(tester, FillNode.class).isEmpty());
+        // Keep the input organization required by fill/gapfill, without sorting the result again.
+        assertEquals(sql, 1, findNodes(tester, SortNode.class).size());
+      }
+    }
+  }
+
+  @Test
+  public void testStatefulFillKeepsSortOnNullableValueKeys() {
+    for (String method : statefulFillMethods()) {
+      for (String nullOrder : List.of("NULLS FIRST", "NULLS LAST")) {
+        String sql =
+            "SELECT * FROM (SELECT * FROM table1 ORDER BY s1 "
+                + nullOrder
+                + ", s2 LIMIT 10) FILL METHOD "
+                + method
+                + (method.equals("PREVIOUS") || method.equals("NEXT") ? "" : " TIME_COLUMN 1")
+                + " ORDER BY s1 "
+                + nullOrder
+                + ", s2";
+        assertFalse(sql, sortsAbove(plan(sql), FillNode.class).isEmpty());
+      }
+    }
+  }
+
+  @Test
+  public void testFilledHelperDoesNotPreserveSecondaryPeerOrdering() {
+    String input =
+        "SELECT * FROM (SELECT CASE WHEN s1 > 0 THEN time END AS t, tag1, tag2 FROM table1"
+            + " ORDER BY tag1, t, tag2 LIMIT 10)"
+            + " FILL METHOD PREVIOUS TIME_COLUMN 1 FILL_GROUP 2";
+    // Filling a trailing NULL helper keeps the primary order, but can merge timestamp peers.
+    // Even a non-null secondary key must then be sorted again.
+    assertTrue(sortsAbove(plan(input + " ORDER BY tag1, t"), FillNode.class).isEmpty());
+    assertFalse(sortsAbove(plan(input + " ORDER BY tag1, t, tag2"), FillNode.class).isEmpty());
+  }
+
+  private static List<String> statefulFillMethods() {
+    return List.of("PREVIOUS", "PREVIOUS TIME_BOUND 1h", "NEXT", "NEXT TIME_BOUND 1h", "LINEAR");
   }
 
   @Test

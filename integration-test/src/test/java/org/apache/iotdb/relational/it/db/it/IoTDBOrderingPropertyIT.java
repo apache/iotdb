@@ -33,6 +33,8 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,12 +47,17 @@ public class IoTDBOrderingPropertyIT {
   private static final String DATABASE = "ordering_review";
   private static final String TAGS = "tag1, tag2, tag3";
   private static final long[] TIMES = {1, 60_001, 120_001};
+  private static final String[] FILL_DEVICES = {"a", "b", null};
+  private static final double[][] FILL_ENDPOINTS = {{10, 30}, {100, 300}, {7, 11}};
+  private static final DateTimeFormatter TIME_FORMAT =
+      new DateTimeFormatterBuilder().appendInstant(3).toFormatter();
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setSortBufferSize(128 * 1024)
         .setTimePartitionInterval(60_000)
         .setDataPartitionAllocationStrategy(SHUFFLE)
         .setMaxTsBlockLineNumber(2);
@@ -86,6 +93,34 @@ public class IoTDBOrderingPropertyIT {
       statement.execute("CREATE TABLE nullable_devices(device STRING TAG, v DOUBLE FIELD)");
       statement.execute(
           "INSERT INTO nullable_devices(time,device,v) VALUES (1,'a',1),(2,'z',2),(3,null,3)");
+      statement.execute(
+          "CREATE TABLE fill_values(device STRING TAG, v DOUBLE FIELD, marker INT32 FIELD)");
+      for (int group = 0; group < FILL_DEVICES.length; group++) {
+        String device = FILL_DEVICES[group] == null ? "NULL" : "'" + FILL_DEVICES[group] + "'";
+        for (int i = 0; i < 5; i++) {
+          String value =
+              i == 1
+                  ? Double.toString(FILL_ENDPOINTS[group][0])
+                  : i == 3 ? Double.toString(FILL_ENDPOINTS[group][1]) : "NULL";
+          statement.execute(
+              "INSERT INTO fill_values(time,device,v,marker) VALUES ("
+                  + (i * 60_000L + 1)
+                  + ","
+                  + device
+                  + ","
+                  + value
+                  + ","
+                  + i
+                  + ")");
+        }
+      }
+      statement.execute(
+          "CREATE TABLE fill_keys(device STRING TAG, tie STRING TAG, t TIMESTAMP FIELD, marker INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO fill_keys(time,device,tie,t,marker) VALUES"
+              + " (1,'a','m',60000,1),(2,'a','z',60000,2),(3,'a','a',NULL,3),"
+              + " (4,'b','a',NULL,4),(5,'b','z',NULL,5),"
+              + " (6,NULL,'b',120000,6),(7,NULL,'a',NULL,7)");
       statement.execute("FLUSH");
       statement.execute("CLEAR ATTRIBUTE CACHE");
     }
@@ -296,6 +331,153 @@ public class IoTDBOrderingPropertyIT {
           "m,1970-01-01T00:00:00.003Z,1,",
           "z,1970-01-01T00:00:00.002Z,1,"
         });
+  }
+
+  @Test
+  public void testStatefulFillGroupOrderingAndValues() {
+    for (String method : statefulFillMethods()) {
+      for (String source :
+          List.of("fill_values", "HOP(DATA => fill_values, SLIDE => 1m, SIZE => 1m)")) {
+        assertTable(
+            "SELECT time,device,v FROM "
+                + source
+                + " FILL METHOD "
+                + method
+                + " TIME_COLUMN 1 FILL_GROUP 2 ORDER BY device,time",
+            new String[] {"time", "device", "v"},
+            fillValueRows(method, false, false, false));
+      }
+      assertTable(
+          "SELECT time,device,lag(v) OVER (PARTITION BY device ORDER BY time) AS v"
+              + " FROM fill_values FILL METHOD "
+              + method
+              + " TIME_COLUMN 1 FILL_GROUP 2 ORDER BY device,time",
+          new String[] {"time", "device", "v"},
+          fillValueRows(method, true, false, false));
+    }
+  }
+
+  @Test
+  public void testStatefulFillAfterTimeBucketAggregation() {
+    for (String bucket : List.of("date_bin", "date_bin_gapfill")) {
+      for (String method : statefulFillMethods()) {
+        if (method.contains("30s")) {
+          continue;
+        }
+        assertTable(
+            "SELECT "
+                + bucket
+                + "(1m,time) AS t,device,avg(v) AS v,count(marker) AS n"
+                + " FROM fill_values WHERE time >= 0 AND time < 300000 AND marker <> 2"
+                + " GROUP BY 1,2 FILL METHOD "
+                + method
+                + " TIME_COLUMN 1 FILL_GROUP 2 ORDER BY device,t",
+            new String[] {"t", "device", "v", "n"},
+            fillValueRows(method, false, true, bucket.equals("date_bin")));
+      }
+    }
+  }
+
+  @Test
+  public void testNullableHelperPreservesOnlyItsOrderingPrefix() {
+    for (String method : statefulFillMethods()) {
+      String input =
+          "SELECT * FROM (SELECT t,device,tie,marker FROM fill_keys"
+              + " ORDER BY device,t,tie LIMIT 100) FILL METHOD "
+              + method
+              + " TIME_COLUMN 1 FILL_GROUP 2";
+      String minute = TIME_FORMAT.format(Instant.ofEpochMilli(60_000));
+      String twoMinutes = TIME_FORMAT.format(Instant.ofEpochMilli(120_000));
+      String[] expected =
+          method.equals("PREVIOUS")
+              ? new String[] {
+                minute + ",a,a,3,",
+                minute + ",a,m,1,",
+                minute + ",a,z,2,",
+                "null,b,a,4,",
+                "null,b,z,5,",
+                twoMinutes + ",null,a,7,",
+                twoMinutes + ",null,b,6,"
+              }
+              : new String[] {
+                minute + ",a,m,1,",
+                minute + ",a,z,2,",
+                "null,a,a,3,",
+                "null,b,a,4,",
+                "null,b,z,5,",
+                twoMinutes + ",null,b,6,",
+                "null,null,a,7,"
+              };
+      assertTable(
+          input + " ORDER BY device,t,tie",
+          new String[] {"t", "device", "tie", "marker"},
+          expected);
+      List<String> prefixRows = new ArrayList<>();
+      for (String row : expected) {
+        String[] columns = row.split(",");
+        prefixRows.add(columns[0] + "," + columns[1] + ",");
+      }
+      assertTable(
+          "SELECT t,device FROM (" + input + ") ORDER BY device,t",
+          new String[] {"t", "device"},
+          prefixRows.toArray(new String[0]));
+    }
+  }
+
+  private static List<String> statefulFillMethods() {
+    return List.of(
+        "PREVIOUS",
+        "PREVIOUS TIME_BOUND 1h",
+        "PREVIOUS TIME_BOUND 30s",
+        "NEXT",
+        "NEXT TIME_BOUND 1h",
+        "NEXT TIME_BOUND 30s",
+        "LINEAR");
+  }
+
+  private static String[] fillValueRows(
+      String method, boolean window, boolean bucket, boolean omitGap) {
+    List<String> result = new ArrayList<>();
+    for (int group = 0; group < FILL_DEVICES.length; group++) {
+      double low = FILL_ENDPOINTS[group][0];
+      double high = FILL_ENDPOINTS[group][1];
+      Double[] values;
+      if (method.contains("30s")) {
+        values =
+            window
+                ? new Double[] {null, null, low, null, high}
+                : new Double[] {null, low, null, high, null};
+      } else if (method.startsWith("PREVIOUS")) {
+        values =
+            window
+                ? new Double[] {null, null, low, low, high}
+                : new Double[] {null, low, low, high, high};
+      } else if (method.startsWith("NEXT")) {
+        values =
+            window
+                ? new Double[] {low, low, low, high, high}
+                : new Double[] {low, low, high, high, null};
+      } else {
+        values =
+            window
+                ? new Double[] {null, null, low, (low + high) / 2, high}
+                : new Double[] {null, low, (low + high) / 2, high, null};
+      }
+      for (int i = 0; i < values.length; i++) {
+        if (omitGap && i == 2) {
+          continue;
+        }
+        result.add(
+            TIME_FORMAT.format(Instant.ofEpochMilli(i * 60_000L + (bucket ? 0 : 1)))
+                + ","
+                + FILL_DEVICES[group]
+                + ","
+                + values[i]
+                + ","
+                + (bucket ? "1," : ""));
+      }
+    }
+    return result.toArray(new String[0]);
   }
 
   private static void assertTable(String sql, String[] header, String[] rows) {

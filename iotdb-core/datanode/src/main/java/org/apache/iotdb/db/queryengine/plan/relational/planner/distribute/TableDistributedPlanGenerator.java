@@ -52,11 +52,14 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFill
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SemiJoinNode;
@@ -323,9 +326,24 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitFill(FillNode node, PlanContext context) {
     if (!(node instanceof ValueFillNode)) {
+      List<Symbol> groupingKeys = getFillGroupingKeys(node);
+      // Fill preserves row order and resets at group boundaries. Group keys cannot change: a
+      // NULL key has no non-null value in its group to copy. Other non-null columns also survive.
+      Set<Symbol> unchanged = new HashSet<>(groupingKeys);
+      if (context.hasSortProperty) {
+        // Inspect metadata before distribution consumes spilled device entries.
+        unchanged.addAll(getNonNullSymbols(node.getChild()));
+      }
       context.clearExpectedOrderingScheme();
       List<PlanNode> result = dealWithPlainSingleChildNode(node, context);
-      nodeOrderingMap.remove(node.getPlanNodeId());
+      OrderingScheme ordering =
+          getStatefulFillOrdering(
+              node, nodeOrderingMap.get(node.getPlanNodeId()), groupingKeys, unchanged);
+      if (ordering == null) {
+        nodeOrderingMap.remove(node.getPlanNodeId());
+      } else {
+        nodeOrderingMap.put(node.getPlanNodeId(), ordering);
+      }
       return result;
     }
     // Inspect metadata before distribution consumes a spilled device data set. No data rows need
@@ -352,6 +370,56 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), ordering);
     }
     return Collections.singletonList(node);
+  }
+
+  private static List<Symbol> getFillGroupingKeys(FillNode node) {
+    if (node instanceof PreviousFillNode) {
+      return ((PreviousFillNode) node).getGroupingKeys().orElse(ImmutableList.of());
+    } else if (node instanceof NextFillNode) {
+      return ((NextFillNode) node).getGroupingKeys().orElse(ImmutableList.of());
+    } else if (node instanceof LinearFillNode) {
+      return ((LinearFillNode) node).getGroupingKeys().orElse(ImmutableList.of());
+    }
+    return ImmutableList.of();
+  }
+
+  private static Optional<Symbol> getFillHelperColumn(FillNode node) {
+    if (node instanceof PreviousFillNode) {
+      return ((PreviousFillNode) node).getHelperColumn();
+    } else if (node instanceof NextFillNode) {
+      return ((NextFillNode) node).getHelperColumn();
+    } else if (node instanceof LinearFillNode) {
+      return Optional.of(((LinearFillNode) node).getHelperColumn());
+    }
+    return Optional.empty();
+  }
+
+  private static OrderingScheme getStatefulFillOrdering(
+      FillNode node,
+      OrderingScheme inputOrdering,
+      List<Symbol> groupingKeys,
+      Set<Symbol> unchanged) {
+    OrderingScheme preserved = TableFunctionOrdering.retainOrderingPrefix(inputOrdering, unchanged);
+    Symbol helperColumn = getFillHelperColumn(node).orElse(null);
+    int groupKeyCount = groupingKeys.size();
+    if (inputOrdering == null
+        || helperColumn == null
+        || unchanged.contains(helperColumn)
+        || inputOrdering.getOrderBy().size() <= groupKeyCount
+        || !helperColumn.equals(inputOrdering.getOrderBy().get(groupKeyCount))
+        || inputOrdering.getOrdering(helperColumn) != SortOrder.ASC_NULLS_LAST
+        || !ImmutableSet.copyOf(inputOrdering.getOrderBy().subList(0, groupKeyCount))
+            .equals(ImmutableSet.copyOf(groupingKeys))) {
+      return preserved;
+    }
+    // The helper can be nullable (for example an aggregate's time bucket). With all group keys
+    // followed by helper ASC NULLS LAST, each group's NULLs form a suffix. Unbounded PREVIOUS
+    // copies the last timestamp into that suffix; bounded PREVIOUS, NEXT and LINEAR leave it NULL.
+    // Both results stay ordered. Stop at the helper: filling may merge previously distinct peers,
+    // so a secondary ordering among those peers is no longer guaranteed.
+    return TableFunctionOrdering.retainOrderingPrefix(
+        inputOrdering,
+        ImmutableSet.copyOf(inputOrdering.getOrderBy().subList(0, groupKeyCount + 1)));
   }
 
   private Set<Symbol> getNonNullSymbols(PlanNode node) {
