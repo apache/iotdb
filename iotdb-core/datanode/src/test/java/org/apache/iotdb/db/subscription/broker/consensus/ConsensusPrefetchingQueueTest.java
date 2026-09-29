@@ -1264,6 +1264,103 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testWalReplayWaitsForWalVisibilityWhenWriterTailIsAhead() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("wal-replay-gap-wal-catch-up");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(11);
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getCurrentSearchIndex()).thenReturn(4L);
+      when(walNode.getLogDirectory()).thenReturn(systemDir);
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final AtomicInteger conversionCount = new AtomicInteger();
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenAnswer(
+              ignored -> {
+                conversionCount.incrementAndGet();
+                return Collections.singletonList(createTablet());
+              });
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      final ProgressWALIterator initialIterator = mock(ProgressWALIterator.class);
+      final Iterator<IndexedConsensusRequest> initiallyVisibleEntries =
+          Arrays.asList(createRequest(1L), createRequest(4L)).iterator();
+      when(initialIterator.hasNext()).thenAnswer(ignored -> initiallyVisibleEntries.hasNext());
+      when(initialIterator.next()).thenAnswer(ignored -> initiallyVisibleEntries.next());
+
+      final ProgressWALIterator laggingIterator = mock(ProgressWALIterator.class);
+      final Iterator<IndexedConsensusRequest> laggingEntries =
+          Collections.singletonList(createRequest(4L)).iterator();
+      when(laggingIterator.hasNext()).thenAnswer(ignored -> laggingEntries.hasNext());
+      when(laggingIterator.next()).thenAnswer(ignored -> laggingEntries.next());
+
+      final ProgressWALIterator recoveredIterator = mock(ProgressWALIterator.class);
+      final Iterator<IndexedConsensusRequest> recoveredEntries =
+          Arrays.asList(createRequest(2L), createRequest(3L), createRequest(4L)).iterator();
+      when(recoveredIterator.hasNext()).thenAnswer(ignored -> recoveredEntries.hasNext());
+      when(recoveredIterator.next()).thenAnswer(ignored -> recoveredEntries.next());
+
+      final AtomicInteger iteratorCreationCount = new AtomicInteger();
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              switch (iteratorCreationCount.getAndIncrement()) {
+                case 0:
+                  return initialIterator;
+                case 1:
+                  return laggingIterator;
+                default:
+                  return recoveredIterator;
+              }
+            }
+          };
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+
+      assertNull(queue.poll("consumer"));
+      queue.drivePrefetchOnce();
+      assertEquals(1L, queue.getWalPathAcceptedEntries());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
+
+      queue.drivePrefetchOnce();
+      assertEquals(1L, queue.getWalPathAcceptedEntries());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
+
+      queue.drivePrefetchOnce();
+      assertEquals(4L, queue.getWalPathAcceptedEntries());
+      assertEquals(4, conversionCount.get());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
+      verify(walNode).rollWALFile();
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testWalReplayFailsCriticallyWhenGapRemainsUnavailable() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("wal-replay-unrecoverable-gap");
@@ -1271,7 +1368,7 @@ public class ConsensusPrefetchingQueueTest {
     try {
       final DataRegionId regionId = new DataRegionId(10);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
-      reader.currentSearchIndex = 4L;
+      reader.currentSearchIndex = 3L;
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(reader);
       when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
