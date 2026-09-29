@@ -573,7 +573,7 @@ public class ConsensusPrefetchingQueue {
             this::requestPrefetchForRealtimeEntry,
             this::canAcceptRealtimeEntry);
     serverImpl.registerSubscriptionQueue(
-        pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
+        pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
 
     LOGGER.info(
         DataNodePipeMessages
@@ -1397,7 +1397,6 @@ public class ConsensusPrefetchingQueue {
   private static final long WAL_GAP_RETRY_SLEEP_MS = 10L;
   private static final long MEMORY_RETRY_SLEEP_MS = 100L;
   private static final long WAL_GAP_WAIT_LOG_INTERVAL_MS = 5_000L;
-  private static final long WAL_GAP_MAX_WAIT_MS = 30_000L;
 
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
 
@@ -2032,7 +2031,6 @@ public class ConsensusPrefetchingQueue {
 
     if (walGapRetryExpectedSearchIndex != expectedSearchIndex) {
       walGapRetryExpectedSearchIndex = expectedSearchIndex;
-      walGapWaitStartTimeMs = System.currentTimeMillis();
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_FOUND_UNAVAILABLE_SEARCH_INDEXES_E0CBFFFA,
@@ -2042,30 +2040,6 @@ public class ConsensusPrefetchingQueue {
           actualSearchIndex);
       if (consensusReqReader instanceof WALNode) {
         ((WALNode) consensusReqReader).rollWALFile();
-      }
-      resetSubscriptionWALPosition(expectedSearchIndex);
-      onWalGapRetryScheduled();
-      pendingWalGapRetryRequested = true;
-      return MaterializationResult.WAL_GAP;
-    }
-
-    final long nowMs = System.currentTimeMillis();
-    final long currentWalSearchIndex = consensusReqReader.getCurrentSearchIndex();
-    if (currentWalSearchIndex >= actualSearchIndex
-        && nowMs - walGapWaitStartTimeMs < WAL_GAP_MAX_WAIT_MS) {
-      if (lastWalGapWaitLogTimeMs == 0L
-          || nowMs - lastWalGapWaitLogTimeMs >= WAL_GAP_WAIT_LOG_INTERVAL_MS) {
-        LOGGER.info(
-            DataNodePipeMessages
-                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5,
-            this,
-            nowMs - walGapWaitStartTimeMs,
-            expectedSearchIndex,
-            actualSearchIndex,
-            expectedSearchIndex,
-            currentWalSearchIndex,
-            seekGeneration.get());
-        lastWalGapWaitLogTimeMs = nowMs;
       }
       resetSubscriptionWALPosition(expectedSearchIndex);
       onWalGapRetryScheduled();
@@ -3416,9 +3390,37 @@ public class ConsensusPrefetchingQueue {
     return committed;
   }
 
+  private long getRequiredRetainedMinVersionId() {
+    // Committed progress can advance on another consumer or replica while this queue is still
+    // replaying an older local search index. Keep both boundaries so WAL deletion can never pass
+    // the earliest entry this queue has not inspected yet.
+    return Math.min(getCommittedRetainedMinVersionId(), getReplayRetainedMinVersionId());
+  }
+
   private long getCommittedRetainedMinVersionId() {
     refreshCommittedWalRetentionBound();
     return committedRetainedMinVersionId;
+  }
+
+  private long getReplayRetainedMinVersionId() {
+    if (!(consensusReqReader instanceof WALNode)) {
+      return 0L;
+    }
+    final WALNode walNode = (WALNode) consensusReqReader;
+    return findReplayRetainedMinVersionId(
+        WALFileUtils.listAllWALFiles(walNode.getLogDirectory()), nextExpectedSearchIndex.get());
+  }
+
+  static long findReplayRetainedMinVersionId(
+      final File[] walFiles, final long nextExpectedSearchIndex) {
+    if (Objects.isNull(walFiles) || walFiles.length == 0) {
+      return 0L;
+    }
+
+    WALFileUtils.ascSortByVersionId(walFiles);
+    final int replayFileIndex =
+        Math.max(0, WALFileUtils.binarySearchFileBySearchIndex(walFiles, nextExpectedSearchIndex));
+    return WALFileUtils.parseVersionId(walFiles[replayFileIndex].getName());
   }
 
   private void refreshCommittedWalRetentionBoundAndNotify() {
