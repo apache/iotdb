@@ -426,8 +426,10 @@ public class CommonConfig {
 
   private int subscriptionConsensusBatchMaxDelayInMs = 50;
   private long subscriptionConsensusBatchMaxSizeInBytes = 8 * MB;
-  private int subscriptionConsensusBatchMaxTabletCount = 64;
-  private int subscriptionConsensusBatchMaxWalEntries = 128;
+  // Favor fewer poll/commit round trips during WAL catch-up. The byte limit remains the primary
+  // memory and RPC payload guard for large tablets.
+  private int subscriptionConsensusBatchMaxTabletCount = 512;
+  private int subscriptionConsensusBatchMaxWalEntries = 1024;
 
   private long subscriptionConsensusWalRetentionSizeInBytes = 512 * MB;
   private long subscriptionConsensusWalRetentionTimeMs = -1L;
