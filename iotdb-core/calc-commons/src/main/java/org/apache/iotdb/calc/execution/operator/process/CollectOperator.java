@@ -91,7 +91,9 @@ public class CollectOperator implements ProcessOperator {
     if (!inited) {
       inited = true;
       for (Operator child : children) {
-        child.isBlocked();
+        if (child != null) {
+          child.isBlocked();
+        }
       }
     }
     if (children.isEmpty()) {

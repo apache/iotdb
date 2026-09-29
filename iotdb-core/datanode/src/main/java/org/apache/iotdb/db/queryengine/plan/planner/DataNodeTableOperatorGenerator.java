@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchem
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -229,6 +230,16 @@ public class DataNodeTableOperatorGenerator
     super(metadata);
   }
 
+  @Override
+  public Operator visitCollect(CollectNode node, LocalExecutionPlanContext context) {
+    CollectQuotaGroup quotaGroup = context.enterCollectQuotaGroup(node.getPlanNodeId().getId());
+    try {
+      return super.visitCollect(node, context);
+    } finally {
+      context.exitCollectQuotaGroup(quotaGroup);
+    }
+  }
+
   /**
    * Producer side: register a shared {@link TopKRuntimeFilter} before visiting TopK children so
    * nested Scan nodes can resolve the same instance during operator generation.
@@ -385,6 +396,7 @@ public class DataNodeTableOperatorGenerator
     if (!isSameNode) {
       context.addExchangeSumNum(1);
     }
+    context.registerExchangeSourceHandle(sourceHandle);
     sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     ExchangeOperator exchangeOperator =
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());

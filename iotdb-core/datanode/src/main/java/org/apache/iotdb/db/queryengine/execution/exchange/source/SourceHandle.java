@@ -567,7 +567,7 @@ public class SourceHandle implements ISourceHandle {
       // Collect group. Restore the fragment-instance limit so the shared reservation key, rather
       // than an individual handle, is the group-wide limit.
       this.maxBytesCanReserve =
-          IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+          IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
     }
     localMemoryManager
         .getQueryPool()

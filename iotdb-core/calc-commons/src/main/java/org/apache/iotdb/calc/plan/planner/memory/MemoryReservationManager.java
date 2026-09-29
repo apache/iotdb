@@ -54,6 +54,11 @@ public interface MemoryReservationManager {
    */
   void releaseMemoryImmediately(final long size);
 
+  /** Flushes any batched release accumulated by {@link #releaseMemoryCumulatively(long)}. */
+  default void releaseMemoryImmediately() {
+    // Implementations that batch releases override this method.
+  }
+
   /**
    * Release all reserved memory immediately. Make sure this method is called when the lifecycle of
    * this manager ends, Or the memory to be released in the batch may not be released correctly.

@@ -1181,7 +1181,13 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 CollectOperator.class.getSimpleName());
-    return new CollectOperator(operatorContext, dealWithConsumeChildrenOneByOneNode(node, context));
+    CollectQuotaGroup quotaGroup = context.enterCollectQuotaGroup(node.getPlanNodeId().getId());
+    try {
+      return new CollectOperator(
+          operatorContext, dealWithConsumeChildrenOneByOneNode(node, context));
+    } finally {
+      context.exitCollectQuotaGroup(quotaGroup);
+    }
   }
 
   @Override

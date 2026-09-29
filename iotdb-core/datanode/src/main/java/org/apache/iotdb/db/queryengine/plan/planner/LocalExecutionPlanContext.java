@@ -299,7 +299,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
         exchangeSumNum);
     java.util.Set<ISourceHandle> groupedSourceHandles =
         Collections.newSetFromMap(new IdentityHashMap<>());
-    long maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    long maxBytesPerFI =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
     for (CollectQuotaGroup group : collectQuotaGroups) {
       for (ISourceHandle sourceHandle : group.getSourceHandles()) {
         groupedSourceHandles.add(sourceHandle);

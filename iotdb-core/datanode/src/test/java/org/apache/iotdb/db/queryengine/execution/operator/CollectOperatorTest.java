@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
+import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -81,7 +83,7 @@ public class CollectOperatorTest {
   private static final class TestOperator implements Operator {
     private final List<TsBlock> blocks;
     private final ListenableFuture<?> blocked;
-    private final OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    private final CommonOperatorContext operatorContext = Mockito.mock(CommonOperatorContext.class);
     private int index;
 
     private TestOperator(TsBlock block, ListenableFuture<?> blocked) {
@@ -94,7 +96,7 @@ public class CollectOperatorTest {
     }
 
     @Override
-    public OperatorContext getOperatorContext() {
+    public CommonOperatorContext getOperatorContext() {
       return operatorContext;
     }
 
