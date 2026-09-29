@@ -120,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TableFunctionOrdering;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -559,15 +560,21 @@ public class TableDistributedPlanGenerator
   // if current SortNode is prefix of child, this SortNode doesn't need to exist, return true
   private boolean canSortEliminated(
       @Nonnull OrderingScheme sortOrderingSchema, OrderingScheme childOrderingSchema) {
+    return hasOrderingPrefix(
+        sortOrderingSchema, childOrderingSchema, sortOrderingSchema.getOrderBy().size());
+  }
+
+  private boolean hasOrderingPrefix(
+      OrderingScheme sortOrderingSchema, OrderingScheme childOrderingSchema, int prefixSize) {
     if (childOrderingSchema == null) {
       return false;
     } else {
       List<Symbol> symbolsOfSort = sortOrderingSchema.getOrderBy();
       List<Symbol> symbolsOfChild = childOrderingSchema.getOrderBy();
-      if (symbolsOfSort.size() > symbolsOfChild.size()) {
+      if (prefixSize > symbolsOfChild.size()) {
         return false;
       } else {
-        for (int i = 0, size = symbolsOfSort.size(); i < size; i++) {
+        for (int i = 0; i < prefixSize; i++) {
           Symbol symbolOfSort = symbolsOfSort.get(i);
           SortOrder sortOrderOfSortNode = sortOrderingSchema.getOrdering(symbolOfSort);
           Symbol symbolOfChild = symbolsOfChild.get(i);
@@ -591,10 +598,22 @@ public class TableDistributedPlanGenerator
       if (canSortEliminated(
           node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
         return childrenNodes;
-      } else {
+      } else if (hasOrderingPrefix(
+          node.getOrderingScheme(),
+          nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()),
+          node.getStreamCompareKeyEndIndex() + 1)) {
         node.setChild(childrenNodes.get(0));
         return Collections.singletonList(node);
       }
+      // A TVF or another operator may have prevented the requested prefix from reaching the scan.
+      // StreamSort can only emit groups early when its input really has that ordered prefix.
+      return Collections.singletonList(
+          new SortNode(
+              node.getPlanNodeId(),
+              childrenNodes.get(0),
+              node.getOrderingScheme(),
+              node.isPartial(),
+              false));
     }
 
     // may have ProjectNode above SortNode later, so use MergeSortNode but not return SortNode list
@@ -604,7 +623,10 @@ public class TableDistributedPlanGenerator
     for (PlanNode child : childrenNodes) {
       if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
         mergeSortNode.addChild(child);
-      } else {
+      } else if (hasOrderingPrefix(
+          node.getOrderingScheme(),
+          nodeOrderingMap.get(child.getPlanNodeId()),
+          node.getStreamCompareKeyEndIndex() + 1)) {
         StreamSortNode subSortNode =
             new StreamSortNode(
                 queryId.genPlanNodeId(),
@@ -614,6 +636,9 @@ public class TableDistributedPlanGenerator
                 node.isOrderByAllIdsAndTime(),
                 node.getStreamCompareKeyEndIndex());
         mergeSortNode.addChild(subSortNode);
+      } else {
+        mergeSortNode.addChild(
+            new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false));
       }
     }
     nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
@@ -2874,22 +2899,49 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitTableFunctionProcessor(
       TableFunctionProcessorNode node, PlanContext context) {
-    context.clearExpectedOrderingScheme();
     if (node.getChildren().isEmpty()) {
+      context.clearExpectedOrderingScheme();
       return Collections.singletonList(node);
+    }
+    boolean hasExpectedOutputOrdering = context.hasSortProperty;
+    Set<Symbol> orderPreservingSymbols = TableFunctionOrdering.getOrderPreservingSymbols(node);
+    OrderingScheme inputOrdering =
+        node.isRowSemantic()
+            ? TableFunctionOrdering.retainOrderingPrefix(
+                context.expectedOrderingScheme, orderPreservingSymbols)
+            : null;
+    if (inputOrdering == null) {
+      context.clearExpectedOrderingScheme();
+    } else {
+      context.setExpectedOrderingScheme(inputOrdering);
     }
     boolean canSplitPushDown = canSplitTableFunctionProcessor(node);
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    List<PlanNode> result;
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
+      result = Collections.singletonList(node);
     } else if (!canSplitPushDown) {
       OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
       node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-      return Collections.singletonList(node);
+      result = Collections.singletonList(node);
     } else {
-      return splitForEachChild(node, childrenNodes);
+      result = splitForEachChild(node, childrenNodes);
     }
+    // Do not turn an unordered collection into a MergeSort merely because the function needs its
+    // own input sorted. Publish the preserved ordering only when an ancestor requests ordering.
+    if (hasExpectedOutputOrdering) {
+      for (PlanNode resultNode : result) {
+        OrderingScheme outputOrdering =
+            TableFunctionOrdering.retainOrderingPrefix(
+                nodeOrderingMap.get(resultNode.getChildren().get(0).getPlanNodeId()),
+                orderPreservingSymbols);
+        if (outputOrdering != null) {
+          nodeOrderingMap.put(resultNode.getPlanNodeId(), outputOrdering);
+        }
+      }
+    }
+    return result;
   }
 
   private boolean canSplitTableFunctionProcessor(TableFunctionProcessorNode node) {

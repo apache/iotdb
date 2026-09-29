@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Pattern
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -147,6 +148,17 @@ public class SortElimination implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitTableFunctionProcessor(TableFunctionProcessorNode node, Context context) {
+      PlanNode rewritten = visitPlan(node, new Context());
+      // Safe eliminations across a TVF are already performed using the actual output ordering in
+      // TableDistributedPlanGenerator. The scan-based heuristics here cannot prove that ordering:
+      // set semantics may reorder rows, and row semantics may duplicate a device/time pair with
+      // different values in the function's output columns.
+      context.setCannotEliminateSort(true);
+      return rewritten;
+    }
+
+    @Override
     public PlanNode visitFill(FillNode node, Context context) {
       PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
@@ -190,10 +202,11 @@ public class SortElimination implements PlanOptimizer {
   private static class Context {
     private int totalDeviceEntrySize = 0;
 
-    // There are 3 situations where sort cannot be eliminated
+    // Situations where scan-based sort elimination is not valid
     // 1. Query plan has linear fill, previous fill or gapfill
     // 2. Query plan has window function and it has ordering scheme
     // 3. Query plan has pattern recognition and it has ordering scheme
+    // 4. Query plan has a table function
     private boolean cannotEliminateSort = false;
 
     private String timeColumnName = null;
