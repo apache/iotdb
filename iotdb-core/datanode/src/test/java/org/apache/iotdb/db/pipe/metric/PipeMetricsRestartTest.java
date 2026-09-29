@@ -59,6 +59,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -245,6 +249,90 @@ public class PipeMetricsRestartTest {
       metrics.deregister(TASK_ID);
     }
     assertEquals(0, count(Metric.PIPE_PROCESSOR_TABLET_PROCESS));
+  }
+
+  /**
+   * A subtask may deregister while the metric service restart is unbinding the processor metrics.
+   * The restart must neither fail on it nor drop the metrics of the other subtasks.
+   */
+  @Test
+  public void testProcessorMetricsWithConcurrentDeregistration() throws Exception {
+    final PipeProcessorMetrics metrics = PipeProcessorMetrics.getInstance();
+    bind(metrics);
+    final AtomicBoolean armed = new AtomicBoolean(false);
+    final AtomicReference<PipeProcessorSubtask> paused = new AtomicReference<>();
+    final CountDownLatch pausedLatch = new CountDownLatch(1);
+    final CountDownLatch resumeLatch = new CountDownLatch(1);
+    final PipeProcessorSubtask first =
+        mockBlockingProcessorSubtask("first", armed, paused, pausedLatch, resumeLatch);
+    final PipeProcessorSubtask second =
+        mockBlockingProcessorSubtask("second", armed, paused, pausedLatch, resumeLatch);
+    metrics.register(first);
+    metrics.register(second);
+
+    // Pause the restart while it unbinds the first subtask, and deregister the other one meanwhile
+    armed.set(true);
+    final Thread restart = new Thread(service::restartService);
+    restart.start();
+    Thread deregistration = null;
+    try {
+      assertTrue(pausedLatch.await(30, TimeUnit.SECONDS));
+      final PipeProcessorSubtask other = paused.get() == first ? second : first;
+      deregistration = new Thread(() -> metrics.deregister(other.getTaskID()));
+      deregistration.start();
+      // Either the deregistration completes at once, or it waits for the unbinding to complete
+      final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+      while (deregistration.getState() != Thread.State.TERMINATED
+          && deregistration.getState() != Thread.State.BLOCKED
+          && deregistration.getState() != Thread.State.WAITING
+          && System.nanoTime() < deadline) {
+        Thread.sleep(10);
+      }
+    } finally {
+      resumeLatch.countDown();
+      restart.join(TimeUnit.SECONDS.toMillis(30));
+      if (deregistration != null) {
+        deregistration.join(TimeUnit.SECONDS.toMillis(30));
+      }
+    }
+
+    final String remainingPipe = paused.get().getPipeName();
+    try {
+      assertEquals(
+          1,
+          service.getAllMetrics().keySet().stream()
+              .filter(
+                  info ->
+                      Metric.PIPE_PROCESSOR_TABLET_PROCESS.toString().equals(info.getName())
+                          && remainingPipe.equals(info.getTags().get("name")))
+              .count());
+      assertEquals(1, count(Metric.PIPE_PROCESSOR_TABLET_PROCESS));
+    } finally {
+      metrics.deregister(paused.get().getTaskID());
+    }
+  }
+
+  private static PipeProcessorSubtask mockBlockingProcessorSubtask(
+      final String name,
+      final AtomicBoolean armed,
+      final AtomicReference<PipeProcessorSubtask> paused,
+      final CountDownLatch pausedLatch,
+      final CountDownLatch resumeLatch) {
+    final PipeProcessorSubtask subtask = Mockito.mock(PipeProcessorSubtask.class);
+    when(subtask.getTaskID()).thenReturn(name);
+    when(subtask.getRegionId()).thenReturn(REGION_ID);
+    when(subtask.getCreationTime()).thenReturn(CREATION_TIME);
+    when(subtask.getPipeName())
+        .thenAnswer(
+            invocation -> {
+              // Only the first call after arming pauses, which is during the unbinding
+              if (armed.get() && paused.compareAndSet(null, subtask)) {
+                pausedLatch.countDown();
+                resumeLatch.await(30, TimeUnit.SECONDS);
+              }
+              return name;
+            });
+    return subtask;
   }
 
   @Test

@@ -63,7 +63,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
     for (final String taskID : taskIDs) {
@@ -181,9 +181,10 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
     // Keep the extractors registered: they register only once, so a metric service restart
     // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
     ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::removeMetrics);
   }
 
@@ -286,7 +287,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBDataRegionSource extractor) {
+  public synchronized void register(final IoTDBDataRegionSource extractor) {
     final String taskID = extractor.getTaskID();
     extractorMap.putIfAbsent(taskID, extractor);
     if (Objects.nonNull(metricService)) {
@@ -294,7 +295,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_EXTRACTOR, taskID);
       return;

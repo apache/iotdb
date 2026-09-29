@@ -50,7 +50,7 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
   private final Map<String, Rate> rateMap = new ConcurrentHashMap<>();
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> ids = ImmutableSet.copyOf(prefetchingQueueMap.keySet());
     for (final String id : ids) {
@@ -59,15 +59,16 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
     // Keep the queues registered: they register only once, so a metric service restart
     // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
     ImmutableSet.copyOf(prefetchingQueueMap.keySet()).forEach(this::removeMetrics);
   }
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(final SubscriptionPrefetchingQueue prefetchingQueue) {
+  public synchronized void register(final SubscriptionPrefetchingQueue prefetchingQueue) {
     final String id = prefetchingQueue.getPrefetchingQueueId();
     prefetchingQueueMap.putIfAbsent(id, prefetchingQueue);
     if (Objects.nonNull(metricService)) {
@@ -107,7 +108,7 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
             Metric.SUBSCRIPTION_EVENT_TRANSFER.toString(), MetricLevel.IMPORTANT, getTags(queue)));
   }
 
-  public void deregister(final String id) {
+  public synchronized void deregister(final String id) {
     if (!prefetchingQueueMap.containsKey(id)) {
       LOGGER.warn(
           DataNodePipeMessages

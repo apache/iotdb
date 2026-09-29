@@ -93,6 +93,29 @@ public class LogDispatcherThreadMetricsTest {
     assertNull(findConstructBatchTimer());
   }
 
+  /**
+   * The dispatchers recovered at startup register their metrics before the metric service starts,
+   * which binds them again, so a metric set may be bound twice without being unbound in between.
+   */
+  @Test
+  public void testStageTimersAreRemovedAfterBindingTwice() {
+    service.stopService();
+    final LogDispatcherThreadMetrics first = new LogDispatcherThreadMetrics(mockThread(2));
+    final LogDispatcherThreadMetrics second = new LogDispatcherThreadMetrics(mockThread(3));
+    service.addMetricSet(first);
+    service.addMetricSet(second);
+    service.startService();
+    try {
+      first.recordConstructBatchTime(1);
+      second.recordConstructBatchTime(1);
+      assertEquals(2, getConstructBatchTimer().getCount());
+    } finally {
+      service.removeMetricSet(first);
+      service.removeMetricSet(second);
+    }
+    assertNull(findConstructBatchTimer());
+  }
+
   private static LogDispatcher.LogDispatcherThread mockThread(final int peerNodeId) {
     final LogDispatcher.LogDispatcherThread thread =
         Mockito.mock(LogDispatcher.LogDispatcherThread.class);

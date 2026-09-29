@@ -58,7 +58,7 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::createMetrics);
   }
@@ -91,8 +91,9 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
     // Keep the pipes registered so that a metric service restart can bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
     ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::removeMetrics);
   }
 
@@ -120,7 +121,7 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeMeta pipeMeta) {
+  public synchronized void register(final PipeMeta pipeMeta) {
     final String taskID =
         pipeMeta.getStaticMeta().getPipeName() + "_" + pipeMeta.getStaticMeta().getCreationTime();
     pipeTemporaryMetaMap.putIfAbsent(
@@ -130,7 +131,7 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String pipeID) {
+  public synchronized void deregister(final String pipeID) {
     if (!pipeTemporaryMetaMap.containsKey(pipeID)) {
       LOGGER.warn(
           ManagerMessages

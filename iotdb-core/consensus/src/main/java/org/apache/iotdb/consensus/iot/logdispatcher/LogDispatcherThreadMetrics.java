@@ -29,13 +29,18 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class LogDispatcherThreadMetrics implements IMetricSet {
   // The stage timers are shared by the dispatcher threads of all peers of a region, so only the
   // last of them to unbind may remove the timers, otherwise the others keep recording into timers
-  // that are no longer exported, e.g. after the metric service restarts.
-  private static final Map<String, Integer> REGION_TO_STAGE_TIMER_OWNERS = new HashMap<>();
+  // that are no longer exported, e.g. after the metric service restarts. A metric set may be bound
+  // twice without being unbound in between, e.g. when it is added before the metric service
+  // starts, so track the owners rather than count the bindings.
+  private static final Map<String, Set<LogDispatcherThreadMetrics>> REGION_TO_STAGE_TIMER_OWNERS =
+      new HashMap<>();
 
   private final LogDispatcher.LogDispatcherThread logDispatcherThread;
   private final String peerGroupId;
@@ -100,7 +105,9 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
 
   private void bindStageTimer(AbstractMetricService metricService) {
     synchronized (REGION_TO_STAGE_TIMER_OWNERS) {
-      REGION_TO_STAGE_TIMER_OWNERS.merge(peerGroupId, 1, Integer::sum);
+      REGION_TO_STAGE_TIMER_OWNERS
+          .computeIfAbsent(peerGroupId, region -> new HashSet<>())
+          .add(this);
       constructBatchTimer =
           metricService.getOrCreateTimer(
               Metric.IOT_SEND_LOG.toString(),
@@ -126,10 +133,14 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
 
   private void unbindStageTimer(AbstractMetricService metricService) {
     synchronized (REGION_TO_STAGE_TIMER_OWNERS) {
-      if (REGION_TO_STAGE_TIMER_OWNERS.merge(peerGroupId, -1, Integer::sum) > 0) {
-        return;
+      final Set<LogDispatcherThreadMetrics> owners = REGION_TO_STAGE_TIMER_OWNERS.get(peerGroupId);
+      if (owners != null) {
+        owners.remove(this);
+        if (!owners.isEmpty()) {
+          return;
+        }
+        REGION_TO_STAGE_TIMER_OWNERS.remove(peerGroupId);
       }
-      REGION_TO_STAGE_TIMER_OWNERS.remove(peerGroupId);
       metricService.remove(
           MetricType.TIMER,
           Metric.IOT_SEND_LOG.toString(),

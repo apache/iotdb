@@ -47,7 +47,7 @@ public class PipeEventCommitMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> committerKeys = ImmutableSet.copyOf(eventCommitterMap.keySet());
     for (String committerKey : committerKeys) {
@@ -73,9 +73,10 @@ public class PipeEventCommitMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
     // Keep the committers registered: they register only once, so a metric service restart
     // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
     ImmutableSet.copyOf(eventCommitterMap.keySet()).forEach(this::removeMetrics);
   }
 
@@ -96,7 +97,8 @@ public class PipeEventCommitMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeEventCommitter eventCommitter, final String committerKey) {
+  public synchronized void register(
+      final PipeEventCommitter eventCommitter, final String committerKey) {
     if (Objects.isNull(eventCommitter)) {
       return;
     }
@@ -107,7 +109,7 @@ public class PipeEventCommitMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String committerKey) {
+  public synchronized void deregister(final String committerKey) {
     if (!eventCommitterMap.containsKey(committerKey)) {
       LOGGER.warn(PipeMessages.FAILED_TO_DEREGISTER_COMMIT_METRICS, committerKey);
       return;

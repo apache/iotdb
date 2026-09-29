@@ -50,7 +50,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::createMetrics);
   }
@@ -74,9 +74,10 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
     // Keep the subtasks registered: they register only once, so a metric service restart
     // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
     ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::removeMetrics);
   }
 
@@ -99,7 +100,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeConfigNodeSubtask pipeConfigNodeSubtask) {
+  public synchronized void register(final PipeConfigNodeSubtask pipeConfigNodeSubtask) {
     final String taskID = pipeConfigNodeSubtask.getTaskID();
     subtaskMap.putIfAbsent(taskID, pipeConfigNodeSubtask);
     if (Objects.nonNull(metricService)) {
@@ -107,7 +108,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!subtaskMap.containsKey(taskID)) {
       LOGGER.warn(ManagerMessages.FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR, taskID);
       return;

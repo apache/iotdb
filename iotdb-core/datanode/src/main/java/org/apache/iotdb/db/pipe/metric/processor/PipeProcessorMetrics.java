@@ -55,7 +55,7 @@ public class PipeProcessorMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(processorMap.keySet());
     for (final String taskID : taskIDs) {
@@ -106,9 +106,10 @@ public class PipeProcessorMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
     // Keep the subtasks registered: they register only once, so a metric service restart
     // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
     ImmutableSet.copyOf(processorMap.keySet()).forEach(this::removeMetrics);
   }
 
@@ -153,7 +154,7 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeProcessorSubtask pipeProcessorSubtask) {
+  public synchronized void register(final PipeProcessorSubtask pipeProcessorSubtask) {
     final String taskID = pipeProcessorSubtask.getTaskID();
     processorMap.putIfAbsent(taskID, pipeProcessorSubtask);
     if (Objects.nonNull(metricService)) {
@@ -161,7 +162,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!processorMap.containsKey(taskID)) {
       // Allow calls from schema region tasks
       return;
