@@ -1504,7 +1504,12 @@ public class ConsensusPrefetchingQueue {
         try {
           batchResult =
               accumulateFromPending(
-                  batch, lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes);
+                  batch,
+                  lingerBatch,
+                  observedSeekGeneration,
+                  maxWalEntries,
+                  maxTablets,
+                  maxBatchBytes);
         } finally {
           pendingEntries.release(batch);
         }
@@ -1786,6 +1791,7 @@ public class ConsensusPrefetchingQueue {
       final List<IndexedConsensusRequest> batch,
       final DeliveryBatchState lingerBatch,
       final long expectedSeekGeneration,
+      final int maxWalEntries,
       final int maxTablets,
       final long maxBatchBytes) {
 
@@ -1812,6 +1818,7 @@ public class ConsensusPrefetchingQueue {
                 searchIndex,
                 lingerBatch,
                 expectedSeekGeneration,
+                maxWalEntries,
                 maxTablets,
                 maxBatchBytes);
         if (gapFillResult != MaterializationResult.SUCCESS) {
@@ -1878,6 +1885,7 @@ public class ConsensusPrefetchingQueue {
       final long toIndex,
       final DeliveryBatchState batchState,
       final long expectedSeekGeneration,
+      final int maxWalEntries,
       final int maxTablets,
       final long maxBatchBytes) {
     pendingWalGapRetryRequested = false;
@@ -1885,9 +1893,13 @@ public class ConsensusPrefetchingQueue {
     if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
       return MaterializationResult.STALE;
     }
+    // A pending-queue jump can span millions of WAL entries when real-time delivery has overflowed.
+    // Keep gap recovery within the normal per-round budget so sparse topic filtering cannot hold
+    // the
+    // queue read lock indefinitely and block unsubscribe from acquiring the close write lock.
     final MaterializationResult pumpResult =
         pumpFromSubscriptionWAL(
-            batchState, expectedSeekGeneration, Integer.MAX_VALUE, maxTablets, maxBatchBytes);
+            batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
     if (pumpResult != MaterializationResult.SUCCESS) {
       return pumpResult;
     }

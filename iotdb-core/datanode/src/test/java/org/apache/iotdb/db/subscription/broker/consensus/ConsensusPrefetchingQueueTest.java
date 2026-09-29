@@ -1347,6 +1347,97 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testPendingGapReplayHonorsPerRoundWalEntryLimit() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxWalEntries =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxWalEntries();
+    final File systemDir = temporaryFolder.newFolder("bounded-pending-gap-replay");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxWalEntries(2);
+
+      final DataRegionId regionId = new DataRegionId(12);
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getCurrentSearchIndex()).thenReturn(5L);
+      when(walNode.getLogDirectory()).thenReturn(systemDir);
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final AtomicInteger conversionCount = new AtomicInteger();
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenAnswer(
+              ignored -> {
+                conversionCount.incrementAndGet();
+                return Collections.emptyList();
+              });
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      final Iterator<IndexedConsensusRequest> walEntries =
+          Arrays.asList(
+                  createRequest(1L),
+                  createRequest(2L),
+                  createRequest(3L),
+                  createRequest(4L),
+                  createRequest(5L))
+              .iterator();
+      final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
+      when(iterator.hasNext()).thenAnswer(ignored -> walEntries.hasNext());
+      when(iterator.next()).thenAnswer(ignored -> walEntries.next());
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              return iterator;
+            }
+          };
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+
+      assertNull(queue.poll("consumer"));
+      assertTrue(pendingEntries(queue).offer(createRequest(5L)));
+
+      queue.drivePrefetchOnce();
+      assertEquals(2, conversionCount.get());
+      assertEquals(3L, queue.getCurrentReadSearchIndex());
+      assertTrue(pendingEntries(queue).isEmpty());
+
+      queue.drivePrefetchOnce();
+      assertEquals(4, conversionCount.get());
+      assertEquals(5L, queue.getCurrentReadSearchIndex());
+
+      queue.drivePrefetchOnce();
+      assertEquals(5, conversionCount.get());
+      assertEquals(6L, queue.getCurrentReadSearchIndex());
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxWalEntries(originalBatchMaxWalEntries);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testWalReplayFailsCriticallyWhenGapRemainsUnavailable() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("wal-replay-unrecoverable-gap");
