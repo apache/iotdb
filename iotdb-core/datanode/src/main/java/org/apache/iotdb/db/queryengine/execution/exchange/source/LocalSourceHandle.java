@@ -306,8 +306,13 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
-    // LocalSinkChannel
+    // The source-side Collect quota can be narrower than the upstream LocalSinkChannel quota.
+    queue.setMaxBytesCanReserve(maxBytesCanReserve);
+  }
+
+  @Override
+  public void setMemoryReservationGroupId(String reservationPlanNodeId) {
+    queue.setMemoryReservationGroupId(reservationPlanNodeId);
   }
 
   @Override

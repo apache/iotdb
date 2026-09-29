@@ -1429,6 +1429,8 @@ public final class DataNodeQueryMessages {
       "获取数据块 [{}, {}) 失败，尝试次数：{}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "数据块响应数量异常。";
+  public static final String EXCEPTION_EMPTY_DATA_BLOCK_RESPONSE_B057C83C =
+      "数据块响应为空。";
   public static final String
       EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
           "序列化 TsBlock 分片偏移量 %s 无效，块大小为 %s。";

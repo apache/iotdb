@@ -874,7 +874,7 @@ public class TableDistributedPlanGenerator
         propertyContext -> applySortProperty(node, result, propertyContext, false));
     if (needFinalAggregation) {
       OrderingScheme childOrdering = nodeOrderingMap.get(result.get(0).getPlanNodeId());
-      finalAggregation.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, result));
+      finalAggregation.setChild(mergeAggregationChildren(finalAggregation, childOrdering, result));
       return Collections.singletonList(finalAggregation);
     }
     return result;
@@ -1899,12 +1899,10 @@ public class TableDistributedPlanGenerator
                     })
                 .collect(Collectors.toList());
 
-        // 4. Add a Collect Node under the final Aggregation Node, and add the partial Aggregation
-        // nodes as its children
-        CollectNode collectNode =
-            new CollectNode(queryId.genPlanNodeId(), aggregationNodes.get(0).getOutputSymbols());
-        collectNode.setChildren(aggregationNodes);
-        splitResult.left.setChild(collectNode);
+        // 4. Merge the partial Aggregation nodes under the final Aggregation Node. A streamable
+        // final aggregation must not consume an unordered Collect node.
+        splitResult.left.setChild(
+            mergeAggregationChildren(splitResult.left, childOrdering, aggregationNodes));
         return Collections.singletonList(splitResult.left);
       }
 
@@ -1917,8 +1915,8 @@ public class TableDistributedPlanGenerator
     if (node.getAggregations().values().stream()
         .anyMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
       PlanNode physicalChild =
-          mergeChildrenViaCollectOrMergeSort(
-              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes);
+          mergeAggregationChildren(
+              node, nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes);
       node.setChild(physicalChild);
       return Collections.singletonList(
           withRateFunctionInputOrdering(node, nodeOrderingMap.get(physicalChild.getPlanNodeId())));
@@ -1948,8 +1946,10 @@ public class TableDistributedPlanGenerator
                 })
             .collect(Collectors.toList());
     splitResult.left.setChild(
-        mergeChildrenViaCollectOrMergeSort(
-            nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
+        mergeAggregationChildren(
+            splitResult.left,
+            nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()),
+            childrenNodes));
     return Collections.singletonList(splitResult.left);
   }
 
@@ -2073,7 +2073,7 @@ public class TableDistributedPlanGenerator
         OrderingScheme childOrdering =
             nodeOrderingMap.get(resultTableScanNodeList.get(0).getPlanNodeId());
         finalAggregation.setChild(
-            mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
+            mergeAggregationChildren(finalAggregation, childOrdering, resultTableScanNodeList));
       } else {
         throw new IllegalStateException(
             DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
@@ -2234,8 +2234,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(result.get(0));
       } else {
         finalAggregation.setChild(
-            mergeChildrenViaCollectOrMergeSort(
-                nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
+            mergeAggregationChildren(
+                finalAggregation, nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
       }
       return Collections.singletonList(finalAggregation);
     }
@@ -2449,7 +2449,7 @@ public class TableDistributedPlanGenerator
         OrderingScheme childOrdering =
             nodeOrderingMap.get(resultTableScanNodeList.get(0).getPlanNodeId());
         finalAggregation.setChild(
-            mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
+            mergeAggregationChildren(finalAggregation, childOrdering, resultTableScanNodeList));
       } else {
         throw new IllegalStateException(
             DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
@@ -2637,8 +2637,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(result.get(0));
       } else {
         finalAggregation.setChild(
-            mergeChildrenViaCollectOrMergeSort(
-                nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
+            mergeAggregationChildren(
+                finalAggregation, nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
       }
       return Collections.singletonList(finalAggregation);
     }
@@ -2871,6 +2871,24 @@ public class TableDistributedPlanGenerator
     return result.build();
   }
 
+  /**
+   * Splits {@code node} for each pushed-down child and declares the GroupNode ordering (partition
+   * keys followed by order keys) as the ordering of every split child.
+   *
+   * <p>Ready-first Collect preserves neither partition contiguity nor ORDER BY order. Windows,
+   * ROW_NUMBER and ranking rely on both, so their parent merge must use MergeSort instead of an
+   * unordered Collect.
+   */
+  private List<PlanNode> splitPreservingChildOrdering(
+      SingleChildProcessNode node, List<PlanNode> childrenNodes) {
+    List<PlanNode> result = splitForEachChild(node, childrenNodes);
+    OrderingScheme ordering = ((GroupNode) node.getChild()).getOrderingScheme();
+    for (PlanNode child : result) {
+      nodeOrderingMap.put(child.getPlanNodeId(), ordering);
+    }
+    return result;
+  }
+
   @Override
   public List<PlanNode> visitTableFunctionProcessor(
       TableFunctionProcessorNode node, PlanContext context) {
@@ -2954,6 +2972,22 @@ public class TableDistributedPlanGenerator
     Map<Symbol, SortOrder> orderings = new HashMap<>();
     symbols.forEach(symbol -> orderings.put(symbol, SortOrder.ASC_NULLS_LAST));
     return new OrderingScheme(symbols, orderings);
+  }
+
+  private static boolean isStreamingAggregationEnabled(AggregationNode node) {
+    return node.isStreamable();
+  }
+
+  private PlanNode mergeAggregationChildren(
+      AggregationNode aggregationNode, OrderingScheme childOrdering, List<PlanNode> childrenNodes) {
+    if (childrenNodes.size() > 1
+        && isStreamingAggregationEnabled(aggregationNode)
+        && childOrdering == null) {
+      // Collect is ready-first and does not preserve grouping-key order. Clear the streamable
+      // marker so the local generator uses HashAggregation for this unordered merge.
+      aggregationNode.setPreGroupedSymbols(ImmutableList.of());
+    }
+    return mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes);
   }
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
@@ -3369,7 +3403,7 @@ public class TableDistributedPlanGenerator
       node.setChild(collectNode);
       return Collections.singletonList(node);
     } else {
-      return splitForEachChild(node, childrenNodes);
+      return splitPreservingChildOrdering(node, childrenNodes);
     }
   }
 
@@ -3399,7 +3433,7 @@ public class TableDistributedPlanGenerator
       node.setChild(collectNode);
       return Collections.singletonList(node);
     } else {
-      return splitForEachChild(node, childrenNodes);
+      return splitPreservingChildOrdering(node, childrenNodes);
     }
   }
 
@@ -3438,7 +3472,7 @@ public class TableDistributedPlanGenerator
       node.setChild(collectNode);
       return Collections.singletonList(node);
     } else {
-      return splitForEachChild(node, childrenNodes);
+      return splitPreservingChildOrdering(node, childrenNodes);
     }
   }
 

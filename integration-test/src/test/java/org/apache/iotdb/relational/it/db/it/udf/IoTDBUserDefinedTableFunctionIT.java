@@ -210,7 +210,7 @@ public class IoTDBUserDefinedTableFunctionIT {
                   + LARGE_RESULT_REPEAT_COUNT
                   + ", "
                   + LARGE_RESULT_PAYLOAD_SIZE
-                  + ")")) {
+                  + ") ORDER BY time, repeat_index")) {
         while (resultSet.next()) {
           int repeatIndex = resultSet.getInt("repeat_index");
           long time = resultSet.getLong("time");

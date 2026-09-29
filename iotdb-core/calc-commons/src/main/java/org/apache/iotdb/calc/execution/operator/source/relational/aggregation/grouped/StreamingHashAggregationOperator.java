@@ -306,11 +306,13 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     // outputPages = null;
     if (aggregationBuilder != null) {
       aggregationBuilder.close();
-      // aggregationBuilder.close() will release all memory reserved in memory accounting.
-      // The reference must be set to null afterward to avoid unaccounted memory.
       aggregationBuilder = null;
     }
-    // memoryContext.setBytes(0);
+    if (previousRetainedSize > 0) {
+      memoryReservationManager.releaseMemoryCumulatively(previousRetainedSize);
+      memoryReservationManager.releaseMemoryImmediately();
+      previousRetainedSize = 0;
+    }
   }
 
   @Override
@@ -320,6 +322,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
 
   @Override
   public void close() throws Exception {
+    closeAggregationBuilder();
     child.close();
   }
 

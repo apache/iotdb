@@ -57,6 +57,7 @@ public class SharedTsBlockQueue {
   private final TFragmentInstanceId localFragmentInstanceId;
 
   private final String localPlanNodeId;
+  private String memoryReservationPlanNodeId;
 
   private final String fullFragmentInstanceId;
 
@@ -77,6 +78,11 @@ public class SharedTsBlockQueue {
   private final SettableFuture<Void> canAddTsBlock = SettableFuture.create();
 
   private ListenableFuture<Void> blockedOnMemory;
+
+  /** Limits a grouped local source to one in-flight block until the consumer removes it. */
+  private SettableFuture<Void> sharedQuotaBlocked;
+
+  private boolean usesSharedMemoryReservationGroup;
 
   private volatile boolean closed = false;
   private boolean alreadyRegistered = false;
@@ -117,6 +123,7 @@ public class SharedTsBlockQueue {
     this.localPlanNodeId =
         Validate.notNull(
             planNodeId, DataNodeQueryMessages.EXCEPTION_PLANNODE_ID_CANNOT_BE_NULL_F91303CD);
+    this.memoryReservationPlanNodeId = this.localPlanNodeId;
     this.localMemoryManager =
         Validate.notNull(
             localMemoryManager,
@@ -141,7 +148,19 @@ public class SharedTsBlockQueue {
   }
 
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    this.maxBytesCanReserve = maxBytesCanReserve;
+    this.maxBytesCanReserve = Math.min(this.maxBytesCanReserve, maxBytesCanReserve);
+  }
+
+  public void setMemoryReservationGroupId(String reservationPlanNodeId) {
+    this.memoryReservationPlanNodeId = Validate.notNull(reservationPlanNodeId);
+    this.usesSharedMemoryReservationGroup = !localPlanNodeId.equals(reservationPlanNodeId);
+    if (usesSharedMemoryReservationGroup) {
+      // The planner may first apply the legacy per-exchange limit before it knows this queue's
+      // Collect group. Restore the fragment-instance limit so the shared reservation key, rather
+      // than an individual queue, is the group-wide limit.
+      this.maxBytesCanReserve =
+          IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    }
   }
 
   public long getMaxBytesCanReserve() {
@@ -228,7 +247,7 @@ public class SharedTsBlockQueue {
           .free(
               localFragmentInstanceId.getQueryId(),
               fullFragmentInstanceId,
-              localPlanNodeId,
+              memoryReservationPlanNodeId,
               reservedBytes);
       bufferRetainedSizeInBytes -= reservedBytes;
     }
@@ -237,6 +256,11 @@ public class SharedTsBlockQueue {
     // corresponding LocalSinkChannel.
     if (sinkChannel != null) {
       sinkChannel.checkAndInvokeOnFinished();
+    }
+    if (usesSharedMemoryReservationGroup
+        && sharedQuotaBlocked != null
+        && !sharedQuotaBlocked.isDone()) {
+      sharedQuotaBlocked.set(null);
     }
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
@@ -261,11 +285,16 @@ public class SharedTsBlockQueue {
     Validate.isTrue(
         blockedOnMemory == null || blockedOnMemory.isDone(),
         DataNodeQueryMessages.EXCEPTION_SHAREDTSBLOCKQUEUE_IS_FULL_87493E26);
+    Validate.isTrue(
+        !usesSharedMemoryReservationGroup
+            || sharedQuotaBlocked == null
+            || sharedQuotaBlocked.isDone(),
+        DataNodeQueryMessages.EXCEPTION_SHAREDTSBLOCKQUEUE_IS_FULL_87493E26);
     if (!alreadyRegistered) {
       localMemoryManager
           .getQueryPool()
           .registerPlanNodeIdToQueryMemoryMap(
-              localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+              localFragmentInstanceId.queryId, fullFragmentInstanceId, memoryReservationPlanNodeId);
       alreadyRegistered = true;
     }
     MemoryReservationResult reserveResult =
@@ -274,8 +303,8 @@ public class SharedTsBlockQueue {
             .reserveWithPriority(
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
-                localPlanNodeId,
-                tsBlock.getSizeInBytes(),
+                memoryReservationPlanNodeId,
+                tsBlock.getRetainedSizeInBytes(),
                 maxBytesCanReserve,
                 isHighestPriority);
     blockedOnMemory = reserveResult.getFuture();
@@ -302,7 +331,11 @@ public class SharedTsBlockQueue {
               if (!blocked.isDone()) {
                 blocked.set(null);
               }
-              channelBlocked.set(null);
+              if (usesSharedMemoryReservationGroup) {
+                sharedQuotaBlocked = channelBlocked;
+              } else {
+                channelBlocked.set(null);
+              }
             }
           },
           // Use directExecutor() here could lead to deadlock. Thread A holds lock of
@@ -318,6 +351,10 @@ public class SharedTsBlockQueue {
       queue.add(new Pair<>(tsBlock, reservedBytes));
       if (!blocked.isDone()) {
         blocked.set(null);
+      }
+      if (usesSharedMemoryReservationGroup) {
+        sharedQuotaBlocked = SettableFuture.create();
+        return sharedQuotaBlocked;
       }
       return blockedOnMemory;
     }
@@ -338,6 +375,9 @@ public class SharedTsBlockQueue {
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
+    if (sharedQuotaBlocked != null && !sharedQuotaBlocked.isDone()) {
+      sharedQuotaBlocked.set(null);
+    }
     queue.clear();
     if (bufferRetainedSizeInBytes > 0L) {
       localMemoryManager
@@ -345,7 +385,7 @@ public class SharedTsBlockQueue {
           .free(
               localFragmentInstanceId.getQueryId(),
               fullFragmentInstanceId,
-              localPlanNodeId,
+              memoryReservationPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
@@ -382,6 +422,9 @@ public class SharedTsBlockQueue {
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
+    if (sharedQuotaBlocked != null && !sharedQuotaBlocked.isDone()) {
+      sharedQuotaBlocked.set(null);
+    }
     queue.clear();
     if (bufferRetainedSizeInBytes > 0L) {
       localMemoryManager
@@ -389,7 +432,7 @@ public class SharedTsBlockQueue {
           .free(
               localFragmentInstanceId.getQueryId(),
               fullFragmentInstanceId,
-              localPlanNodeId,
+              memoryReservationPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
@@ -411,6 +454,9 @@ public class SharedTsBlockQueue {
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
+    if (sharedQuotaBlocked != null && !sharedQuotaBlocked.isDone()) {
+      sharedQuotaBlocked.set(null);
+    }
     queue.clear();
     if (bufferRetainedSizeInBytes > 0L) {
       localMemoryManager
@@ -418,7 +464,7 @@ public class SharedTsBlockQueue {
           .free(
               localFragmentInstanceId.getQueryId(),
               fullFragmentInstanceId,
-              localPlanNodeId,
+              memoryReservationPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }

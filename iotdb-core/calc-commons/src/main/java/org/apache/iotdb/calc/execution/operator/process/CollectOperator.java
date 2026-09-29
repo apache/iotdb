@@ -25,10 +25,13 @@ import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class CollectOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
@@ -38,28 +41,44 @@ public class CollectOperator implements ProcessOperator {
   protected final List<Operator> children;
   private boolean inited = false;
 
-  protected int currentIndex;
+  /** The next child considered by the fair ready-first scheduler. */
+  protected int nextCursor;
 
   public CollectOperator(CommonOperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
-    this.currentIndex = 0;
+    this.nextCursor = 0;
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return currentIndex < children.size();
+    for (Operator child : children) {
+      if (child != null && child.hasNextWithTimer()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (children.get(currentIndex).hasNextWithTimer()) {
-      return children.get(currentIndex).nextWithTimer();
-    } else {
-      closeCurrentChild(currentIndex);
-      currentIndex++;
-      return null;
+    for (int offset = 0; offset < children.size(); offset++) {
+      int index = (nextCursor + offset) % children.size();
+      Operator child = children.get(index);
+      if (child == null) {
+        continue;
+      }
+      if (!child.hasNextWithTimer() || child.isFinished()) {
+        closeCurrentChild(index);
+        continue;
+      }
+      if (!child.isBlocked().isDone()) {
+        continue;
+      }
+      nextCursor = (index + 1) % children.size();
+      return child.nextWithTimer();
     }
+    return null;
   }
 
   protected void closeCurrentChild(int index) throws Exception {
@@ -72,18 +91,38 @@ public class CollectOperator implements ProcessOperator {
     if (!inited) {
       inited = true;
       for (Operator child : children) {
-        child.isBlocked();
+        if (child != null) {
+          child.isBlocked();
+        }
       }
     }
-    if (currentIndex >= children.size()) {
+    if (children.isEmpty()) {
       return NOT_BLOCKED;
     }
-    return children.get(currentIndex).isBlocked();
+    SettableFuture<Void> blocked = SettableFuture.create();
+    boolean hasBlockedChild = false;
+    for (Operator child : children) {
+      if (child == null) {
+        continue;
+      }
+      ListenableFuture<?> childBlocked = child.isBlocked();
+      if (childBlocked.isDone()) {
+        return NOT_BLOCKED;
+      }
+      hasBlockedChild = true;
+      childBlocked.addListener(() -> blocked.set(null), directExecutor());
+    }
+    return hasBlockedChild ? blocked : NOT_BLOCKED;
   }
 
   @Override
   public boolean isFinished() throws Exception {
-    return currentIndex >= children.size();
+    for (Operator child : children) {
+      if (child != null && !child.isFinished()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
@@ -93,7 +132,7 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (int i = currentIndex, n = children.size(); i < n; i++) {
+    for (int i = 0, n = children.size(); i < n; i++) {
       Operator currentChild = children.get(i);
       if (currentChild != null) {
         closeCurrentChild(i);
@@ -103,25 +142,32 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    long maxPeekMemory = 0;
+    long totalPeekMemory = 0;
     for (Operator child : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemoryWithCounter());
+      if (child != null) {
+        totalPeekMemory += child.calculateMaxPeekMemoryWithCounter();
+      }
     }
-    return maxPeekMemory;
+    return totalPeekMemory;
   }
 
   @Override
   public long calculateMaxReturnSize() {
     long maxReturnSize = 0;
     for (Operator child : children) {
-      maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
+      if (child != null) {
+        maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
+      }
     }
     return maxReturnSize;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
+    return children.stream()
+        .filter(child -> child != null)
+        .mapToLong(Operator::calculateRetainedSizeAfterCallingNext)
+        .sum();
   }
 
   @TestOnly

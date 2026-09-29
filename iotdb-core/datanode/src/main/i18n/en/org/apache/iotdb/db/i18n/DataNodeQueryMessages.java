@@ -1449,6 +1449,8 @@ public final class DataNodeQueryMessages {
       "failed to get data block [{}, {}), attempt times: {}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "Unexpected data block response size.";
+  public static final String EXCEPTION_EMPTY_DATA_BLOCK_RESPONSE_B057C83C =
+      "Empty data block response.";
   public static final String
       EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
           "Invalid serialized TsBlock fragment offset %s for block size %s.";

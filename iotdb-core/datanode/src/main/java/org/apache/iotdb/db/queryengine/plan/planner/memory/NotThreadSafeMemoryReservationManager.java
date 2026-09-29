@@ -143,6 +143,14 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     }
   }
 
+  @Override
+  public void releaseMemoryImmediately() {
+    if (bytesToBeReleased > 0) {
+      releaseBytesImmediately(bytesToBeReleased);
+      bytesToBeReleased = 0;
+    }
+  }
+
   private void releaseBytesImmediately(final long size) {
     long poolBytes = deductReleaseAccounting(size);
     if (poolBytes > 0) {
