@@ -135,7 +135,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
-  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet = new HashSet<>();
+  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet =
+      ConcurrentHashMap.newKeySet();
 
   private final int thriftMaxFrameSize;
   private final int connectionTimeoutInMs;
