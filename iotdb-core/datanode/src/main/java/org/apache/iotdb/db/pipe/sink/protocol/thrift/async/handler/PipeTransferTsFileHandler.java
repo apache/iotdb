@@ -51,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
@@ -79,14 +80,20 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private File currentFile;
 
   private final boolean transferMod;
+  // A mod file can be cleaned up after the event is created. Keep the requested mode immutable,
+  // but downgrade the requests sent by this handler when the sidecar is no longer available.
+  private boolean effectiveTransferMod;
 
   private final String dataBaseName;
-  private final String conversionTaskId;
+  private String conversionTaskId;
+  private final int outputIndex;
 
   private final int readFileBufferSize;
   private PipeTsFileMemoryBlock memoryBlock;
   private byte[] readBuffer;
   private long position;
+  private boolean transferringModFile;
+  private boolean transferringTsFile;
 
   private RandomAccessFile reader;
 
@@ -141,13 +148,17 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.tsFile = tsFile;
     this.modFile = modFile;
     this.transferMod = transferMod;
+    this.effectiveTransferMod = transferMod && modFile != null && modFile.exists();
     this.dataBaseName = dataBaseName;
+    this.outputIndex = outputIndex;
+    this.transferringModFile = false;
+    this.transferringTsFile = false;
     conversionTaskId =
         connector.shouldAsyncLoadTsFileOnTypeMismatch()
             ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
-                connector.getSinkTaskId(), events, dataBaseName, outputIndex, transferMod)
+                connector.getSinkTaskId(), events, dataBaseName, outputIndex, effectiveTransferMod)
             : null;
-    currentFile = transferMod ? modFile : tsFile;
+    currentFile = effectiveTransferMod ? modFile : tsFile;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
     // TsFile events are producing and consuming at the same time, and the memory of a TsFile
@@ -157,7 +168,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     // will cause a deadlock.
     waitForResourceEnough4Slicing((long) ((1 + Math.random()) * 20 * 1000)); // 20 - 40 seconds
     final long maxFileLength =
-        transferMod && Objects.nonNull(modFile)
+        effectiveTransferMod && Objects.nonNull(modFile)
             ? Math.max(tsFile.length(), modFile.length())
             : tsFile.length();
     readFileBufferSize =
@@ -204,7 +215,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (reader == null) {
-      reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
+      openNextFile();
     }
 
     client.setShouldReturnSelf(false);
@@ -213,18 +224,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     final int readLength = readNextFilePiece(reader, readBuffer);
 
     if (readLength == -1) {
-      if (currentFile == modFile) {
-        currentFile = tsFile;
-        position = 0;
-        reader.close();
-        reader = null;
-        reader = new RandomAccessFile(tsFile, "r");
+      reader.close();
+      reader = null;
+      if (openNextFile()) {
         transfer(clientManager, client);
-      } else if (currentFile == tsFile) {
+      } else {
         isSealSignalSent.set(true);
 
         final TPipeTransferReq uncompressedReq =
-            transferMod
+            effectiveTransferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                         modFile.getName(),
                         modFile.length(),
@@ -263,7 +271,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
     final TPipeTransferReq uncompressedReq =
-        transferMod
+        effectiveTransferMod
             ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
@@ -338,6 +346,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         try {
           final int referenceCount = eventsReferenceCount.decrementAndGet();
           if (referenceCount <= 0) {
+            sink.clearFileNotFoundRetryTimes(events);
             events.forEach(
                 event ->
                     event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
@@ -495,6 +504,69 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void clearEventsReferenceCount() {
     events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
+  }
+
+  private boolean advanceToNextFile() {
+    if (transferMod && !transferringModFile) {
+      transferringModFile = true;
+      if (modFile != null && modFile.exists()) {
+        effectiveTransferMod = true;
+        conversionTaskId = generateConversionTaskId();
+        currentFile = modFile;
+        position = 0;
+        return true;
+      }
+
+      // The mod file is an optional sidecar. It may have been cleaned up after the event was
+      // created, so transfer the TsFile without modifications instead of creating a WithMod
+      // request that the receiver can never finish.
+      effectiveTransferMod = false;
+      conversionTaskId = generateConversionTaskId();
+      if (modFile != null) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9,
+            tsFile,
+            modFile);
+      }
+    }
+    if (!transferringTsFile) {
+      transferringTsFile = true;
+      currentFile = tsFile;
+      position = 0;
+      return true;
+    }
+    return false;
+  }
+
+  private boolean openNextFile() throws IOException {
+    while (advanceToNextFile()) {
+      try {
+        reader = new RandomAccessFile(currentFile, "r");
+        return true;
+      } catch (final FileNotFoundException e) {
+        if (currentFile == modFile && effectiveTransferMod) {
+          // Re-check after advanceToNextFile(). The sidecar can disappear in this small window.
+          effectiveTransferMod = false;
+          conversionTaskId = generateConversionTaskId();
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9,
+              tsFile,
+              modFile);
+          continue;
+        }
+        throw e;
+      }
+    }
+    return false;
+  }
+
+  private String generateConversionTaskId() {
+    return sink.shouldAsyncLoadTsFileOnTypeMismatch()
+        ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            sink.getSinkTaskId(), events, dataBaseName, outputIndex, effectiveTransferMod)
+        : null;
   }
 
   @Override
