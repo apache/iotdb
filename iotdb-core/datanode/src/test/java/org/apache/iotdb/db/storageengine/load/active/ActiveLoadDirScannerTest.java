@@ -49,6 +49,7 @@ public class ActiveLoadDirScannerTest {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private String[] originalListeningDirs;
   private String originalPipeDir;
+  private String originalFailDir;
   private boolean originalListeningEnabled;
   private File tempDir;
   private File pendingDir;
@@ -58,6 +59,7 @@ public class ActiveLoadDirScannerTest {
   public void setUp() throws Exception {
     originalListeningDirs = config.getLoadActiveListeningDirs();
     originalPipeDir = config.getLoadActiveListeningPipeDir();
+    originalFailDir = config.getLoadActiveListeningFailDir();
     originalListeningEnabled = config.getLoadActiveListeningEnable();
 
     tempDir = Files.createTempDirectory("active-load-scanner").toFile();
@@ -74,6 +76,7 @@ public class ActiveLoadDirScannerTest {
   public void tearDown() {
     config.setLoadActiveListeningDirs(originalListeningDirs);
     config.setLoadActiveListeningPipeDir(originalPipeDir);
+    config.setLoadActiveListeningFailDir(originalFailDir);
     config.setLoadActiveListeningEnable(originalListeningEnabled);
     LoadUtil.updateLoadDiskSelector();
     deleteRecursively(tempDir);
@@ -163,6 +166,41 @@ public class ActiveLoadDirScannerTest {
     verify(loader, times(0))
         .tryTriggerTsFileLoad(
             eq(tsFile.getAbsolutePath()),
+            eq(pendingDir.getAbsolutePath()),
+            eq(false),
+            eq(false),
+            isNull());
+  }
+
+  @Test
+  public void testScanIgnoresFailDirectoryNestedUnderListeningDirectory() throws Exception {
+    final File failDir = new File(pendingDir, "failed");
+    Assert.assertTrue(failDir.mkdirs());
+    config.setLoadActiveListeningFailDir(failDir.getAbsolutePath());
+    final File failedTsFile = createCompletedTsFile(failDir, "failed.tsfile");
+    final File pendingTsFile = createCompletedTsFile(pendingDir, "pending.tsfile");
+
+    final ActiveLoadTsFileLoader loader = mock(ActiveLoadTsFileLoader.class);
+    when(loader.getCurrentAllowedPendingSize()).thenReturn(10);
+    final ActiveLoadDirScanner scanner = new ActiveLoadDirScanner(loader);
+    try {
+      final Method scanMethod = ActiveLoadDirScanner.class.getDeclaredMethod("scan");
+      scanMethod.setAccessible(true);
+      scanMethod.invoke(scanner);
+    } finally {
+      scanner.stop();
+    }
+
+    verify(loader, times(1))
+        .tryTriggerTsFileLoad(
+            eq(pendingTsFile.getAbsolutePath()),
+            eq(pendingDir.getAbsolutePath()),
+            eq(false),
+            eq(false),
+            isNull());
+    verify(loader, times(0))
+        .tryTriggerTsFileLoad(
+            eq(failedTsFile.getAbsolutePath()),
             eq(pendingDir.getAbsolutePath()),
             eq(false),
             eq(false),
