@@ -36,6 +36,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -121,11 +122,16 @@ public class TableFunctionSortTest {
   @Test
   public void testSetSemanticsDoesNotPreserveOrderWithinPartition() {
     PlanTester tester = new PlanTester();
-    tester.createPlan("SELECT * FROM " + CAPACITY + " ORDER BY tag1, tag2, tag3, time");
-    assertTrue(findNodes(tester, StreamSortNode.class).isEmpty());
-    assertTrue(
-        findNodes(tester, SortNode.class).stream()
-            .anyMatch(sort -> !findNodes(sort, TableFunctionProcessorNode.class).isEmpty()));
+    tester.createPlan(
+        "SELECT * FROM REPEAT(DATA => table1 PARTITION BY (tag1, tag2, tag3) ORDER BY time, N => 2) ORDER BY tag1, tag2, tag3, time");
+    List<SortNode> sorts = findNodes(tester, SortNode.class);
+    assertFalse(sorts.isEmpty());
+    assertTrue(sorts.stream().allMatch(StreamSortNode.class::isInstance));
+    for (SortNode sort : sorts) {
+      assertEquals(2, ((StreamSortNode) sort).getStreamCompareKeyEndIndex());
+      assertFalse(sort.isOrderByAllIdsAndTime());
+      assertFalse(findNodes(sort, TableFunctionProcessorNode.class).isEmpty());
+    }
   }
 
   @Test
@@ -140,12 +146,23 @@ public class TableFunctionSortTest {
   }
 
   @Test
-  public void testSetSemanticsCannotReuseAscendingPartitionOrderForDescendingSort() {
+  public void testSetSemanticsCanOrderPartitionsWithoutSortingRows() {
     PlanTester tester = new PlanTester();
     tester.createPlan("SELECT * FROM " + CAPACITY + " ORDER BY tag1 DESC, tag2, tag3");
-    assertTrue(
-        findNodes(tester, SortNode.class).stream()
-            .anyMatch(sort -> !findNodes(sort, TableFunctionProcessorNode.class).isEmpty()));
+    assertTrue(findNodes(tester, SortNode.class).isEmpty());
+    Comparator<String> comparator =
+        Comparator.comparing((String id) -> id.split("\\.")[1], Comparator.reverseOrder())
+            .thenComparing(id -> id.split("\\.")[2])
+            .thenComparing(id -> id.split("\\.")[3]);
+    for (DeviceTableScanNode scan : findNodes(tester, DeviceTableScanNode.class)) {
+      List<String> actual =
+          scan.getDeviceEntries().stream()
+              .map(entry -> entry.getDeviceID().toString())
+              .collect(Collectors.toList());
+      List<String> expected = new ArrayList<>(actual);
+      expected.sort(comparator);
+      assertEquals(expected, actual);
+    }
   }
 
   @Test
@@ -189,9 +206,8 @@ public class TableFunctionSortTest {
                 if (!"repeat".equalsIgnoreCase(name)) {
                   return super.getTableFunction(name);
                 }
-                // Each input row produces N copies, but Repeat buffers the additional copies until
-                // finish,
-                // emitting earlier pass-through indices again after the last input row.
+                // Repeat buffers extra copies until finish(). It then emits earlier input indices
+                // again, so declaring row semantics alone cannot establish output ordering.
                 return new Repeat() {
                   @Override
                   public List<ParameterSpecification> getArgumentsSpecifications() {

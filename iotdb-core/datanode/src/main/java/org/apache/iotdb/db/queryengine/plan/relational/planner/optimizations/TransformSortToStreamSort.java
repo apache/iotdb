@@ -155,13 +155,13 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
     @Override
     public PlanNode visitTableFunctionProcessor(TableFunctionProcessorNode node, Context context) {
-      if (!node.isRowSemantic() || node.getChildren().isEmpty()) {
-        // Optimize the function's input independently of the outer query. Set semantics does not
-        // guarantee that its output retains the input's order within each partition.
+      if (node.getChildren().isEmpty()) {
         context.setCanTransform(false);
-        return visitPlan(node, new Context());
+        return node;
       }
       PlanNode rewritten = visitPlan(node, context);
+      // A set-semantic function can still preserve a partition-key prefix. Distribution checks
+      // the actual input ordering before using this streaming candidate.
       context.retainOrderPreservingSymbols(TableFunctionOrdering.getOrderPreservingSymbols(node));
       return rewritten;
     }

@@ -36,6 +36,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -511,8 +512,8 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         Comparator.comparing((String[] row) -> row[2])
-            .thenComparing(row -> row[1])
-            .thenComparing(row -> row[0])
+            .thenComparing(row -> Instant.parse(row[1]))
+            .thenComparingLong(row -> Long.parseLong(row[0]))
             .reversed());
     tableResultSetEqualTest(
         "SELECT stock_id FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) ORDER BY stock_id",
@@ -1631,19 +1632,19 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         expectedRows,
         Comparator.comparing((String[] row) -> row[3])
-            .thenComparing(row -> row[2])
-            .thenComparing(row -> row[0], Comparator.reverseOrder())
-            .thenComparing(row -> row[1], Comparator.reverseOrder()));
+            .thenComparing(row -> Instant.parse(row[2]))
+            .thenComparing(row -> Instant.parse(row[0]), Comparator.reverseOrder())
+            .thenComparing(row -> Instant.parse(row[1]), Comparator.reverseOrder()));
     assertSortedRows(
         "SELECT * FROM "
             + function
             + " ORDER BY window_start DESC, stock_id, time DESC, window_end DESC",
         expectedHeader,
         expectedRows,
-        Comparator.comparing((String[] row) -> row[0], Comparator.reverseOrder())
+        Comparator.comparing((String[] row) -> Instant.parse(row[0]), Comparator.reverseOrder())
             .thenComparing(row -> row[3])
-            .thenComparing(row -> row[2], Comparator.reverseOrder())
-            .thenComparing(row -> row[1], Comparator.reverseOrder()));
+            .thenComparing(row -> Instant.parse(row[2]), Comparator.reverseOrder())
+            .thenComparing(row -> Instant.parse(row[1]), Comparator.reverseOrder()));
 
     // Project away generated columns to exercise elimination for a descending pass-through order.
     String[] passThroughRows =
@@ -1655,7 +1656,9 @@ public class IoTDBWindowTVFIT {
         "SELECT stock_id, time, price, s1 FROM " + function + " ORDER BY stock_id DESC, time DESC",
         new String[] {"stock_id", "time", "price", "s1"},
         passThroughRows,
-        Comparator.comparing((String[] row) -> row[0]).thenComparing(row -> row[1]).reversed());
+        Comparator.comparing((String[] row) -> row[0])
+            .thenComparing(row -> Instant.parse(row[1]))
+            .reversed());
   }
 
   private static void assertSortedRows(

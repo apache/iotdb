@@ -37,17 +37,15 @@ public final class TableFunctionOrdering {
 
   private TableFunctionOrdering() {}
 
-  public static Set<Symbol> getOrderPreservingSymbols(TableFunctionProcessorNode node) {
+  public static boolean preservesInputOrder(TableFunctionProcessorNode node) {
     // A row-semantics declaration permits splitting the input, but does not constrain the order
     // in which a custom processor emits pass-through indices (including buffered output in
-    // finish()). These built-in windows emit only the current row's index, in input order.
-    boolean preservesRowOrder =
-        node.isRowSemantic()
-            && (TableBuiltinTableFunction.TUMBLE.getFunctionName().equalsIgnoreCase(node.getName())
-                || TableBuiltinTableFunction.HOP.getFunctionName().equalsIgnoreCase(node.getName())
-                || TableBuiltinTableFunction.CUMULATE
-                    .getFunctionName()
-                    .equalsIgnoreCase(node.getName()));
+    // finish()). Only use an explicit guarantee from the built-in function registry.
+    return TableBuiltinTableFunction.preservesInputOrder(node.getName());
+  }
+
+  public static Set<Symbol> getOrderPreservingSymbols(TableFunctionProcessorNode node) {
+    boolean preservesRowOrder = preservesInputOrder(node);
     // Other functions may reorder rows within a partition. Partitions are processed sequentially,
     // so their partitioning columns still preserve a proven input ordering. Function-produced
     // columns have no inferred order.
