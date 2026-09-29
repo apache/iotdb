@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
@@ -311,7 +312,88 @@ public class ProgressWALIteratorTest {
     } finally {
       Files.deleteIfExists(firstBrokenWal.toPath());
       Files.deleteIfExists(secondBrokenWal.toPath());
+      Files.deleteIfExists(
+          firstBrokenWal.toPath().resolveSibling(firstBrokenWal.getName() + ".broken"));
+      Files.deleteIfExists(
+          secondBrokenWal.toPath().resolveSibling(secondBrokenWal.getName() + ".broken"));
       Files.deleteIfExists(lastWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testIteratorSkipsUnreadableEntryAndPreservesCompletedPendingRequest()
+      throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-unreadable-entry");
+    final File dataWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 3, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final int originalEntrySizeLimit =
+        IoTDBDescriptor.getInstance().getConfig().getWalEntrySizeLimitInByte();
+
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setWalEntrySizeLimitInByte(64);
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+        writer.write(oversizedSearchableEntry(65, 2L), singleEntryMeta(65, 2L, 1L, 200L, 7, 2L));
+      }
+      try (WALWriter writer = new WALWriter(successorWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
+      }
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), Long.MIN_VALUE)) {
+        assertTrue(iterator.hasNext());
+        assertEquals(1L, iterator.next().getSearchIndex());
+        assertTrue(iterator.hasNext());
+        assertEquals(3L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasNext());
+        assertEquals(1, iterator.getSkippedBrokenWalFileCount());
+        assertTrue(iterator.hasIncompleteScan());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setWalEntrySizeLimitInByte(originalEntrySizeLimit);
+      Files.deleteIfExists(dataWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testIteratorDropsPendingRequestWhenUnreadableEntryContinuesSameWriterProgress()
+      throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-incomplete-request");
+    final File dataWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 3, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final int originalEntrySizeLimit =
+        IoTDBDescriptor.getInstance().getConfig().getWalEntrySizeLimitInByte();
+
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setWalEntrySizeLimitInByte(64);
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+        writer.write(oversizedSearchableEntry(65, 2L), singleEntryMeta(65, 2L, 1L, 100L, 7, 1L));
+      }
+      try (WALWriter writer = new WALWriter(successorWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
+      }
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), Long.MIN_VALUE)) {
+        assertTrue(iterator.hasNext());
+        assertEquals(3L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasNext());
+        assertEquals(1, iterator.getSkippedBrokenWalFileCount());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setWalEntrySizeLimitInByte(originalEntrySizeLimit);
+      Files.deleteIfExists(dataWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
       Files.deleteIfExists(dir);
     }
   }
@@ -632,6 +714,16 @@ public class ProgressWALIteratorTest {
     buffer.putLong(1L);
     buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
     buffer.putLong(bodySearchIndex);
+    return buffer;
+  }
+
+  private static ByteBuffer oversizedSearchableEntry(final int size, final long bodySearchIndex) {
+    final ByteBuffer buffer = ByteBuffer.allocate(size);
+    buffer.put(WALEntryType.INSERT_ROW_NODE.getCode());
+    buffer.putLong(1L);
+    buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
+    buffer.putLong(bodySearchIndex);
+    buffer.position(size);
     return buffer;
   }
 

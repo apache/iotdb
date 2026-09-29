@@ -44,7 +44,9 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionConsumerAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
@@ -110,6 +112,59 @@ public class ConsensusPrefetchingQueueTest {
             ConsensusPrefetchingQueue.class
                 .getDeclaredMethod("setActive", boolean.class)
                 .getModifiers()));
+  }
+
+  @Test
+  public void testUnreadableWalReplayIsVisibleAsPollError() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("system-unreadable-wal-poll-error");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.isTableModel()).thenReturn(true);
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
+      when(iterator.getSkippedBrokenWalFileCount()).thenReturn(1);
+      setSubscriptionWalIterator(queue, iterator);
+      invokeReportUnreadableWalReplayIfNecessary(queue);
+
+      final SubscriptionEvent event = queue.poll("consumer");
+      assertNotNull(event);
+      assertEquals(
+          SubscriptionPollResponseType.ERROR.getType(),
+          event.getCurrentResponse().getResponseType());
+      assertTrue(event.getCurrentResponse().getPayload() instanceof ErrorPayload);
+      assertNull(queue.poll("consumer"));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
   @Test
@@ -2268,6 +2323,14 @@ public class ConsensusPrefetchingQueueTest {
       throws Exception {
     final Method method =
         ConsensusPrefetchingQueue.class.getDeclaredMethod("ensureSubscriptionWalReadable");
+    method.setAccessible(true);
+    method.invoke(queue);
+  }
+
+  private static void invokeReportUnreadableWalReplayIfNecessary(
+      final ConsensusPrefetchingQueue queue) throws Exception {
+    final Method method =
+        ConsensusPrefetchingQueue.class.getDeclaredMethod("reportUnreadableWalReplayIfNecessary");
     method.setAccessible(true);
     method.invoke(queue);
   }
