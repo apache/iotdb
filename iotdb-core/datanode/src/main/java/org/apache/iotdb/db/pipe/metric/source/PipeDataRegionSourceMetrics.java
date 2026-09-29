@@ -182,13 +182,9 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
-    for (final String taskID : taskIDs) {
-      deregister(taskID);
-    }
-    if (!extractorMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_EXTRACTOR_METRICS);
-    }
+    // Keep the extractors registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -285,6 +281,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
         String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
+    recentProcessedTsFileEpochStateMap.remove(taskID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////

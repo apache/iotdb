@@ -107,13 +107,9 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(processorMap.keySet());
-    for (final String taskID : taskIDs) {
-      deregister(taskID);
-    }
-    if (!processorMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_PROCESSOR_METRICS);
-    }
+    // Keep the subtasks registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(processorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {

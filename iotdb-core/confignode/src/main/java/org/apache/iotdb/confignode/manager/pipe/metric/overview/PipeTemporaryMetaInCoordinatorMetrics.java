@@ -92,11 +92,8 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::deregister);
-    if (!pipeTemporaryMetaMap.isEmpty()) {
-      LOGGER.warn(
-          ManagerMessages.FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP);
-    }
+    // Keep the pipes registered so that a metric service restart can bind them again.
+    ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
@@ -119,7 +116,6 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),
         pipeNameAndCreationTime[1]);
-    pipeTemporaryMetaMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -145,6 +141,7 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
     if (Objects.nonNull(metricService)) {
       removeMetrics(pipeID);
     }
+    pipeTemporaryMetaMap.remove(pipeID);
   }
 
   public void handleTemporaryMetaChanges(final Iterable<PipeMeta> pipeMetaList) {

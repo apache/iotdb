@@ -136,10 +136,9 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::deregister);
-    if (!remainingEventAndTimeOperatorMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT);
-    }
+    // Keep the operators registered: they hold the states of the pipes and register only once, so
+    // a metric service restart must be able to bind them again.
+    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
@@ -194,7 +193,6 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Metric.PIPE_TSFILE_EVENT_TRANSFER_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName());
-    remainingEventAndTimeOperatorMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -357,6 +355,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
     if (Objects.nonNull(metricService)) {
       removeMetrics(pipeID);
     }
+    remainingEventAndTimeOperatorMap.remove(pipeID);
   }
 
   public void markRegionCommit(final String pipeID, final boolean isDataRegion) {

@@ -71,10 +71,9 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::deregister);
-    if (!listeningQueueMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2);
-    }
+    // Keep the queues registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final Integer schemaRegionId) {

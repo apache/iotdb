@@ -74,13 +74,9 @@ public class PipeEventCommitMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> committerKeys = ImmutableSet.copyOf(eventCommitterMap.keySet());
-    for (String committerKey : committerKeys) {
-      deregister(committerKey);
-    }
-    if (!eventCommitterMap.isEmpty()) {
-      LOGGER.warn(PipeMessages.FAILED_TO_UNBIND_COMMIT_METRICS);
-    }
+    // Keep the committers registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(eventCommitterMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String committerKey) {

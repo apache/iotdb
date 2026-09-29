@@ -28,7 +28,15 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class LogDispatcherThreadMetrics implements IMetricSet {
+  // The stage timers are shared by the dispatcher threads of all peers of a region, so only the
+  // last of them to unbind may remove the timers, otherwise the others keep recording into timers
+  // that are no longer exported, e.g. after the metric service restarts.
+  private static final Map<String, Integer> REGION_TO_STAGE_TIMER_OWNERS = new HashMap<>();
+
   private final LogDispatcher.LogDispatcherThread logDispatcherThread;
   private final String peerGroupId;
 
@@ -91,47 +99,56 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   }
 
   private void bindStageTimer(AbstractMetricService metricService) {
-    constructBatchTimer =
-        metricService.getOrCreateTimer(
-            Metric.IOT_SEND_LOG.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Metric.IOT_CONSENSUS.toString(),
-            Tag.STAGE.toString(),
-            "constructBatch",
-            Tag.REGION.toString(),
-            peerGroupId);
-    syncLogTimePerRequestTimer =
-        metricService.getOrCreateTimer(
-            Metric.IOT_SEND_LOG.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Metric.IOT_CONSENSUS.toString(),
-            Tag.STAGE.toString(),
-            "syncLogTimePerRequest",
-            Tag.REGION.toString(),
-            peerGroupId);
+    synchronized (REGION_TO_STAGE_TIMER_OWNERS) {
+      REGION_TO_STAGE_TIMER_OWNERS.merge(peerGroupId, 1, Integer::sum);
+      constructBatchTimer =
+          metricService.getOrCreateTimer(
+              Metric.IOT_SEND_LOG.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              Metric.IOT_CONSENSUS.toString(),
+              Tag.STAGE.toString(),
+              "constructBatch",
+              Tag.REGION.toString(),
+              peerGroupId);
+      syncLogTimePerRequestTimer =
+          metricService.getOrCreateTimer(
+              Metric.IOT_SEND_LOG.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              Metric.IOT_CONSENSUS.toString(),
+              Tag.STAGE.toString(),
+              "syncLogTimePerRequest",
+              Tag.REGION.toString(),
+              peerGroupId);
+    }
   }
 
   private void unbindStageTimer(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.TIMER,
-        Metric.IOT_SEND_LOG.toString(),
-        Tag.NAME.toString(),
-        Metric.IOT_CONSENSUS.toString(),
-        Tag.STAGE.toString(),
-        "constructBatch",
-        Tag.REGION.toString(),
-        peerGroupId);
-    metricService.remove(
-        MetricType.TIMER,
-        Metric.IOT_SEND_LOG.toString(),
-        Tag.NAME.toString(),
-        Metric.IOT_CONSENSUS.toString(),
-        Tag.STAGE.toString(),
-        "syncLogTimePerRequest",
-        Tag.REGION.toString(),
-        peerGroupId);
+    synchronized (REGION_TO_STAGE_TIMER_OWNERS) {
+      if (REGION_TO_STAGE_TIMER_OWNERS.merge(peerGroupId, -1, Integer::sum) > 0) {
+        return;
+      }
+      REGION_TO_STAGE_TIMER_OWNERS.remove(peerGroupId);
+      metricService.remove(
+          MetricType.TIMER,
+          Metric.IOT_SEND_LOG.toString(),
+          Tag.NAME.toString(),
+          Metric.IOT_CONSENSUS.toString(),
+          Tag.STAGE.toString(),
+          "constructBatch",
+          Tag.REGION.toString(),
+          peerGroupId);
+      metricService.remove(
+          MetricType.TIMER,
+          Metric.IOT_SEND_LOG.toString(),
+          Tag.NAME.toString(),
+          Metric.IOT_CONSENSUS.toString(),
+          Tag.STAGE.toString(),
+          "syncLogTimePerRequest",
+          Tag.REGION.toString(),
+          peerGroupId);
+    }
   }
 
   @Override

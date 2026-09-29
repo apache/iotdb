@@ -74,10 +74,9 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::deregister);
-    if (!sourceMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1);
-    }
+    // Keep the sources registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {

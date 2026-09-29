@@ -248,13 +248,9 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(sinkMap.keySet());
-    for (final String taskID : taskIDs) {
-      deregister(taskID);
-    }
-    if (!sinkMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION);
-    }
+    // Keep the subtasks registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(sinkMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {

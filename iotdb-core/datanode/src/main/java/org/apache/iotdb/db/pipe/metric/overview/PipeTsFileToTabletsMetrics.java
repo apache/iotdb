@@ -102,10 +102,9 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(pipe).forEach(this::deregister);
-    if (!pipe.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO, pipe);
-    }
+    // Keep the pipes registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(pipe).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {

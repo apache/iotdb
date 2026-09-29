@@ -1524,25 +1524,6 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_SET_RECENT_PROCESSED_TSFILE_EPOCH =
       "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) "
           + "does not exist";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_ASSIGNER_METRICS =
-      "Failed to unbind from pipe assigner metrics, assigner map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION =
-      "Failed to unbind from pipe data region sink metrics, sink map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_EXTRACTOR_METRICS =
-      "Failed to unbind from pipe extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_PROCESSOR_METRICS =
-      "Failed to unbind from pipe processor metrics, processor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT =
-      "Failed to unbind from pipe remaining event and time metrics, "
-          + "RemainingEventAndTimeOperator map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION =
-      "Failed to unbind from pipe schema region connector metrics, connector map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1 =
-      "Failed to unbind from pipe schema region extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2 =
-      "Failed to unbind from pipe schema region listener metrics, listening queue map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO =
-      "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeRow
@@ -1872,16 +1853,11 @@ public final class DataNodePipeMessages {
       "Subscription: consumer {} poll excessive payload {} for event {} (outdated: {}) with "
           + "request: {}, something unexpected happened with parameter configuration or payload "
           + "control...";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C =
-      "Failed to unbind from subscription prefetching queue metrics, prefetching queue map not "
-          + "empty";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_F08479A7 =
       "Failed to deregister subscription prefetching queue metrics, "
           + "SubscriptionPrefetchingQueue({}) does not exist";
   public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_SUBSCRIPTIONPREFETCHINGQUEUE_7DEF95B5 =
       "Failed to mark transfer event rate, SubscriptionPrefetchingQueue({}) does not exist";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9 =
-      "Failed to unbind from consensus subscription prefetching queue metrics, queue map not empty";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_CONSENSUS_SUBSCRIPTION_PREFETCHING_8B180091 =
       "Failed to deregister consensus subscription prefetching queue metrics, "
           + "ConsensusPrefetchingQueue({}) does not exist";

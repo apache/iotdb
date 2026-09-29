@@ -71,11 +71,9 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::deregister);
-    if (!extractorMap.isEmpty()) {
-      LOGGER.warn(
-          ManagerMessages.FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR);
-    }
+    // Keep the extractors registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {

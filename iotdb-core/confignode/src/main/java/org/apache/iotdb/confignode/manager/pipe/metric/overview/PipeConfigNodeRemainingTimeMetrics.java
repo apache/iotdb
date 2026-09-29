@@ -75,12 +75,9 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(remainingTimeOperatorMap.keySet()).forEach(this::deregister);
-    if (!remainingTimeOperatorMap.isEmpty()) {
-      LOGGER.warn(
-          ManagerMessages
-              .FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP);
-    }
+    // Keep the operators registered: they hold the states of the pipes and register only once, so
+    // a metric service restart must be able to bind them again.
+    ImmutableSet.copyOf(remainingTimeOperatorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
@@ -96,7 +93,6 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
-    remainingTimeOperatorMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -143,6 +139,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     if (Objects.nonNull(metricService)) {
       removeMetrics(pipeID);
     }
+    remainingTimeOperatorMap.remove(pipeID);
   }
 
   public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
