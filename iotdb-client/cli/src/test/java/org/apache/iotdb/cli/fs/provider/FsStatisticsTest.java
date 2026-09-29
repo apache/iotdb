@@ -125,10 +125,82 @@ public class FsStatisticsTest {
                 SqlRow.of("time", "3", "long_value", "9", "double_value", "3.5"),
                 SqlRow.of("time", "4", "long_value", "10", "double_value", "8.5")));
 
-    assertNull(stats.get(0).get("sum"));
+    assertEquals("22", stats.get(0).get("sum"));
     assertEquals("5.5", stats.get(0).get("avg"));
     assertEquals("5.5", stats.get(0).get("median"));
+    assertEquals("STRING", stats.get(0).getDataType("sum"));
+    assertEquals("STRING", stats.get(0).getDataType("avg"));
+    assertEquals("STRING", stats.get(0).getDataType("median"));
     assertEquals("4.5", stats.get(1).get("avg"));
     assertEquals("3.5", stats.get(1).get("median"));
+    assertEquals("DOUBLE", stats.get(1).getDataType("sum"));
+    assertEquals("DOUBLE", stats.get(1).getDataType("avg"));
+    assertEquals("DOUBLE", stats.get(1).getDataType("median"));
+  }
+
+  @Test
+  public void floatingStatisticsRetainSmallTermsAcrossCancellation() {
+    List<SqlRow> stats =
+        FsStatistics.stats(
+            "tree",
+            "root.db.d",
+            Arrays.asList(new FsColumn("value", "FIELD", "DOUBLE")),
+            SqlRow.list(
+                SqlRow.of("time", "1", "value", "1.0E16"),
+                SqlRow.of("time", "2", "value", "1.0"),
+                SqlRow.of("time", "3", "value", "-1.0E16")));
+
+    assertEquals("1.0", stats.get(0).get("sum"));
+    assertEquals("0.3333333333333333", stats.get(0).get("avg"));
+  }
+
+  @Test
+  public void floatingMedianDoesNotOverflowAtFiniteBounds() {
+    String maximum = Double.toString(Double.MAX_VALUE);
+    List<SqlRow> stats =
+        FsStatistics.stats(
+            "tree",
+            "root.db.d",
+            Arrays.asList(new FsColumn("value", "FIELD", "DOUBLE")),
+            SqlRow.list(
+                SqlRow.of("time", "1", "value", maximum),
+                SqlRow.of("time", "2", "value", maximum)));
+
+    assertEquals(maximum, stats.get(0).get("median"));
+  }
+
+  @Test
+  public void floatingStatisticsRecoverFromIntermediateOverflow() {
+    String maximum = Double.toString(Double.MAX_VALUE);
+    List<SqlRow> stats =
+        FsStatistics.stats(
+            "tree",
+            "root.db.d",
+            Arrays.asList(new FsColumn("value", "FIELD", "DOUBLE")),
+            SqlRow.list(
+                SqlRow.of("time", "1", "value", maximum),
+                SqlRow.of("time", "2", "value", maximum),
+                SqlRow.of("time", "3", "value", "-" + maximum)));
+
+    assertEquals(maximum, stats.get(0).get("sum"));
+    assertEquals(Double.toString(Double.MAX_VALUE / 3), stats.get(0).get("avg"));
+  }
+
+  @Test
+  public void integerStatisticsRemainExactBeyondLongRange() {
+    String maximum = Long.toString(Long.MAX_VALUE);
+    List<SqlRow> stats =
+        FsStatistics.stats(
+            "tree",
+            "root.db.d",
+            Arrays.asList(new FsColumn("value", "FIELD", "INT64")),
+            SqlRow.list(
+                SqlRow.of("time", "1", "value", maximum),
+                SqlRow.of("time", "2", "value", maximum)));
+
+    assertEquals("18446744073709551614", stats.get(0).get("sum"));
+    assertEquals(maximum, stats.get(0).get("avg"));
+    assertEquals(maximum, stats.get(0).get("median"));
+    assertEquals("STRING", stats.get(0).getDataType("sum"));
   }
 }

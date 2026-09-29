@@ -69,6 +69,11 @@ public class FilesystemCommandHelpTest {
     assertTrue(help("sketch").contains("<local.tsfile>"));
   }
 
+  @Test
+  public void statsHelpDocumentsExactInt64Encoding() throws Exception {
+    assertTrue(help("stats").contains("INT64 sum/avg/median use exact decimal strings"));
+  }
+
   private static String help(String command) throws Exception {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     try (PrintStream stream = new PrintStream(output, false, StandardCharsets.UTF_8.name())) {

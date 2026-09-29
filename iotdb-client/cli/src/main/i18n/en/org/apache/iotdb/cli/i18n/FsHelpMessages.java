@@ -79,7 +79,8 @@ public final class FsHelpMessages {
     "Print typed FIELD statistics per device, with TAG values, real null counts and non-null time"
         + " ranges; time/TAG filters are applied before aggregation and stats_source is scan.",
     "Current scope; all FIELD columns and statistics. --aggregates accepts count, min, max, sum,"
-        + " avg and median. BOOLEAN sum counts true; non-numeric avg/median are NULL."
+        + " avg and median. BOOLEAN sum counts true; non-numeric avg/median are NULL. INT64"
+        + " sum/avg/median use exact decimal strings."
   };
   public static final String[] COUNT = {
     "Print row/entity/non-null/null counts and time ranges for TAG and FIELD columns. TIME and"

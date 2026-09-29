@@ -160,9 +160,9 @@ final class FsStatistics {
         for (String name : new String[] {"min", "max", "first", "last"}) {
           types.put(name, column.getDataType());
         }
-        types.put("sum", statistic.floating() ? "DOUBLE" : "INT64");
-        types.put("avg", "DOUBLE");
-        types.put("median", "DOUBLE");
+        types.put("sum", statistic.sumDataType());
+        types.put("avg", statistic.averageDataType());
+        types.put("median", statistic.averageDataType());
         result.add(new SqlRow(cells, types));
       }
     }
@@ -198,6 +198,8 @@ final class FsStatistics {
     private String last;
     private BigInteger integerSum = BigInteger.ZERO;
     private double floatingSum;
+    private double floatingCompensation;
+    private BigDecimal floatingWideSum;
     private final List<String> numericValues = new ArrayList<>();
 
     private ValueStats(String type) {
@@ -241,11 +243,48 @@ final class FsStatistics {
         if (Boolean.parseBoolean(value)) {
           integerSum = integerSum.add(BigInteger.ONE);
         }
-      } else if ("INT32".equals(type)) {
+      } else if (integer()) {
         integerSum = integerSum.add(new BigInteger(value));
       } else if (floating()) {
-        floatingSum += "FLOAT".equals(type) ? Float.parseFloat(value) : Double.parseDouble(value);
+        addFloating("FLOAT".equals(type) ? Float.parseFloat(value) : Double.parseDouble(value));
       }
+    }
+
+    private void addFloating(double value) {
+      if (floatingWideSum != null) {
+        if (Double.isFinite(value)) {
+          floatingWideSum = floatingWideSum.add(BigDecimal.valueOf(value));
+        } else {
+          floatingWideSum = null;
+          floatingSum = value;
+        }
+        return;
+      }
+      double next = floatingSum + value;
+      if (Double.isFinite(floatingSum) && Double.isFinite(value) && !Double.isFinite(next)) {
+        floatingWideSum =
+            BigDecimal.valueOf(floatingSum)
+                .add(BigDecimal.valueOf(floatingCompensation))
+                .add(BigDecimal.valueOf(value));
+        floatingSum = 0;
+        floatingCompensation = 0;
+        return;
+      }
+      if (Double.isFinite(floatingSum) && Double.isFinite(value) && Double.isFinite(next)) {
+        floatingCompensation +=
+            Math.abs(floatingSum) >= Math.abs(value)
+                ? (floatingSum - next) + value
+                : (value - next) + floatingSum;
+      } else {
+        floatingCompensation = 0;
+      }
+      floatingSum = next;
+    }
+
+    private double floatingTotal() {
+      return floatingWideSum == null
+          ? floatingSum + floatingCompensation
+          : floatingWideSum.doubleValue();
     }
 
     private boolean floating() {
@@ -260,14 +299,28 @@ final class FsStatistics {
       return integer() || floating();
     }
 
+    private String sumDataType() {
+      if (floating()) {
+        return "DOUBLE";
+      }
+      if ("BOOLEAN".equals(type) || "INT32".equals(type)) {
+        return "INT64";
+      }
+      return "STRING";
+    }
+
+    private String averageDataType() {
+      return "INT64".equals(type) ? "STRING" : "DOUBLE";
+    }
+
     private String sum() {
       if (count == 0) {
         return null;
       }
-      if ("BOOLEAN".equals(type) || "INT32".equals(type)) {
+      if ("BOOLEAN".equals(type) || integer()) {
         return integerSum.toString();
       }
-      return floating() ? Double.toString(floatingSum) : null;
+      return floating() ? Double.toString(floatingTotal()) : null;
     }
 
     private String average() {
@@ -275,14 +328,12 @@ final class FsStatistics {
         return null;
       }
       if (integer()) {
-        BigInteger total = BigInteger.ZERO;
-        for (String value : numericValues) total = total.add(new BigInteger(value));
-        return new BigDecimal(total)
-            .divide(BigDecimal.valueOf(numericValues.size()), MathContext.DECIMAL128)
+        return new BigDecimal(integerSum)
+            .divide(BigDecimal.valueOf(count), MathContext.DECIMAL128)
             .stripTrailingZeros()
             .toPlainString();
       }
-      return Double.toString(floatingSum / numericValues.size());
+      return Double.toString(floatingTotal() / count);
     }
 
     private String median() {
@@ -302,9 +353,20 @@ final class FsStatistics {
             .stripTrailingZeros()
             .toPlainString();
       }
+      return floatingMidpoint(sorted.get(middle - 1), sorted.get(middle));
+    }
+
+    private static String floatingMidpoint(String left, String right) {
+      double lower = Double.parseDouble(left);
+      double upper = Double.parseDouble(right);
+      if (!Double.isFinite(lower) || !Double.isFinite(upper)) {
+        return Double.toString((lower + upper) / 2);
+      }
       return Double.toString(
-          (Double.parseDouble(sorted.get(middle)) + Double.parseDouble(sorted.get(middle - 1)))
-              / 2);
+          BigDecimal.valueOf(lower)
+              .add(BigDecimal.valueOf(upper))
+              .divide(BigDecimal.valueOf(2))
+              .doubleValue());
     }
 
     private int compare(String left, String right) {
