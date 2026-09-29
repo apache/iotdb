@@ -147,4 +147,21 @@ public class CacheMetrics implements IMetricSet {
         break;
     }
   }
+
+  private static class CacheMetricsHolder {
+
+    private static final CacheMetrics INSTANCE = new CacheMetrics();
+
+    private CacheMetricsHolder() {
+      // empty constructor
+    }
+  }
+
+  public static CacheMetrics getInstance() {
+    return CacheMetricsHolder.INSTANCE;
+  }
+
+  private CacheMetrics() {
+    // empty constructor
+  }
 }

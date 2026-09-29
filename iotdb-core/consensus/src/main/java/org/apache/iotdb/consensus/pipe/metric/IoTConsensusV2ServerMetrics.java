@@ -68,9 +68,6 @@ public class IoTConsensusV2ServerMetrics implements IMetricSet {
     unbindAutoGauge(metricService);
     unbindGauge(metricService);
     unbindStageTimer(metricService);
-
-    // release corresponding resource
-    IoTConsensusV2SyncLagManager.release(impl.getConsensusGroupId());
   }
 
   public void bindGauge(AbstractMetricService metricService) {
