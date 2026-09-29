@@ -148,7 +148,7 @@ public class SharedTsBlockQueue {
   }
 
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    this.maxBytesCanReserve = maxBytesCanReserve;
+    this.maxBytesCanReserve = Math.min(this.maxBytesCanReserve, maxBytesCanReserve);
   }
 
   public void setMemoryReservationGroupId(String reservationPlanNodeId) {

@@ -312,7 +312,8 @@ public class SourceHandle implements ISourceHandle {
     // Keep one in-flight block per source handle when it participates in a shared Collect quota.
     // Standalone exchanges retain their existing batching behavior.
     while (sequenceIdToDataBlockSize.containsKey(endSequenceId)
-        && (!usesSharedMemoryReservationGroup || endSequenceId == startSequenceId)) {
+        && (!usesSharedMemoryReservationGroup
+            || (endSequenceId == startSequenceId && nextSequenceId == currSequenceId))) {
       Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
       if (bytesToReserve == null) {
         throw new IllegalStateException(DataNodeQueryMessages.DATA_BLOCK_SIZE_IS_NULL);

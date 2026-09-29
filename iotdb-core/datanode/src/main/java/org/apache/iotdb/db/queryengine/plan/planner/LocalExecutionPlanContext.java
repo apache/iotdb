@@ -302,10 +302,13 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     long maxBytesPerFI =
         IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
     for (CollectQuotaGroup group : collectQuotaGroups) {
+      long maxBytesForCollectGroup =
+          Math.min(
+              maxBytesPerFI, maxBytesOneHandleCanReserve * (long) group.getSourceHandles().size());
       for (ISourceHandle sourceHandle : group.getSourceHandles()) {
         groupedSourceHandles.add(sourceHandle);
         sourceHandle.setMemoryReservationGroupId(group.getReservationPlanNodeId());
-        sourceHandle.setMaxBytesCanReserve(maxBytesPerFI);
+        sourceHandle.setMaxBytesCanReserve(maxBytesForCollectGroup);
       }
     }
     exchangeOperatorList.forEach(

@@ -306,9 +306,8 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    // The queue limit is configured by its corresponding LocalSinkChannel. A grouped queue
-    // restores its fragment-instance limit in setMemoryReservationGroupId before the shared
-    // reservation key is applied.
+    // The source-side Collect quota can be narrower than the upstream LocalSinkChannel quota.
+    queue.setMaxBytesCanReserve(maxBytesCanReserve);
   }
 
   @Override
