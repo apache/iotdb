@@ -62,6 +62,8 @@ public class SchemaValidatorTest {
             null);
     final InsertRowsStatement statement = new InsertRowsStatement();
     statement.setWriteToTable(true);
+    // rows spanning multiple tables can only be assembled by pipe batching
+    statement.setFromPipeBatch(true);
     statement.setInsertRowStatementList(
         Arrays.asList(
             createInsertRowStatement("db1", "table1"),

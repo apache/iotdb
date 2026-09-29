@@ -85,8 +85,34 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
   protected final String entityDirPath;
 
   // It might be a good idea to use a Version number to control upgrade compatibility.
-  // Now it's version 1
-  protected static final int VERSION = 2;
+  // Version 3 appends an extra segment region after the RBAC privileges.
+  protected static final int VERSION = 3;
+
+  /** Types of the extra segments appended after the RBAC privileges in a profile file. */
+  public enum ExtraSegmentType {
+    /** The subject's LBAC label grants and rule exemptions. */
+    LBAC_GRANT_INFO(1);
+
+    private final int type;
+
+    ExtraSegmentType(final int type) {
+      this.type = type;
+    }
+
+    public int getType() {
+      return type;
+    }
+
+    /** Returns the segment type matching the given value, or {@code null} if unknown. */
+    public static ExtraSegmentType fromType(final int type) {
+      for (final ExtraSegmentType segmentType : values()) {
+        if (segmentType.type == type) {
+          return segmentType;
+        }
+      }
+      return null;
+    }
+  }
 
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
@@ -149,6 +175,38 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       objectPrivilegeMap.put(databasePrivilege.getDatabaseName(), databasePrivilege);
     }
     role.setObjectPrivilegeMap(objectPrivilegeMap);
+  }
+
+  /**
+   * Writes the extra segment region appended after the RBAC privileges. The region starts with the
+   * segment count. No extra segments are written by this branch, so the region is empty.
+   */
+  protected void saveExtraSegments(BufferedOutputStream outputStream, Role role)
+      throws IOException {
+    IOUtils.writeInt(outputStream, 0, encodingBufferLocal);
+  }
+
+  /**
+   * Reads the extra segment region appended after the RBAC privileges. Each segment is encoded as
+   * [type: int32][length: int32][payload: bytes]. This branch handles no segment type, so every
+   * payload is ignored while profile files written by newer versions can still be loaded.
+   */
+  protected void loadExtraSegments(DataInputStream dataInputStream, Role role) throws IOException {
+    final int extraSegmentCount = dataInputStream.readInt();
+    for (int i = 0; i < extraSegmentCount; i++) {
+      final ExtraSegmentType segmentType = ExtraSegmentType.fromType(dataInputStream.readInt());
+      final int length = dataInputStream.readInt();
+      final byte[] segmentData = new byte[length];
+      dataInputStream.readFully(segmentData);
+      if (segmentType == null) {
+        continue;
+      }
+      switch (segmentType) {
+        default:
+          // No extra segment types are handled in this branch.
+          break;
+      }
+    }
   }
 
   protected void saveSessionPerUser(BufferedOutputStream outputStream, Role role)
@@ -218,10 +276,14 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
         loadPrivileges(dataInputStream, role);
         return role;
       } else {
-        assert tag == VERSION;
+        // tag >= 2: version 2 and version 3 share the same leading layout; version 3 additionally
+        // appends the extra segment region.
         entityName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         Role role = new Role(entityName);
         loadPrivileges(dataInputStream, role);
+        if (tag >= 3) {
+          loadExtraSegments(dataInputStream, role);
+        }
         return role;
       }
 
@@ -276,6 +338,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       saveEntityName(outputStream, entity);
       saveSessionPerUser(outputStream, entity);
       savePrivileges(outputStream, entity);
+      saveExtraSegments(outputStream, entity);
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {

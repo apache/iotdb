@@ -17,40 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence.schema;
+package org.apache.iotdb.db.queryengine.plan.relational.information;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.ServiceLoader;
 
-public enum CNSnapshotFileType {
-  INVALID((byte) 0),
-  USER((byte) 1),
-  ROLE((byte) 2),
-  USER_ROLE((byte) 3),
-  SCHEMA((byte) 4),
-  TTL((byte) 5),
-  LBAC_COMPONENT((byte) 6),
-  LBAC_POLICY((byte) 7);
+public class AdditionalInformationSchemaProviderRegistry {
 
-  private static final Map<Byte, CNSnapshotFileType> TYPE_SNAPSHOT_MAP = new HashMap<>();
+  private static final List<AdditionalInformationSchemaProvider> PROVIDERS = new ArrayList<>();
 
   static {
-    for (final CNSnapshotFileType type : CNSnapshotFileType.values()) {
-      TYPE_SNAPSHOT_MAP.put(type.getType(), type);
+    for (final AdditionalInformationSchemaProvider provider :
+        ServiceLoader.load(AdditionalInformationSchemaProvider.class)) {
+      PROVIDERS.add(provider);
     }
   }
 
-  private final byte type;
+  private AdditionalInformationSchemaProviderRegistry() {}
 
-  CNSnapshotFileType(byte type) {
-    this.type = type;
-  }
-
-  public byte getType() {
-    return type;
-  }
-
-  public static CNSnapshotFileType deserialize(byte type) {
-    return TYPE_SNAPSHOT_MAP.get(type);
+  public static List<AdditionalInformationSchemaProvider> getProviders() {
+    return Collections.unmodifiableList(PROVIDERS);
   }
 }

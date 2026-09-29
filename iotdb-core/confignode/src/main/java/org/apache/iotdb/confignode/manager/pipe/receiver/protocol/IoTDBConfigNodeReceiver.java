@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTab
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
@@ -116,6 +117,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTableColumnPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
@@ -572,6 +574,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
+      case SetTableColumnProperties:
       case SetViewProperties:
       case CommitDeleteColumn:
       case CommitDeleteViewColumn:
@@ -1033,6 +1036,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((SetTablePropertiesPlan) plan).getTableName(),
                     queryId,
                     ((SetTablePropertiesPlan) plan).getProperties(),
+                    shouldMarkAsPipeRequest.get()));
+      case SetTableColumnProperties:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((SetTableColumnPropertiesPlan) plan).getDatabase(),
+                null,
+                ((SetTableColumnPropertiesPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.SET_TABLE_COLUMN_PROPERTIES_PROCEDURE,
+                new SetTableColumnPropertiesProcedure(
+                    ((SetTableColumnPropertiesPlan) plan).getDatabase(),
+                    ((SetTableColumnPropertiesPlan) plan).getTableName(),
+                    ((SetTableColumnPropertiesPlan) plan).getColumnName(),
+                    queryId,
+                    ((SetTableColumnPropertiesPlan) plan).getProperties(),
                     shouldMarkAsPipeRequest.get()));
       case SetViewProperties:
         return configManager
