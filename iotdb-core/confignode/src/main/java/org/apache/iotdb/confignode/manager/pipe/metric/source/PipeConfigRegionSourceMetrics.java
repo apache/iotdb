@@ -47,7 +47,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::createMetrics);
   }
@@ -70,12 +70,11 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::deregister);
-    if (!extractorMap.isEmpty()) {
-      LOGGER.warn(
-          ManagerMessages.FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the extractors registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -96,7 +95,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
 
   //////////////////////////// pipe integration ////////////////////////////
 
-  public void register(final IoTDBConfigRegionSource extractor) {
+  public synchronized void register(final IoTDBConfigRegionSource extractor) {
     final String taskID = extractor.getTaskID();
     extractorMap.putIfAbsent(taskID, extractor);
     if (Objects.nonNull(metricService)) {
@@ -104,7 +103,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
       LOGGER.warn(ManagerMessages.FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_EXTRACTOR, taskID);
       return;

@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.file.FileStore;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -61,7 +62,8 @@ public class SystemMetrics implements IMetricSet {
 
   static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
-  private Set<FileStore> fileStores = new HashSet<>();
+  private volatile Set<FileStore> fileStores = new HashSet<>();
+  private volatile List<String> diskDirs = Collections.emptyList();
   private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
 
   public SystemMetrics() {
@@ -69,6 +71,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   public void setDiskDirs(List<String> diskDirs) {
+    this.diskDirs = diskDirs;
     if (!MetricConfigDescriptor.getInstance()
         .getMetricConfig()
         .getMetricLevel()
@@ -292,6 +295,11 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
+    // The file stores are skipped when the metric level is OFF, so collect them if the metric
+    // service restarts with another level
+    if (fileStores.isEmpty() && !CONFIG.getMetricLevel().equals(MetricLevel.OFF)) {
+      fileStores = getFileStores(diskDirs);
+    }
     metricService.createAutoGauge(
         SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
@@ -331,7 +339,8 @@ public class SystemMetrics implements IMetricSet {
         SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
-    fileStores.clear();
+    // Keep the file stores: they are also read by the disk load sampling, and are only collected
+    // again when the disk dirs change, not when the metric service restarts
   }
 
   public long getSystemDiskTotalSpace() {

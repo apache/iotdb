@@ -566,8 +566,6 @@ public final class PipeMessages {
 
   // ===================== PipeEventCommitMetrics =====================
 
-  public static final String FAILED_TO_UNBIND_COMMIT_METRICS =
-      "Failed to unbind from pipe event commit metrics, event committer map not empty";
 
   // ===================== PipePhantomReferenceManager =====================
 

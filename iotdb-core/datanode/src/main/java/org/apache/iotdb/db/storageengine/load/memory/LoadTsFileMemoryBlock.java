@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.memory;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileMemMetricSet;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,13 +52,7 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
       LOGGER.debug(StorageEngineMessages.EXCEED_TOTAL_MEMORY_SIZE, this);
     }
 
-    MetricService.getInstance()
-        .getOrCreateGauge(
-            Metric.LOAD_MEM.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            LoadTsFileMemMetricSet.LOAD_TSFILE_OTHER_MEMORY)
-        .incr(memoryInBytes);
+    LoadTsFileMemMetricSet.getInstance().updateOtherMemory(memoryInBytes);
   }
 
   @Override
@@ -71,13 +61,7 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
       LOGGER.warn(StorageEngineMessages.REDUCE_MEMORY_USAGE_TO_NEGATIVE, this);
     }
 
-    MetricService.getInstance()
-        .getOrCreateGauge(
-            Metric.LOAD_MEM.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            LoadTsFileMemMetricSet.LOAD_TSFILE_OTHER_MEMORY)
-        .decr(memoryInBytes);
+    LoadTsFileMemMetricSet.getInstance().updateOtherMemory(-memoryInBytes);
   }
 
   @Override

@@ -31,9 +31,12 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RPCServiceThriftHandlerMetrics implements IMetricSet {
+  // The singleton owns the decoding metrics, and each handler registers its own instance owning the
+  // connection metric. A metric must have a single owner, otherwise rebinding one of the instances,
+  // e.g. when the metric service restarts, drops the metrics bound by the other.
   private static final RPCServiceThriftHandlerMetrics INSTANCE =
-      new RPCServiceThriftHandlerMetrics(new AtomicLong(0));
-  private AtomicLong thriftConnectionNumber;
+      new RPCServiceThriftHandlerMetrics(null);
+  private final AtomicLong thriftConnectionNumber;
 
   // region begin
   private Gauge unCompressionSizeTimer = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -70,13 +73,16 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.createAutoGauge(
-        Metric.THRIFT_CONNECTIONS.toString(),
-        MetricLevel.CORE,
-        thriftConnectionNumber,
-        AtomicLong::get,
-        Tag.NAME.toString(),
-        "ClientRPC");
+    if (Objects.nonNull(thriftConnectionNumber)) {
+      metricService.createAutoGauge(
+          Metric.THRIFT_CONNECTIONS.toString(),
+          MetricLevel.CORE,
+          thriftConnectionNumber,
+          AtomicLong::get,
+          Tag.NAME.toString(),
+          "ClientRPC");
+      return;
+    }
 
     unCompressionSizeTimer =
         metricService.getOrCreateGauge(
@@ -116,11 +122,14 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.THRIFT_CONNECTIONS.toString(),
-        Tag.NAME.toString(),
-        "ClientRPC");
+    if (Objects.nonNull(thriftConnectionNumber)) {
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.THRIFT_CONNECTIONS.toString(),
+          Tag.NAME.toString(),
+          "ClientRPC");
+      return;
+    }
 
     metricService.remove(
         MetricType.GAUGE,

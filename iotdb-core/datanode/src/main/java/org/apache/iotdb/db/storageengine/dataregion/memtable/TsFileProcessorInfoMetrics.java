@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -26,7 +25,19 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class TsFileProcessorInfoMetrics implements IMetricSet {
+  // A database has many TsFileProcessors but a single chunk metadata memory gauge, which sums up
+  // the memory of the processors bound to it. Each processor adds itself when binding, and the last
+  // processor to unbind removes the gauge.
+  private static final Map<String, Set<TsFileProcessorInfo>> DATABASE_TO_PROCESSOR_INFOS =
+      new HashMap<>();
+
   private final String databaseName;
   private final TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -38,23 +49,37 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .createAutoGauge(
-            Metric.MEM.toString(),
-            MetricLevel.IMPORTANT,
-            tsFileProcessorInfo,
-            TsFileProcessorInfo::getMemCost,
-            Tag.NAME.toString(),
-            "chunkMetaData_" + databaseName);
+    synchronized (DATABASE_TO_PROCESSOR_INFOS) {
+      Set<TsFileProcessorInfo> processorInfos =
+          DATABASE_TO_PROCESSOR_INFOS.computeIfAbsent(
+              databaseName, database -> ConcurrentHashMap.newKeySet());
+      processorInfos.add(tsFileProcessorInfo);
+      metricService.createAutoGauge(
+          Metric.MEM.toString(),
+          MetricLevel.IMPORTANT,
+          processorInfos,
+          infos -> infos.stream().mapToLong(TsFileProcessorInfo::getMemCost).sum(),
+          Tag.NAME.toString(),
+          "chunkMetaData_" + databaseName);
+    }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .remove(
-            MetricType.AUTO_GAUGE,
-            Metric.MEM.toString(),
-            Tag.NAME.toString(),
-            "chunkMetaData_" + databaseName);
+    synchronized (DATABASE_TO_PROCESSOR_INFOS) {
+      Set<TsFileProcessorInfo> processorInfos = DATABASE_TO_PROCESSOR_INFOS.get(databaseName);
+      if (Objects.nonNull(processorInfos)) {
+        processorInfos.remove(tsFileProcessorInfo);
+        if (!processorInfos.isEmpty()) {
+          return;
+        }
+        DATABASE_TO_PROCESSOR_INFOS.remove(databaseName);
+      }
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.MEM.toString(),
+          Tag.NAME.toString(),
+          "chunkMetaData_" + databaseName);
+    }
   }
 }
