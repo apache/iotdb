@@ -85,7 +85,7 @@ public class SubscriptionWalRetentionCalculator {
 
   public SubscriptionRetentionBound calculate(
       final Collection<SubscriptionWalRetentionPolicy> retentionPolicies,
-      final Collection<Long> committedRetainedMinVersionIds) {
+      final Collection<Long> queueRetainedMinVersionIds) {
     SubscriptionRetentionBound mergedBound = SubscriptionRetentionBound.noConstraint();
     for (final SubscriptionWalRetentionPolicy policy : retentionPolicies) {
       // For each topic, data can be deleted once either its size retention or its time retention
@@ -96,14 +96,14 @@ public class SubscriptionWalRetentionCalculator {
               .mergeDeleteEither(buildTimeRetentionBound(policy.getRetentionMs()));
       mergedBound = mergedBound.mergeDeleteOnlyIfBoth(perQueueBound);
     }
-    for (final long committedRetainedMinVersionId : committedRetainedMinVersionIds) {
-      // Topic retention is a historical replay window, while committed progress protects data
-      // that a consumer group has not acknowledged yet. A WAL file can be reclaimed only when
+    for (final long queueRetainedMinVersionId : queueRetainedMinVersionIds) {
+      // Topic retention is a historical replay window, while each queue also protects WAL needed
+      // by its committed progress and local replay cursor. A WAL file can be reclaimed only when
       // both constraints allow it, so keep the more conservative (smaller) file-version bound.
       mergedBound =
           mergedBound.mergeDeleteOnlyIfBoth(
               SubscriptionRetentionBound.of(
-                  Long.MAX_VALUE, Math.max(0L, committedRetainedMinVersionId)));
+                  Long.MAX_VALUE, Math.max(0L, queueRetainedMinVersionId)));
     }
     return mergedBound;
   }

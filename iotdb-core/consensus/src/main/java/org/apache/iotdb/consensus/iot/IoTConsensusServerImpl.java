@@ -1289,9 +1289,8 @@ public class IoTConsensusServerImpl {
   public void registerSubscriptionQueue(
       final BlockingQueue<IndexedConsensusRequest> queue,
       final SubscriptionWalRetentionPolicy retentionPolicy,
-      final LongSupplier committedRetainedMinVersionIdSupplier) {
-    subscriptionQueueRegistry.register(
-        queue, retentionPolicy, committedRetainedMinVersionIdSupplier);
+      final LongSupplier retainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.register(queue, retentionPolicy, retainedMinVersionIdSupplier);
     // Immediately re-evaluate the safe delete index with new subscription awareness
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
@@ -1499,7 +1498,7 @@ public class IoTConsensusServerImpl {
     final SubscriptionRetentionBound subscriptionRetentionBound =
         subscriptionWalRetentionCalculator.calculate(
             subscriptionQueueRegistry.getRetentionPolicies(),
-            subscriptionQueueRegistry.getCommittedRetainedMinVersionIds());
+            subscriptionQueueRegistry.getRetainedMinVersionIds());
 
     consensusReqReader.setSafelyDeletedSearchIndex(
         Math.min(replicationIndex, subscriptionRetentionBound.getSafelyDeletedSearchIndex()));
