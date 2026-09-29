@@ -576,8 +576,6 @@ public class LoadTsFileScheduler implements IScheduler {
     } finally {
       if (t != null) {
         stateMachine.transitionToFailed(t);
-      } else {
-        stateMachine.transitionToFailed(new LoadFileException("Load task explicitly stopped"));
       }
     }
   }
