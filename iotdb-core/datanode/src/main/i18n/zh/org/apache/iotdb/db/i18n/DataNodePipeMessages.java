@@ -774,10 +774,16 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_TRANSFER_TSFILE_BATCH = "传输 tsfile batch ({}) 失败。";
   public static final String FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY =
       "传输 tsfile event {} asynchronously 失败。";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_ARG_BECAUSE_FILE_ARG_IS_MISSING_AFTER_ARG_RETRIES_B656E84E =
+          "TsFile {} 传输失败，文件 {} 重试 {} 次后仍不存在。";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
       "传输 TsFileInsertionEvent {}（committer key {}，commit id {}）失败。";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS =
       "传输 TsFileInsertionEvent {}（批量 TableInsertionEvent）失败。";
+  public static final String
+      LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9 =
+          "TsFile {}：修改文件 {} 不存在，将不带修改记录传输 TsFile。";
   public static final String FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE =
       "更新 leader cache for device {} with endpoint {}:{} 失败。";
   public static final String FAILED_TO_WRITE = "写入失败 ";
@@ -1423,25 +1429,6 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_SET_RECENT_PROCESSED_TSFILE_EPOCH =
       "设置 recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) does not "
           + "exist 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_ASSIGNER_METRICS =
-      "解绑 from pipe assigner metrics, assigner map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION =
-      "解绑 from pipe data region sink metrics, sink map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_EXTRACTOR_METRICS =
-      "解绑 from pipe extractor metrics, extractor map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_PROCESSOR_METRICS =
-      "解绑 from pipe processor metrics, processor map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT =
-      "解绑 from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not "
-          + "empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION =
-      "解绑 from pipe schema region connector metrics, connector map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1 =
-      "解绑 from pipe schema region extractor metrics, extractor map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2 =
-      "解绑 from pipe schema region listener metrics, listening queue map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO =
-      "解绑 from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {} 失败";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeRow
@@ -1740,14 +1727,10 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_POLL_EXCESSIVE_PAYLOAD_FOR_EVENT_OUTDATED_2BFF690B =
       "Subscription：consumer {} poll 到过大的 payload {}，event={}（outdated：{}），请求：{}，参数配置或 payload "
           + "控制可能出现意外情况……";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C =
-      "解绑 subscription prefetching queue metrics 失败，prefetching queue map 非空";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_F08479A7 =
       "注销 subscription prefetching queue metrics 失败，SubscriptionPrefetchingQueue({}) 不存在";
   public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_SUBSCRIPTIONPREFETCHINGQUEUE_7DEF95B5 =
       "标记传输事件速率失败，SubscriptionPrefetchingQueue({}) 不存在";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9 =
-      "解绑 consensus subscription prefetching queue metrics 失败，queue map 非空";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_CONSENSUS_SUBSCRIPTION_PREFETCHING_8B180091 =
       "注销 consensus subscription prefetching queue metrics 失败，ConsensusPrefetchingQueue({}) 不存在";
   public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_CONSENSUSPREFETCHINGQUEUE_FE9B91C3 =
@@ -2062,8 +2045,15 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：打开 near-live WAL 文件 {} 失败，不加入黑名单并重试";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator：读取 WAL 出错";
-  public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
-      "ProgressWALIterator：打开 WAL 文件 {} 失败，跳过该文件";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
+      "ProgressWALIterator：处理 WAL 文件 {} 失败，跳过该文件的剩余条目";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_IDENTIFY_UNREADABLE_WAL_FILE_7BA9F422 =
+          "重放时无法确定不可读的 WAL 文件";
+  public static final String
+      SUBSCRIPTION_ERROR_WAL_REPLAY_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_D60C5FB2 =
+          "订阅 WAL 重放跳过了 %d 个无法读取的保留 WAL 文件。这些文件中的历史数据无法投递。";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
       "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
           + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";

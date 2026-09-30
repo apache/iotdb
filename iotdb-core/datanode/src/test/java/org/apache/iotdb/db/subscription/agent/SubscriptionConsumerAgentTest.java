@@ -25,11 +25,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SubscriptionConsumerAgentTest {
+
+  private static final long TEST_TIMEOUT_SECONDS = 5L;
 
   @Test
   public void testTopicDiffSetsUpBeforeTeardownAndMetaPublication() {
@@ -61,5 +70,110 @@ public class SubscriptionConsumerAgentTest {
     }
 
     assertEquals(Collections.singletonList("setup"), operations);
+  }
+
+  @Test
+  public void testSameConsumerGroupMetaChangesAreSerialized() throws Exception {
+    final SubscriptionConsumerAgent agent = new SubscriptionConsumerAgent();
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final CountDownLatch firstEntered = new CountDownLatch(1);
+    final CountDownLatch releaseFirst = new CountDownLatch(1);
+    final CountDownLatch secondEntered = new CountDownLatch(1);
+    try {
+      final Future<?> first =
+          executor.submit(
+              () ->
+                  agent.executeWithConsumerGroupLock(
+                      "group",
+                      () -> {
+                        firstEntered.countDown();
+                        await(releaseFirst);
+                      }));
+      assertTrue(firstEntered.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+      final Future<?> second =
+          executor.submit(
+              () -> agent.executeWithConsumerGroupLock("group", secondEntered::countDown));
+      assertFalse(secondEntered.await(200L, TimeUnit.MILLISECONDS));
+
+      releaseFirst.countDown();
+      first.get(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      second.get(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      assertEquals(0L, secondEntered.getCount());
+    } finally {
+      releaseFirst.countDown();
+      executor.shutdownNow();
+      executor.awaitTermination(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  public void testDifferentConsumerGroupMetaChangesRunIndependently() throws Exception {
+    final SubscriptionConsumerAgent agent = new SubscriptionConsumerAgent();
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final CountDownLatch firstEntered = new CountDownLatch(1);
+    final CountDownLatch releaseFirst = new CountDownLatch(1);
+    final CountDownLatch secondEntered = new CountDownLatch(1);
+    try {
+      final Future<?> first =
+          executor.submit(
+              () ->
+                  agent.executeWithConsumerGroupLock(
+                      "group-1",
+                      () -> {
+                        firstEntered.countDown();
+                        await(releaseFirst);
+                      }));
+      assertTrue(firstEntered.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+      final Future<?> second =
+          executor.submit(
+              () -> agent.executeWithConsumerGroupLock("group-2", secondEntered::countDown));
+      assertTrue(secondEntered.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+      releaseFirst.countDown();
+      first.get(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      second.get(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } finally {
+      releaseFirst.countDown();
+      executor.shutdownNow();
+      executor.awaitTermination(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  public void testConsumerMetaReadsRemainAvailableDuringGroupOperation() throws Exception {
+    final SubscriptionConsumerAgent agent = new SubscriptionConsumerAgent();
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final CountDownLatch operationEntered = new CountDownLatch(1);
+    final CountDownLatch releaseOperation = new CountDownLatch(1);
+    try {
+      final Future<?> operation =
+          executor.submit(
+              () ->
+                  agent.executeWithConsumerGroupLock(
+                      "group",
+                      () -> {
+                        operationEntered.countDown();
+                        await(releaseOperation);
+                      }));
+      assertTrue(operationEntered.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+      assertFalse(agent.isConsumerExisted("group", "consumer"));
+
+      releaseOperation.countDown();
+      operation.get(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } finally {
+      releaseOperation.countDown();
+      executor.shutdownNow();
+      executor.awaitTermination(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    }
+  }
+
+  private static void await(final CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 }

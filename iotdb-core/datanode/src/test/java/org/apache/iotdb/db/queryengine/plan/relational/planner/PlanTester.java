@@ -230,12 +230,16 @@ public class PlanTester {
   }
 
   public PlanNode getFragmentPlan(int index) {
+    return getDistributedPlan().getFragments().get(index).getPlanNodeTree().getChildren().get(0);
+  }
+
+  public DistributedQueryPlan getDistributedPlan() {
     if (distributedQueryPlan == null) {
       distributedQueryPlan =
           new TableDistributedPlanner(
                   analysis, symbolAllocator, plan, metadata, dataNodeLocationSupplier)
               .plan();
     }
-    return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
+    return distributedQueryPlan;
   }
 }

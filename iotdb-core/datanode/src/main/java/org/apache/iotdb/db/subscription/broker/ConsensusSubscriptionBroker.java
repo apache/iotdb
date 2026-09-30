@@ -327,6 +327,14 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   }
 
   @Override
+  public int requeueInFlightEvents(final String consumerId) {
+    return topicNameToConsensusPrefetchingQueues.values().stream()
+        .flatMap(List::stream)
+        .mapToInt(queue -> queue.requeueInFlightEvents(consumerId))
+        .sum();
+  }
+
+  @Override
   public int refreshInFlightEventLeases(
       final String consumerId, final List<SubscriptionCommitContext> commitContexts) {
     int refreshedCount = 0;
@@ -735,7 +743,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   }
 
   public void unbindConsensusPrefetchingQueue(final String topicName) {
-    closeAndRemoveConsensusPrefetchingQueues(topicName, true);
+    closeAndRemoveConsensusPrefetchingQueues(topicName, true, true);
   }
 
   @Override
@@ -841,11 +849,11 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           topicName,
           brokerId);
     }
-    closeAndRemoveConsensusPrefetchingQueues(topicName, false);
+    closeAndRemoveConsensusPrefetchingQueues(topicName, false, false);
   }
 
   private void closeAndRemoveConsensusPrefetchingQueues(
-      final String topicName, final boolean warnIfMissing) {
+      final String topicName, final boolean warnIfMissing, final boolean removeProgressAfterClose) {
     final List<ConsensusPrefetchingQueue> queuesToClose;
     synchronized (queueLifecycleLock) {
       final List<ConsensusPrefetchingQueue> queues =
@@ -866,7 +874,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
 
     for (final ConsensusPrefetchingQueue q : queuesToClose) {
-      q.close();
+      q.close(removeProgressAfterClose);
     }
     LOGGER.info(
         DataNodePipeMessages

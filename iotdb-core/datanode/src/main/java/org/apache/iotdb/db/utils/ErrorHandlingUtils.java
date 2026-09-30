@@ -196,6 +196,13 @@ public class ErrorHandlingUtils {
         return RpcUtils.getStatus(
             ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
       }
+      // A SemanticException is reported as SEMANTIC_ERROR whatever code it carries, except
+      // TABLE_IN_PRE_DELETE, which the client needs in order to tell a table that is being deleted
+      // from an ordinary semantic error.
+      if (((SemanticException) t).getErrorCode()
+          == TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode()) {
+        return RpcUtils.getStatus(TSStatusCode.TABLE_IN_PRE_DELETE, rootCause.getMessage());
+      }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     } else if (t instanceof IoTDBRuntimeException) {
       return Objects.nonNull(((IoTDBRuntimeException) t).getStatus())

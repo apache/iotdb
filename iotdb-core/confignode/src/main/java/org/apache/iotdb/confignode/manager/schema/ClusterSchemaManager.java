@@ -1541,19 +1541,17 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
-  public boolean isColumnAlterCommitted(
-      final String database,
-      final String tableName,
-      final String columnName,
-      final TSDataType dataType)
-      throws MetadataException {
-    return clusterSchemaInfo.isColumnAlterCommitted(database, tableName, columnName, dataType);
-  }
-
-  public Optional<TSDataType> getPreAlteredColumnType(
-      final String database, final String tableName, final String columnName)
-      throws MetadataException {
-    return clusterSchemaInfo.getPreAlteredColumnType(database, tableName, columnName);
+  public Optional<TsTable> getTableWithUsingStatusIfExists(
+      final String database, final String tableName) throws MetadataException {
+    final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
+        getTableAndStatusIfExists(database, tableName);
+    if (tableAndStatus.isEmpty()) {
+      return Optional.empty();
+    }
+    if (TableNodeStatus.PRE_DELETE == tableAndStatus.get().getRight()) {
+      throw new TableInDeletionException(database, tableName);
+    }
+    return Optional.of(tableAndStatus.get().getLeft());
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
@@ -1562,13 +1560,7 @@ public class ClusterSchemaManager {
       final List<TsTableColumnSchema> columnSchemaList,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable =
-        clusterSchemaInfo.getTableForModification(
-            database,
-            tableName,
-            columnSchemaList.stream()
-                .map(TsTableColumnSchema::getColumnName)
-                .toArray(String[]::new));
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1623,7 +1615,7 @@ public class ClusterSchemaManager {
       final TSDataType dataType,
       final boolean isGeneratedByPipe)
       throws MetadataException {
-    final TsTable originalTable = clusterSchemaInfo.getTableForModification(database, tableName);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1660,8 +1652,7 @@ public class ClusterSchemaManager {
       final String newName,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable =
-        clusterSchemaInfo.getTableForModification(database, tableName, oldName, newName);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1714,7 +1705,7 @@ public class ClusterSchemaManager {
       final String newName,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = clusterSchemaInfo.getTableForModification(database, tableName);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1730,12 +1721,7 @@ public class ClusterSchemaManager {
       return result.get();
     }
 
-    final Optional<Pair<TsTable, TableNodeStatus>> targetTable =
-        getTableAndStatusIfExists(database, newName);
-    if (targetTable.isPresent() && targetTable.get().getRight() == TableNodeStatus.PRE_DELETE) {
-      throw new TableInDeletionException(database, newName);
-    }
-    if (targetTable.isPresent()) {
+    if (getTableIfExists(database, newName).isPresent()) {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_ALREADY_EXISTS,
@@ -1804,7 +1790,7 @@ public class ClusterSchemaManager {
       final Map<String, String> updatedProperties,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = clusterSchemaInfo.getTableForModification(database, tableName);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(

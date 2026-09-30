@@ -135,7 +135,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
-  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet = new HashSet<>();
+  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet =
+      ConcurrentHashMap.newKeySet();
 
   private final int thriftMaxFrameSize;
   private final int connectionTimeoutInMs;
@@ -1751,10 +1752,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     @Override
     public void run() {
       try {
-        checkIfFenced();
-        if (isClosed()) {
-          return;
-        }
+        checkIfOpened();
         ack(messages);
         callback.onComplete();
       } catch (final Exception e) {
@@ -1768,10 +1766,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     SubscriptionExecutorServiceManager.submitAsyncCommitWorker(
         () -> {
           try {
-            checkIfFenced();
-            if (isClosed()) {
-              return;
-            }
+            checkIfOpened();
             ack(messages);
             future.complete(null);
           } catch (final Throwable e) {

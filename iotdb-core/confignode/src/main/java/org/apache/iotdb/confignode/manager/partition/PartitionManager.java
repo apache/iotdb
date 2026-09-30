@@ -109,6 +109,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -283,15 +284,9 @@ public class PartitionManager {
       // Here we ensure that each StorageGroup has at least one SchemaRegion.
       // And if some StorageGroups own too many slots, extend SchemaRegion for them.
 
-      // Map<StorageGroup, unassigned SeriesPartitionSlot count>
-      final Map<String, Integer> unassignedSchemaPartitionSlotsCountMap = new ConcurrentHashMap<>();
-      unassignedSchemaPartitionSlotsMap.forEach(
-          (storageGroup, unassignedSchemaPartitionSlots) ->
-              unassignedSchemaPartitionSlotsCountMap.put(
-                  storageGroup, unassignedSchemaPartitionSlots.size()));
       TSStatus status =
           extendRegionGroupIfNecessary(
-              unassignedSchemaPartitionSlotsCountMap, TConsensusGroupType.SchemaRegion);
+              unassignedSchemaPartitionSlotsMap, TConsensusGroupType.SchemaRegion);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // Return an error code if Region extension failed
         resp.setStatus(status);
@@ -438,15 +433,20 @@ public class PartitionManager {
       // Here we ensure that each StorageGroup has at least one DataRegion.
       // And if some StorageGroups own too many slots, extend DataRegion for them.
 
-      // Map<StorageGroup, unassigned SeriesPartitionSlot count>
-      Map<String, Integer> unassignedDataPartitionSlotsCountMap = new ConcurrentHashMap<>();
+      // Keep the series slots so PROACTIVE can distinguish new slots from new time partitions.
+      Map<String, Set<TSeriesPartitionSlot>> unassignedDataSeriesPartitionSlotsMap =
+          new HashMap<>();
       unassignedDataPartitionSlotsMap.forEach(
           (storageGroup, unassignedDataPartitionSlots) ->
-              unassignedDataPartitionSlotsCountMap.put(
-                  storageGroup, unassignedDataPartitionSlots.size()));
+              unassignedDataSeriesPartitionSlotsMap.put(
+                  storageGroup,
+                  unassignedDataPartitionSlots.entrySet().stream()
+                      .filter(entry -> !entry.getValue().getTimePartitionSlots().isEmpty())
+                      .map(Map.Entry::getKey)
+                      .collect(Collectors.toSet())));
       TSStatus status =
           extendRegionGroupIfNecessary(
-              unassignedDataPartitionSlotsCountMap, TConsensusGroupType.DataRegion);
+              unassignedDataSeriesPartitionSlotsMap, TConsensusGroupType.DataRegion);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // Return an error code if Region extension failed
         resp.setStatus(status);
@@ -599,13 +599,13 @@ public class PartitionManager {
   /**
    * Allocate more RegionGroup to the specified StorageGroups if necessary.
    *
-   * @param unassignedPartitionSlotsCountMap Map<StorageGroup, unassigned Partition count>
+   * @param unassignedPartitionSlotsMap Map<StorageGroup, unassigned series slots>
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return SUCCESS_STATUS when RegionGroup extension successful; NOT_ENOUGH_DATA_NODE when there
    *     are not enough DataNodes; STORAGE_GROUP_NOT_EXIST when some StorageGroups don't exist
    */
-  private TSStatus extendRegionGroupIfNecessary(
-      final Map<String, Integer> unassignedPartitionSlotsCountMap,
+  TSStatus extendRegionGroupIfNecessary(
+      final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
       final TConsensusGroupType consensusGroupType) {
 
     final TSStatus result = new TSStatus();
@@ -613,23 +613,29 @@ public class PartitionManager {
     try {
       if (TConsensusGroupType.SchemaRegion.equals(consensusGroupType)) {
         switch (CONF.getSchemaRegionGroupExtensionPolicy()) {
+          case PROACTIVE:
+            return proactiveExtendRegionGroupIfNecessary(
+                unassignedPartitionSlotsMap, consensusGroupType);
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsCountMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType);
           case AUTO:
           default:
             return autoExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsCountMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType);
         }
       } else {
         switch (CONF.getDataRegionGroupExtensionPolicy()) {
+          case PROACTIVE:
+            return proactiveExtendRegionGroupIfNecessary(
+                unassignedPartitionSlotsMap, consensusGroupType);
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsCountMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType);
           case AUTO:
           default:
             return autoExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsCountMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType);
         }
       }
     } catch (NotEnoughDataNodeException e) {
@@ -645,16 +651,62 @@ public class PartitionManager {
     return result;
   }
 
+  private TSStatus proactiveExtendRegionGroupIfNecessary(
+      final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
+      final TConsensusGroupType consensusGroupType)
+      throws DatabaseNotExistsException, NotEnoughDataNodeException {
+    final Map<String, Integer> allotmentMap = new HashMap<>();
+    for (Map.Entry<String, ? extends Collection<TSeriesPartitionSlot>> entry :
+        unassignedPartitionSlotsMap.entrySet()) {
+      final String database = entry.getKey();
+      final int maxRegionGroupCount =
+          getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
+      final int minRegionGroupCount =
+          getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
+      final int allocatedRegionGroupCount =
+          partitionInfo.getRegionGroupCount(database, consensusGroupType);
+      // As with AUTO, grow toward the minimum by at most the number of pending series slots.
+      // An existing data slot with new time partitions also contributes to this incremental growth.
+      final int minimumRegionGroupTarget =
+          Math.min(
+              minRegionGroupCount,
+              allocatedRegionGroupCount + new HashSet<>(entry.getValue()).size());
+      final int targetRegionGroupCount =
+          Math.min(
+              maxRegionGroupCount,
+              Math.max(
+                  minimumRegionGroupTarget,
+                  partitionInfo.getSeriesPartitionSlotsCount(
+                      database, consensusGroupType, entry.getValue())));
+      // Also allocate one group per active series slot, up to the same maximum as AUTO.
+      // Existing groups are retained when the maximum decreases or the policy changes.
+      if (allocatedRegionGroupCount < targetRegionGroupCount) {
+        allotmentMap.put(database, targetRegionGroupCount - allocatedRegionGroupCount);
+      } else if (!entry.getValue().isEmpty()
+          && allocatedRegionGroupCount > 0
+          && allocatedRegionGroupCount < maxRegionGroupCount
+          && partitionInfo.getAllRegionGroupIds(database, consensusGroupType).stream()
+              .allMatch(
+                  regionGroupId ->
+                      RegionGroupStatus.Disabled.equals(
+                          getLoadManager().getRegionGroupStatus(regionGroupId)))) {
+        // As with AUTO, preserve availability when all groups are disabled. This may exceed
+        // the active-slot target, but not the database's maximum for this region type.
+        allotmentMap.put(database, 1);
+      }
+    }
+    return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType);
+  }
+
   private TSStatus customExtendRegionGroupIfNecessary(
-      final Map<String, Integer> unassignedPartitionSlotsCountMap,
+      final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
       final TConsensusGroupType consensusGroupType)
       throws DatabaseNotExistsException, NotEnoughDataNodeException {
 
     // Map<Database, Region allotment>
     final Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
-    for (final Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
-      final String database = entry.getKey();
+    for (final String database : unassignedPartitionSlotsMap.keySet()) {
       final int maxRegionGroupNum =
           getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
       final int allocatedRegionGroupCount =
@@ -670,16 +722,17 @@ public class PartitionManager {
   }
 
   private TSStatus autoExtendRegionGroupIfNecessary(
-      final Map<String, Integer> unassignedPartitionSlotsCountMap,
+      final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
       final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Map<Database, Region allotment>
     final Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
-    for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
+    for (Map.Entry<String, ? extends Collection<TSeriesPartitionSlot>> entry :
+        unassignedPartitionSlotsMap.entrySet()) {
       final String database = entry.getKey();
-      final int unassignedPartitionSlotsCount = entry.getValue();
+      final int unassignedPartitionSlotsCount = entry.getValue().size();
 
       float allocatedRegionGroupCount =
           partitionInfo.getRegionGroupCount(database, consensusGroupType);

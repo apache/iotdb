@@ -18,18 +18,27 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -88,5 +97,85 @@ public class ClusterSchemaManagerTest {
     Assert.assertTrue(tableInfo.left.isEmpty());
     Assert.assertEquals(Collections.singleton("test"), tableInfo.right.keySet());
     Assert.assertTrue(tableInfo.right.get("test").isEmpty());
+  }
+
+  @Test
+  public void testGetTableWithUsingStatusIfExists() throws Exception {
+    final String database = "root.pre_delete_manager_test";
+    final String table = "table1";
+    final ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
+    final ClusterSchemaManager clusterSchemaManager = managerOf(clusterSchemaInfo);
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema(database).setIsTableModel(true)));
+
+    // A missing table yields an empty result instead of an exception.
+    Assert.assertFalse(
+        clusterSchemaManager.getTableWithUsingStatusIfExists(database, table).isPresent());
+
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(table)));
+    clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, table));
+
+    // A table in the using status is returned.
+    Assert.assertTrue(
+        clusterSchemaManager.getTableWithUsingStatusIfExists(database, table).isPresent());
+
+    clusterSchemaInfo.preDeleteTable(new PreDeleteTablePlan(database, table));
+
+    // A table in the pre-delete status is rejected with the dedicated status code.
+    final TableInDeletionException exception =
+        Assert.assertThrows(
+            TableInDeletionException.class,
+            () -> clusterSchemaManager.getTableWithUsingStatusIfExists(database, table));
+    Assert.assertEquals(TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode(), exception.getErrorCode());
+  }
+
+  @Test
+  public void testTableChecksRejectTableInPreDelete() throws Exception {
+    final String database = "root.pre_delete_manager_test";
+    final String table = "table1";
+    final ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
+    final ClusterSchemaManager clusterSchemaManager = managerOf(clusterSchemaInfo);
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema(database).setIsTableModel(true)));
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(table)));
+    clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, table));
+    clusterSchemaInfo.preDeleteTable(new PreDeleteTablePlan(database, table));
+
+    // Every check that guards a table procedure must reject the table, so that no procedure keeps
+    // modifying a table that is being deleted.
+    Assert.assertThrows(
+        TableInDeletionException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnExtension(
+                database, table, new ArrayList<>(), false));
+    Assert.assertThrows(
+        TableInDeletionException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnAltering(
+                database, table, "field", TSDataType.INT32, false));
+    Assert.assertThrows(
+        TableInDeletionException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnRenaming(
+                database, table, "field", "field2", false));
+    Assert.assertThrows(
+        TableInDeletionException.class,
+        () -> clusterSchemaManager.tableCheckForRenaming(database, table, "table2", false));
+    Assert.assertThrows(
+        TableInDeletionException.class,
+        () ->
+            clusterSchemaManager.updateTableProperties(
+                database, table, new HashMap<>(), new HashMap<>(), false));
+  }
+
+  private static ClusterSchemaManager managerOf(final ClusterSchemaInfo clusterSchemaInfo) {
+    return new ClusterSchemaManager(
+        Mockito.mock(IManager.class),
+        clusterSchemaInfo,
+        Mockito.mock(ClusterSchemaQuotaStatistics.class));
   }
 }

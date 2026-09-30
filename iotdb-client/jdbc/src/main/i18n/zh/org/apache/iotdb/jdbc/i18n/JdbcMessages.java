@@ -134,9 +134,6 @@ public final class JdbcMessages {
   // IoTDBDataSource
   public static final String GET_CONNECTION_ERROR = "获取连接错误：";
 
-  // IoTDBDataSourceFactory
-  public static final String REMAINING_PROPERTIES = "剩余属性 {}";
-
   // IoTDBJDBCResultSet
   public static final String CLOSE_SERVER_SIDE_ERROR =
       "服务端关闭操作时发生错误 ";

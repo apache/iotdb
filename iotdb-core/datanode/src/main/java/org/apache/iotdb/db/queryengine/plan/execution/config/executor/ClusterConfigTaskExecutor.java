@@ -1786,13 +1786,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           databaseToTTL.putAll(resp.getPathTTLMap());
           continue;
         }
+        PathPatternTree queryScope = new PathPatternTree();
+        queryScope.appendPathPattern(pathPattern);
+        queryScope.constructTree();
+        // Query patterns may contain wildcards before the trailing **. Only the authority
+        // scope is restricted to full paths and literal prefixes.
         for (PartialPath overlappedPathPattern :
-            authorityScope.getOverlappedPathPatterns(pathPattern)) {
+            queryScope.intersectWithFullPathPrefixTree(authorityScope).getAllPathPatterns()) {
           List<String> nodes = Arrays.asList(overlappedPathPattern.getNodes());
           TShowTTLReq req = new TShowTTLReq(nodes);
           TShowTTLResp resp = client.showTTL(req);
           databaseToTTL.putAll(resp.getPathTTLMap());
-          if (showTTLStatement.isShowAllTTL()) {
+          // TTL rules can be stored on the prefix itself as well as on prefix.**.
+          if (overlappedPathPattern.endWithMultiLevelWildcard()) {
             req.setPathPattern(nodes.subList(0, nodes.size() - 1));
             resp = client.showTTL(req);
             databaseToTTL.putAll(resp.getPathTTLMap());
@@ -4828,20 +4834,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
-  }
-
-  public Set<String> getPreDeletedColumns(final String database, final String tableName) {
-    try (final ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TDescTableResp resp = configNodeClient.describeTable(database, tableName, true);
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBRuntimeException(
-            getTableErrorMessage(resp.getStatus(), database), resp.getStatus().getCode());
-      }
-      return resp.isSetPreDeletedColumns() ? resp.getPreDeletedColumns() : Collections.emptySet();
-    } catch (final ClientManagerException | TException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   @Override

@@ -89,6 +89,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -909,6 +910,17 @@ public class PartitionInfo implements SnapshotProcessor {
     return Optional.ofNullable(databasePartitionTables.get(database))
         .map(DatabasePartitionTable::getAssignedSeriesPartitionSlotsCount)
         .orElse(0);
+  }
+
+  /** Count the series slots of one region type, including those in the pending allocation. */
+  public int getSeriesPartitionSlotsCount(
+      String database, TConsensusGroupType type, Collection<TSeriesPartitionSlot> unassignedSlots)
+      throws DatabaseNotExistsException {
+    final DatabasePartitionTable partitionTable = databasePartitionTables.get(database);
+    if (partitionTable == null || !partitionTable.isNotPreDeleted()) {
+      throw new DatabaseNotExistsException(database);
+    }
+    return partitionTable.getSeriesPartitionSlotsCount(type, unassignedSlots);
   }
 
   /**

@@ -126,6 +126,20 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
     verify(fallbackQueue, never()).poll(CONSUMER_ID, null);
   }
 
+  @Test
+  public void testRequeueInFlightEventsAcrossRegionQueues() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue firstQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue secondQueue = mock(ConsensusPrefetchingQueue.class);
+    when(firstQueue.requeueInFlightEvents(CONSUMER_ID)).thenReturn(2);
+    when(secondQueue.requeueInFlightEvents(CONSUMER_ID)).thenReturn(3);
+    bindQueues(broker, Arrays.asList(firstQueue, secondQueue));
+
+    assertEquals(5, broker.requeueInFlightEvents(CONSUMER_ID));
+    verify(firstQueue).requeueInFlightEvents(CONSUMER_ID);
+    verify(secondQueue).requeueInFlightEvents(CONSUMER_ID);
+  }
+
   private static SubscriptionCommitContext newCommitContext(
       final int regionId, final int commitId) {
     return new SubscriptionCommitContext(

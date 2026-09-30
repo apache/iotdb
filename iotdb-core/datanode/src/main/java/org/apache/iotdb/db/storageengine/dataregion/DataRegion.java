@@ -98,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.La
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
@@ -1730,14 +1731,15 @@ public class DataRegion implements IDataRegionForQuery {
   private void registerToTsFile(InsertNode node, TsFileProcessor tsFileProcessor) {
     final String tableName = node.getTableName();
     if (tableName != null) {
+      final ITableCache tableCache = DataNodeTableCache.getInstance();
       tsFileProcessor.registerToTsFile(
           tableName,
+          tableCache.getInstanceVersion(),
           t -> {
             final String database = getDatabaseName();
 
             TsTable tsTable =
-                DataNodeTableCache.getInstance()
-                    .getTable(database, t, false, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+                tableCache.getTable(database, t, false, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.

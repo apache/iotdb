@@ -709,41 +709,41 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           TypeServices.StorageEngine.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
               Type.fromTsDataType(dataType)));
     }
-    Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
+    long[] lastValidPointTimeForTimeDupCheck =
+        timeDuplicateInfo == null ? null : new long[dataTypes.size()];
+    int[] lastValidPointIndexForTimeDupCheck =
+        timeDuplicateInfo == null ? null : new int[dataTypes.size()];
+    if (lastValidPointIndexForTimeDupCheck != null) {
+      Arrays.fill(lastValidPointIndexForTimeDupCheck, -1);
+    }
     for (List<Integer> pageRange : chunkRange) {
       AlignedChunkWriterImpl alignedChunkWriter =
           new AlignedChunkWriterImpl(schemaList, encryptParameter);
       for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
         for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-          // Pair of Time and Index
-          if (Objects.nonNull(timeDuplicateInfo)
-              && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
-            lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
-          }
           TypeServices.AlignedTVListChunkWriter valueWriter = valueWriters.get(columnIndex);
           ValueChunkWriter valueChunkWriter =
               alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
           for (int sortedRowIndex = pageRange.get(pageNum * 2);
               sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
               sortedRowIndex++) {
+            int valueIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
             // skip empty row
-            if (allValueColDeletedMap != null
-                && allValueColDeletedMap.isMarked(
-                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
+            if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(valueIndex)) {
               continue;
             }
             // Keep value pages aligned with the time page when an entire timestamp is deleted.
-            if (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)) {
+            if (alignedWorkingListForFlush.isTimeDeleted(valueIndex, false)) {
               continue;
             }
             // skip time duplicated rows
             long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
-            if (Objects.nonNull(timeDuplicateInfo)) {
-              if (!alignedWorkingListForFlush.isNullValue(
-                  alignedWorkingListForFlush.getValueIndex(sortedRowIndex), columnIndex)) {
-                lastValidPointIndexForTimeDupCheck[columnIndex].left = time;
-                lastValidPointIndexForTimeDupCheck[columnIndex].right =
-                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+            boolean currentValueIsNull = false;
+            if (timeDuplicateInfo != null) {
+              currentValueIsNull = alignedWorkingListForFlush.isNullValue(valueIndex, columnIndex);
+              if (!currentValueIsNull) {
+                lastValidPointTimeForTimeDupCheck[columnIndex] = time;
+                lastValidPointIndexForTimeDupCheck[columnIndex] = valueIndex;
               }
               if (timeDuplicateInfo[sortedRowIndex]) {
                 continue;
@@ -753,21 +753,25 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             // The part of code solves the following problem:
             // Time: 1,2,2,3
             // Value: 1,2,null,null
-            // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
-            // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
-            // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
-            // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2,
+            // When rowIndex:1, no valid duplicate value, timeDuplicateInfo:false, write(T:1,V:1)
+            // When rowIndex:2, last valid point=(2,2), timeDuplicateInfo:true, skip writing value
+            // When rowIndex:3, last valid point=(2,2), T:2 matches, write(T:2,V:2)
+            // When rowIndex:4, last valid point=(2,2), T:3 doesn't match,
             // write(T:3,V:null)
 
             int originRowIndex;
-            if (Objects.nonNull(lastValidPointIndexForTimeDupCheck[columnIndex])
-                && (time == lastValidPointIndexForTimeDupCheck[columnIndex].left)) {
-              originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex].right;
+            if (timeDuplicateInfo != null
+                && lastValidPointIndexForTimeDupCheck[columnIndex] >= 0
+                && time == lastValidPointTimeForTimeDupCheck[columnIndex]) {
+              originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex];
             } else {
-              originRowIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+              originRowIndex = valueIndex;
             }
 
-            boolean isNull = alignedWorkingListForFlush.isNullValue(originRowIndex, columnIndex);
+            boolean isNull =
+                timeDuplicateInfo == null
+                    ? alignedWorkingListForFlush.isNullValue(originRowIndex, columnIndex)
+                    : originRowIndex == valueIndex && currentValueIsNull;
             valueWriter.write(
                 valueChunkWriter,
                 time,
@@ -947,18 +951,19 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       List<IMeasurementSchema> activeSchemaList) {
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
     List<Integer> columnIndexList = buildColumnIndexList(activeSchemaList);
-    Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[activeSchemaList.size()];
+    long[] lastValidPointTimeForTimeDupCheck =
+        timeDuplicateInfo == null ? null : new long[activeSchemaList.size()];
+    int[] lastValidPointIndexForTimeDupCheck =
+        timeDuplicateInfo == null ? null : new int[activeSchemaList.size()];
+    if (lastValidPointIndexForTimeDupCheck != null) {
+      Arrays.fill(lastValidPointIndexForTimeDupCheck, -1);
+    }
     for (List<Integer> pageRange : chunkRange) {
       AlignedChunkWriterImpl alignedChunkWriter =
           new AlignedChunkWriterImpl(activeSchemaList, encryptParameter);
       for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
         for (int columnIndex = 0; columnIndex < activeSchemaList.size(); columnIndex++) {
           int tvListColumnIndex = columnIndexList.get(columnIndex);
-          // Pair of Time and Index
-          if (Objects.nonNull(timeDuplicateInfo)
-              && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
-            lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
-          }
           TSDataType tsDataType = activeSchemaList.get(columnIndex).getType();
           TypeServices.AlignedTVListColumnWriter columnWriter =
               TypeServices.StorageEngine.ALIGNED_TV_LIST_COLUMN_WRITER_SERVICE.call(
@@ -966,27 +971,27 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           for (int sortedRowIndex = pageRange.get(pageNum * 2);
               sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
               sortedRowIndex++) {
+            int valueIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
             // skip empty row
-            if (allValueColDeletedMap != null
-                && allValueColDeletedMap.isMarked(
-                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
+            if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(valueIndex)) {
               continue;
             }
             // Keep value pages aligned with the time page when an entire timestamp is deleted.
-            if (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)) {
+            if (alignedWorkingListForFlush.isTimeDeleted(valueIndex, false)) {
               continue;
             }
             // skip time duplicated rows
             long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
-            if (Objects.nonNull(timeDuplicateInfo)) {
-              if (tvListColumnIndex >= 0
-                  && !alignedWorkingListForFlush.isNullValue(
-                      alignedWorkingListForFlush.getValueIndex(sortedRowIndex),
-                      tvListColumnIndex)) {
-                lastValidPointIndexForTimeDupCheck[columnIndex].left = time;
-                lastValidPointIndexForTimeDupCheck[columnIndex].right =
-                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+            boolean currentValueIsNull = true;
+            if (timeDuplicateInfo != null && tvListColumnIndex >= 0) {
+              currentValueIsNull =
+                  alignedWorkingListForFlush.isNullValue(valueIndex, tvListColumnIndex);
+              if (!currentValueIsNull) {
+                lastValidPointTimeForTimeDupCheck[columnIndex] = time;
+                lastValidPointIndexForTimeDupCheck[columnIndex] = valueIndex;
               }
+            }
+            if (timeDuplicateInfo != null) {
               if (timeDuplicateInfo[sortedRowIndex]) {
                 continue;
               }
@@ -995,24 +1000,30 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             // The part of code solves the following problem:
             // Time: 1,2,2,3
             // Value: 1,2,null,null
-            // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
-            // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
-            // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
-            // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2,
+            // When rowIndex:1, no valid duplicate value, timeDuplicateInfo:false, write(T:1,V:1)
+            // When rowIndex:2, last valid point=(2,2), timeDuplicateInfo:true, skip writing value
+            // When rowIndex:3, last valid point=(2,2), T:2 matches, write(T:2,V:2)
+            // When rowIndex:4, last valid point=(2,2), T:3 doesn't match,
             // write(T:3,V:null)
 
             int originRowIndex;
             if (tvListColumnIndex >= 0
-                && Objects.nonNull(lastValidPointIndexForTimeDupCheck[columnIndex])
-                && (time == lastValidPointIndexForTimeDupCheck[columnIndex].left)) {
-              originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex].right;
+                && timeDuplicateInfo != null
+                && lastValidPointIndexForTimeDupCheck[columnIndex] >= 0
+                && time == lastValidPointTimeForTimeDupCheck[columnIndex]) {
+              originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex];
             } else {
-              originRowIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+              originRowIndex = valueIndex;
             }
 
-            boolean isNull =
-                tvListColumnIndex < 0
-                    || alignedWorkingListForFlush.isNullValue(originRowIndex, tvListColumnIndex);
+            boolean isNull;
+            if (tvListColumnIndex < 0) {
+              isNull = true;
+            } else if (timeDuplicateInfo == null) {
+              isNull = alignedWorkingListForFlush.isNullValue(originRowIndex, tvListColumnIndex);
+            } else {
+              isNull = originRowIndex == valueIndex && currentValueIsNull;
+            }
             columnWriter.write(
                 alignedChunkWriter,
                 time,
