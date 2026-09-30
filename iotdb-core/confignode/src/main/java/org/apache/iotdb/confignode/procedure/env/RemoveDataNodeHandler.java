@@ -178,8 +178,12 @@ public class RemoveDataNodeHandler {
 
       // Force updating NodeStatus
       long currentTime = System.nanoTime();
+      // Match the ReadOnly reason assigned by the DataNode's SET_SYSTEM_STATUS RPC.
+      String statusReason = nodeStatus == NodeStatus.ReadOnly ? NodeStatus.MANUAL : null;
       TSStatus status =
-          configManager.getLoadManager().trySetNodeStatus(dataNodeId, nodeStatus, true);
+          configManager
+              .getLoadManager()
+              .trySetNodeStatus(dataNodeId, nodeStatus, statusReason, true);
       if (!isSucceed(status)) {
         // Do not advance the persisted procedure state before its node status is durable.
         statusChangeFailures.append(

@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
@@ -505,7 +506,7 @@ public class NodeManager {
     for (TAINodeConfiguration aiNodeConfiguration : getRegisteredAINodes()) {
       TAINodeInfo aiNodeInfo = new TAINodeInfo();
       aiNodeInfo.setAiNodeId(aiNodeConfiguration.getLocation().getAiNodeId());
-      aiNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(aiNodeInfo.getAiNodeId()));
+      aiNodeInfo.setStatus(getLoadManager().getNodeStatus(aiNodeInfo.getAiNodeId()).getStatus());
       aiNodeInfo.setInternalAddress(aiNodeConfiguration.getLocation().getInternalEndPoint().ip);
       aiNodeInfo.setInternalPort(aiNodeConfiguration.getLocation().getInternalEndPoint().port);
       aiNodeInfoList.add(aiNodeInfo);
@@ -718,13 +719,20 @@ public class NodeManager {
   public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
     List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
+    Map<Integer, NodeStatistics> nodeStatisticsSnapshot =
+        getLoadManager().getNodeStatisticsSnapshot();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
           registeredDataNode -> {
             TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
             int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
             dataNodeInfo.setDataNodeId(dataNodeId);
-            dataNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(dataNodeId));
+            NodeStatistics statistics = nodeStatisticsSnapshot.get(dataNodeId);
+            dataNodeInfo.setStatus(
+                statistics == null
+                    ? NodeStatus.Unknown.getStatus()
+                    : statistics.getStatus().getStatus());
+            dataNodeInfo.setStatusReason(statistics == null ? null : statistics.getStatusReason());
             dataNodeInfo.setRpcAddresss(
                 registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
             dataNodeInfo.setRpcPort(
@@ -854,13 +862,20 @@ public class NodeManager {
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
     List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
+    Map<Integer, NodeStatistics> nodeStatisticsSnapshot =
+        getLoadManager().getNodeStatisticsSnapshot();
     if (registeredConfigNodes != null) {
       registeredConfigNodes.forEach(
           configNodeLocation -> {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(getLoadManager().getNodeStatusWithReason(configNodeId));
+            NodeStatistics statistics = nodeStatisticsSnapshot.get(configNodeId);
+            info.setStatus(
+                statistics == null
+                    ? NodeStatus.Unknown.getStatus()
+                    : statistics.getStatus().getStatus());
+            info.setStatusReason(statistics == null ? null : statistics.getStatusReason());
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(

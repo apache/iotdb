@@ -222,7 +222,7 @@ public class CheckpointManager implements AutoCloseable {
             identifier,
             e);
         DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
       }
 
       try {
@@ -243,7 +243,7 @@ public class CheckpointManager implements AutoCloseable {
             identifier,
             e);
         DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
       }
     } finally {
       infoLock.unlock();

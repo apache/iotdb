@@ -72,15 +72,15 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
    * rules may retain the previous status even when this method returns success. A persistence
    * failure is returned without discarding the new statistics.
    */
-  public TSStatus trySetNodeStatus(NodeStatus status, boolean force) {
+  public TSStatus trySetNodeStatus(NodeStatus status, String statusReason, boolean force) {
     synchronized (slidingWindow) {
-      NodeHeartbeatSample sample = new NodeHeartbeatSample(status);
+      NodeHeartbeatSample sample = new NodeHeartbeatSample(status, statusReason);
       cacheHeartbeatSample(sample);
       return applyNodeStatistics(
           new NodeStatistics(
               sample.getSampleLogicalTimestamp(),
               status,
-              null,
+              sample.getStatusReason(),
               NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE),
           force);
     }
@@ -135,10 +135,8 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
   /**
    * @return The reason why lead to current NodeStatus.
    */
-  public String getNodeStatusWithReason() {
+  public String getNodeStatusReason() {
     NodeStatistics statistics = (NodeStatistics) this.currentStatistics.get();
-    return statistics.getStatusReason() == null
-        ? statistics.getStatus().getStatus()
-        : statistics.getStatus().getStatus() + "(" + statistics.getStatusReason() + ")";
+    return statistics.getStatusReason();
   }
 }
