@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaMetricManager;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
@@ -201,7 +202,8 @@ public class SchemaEngine {
   @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
     // recover SchemaRegion concurrently
-    Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    final Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    validateNoDuplicatedSchemaRegionId(localSchemaRegionInfo);
     final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
@@ -230,6 +232,27 @@ public class SchemaEngine {
       }
     }
     schemaRegionRecoverPools.shutdown();
+  }
+
+  static void validateNoDuplicatedSchemaRegionId(
+      final Map<String, List<SchemaRegionId>> localSchemaRegionInfo) {
+    final Map<SchemaRegionId, String> databaseBySchemaRegionId = new HashMap<>();
+    localSchemaRegionInfo.forEach(
+        (database, schemaRegionIds) -> {
+          for (final SchemaRegionId schemaRegionId : schemaRegionIds) {
+            final String existingDatabase =
+                databaseBySchemaRegionId.putIfAbsent(schemaRegionId, database);
+            if (existingDatabase != null) {
+              throw new IllegalStateException(
+                  String.format(
+                      DataNodeSchemaMessages
+                          .EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05,
+                      schemaRegionId,
+                      existingDatabase,
+                      database));
+            }
+          }
+        });
   }
 
   private void initSchemaEngineStatistics() {
@@ -310,7 +333,6 @@ public class SchemaEngine {
     return () -> {
       long timeRecord = System.currentTimeMillis();
       try {
-        // TODO: handle duplicated regionId across different database
         ISchemaRegion schemaRegion =
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
