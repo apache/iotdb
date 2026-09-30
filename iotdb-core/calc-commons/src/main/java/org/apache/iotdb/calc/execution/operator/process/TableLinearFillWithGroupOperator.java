@@ -99,13 +99,25 @@ public class TableLinearFillWithGroupOperator extends TableLinearFillOperator {
   }
 
   @Override
-  void resetFill() {
-    // if current tsblock belongs to another group, we need to reset fill.
-    if (Boolean.TRUE.equals(groupSplitter.remove(0))) {
+  boolean isGroupEnd(int cachedBlockIndex) {
+    return noMoreTsBlockForCurrentGroup.get(cachedBlockIndex);
+  }
+
+  @Override
+  void prepareFill() {
+    // Reset once before lookahead. Resetting after preparation discards the next value needed
+    // to interpolate the first block of a group; retries must retain that prepared state.
+    if (Boolean.TRUE.equals(groupSplitter.get(0))) {
       for (ILinearFill fill : fillArray) {
         fill.reset();
       }
+      groupSplitter.set(0, false);
     }
+  }
+
+  @Override
+  void resetFill() {
+    groupSplitter.remove(0);
     noMoreTsBlockForCurrentGroup.remove(0);
   }
 

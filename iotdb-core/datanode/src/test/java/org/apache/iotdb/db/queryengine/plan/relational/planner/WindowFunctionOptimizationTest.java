@@ -31,6 +31,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.rowNumber;
@@ -151,14 +152,19 @@ public class WindowFunctionOptimizationTest {
      *               │        └──TableScan
      *               └──ExchangeNode
      *                    └──TopKRankingNode
-     *                        └──SortNode
-     *                            └──TableScan
+     *                        └──MergeSortNode
+     *                            ├──ExchangeNode ← TableScan
+     *                            └──ExchangeNode ← TableScan
      */
     assertPlan(
         planTester.getFragmentPlan(0), output((collect(exchange(), exchange(), exchange()))));
     assertPlan(planTester.getFragmentPlan(1), topKRanking(tableScan));
     assertPlan(planTester.getFragmentPlan(2), topKRanking(tableScan));
-    assertPlan(planTester.getFragmentPlan(3), topKRanking(sort(tableScan)));
+    // A device spanning regions must retain both inputs. TopK ranks them without an input field
+    // sort.
+    assertPlan(planTester.getFragmentPlan(3), topKRanking(mergeSort(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
   @Test

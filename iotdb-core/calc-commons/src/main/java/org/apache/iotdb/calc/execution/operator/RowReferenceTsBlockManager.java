@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -307,8 +308,15 @@ public class RowReferenceTsBlockManager {
         rowIdBuffer.setPosition(newRowIds[i], i);
       }
 
-      // Compact TsBlock
-      //      page = page.copyPositions(positionsToKeep, 0, positionsToKeep.length);
+      // The stored positions above now refer to the compacted block, not the original rows.
+      // Copy only live positions so stable row IDs keep referencing the same values.
+      Column[] columns = new Column[tsBlock.getValueColumnCount()];
+      for (int i = 0; i < columns.length; i++) {
+        columns[i] = tsBlock.getColumn(i).copyPositions(positionsToKeep, 0, activePositions);
+      }
+      tsBlock =
+          new TsBlock(
+              tsBlock.getTimeColumn().copyPositions(positionsToKeep, 0, activePositions), columns);
       rowIds = newRowIds;
     }
 
