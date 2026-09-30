@@ -77,7 +77,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>The interfaces are divided as following:
  *
  * <ol>
- *   <li>Interfaces for initialization閵嗕购ecover and clear
+ *   <li>Interfaces for initialization, recover and clear
  *   <li>Interfaces for schema region Info query and operation
  *   <li>Interfaces for Timeseries operation
  *   <li>Interfaces for metadata info Query
@@ -91,7 +91,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public interface ISchemaRegion {
 
-  // region Interfaces for initialization閵嗕购ecover and clear
+  // region Interfaces for initialization, recover and clear
   void init() throws MetadataException;
 
   /** clear all metadata components of this schemaRegion */
