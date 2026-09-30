@@ -850,6 +850,17 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
+  public int requeueInFlightEvents(final String consumerId) {
+    int requeuedCount = 0;
+    for (final Pair<String, SubscriptionCommitContext> key :
+        ImmutableSet.copyOf(inFlightEvents.keySet())) {
+      if (Objects.equals(consumerId, key.left) && requeue(consumerId, key.right)) {
+        requeuedCount++;
+      }
+    }
+    return requeuedCount;
+  }
+
   /**
    * @return {@code true} if ack successfully
    */
