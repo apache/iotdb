@@ -290,7 +290,7 @@ public class SettleSelectorImpl implements ISettleSelector {
             // overflow, like 100 - Long.MIN
             outdatedTimeDiff = Long.MAX_VALUE;
           }
-          long ttlThreshold = 3 * ttl > ttl ? ttl : Long.MAX_VALUE;
+          long ttlThreshold = ttl <= Long.MAX_VALUE / 3 ? 3 * ttl : Long.MAX_VALUE;
           hasExpiredTooLong =
               hasExpiredTooLong
                   || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), ttlThreshold);
@@ -309,7 +309,8 @@ public class SettleSelectorImpl implements ISettleSelector {
       return new FileDirtyInfo(DirtyStatus.FULLY_DIRTY, ttlTables);
     }
     hasExpiredTooLong = config.getMaxExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
-    if (hasExpiredTooLong || deletedDeviceRatio >= config.getExpiredDataRatio()) {
+    if (hasExpiredTooLong
+        || (deletedDeviceRatio > 0 && deletedDeviceRatio >= config.getExpiredDataRatio())) {
       // evaluate dirty data size in the tsfile
       return new FileDirtyInfo(
           PARTIALLY_DIRTY, (long) (deletedDeviceRatio * resource.getTsFileSize()), ttlTables);
