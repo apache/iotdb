@@ -97,6 +97,11 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
   }
 
   @Override
+  boolean isGroupEnd(int cachedBlockIndex) {
+    return noMoreTsBlockForCurrentGroup.get(cachedBlockIndex);
+  }
+
+  @Override
   void resetFill() {
     boolean isNoMoreTsBlockForCurrentGroup =
         Boolean.TRUE.equals(noMoreTsBlockForCurrentGroup.remove(0));
