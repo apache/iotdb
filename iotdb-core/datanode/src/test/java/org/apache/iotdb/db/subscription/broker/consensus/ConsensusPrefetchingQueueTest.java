@@ -2946,20 +2946,6 @@ public class ConsensusPrefetchingQueueTest {
         .setNodeId(7);
   }
 
-  private static void writeWalMetadata(
-      final File walFile,
-      final long searchIndex,
-      final long localSeq,
-      final long physicalTime,
-      final int writerNodeId)
-      throws IOException {
-    final WALMetaData metadata = new WALMetaData();
-    metadata.add(1, searchIndex, 1L, physicalTime, writerNodeId, localSeq);
-    try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
-      writer.write(ByteBuffer.wrap(new byte[] {0}), metadata);
-    }
-  }
-
   private static IndexedConsensusRequest createRequest(
       final long searchIndex,
       final long localSeq,
