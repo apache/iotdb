@@ -579,7 +579,7 @@ public class ConsensusPrefetchingQueue {
             this::requestPrefetchForRealtimeEntry,
             this::canAcceptRealtimeEntry);
     serverImpl.registerSubscriptionQueue(
-        pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
+        pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
 
     LOGGER.info(
         DataNodePipeMessages
@@ -3391,9 +3391,36 @@ public class ConsensusPrefetchingQueue {
     return committed;
   }
 
+  private long getRequiredRetainedMinVersionId() {
+    // Committed progress can advance on another consumer or replica while this queue is still
+    // replaying an older local search index. Keep both boundaries so WAL deletion can never pass
+    // the earliest entry this queue has not inspected yet.
+    return Math.min(getCommittedRetainedMinVersionId(), getReplayRetainedMinVersionId());
+  }
+
   private long getCommittedRetainedMinVersionId() {
     refreshCommittedWalRetentionBound();
     return committedRetainedMinVersionId;
+  }
+
+  private long getReplayRetainedMinVersionId() {
+    if (!(consensusReqReader instanceof WALNode)) {
+      return 0L;
+    }
+    final WALNode walNode = (WALNode) consensusReqReader;
+    return findReplayRetainedMinVersionId(
+        walNode.getSortedWalFilesSnapshot(), nextExpectedSearchIndex.get());
+  }
+
+  static long findReplayRetainedMinVersionId(
+      final File[] walFiles, final long nextExpectedSearchIndex) {
+    if (Objects.isNull(walFiles) || walFiles.length == 0) {
+      return 0L;
+    }
+
+    final int replayFileIndex =
+        Math.max(0, WALFileUtils.binarySearchFileBySearchIndex(walFiles, nextExpectedSearchIndex));
+    return WALFileUtils.parseVersionId(walFiles[replayFileIndex].getName());
   }
 
   private void refreshCommittedWalRetentionBoundAndNotify() {

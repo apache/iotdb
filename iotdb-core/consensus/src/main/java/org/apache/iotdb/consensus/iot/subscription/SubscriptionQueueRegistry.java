@@ -67,10 +67,9 @@ public class SubscriptionQueueRegistry {
   public synchronized void register(
       final BlockingQueue<IndexedConsensusRequest> queue,
       final SubscriptionWalRetentionPolicy retentionPolicy,
-      final LongSupplier committedRetainedMinVersionIdSupplier) {
+      final LongSupplier retainedMinVersionIdSupplier) {
     queues.put(
-        queue,
-        new SubscriptionQueueRegistration(retentionPolicy, committedRetainedMinVersionIdSupplier));
+        queue, new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier));
   }
 
   // Shares the monitor with offer() so unregister() is a real stop-receiving barrier.
@@ -94,19 +93,19 @@ public class SubscriptionQueueRegistry {
     return retentionPolicies;
   }
 
-  public Collection<Long> getCommittedRetainedMinVersionIds() {
+  public Collection<Long> getRetainedMinVersionIds() {
     final Collection<LongSupplier> suppliers = new ArrayList<>();
     synchronized (this) {
       for (final SubscriptionQueueRegistration registration : queues.values()) {
-        suppliers.add(registration.committedRetainedMinVersionIdSupplier);
+        suppliers.add(registration.retainedMinVersionIdSupplier);
       }
     }
 
-    final Collection<Long> committedRetainedMinVersionIds = new ArrayList<>();
+    final Collection<Long> retainedMinVersionIds = new ArrayList<>();
     for (final LongSupplier supplier : suppliers) {
-      committedRetainedMinVersionIds.add(supplier.getAsLong());
+      retainedMinVersionIds.add(supplier.getAsLong());
     }
-    return committedRetainedMinVersionIds;
+    return retainedMinVersionIds;
   }
 
   public synchronized boolean offer(final IndexedConsensusRequest indexedConsensusRequest) {
@@ -172,13 +171,13 @@ public class SubscriptionQueueRegistry {
   private static final class SubscriptionQueueRegistration {
 
     private final SubscriptionWalRetentionPolicy retentionPolicy;
-    private final LongSupplier committedRetainedMinVersionIdSupplier;
+    private final LongSupplier retainedMinVersionIdSupplier;
 
     private SubscriptionQueueRegistration(
         final SubscriptionWalRetentionPolicy retentionPolicy,
-        final LongSupplier committedRetainedMinVersionIdSupplier) {
+        final LongSupplier retainedMinVersionIdSupplier) {
       this.retentionPolicy = retentionPolicy;
-      this.committedRetainedMinVersionIdSupplier = committedRetainedMinVersionIdSupplier;
+      this.retainedMinVersionIdSupplier = retainedMinVersionIdSupplier;
     }
   }
 }
