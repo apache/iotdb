@@ -79,6 +79,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BooleanSupplier;
@@ -457,9 +458,8 @@ public class ConsensusPrefetchingQueueTest {
               WALFileUtils.getLogFileName(2L, 3L, WALFileStatus.CONTAINS_SEARCH_INDEX));
       writeWalMetadata(firstWal, 1L, 2L, 1002L, 7);
       writeWalMetadata(nextWal, 2L, 4L, 1004L, 7);
-      try (WALWriter ignored = new WALWriter(liveWal, WALFileVersion.V3)) {
-        // Keep a live successor so both data WAL files are eligible for boundary checks.
-      }
+      // The v2 metadata becomes eligible for retention checks only after the mocked WAL rolls.
+      writeWalMetadata(liveWal, 3L, 7L, 1007L, 7);
 
       final DataRegionId regionId = new DataRegionId(1);
       final WriterId writerId = new WriterId(regionId.toString(), 7);
@@ -469,7 +469,8 @@ public class ConsensusPrefetchingQueueTest {
                   Collections.singletonMap(writerId, new WriterProgress(1000L, 0L))));
       final WALNode walNode = mock(WALNode.class);
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
-      when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
+      final AtomicLong currentWalVersion = new AtomicLong(2L);
+      when(walNode.getCurrentWALFileVersion()).thenAnswer(ignored -> currentWalVersion.get());
 
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
@@ -538,9 +539,43 @@ public class ConsensusPrefetchingQueueTest {
       assertEquals(0L, retentionSupplier.get().getAsLong());
 
       committedProgress.set(
-          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1001L, 1L))));
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1004L, 4L))));
+      assertTrue((Boolean) refreshRetentionBound.invoke(queue));
+      // Advancing past v1 must not reopen v0, which is still retained for replay.
+      assertEquals(2, progressWalReaderOpenCount.get());
+      assertEquals(2L, committedBound.getLong(queue));
+
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1005L, 5L))));
+      assertFalse((Boolean) refreshRetentionBound.invoke(queue));
+      // The current WAL file has no sealed metadata requirement and stays retained until roll.
+      assertEquals(2, progressWalReaderOpenCount.get());
+      assertEquals(0L, retentionSupplier.get().getAsLong());
+
+      final File nextLiveWal =
+          new File(
+              walDirectory,
+              WALFileUtils.getLogFileName(3L, 4L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+      try (WALWriter ignored = new WALWriter(nextLiveWal, WALFileVersion.V3)) {
+        // Rolling v2 makes its previously live metadata a sealed retention requirement.
+      }
+      currentWalVersion.set(3L);
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1006L, 6L))));
+      assertFalse((Boolean) refreshRetentionBound.invoke(queue));
+      assertEquals(3, progressWalReaderOpenCount.get());
+      assertEquals(2L, committedBound.getLong(queue));
+
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1007L, 7L))));
       assertTrue((Boolean) refreshRetentionBound.invoke(queue));
       assertEquals(3, progressWalReaderOpenCount.get());
+      assertEquals(3L, committedBound.getLong(queue));
+
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1001L, 1L))));
+      assertTrue((Boolean) refreshRetentionBound.invoke(queue));
+      assertEquals(4, progressWalReaderOpenCount.get());
       assertEquals(0L, committedBound.getLong(queue));
       assertEquals(0L, retentionSupplier.get().getAsLong());
     } finally {

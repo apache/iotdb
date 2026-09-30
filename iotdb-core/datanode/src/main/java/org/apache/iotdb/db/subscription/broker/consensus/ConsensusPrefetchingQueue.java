@@ -3484,13 +3484,25 @@ public class ConsensusPrefetchingQueue {
     return true;
   }
 
+  private boolean canSkipCoveredWalPrefix(final RegionProgress committedRegionProgress) {
+    return isProgressAtLeast(committedRegionProgress, lastCommittedProgressForRetention)
+        && Objects.nonNull(lastRetainedWalFileForRetention)
+        && lastRetainedWalFileForRetention.exists()
+        && WALFileUtils.parseVersionId(lastRetainedWalFileForRetention.getName())
+            == committedRetainedMinVersionId;
+  }
+
   private boolean canReuseCommittedWalRetentionBound(final RegionProgress committedRegionProgress) {
-    if (!isProgressAtLeast(committedRegionProgress, lastCommittedProgressForRetention)
-        || Objects.isNull(lastRetainedWalFileForRetention)
-        || !lastRetainedWalFileForRetention.exists()
-        || WALFileUtils.parseVersionId(lastRetainedWalFileForRetention.getName())
-            != committedRetainedMinVersionId) {
+    if (!canSkipCoveredWalPrefix(committedRegionProgress)) {
       return false;
+    }
+
+    // The live WAL file must be retained regardless of committed progress. Its metadata is not
+    // sealed yet, so there is no cached requirement to check until the WAL rolls.
+    if (consensusReqReader instanceof WALNode
+        && committedRetainedMinVersionId
+            == ((WALNode) consensusReqReader).getCurrentWALFileVersion()) {
+      return true;
     }
 
     final WalFileCommitRequirement requirement =
@@ -3541,8 +3553,8 @@ public class ConsensusPrefetchingQueue {
         return false;
       }
 
-      // The previous boundary file remains the first uncommitted file while its cached
-      // requirement is still uncovered by monotonically advancing committed progress.
+      // The previous boundary still applies while its sealed requirement is uncovered, or while
+      // it is the current live WAL file. Both cases require monotonically advancing progress.
       if (canReuseCommittedWalRetentionBound(committedRegionProgress)) {
         lastCommittedProgressForRetention = committedRegionProgress;
         return false;
@@ -3574,8 +3586,18 @@ public class ConsensusPrefetchingQueue {
     }
 
     WALFileUtils.ascSortByVersionId(walFiles);
+    // Sealed WAL files before the previous boundary were already covered by committed progress.
+    // They may remain on disk because of the replay cursor or topic retention; rescanning their
+    // metadata on every later commit makes sparse topics spend most of their time in retention.
+    final long firstVersionToCheck =
+        canSkipCoveredWalPrefix(committedRegionProgress)
+            ? committedRetainedMinVersionId
+            : Long.MIN_VALUE;
     for (final File walFile : walFiles) {
       final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+      if (versionId < firstVersionToCheck) {
+        continue;
+      }
       if (versionId >= currentWalVersion) {
         return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), walFile);
       }
