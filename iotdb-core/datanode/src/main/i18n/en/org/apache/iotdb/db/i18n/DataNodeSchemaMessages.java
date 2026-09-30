@@ -44,6 +44,9 @@ public final class DataNodeSchemaMessages {
   public static final String PEER_IS_SHUTTING_DOWN = "Peer is shutting down now.";
   public static final String SCHEMA_REGION_DUPLICATED =
       "SchemaRegion [%s] is duplicated between [%s] and [%s], and the former one has been recovered.";
+  public static final String
+      EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05 =
+          "Cannot recover duplicated SchemaRegion [%s] found in databases [%s] and [%s].";
 
   // ======================== MemSchemaEngineStatistics ========================
 
