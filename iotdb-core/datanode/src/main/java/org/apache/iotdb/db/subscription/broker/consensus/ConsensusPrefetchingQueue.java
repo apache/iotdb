@@ -1492,6 +1492,10 @@ public class ConsensusPrefetchingQueue {
         }
         if (batchResult != MaterializationResult.SUCCESS) {
           if (batchResult == MaterializationResult.WAL_GAP) {
+            if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
+              resetRoundStateForSeek(seekGeneration.get());
+              return PrefetchRoundResult.rescheduleNow();
+            }
             return PrefetchRoundResult.rescheduleAfter(WAL_GAP_RETRY_SLEEP_MS);
           }
           if (batchResult == MaterializationResult.MEMORY_BLOCKED) {
