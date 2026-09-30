@@ -332,6 +332,51 @@ public class SubscriptionReceiverAgentTest {
   }
 
   @Test
+  public void testNewConsumerInstanceTakeoverReleasesOldInFlightEvents() throws Exception {
+    final CopyOnWriteArrayList<FakeSubscriptionReceiver> receivers = new CopyOnWriteArrayList<>();
+    final SubscriptionReceiverAgent agent = createAgent(receivers, false /* closeOnTimeout */);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        agent
+            .handle(createHandshakeRequest("group", "consumer", "instance-1"), "root")
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        handleOnNewConnection(agent, createHandshakeRequest("group", "consumer", "instance-2"))
+            .getStatus()
+            .getCode());
+
+    Assert.assertEquals(2, receivers.size());
+    Assert.assertEquals(1, receivers.get(0).releaseCount.get());
+    Assert.assertTrue(receivers.get(0).invalidated);
+    Assert.assertEquals(0, receivers.get(1).releaseCount.get());
+  }
+
+  @Test
+  public void testSameConsumerInstanceReconnectPreservesInFlightEvents() throws Exception {
+    final CopyOnWriteArrayList<FakeSubscriptionReceiver> receivers = new CopyOnWriteArrayList<>();
+    final SubscriptionReceiverAgent agent = createAgent(receivers, false /* closeOnTimeout */);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        agent
+            .handle(createHandshakeRequest("group", "consumer", "instance-1"), "root")
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        handleOnNewConnection(agent, createHandshakeRequest("group", "consumer", "instance-1"))
+            .getStatus()
+            .getCode());
+
+    Assert.assertEquals(2, receivers.size());
+    Assert.assertEquals(0, receivers.get(0).releaseCount.get());
+    Assert.assertTrue(receivers.get(0).invalidated);
+  }
+
+  @Test
   public void testLateHandshakeCannotTakeOverNewReceiver() throws Exception {
     final CopyOnWriteArrayList<FakeSubscriptionReceiver> receivers = new CopyOnWriteArrayList<>();
     final CountDownLatch oldHandshakeEntered = new CountDownLatch(1);
@@ -565,6 +610,7 @@ public class SubscriptionReceiverAgentTest {
     private final CountDownLatch releaseHandshake;
     private final AtomicInteger timeoutCount = new AtomicInteger();
     private final AtomicInteger exitCount = new AtomicInteger();
+    private final AtomicInteger releaseCount = new AtomicInteger();
     private volatile ConsumerConfig consumerConfig;
     private volatile boolean invalidated;
 
@@ -625,6 +671,11 @@ public class SubscriptionReceiverAgentTest {
     @Override
     public void handleExit() {
       exitCount.incrementAndGet();
+    }
+
+    @Override
+    public void releaseInFlightEvents() {
+      releaseCount.incrementAndGet();
     }
 
     @Override

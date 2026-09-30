@@ -131,7 +131,15 @@ public class SubscriptionReceiverV1Test {
   @Test
   @SuppressWarnings("unchecked")
   public void testHandleExitKeepsSharedConsumerStateForTimeoutCleanup() throws Exception {
-    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final AtomicLong releaseCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+            releaseCount.incrementAndGet();
+            return 1;
+          }
+        };
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
     setField(receiver, "sharedConsumerConfig", consumerConfig);
     final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
@@ -144,12 +152,21 @@ public class SubscriptionReceiverV1Test {
     Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
     Assert.assertTrue(receiver.hasActiveConsumer());
     Assert.assertNull(consumerConfigThreadLocal.get());
+    Assert.assertEquals(1L, releaseCount.get());
   }
 
   @Test
   @SuppressWarnings("unchecked")
   public void testHandleExitClearsThreadLocalStateAfterInvalidation() throws Exception {
-    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final AtomicLong releaseCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+            releaseCount.incrementAndGet();
+            return 1;
+          }
+        };
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
     setField(receiver, "sharedConsumerConfig", consumerConfig);
     final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
@@ -162,6 +179,7 @@ public class SubscriptionReceiverV1Test {
     Assert.assertFalse(receiver.hasActiveConsumer());
     Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
     Assert.assertNull(consumerConfigThreadLocal.get());
+    Assert.assertEquals(0L, releaseCount.get());
   }
 
   @Test

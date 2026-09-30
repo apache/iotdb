@@ -161,6 +161,8 @@ public class SubscriptionReceiverAgent {
               if (isHandshake(req)) {
                 if (isSuccessful(requestResult.response)) {
                   if (currentReceiver != null && currentReceiver != receiver) {
+                    releaseInFlightEventsOnNewInstanceTakeover(
+                        currentReceiver, receiver.getConsumerInstanceId());
                     invalidateReplacedReceiver(currentReceiver, identity);
                   }
                   return receiver;
@@ -319,6 +321,8 @@ public class SubscriptionReceiverAgent {
           }
           if (receiver.getConsumerInstanceId() != null
               && !shouldKeepCurrentReceiver(currentReceiver, receiver.getConsumerInstanceId())) {
+            releaseInFlightEventsOnNewInstanceTakeover(
+                currentReceiver, receiver.getConsumerInstanceId());
             invalidateReplacedReceiver(currentReceiver, key);
             registered.set(true);
             return receiver;
@@ -359,6 +363,14 @@ public class SubscriptionReceiverAgent {
         identity.consumerId(),
         identity.consumerGroupId());
     receiver.invalidateConsumer();
+  }
+
+  private static void releaseInFlightEventsOnNewInstanceTakeover(
+      final SubscriptionReceiver currentReceiver, final String incomingConsumerInstanceId) {
+    if (incomingConsumerInstanceId != null
+        && !Objects.equals(currentReceiver.getConsumerInstanceId(), incomingConsumerInstanceId)) {
+      currentReceiver.releaseInFlightEvents();
+    }
   }
 
   private static ConsumerConnection getConsumerConnection(
