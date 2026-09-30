@@ -1490,17 +1490,8 @@ public class ConsensusPrefetchingQueueTest {
               });
       when(converter.getDatabaseName()).thenReturn("db");
 
-      final Iterator<IndexedConsensusRequest> walEntries =
-          Arrays.asList(
-                  createRequest(1L),
-                  createRequest(2L),
-                  createRequest(3L),
-                  createRequest(4L),
-                  createRequest(5L))
-              .iterator();
-      final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
-      when(iterator.hasNext()).thenAnswer(ignored -> walEntries.hasNext());
-      when(iterator.next()).thenAnswer(ignored -> walEntries.next());
+      final AtomicInteger iteratorCreationCount = new AtomicInteger();
+      final AtomicInteger walEntryReadCount = new AtomicInteger();
 
       queue =
           new ConsensusPrefetchingQueue(
@@ -1522,6 +1513,23 @@ public class ConsensusPrefetchingQueueTest {
             @Override
             protected ProgressWALIterator createSubscriptionWALIterator(
                 final long startSearchIndex) {
+              iteratorCreationCount.incrementAndGet();
+              final Iterator<IndexedConsensusRequest> walEntries =
+                  Arrays.asList(
+                          createRequest(1L),
+                          createRequest(2L),
+                          createRequest(3L),
+                          createRequest(4L),
+                          createRequest(5L))
+                      .iterator();
+              final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
+              when(iterator.hasNext()).thenAnswer(ignored -> walEntries.hasNext());
+              when(iterator.next())
+                  .thenAnswer(
+                      ignored -> {
+                        walEntryReadCount.incrementAndGet();
+                        return walEntries.next();
+                      });
               return iterator;
             }
           };
@@ -1542,6 +1550,8 @@ public class ConsensusPrefetchingQueueTest {
       queue.drivePrefetchOnce();
       assertEquals(5, conversionCount.get());
       assertEquals(6L, queue.getCurrentReadSearchIndex());
+      assertEquals(1, iteratorCreationCount.get());
+      assertEquals(5, walEntryReadCount.get());
     } finally {
       if (queue != null) {
         queue.close();
