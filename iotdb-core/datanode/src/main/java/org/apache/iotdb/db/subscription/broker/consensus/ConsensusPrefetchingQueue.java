@@ -3396,7 +3396,6 @@ public class ConsensusPrefetchingQueue {
       return 0L;
     }
 
-    WALFileUtils.ascSortByVersionId(walFiles);
     final int replayFileIndex =
         Math.max(0, WALFileUtils.binarySearchFileBySearchIndex(walFiles, nextExpectedSearchIndex));
     return WALFileUtils.parseVersionId(walFiles[replayFileIndex].getName());
