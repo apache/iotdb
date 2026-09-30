@@ -1088,6 +1088,36 @@ public class ConfigMTree {
     return newTable;
   }
 
+  /**
+   * The schema to report in DESC. Unlike {@link #getUsingTableSchema}, a column whose deletion is
+   * still pending is kept, so that the user can see which columns exist and are only waiting for
+   * the pending procedure. A pending data type change is applied on top.
+   */
+  public TsTable getTableSchemaForDesc(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    if (node.getPreAlteredColumns().isEmpty()) {
+      return node.getTable();
+    }
+    final TsTable table = new TsTable(node.getTable());
+    node.getPreAlteredColumns()
+        .forEach(
+            (columnName, dataType) -> {
+              final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+              if (columnSchema == null) {
+                return;
+              }
+              columnSchema.setDataType(dataType);
+              if (columnSchema instanceof FieldColumnSchema) {
+                final FieldColumnSchema fieldColumnSchema = (FieldColumnSchema) columnSchema;
+                fieldColumnSchema.setEncoding(
+                    SchemaUtils.getDataTypeCompatibleEncoding(
+                        dataType, fieldColumnSchema.getEncoding()));
+              }
+            });
+    return table;
+  }
+
   public TableSchemaDetails getTableSchemaDetails(
       final PartialPath database, final String tableName) throws MetadataException {
     final ConfigTableNode node = getTableNode(database, tableName);

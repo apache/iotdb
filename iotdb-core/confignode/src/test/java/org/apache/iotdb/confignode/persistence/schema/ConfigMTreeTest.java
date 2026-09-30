@@ -454,6 +454,37 @@ public class ConfigMTreeTest {
   }
 
   @Test
+  public void testDescKeepsPreDeletedColumns() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    root.preDeleteColumn(database, table.getTableName(), "measurement", false);
+
+    // DESC keeps a column whose deletion is still pending, so that the user can see it.
+    Assert.assertNotNull(
+        root.getTableSchemaForDesc(database, table.getTableName()).getColumnSchema("measurement"));
+    // A DataNode must not see that column any more.
+    Assert.assertNull(
+        root.getUsingTableSchema(database, table.getTableName()).getColumnSchema("measurement"));
+  }
+
+  @Test
   public void testSetTemplate() throws MetadataException {
     root.setStorageGroup(new PartialPath("root.a"));
     PartialPath path = new PartialPath("root.a.template0");

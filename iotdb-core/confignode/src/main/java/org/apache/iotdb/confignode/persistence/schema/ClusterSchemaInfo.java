@@ -1449,7 +1449,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       return new DescTableResp(
           StatusUtils.OK,
-          tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          tableModelMTree.getTableSchemaForDesc(databasePath, plan.getTableName()),
           null,
           null);
     } catch (final MetadataException e) {
