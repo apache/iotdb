@@ -42,9 +42,15 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -195,6 +201,33 @@ public class TagManagerTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  public void preciseQueryUsesDirectLookupAndFiltersPathBeforeSorting() throws Exception {
+    initTagManager();
+    final IMeasurementMNode<?> first = mockMeasurement("root.sg.d.s1");
+    final IMeasurementMNode<?> second = mockMeasurement("root.sg.d.s2");
+    final IMeasurementMNode<?> outside = mockMeasurement("root.other.d.s0");
+
+    final Map<String, Set<IMeasurementMNode<?>>> valueMap = Mockito.spy(new HashMap<>());
+    valueMap.put("target", new HashSet<>(Arrays.asList(second, outside, first)));
+    valueMap.put("unrelated", new HashSet<>());
+
+    final Field tagIndexField = TagManager.class.getDeclaredField("tagIndex");
+    tagIndexField.setAccessible(true);
+    final Map<String, Map<String, Set<IMeasurementMNode<?>>>> tagIndex =
+        (Map<String, Map<String, Set<IMeasurementMNode<?>>>>) tagIndexField.get(tagManager);
+    tagIndex.put("key", valueMap);
+
+    final List<IMeasurementMNode<?>> result =
+        tagManager.getMatchedTimeseriesInIndex(
+            new TagFilter("key", "target", false), new PartialPath("root.sg.**"), false);
+
+    Assert.assertEquals(Arrays.asList(first, second), result);
+    Mockito.verify(valueMap).get("target");
+    Mockito.verify(valueMap, Mockito.never()).entrySet();
+  }
+
+  @Test
   public void preDeletedMeasurementIsSkippedByIndexReader() throws Exception {
     initTagManager();
     final IMeasurementMNode<?> node = newMeasurementMNode("s0");
@@ -227,6 +260,13 @@ public class TagManagerTest {
         new MeasurementSchema(
             measurement, TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
         null);
+  }
+
+  private static IMeasurementMNode<?> mockMeasurement(final String path) throws Exception {
+    final IMeasurementMNode<?> node = Mockito.mock(IMeasurementMNode.class);
+    Mockito.when(node.getFullPath()).thenReturn(path);
+    Mockito.when(node.getPartialPath()).thenReturn(new PartialPath(path));
+    return node;
   }
 
   private static long indexMemory(
