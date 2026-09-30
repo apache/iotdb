@@ -36,7 +36,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
@@ -144,6 +146,8 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertTimeWindowOrdering(
+        "HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m)", expectedHeader, retArray);
 
     expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
     retArray =
@@ -503,6 +507,22 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertSortedRows(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) ORDER BY stock_id DESC, time DESC, window_index DESC",
+        expectedHeader,
+        retArray,
+        Comparator.comparing((String[] row) -> row[2])
+            .thenComparing(row -> Instant.parse(row[1]))
+            .thenComparingLong(row -> Long.parseLong(row[0]))
+            .reversed());
+    tableResultSetEqualTest(
+        "SELECT stock_id FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) ORDER BY stock_id",
+        new String[] {"stock_id"},
+        new String[] {
+          "AAPL,", "AAPL,", "AAPL,", "AAPL,", "AAPL,",
+          "TESL,", "TESL,", "TESL,", "TESL,", "TESL,"
+        },
+        DATABASE_NAME);
 
     // CAPACITY with SIZE=3, SLIDE=2 (overlapping windows, different params)
     expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
@@ -587,6 +607,8 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertTimeWindowOrdering(
+        "TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 10m)", expectedHeader, retArray);
 
     // TUMBLE (10m) + origin
     expectedHeader = new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
@@ -653,6 +675,10 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertTimeWindowOrdering(
+        "CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m)",
+        expectedHeader,
+        retArray);
 
     expectedHeader = new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
     retArray =
@@ -1593,6 +1619,57 @@ public class IoTDBWindowTVFIT {
         "SELECT * FROM XCORR(DATA => (select time, device_id, int_val, long_val, float_val from multi_type) PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
         "701: XCorr requires exactly two calculation columns, but found 3.",
         DATABASE_NAME);
+  }
+
+  private static void assertTimeWindowOrdering(
+      String function, String[] expectedHeader, String[] expectedRows) {
+    // A row can belong to several windows. Device/time no longer uniquely identifies a TVF row,
+    // so the descending window keys must still be sorted, even after all TAGs and TIME.
+    assertSortedRows(
+        "SELECT * FROM "
+            + function
+            + " ORDER BY stock_id, time, window_start DESC, window_end DESC",
+        expectedHeader,
+        expectedRows,
+        Comparator.comparing((String[] row) -> row[3])
+            .thenComparing(row -> Instant.parse(row[2]))
+            .thenComparing(row -> Instant.parse(row[0]), Comparator.reverseOrder())
+            .thenComparing(row -> Instant.parse(row[1]), Comparator.reverseOrder()));
+    assertSortedRows(
+        "SELECT * FROM "
+            + function
+            + " ORDER BY window_start DESC, stock_id, time DESC, window_end DESC",
+        expectedHeader,
+        expectedRows,
+        Comparator.comparing((String[] row) -> Instant.parse(row[0]), Comparator.reverseOrder())
+            .thenComparing(row -> row[3])
+            .thenComparing(row -> Instant.parse(row[2]), Comparator.reverseOrder())
+            .thenComparing(row -> Instant.parse(row[1]), Comparator.reverseOrder()));
+
+    // Project away generated columns to exercise elimination for a descending pass-through order.
+    String[] passThroughRows =
+        Arrays.stream(expectedRows)
+            .map(row -> row.split(","))
+            .map(row -> row[3] + "," + row[2] + "," + row[4] + "," + row[5] + ",")
+            .toArray(String[]::new);
+    assertSortedRows(
+        "SELECT stock_id, time, price, s1 FROM " + function + " ORDER BY stock_id DESC, time DESC",
+        new String[] {"stock_id", "time", "price", "s1"},
+        passThroughRows,
+        Comparator.comparing((String[] row) -> row[0])
+            .thenComparing(row -> Instant.parse(row[1]))
+            .reversed());
+  }
+
+  private static void assertSortedRows(
+      String sql, String[] header, String[] rows, Comparator<String[]> comparator) {
+    String[] sortedRows =
+        Arrays.stream(rows)
+            .map(row -> row.split(","))
+            .sorted(comparator)
+            .map(row -> String.join(",", row) + ",")
+            .toArray(String[]::new);
+    tableResultSetEqualTest(sql, header, sortedRows, DATABASE_NAME);
   }
 
   private static void tableResultSetEqualWithTolerance(

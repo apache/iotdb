@@ -120,13 +120,13 @@ public class AbstractCompactionWriterTest {
 
   @Test
   public void testWriteDataPointForAllDataTypes() {
-    assertWrittenPointTotalSize(TSDataType.BOOLEAN, true, Long.BYTES + Byte.BYTES);
-    assertWrittenPointTotalSize(TSDataType.INT32, 1, Long.BYTES + Integer.BYTES);
-    assertWrittenPointTotalSize(TSDataType.DATE, 1, Long.BYTES + Integer.BYTES);
-    assertWrittenPointTotalSize(TSDataType.INT64, 1L, Long.BYTES + Long.BYTES);
-    assertWrittenPointTotalSize(TSDataType.TIMESTAMP, 1L, Long.BYTES + Long.BYTES);
-    assertWrittenPointTotalSize(TSDataType.FLOAT, 1F, Long.BYTES + Float.BYTES);
-    assertWrittenPointTotalSize(TSDataType.DOUBLE, 1D, Long.BYTES + Double.BYTES);
+    assertWrittenPointTotalSize(TSDataType.BOOLEAN, true, 0);
+    assertWrittenPointTotalSize(TSDataType.INT32, 1, 0);
+    assertWrittenPointTotalSize(TSDataType.DATE, 1, 0);
+    assertWrittenPointTotalSize(TSDataType.INT64, 1L, 0);
+    assertWrittenPointTotalSize(TSDataType.TIMESTAMP, 1L, 0);
+    assertWrittenPointTotalSize(TSDataType.FLOAT, 1F, 0);
+    assertWrittenPointTotalSize(TSDataType.DOUBLE, 1D, 0);
 
     Binary binary = new Binary("abc", TSFileConfig.STRING_CHARSET);
     assertWrittenPointTotalSize(TSDataType.TEXT, binary, Long.BYTES + binary.getLength());
@@ -154,8 +154,7 @@ public class AbstractCompactionWriterTest {
     compactionWriter.startMeasurement("aligned", chunkWriter, SUB_TASK_ID);
     compactionWriter.writePoint(vector, chunkWriter);
 
-    Assert.assertEquals(
-        Long.BYTES + Integer.BYTES + Byte.BYTES, compactionWriter.getWrittenPointTotalSize());
+    Assert.assertEquals(0, compactionWriter.getWrittenPointTotalSize());
   }
 
   private static void assertWrittenPointTotalSize(

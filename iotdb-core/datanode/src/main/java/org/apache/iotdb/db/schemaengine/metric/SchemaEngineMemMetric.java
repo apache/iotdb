@@ -101,12 +101,14 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         SCHEMA_CONSENSUS);
+    // A table binds its metrics only when its first device is added, so bind the existing ones here
+    engineStatistics.getTable2DevicesNumMap().keySet().forEach(this::bindTableMetrics);
   }
 
   @Override
   public void bindTableMetrics(final String tableName) {
     metricService.createAutoGauge(
-        Metric.SCHEMA_ENGINE.toString(),
+        Metric.SCHEMA_ENGINE_TABLE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         statistics -> statistics.getTableDeviceNumber(tableName),
@@ -138,13 +140,14 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_ENGINE_MODE);
     metricService.remove(
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_CONSENSUS);
+    engineStatistics.getTable2DevicesNumMap().keySet().forEach(this::unbindTableMetrics);
   }
 
   @Override
   public void unbindTableMetrics(final String tableName) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.SCHEMA_ENGINE.toString(),
+        Metric.SCHEMA_ENGINE_TABLE.toString(),
         Tag.NAME.toString(),
         TABLE_DEVICE_NUMBER,
         TABLE,

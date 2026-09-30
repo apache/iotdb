@@ -133,12 +133,14 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
             regionTagValue,
             Tag.DATABASE.toString(),
             database);
+    // A table binds its metrics only when its first device is added, so bind the existing ones here
+    regionStatistics.getTable2DevicesNumMap().keySet().forEach(this::bindTableMetrics);
   }
 
   @Override
   public void bindTableMetrics(final String tableName) {
     metricService.createAutoGauge(
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_REGION_TABLE.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
         statistics -> statistics.getTableDevicesNumber(tableName),
@@ -218,13 +220,14 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         regionTagValue,
         Tag.DATABASE.toString(),
         database);
+    regionStatistics.getTable2DevicesNumMap().keySet().forEach(this::unbindTableMetrics);
   }
 
   @Override
   public void unbindTableMetrics(final String tableName) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_REGION_TABLE.toString(),
         Tag.NAME.toString(),
         TABLE_DEVICE_NUMBER,
         Tag.REGION.toString(),

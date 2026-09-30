@@ -50,7 +50,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::createMetrics);
   }
@@ -70,11 +70,11 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::deregister);
-    if (!listeningQueueMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the queues registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final Integer schemaRegionId) {
@@ -91,7 +91,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(
+  public synchronized void register(
       final SchemaRegionListeningQueue schemaRegionListeningQueue, final Integer schemaRegionId) {
     listeningQueueMap.putIfAbsent(schemaRegionId, schemaRegionListeningQueue);
     if (Objects.nonNull(metricService)) {
@@ -99,7 +99,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final Integer schemaRegionId) {
+  public synchronized void deregister(final Integer schemaRegionId) {
     if (!listeningQueueMap.containsKey(schemaRegionId)) {
       LOGGER.warn(
           DataNodePipeMessages.FAILED_TO_DEREGISTER_SCHEMA_REGION_LISTENER_METRICS, schemaRegionId);

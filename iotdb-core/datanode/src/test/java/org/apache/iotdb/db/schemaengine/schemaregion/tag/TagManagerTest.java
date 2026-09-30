@@ -26,6 +26,9 @@ import org.apache.iotdb.db.schemaengine.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -222,6 +225,24 @@ public class TagManagerTest {
     Assert.assertEquals(Arrays.asList(first, second), result);
     Mockito.verify(valueMap).get("target");
     Mockito.verify(valueMap, Mockito.never()).entrySet();
+  }
+
+  @Test
+  public void preDeletedMeasurementIsSkippedByIndexReader() throws Exception {
+    initTagManager();
+    final IMeasurementMNode<?> node = newMeasurementMNode("s0");
+    node.setPreDeleted(true);
+    tagManager.addIndex("key", "value", node);
+
+    final IShowTimeSeriesPlan plan = Mockito.mock(IShowTimeSeriesPlan.class);
+    Mockito.when(plan.getSchemaFilter()).thenReturn(new TagFilter("key", "value", false));
+    Mockito.when(plan.getPath()).thenReturn(new PartialPath("s0"));
+
+    final ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        tagManager.getTimeSeriesReaderWithIndex(plan);
+    Assert.assertFalse(reader.hasNext());
+    Assert.assertTrue(reader.isSuccess());
+    reader.close();
   }
 
   private void initTagManager() throws Exception {

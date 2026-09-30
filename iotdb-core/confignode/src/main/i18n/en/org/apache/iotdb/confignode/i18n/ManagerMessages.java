@@ -204,14 +204,6 @@ public final class ManagerMessages {
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "Failed to sync topic meta. Result status: {}.";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
-      "Failed to unbind from pipe config region connector metrics, connector map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
-      "Failed to unbind from pipe config region extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP =
-      "Failed to unbind from pipe remaining time metrics, RemainingTimeOperator map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP =
-      "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty";
   public static final String FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST =
       "Failed to update pipe procedure timer, PipeProcedure({}) does not exist";
   public static final String FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE =

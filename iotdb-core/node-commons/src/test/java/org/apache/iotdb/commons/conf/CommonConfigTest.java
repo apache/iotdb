@@ -43,6 +43,14 @@ public class CommonConfigTest {
   }
 
   @Test
+  public void testConsensusSubscriptionCatchUpBatchDefaults() {
+    final CommonConfig config = new CommonConfig();
+
+    Assert.assertEquals(512, config.getSubscriptionConsensusBatchMaxTabletCount());
+    Assert.assertEquals(1024, config.getSubscriptionConsensusBatchMaxWalEntries());
+  }
+
+  @Test
   public void testSameNodeStatusDoesNotClearStatusReason() {
     CommonConfig config = new CommonConfig();
     config.setNodeStatus(NodeStatus.ReadOnly);

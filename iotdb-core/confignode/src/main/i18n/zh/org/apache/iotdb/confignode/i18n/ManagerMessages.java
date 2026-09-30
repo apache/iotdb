@@ -202,14 +202,6 @@ public final class ManagerMessages {
       "将模板 {} 的扩展信息同步到 DataNode {} 失败";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "同步 topic 元数据失败。结果状态：{}。";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
-      "从 pipe config region connector 指标解绑失败，connector map 不为空";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
-      "从 pipe config region extractor 指标解绑失败，extractor map 不为空";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP =
-      "从 pipe remaining time 指标解绑失败，RemainingTimeOperator map 不为空";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP =
-      "从 pipe temporary meta 指标解绑失败，PipeTemporaryMeta map 不为空";
   public static final String FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST =
       "更新 pipe procedure timer 失败，PipeProcedure({}) 不存在";
   public static final String FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE =

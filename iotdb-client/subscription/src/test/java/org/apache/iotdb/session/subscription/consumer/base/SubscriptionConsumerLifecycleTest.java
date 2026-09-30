@@ -283,6 +283,47 @@ public class SubscriptionConsumerLifecycleTest {
   }
 
   @Test
+  public void testClosedAsyncCommitCompletesExceptionally() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    try {
+      consumer.open();
+      consumer.close();
+
+      final CountDownLatch callbackCompleted = new CountDownLatch(1);
+      final AtomicReference<Throwable> callbackFailure = new AtomicReference<>();
+      consumer.commitAsync(
+          Collections.emptyList(),
+          new AsyncCommitCallback() {
+            @Override
+            public void onComplete() {
+              callbackCompleted.countDown();
+            }
+
+            @Override
+            public void onFailure(final Throwable e) {
+              callbackFailure.set(e);
+              callbackCompleted.countDown();
+            }
+          });
+
+      Assert.assertTrue(callbackCompleted.await(5, TimeUnit.SECONDS));
+      Assert.assertTrue(callbackFailure.get() instanceof SubscriptionException);
+
+      final CompletableFuture<Void> future = consumer.commitAsync(Collections.emptyList());
+      try {
+        future.get(5, TimeUnit.SECONDS);
+        Assert.fail("An async commit on a closed consumer must fail");
+      } catch (final ExecutionException expected) {
+        Assert.assertTrue(expected.getCause() instanceof SubscriptionException);
+      }
+
+      Assert.assertEquals(0, consumer.commitRequestCount);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
   public void testSyncCommitClearsAcceptedContextsFromAutoCommitBuffer() throws Exception {
     final TestPullConsumer consumer = new TestPullConsumer(true);
     final SubscriptionCommitContext commitContext =

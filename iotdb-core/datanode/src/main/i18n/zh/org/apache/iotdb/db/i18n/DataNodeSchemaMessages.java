@@ -42,6 +42,9 @@ public final class DataNodeSchemaMessages {
   public static final String PEER_IS_SHUTTING_DOWN = "节点正在关闭中。";
   public static final String SCHEMA_REGION_DUPLICATED =
       "SchemaRegion [%s] 在 [%s] 和 [%s] 之间重复，前者已被恢复。";
+  public static final String
+      EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05 =
+          "无法恢复重复的 SchemaRegion [%s]，其同时存在于数据库 [%s] 和 [%s] 中。";
 
   // ======================== MemSchemaEngineStatistics 相关消息 ========================
 
@@ -578,6 +581,8 @@ public final class DataNodeSchemaMessages {
       "尝试获取信号量以从 ConfigNode 获取表时被中断，已忽略。";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL = "获取表 {}.{} 信息, {}";
   public static final String UPDATE_TABLE_BY_FETCH = "通过表拉取更新表 {}.{}";
+  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
+      "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
   public static final String COMPARE_TABLE_ADDED = "新增表：";
   public static final String COMPARE_TABLE_REMOVED = "已移除表：";
   public static final String COMPARE_TABLE_NAME = "表名：";

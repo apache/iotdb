@@ -546,8 +546,6 @@ public final class PipeMessages {
 
   // ===================== PipeEventCommitMetrics =====================
 
-  public static final String FAILED_TO_UNBIND_COMMIT_METRICS =
-      "从 pipe 事件提交指标解绑失败，事件提交器映射不为空";
 
   // ===================== PipePhantomReferenceManager =====================
 
