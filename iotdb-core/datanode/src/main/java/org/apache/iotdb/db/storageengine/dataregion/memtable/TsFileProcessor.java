@@ -113,6 +113,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -155,6 +156,8 @@ public class TsFileProcessor {
 
   /** Writer for restore tsfile and flushing. */
   private RestorableTsFileIOWriter writer;
+
+  private final Map<String, Long> registeredTableSchemaVersions = new ConcurrentHashMap<>();
 
   /** Tsfile resource for index this tsfile. */
   private final TsFileResource tsFileResource;
@@ -2736,11 +2739,16 @@ public class TsFileProcessor {
   }
 
   public void registerToTsFile(
-      String tableName, Function<String, TableSchema> tableSchemaFunction) {
-    getWriter()
-        .getSchema()
-        .getTableSchemaMap()
-        .put(tableName, tableSchemaFunction.apply(tableName));
+      String tableName, long tableCacheVersion, Function<String, TableSchema> tableSchemaFunction) {
+    registeredTableSchemaVersions.compute(
+        tableName,
+        (name, registeredVersion) -> {
+          if (registeredVersion != null && registeredVersion == tableCacheVersion) {
+            return registeredVersion;
+          }
+          getWriter().getSchema().getTableSchemaMap().put(name, tableSchemaFunction.apply(name));
+          return tableCacheVersion;
+        });
   }
 
   public void writeLock() {
