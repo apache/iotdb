@@ -73,8 +73,8 @@ public class IoTDBDeletionTableClusterIT {
   }
 
   /**
-   * deleting time=2 from three flushed devices must leave exactly (1,d1,1) and (3,d3,3),
-   * through every DataNode coordinator, both before and after another flush.
+   * deleting time=2 from three flushed devices must leave exactly (1,d1,1) and (3,d3,3), through
+   * every DataNode coordinator, both before and after another flush.
    */
   @Test
   public void testDeleteByTimeAfterFlush() throws SQLException {
@@ -82,8 +82,8 @@ public class IoTDBDeletionTableClusterIT {
   }
 
   /**
-   * an unconditional DELETE must remove all three flushed rows through every DataNode
-   * coordinator, and another flush must not make the deleted data visible again.
+   * an unconditional DELETE must remove all three flushed rows through every DataNode coordinator,
+   * and another flush must not make the deleted data visible again.
    */
   @Test
   public void testDeleteAllAfterFlush() throws SQLException {
