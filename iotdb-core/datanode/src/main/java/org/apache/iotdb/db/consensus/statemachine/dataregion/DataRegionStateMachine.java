@@ -224,17 +224,23 @@ public class DataRegionStateMachine extends BaseStateMachine {
               "write operation still failed after {} retry times, because {}.",
               MAX_WRITE_RETRY_TIMES,
               result.getCode());
+          break;
         }
         try {
-          Thread.sleep(WRITE_RETRY_WAIT_TIME_IN_MS);
+          waitBeforeNextWriteRetry();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
+          break;
         }
       } else {
         break;
       }
     }
     return result;
+  }
+
+  protected void waitBeforeNextWriteRetry() throws InterruptedException {
+    Thread.sleep(WRITE_RETRY_WAIT_TIME_IN_MS);
   }
 
   @Override
