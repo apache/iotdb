@@ -1861,9 +1861,14 @@ public class ConsensusPrefetchingQueue {
       final int maxTablets,
       final long maxBatchBytes) {
     pendingWalGapRetryRequested = false;
-    resetSubscriptionWALPosition(fromIndex);
     if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
       return MaterializationResult.STALE;
+    }
+    // Rebuilding the iterator for every bounded gap round rereads the retained WAL prefix to
+    // reach fromIndex. Keep its current position; advanceTo skips whole files only when their
+    // writer progress is already covered, and otherwise replays them sequentially.
+    if (Objects.nonNull(subscriptionWALIterator)) {
+      subscriptionWALIterator.advanceTo(fromIndex, this::isWriterProgressCoveredForWalFastForward);
     }
     // A pending-queue jump can span millions of WAL entries when real-time delivery has overflowed.
     // Keep gap recovery within the normal per-round budget so sparse topic filtering cannot hold
