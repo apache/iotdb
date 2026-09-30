@@ -3810,10 +3810,10 @@ public class ConsensusPrefetchingQueue {
             ConsensusSubscriptionWalRetention.generateRetentionId(
                 consumerGroupId, topicName, consensusGroupId),
             retentionPolicy,
-            () ->
-                ConsensusSubscriptionWalRetention.computeCommittedRetainedMinVersionId(
-                    consensusReqReader,
-                    consensusGroupId,
+            ConsensusSubscriptionWalRetention.createCommittedRetainedMinVersionIdSupplier(
+                consensusGroupId,
+                () -> consensusReqReader,
+                () ->
                     commitManager.getCommittedRegionProgress(
                         consumerGroupId, topicName, consensusGroupId)));
       } else {

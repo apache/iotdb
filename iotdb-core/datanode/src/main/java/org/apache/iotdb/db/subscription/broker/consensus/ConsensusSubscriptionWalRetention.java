@@ -27,10 +27,15 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 final class ConsensusSubscriptionWalRetention {
 
@@ -41,42 +46,94 @@ final class ConsensusSubscriptionWalRetention {
     return consumerGroupId + "\u0000" + topicName + "\u0000" + regionId;
   }
 
-  static long computeCommittedRetainedMinVersionId(
-      final ConsensusReqReader consensusReqReader,
-      final ConsensusGroupId consensusGroupId,
-      final RegionProgress committedRegionProgress) {
-    if (!(consensusReqReader instanceof WALNode)) {
-      return 0L;
+  static boolean isProgressMonotonic(
+      final RegionProgress previousProgress, final RegionProgress currentProgress) {
+    if (Objects.isNull(previousProgress)) {
+      return true;
+    }
+    if (Objects.isNull(currentProgress)) {
+      return false;
+    }
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        previousProgress.getWriterPositions().entrySet()) {
+      final WriterProgress previous = entry.getValue();
+      final WriterProgress current = currentProgress.getWriterPositions().get(entry.getKey());
+      if (Objects.isNull(current)
+          || current.getPhysicalTime() < previous.getPhysicalTime()
+          || (current.getPhysicalTime() == previous.getPhysicalTime()
+              && current.getLocalSeq() < previous.getLocalSeq())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static final class RetainedWalVersionCalculator {
+
+    private final ConsensusGroupId consensusGroupId;
+    private ConsensusReqReader lastConsensusReqReader;
+    private RegionProgress lastCommittedRegionProgress;
+    private long lastCoveredWalVersionId = -1L;
+
+    private RetainedWalVersionCalculator(final ConsensusGroupId consensusGroupId) {
+      this.consensusGroupId = consensusGroupId;
     }
 
-    final WALNode walNode = (WALNode) consensusReqReader;
-    final long currentWalVersion = walNode.getCurrentWALFileVersion();
-    final File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
-    if (Objects.isNull(walFiles) || walFiles.length == 0) {
-      return Math.max(0L, currentWalVersion);
-    }
+    private synchronized long compute(
+        final ConsensusReqReader consensusReqReader, final RegionProgress committedRegionProgress) {
+      if (lastConsensusReqReader != consensusReqReader
+          || !isProgressMonotonic(lastCommittedRegionProgress, committedRegionProgress)) {
+        lastCoveredWalVersionId = -1L;
+      }
+      lastConsensusReqReader = consensusReqReader;
+      lastCommittedRegionProgress = committedRegionProgress;
+      if (!(consensusReqReader instanceof WALNode)) {
+        return 0L;
+      }
 
-    WALFileUtils.ascSortByVersionId(walFiles);
-    for (final File walFile : walFiles) {
-      final long versionId = WALFileUtils.parseVersionId(walFile.getName());
-      if (versionId >= currentWalVersion) {
+      final WALNode walNode = (WALNode) consensusReqReader;
+      final long currentWalVersion = walNode.getCurrentWALFileVersion();
+      if (currentWalVersion <= lastCoveredWalVersionId) {
+        lastCoveredWalVersionId = -1L;
+      }
+      final File[] walFiles = walNode.getSortedWalFilesSnapshot();
+      if (Objects.isNull(walFiles) || walFiles.length == 0) {
         return Math.max(0L, currentWalVersion);
       }
-      if (ProgressWALIterator.isHeaderOnlyWalFile(walFile)) {
-        continue;
-      }
 
-      try (final ProgressWALReader reader = new ProgressWALReader(walFile)) {
-        if (!ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata(
-                consensusGroupId.toString(), reader.getMetaData())
-            .isCoveredBy(committedRegionProgress)) {
+      for (final File walFile : walFiles) {
+        final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+        if (versionId >= currentWalVersion) {
+          return Math.max(0L, currentWalVersion);
+        }
+        if (versionId <= lastCoveredWalVersionId
+            || ProgressWALIterator.isHeaderOnlyWalFile(walFile)) {
+          continue;
+        }
+
+        try (final ProgressWALReader reader = new ProgressWALReader(walFile)) {
+          if (!ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata(
+                  consensusGroupId.toString(), reader.getMetaData())
+              .isCoveredBy(committedRegionProgress)) {
+            return versionId;
+          }
+          lastCoveredWalVersionId = versionId;
+        } catch (final IOException e) {
           return versionId;
         }
-      } catch (final IOException e) {
-        return versionId;
       }
+      return Math.max(0L, currentWalVersion);
     }
-    return Math.max(0L, currentWalVersion);
+  }
+
+  static LongSupplier createCommittedRetainedMinVersionIdSupplier(
+      final ConsensusGroupId consensusGroupId,
+      final Supplier<ConsensusReqReader> consensusReqReaderSupplier,
+      final Supplier<RegionProgress> committedRegionProgressSupplier) {
+    final RetainedWalVersionCalculator calculator =
+        new RetainedWalVersionCalculator(consensusGroupId);
+    return () ->
+        calculator.compute(consensusReqReaderSupplier.get(), committedRegionProgressSupplier.get());
   }
 
   static void registerDetached(
@@ -89,11 +146,10 @@ final class ConsensusSubscriptionWalRetention {
     serverImpl.registerDetachedSubscriptionRetention(
         generateRetentionId(consumerGroupId, topicName, regionId),
         retentionPolicy,
-        () ->
-            computeCommittedRetainedMinVersionId(
-                serverImpl.getConsensusReqReader(),
-                regionId,
-                commitManager.getCommittedRegionProgress(consumerGroupId, topicName, regionId)));
+        createCommittedRetainedMinVersionIdSupplier(
+            regionId,
+            serverImpl::getConsensusReqReader,
+            () -> commitManager.getCommittedRegionProgress(consumerGroupId, topicName, regionId)));
   }
 
   static void unregisterDetached(

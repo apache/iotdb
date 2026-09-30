@@ -174,6 +174,12 @@ public class WALNode implements IWALNode {
     }
   }
 
+  /** Returns a sorted snapshot that callers can use without modifying the WAL file list cache. */
+  public File[] getSortedWalFilesSnapshot() {
+    final File[] walFiles = getSortedWalFiles();
+    return walFiles == null ? null : Arrays.copyOf(walFiles, walFiles.length);
+  }
+
   private File[] listAndSortWalFiles() {
     final File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
     if (walFiles != null) {

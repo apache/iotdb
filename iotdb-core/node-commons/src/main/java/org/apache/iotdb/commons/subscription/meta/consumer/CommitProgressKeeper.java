@@ -119,15 +119,15 @@ public class CommitProgressKeeper {
   public synchronized void removeConsumerGroupProgress(final String consumerGroupId) {
     final String versionedConsumerGroupKeyPrefix =
         VERSIONED_KEY_PREFIX + encodeKeyComponent(consumerGroupId) + KEY_COMPONENT_SEPARATOR;
-    final String legacyConsumerGroupKeyPrefix = String.valueOf(consumerGroupId) + KEY_SEPARATOR;
-    final boolean legacyConsumerGroupKeyIsUnambiguous =
-        !String.valueOf(consumerGroupId).contains(KEY_SEPARATOR);
+    final String consumerGroupString = String.valueOf(consumerGroupId);
+    final String legacyConsumerGroupKeyPrefix =
+        consumerGroupString.contains(KEY_SEPARATOR) ? null : consumerGroupString + KEY_SEPARATOR;
     regionProgressMap
         .keySet()
         .removeIf(
             key ->
                 key.startsWith(versionedConsumerGroupKeyPrefix)
-                    || (legacyConsumerGroupKeyIsUnambiguous
+                    || (legacyConsumerGroupKeyPrefix != null
                         && key.startsWith(legacyConsumerGroupKeyPrefix)));
   }
 

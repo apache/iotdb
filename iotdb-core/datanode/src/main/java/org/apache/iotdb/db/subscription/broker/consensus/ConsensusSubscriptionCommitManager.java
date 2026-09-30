@@ -67,6 +67,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -724,7 +725,7 @@ public class ConsensusSubscriptionCommitManager {
 
   public void removeAllStatesForConsumerGroup(final String consumerGroupId) {
     recoverAllTopicStatesIfNeeded();
-    final Set<String> topicNames = new java.util.HashSet<>();
+    final Set<String> topicNames = new HashSet<>();
     for (final CommitStateKey stateKey : commitStateKeys.values()) {
       if (Objects.equals(stateKey.consumerGroupId, consumerGroupId)) {
         topicNames.add(stateKey.topicName);
