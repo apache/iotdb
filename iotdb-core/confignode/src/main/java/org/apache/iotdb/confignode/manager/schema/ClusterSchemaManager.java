@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -1540,13 +1541,26 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
+  public Optional<TsTable> getTableWithUsingStatusIfExists(
+      final String database, final String tableName) throws MetadataException {
+    final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
+        getTableAndStatusIfExists(database, tableName);
+    if (tableAndStatus.isEmpty()) {
+      return Optional.empty();
+    }
+    if (TableNodeStatus.PRE_DELETE == tableAndStatus.get().getRight()) {
+      throw new TableInDeletionException(database, tableName);
+    }
+    return Optional.of(tableAndStatus.get().getLeft());
+  }
+
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1601,7 +1615,7 @@ public class ClusterSchemaManager {
       final TSDataType dataType,
       final boolean isGeneratedByPipe)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1638,7 +1652,7 @@ public class ClusterSchemaManager {
       final String newName,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1691,7 +1705,7 @@ public class ClusterSchemaManager {
       final String newName,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1776,7 +1790,7 @@ public class ClusterSchemaManager {
       final Map<String, String> updatedProperties,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
