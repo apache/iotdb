@@ -244,7 +244,8 @@ public class TagManager {
     return tagValueMap != null && tagValueMap.containsKey(tagValue);
   }
 
-  private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(TagFilter tagFilter) {
+  List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(
+      final TagFilter tagFilter, final PartialPath pathPattern, final boolean isPrefixMatch) {
     Map<String, Set<IMeasurementMNode<?>>> value2Node = tagIndex.get(tagFilter.getKey());
     if (value2Node == null || value2Node.isEmpty()) {
       return Collections.emptyList();
@@ -262,19 +263,20 @@ public class TagManager {
         }
       }
     } else {
-      for (Map.Entry<String, Set<IMeasurementMNode<?>>> entry : value2Node.entrySet()) {
-        if (entry.getKey() == null || entry.getValue() == null) {
-          continue;
-        }
-        String tagValue = entry.getKey();
-        if (tagFilter.getValue().equals(tagValue)) {
-          allMatchedNodes.addAll(entry.getValue());
-        }
+      final Set<IMeasurementMNode<?>> matchedNodes = value2Node.get(tagFilter.getValue());
+      if (matchedNodes != null) {
+        allMatchedNodes.addAll(matchedNodes);
       }
     }
-    // we just sort them by the alphabetical order
+
+    // Filter by path before sorting to avoid sorting irrelevant measurements.
     allMatchedNodes =
         allMatchedNodes.stream()
+            .filter(
+                node ->
+                    isPrefixMatch
+                        ? pathPattern.prefixMatchFullPath(node.getPartialPath())
+                        : pathPattern.matchFullPath(node.getPartialPath()))
             .sorted(Comparator.comparing(IMNode::getFullPath))
             .collect(toList());
 
@@ -287,11 +289,13 @@ public class TagManager {
     SchemaFilter schemaFilter = plan.getSchemaFilter();
     // currently, only one TagFilter is supported
     // all IMeasurementMNode in allMatchedNodes satisfied TagFilter
+    PartialPath pathPattern = plan.getPath();
     Iterator<IMeasurementMNode<?>> allMatchedNodes =
         getMatchedTimeseriesInIndex(
-                (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0))
+                (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0),
+                pathPattern,
+                plan.isPrefixMatch())
             .iterator();
-    PartialPath pathPattern = plan.getPath();
     SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
         new SchemaIterator<ITimeSeriesSchemaInfo>() {
           private ITimeSeriesSchemaInfo nextMatched;
@@ -323,21 +327,17 @@ public class TagManager {
             nextMatched = null;
             while (allMatchedNodes.hasNext()) {
               IMeasurementMNode<?> node = allMatchedNodes.next();
-              if (plan.isPrefixMatch()
-                  ? pathPattern.prefixMatchFullPath(node.getPartialPath())
-                  : pathPattern.matchFullPath(node.getPartialPath())) {
-                Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-                    readTagFile(node.getOffset());
-                nextMatched =
-                    new ShowTimeSeriesResult(
-                        node.getFullPath(),
-                        node.getAlias(),
-                        node.getSchema(),
-                        tagAndAttributePair.left,
-                        tagAndAttributePair.right,
-                        node.getParent().getAsDeviceMNode().isAligned());
-                break;
-              }
+              Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+                  readTagFile(node.getOffset());
+              nextMatched =
+                  new ShowTimeSeriesResult(
+                      node.getFullPath(),
+                      node.getAlias(),
+                      node.getSchema(),
+                      tagAndAttributePair.left,
+                      tagAndAttributePair.right,
+                      node.getParent().getAsDeviceMNode().isAligned());
+              break;
             }
           }
 
