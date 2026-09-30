@@ -1276,7 +1276,8 @@ public class PartitionManager {
     final GetRegionGroupsByTimePlan plan =
         new GetRegionGroupsByTimePlan(req.getDatabase(), req.getStartTime(), req.getEndTime());
     try {
-      return (GetRegionGroupsByTimeResp) getConsensusManager().read(plan);
+      return ((GetRegionGroupsByTimeResp) getConsensusManager().read(plan))
+          .reorderByLeader(getLoadManager().getRegionLeaderMap());
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
