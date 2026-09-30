@@ -3398,6 +3398,36 @@ public class ConsensusPrefetchingQueue {
     return Math.min(getCommittedRetainedMinVersionId(), getReplayRetainedMinVersionId());
   }
 
+  private static boolean isProgressAtLeast(
+      final RegionProgress progress, final RegionProgress previousProgress) {
+    if (Objects.isNull(progress) || Objects.isNull(previousProgress)) {
+      return false;
+    }
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        previousProgress.getWriterPositions().entrySet()) {
+      final WriterProgress writerProgress = progress.getWriterPositions().get(entry.getKey());
+      if (Objects.isNull(writerProgress)
+          || compareWriterProgress(writerProgress, entry.getValue()) < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean canReuseCommittedWalRetentionBound(final RegionProgress committedRegionProgress) {
+    if (!isProgressAtLeast(committedRegionProgress, lastCommittedProgressForRetention)
+        || Objects.isNull(lastRetainedWalFileForRetention)
+        || !lastRetainedWalFileForRetention.exists()
+        || WALFileUtils.parseVersionId(lastRetainedWalFileForRetention.getName())
+            != committedRetainedMinVersionId) {
+      return false;
+    }
+
+    final WalFileCommitRequirement requirement =
+        walFileCommitRequirements.get(committedRetainedMinVersionId);
+    return Objects.nonNull(requirement) && !requirement.isCoveredBy(committedRegionProgress);
+  }
+
   private long getCommittedRetainedMinVersionId() {
     refreshCommittedWalRetentionBound();
     return committedRetainedMinVersionId;
@@ -3437,6 +3467,13 @@ public class ConsensusPrefetchingQueue {
       if (Objects.equals(lastCommittedProgressForRetention, committedRegionProgress)
           && Objects.nonNull(lastRetainedWalFileForRetention)
           && lastRetainedWalFileForRetention.exists()) {
+        return false;
+      }
+
+      // The previous boundary file remains the first uncommitted file while its cached
+      // requirement is still uncovered by monotonically advancing committed progress.
+      if (canReuseCommittedWalRetentionBound(committedRegionProgress)) {
+        lastCommittedProgressForRetention = committedRegionProgress;
         return false;
       }
 
