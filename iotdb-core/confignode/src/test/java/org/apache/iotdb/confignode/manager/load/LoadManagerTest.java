@@ -140,6 +140,39 @@ public class LoadManagerTest {
     LOAD_MANAGER.getEventService().checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     Assert.assertEquals(NodeStatus.Removing, LOAD_CACHE.getNodeStatus(1));
 
+    // An explicit rollback forwards its reason through LoadManager and the change event.
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        LOAD_MANAGER.trySetNodeStatus(1, NodeStatus.ReadOnly, NodeStatus.MANUAL, true).getCode());
+    Assert.assertTrue(NODE_SEMAPHORE.tryAcquire(5, TimeUnit.SECONDS));
+    Assert.assertEquals(NodeStatus.ReadOnly, LOAD_CACHE.getNodeStatus(1));
+    Assert.assertEquals(NodeStatus.MANUAL, LOAD_CACHE.getNodeStatusReason(1));
+    differentNodeStatisticsMap = FAKE_SUBSCRIBER.getDifferentNodeStatisticsMap();
+    Assert.assertEquals(1, differentNodeStatisticsMap.size());
+    Assert.assertEquals(
+        NodeStatus.Removing, differentNodeStatisticsMap.get(1).getLeft().getStatus());
+    Assert.assertEquals(
+        NodeStatus.ReadOnly, differentNodeStatisticsMap.get(1).getRight().getStatus());
+    Assert.assertEquals(
+        NodeStatus.MANUAL, differentNodeStatisticsMap.get(1).getRight().getStatusReason());
+
+    // The overload without a reason clears it and broadcasts the reason-only change.
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        LOAD_MANAGER.trySetNodeStatus(1, NodeStatus.ReadOnly, false).getCode());
+    Assert.assertTrue(NODE_SEMAPHORE.tryAcquire(5, TimeUnit.SECONDS));
+    Assert.assertEquals(NodeStatus.ReadOnly, LOAD_CACHE.getNodeStatus(1));
+    Assert.assertNull(LOAD_CACHE.getNodeStatusReason(1));
+    differentNodeStatisticsMap = FAKE_SUBSCRIBER.getDifferentNodeStatisticsMap();
+    Assert.assertEquals(1, differentNodeStatisticsMap.size());
+    Assert.assertEquals(
+        NodeStatus.ReadOnly, differentNodeStatisticsMap.get(1).getLeft().getStatus());
+    Assert.assertEquals(
+        NodeStatus.MANUAL, differentNodeStatisticsMap.get(1).getLeft().getStatusReason());
+    Assert.assertEquals(
+        NodeStatus.ReadOnly, differentNodeStatisticsMap.get(1).getRight().getStatus());
+    Assert.assertNull(differentNodeStatisticsMap.get(1).getRight().getStatusReason());
+
     // Remove NodeCache
     LOAD_MANAGER.removeNodeCache(1);
     NODE_SEMAPHORE.acquire();
@@ -147,7 +180,7 @@ public class LoadManagerTest {
     // Only DataNode 1 is updated
     Assert.assertEquals(1, differentNodeStatisticsMap.size());
     Assert.assertEquals(
-        new Pair<>(new NodeStatistics(NodeStatus.Removing), null),
+        new Pair<>(new NodeStatistics(NodeStatus.ReadOnly), null),
         differentNodeStatisticsMap.get(1));
   }
 

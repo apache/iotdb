@@ -29,7 +29,9 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
@@ -136,22 +138,8 @@ public class IoTDBNodeStatusPersistenceIT {
   @Test
   public void testRemovingNodeSurvivesLeaderFailure() throws Exception {
     initCluster(3, Integer.MAX_VALUE);
-    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
-        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
-    try (SyncDataNodeInternalServiceClient client =
-        clientManager.borrowClient(
-            new TEndPoint(
-                EnvFactory.getEnv().getDataNodeWrapper(0).getIp(),
-                EnvFactory.getEnv().getDataNodeWrapper(0).getInternalPort()))) {
-      // Use the removal procedure's DataNode RPC. The leader learns Removing through heartbeats.
-      assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.setSystemStatus(NodeStatus.Removing.getStatus()).getCode());
-    } finally {
-      clientManager.close();
-    }
+    // Use the removal procedure's DataNode RPC. The leader learns Removing through heartbeats.
+    setDataNodeSystemStatus(NodeStatus.Removing);
     EnvFactory.getEnv()
         .ensureNodeStatus(
             Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
@@ -168,6 +156,75 @@ public class IoTDBNodeStatusPersistenceIT {
         .ensureNodeStatus(
             Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
             Collections.singletonList(NodeStatus.Removing));
+  }
+
+  @Test
+  public void testReadOnlyReasonRebuiltAfterLeaderFailureAndClearedAfterCrash() throws Exception {
+    initCluster(3, Integer.MAX_VALUE);
+    setDataNodeSystemStatus(NodeStatus.ReadOnly);
+    awaitDataNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+
+    // ReadOnly and its reason belong to the live DataNode and reach the new leader in heartbeats.
+    final int leaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+    EnvFactory.getEnv().getConfigNodeWrapper(leaderIndex).stopForcibly();
+    assertFalse(EnvFactory.getEnv().getConfigNodeWrapper(leaderIndex).isAlive());
+    assertNotEquals(leaderIndex, EnvFactory.getEnv().getLeaderConfigNodeIndex());
+    awaitDataNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+
+    // Without a shutdown report there is no durable Stopped marker. An unreachable ReadOnly
+    // DataNode must become Unknown, with its old reason cleared in both node display RPCs.
+    EnvFactory.getEnv().getDataNodeWrapper(0).stopForcibly();
+    assertFalse(EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
+    awaitDataNodeStatusWithReason(NodeStatus.Unknown, null);
+  }
+
+  private void setDataNodeSystemStatus(NodeStatus status) throws Exception {
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    try (SyncDataNodeInternalServiceClient client =
+        clientManager.borrowClient(
+            new TEndPoint(
+                EnvFactory.getEnv().getDataNodeWrapper(0).getIp(),
+                EnvFactory.getEnv().getDataNodeWrapper(0).getInternalPort()))) {
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.setSystemStatus(status.getStatus()).getCode());
+    } finally {
+      clientManager.close();
+    }
+  }
+
+  private void awaitDataNodeStatusWithReason(NodeStatus expectedStatus, String expectedReason)
+      throws InterruptedException {
+    Throwable lastFailure = null;
+    for (int retry = 0; retry < 60; retry++) {
+      try (SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        final TShowClusterResp cluster = client.showCluster();
+        assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), cluster.getStatus().getCode());
+        final int dataNodeId = cluster.getDataNodeList().get(0).getDataNodeId();
+        assertEquals(expectedStatus.getStatus(), cluster.getNodeStatus().get(dataNodeId));
+        assertEquals(expectedReason, cluster.getNodeStatusReason().get(dataNodeId));
+
+        final TShowDataNodesResp dataNodes = client.showDataNodes();
+        assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataNodes.getStatus().getCode());
+        final TDataNodeInfo dataNode =
+            dataNodes.getDataNodesInfoList().stream()
+                .filter(node -> node.getDataNodeId() == dataNodeId)
+                .findFirst()
+                .orElseThrow(AssertionError::new);
+        assertEquals(expectedStatus.getStatus(), dataNode.getStatus());
+        assertEquals(expectedReason, dataNode.getStatusReason());
+        return;
+      } catch (IOException | ClientManagerException | TException | AssertionError e) {
+        lastFailure = e;
+      }
+      TimeUnit.SECONDS.sleep(1);
+    }
+    throw new AssertionError(
+        "DataNode did not reach " + expectedStatus + " with reason " + expectedReason, lastFailure);
   }
 
   private void initCluster(int configNodeCount, int snapshotThreshold) throws Exception {

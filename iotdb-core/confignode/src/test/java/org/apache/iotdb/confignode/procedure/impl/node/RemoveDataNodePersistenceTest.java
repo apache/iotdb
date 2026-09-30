@@ -133,13 +133,15 @@ public class RemoveDataNodePersistenceTest {
         plan -> failStatusWrite ? failure() : nodeInfo.applyNodeStatusPlan(plan));
     cache.initHeartbeatCache(manager);
     for (TDataNodeLocation node : nodes) {
-      assertSuccess(cache.trySetNodeStatus(node.getDataNodeId(), NodeStatus.Running, true));
+      assertSuccess(cache.trySetNodeStatus(node.getDataNodeId(), NodeStatus.Running, null, true));
     }
     LoadManager loadManager = mock(LoadManager.class);
     when(manager.getLoadManager()).thenReturn(loadManager);
-    when(loadManager.trySetNodeStatus(anyInt(), any(), anyBoolean()))
+    when(loadManager.trySetNodeStatus(anyInt(), any(), any(), anyBoolean()))
         .thenAnswer(
-            i -> cache.trySetNodeStatus(i.getArgument(0), i.getArgument(1), i.getArgument(2)));
+            i ->
+                cache.trySetNodeStatus(
+                    i.getArgument(0), i.getArgument(1), i.getArgument(2), i.getArgument(3)));
     when(loadManager.getNodeStatus(anyInt()))
         .thenAnswer(i -> cache.getNodeStatus(i.getArgument(0)));
     doAnswer(
@@ -224,7 +226,7 @@ public class RemoveDataNodePersistenceTest {
   @Test
   public void testOfflineRemovalAndRetryDoNotRequireRpcSuccess() throws Exception {
     for (NodeStatus offline : Arrays.asList(NodeStatus.Unknown, NodeStatus.Stopped)) {
-      assertSuccess(cache.trySetNodeStatus(FIRST, offline, true));
+      assertSuccess(cache.trySetNodeStatus(FIRST, offline, null, true));
       remoteStatuses.put(FIRST, offline);
       failRpc.put(FIRST, true);
       change(FIRST, NodeStatus.Removing);
@@ -236,7 +238,7 @@ public class RemoveDataNodePersistenceTest {
 
   @Test
   public void testOfflineRemovalStillRequiresPersistence() throws Exception {
-    assertSuccess(cache.trySetNodeStatus(FIRST, NodeStatus.Stopped, true));
+    assertSuccess(cache.trySetNodeStatus(FIRST, NodeStatus.Stopped, null, true));
     failRpc.put(FIRST, true);
     failStatusWrite = true;
     expectChangeFailure(NodeStatus.Removing);
@@ -270,7 +272,8 @@ public class RemoveDataNodePersistenceTest {
     cache.initHeartbeatCache(manager);
     for (TDataNodeConfiguration node : nodeInfo.getRegisteredDataNodes()) {
       assertSuccess(
-          cache.trySetNodeStatus(node.getLocation().getDataNodeId(), NodeStatus.Running, true));
+          cache.trySetNodeStatus(
+              node.getLocation().getDataNodeId(), NodeStatus.Running, null, true));
     }
     when(manager
             .getLoadManager()
@@ -365,6 +368,7 @@ public class RemoveDataNodePersistenceTest {
   @Test
   public void testCompensationRestoresReadOnly() throws Exception {
     assertCompensation(NodeStatus.ReadOnly);
+    assertEquals(NodeStatus.MANUAL, cache.getNodeStatusReason(FIRST));
   }
 
   @Test

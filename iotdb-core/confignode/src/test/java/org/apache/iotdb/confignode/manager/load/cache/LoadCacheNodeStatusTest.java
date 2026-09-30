@@ -104,7 +104,7 @@ public class LoadCacheNodeStatusTest {
       doThrow(new ConsensusException("quorum unavailable"))
           .when(consensusManager)
           .write(any(UpdateNodeStatusPlan.class));
-      TSStatus result = cache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, false);
+      TSStatus result = cache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false);
       assertFailure(result);
       assertEquals("quorum unavailable", result.getMessage());
       assertEquals(NodeStatus.Stopped, cache.getNodeStatus(NODE_ID));
@@ -115,7 +115,7 @@ public class LoadCacheNodeStatusTest {
           .write(any(UpdateNodeStatusPlan.class));
       assertTrue(cache.updateNodeStatistics());
       assertEquals(NodeStatus.Stopped, info.getPersistedNodeStatus(NODE_ID));
-      assertSuccess(cache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, false));
+      assertSuccess(cache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
       verify(consensusManager, times(2))
           .write(new UpdateNodeStatusPlan(NODE_ID, Operation.SET_STOPPED));
     } finally {
@@ -125,34 +125,34 @@ public class LoadCacheNodeStatusTest {
 
   @Test
   public void testOnlyDurableTransitionsWriteConsensus() throws Exception {
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, false));
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
     verify(consensusManager, never()).write(any());
 
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
     assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
     verify(consensusManager, times(1)).write(any());
 
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, true));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, null, true));
     assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(NODE_ID));
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, true));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, true));
     assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
     verify(consensusManager, times(3)).write(any());
   }
 
   @Test
   public void testFailedWriteIsRetriedAndClearIsDurable() throws Exception {
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, false));
     doReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
         .write(any(UpdateNodeStatusPlan.class));
-    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, false));
+    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
     assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
     // A later connection failure must retain the stop and retry its uncommitted record.
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
     verify(consensusManager, times(2))
@@ -162,7 +162,7 @@ public class LoadCacheNodeStatusTest {
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
         .write(any(UpdateNodeStatusPlan.class));
-    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, false));
+    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, false));
     assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
     assertTrue(loadCache.updateNodeStatistics());
@@ -183,10 +183,10 @@ public class LoadCacheNodeStatusTest {
             })
         .when(consensusManager)
         .write(any(UpdateNodeStatusPlan.class));
-    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, false));
+    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
     assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
     assertTrue(loadCache.updateNodeStatistics());
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
@@ -195,19 +195,19 @@ public class LoadCacheNodeStatusTest {
 
   @Test
   public void testOrdinaryUpdatesKeepRemovingWithoutQuorumButRollbackRequiresIt() throws Exception {
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, true));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, null, true));
     clearInvocations(consensusManager);
     doThrow(new ConsensusException("quorum unavailable")).when(consensusManager).write(any());
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, true));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, null, true));
     for (NodeStatus observed :
         new NodeStatus[] {NodeStatus.Unknown, NodeStatus.Stopped, NodeStatus.Running}) {
-      assertSuccess(loadCache.trySetNodeStatus(NODE_ID, observed, false));
+      assertSuccess(loadCache.trySetNodeStatus(NODE_ID, observed, null, false));
       assertEquals(NodeStatus.Removing, loadCache.getNodeStatus(NODE_ID));
     }
     verify(consensusManager, never()).write(any());
-    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, true));
+    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, true));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
-    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, true));
+    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, true));
     assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
     assertFalse(loadCache.updateNodeStatistics());
@@ -226,15 +226,15 @@ public class LoadCacheNodeStatusTest {
 
   @Test
   public void testConnectionFailureKeepsStoppedUntilExplicitReset() throws Exception {
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
     clearInvocations(consensusManager);
 
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, false));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
     verify(consensusManager, never()).write(any());
 
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, true));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, true));
     assertEquals(NodeStatus.Unknown, loadCache.getNodeStatus(NODE_ID));
     assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
     loadCache.updateNodeStatistics();
@@ -247,7 +247,7 @@ public class LoadCacheNodeStatusTest {
 
   @Test
   public void testCommittedClearWithLostResponseIsNotRevertedByStatistics() throws Exception {
-    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, true));
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, null, true));
     clearInvocations(consensusManager);
     doAnswer(
             i -> {
@@ -256,7 +256,7 @@ public class LoadCacheNodeStatusTest {
             })
         .when(consensusManager)
         .write(any(UpdateNodeStatusPlan.class));
-    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, true));
+    assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, true));
     assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
     assertTrue(loadCache.updateNodeStatistics());

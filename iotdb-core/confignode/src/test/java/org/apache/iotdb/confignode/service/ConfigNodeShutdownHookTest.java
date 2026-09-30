@@ -115,8 +115,7 @@ public class ConfigNodeShutdownHookTest {
   @After
   public void tearDown() {
     conf.setSeedConfigNode(previousSeed);
-    commonConf.setNodeStatus(previousStatus);
-    commonConf.setStatusReason(previousReason);
+    commonConf.setNodeStatusWithReason(previousStatus, previousReason);
     commonConf.setCnConnectionTimeoutInMS(previousConnectionTimeout);
   }
 
