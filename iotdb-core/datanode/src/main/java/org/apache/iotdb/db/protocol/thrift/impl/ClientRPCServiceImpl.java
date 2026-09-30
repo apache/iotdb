@@ -2614,6 +2614,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     if (!SESSION_MANAGER.checkLogin(session)) return getNotLoggedInStatus();
     InsertNumericRowStatement statement = null;
+    OperationQuota quota = null;
     try {
       if (req.getSessionId() != session.getId()) return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN);
       statement =
@@ -2624,6 +2625,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   ByteBuffer.wrap(req.getTagValues()),
                   ByteBuffer.wrap(req.getValues()),
                   req.bufferForNullBitmap());
+      quota =
+          DataNodeThrottleQuotaManager.getInstance().checkQuota(session.getUsername(), statement);
       long queryId = SESSION_MANAGER.requestQueryId();
       return COORDINATOR.executeForTableModel(
               statement,
@@ -2635,6 +2638,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               metadata,
               config.getConnectionTimeoutInMS())
           .status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.INSERT_RECORD.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -2642,6 +2647,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (statement != null && statement.isTableSchemaValidationFailed()) {
         // Remove only this session's invalid handle, releasing its reservation exactly once.
         session.removePreparedNumericRow(req.getPreparedId());
+      }
+      if (quota != null) {
+        quota.close();
       }
     }
   }

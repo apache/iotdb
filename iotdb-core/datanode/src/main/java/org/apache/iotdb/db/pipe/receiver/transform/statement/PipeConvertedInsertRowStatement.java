@@ -26,6 +26,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
 import org.apache.tsfile.annotations.TableModel;
@@ -45,6 +47,31 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
       LoggerFactory.getLogger(PipeConvertedInsertRowStatement.class);
 
   public PipeConvertedInsertRowStatement(final InsertRowStatement insertRowStatement) {
+    this((InsertBaseStatement) insertRowStatement);
+    time = insertRowStatement.getTime();
+    values = insertRowStatement.getValues();
+    isNeedInferType = insertRowStatement.isNeedInferType();
+    deviceID = insertRowStatement.getRawTableDeviceID();
+    removeAllFailedMeasurementMarks();
+  }
+
+  public PipeConvertedInsertRowStatement(final InsertNumericRowStatement insertRowStatement) {
+    this((InsertBaseStatement) insertRowStatement);
+    time = insertRowStatement.getTime();
+    // Box only at the Pipe conversion boundary: the receiver may require non-numeric FIELDs.
+    values = new Object[insertRowStatement.getValueCount()];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = insertRowStatement.getFirstValueOfIndex(i);
+    }
+    isNeedInferType = false;
+    // Schema analysis and failed-column recovery must not mutate the original numeric row.
+    columnCategories = columnCategories == null ? null : columnCategories.clone();
+    tagColumnIndices = null;
+    attrColumnIndices = null;
+    removeAllFailedMeasurementMarks();
+  }
+
+  private PipeConvertedInsertRowStatement(final InsertBaseStatement insertRowStatement) {
     super();
     // Statement
     isDebug = insertRowStatement.isDebug();
@@ -59,12 +86,6 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     attrColumnIndices = insertRowStatement.getAttrColumnIndices();
     writeToTable = insertRowStatement.isWriteToTable();
     databaseName = insertRowStatement.getDatabaseName().orElse(null);
-    // InsertRowStatement
-    time = insertRowStatement.getTime();
-    values = insertRowStatement.getValues();
-    isNeedInferType = insertRowStatement.isNeedInferType();
-    deviceID = insertRowStatement.getRawTableDeviceID();
-
     // To ensure that the measurement remains unchanged during the WAL writing process, the array
     // needs to be copied before the failed Measurement mark can be deleted.
     final MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
@@ -87,8 +108,6 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     if (failedMeasurementIndex2Info != null) {
       this.failedMeasurementIndex2Info = new HashMap<>(failedMeasurementIndex2Info);
     }
-
-    removeAllFailedMeasurementMarks();
   }
 
   @Override

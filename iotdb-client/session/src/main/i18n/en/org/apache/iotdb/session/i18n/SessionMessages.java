@@ -296,4 +296,5 @@ public final class SessionMessages {
   public static final String EXCEPTION_PREPARED_NUMERIC_ROW_PREPARE_RETURNED_NO_STATUS_6FF7BC24 = "Prepared numeric row prepare returned no status";
   public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_COUNT_MISMATCH_9ACD3A0C = "Prepared numeric row value count mismatch";
   public static final String EXCEPTION_UNSUPPORTED_NUMERIC_TYPE_06DD3044 = "Unsupported numeric type";
+  public static final String EXCEPTION_TABLE_SESSION_IS_CLOSED_77FE359B = "Table session is closed.";
 }

@@ -72,6 +72,16 @@ public class IoTDBTableModelSessionIT {
 
   @Before
   public void setUp() throws Exception {
+    if (Boolean.getBoolean("iotdb.numeric.row.insert.perf.enabled")
+        && Boolean.getBoolean("iotdb.numeric.row.insert.perf.io.enabled")) {
+      // Isolate per-round storage accounting from compaction of earlier rounds.
+      EnvFactory.getEnv()
+          .getConfig()
+          .getCommonConfig()
+          .setEnableSeqSpaceCompaction(false)
+          .setEnableUnseqSpaceCompaction(false)
+          .setEnableCrossSpaceCompaction(false);
+    }
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -431,10 +441,11 @@ public class IoTDBTableModelSessionIT {
 
   @Test
   public void testPreparedNumericRowAndTabletWritePerformance() throws Exception {
+    // Compare synchronous single-row paths and optionally account for their Linux TCP/storage I/O.
     Assume.assumeTrue(
         "Performance benchmark disabled; set iotdb.numeric.row.insert.perf.enabled=true to run",
         Boolean.getBoolean("iotdb.numeric.row.insert.perf.enabled"));
-    final int concurrency = 16;
+    final int concurrency = Integer.getInteger("iotdb.numeric.row.insert.perf.concurrency", 16);
     // Compare sustained single-row writes after warming all three paths; verify all acknowledged
     // rows.
     final int warmupRounds = 2;
@@ -497,30 +508,21 @@ public class IoTDBTableModelSessionIT {
                   pathRows[0][threadId],
                   numericValues[threadId],
                   tags[threadId]);
-              pathRows[0][threadId]++;
             } catch (Exception e) {
               throw new RuntimeException(e);
             }
           };
-      IntConsumer tabletWrite =
+      IntConsumer tabletPrepare =
           threadId -> {
-            try {
-              Tablet tablet = tablets[threadId];
-              tablet.addTimestamp(0, pathRows[2][threadId]);
-              tablet.addValue("tag", 0, tags[threadId][0]);
-              for (int i = 0; i < fieldCount; i++) {
-                tablet.addValue(names.get(i + 1), 0, 1.0D);
-              }
-              sessions[threadId].insert(tablet);
-              tablet.reset();
-              pathRows[2][threadId]++;
-            } catch (Exception e) {
-              throw new RuntimeException(e);
+            Tablet tablet = tablets[threadId];
+            tablet.addTimestamp(0, pathRows[2][threadId]);
+            tablet.addValue("tag", 0, tags[threadId][0]);
+            for (int i = 0; i < fieldCount; i++) {
+              tablet.addValue(names.get(i + 1), 0, 1.0D);
             }
           };
-      IntConsumer rowWrite =
-          threadId -> {
-            try {
+      IntConsumer rowPrepare =
+          threadId ->
               rows[threadId] =
                   new NumericRow(
                       "row_perf",
@@ -530,51 +532,112 @@ public class IoTDBTableModelSessionIT {
                       categories,
                       numericValues[threadId],
                       tags[threadId]);
-              sessions[threadId].insert(rows[threadId]);
-              pathRows[1][threadId]++;
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-          };
-      IntConsumer[] paths = {preparedWrite, rowWrite, tabletWrite};
+      IntConsumer[] paths = {
+        preparedWrite,
+        threadId -> {
+          try {
+            sessions[threadId].insert(rows[threadId]);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        },
+        threadId -> {
+          try {
+            sessions[threadId].insert(tablets[threadId]);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        }
+      };
+      IntConsumer[] prepareWrites = {null, rowPrepare, tabletPrepare};
+      IntConsumer[] completeWrites = {
+        threadId -> pathRows[0][threadId]++,
+        threadId -> pathRows[1][threadId]++,
+        threadId -> {
+          tablets[threadId].reset();
+          pathRows[2][threadId]++;
+        }
+      };
       String[] pathNames = {"prepared numeric row", "insert NumericRow", "insertTablet batch=1"};
       System.out.printf("configuration: concurrency=%d, tabletBatch=1%n", concurrency);
+      WritePerformanceIoTracker ioTracker = null;
+      if (Boolean.getBoolean("iotdb.numeric.row.insert.perf.io.enabled")) {
+        assertEquals(
+            "I/O measurement requires one local DataNode",
+            1,
+            EnvFactory.getEnv().getDataNodeWrapperList().size());
+        assertEquals(
+            "I/O measurement requires one local ConfigNode",
+            1,
+            EnvFactory.getEnv().getConfigNodeWrapperList().size());
+        ioTracker =
+            new WritePerformanceIoTracker(
+                EnvFactory.getEnv().getDataNodeWrapperList().get(0).getPid(),
+                EnvFactory.getEnv().getConfigNodeWrapperList().get(0).getPid(),
+                EnvFactory.getEnv().getDataNodeWrapperList().get(0).getPort());
+      }
       double[][] rates = new double[paths.length][measuredRounds];
       long[] totalRows = new long[paths.length];
       long[] totalNanos = new long[paths.length];
+      LongSamples[] requestLatencies = new LongSamples[paths.length];
+      for (int path = 0; path < paths.length; path++) {
+        requestLatencies[path] = new LongSamples();
+      }
       for (int round = 0; round < warmupRounds + measuredRounds; round++) {
         boolean warmup = round < warmupRounds;
         int seconds = warmup ? 3 : 5;
         // Rotate all three paths so each occupies every position during measured rounds.
         for (int position = 0; position < paths.length; position++) {
           int path = (round + position) % paths.length;
+          WritePerformanceIoTracker.Snapshot ioBefore =
+              ioTracker == null ? null : ioTracker.beforeRound(sessions[0]);
           WritePerformance result =
-              runConcurrentWrites(executor, concurrency, seconds, paths[path]);
+              runConcurrentWrites(
+                  executor,
+                  concurrency,
+                  seconds,
+                  prepareWrites[path],
+                  paths[path],
+                  completeWrites[path]);
+          if (ioTracker != null) {
+            System.out.printf(
+                "io %s round %d position %d %s: rows=%d, %s%n",
+                warmup ? "warmup" : "measured",
+                warmup ? round + 1 : round - warmupRounds + 1,
+                position + 1,
+                pathNames[path],
+                result.rows(),
+                ioTracker.afterRound(ioBefore, sessions[0]));
+          }
           System.out.printf(
-              "%s round %d position %d %s: %d rows, %.3f s, %.1f rows/s%n",
+              "%s round %d position %d %s: %d rows, %.3f s, %.1f rows/s, API latency %s%n",
               warmup ? "warmup" : "measured",
               warmup ? round + 1 : round - warmupRounds + 1,
               position + 1,
               pathNames[path],
               result.rows(),
               result.nanos() / 1_000_000_000.0,
-              result.rowsPerSecond());
+              result.rowsPerSecond(),
+              summarizeRequestLatencies(result.requestNanos()));
           if (!warmup) {
             rates[path][round - warmupRounds] = result.rowsPerSecond();
             totalRows[path] += result.rows();
             totalNanos[path] += result.nanos();
+            requestLatencies[path].appendAll(result.requestNanos());
           }
         }
       }
       for (int path = 0; path < paths.length; path++) {
         Arrays.sort(rates[path]);
         System.out.printf(
-            "summary %s: median %.1f rows/s, aggregate %.1f rows/s, min %.1f, max %.1f%n",
+            "summary %s: median %.1f rows/s, aggregate %.1f rows/s, min %.1f, max %.1f, "
+                + "measured API latency %s%n",
             pathNames[path],
             (rates[path][measuredRounds / 2 - 1] + rates[path][measuredRounds / 2]) / 2,
             totalRows[path] * 1_000_000_000.0 / totalNanos[path],
             rates[path][0],
-            rates[path][measuredRounds - 1]);
+            rates[path][measuredRounds - 1],
+            summarizeRequestLatencies(requestLatencies[path].toArray()));
       }
       // Per-device monotonic timestamps span warmup and measurement, so no rows overwrite others.
       for (int path = 0; path < paths.length; path++) {
@@ -619,14 +682,80 @@ public class IoTDBTableModelSessionIT {
     }
   }
 
-  private record WritePerformance(long rows, long nanos) {
+  private record WritePerformance(long rows, long nanos, long[] requestNanos) {
     double rowsPerSecond() {
       return rows * 1_000_000_000.0 / nanos;
     }
   }
 
+  private record RequestLatency(
+      long count, double averageNanos, long p50Nanos, long p95Nanos, long p99Nanos) {
+    @Override
+    public String toString() {
+      return String.format(
+          "n=%d, avg=%.3f us, p50=%.3f us, p95=%.3f us, p99=%.3f us",
+          count,
+          averageNanos / 1_000.0,
+          p50Nanos / 1_000.0,
+          p95Nanos / 1_000.0,
+          p99Nanos / 1_000.0);
+    }
+  }
+
+  private static class LongSamples {
+    private long[] values = new long[1024];
+    private int size;
+
+    void add(long value) {
+      if (size == values.length) {
+        values = Arrays.copyOf(values, values.length * 2);
+      }
+      values[size++] = value;
+    }
+
+    void appendAll(long[] samples) {
+      while (values.length - size < samples.length) {
+        values = Arrays.copyOf(values, values.length * 2);
+      }
+      System.arraycopy(samples, 0, values, size, samples.length);
+      size += samples.length;
+    }
+
+    long[] toArray() {
+      return Arrays.copyOf(values, size);
+    }
+  }
+
+  private static RequestLatency summarizeRequestLatencies(long[] requestNanos) {
+    if (requestNanos.length == 0) {
+      return new RequestLatency(0, 0, 0, 0, 0);
+    }
+    long[] sorted = Arrays.copyOf(requestNanos, requestNanos.length);
+    Arrays.sort(sorted);
+    double sum = 0;
+    for (long latency : sorted) {
+      sum += latency;
+    }
+    return new RequestLatency(
+        sorted.length,
+        sum / sorted.length,
+        percentile(sorted, 0.50),
+        percentile(sorted, 0.95),
+        percentile(sorted, 0.99));
+  }
+
+  private static long percentile(long[] sorted, double quantile) {
+    return sorted[Math.max(0, (int) Math.ceil(quantile * sorted.length) - 1)];
+  }
+
   private static WritePerformance runConcurrentWrites(
-      ExecutorService executor, int concurrency, int seconds, IntConsumer write) throws Exception {
+      ExecutorService executor,
+      int concurrency,
+      int seconds,
+      IntConsumer prepare,
+      IntConsumer write,
+      IntConsumer complete)
+      throws Exception {
     CountDownLatch ready = new CountDownLatch(concurrency);
     CountDownLatch start = new CountDownLatch(1);
     AtomicLong deadline = new AtomicLong();
@@ -640,12 +769,19 @@ public class IoTDBTableModelSessionIT {
                   ready.countDown();
                   start.await();
                   long rows = 0;
+                  LongSamples requestNanos = new LongSamples();
                   while (!Thread.currentThread().isInterrupted()
                       && System.nanoTime() < deadline.get()) {
+                    if (prepare != null) {
+                      prepare.accept(threadId);
+                    }
+                    long requestStart = System.nanoTime();
                     write.accept(threadId);
+                    requestNanos.add(System.nanoTime() - requestStart);
+                    complete.accept(threadId);
                     rows++;
                   }
-                  return new WritePerformance(rows, System.nanoTime());
+                  return new WritePerformance(rows, System.nanoTime(), requestNanos.toArray());
                 }));
       }
       assertTrue(ready.await(30, TimeUnit.SECONDS));
@@ -654,13 +790,15 @@ public class IoTDBTableModelSessionIT {
       start.countDown();
       long rows = 0;
       long endNanos = startNanos;
+      LongSamples requestNanos = new LongSamples();
       for (Future<WritePerformance> future : futures) {
         WritePerformance result = future.get(seconds + 60, TimeUnit.SECONDS);
         rows += result.rows();
         endNanos = Math.max(endNanos, result.nanos());
+        requestNanos.appendAll(result.requestNanos());
       }
       // Include completion of in-flight RPCs, but exclude main-thread collection/printing time.
-      return new WritePerformance(rows, endNanos - startNanos);
+      return new WritePerformance(rows, endNanos - startNanos, requestNanos.toArray());
     } finally {
       start.countDown();
       for (Future<WritePerformance> future : futures) {

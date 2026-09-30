@@ -20,10 +20,18 @@ package org.apache.iotdb.db.queryengine.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -35,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -296,6 +305,58 @@ public class NumericTableRowTest {
       assertEquals(node.getNumericValues(), row.getNumericValues());
       assertEquals(0, input.available());
       assertObjectStorageAbsent(RelationalInsertNumericRowNode.class, row);
+    }
+  }
+
+  @Test
+  public void testIoTConsensusBatchFromMemoryAndWal() throws Exception {
+    // The real state machine must accept both live PlanNode bytes and WAL catch-up envelopes,
+    // attach the sender progress index, and dispatch each numeric row to DataRegion.insert.
+    RelationalInsertNumericRowNode original = nodeWithNullTag();
+    original.markFailedMeasurement(2);
+    original.setSearchIndex(42);
+    original.setLastFragment(true);
+    WALInfoEntry entry = new WALInfoEntry(7, original);
+    ByteBuffer wal = ByteBuffer.allocate(entry.serializedSize());
+    entry.serialize(new WALByteBufferForTest(wal));
+    wal.flip();
+    BatchIndexedConsensusRequest batch = new BatchIndexedConsensusRequest(3);
+    batch.add(
+        new IndexedConsensusRequest(
+            -1,
+            41,
+            Collections.singletonList(
+                new ByteBufferConsensusRequest(original.serializeToByteBuffer()))));
+    batch.add(
+        new IndexedConsensusRequest(
+            -1, 42, Collections.singletonList(new IoTConsensusRequest(wal))));
+    DataRegion region = Mockito.mock(DataRegion.class);
+    IoTConsensusDataRegionStateMachine machine = new IoTConsensusDataRegionStateMachine(region);
+    DeserializedBatchIndexedConsensusRequest decoded =
+        (DeserializedBatchIndexedConsensusRequest) machine.deserializeRequest(batch);
+    assertEquals(2, decoded.getInsertNodes().size());
+    for (int i = 0; i < 2; i++) {
+      IConsensusRequest request = decoded.getInsertNodes().get(i);
+      assertTrue(request instanceof RelationalInsertNumericRowNode);
+      RelationalInsertNumericRowNode row = (RelationalInsertNumericRowNode) request;
+      assertEquals(original.getDeviceID(), row.getDeviceID());
+      assertEquals(original.getTime(), row.getTime());
+      assertEquals(original.getValidMeasurementNumber(false), row.getMeasurements().length);
+      assertEquals(
+          ((RelationalInsertNumericRowNode) decoded.getInsertNodes().get(0)).getNumericValues(),
+          row.getNumericValues());
+      assertEquals(new IoTProgressIndex(3, 41L + i), row.getProgressIndex());
+      assertObjectStorageAbsent(RelationalInsertNumericRowNode.class, row);
+    }
+    TSStatus status = machine.write(decoded);
+    assertEquals(2, status.getSubStatusSize());
+    for (int i = 0; i < 2; i++) {
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getSubStatus().get(i).getCode());
+      RelationalInsertNumericRowNode row =
+          (RelationalInsertNumericRowNode) decoded.getInsertNodes().get(i);
+      Mockito.verify(region).insert(Mockito.same(row));
+      Mockito.verify(region).insertSeparatorToWAL(Mockito.same(row));
     }
   }
 

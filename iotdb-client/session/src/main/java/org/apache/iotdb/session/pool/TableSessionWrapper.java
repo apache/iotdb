@@ -80,6 +80,7 @@ public class TableSessionWrapper implements ITableSession {
 
   @Override
   public void insert(NumericRow row) throws StatementExecutionException, IoTDBConnectionException {
+    checkOpen();
     try {
       session.insertRelationalRecord(row);
     } catch (IoTDBConnectionException e) {
@@ -97,8 +98,14 @@ public class TableSessionWrapper implements ITableSession {
       List<TSDataType> dataTypes,
       List<ColumnCategory> columnCategories)
       throws StatementExecutionException, IoTDBConnectionException {
-    return tableSession.prepareInsertNumericRow(
-        tableName, columnNames, dataTypes, columnCategories);
+    checkOpen();
+    try {
+      return tableSession.prepareInsertNumericRow(
+          tableName, columnNames, dataTypes, columnCategories);
+    } catch (IoTDBConnectionException e) {
+      invalidateSession();
+      throw e;
+    }
   }
 
   @Override
@@ -116,15 +123,30 @@ public class TableSessionWrapper implements ITableSession {
       String[] tagValues,
       BitMap nullBitmap)
       throws StatementExecutionException, IoTDBConnectionException {
+    checkOpen();
     try {
       tableSession.executePreparedInsertNumericRow(
           prepared, timestamp, values, tagValues, nullBitmap);
     } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
+      invalidateSession();
       throw e;
     }
+  }
+
+  private void checkOpen() throws IoTDBConnectionException {
+    // The cached delegate still references the physical session after it returns to the pool.
+    if (closed.get() || session == null) {
+      throw new IoTDBConnectionException(
+          SessionMessages.EXCEPTION_TABLE_SESSION_IS_CLOSED_77FE359B);
+    }
+  }
+
+  private void invalidateSession() {
+    Session failedSession = session;
+    // Invalidate before cleanup so close() cannot return a failed connection to the pool.
+    closed.set(true);
+    session = null;
+    sessionPool.cleanSessionAndMayThrowConnectionException(failedSession);
   }
 
   @Override
@@ -168,6 +190,9 @@ public class TableSessionWrapper implements ITableSession {
 
   @Override
   public void close() throws IoTDBConnectionException {
+    if (closed.get() || session == null) {
+      return;
+    }
     if (!Objects.equals(session.getSqlDialect(), sessionPool.sqlDialect)) {
       try {
         session.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);

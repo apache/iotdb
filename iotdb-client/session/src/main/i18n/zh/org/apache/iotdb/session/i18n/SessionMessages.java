@@ -295,4 +295,5 @@ public final class SessionMessages {
   public static final String EXCEPTION_PREPARED_NUMERIC_ROW_PREPARE_RETURNED_NO_STATUS_6FF7BC24 = "预备数值行准备请求未返回状态";
   public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_COUNT_MISMATCH_9ACD3A0C = "预备数值行的值数量不匹配";
   public static final String EXCEPTION_UNSUPPORTED_NUMERIC_TYPE_06DD3044 = "不支持的数值类型";
+  public static final String EXCEPTION_TABLE_SESSION_IS_CLOSED_77FE359B = "表会话已关闭。";
 }

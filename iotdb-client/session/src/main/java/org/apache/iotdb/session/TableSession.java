@@ -67,6 +67,35 @@ public class TableSession implements ITableSession {
       List<TSDataType> dataTypes,
       List<ColumnCategory> columnCategories)
       throws StatementExecutionException, IoTDBConnectionException {
+    // Validate before regrouping, which would otherwise discard unsupported categories or
+    // surplus metadata entries.
+    if (tableName == null
+        || columnNames == null
+        || dataTypes == null
+        || columnCategories == null
+        || columnNames.size() != dataTypes.size()
+        || columnNames.size() != columnCategories.size()) {
+      throw new IllegalArgumentException(
+          SessionMessages
+              .EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233);
+    }
+    for (int i = 0; i < columnNames.size(); i++) {
+      if (columnNames.get(i) == null
+          || dataTypes.get(i) == null
+          || columnCategories.get(i) == null) {
+        throw new IllegalArgumentException(
+            SessionMessages
+                .EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233);
+      }
+      if ((columnCategories.get(i) != ColumnCategory.TAG
+              && columnCategories.get(i) != ColumnCategory.FIELD)
+          || (columnCategories.get(i) == ColumnCategory.TAG
+              && dataTypes.get(i) != TSDataType.STRING)) {
+        throw new IllegalArgumentException(
+            SessionMessages
+                .EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA);
+      }
+    }
     List<String> names = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     List<ColumnCategory> categories = new ArrayList<>();
