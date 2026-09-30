@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.tag;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -34,11 +39,18 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -188,6 +200,51 @@ public class TagManagerTest {
     Assert.assertEquals(0, regionStatistics.getRegionMemoryUsage());
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  public void preciseQueryUsesDirectLookupAndFiltersPathBeforeSorting() throws Exception {
+    initTagManager();
+    final IMeasurementMNode<?> first = mockMeasurement("root.sg.d.s1");
+    final IMeasurementMNode<?> second = mockMeasurement("root.sg.d.s2");
+    final IMeasurementMNode<?> outside = mockMeasurement("root.other.d.s0");
+
+    final Map<String, Set<IMeasurementMNode<?>>> valueMap = Mockito.spy(new HashMap<>());
+    valueMap.put("target", new HashSet<>(Arrays.asList(second, outside, first)));
+    valueMap.put("unrelated", new HashSet<>());
+
+    final Field tagIndexField = TagManager.class.getDeclaredField("tagIndex");
+    tagIndexField.setAccessible(true);
+    final Map<String, Map<String, Set<IMeasurementMNode<?>>>> tagIndex =
+        (Map<String, Map<String, Set<IMeasurementMNode<?>>>>) tagIndexField.get(tagManager);
+    tagIndex.put("key", valueMap);
+
+    final List<IMeasurementMNode<?>> result =
+        tagManager.getMatchedTimeseriesInIndex(
+            new TagFilter("key", "target", false), new PartialPath("root.sg.**"), false);
+
+    Assert.assertEquals(Arrays.asList(first, second), result);
+    Mockito.verify(valueMap).get("target");
+    Mockito.verify(valueMap, Mockito.never()).entrySet();
+  }
+
+  @Test
+  public void preDeletedMeasurementIsSkippedByIndexReader() throws Exception {
+    initTagManager();
+    final IMeasurementMNode<?> node = newMeasurementMNode("s0");
+    node.setPreDeleted(true);
+    tagManager.addIndex("key", "value", node);
+
+    final IShowTimeSeriesPlan plan = Mockito.mock(IShowTimeSeriesPlan.class);
+    Mockito.when(plan.getSchemaFilter()).thenReturn(new TagFilter("key", "value", false));
+    Mockito.when(plan.getPath()).thenReturn(new PartialPath("s0"));
+
+    final ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        tagManager.getTimeSeriesReaderWithIndex(plan);
+    Assert.assertFalse(reader.hasNext());
+    Assert.assertTrue(reader.isSuccess());
+    reader.close();
+  }
+
   private void initTagManager() throws Exception {
     tempDir = Files.createTempDirectory("tag-manager").toFile();
     regionStatistics = new MemSchemaRegionStatistics(0, new MemSchemaEngineStatistics());
@@ -203,6 +260,13 @@ public class TagManagerTest {
         new MeasurementSchema(
             measurement, TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
         null);
+  }
+
+  private static IMeasurementMNode<?> mockMeasurement(final String path) throws Exception {
+    final IMeasurementMNode<?> node = Mockito.mock(IMeasurementMNode.class);
+    Mockito.when(node.getFullPath()).thenReturn(path);
+    Mockito.when(node.getPartialPath()).thenReturn(new PartialPath(path));
+    return node;
   }
 
   private static long indexMemory(

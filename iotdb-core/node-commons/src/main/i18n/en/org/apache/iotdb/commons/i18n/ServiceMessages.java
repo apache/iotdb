@@ -117,6 +117,8 @@ public final class ServiceMessages {
       "MetricService try to restart.";
   public static final String METRIC_SERVICE_REBIND_METRIC_SET =
       "MetricService rebind metricSet: {}";
+  public static final String LOG_FAILED_TO_REBIND_METRIC_SET_ARG_2C440B71 =
+      "Failed to rebind metric set {}";
   public static final String METRIC_SERVICE_RESTART_SUCCESSFULLY =
       "MetricService restart successfully.";
   public static final String METRIC_SERVICE_TRY_TO_STOP = "MetricService try to stop.";

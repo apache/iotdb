@@ -116,6 +116,9 @@ public enum Metric {
   LEADER_QUANTITY("leader_quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
+  // The per-table metrics have an extra table tag, so they cannot share the names above
+  SCHEMA_REGION_TABLE("schema_region_table"),
+  SCHEMA_ENGINE_TABLE("schema_engine_table"),
   // query engine related
   QUERY_PLAN_COST("query_plan_cost"),
   OPERATOR_EXECUTION_COST("operator_execution_cost"),

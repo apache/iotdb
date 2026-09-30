@@ -26,10 +26,14 @@ import org.apache.ratis.metrics.LongCounter;
 /** CounterProxy will route Ratis' internal counter metrics to our IoTDB {@link Counter} */
 public class CounterProxy implements LongCounter {
 
-  /** IoTDB Counter. */
-  private final Counter counter;
+  /** IoTDB Counter, replaced when the metric service restarts. */
+  private volatile Counter counter;
 
   CounterProxy(Counter counter) {
+    this.counter = counter;
+  }
+
+  void setCounter(Counter counter) {
     this.counter = counter;
   }
 

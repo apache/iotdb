@@ -820,10 +820,16 @@ public final class DataNodePipeMessages {
       "Failed to transfer tsfile batch ({}).";
   public static final String FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY =
       "Failed to transfer tsfile event {} asynchronously.";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_ARG_BECAUSE_FILE_ARG_IS_MISSING_AFTER_ARG_RETRIES_B656E84E =
+          "Failed to transfer TsFile {} because file {} is missing after {} retries.";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
       "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS =
       "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents).";
+  public static final String
+      LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9 =
+          "TsFile {}: modification file {} is missing, transfer the TsFile without modifications.";
   public static final String FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE =
       "Failed to update leader cache for device {} with endpoint {}:{}.";
   public static final String FAILED_TO_WRITE = "Failed to write ";
@@ -1524,25 +1530,6 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_SET_RECENT_PROCESSED_TSFILE_EPOCH =
       "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) "
           + "does not exist";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_ASSIGNER_METRICS =
-      "Failed to unbind from pipe assigner metrics, assigner map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION =
-      "Failed to unbind from pipe data region sink metrics, sink map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_EXTRACTOR_METRICS =
-      "Failed to unbind from pipe extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_PROCESSOR_METRICS =
-      "Failed to unbind from pipe processor metrics, processor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT =
-      "Failed to unbind from pipe remaining event and time metrics, "
-          + "RemainingEventAndTimeOperator map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION =
-      "Failed to unbind from pipe schema region connector metrics, connector map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1 =
-      "Failed to unbind from pipe schema region extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2 =
-      "Failed to unbind from pipe schema region listener metrics, listening queue map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO =
-      "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeRow
@@ -1872,16 +1859,11 @@ public final class DataNodePipeMessages {
       "Subscription: consumer {} poll excessive payload {} for event {} (outdated: {}) with "
           + "request: {}, something unexpected happened with parameter configuration or payload "
           + "control...";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C =
-      "Failed to unbind from subscription prefetching queue metrics, prefetching queue map not "
-          + "empty";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_F08479A7 =
       "Failed to deregister subscription prefetching queue metrics, "
           + "SubscriptionPrefetchingQueue({}) does not exist";
   public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_SUBSCRIPTIONPREFETCHINGQUEUE_7DEF95B5 =
       "Failed to mark transfer event rate, SubscriptionPrefetchingQueue({}) does not exist";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9 =
-      "Failed to unbind from consensus subscription prefetching queue metrics, queue map not empty";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_CONSENSUS_SUBSCRIPTION_PREFETCHING_8B180091 =
       "Failed to deregister consensus subscription prefetching queue metrics, "
           + "ConsensusPrefetchingQueue({}) does not exist";
@@ -2220,8 +2202,16 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: failed to open near-live WAL file {}, retrying without blacklisting";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator: error reading WAL";
-  public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
-      "ProgressWALIterator: failed to open WAL file {}, skipping";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
+      "ProgressWALIterator: failed to process WAL file {}, skipping remaining entries";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_IDENTIFY_UNREADABLE_WAL_FILE_7BA9F422 =
+          "failed to identify unreadable WAL file during replay";
+  public static final String
+      SUBSCRIPTION_ERROR_WAL_REPLAY_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_D60C5FB2 =
+          "Subscription WAL replay skipped %d unreadable retained WAL file(s). Historical data in "
+              + "those files cannot be delivered.";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
       "ProgressWALIterator: skipped {} unreadable retained WAL files in directory {}, "
           + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "

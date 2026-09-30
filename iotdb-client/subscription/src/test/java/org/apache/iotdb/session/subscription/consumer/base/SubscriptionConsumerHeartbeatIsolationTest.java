@@ -120,16 +120,17 @@ public class SubscriptionConsumerHeartbeatIsolationTest {
     final CountDownLatch releaseTasks = new CountDownLatch(1);
     final List<Future<?>> futures = new ArrayList<>();
     try {
-      for (int i = 0; i < maximumPoolSize; i++) {
-        futures.add(
-            SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> await(releaseTasks)));
-      }
-      for (int i = 0; i < queueCapacity; i++) {
-        futures.add(
-            SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> await(releaseTasks)));
+      // The executor is shared, so other heartbeat tasks may consume capacity concurrently.
+      for (int i = 0; i <= maximumPoolSize + queueCapacity; i++) {
+        final Future<?> future =
+            SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> await(releaseTasks));
+        if (Objects.isNull(future)) {
+          break;
+        }
+        futures.add(future);
       }
 
-      Assert.assertNull(SubscriptionExecutorServiceManager.submitProviderHeartbeat(() -> {}));
+      Assert.assertTrue(futures.size() <= maximumPoolSize + queueCapacity);
     } finally {
       releaseTasks.countDown();
       for (final Future<?> future : futures) {

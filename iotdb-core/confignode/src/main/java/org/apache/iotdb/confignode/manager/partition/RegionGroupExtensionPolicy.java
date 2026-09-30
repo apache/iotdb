@@ -25,7 +25,9 @@ import java.io.IOException;
 public enum RegionGroupExtensionPolicy {
   CUSTOM("CUSTOM"),
 
-  AUTO("AUTO");
+  AUTO("AUTO"),
+
+  PROACTIVE("PROACTIVE");
 
   private final String policy;
 

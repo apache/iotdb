@@ -43,7 +43,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final Map<String, String> metricNameCache = new ConcurrentHashMap<>();
   private final Map<String, CounterProxy> counterCache = new ConcurrentHashMap<>();
   private final Map<String, TimerProxy> timerCache = new ConcurrentHashMap<>();
-  private final Map<String, Boolean> gaugeCache = new ConcurrentHashMap<>();
+  private final Map<String, GaugeProxy<?>> gaugeCache = new ConcurrentHashMap<>();
 
   /** Time taken to flush log. */
   public static final String RAFT_LOG_FLUSH_TIME = "flushTime";
@@ -149,7 +149,11 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
       metricService.remove(MetricType.AUTO_GAUGE, getMetricName(name));
     } catch (IllegalArgumentException ignored) {
     }
-
+    // Forget the metric so that rebinding does not restore it and Ratis can create it again.
+    final String fullName = getMetricName(name);
+    counterCache.remove(fullName);
+    timerCache.remove(fullName);
+    gaugeCache.remove(fullName);
     return true;
   }
 
@@ -161,7 +165,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
         fn -> {
           final GaugeProxy<T> gauge = new GaugeProxy<>(supplier);
           metricService.createAutoGauge(fn, getMetricLevel(fn), gauge, GaugeProxy::getDoubleValue);
-          return true;
+          return gauge;
         });
   }
 
@@ -170,10 +174,32 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
     return info;
   }
 
-  void removeAll() {
+  /**
+   * Registers all metrics again. Ratis creates its metrics once and keeps using them, so they must
+   * be restored after the metric service drops them, e.g. when it restarts.
+   */
+  void bindMetrics() {
+    counterCache.forEach(
+        (name, counter) ->
+            counter.setCounter(metricService.getOrCreateCounter(name, getMetricLevel(name))));
+    timerCache.forEach(
+        (name, timer) ->
+            timer.setTimer(metricService.getOrCreateTimer(name, getMetricLevel(name))));
+    gaugeCache.forEach(
+        (name, gauge) ->
+            metricService.createAutoGauge(
+                name, getMetricLevel(name), gauge, GaugeProxy::getDoubleValue));
+  }
+
+  /** Removes all metrics from the metric service but keeps them for {@link #bindMetrics()}. */
+  void unbindMetrics() {
     counterCache.forEach((name, counter) -> metricService.remove(MetricType.COUNTER, name));
     gaugeCache.forEach((name, gauge) -> metricService.remove(MetricType.AUTO_GAUGE, name));
     timerCache.forEach((name, timer) -> metricService.remove(MetricType.TIMER, name));
+  }
+
+  void removeAll() {
+    unbindMetrics();
     metricNameCache.clear();
     counterCache.clear();
     gaugeCache.clear();

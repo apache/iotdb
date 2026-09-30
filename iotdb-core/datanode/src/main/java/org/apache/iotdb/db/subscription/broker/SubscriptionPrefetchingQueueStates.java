@@ -25,10 +25,11 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 
 import com.codahale.metrics.Clock;
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -58,7 +59,7 @@ public class SubscriptionPrefetchingQueueStates {
   private volatile long lastPollRequestTimestamp;
   private final Meter pollRequestMeter;
   private final Meter missingPrefechMeter;
-  private final Counter disorderCauseCounter; // TODO: use meter
+  private final AtomicLong disorderCauseCounter;
 
   public SubscriptionPrefetchingQueueStates(final SubscriptionPrefetchingQueue prefetchingQueue) {
     this.prefetchingQueue = prefetchingQueue;
@@ -66,7 +67,7 @@ public class SubscriptionPrefetchingQueueStates {
     this.lastPollRequestTimestamp = -1;
     this.pollRequestMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
     this.missingPrefechMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
-    this.disorderCauseCounter = new Counter();
+    this.disorderCauseCounter = new AtomicLong();
   }
 
   public void markPollRequest() {
@@ -79,7 +80,9 @@ public class SubscriptionPrefetchingQueueStates {
   }
 
   public void markDisorderCause() {
-    disorderCauseCounter.inc();
+    // Disable prefetching for the current sequence. The guard is cleared after the prefetched and
+    // in-flight events have drained so a single disorder does not permanently disable prefetching.
+    disorderCauseCounter.incrementAndGet();
   }
 
   private double pollRate() {
@@ -117,7 +120,14 @@ public class SubscriptionPrefetchingQueueStates {
 
     // 1.5. disorder history
     if (hasDisorderCause()) {
-      return false;
+      // Keep prefetching disabled while events from the disordered sequence are still visible to
+      // consumers. Once both queues are drained, the next sequence starts from a clean ordering
+      // boundary and prefetching can recover.
+      if (prefetchingQueue.getPrefetchedEventCount() > 0
+          || prefetchingQueue.getSubscriptionUncommittedEventCount() > 0) {
+        return false;
+      }
+      clearDisorderCause();
     }
 
     // 2. permissive conditions
@@ -155,7 +165,11 @@ public class SubscriptionPrefetchingQueueStates {
   }
 
   private boolean hasDisorderCause() {
-    return disorderCauseCounter.getCount() > 0;
+    return disorderCauseCounter.get() > 0;
+  }
+
+  private void clearDisorderCause() {
+    disorderCauseCounter.set(0);
   }
 
   private static boolean isApproximatelyZero(final double value) {
@@ -168,7 +182,7 @@ public class SubscriptionPrefetchingQueueStates {
         .add("lastPollRequestTimestamp", lastPollRequestTimestamp)
         .add("pollRate", pollRate())
         .add("missingRate", missingRate())
-        .add("disorderCause", disorderCauseCounter.getCount())
+        .add("disorderCause", disorderCauseCounter.get())
         .toString();
   }
 }
