@@ -361,7 +361,7 @@ public class FileReaderManagerConcurrencyTest {
       entry = pin.invoke(manager, registry, a.getTsFileID(), false, false);
       assertNotNull(entry);
       gate.owner.get().interrupt();
-      Future<?> acquire = workers.submit(() -> get(a, true));
+      Future<?> acquire = acquireDuringClear(a, true);
       gate.close();
       awaitClearDrain(gate.owner.get());
       assertFalse(clear.isDone());
@@ -385,18 +385,46 @@ public class FileReaderManagerConcurrencyTest {
     }
   }
 
+  private Future<TsFileSequenceReader> acquireDuringClear(TsFileResource resource, boolean closed)
+      throws Exception {
+    AtomicReference<Thread> thread = new AtomicReference<>();
+    CountDownLatch started = new CountDownLatch(1);
+    Future<TsFileSequenceReader> acquire =
+        workers.submit(
+            () -> {
+              thread.set(Thread.currentThread());
+              started.countDown();
+              return get(resource, closed);
+            });
+    assertTrue(started.await(10, TimeUnit.SECONDS));
+    // An unfinished Future alone does not prove that the worker has reached the admission gate.
+    awaitRegistryWait(thread.get(), "pin");
+    return acquire;
+  }
+
   private void awaitClearDrain(Thread thread) throws Exception {
+    awaitRegistryWait(thread, "drainPins");
+  }
+
+  private void awaitRegistryWait(Thread thread, String method) throws Exception {
+    Object registryLock = field("registryLock");
     long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
     while (System.nanoTime() < deadline) {
       ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(thread.getId(), 30);
-      for (StackTraceElement frame : info.getStackTrace()) {
-        if (frame.getMethodName().equals("drainPins")) {
-          return;
+      if (info != null
+          && info.getThreadState() == Thread.State.WAITING
+          && info.getLockInfo() != null
+          && info.getLockInfo().getIdentityHashCode() == System.identityHashCode(registryLock)) {
+        for (StackTraceElement frame : info.getStackTrace()) {
+          if (frame.getClassName().equals(FileReaderManager.class.getName())
+              && frame.getMethodName().equals(method)) {
+            return;
+          }
         }
       }
       Thread.sleep(1);
     }
-    fail("clear did not reach its final pin drain");
+    fail("worker did not wait on registryLock in " + method);
   }
 
   @Test
@@ -566,7 +594,7 @@ public class FileReaderManagerConcurrencyTest {
       assertTrue(started.await(10, TimeUnit.SECONDS));
       awaitClearDrain(clearThread.get());
       clearThread.get().interrupt();
-      Future<?> acquire = workers.submit(() -> get(a, false));
+      Future<?> acquire = acquireDuringClear(a, false);
       assertFalse(clear.isDone());
       assertFalse(acquire.isDone());
       gate.close();
