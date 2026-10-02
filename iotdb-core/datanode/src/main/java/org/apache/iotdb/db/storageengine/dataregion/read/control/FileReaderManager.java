@@ -31,347 +31,418 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongConsumer;
 
-/**
- * {@link FileReaderManager} is a singleton, which is used to manage all file readers(opened file
- * streams) to ensure that each file is opened at most once.
- */
+/** Manages cached readers with independent locks for independent files. */
 public class FileReaderManager {
-
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
-  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-
-  /** max number of file streams being cached, must be lower than 65535. */
   private static final int MAX_CACHED_FILE_SIZE = 30000;
-
-  /**
-   * When number of file streams reached MAX_CACHED_FILE_SIZE, then we will print a warning log each
-   * PRINT_INTERVAL.
-   */
   private static final int PRINT_INTERVAL = 10000;
 
-  /**
-   * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the
-   * corresponding reader.
-   */
-  private Map<TsFileID, TsFileSequenceReader> closedFileReaderMap;
+  // Lock order: resource read lock -> registry (pin only), then entry, then registry (unpin).
+  // Never hold registry while taking an entry lock or doing I/O. Never acquire a resource,
+  // region, registry, or another entry lock while holding an entry lock.
+  private final Object registryLock = new Object();
+  private final Object clearLock = new Object();
+  private final Map<TsFileID, Entry> internal = new HashMap<>();
+  private final Map<String, Entry> external = new HashMap<>();
+  private final AtomicInteger closedCount = new AtomicInteger();
+  private final AtomicInteger unclosedCount = new AtomicInteger();
+  private final AtomicInteger externalCount = new AtomicInteger();
+  // Guarded by registryLock. Pins count operations (including entry-lock waiters), not queries.
+  private boolean clearing;
+  private int pins;
 
-  /**
-   * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
-   * corresponding reader.
-   */
-  private Map<TsFileID, TsFileSequenceReader> unclosedFileReaderMap;
-
-  /**
-   * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the
-   * file's reference count.
-   */
-  private Map<TsFileID, AtomicInteger> closedReferenceMap;
-
-  /**
-   * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
-   * file's reference count.
-   */
-  private Map<TsFileID, AtomicInteger> unclosedReferenceMap;
-
-  /** External TsFile readers. The key is the file path. */
-  private Map<String, TsFileSequenceReader> externalFileReaderMap;
-
-  /** Reference count of external TsFile readers. */
-  private Map<String, AtomicInteger> externalReferenceMap;
-
-  private FileReaderManager() {
-    closedFileReaderMap = new ConcurrentHashMap<>();
-    unclosedFileReaderMap = new ConcurrentHashMap<>();
-    closedReferenceMap = new ConcurrentHashMap<>();
-    unclosedReferenceMap = new ConcurrentHashMap<>();
-    externalFileReaderMap = new ConcurrentHashMap<>();
-    externalReferenceMap = new ConcurrentHashMap<>();
-  }
+  private FileReaderManager() {}
 
   public static FileReaderManager getInstance() {
     return FileReaderManagerHelper.INSTANCE;
   }
 
-  public synchronized void closeFileAndRemoveReader(TsFileID tsFileID) throws IOException {
-    closedReferenceMap.remove(tsFileID);
-    TsFileSequenceReader reader = closedFileReaderMap.remove(tsFileID);
-    if (reader != null) {
-      reader.close();
+  private static class Slot {
+    private TsFileSequenceReader reader;
+    private int references;
+    private IOException closeFailure;
+    private final AtomicInteger count;
+
+    private Slot(AtomicInteger count) {
+      this.count = count;
     }
-    unclosedReferenceMap.remove(tsFileID);
-    reader = unclosedFileReaderMap.remove(tsFileID);
-    if (reader != null) {
-      reader.close();
+
+    private void close() throws IOException {
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          // Retain the handle for a subsequent close attempt, but never serve it again.
+          closeFailure = e;
+          throw e;
+        }
+        reader = null;
+        closeFailure = null;
+        count.decrementAndGet();
+      }
+    }
+
+    private boolean empty() {
+      return reader == null && references == 0;
     }
   }
 
-  /**
-   * Get the reader of the file(tsfile or unseq tsfile) indicated by filePath. If the reader already
-   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosing .
-   * Otherwise a new reader will be created and cached.
-   *
-   * @param filePath the path of the tsfile
-   * @param tsFileID the id of the tsfile, of which the reader is desired.
-   * @param isClosed whether the corresponding file still receives insertions or not.
-   * @return the reader of the file specified by filePath.
-   * @throws IOException when reader cannot be created.
-   */
-  @SuppressWarnings("squid:S2095")
-  public synchronized TsFileSequenceReader get(String filePath, TsFileID tsFileID, boolean isClosed)
+  private static class Entry {
+    private final Slot closed;
+    private final Slot unclosed;
+    // Guarded by registryLock; slots are guarded by this entry's monitor.
+    private int pins;
+
+    private Entry(AtomicInteger closedCount, AtomicInteger unclosedCount) {
+      closed = new Slot(closedCount);
+      unclosed = new Slot(unclosedCount);
+    }
+
+    private Slot slot(boolean isClosed) {
+      return isClosed ? closed : unclosed;
+    }
+
+    private boolean empty() {
+      return closed.empty() && unclosed.empty();
+    }
+  }
+
+  private <K> Entry pin(Map<K, Entry> registry, K key, boolean admission, boolean create) {
+    Objects.requireNonNull(key);
+    boolean interrupted = false;
+    synchronized (registryLock) {
+      while (admission && clearing) {
+        try {
+          registryLock.wait();
+        } catch (InterruptedException e) {
+          interrupted = true;
+        }
+      }
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+      Entry entry = registry.get(key);
+      if (entry == null && create) {
+        entry = new Entry(registry == internal ? closedCount : externalCount, unclosedCount);
+        registry.put(key, entry);
+      }
+      if (entry != null) {
+        entry.pins++;
+        pins++;
+      }
+      return entry;
+    }
+  }
+
+  private <K> void unpin(Map<K, Entry> registry, K key, Entry entry) {
+    synchronized (registryLock) {
+      entry.pins--;
+      pins--;
+      // At zero pins all slot mutations have completed and published through registryLock.
+      // Keep entries stable during clear, including those used by releases entering mid-clear.
+      if (!clearing && entry.pins == 0 && entry.empty()) {
+        registry.remove(key, entry);
+      }
+      registryLock.notifyAll();
+    }
+  }
+
+  /** Caller must exclude new references and finish existing reader use (resource write lock). */
+  public void closeFileAndRemoveReader(TsFileID tsFileID) throws IOException {
+    Entry entry = pin(internal, tsFileID, true, false);
+    if (entry == null) {
+      return;
+    }
+    try {
+      synchronized (entry) {
+        closeEntry(entry);
+      }
+    } finally {
+      unpin(internal, tsFileID, entry);
+    }
+  }
+
+  private void closeEntry(Entry entry) throws IOException {
+    IOException failure = null;
+    for (Slot slot : new Slot[] {entry.closed, entry.unclosed}) {
+      slot.references = 0;
+      try {
+        slot.close();
+      } catch (IOException e) {
+        if (failure == null) {
+          failure = e;
+        } else if (failure != e) {
+          failure.addSuppressed(e);
+        }
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  public TsFileSequenceReader get(String filePath, TsFileID tsFileID, boolean isClosed)
       throws IOException {
     return get(filePath, tsFileID, isClosed, null);
   }
 
-  /**
-   * Get the reader of the file(tsfile or unseq tsfile) indicated by filePath. If the reader already
-   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosing .
-   * Otherwise a new reader will be created and cached.
-   *
-   * @param filePath the path of the tsfile
-   * @param tsFileID the id of the tsfile, of which the reader is desired.
-   * @param isClosed whether the corresponding file still receives insertions or not.
-   * @param ioSizeRecorder can be null
-   * @return the reader of the file specified by filePath.
-   * @throws IOException when reader cannot be created.
-   */
-  @SuppressWarnings("squid:S2095")
-  public synchronized TsFileSequenceReader get(
+  public TsFileSequenceReader get(
       String filePath, TsFileID tsFileID, boolean isClosed, LongConsumer ioSizeRecorder)
       throws IOException {
     return get(filePath, tsFileID, isClosed, ioSizeRecorder, false);
   }
 
-  @SuppressWarnings("squid:S2095")
-  public synchronized TsFileSequenceReader get(
+  /** Get does not acquire a query reference. A failed constructor leaves registered refs intact. */
+  public TsFileSequenceReader get(
       String filePath,
       TsFileID tsFileID,
       boolean isClosed,
       LongConsumer ioSizeRecorder,
       boolean isExternalTsFile)
       throws IOException {
-    if (isExternalTsFile) {
-      return getExternalTsFileReader(filePath, ioSizeRecorder);
-    }
-
-    Map<TsFileID, TsFileSequenceReader> readerMap =
-        !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
-    if (!readerMap.containsKey(tsFileID)) {
-      int currentOpenedReaderCount = readerMap.size();
-      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
-          && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
-        logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, readerMap.size());
-      }
-
-      TsFileSequenceReader tsFileReader = null;
-      // check if the file is old version
-      if (!isClosed) {
-        tsFileReader =
-            new UnClosedTsFileReader(
-                filePath,
-                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath),
-                ioSizeRecorder);
-      } else {
-        // already do the version check in TsFileSequenceReader's constructor
-        tsFileReader =
-            new TsFileSequenceReader(
-                filePath,
-                ioSizeRecorder,
-                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath));
-      }
-      readerMap.put(tsFileID, tsFileReader);
-      return tsFileReader;
-    }
-
-    return readerMap.get(tsFileID);
+    return isExternalTsFile
+        ? get(external, filePath, filePath, true, ioSizeRecorder)
+        : get(internal, tsFileID, filePath, isClosed, ioSizeRecorder);
   }
 
-  private TsFileSequenceReader getExternalTsFileReader(String filePath, LongConsumer ioSizeRecorder)
+  @SuppressWarnings("squid:S2095")
+  private <K> TsFileSequenceReader get(
+      Map<K, Entry> registry, K key, String path, boolean isClosed, LongConsumer recorder)
       throws IOException {
-    TsFileSequenceReader reader = externalFileReaderMap.get(filePath);
-    if (reader == null) {
-      int currentOpenedReaderCount = externalFileReaderMap.size();
-      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
-          && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
-        logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, externalFileReaderMap.size());
+    Entry entry = pin(registry, key, true, true);
+    try {
+      synchronized (entry) {
+        Slot slot = entry.slot(isClosed);
+        if (slot.closeFailure != null) {
+          throw new IOException(slot.closeFailure);
+        }
+        if (slot.reader == null) {
+          int count = slot.count.get();
+          if (count >= MAX_CACHED_FILE_SIZE && count % PRINT_INTERVAL == 0) {
+            logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, count);
+          }
+          slot.reader =
+              isClosed
+                  ? new TsFileSequenceReader(
+                      path, recorder, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(path))
+                  : new UnClosedTsFileReader(
+                      path, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(path), recorder);
+          slot.count.incrementAndGet();
+        }
+        return slot.reader;
       }
-      reader =
-          new TsFileSequenceReader(
-              filePath,
-              ioSizeRecorder,
-              EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath));
-      externalFileReaderMap.put(filePath, reader);
+    } finally {
+      unpin(registry, key, entry);
     }
-    return reader;
   }
 
-  /**
-   * Increase the reference count of the reader specified by filePath. Only when the reference count
-   * of a reader equals zero, the reader can be closed and removed.
-   */
   public void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     tsFile.readLock();
-    synchronized (this) {
-      if (!isClosed) {
-        unclosedReferenceMap
-            .computeIfAbsent(tsFile.getTsFileID(), k -> new AtomicInteger())
-            .getAndIncrement();
-      } else {
-        closedReferenceMap
-            .computeIfAbsent(tsFile.getTsFileID(), k -> new AtomicInteger())
-            .getAndIncrement();
+    boolean registered = false;
+    try {
+      increase(internal, tsFile.getTsFileID(), isClosed);
+      registered = true;
+    } finally {
+      if (!registered) {
+        tsFile.readUnlock();
       }
     }
   }
 
-  public synchronized void increaseExternalFileReaderReference(String filePath) {
-    externalReferenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
+  public void increaseExternalFileReaderReference(String filePath) {
+    increase(external, filePath, true);
   }
 
-  /**
-   * Decrease the reference count of the reader specified by filePath. This method is latch-free.
-   * Only when the reference count of a reader equals zero, the reader can be closed and removed.
-   */
+  private <K> void increase(Map<K, Entry> registry, K key, boolean isClosed) {
+    Entry entry = pin(registry, key, true, true);
+    try {
+      synchronized (entry) {
+        entry.slot(isClosed).references++;
+      }
+    } finally {
+      unpin(registry, key, entry);
+    }
+  }
+
   public void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
-    synchronized (this) {
-      if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFileID())) {
-        if (unclosedReferenceMap.get(tsFile.getTsFileID()).decrementAndGet() == 0) {
-          closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), tsFile.getTsFileID(), false);
-        }
-      } else if (closedReferenceMap.containsKey(tsFile.getTsFileID())
-          && (closedReferenceMap.get(tsFile.getTsFileID()).decrementAndGet() == 0)) {
-        closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), tsFile.getTsFileID(), true);
-      }
-    }
-    tsFile.readUnlock();
-  }
-
-  public synchronized void decreaseExternalFileReaderReference(String filePath) {
-    AtomicInteger reference = externalReferenceMap.get(filePath);
-    if (reference != null && reference.decrementAndGet() == 0) {
-      closeUnUsedExternalReaderAndRemoveRef(filePath);
+    try {
+      decrease(internal, tsFile.getTsFileID(), isClosed);
+    } finally {
+      tsFile.readUnlock();
     }
   }
 
-  private void closeUnUsedExternalReaderAndRemoveRef(String readerKey) {
-    synchronized (this) {
-      AtomicInteger reference = externalReferenceMap.get(readerKey);
-      if (reference != null && reference.get() != 0) {
-        return;
-      }
-
-      TsFileSequenceReader reader = externalFileReaderMap.get(readerKey);
-      if (reader != null) {
-        try {
-          reader.close();
-        } catch (IOException e) {
-          logger.error(
-              StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER, reader.getFileName(), e);
-        }
-      }
-      externalFileReaderMap.remove(readerKey);
-      externalReferenceMap.remove(readerKey);
-      if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug(
-            "{} externalTsFileReader is closed because of no reference.", readerKey);
-      }
-    }
+  public void decreaseExternalFileReaderReference(String filePath) {
+    decrease(external, filePath, true);
   }
 
-  private void closeUnUsedReaderAndRemoveRef(
-      String tsFilePath, TsFileID tsFileID, boolean isClosed) {
-    Map<TsFileID, TsFileSequenceReader> readerMap =
-        isClosed ? closedFileReaderMap : unclosedFileReaderMap;
-    Map<TsFileID, AtomicInteger> refMap = isClosed ? closedReferenceMap : unclosedReferenceMap;
-    synchronized (this) {
-      // check ref num again
-      if (refMap.get(tsFileID).get() != 0) {
-        return;
-      }
-
-      TsFileSequenceReader reader = readerMap.get(tsFileID);
-      if (reader != null) {
-        try {
-          reader.close();
-        } catch (IOException e) {
-          logger.error(
-              StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER, reader.getFileName(), e);
+  private <K> void decrease(Map<K, Entry> registry, K key, boolean isClosed) {
+    Entry entry = pin(registry, key, false, false);
+    if (entry == null) {
+      return;
+    }
+    try {
+      synchronized (entry) {
+        // Preserve the legacy unclosed -> closed fallback when no unclosed ref is registered.
+        Slot slot = !isClosed && entry.unclosed.references != 0 ? entry.unclosed : entry.closed;
+        if (slot.references > 0 && --slot.references == 0) {
+          try {
+            slot.close();
+          } catch (IOException e) {
+            logger.error(
+                StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER,
+                slot.reader.getFileName(),
+                e);
+          }
         }
       }
-      readerMap.remove(tsFileID);
-      refMap.remove(tsFileID);
-      if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug(
-            StorageEngineMessages.TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE, tsFilePath);
-      }
+    } finally {
+      unpin(registry, key, entry);
     }
   }
 
   /**
-   * Only for <code>EnvironmentUtils.cleanEnv</code> method. To make sure that unit tests and
-   * integration tests will not conflict with each other.
-   *
-   * @throws IOException if failed to close file handlers, IOException will be thrown
+   * Test cleanup only: callers must first stop reader use. Zero operation pins does not mean zero
+   * query references. Acquisitions wait; releases remain admitted throughout cleanup. Interrupts
+   * are restored only after cleanup and the final release-pin drain, never reopening the gate
+   * early.
    */
-  public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
-    Iterator<Map.Entry<TsFileID, TsFileSequenceReader>> iterator =
-        closedFileReaderMap.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<TsFileID, TsFileSequenceReader> entry = iterator.next();
-      entry.getValue().close();
-      if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug(StorageEngineMessages.CLOSED_TSFILE_READER_CLOSED, entry.getKey());
+  public void closeAndRemoveAllOpenedReaders() throws IOException {
+    synchronized (clearLock) {
+      boolean interrupted = Thread.interrupted();
+      IOException failure = null;
+      List<Entry> entries;
+      synchronized (registryLock) {
+        clearing = true;
+        interrupted |= drainPins();
+        entries = new ArrayList<>(internal.values());
+        entries.addAll(external.values());
       }
-      closedReferenceMap.remove(entry.getKey());
-      iterator.remove();
-    }
-    iterator = unclosedFileReaderMap.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<TsFileID, TsFileSequenceReader> entry = iterator.next();
-      entry.getValue().close();
-      if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug(StorageEngineMessages.UNCLOSED_TSFILE_READER_CLOSED, entry.getKey());
+      try {
+        for (Entry entry : entries) {
+          synchronized (entry) {
+            try {
+              closeEntry(entry);
+            } catch (IOException e) {
+              if (failure == null) {
+                failure = e;
+              } else if (failure != e) {
+                failure.addSuppressed(e);
+              }
+            }
+          }
+          interrupted |= Thread.interrupted();
+        }
+      } finally {
+        synchronized (registryLock) {
+          // Releases can have pinned an entry while clear was closing it. Drain again and remove
+          // entries atomically with reopening admission, so a waiter cannot retain an orphan lock.
+          interrupted |= drainPins();
+          internal.values().removeIf(Entry::empty);
+          external.values().removeIf(Entry::empty);
+          clearing = false;
+          registryLock.notifyAll();
+        }
+        if (interrupted) {
+          Thread.currentThread().interrupt();
+        }
       }
-      unclosedReferenceMap.remove(entry.getKey());
-      iterator.remove();
-    }
-    Iterator<Map.Entry<String, TsFileSequenceReader>> externalIterator =
-        externalFileReaderMap.entrySet().iterator();
-    while (externalIterator.hasNext()) {
-      Map.Entry<String, TsFileSequenceReader> entry = externalIterator.next();
-      entry.getValue().close();
-      if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug("{} externalTsFileReader is closed.", entry.getKey());
+      if (failure != null) {
+        throw failure;
       }
-      externalReferenceMap.remove(entry.getKey());
-      externalIterator.remove();
     }
   }
 
-  /** This method is only for unit tests. */
-  public synchronized boolean contains(TsFileResource tsFile, boolean isClosed) {
-    return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFileID()))
-        || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFileID()));
+  // Called with registryLock held; wait releases it so operations can finish and unpin.
+  private boolean drainPins() {
+    boolean interrupted = false;
+    while (pins != 0) {
+      try {
+        registryLock.wait();
+      } catch (InterruptedException e) {
+        interrupted = true;
+      }
+    }
+    return interrupted;
   }
 
   @TestOnly
+  public boolean contains(TsFileResource tsFile, boolean isClosed) {
+    TsFileID key = tsFile.getTsFileID();
+    Entry entry = pin(internal, key, true, false);
+    if (entry == null) {
+      return false;
+    }
+    try {
+      synchronized (entry) {
+        return entry.slot(isClosed).reader != null;
+      }
+    } finally {
+      unpin(internal, key, entry);
+    }
+  }
+
+  /** Snapshot for tests; modifying it does not mutate the manager. */
+  @TestOnly
   public Map<TsFileID, TsFileSequenceReader> getClosedFileReaderMap() {
-    return closedFileReaderMap;
+    return snapshot(true);
   }
 
   @TestOnly
   public Map<TsFileID, TsFileSequenceReader> getUnclosedFileReaderMap() {
-    return unclosedFileReaderMap;
+    return snapshot(false);
+  }
+
+  private Map<TsFileID, TsFileSequenceReader> snapshot(boolean isClosed) {
+    List<TsFileID> keys;
+    synchronized (registryLock) {
+      keys = new ArrayList<>(internal.keySet());
+    }
+    Map<TsFileID, TsFileSequenceReader> result = new HashMap<>();
+    for (TsFileID key : keys) {
+      Entry entry = pin(internal, key, true, false);
+      if (entry != null) {
+        try {
+          synchronized (entry) {
+            if (entry.slot(isClosed).reader != null) {
+              result.put(key, entry.slot(isClosed).reader);
+            }
+          }
+        } finally {
+          unpin(internal, key, entry);
+        }
+      }
+    }
+    return result;
+  }
+
+  @TestOnly
+  public void setReaderForTest(TsFileID key, boolean isClosed, TsFileSequenceReader reader)
+      throws IOException {
+    Entry entry = pin(internal, key, true, true);
+    try {
+      synchronized (entry) {
+        Slot slot = entry.slot(isClosed);
+        slot.close();
+        slot.reader = reader;
+        if (reader != null) {
+          slot.count.incrementAndGet();
+        }
+      }
+    } finally {
+      unpin(internal, key, entry);
+    }
   }
 
   private static class FileReaderManagerHelper {
-
     private static final FileReaderManager INSTANCE = new FileReaderManager();
 
     private FileReaderManagerHelper() {}
