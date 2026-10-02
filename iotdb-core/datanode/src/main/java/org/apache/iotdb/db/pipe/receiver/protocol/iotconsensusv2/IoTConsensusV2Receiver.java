@@ -66,7 +66,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
-import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadPointCountMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -743,7 +743,7 @@ public class IoTConsensusV2Receiver {
                     .getNonSystemDatabaseName()
                     .ifPresent(
                         databaseName ->
-                            LoadTsFileManager.updateWritePointCountMetrics(
+                            LoadPointCountMetrics.updateWritePointCountMetrics(
                                 dataRegion, databaseName, writePointCount, true)));
   }
 

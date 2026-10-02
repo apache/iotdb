@@ -53,6 +53,12 @@ public class DeletionData implements TsFileData {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
+    serialize(stream, true);
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream, final boolean includeContent)
+      throws IOException {
     ReadWriteIOUtils.write(getType().ordinal(), stream);
     deletion.serialize(stream);
   }

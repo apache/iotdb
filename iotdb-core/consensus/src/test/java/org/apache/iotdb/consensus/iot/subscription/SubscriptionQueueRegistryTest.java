@@ -39,51 +39,94 @@ public class SubscriptionQueueRegistryTest {
   @Test
   public void testOfferWithoutQueuesDoesNotSerializeRequest() {
     final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
-    final IndexedConsensusRequest request = newRequest();
+    final ByteBufferConsensusRequest inner = new ByteBufferConsensusRequest(ByteBuffer.allocate(1));
+    final IndexedConsensusRequest request = newRequest(inner);
 
     assertFalse(registry.offer(request));
-    assertTrue(request.getSerializedRequests().isEmpty());
+    assertEquals(0, inner.getSerializationCount());
   }
 
   @Test
   public void testOfferSerializesRequestBeforeQueueAdmission() {
     final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
     final InspectingQueue queue = new InspectingQueue();
+    register(registry, queue);
+    final ByteBufferConsensusRequest inner = new ByteBufferConsensusRequest(ByteBuffer.allocate(1));
+    final IndexedConsensusRequest request = newRequest(inner);
+
+    assertTrue(registry.offer(request));
+    assertEquals(1, inner.getSerializationCount());
+    assertEquals(1, request.getSerializedRequests().size());
+    assertEquals(1, queue.getSerializedRequestCountAtOffer());
+    assertSame(request, queue.poll());
+  }
+
+  @Test
+  public void testOfferDefersSerializationOfDeferredRequest() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final ArrayBlockingQueue<IndexedConsensusRequest> queue = new ArrayBlockingQueue<>(1);
+    register(registry, queue);
+    final ByteBufferConsensusRequest inner =
+        new ByteBufferConsensusRequest(ByteBuffer.allocate(1), true);
+    final IndexedConsensusRequest request = newRequest(inner);
+
+    assertTrue(registry.offer(request));
+    assertEquals(
+        "a request that deferred its serialization must stay unexpanded while it waits in the queue",
+        0,
+        inner.getSerializationCount());
+    assertEquals(1, request.getSerializedRequests().size());
+    assertEquals(1, inner.getSerializationCount());
+  }
+
+  private static void register(
+      final SubscriptionQueueRegistry registry,
+      final ArrayBlockingQueue<IndexedConsensusRequest> queue) {
     registry.register(
         queue,
         new SubscriptionWalRetentionPolicy(
             "test",
             SubscriptionWalRetentionPolicy.UNBOUNDED,
             SubscriptionWalRetentionPolicy.UNBOUNDED));
-    final IndexedConsensusRequest request = newRequest();
-
-    assertTrue(registry.offer(request));
-    assertEquals(1, request.getSerializedRequests().size());
-    assertEquals(1, queue.getSerializedRequestCountAtOffer());
-    assertSame(request, queue.poll());
   }
 
-  private static IndexedConsensusRequest newRequest() {
-    return new IndexedConsensusRequest(
-        1, Collections.singletonList(new ByteBufferConsensusRequest(ByteBuffer.allocate(1))));
+  private static IndexedConsensusRequest newRequest(final IConsensusRequest inner) {
+    return new IndexedConsensusRequest(1, Collections.singletonList(inner));
   }
 
   private static final class ByteBufferConsensusRequest implements IConsensusRequest {
 
     private final ByteBuffer buffer;
+    private final boolean deferred;
+    private int serializationCount;
 
     private ByteBufferConsensusRequest(final ByteBuffer buffer) {
+      this(buffer, false);
+    }
+
+    private ByteBufferConsensusRequest(final ByteBuffer buffer, final boolean deferred) {
       this.buffer = buffer;
+      this.deferred = deferred;
     }
 
     @Override
     public ByteBuffer serializeToByteBuffer() {
+      serializationCount++;
       return buffer;
     }
 
     @Override
     public long getMemorySize() {
       return buffer.capacity();
+    }
+
+    @Override
+    public boolean isSerializationDeferred() {
+      return deferred;
+    }
+
+    private int getSerializationCount() {
+      return serializationCount;
     }
   }
 

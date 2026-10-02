@@ -280,7 +280,9 @@ public class LoadTsFileDispatcherImplTest {
     PowerMockito.mockStatic(StorageEngine.class);
     PowerMockito.when(StorageEngine.getInstance()).thenReturn(storageEngine);
 
-    final LoadTsFileDispatcherImpl dispatcher = new LoadTsFileDispatcherImpl(null, false);
+    // Local dispatch never borrows a client, but the constructor requires a client manager
+    final LoadTsFileDispatcherImpl dispatcher =
+        new LoadTsFileDispatcherImpl(Mockito.mock(IClientManager.class), false);
     dispatcher.setUuid("test-uuid");
 
     final LoadTsFilePieceNode pieceNode =

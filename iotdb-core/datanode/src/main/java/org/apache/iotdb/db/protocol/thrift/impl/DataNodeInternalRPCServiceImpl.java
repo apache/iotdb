@@ -42,7 +42,6 @@ import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
@@ -63,8 +62,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -189,7 +186,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Rollb
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -684,30 +680,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return createTLoadResp(resultStatus);
   }
 
+  /**
+   * The LOAD command protocol (EXECUTE / ROLLBACK of a task identified by its uuid) was replaced by
+   * the consensus protocol, which drives a task through BEGIN / PIECE / PREPARE / COMMIT / ABORT.
+   * The entry point is kept because it is part of the internal service interface, and a node of an
+   * older version may still send a command.
+   */
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
-    if (req.isSetTimePartition2ProgressIndex()) {
-      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
-          req.getTimePartition2ProgressIndex().entrySet()) {
-        timePartitionProgressIndexMap.put(
-            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
-      }
-    } else {
-      final TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-      status.setMessage(
-          DataNodeMiscMessages.LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP);
-      return createTLoadResp(status);
-    }
-
-    return createTLoadResp(
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
-                req.uuid,
-                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                timePartitionProgressIndexMap));
+    final TSStatus status = new TSStatus();
+    status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+    status.setMessage(
+        DataNodeMiscMessages
+            .MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16);
+    return createTLoadResp(status);
   }
 
   @Override
