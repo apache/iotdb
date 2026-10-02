@@ -90,7 +90,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * The code to undo what was done by the execute() code. It is called when the procedure or one of
    * the sub-procedures failed or an abort was requested. It should cleanup all the resources
    * created by the execute() call. The implementation must be idempotent since rollback() may be
-   * called multiple time in case of machine failure in the middle of the execution.
+   * called multiple times in case of machine failure in the middle of the execution.
    *
    * @param env the environment passed to the ProcedureExecutor
    * @throws IOException temporary failure, the rollback will retry later
@@ -277,7 +277,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /**
-   * Internal method called by the ProcedureExecutor that starts the user-level code execute().
+   * Internal method called by the ProcedureExecutor that invokes the user-level execute().
    *
    * @param env execute environment
    * @return sub procedures
@@ -292,7 +292,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /**
-   * Internal method called by the ProcedureExecutor that starts the user-level code rollback().
+   * Internal method called by the ProcedureExecutor that invokes the user-level rollback().
    *
    * @param env execute environment
    * @throws IOException ioe
@@ -336,7 +336,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /**
-   * Presist lock state of the procedure
+   * Persist the procedure's lock state.
    *
    * @param env environment
    * @param store ProcedureStore
@@ -616,7 +616,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   //  Runtime state, updated every operation by the ProcedureExecutor
   //
   //  There is always 1 thread at the time operating on the state of the procedure.
-  //  The ProcedureExecutor may check and set states, or some Procecedure may
+  //  The ProcedureExecutor may check and set states, or some Procedure may
   //  update its own state. but no concurrent updates. we use synchronized here
   //  just because the procedure can get scheduled on different executor threads on each step.
   // ==============================================================================================
