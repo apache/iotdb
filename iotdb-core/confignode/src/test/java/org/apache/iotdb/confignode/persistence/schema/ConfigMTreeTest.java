@@ -485,6 +485,41 @@ public class ConfigMTreeTest {
   }
 
   @Test
+  public void testDropColumnClearsPendingDataTypeChange() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    root.preAlterColumnDataType(database, table.getTableName(), "measurement", TSDataType.STRING);
+    Assert.assertTrue(
+        root.getTableSchemaDetails(database, table.getTableName())
+            .preAlteredColumns
+            .containsKey("measurement"));
+
+    root.preDeleteColumn(database, table.getTableName(), "measurement", false);
+
+    final TableSchemaDetails details = root.getTableSchemaDetails(database, table.getTableName());
+    Assert.assertTrue(details.preDeletedColumns.contains("measurement"));
+    // The pending data type change is moot once the column is dropped.
+    Assert.assertFalse(details.preAlteredColumns.containsKey("measurement"));
+  }
+
+  @Test
   public void testSetTemplate() throws MetadataException {
     root.setStorageGroup(new PartialPath("root.a"));
     PartialPath path = new PartialPath("root.a.template0");
