@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.calc.execution.StateMachine;
 import org.apache.iotdb.calc.execution.StateMachine.StateChangeListener;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -69,6 +70,10 @@ public class FragmentInstanceStateMachine {
 
   @GuardedBy("this")
   private final List<FragmentInstanceFailureListener> sourceInstanceFailureListeners =
+      new ArrayList<>();
+
+  @GuardedBy("finalStateChangeListeners")
+  private final List<StateChangeListener<FragmentInstanceState>> finalStateChangeListeners =
       new ArrayList<>();
 
   public FragmentInstanceStateMachine(FragmentInstanceId fragmentInstanceId, Executor executor) {
@@ -150,7 +155,15 @@ public class FragmentInstanceStateMachine {
         DataNodeQueryMessages.EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618,
         doneState);
 
-    instanceState.setIf(doneState, currentState -> !currentState.isDone());
+    List<StateChangeListener<FragmentInstanceState>> listeners;
+    synchronized (finalStateChangeListeners) {
+      if (!instanceState.setIf(doneState, currentState -> !currentState.isDone())) {
+        return;
+      }
+      listeners = ImmutableList.copyOf(finalStateChangeListeners);
+      finalStateChangeListeners.clear();
+    }
+    listeners.forEach(listener -> fireFinalStateChangeListener(doneState, listener));
   }
 
   /**
@@ -162,6 +175,39 @@ public class FragmentInstanceStateMachine {
   public void addStateChangeListener(
       StateChangeListener<FragmentInstanceState> stateChangeListener) {
     instanceState.addStateChangeListener(stateChangeListener);
+  }
+
+  /**
+   * Adds a listener that is notified synchronously when this state machine first reaches a terminal
+   * state. If the state is already terminal, the listener is notified before this method returns.
+   *
+   * <p>This is intended only for short, non-blocking bookkeeping that must be completed before the
+   * state transition method returns. Other cleanup should use {@link #addStateChangeListener}.
+   */
+  public void addFinalStateChangeListener(
+      StateChangeListener<FragmentInstanceState> stateChangeListener) {
+    requireNonNull(
+        stateChangeListener, CalcMessages.EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2);
+
+    FragmentInstanceState currentState;
+    synchronized (finalStateChangeListeners) {
+      currentState = instanceState.get();
+      if (!currentState.isDone()) {
+        finalStateChangeListeners.add(stateChangeListener);
+        return;
+      }
+    }
+    fireFinalStateChangeListener(currentState, stateChangeListener);
+  }
+
+  @SuppressWarnings("squid:S1181")
+  private void fireFinalStateChangeListener(
+      FragmentInstanceState state, StateChangeListener<FragmentInstanceState> stateChangeListener) {
+    try {
+      stateChangeListener.stateChanged(state);
+    } catch (Throwable t) {
+      LOGGER.error(CalcMessages.ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR, instanceId, t);
+    }
   }
 
   public void addSourceTaskFailureListener(FragmentInstanceFailureListener listener) {
