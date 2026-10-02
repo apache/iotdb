@@ -149,6 +149,21 @@ public class SlidingTimeWindowEvaluationHandlerTest {
     doTest(1, 100, 101);
   }
 
+  @Test(timeout = 1000)
+  public void testNearLongMaxBoundaryDoesNotOverflow() throws WindowingException {
+    final AtomicInteger count = new AtomicInteger(0);
+
+    SlidingTimeWindowEvaluationHandler handler =
+        new SlidingTimeWindowEvaluationHandler(
+            new SlidingTimeWindowConfiguration(TSDataType.INT32, 2, 1),
+            window -> count.incrementAndGet());
+
+    handler.collect(Long.MAX_VALUE - 1, 1);
+    handler.collect(Long.MAX_VALUE, 2);
+
+    Assert.assertEquals(0, count.get());
+  }
+
   private void doTest(long timeInterval, long slidingStep, long totalTime)
       throws WindowingException {
     final AtomicInteger count = new AtomicInteger(0);

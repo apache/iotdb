@@ -59,6 +59,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,7 +74,7 @@ public class TsFileSplitter {
   private final TsFileDataConsumer consumer;
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
   private TreeMap<Long, List<Deletion>> offset2Deletions = new TreeMap<>();
-  private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
+  private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new LinkedHashMap<>();
   private Map<Integer, long[]> pageIndex2Times = new HashMap<>();
   private boolean isTimeChunkNeedDecode = true;
   private IDeviceID curDevice = null;
@@ -259,13 +260,10 @@ public class TsFileSplitter {
 
         int satisfiedLength = 0;
         long endTime =
-            timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
-        // beware of overflow
-        if (endTime <= timePartitionSlot.getStartTime()) {
-          endTime = Long.MAX_VALUE;
-        }
+            TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
         for (int i = 0; i < times.length; i++) {
-          if (times[i] >= endTime) {
+          if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+              times[i], timePartitionSlot.getStartTime(), endTime)) {
             chunkData.writeDecodePage(times, values, satisfiedLength);
             if (isAligned) {
               pageIndex2ChunkData
@@ -278,10 +276,7 @@ public class TsFileSplitter {
             timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
             satisfiedLength = 0;
             endTime =
-                timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
-            if (endTime <= timePartitionSlot.getStartTime()) {
-              endTime = Long.MAX_VALUE;
-            }
+                TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
             chunkData =
                 ChunkData.createChunkData(
                     isAligned, ((PlainDeviceID) curDevice).toStringID(), header, timePartitionSlot);
@@ -368,7 +363,7 @@ public class TsFileSplitter {
     pageIndex2ChunkDataList.add(pageIndex2ChunkData);
     isTimeChunkNeedDecodeList.add(isTimeChunkNeedDecode);
     pageIndex2Times = new HashMap<>();
-    pageIndex2ChunkData = new HashMap<>();
+    pageIndex2ChunkData = new LinkedHashMap<>();
     isTimeChunkNeedDecode = true;
   }
 
@@ -447,7 +442,7 @@ public class TsFileSplitter {
       return;
     }
 
-    Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new HashMap<>();
+    Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new LinkedHashMap<>();
     for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
       List<AlignedChunkData> alignedChunkDataList = entry.getValue();
       for (int i = 0; i < alignedChunkDataList.size(); i++) {
@@ -473,7 +468,7 @@ public class TsFileSplitter {
                 offset, chunkData));
       }
     }
-    this.pageIndex2ChunkData = new HashMap<>();
+    this.pageIndex2ChunkData = new LinkedHashMap<>();
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)

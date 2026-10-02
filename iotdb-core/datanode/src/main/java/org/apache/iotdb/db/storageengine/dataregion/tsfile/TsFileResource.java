@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -40,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -867,7 +867,7 @@ public class TsFileResource implements Cloneable {
    * @return whether the given time falls in ttl
    */
   private boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || time >= CommonUtils.getTTLLowerBound(dataTTL);
   }
 
   /**
@@ -1101,15 +1101,11 @@ public class TsFileResource implements Cloneable {
   public static int checkAndCompareFileName(String fileName1, String fileName2) throws IOException {
     TsFileNameGenerator.TsFileName tsFileName1 = TsFileNameGenerator.getTsFileName(fileName1);
     TsFileNameGenerator.TsFileName tsFileName2 = TsFileNameGenerator.getTsFileName(fileName2);
-    long timeDiff = tsFileName1.getTime() - tsFileName2.getTime();
-    if (timeDiff != 0) {
-      return timeDiff < 0 ? -1 : 1;
+    int timeCompare = Long.compare(tsFileName1.getTime(), tsFileName2.getTime());
+    if (timeCompare != 0) {
+      return timeCompare;
     }
-    long versionDiff = tsFileName1.getVersion() - tsFileName2.getVersion();
-    if (versionDiff != 0) {
-      return versionDiff < 0 ? -1 : 1;
-    }
-    return 0;
+    return Long.compare(tsFileName1.getVersion(), tsFileName2.getVersion());
   }
 
   /**
@@ -1130,11 +1126,7 @@ public class TsFileResource implements Cloneable {
           TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
       TsFileNameGenerator.TsFileName n2 =
           TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-      long versionDiff = n2.getVersion() - n1.getVersion();
-      if (versionDiff != 0) {
-        return versionDiff < 0 ? -1 : 1;
-      }
-      return 0;
+      return Long.compare(n2.getVersion(), n1.getVersion());
     } catch (IOException e) {
       LOGGER.error("File name may not meet the standard naming specifications.", e);
       throw new RuntimeException(e.getMessage());

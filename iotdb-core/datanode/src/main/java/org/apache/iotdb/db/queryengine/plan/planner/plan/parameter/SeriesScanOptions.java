@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
@@ -91,12 +91,11 @@ public class SeriesScanOptions {
    */
   public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
+      long ttlLowerBound = CommonUtils.getTTLLowerBound(dataTTL);
       if (filter != null) {
-        filter =
-            FilterFactory.and(
-                filter, TimeFilterApi.gtEq(CommonDateTimeUtils.currentTime() - dataTTL));
+        filter = FilterFactory.and(filter, TimeFilterApi.gtEq(ttlLowerBound));
       } else {
-        filter = TimeFilterApi.gtEq(CommonDateTimeUtils.currentTime() - dataTTL);
+        filter = TimeFilterApi.gtEq(ttlLowerBound);
       }
     }
     return filter;

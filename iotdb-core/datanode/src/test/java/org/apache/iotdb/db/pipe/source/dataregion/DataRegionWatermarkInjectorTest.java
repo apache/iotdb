@@ -17,25 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.pipe.source.dataregion;
 
-import com.google.common.math.LongMath;
+import org.junit.Assert;
+import org.junit.Test;
 
-/** This class is used to throw run time exception when query is time out. */
-public class QueryTimeoutRuntimeException extends RuntimeException {
-  public static final String QUERY_TIMEOUT_EXCEPTION_MESSAGE =
-      "Current query is time out, query start time is %d, ddl is %d, current time is %d, please check your statement or modify timeout parameter.";
+public class DataRegionWatermarkInjectorTest {
 
-  public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
-    super(
-        String.format(
-            QUERY_TIMEOUT_EXCEPTION_MESSAGE,
-            startTime,
-            LongMath.saturatedAdd(startTime, timeout),
-            currentTime));
+  @Test
+  public void testCalculateNextInjectionTime() {
+    Assert.assertEquals(
+        90_000, DataRegionWatermarkInjector.calculateNextInjectionTime(60_001, 30_000));
   }
 
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
+  @Test
+  public void testCalculateNextInjectionTimeSaturatesOnOverflow() {
+    Assert.assertEquals(
+        Long.MAX_VALUE,
+        DataRegionWatermarkInjector.calculateNextInjectionTime(
+            Long.MAX_VALUE, DataRegionWatermarkInjector.MIN_INJECTION_INTERVAL_IN_MS));
+    Assert.assertEquals(
+        Long.MAX_VALUE,
+        DataRegionWatermarkInjector.calculateNextInjectionTime(
+            Long.MAX_VALUE - 1, DataRegionWatermarkInjector.MIN_INJECTION_INTERVAL_IN_MS));
   }
 }
