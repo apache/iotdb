@@ -49,6 +49,9 @@ public class MissDetector {
   public MissDetector(RowIterator iterator, int minLength) throws Exception {
     while (iterator.hasNextRow()) {
       Row row = iterator.next();
+      if (row.isNull(0)) {
+        continue;
+      }
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         this.time.add(row.getTime());

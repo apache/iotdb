@@ -65,6 +65,9 @@ public class UDTFConv implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (list1.isEmpty() || list2.isEmpty()) {
+      return;
+    }
     double[] ans = new double[list1.size() + list2.size() - 1];
     for (int i = 0; i < list1.size(); i++) {
       for (int j = 0; j < list2.size(); j++) {
@@ -72,7 +75,9 @@ public class UDTFConv implements UDTF {
       }
     }
     for (int i = 0; i < ans.length; i++) {
-      collector.putDouble(i, ans[i]);
+      if (Double.isFinite(ans[i])) {
+        collector.putDouble(i, ans[i]);
+      }
     }
   }
 }

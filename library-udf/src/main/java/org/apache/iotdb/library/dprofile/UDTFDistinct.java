@@ -83,6 +83,9 @@ public class UDTFDistinct implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     operations.add(this, row);
   }
 

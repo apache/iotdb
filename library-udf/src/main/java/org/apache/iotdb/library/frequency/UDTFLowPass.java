@@ -57,11 +57,16 @@ public class UDTFLowPass implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    valueList.clear();
+    timeList.clear();
     this.wpass = parameters.getDouble(WPASS_PARAM);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double v = Util.getValueAsDouble(row);
     if (Double.isFinite(v)) {
       valueList.add(v);
@@ -72,6 +77,9 @@ public class UDTFLowPass implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     int n = valueList.size();
+    if (n == 0) {
+      return;
+    }
     DoubleFFT_1D fft = new DoubleFFT_1D(n);
     // each data point count for 2 double values, same with UDTFFFT
     double[] a = new double[2 * n];
@@ -88,7 +96,10 @@ public class UDTFLowPass implements UDTF {
     fft.complexInverse(a, true);
     // output
     for (int i = 0; i < n; i++) {
-      collector.putDouble(timeList.get(i), a[i * 2]);
+      double value = a[i * 2];
+      if (Double.isFinite(value)) {
+        collector.putDouble(timeList.get(i), value);
+      }
     }
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -39,11 +40,24 @@ public class UDTFAR implements UDTF {
   private List<Double> valueWindow = new ArrayList<>();
 
   @Override
+  public void validate(UDFParameterValidator validator) throws Exception {
+    validator
+        .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validate(
+            x -> (int) x > 0,
+            "Parameter p should be a positive integer.",
+            validator.getParameters().getIntOrDefault("p", 1));
+  }
+
+  @Override
   public void beforeStart(UDFParameters udfParameters, UDTFConfigurations udtfConfigurations)
       throws Exception {
     udtfConfigurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(udfParameters.getDataType(0));
+    timeWindow.clear();
+    valueWindow.clear();
     this.p = udfParameters.getIntOrDefault("p", 1);
     udtfConfigurations.setAccessStrategy(new RowByRowAccessStrategy());
     udtfConfigurations.setOutputDataType(Type.DOUBLE);
@@ -52,8 +66,11 @@ public class UDTFAR implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     if (!row.isNull(0)) {
-      timeWindow.add(row.getTime());
-      valueWindow.add(Util.getValueAsDouble(row));
+      double value = Util.getValueAsDouble(row);
+      if (Double.isFinite(value)) {
+        timeWindow.add(row.getTime());
+        valueWindow.add(value);
+      }
     }
   }
 
@@ -79,6 +96,9 @@ public class UDTFAR implements UDTF {
       }
     }
     long interval = maxFreqInterval;
+    if (interval <= 0) {
+      return;
+    }
 
     List<Long> imputedTimeWindow = new ArrayList<>();
     List<Double> imputedValueWindow = new ArrayList<>();
@@ -120,7 +140,13 @@ public class UDTFAR implements UDTF {
       for (int j = 1; j <= i - 1; j++) {
         tmpSum += alphas[j][i - 1] * resultCovariances[i - j];
       }
+      if (!Double.isFinite(epsilons[i - 1]) || Math.abs(epsilons[i - 1]) < 1e-12) {
+        return;
+      }
       kappas[i] = (resultCovariances[i] - tmpSum) / epsilons[i - 1];
+      if (!Double.isFinite(kappas[i])) {
+        return;
+      }
       alphas[i][i] = kappas[i];
       if (i > 1) {
         for (int j = 1; j <= i - 1; j++) {
@@ -130,7 +156,9 @@ public class UDTFAR implements UDTF {
       epsilons[i] = (1 - kappas[i] * kappas[i]) * epsilons[i - 1];
     }
     for (int i = 1; i <= p; i++) {
-      collector.putDouble(i, alphas[i][p]);
+      if (Double.isFinite(alphas[i][p])) {
+        collector.putDouble(i, alphas[i][p]);
+      }
     }
   }
 }

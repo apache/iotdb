@@ -33,6 +33,8 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.jtransforms.fft.DoubleFFT_1D;
 
+import java.util.Locale;
+
 /** This function does Fast Fourier Transform for input series. */
 public class UDTFFFT implements UDTF {
 
@@ -70,7 +72,8 @@ public class UDTFFFT implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    String result = parameters.getStringOrDefault("result", "abs");
+    list.clear();
+    String result = parameters.getStringOrDefault("result", "abs").toLowerCase(Locale.ROOT);
     this.compressed = parameters.hasAttribute(COMPRESS_PARAM);
     double compressRate = parameters.getDoubleOrDefault(COMPRESS_PARAM, 1);
     this.fftutil = new FFTUtil(result, compressRate);
@@ -78,6 +81,9 @@ public class UDTFFFT implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double v = Util.getValueAsDouble(row);
     if (Double.isFinite(v)) {
       list.add(v);
@@ -87,6 +93,9 @@ public class UDTFFFT implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     int n = list.size();
+    if (n == 0) {
+      return;
+    }
     DoubleFFT_1D fft = new DoubleFFT_1D(n);
     // each data point count for 2 double values (re and im)
     double[] a = new double[2 * n];

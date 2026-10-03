@@ -60,7 +60,7 @@ public class TimestampInterval {
   // median
   private long getIntervalByMedian() {
     ArrayList<Long> arrInterval = new ArrayList<>();
-    for (int i = 0; i < n - 2; i++) {
+    for (int i = 0; i < n - 1; i++) {
       arrInterval.add(time[i + 1] - time[i]);
     }
     arrInterval.sort(Comparator.naturalOrder());
