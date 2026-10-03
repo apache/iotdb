@@ -36,7 +36,7 @@ public final class LoadTsFilePieceNodeAssembler {
   LoadTsFilePieceNodeAssembler(final int sliceCount, final int originBodySize) {
     this.sliceCount = sliceCount;
     this.originBodySize = originBodySize;
-    this.assembledBody = new PublicBAOS(Math.max(0, originBodySize));
+    this.assembledBody = new PublicBAOS();
   }
 
   synchronized Result append(
