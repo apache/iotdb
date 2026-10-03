@@ -52,6 +52,10 @@ public class PathPatternUtil {
         || patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
       return true;
     }
-    return Pattern.matches(patternNode.replace("*", ".*"), nodeName);
+    return compileNodePattern(patternNode).matcher(nodeName).matches();
+  }
+
+  static Pattern compileNodePattern(final String patternNode) {
+    return Pattern.compile(patternNode.replace("*", ".*"));
   }
 }
