@@ -110,6 +110,35 @@ public class TopicConfigTest {
     Assert.assertTrue(new TopicConfig(attributes).isColumnFilterTrivial());
   }
 
+  @Test
+  public void testTagFilterKeyIsCaseInsensitive() {
+    final TopicConfig topicConfig =
+        new TopicConfig(Collections.singletonMap("Tag-Filter", "region = \"north\""));
+
+    Assert.assertTrue(topicConfig.hasTagFilter());
+    Assert.assertEquals("region = \"north\"", topicConfig.getTagFilter());
+    Assert.assertEquals(
+        "region = \"north\"",
+        topicConfig.getAttributesWithSourceTagFilter().get(TopicConstant.TAG_FILTER_KEY));
+  }
+
+  @Test
+  public void testTagFilterDefaultsToTrivialWhenAbsent() {
+    final TopicConfig topicConfig = new TopicConfig(new HashMap<>());
+
+    Assert.assertFalse(topicConfig.hasTagFilter());
+    Assert.assertTrue(topicConfig.isTagFilterTrivial());
+    Assert.assertEquals(TopicConstant.TAG_FILTER_DEFAULT_VALUE, topicConfig.getTagFilter());
+  }
+
+  @Test
+  public void testTagFilterTrivialWithMixedCaseKeyAndValue() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put("TAG-FILTER", " TRUE ");
+
+    Assert.assertTrue(new TopicConfig(attributes).isTagFilterTrivial());
+  }
+
   private static TopicConfig topicConfigWithMode(final String mode) {
     return new TopicConfig(Collections.singletonMap(TopicConstant.MODE_KEY, mode));
   }

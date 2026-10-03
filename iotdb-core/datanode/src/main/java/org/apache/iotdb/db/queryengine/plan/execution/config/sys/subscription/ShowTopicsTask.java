@@ -28,6 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterMatcher;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -37,6 +39,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ShowTopicsTask implements IConfigTask {
@@ -60,12 +63,28 @@ public class ShowTopicsTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      final List<TShowTopicInfo> topicInfoList, final SettableFuture<ConfigTaskResult> future) {
+      final List<TShowTopicInfo> topicInfoList,
+      final boolean isTableModel,
+      final SettableFuture<ConfigTaskResult> future) {
+    buildTSBlock(
+        topicInfoList,
+        isTableModel,
+        topicName -> SubscriptionAgent.broker().getTagFilterMatcher(topicName, true),
+        future);
+  }
+
+  static void buildTSBlock(
+      final List<TShowTopicInfo> topicInfoList,
+      final boolean isTableModel,
+      final Function<String, TagFilterMatcher> matcherProvider,
+      final SettableFuture<ConfigTaskResult> future) {
+    final List<ColumnHeader> columnHeaders =
+        isTableModel
+            ? ColumnHeaderConstant.showTableTopicColumnHeaders
+            : ColumnHeaderConstant.showTopicColumnHeaders;
     final TsBlockBuilder builder =
         new TsBlockBuilder(
-            ColumnHeaderConstant.showTopicColumnHeaders.stream()
-                .map(ColumnHeader::getColumnType)
-                .collect(Collectors.toList()));
+            columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList()));
 
     for (final TShowTopicInfo topicInfo : topicInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
@@ -75,6 +94,17 @@ public class ShowTopicsTask implements IConfigTask {
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(topicInfo.getTopicAttributes(), TSFileConfig.STRING_CHARSET));
+      if (isTableModel) {
+        final TagFilterMatcher matcher;
+        try {
+          matcher = matcherProvider.apply(topicInfo.getTopicName());
+        } catch (final RuntimeException e) {
+          writeTagFilterDiagnostic(builder, TagFilterMatcher.failure(e));
+          builder.declarePosition();
+          continue;
+        }
+        writeTagFilterDiagnostic(builder, matcher);
+      }
       builder.declarePosition();
     }
 
@@ -82,6 +112,22 @@ public class ShowTopicsTask implements IConfigTask {
         new ConfigTaskResult(
             TSStatusCode.SUCCESS_STATUS,
             builder.build(),
-            DatasetHeaderFactory.getShowTopicHeader()));
+            isTableModel
+                ? DatasetHeaderFactory.getShowTableTopicHeader()
+                : DatasetHeaderFactory.getShowTopicHeader()));
+  }
+
+  private static void writeTagFilterDiagnostic(
+      final TsBlockBuilder builder, final TagFilterMatcher matcher) {
+    builder
+        .getColumnBuilder(2)
+        .writeBinary(new Binary(matcher.getRuntimeStatus().name(), TSFileConfig.STRING_CHARSET));
+    if (matcher.isFailure()) {
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(matcher.getFailureMessage(), TSFileConfig.STRING_CHARSET));
+    } else {
+      builder.getColumnBuilder(3).appendNull();
+    }
   }
 }

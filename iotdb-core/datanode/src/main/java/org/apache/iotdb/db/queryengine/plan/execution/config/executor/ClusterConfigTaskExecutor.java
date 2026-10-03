@@ -3307,6 +3307,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           showTopicResp.isSetTopicInfoList()
               ? showTopicResp.getTopicInfoList()
               : Collections.emptyList(),
+          showTopicsStatement.isTableModel(),
           future);
     } catch (final Exception e) {
       future.setException(e);

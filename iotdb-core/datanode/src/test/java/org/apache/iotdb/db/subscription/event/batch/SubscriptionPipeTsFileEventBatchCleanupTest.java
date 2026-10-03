@@ -33,9 +33,41 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class SubscriptionPipeTsFileEventBatchCleanupTest {
+
+  @Test
+  public void testClosesInnerBatchWhenFilteringProducesNoPayload() throws Exception {
+    final PipeTabletEventTsFileBatch innerBatch = Mockito.mock(PipeTabletEventTsFileBatch.class);
+    final SubscriptionPrefetchingTsFileQueue queue =
+        Mockito.mock(SubscriptionPrefetchingTsFileQueue.class);
+    Mockito.when(innerBatch.isEmpty()).thenReturn(true);
+
+    final SubscriptionPipeTsFileEventBatch batch =
+        new SubscriptionPipeTsFileEventBatch(1, queue, 1, 1, innerBatch);
+
+    Assert.assertTrue(batch.generateSubscriptionEvents().isEmpty());
+    Mockito.verify(innerBatch).close();
+  }
+
+  @Test
+  public void testClosesInnerBatchWhenSealingProducesNoFile() throws Exception {
+    final PipeTabletEventTsFileBatch innerBatch = Mockito.mock(PipeTabletEventTsFileBatch.class);
+    final SubscriptionPrefetchingTsFileQueue queue =
+        Mockito.mock(SubscriptionPrefetchingTsFileQueue.class);
+    Mockito.when(innerBatch.isEmpty()).thenReturn(false);
+    Mockito.when(innerBatch.sealTsFiles()).thenReturn(Collections.emptyList());
+
+    final SubscriptionPipeTsFileEventBatch batch =
+        new SubscriptionPipeTsFileEventBatch(1, queue, 1, 1, innerBatch);
+
+    Assert.assertTrue(batch.generateSubscriptionEvents().isEmpty());
+    Mockito.verify(innerBatch).decreaseEventsReferenceCount(batch.getClass().getName(), true);
+    Mockito.verify(innerBatch).onSuccess();
+    Mockito.verify(innerBatch).close();
+  }
 
   @Test
   public void testDeletesSealedFilesAfterAllSharedEventsAreCleaned() throws Exception {

@@ -453,6 +453,73 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
+  public void testLiveRecordHandlerTagFilterBeforeColumnFilter() throws Exception {
+    final String database = databaseName("tag_record");
+    final String topicName = topicName("tag_record");
+    final String consumerId = consumerName("tag_record");
+    final String consumerGroupId = consumerGroupName("tag_record");
+
+    try {
+      createDatabaseAndTable(senderEnv, database, TABLE_NAME, TABLE_SCHEMA);
+      createTopicWithFilters(
+          topicName,
+          database,
+          TABLE_NAME,
+          TopicConstant.MODE_INITIAL_VALUE,
+          TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
+          COLUMN_FILTER,
+          "tag1 IN (\"tag_1\", \"tag_3\")");
+
+      try (final ISubscriptionTablePullConsumer consumer =
+          createConsumer(consumerId, consumerGroupId)) {
+        consumer.subscribe(topicName);
+        insertRows(senderEnv, database, TABLE_NAME, 1, 5);
+
+        final Set<Long> expectedTimestamps = new LinkedHashSet<>(Arrays.asList(1L, 3L));
+        final ConsumedRecordStats stats =
+            pollRecordMessagesForTimestamps(consumer, expectedTimestamps, true);
+
+        Assert.assertEquals(expectedTimestamps, stats.timestamps);
+        Assert.assertEquals(EXPECTED_COLUMNS, stats.columnNames);
+      }
+    } finally {
+      cleanup(topicName, database);
+    }
+  }
+
+  @Test
+  public void testSnapshotTsFileTagFilter() throws Exception {
+    final String database = databaseName("tag_snapshot_tsfile");
+    final String topicName = topicName("tag_snapshot_tsfile");
+    final String consumerId = consumerName("tag_snapshot_tsfile");
+    final String consumerGroupId = consumerGroupName("tag_snapshot_tsfile");
+
+    try {
+      createDatabaseAndTable(senderEnv, database, TABLE_NAME, TABLE_SCHEMA);
+      createDatabaseAndTable(receiverEnv, database, TABLE_NAME, TABLE_SCHEMA);
+      insertRows(senderEnv, database, TABLE_NAME, 10, 14);
+      createTopicWithFilters(
+          topicName,
+          database,
+          TABLE_NAME,
+          TopicConstant.MODE_SNAPSHOT_VALUE,
+          TopicConstant.FORMAT_TS_FILE_VALUE,
+          TopicConstant.COLUMN_FILTER_DEFAULT_VALUE,
+          "tag1 IN (\"tag_10\", \"tag_12\")");
+
+      try (final ISubscriptionTablePullConsumer consumer =
+          createConsumer(consumerId, consumerGroupId)) {
+        consumer.subscribe(topicName);
+        pollTsFileMessagesAndLoad(consumer, database, 2);
+      }
+
+      assertLoadedTimestamps(database, new LinkedHashSet<>(Arrays.asList(10L, 12L)));
+    } finally {
+      cleanup(topicName, database);
+    }
+  }
+
+  @Test
   public void testSnapshotTsFileColumnFilter() throws Exception {
     final String database = databaseName("snapshot_tsfile");
     final String topicName = topicName("snapshot_tsfile");
@@ -1036,6 +1103,34 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
         topicName, database, tableName, TopicConstant.MODE_INITIAL_VALUE, format, "", false);
   }
 
+  private void createTopicWithFilters(
+      final String topicName,
+      final String database,
+      final String tableName,
+      final String mode,
+      final String format,
+      final String columnFilter,
+      final String tagFilter)
+      throws Exception {
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder()
+            .host(senderEnv.getIP())
+            .port(Integer.parseInt(senderEnv.getPort()))
+            .build()) {
+      session.open();
+      session.dropTopicIfExists(topicName);
+
+      final Properties config = new Properties();
+      config.put(TopicConstant.MODE_KEY, mode);
+      config.put(TopicConstant.FORMAT_KEY, format);
+      config.put(TopicConstant.DATABASE_KEY, database);
+      config.put(TopicConstant.TABLE_KEY, tableName);
+      config.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+      config.put(TopicConstant.TAG_FILTER_KEY, tagFilter);
+      session.createTopic(topicName, config);
+    }
+  }
+
   private void createTopic(
       final String topicName,
       final String database,
@@ -1453,6 +1548,22 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
         Assert.assertEquals(expectedRows, rows);
       }
     }
+  }
+
+  private void assertLoadedTimestamps(final String database, final Set<Long> expectedTimestamps)
+      throws Exception {
+    final Set<Long> actualTimestamps = new LinkedHashSet<>();
+    try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + database);
+      try (final java.sql.ResultSet resultSet =
+          statement.executeQuery("select time from " + TABLE_NAME + " order by time")) {
+        while (resultSet.next()) {
+          actualTimestamps.add(resultSet.getLong("time"));
+        }
+      }
+    }
+    Assert.assertEquals(expectedTimestamps, actualTimestamps);
   }
 
   private void cleanup(final String topicName, final String database) {

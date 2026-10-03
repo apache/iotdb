@@ -130,6 +130,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
             .deepCopyTopicMeta(
                 updatedTopicMeta.getTopicName(), updatedTopicMeta.visibleUnderTableModel());
     if (Objects.nonNull(updatedTopicAttributes) && Objects.nonNull(existedTopicMeta)) {
+      subscriptionInfo.get().validateUpdatedTopicAttributes(updatedTopicAttributes);
       updatedTopicMeta = existedTopicMeta.deepCopyWithUpdatedAttributes(updatedTopicAttributes);
     }
 
