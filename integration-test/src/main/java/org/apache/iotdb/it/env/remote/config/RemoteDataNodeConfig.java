@@ -49,6 +49,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     return this;

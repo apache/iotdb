@@ -24,6 +24,8 @@ import org.apache.iotdb.itbase.env.DataNodeConfig;
 import java.io.IOException;
 import java.util.List;
 
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_DIRS;
+
 public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
 
   public MppDataNodeConfig() {
@@ -77,6 +79,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     properties.setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutInMS));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    setProperty(DN_DATA_DIRS, dnDataDirs);
     return this;
   }
 
