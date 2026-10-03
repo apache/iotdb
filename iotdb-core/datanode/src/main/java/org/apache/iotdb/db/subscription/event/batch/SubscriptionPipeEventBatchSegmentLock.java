@@ -65,11 +65,11 @@ public class SubscriptionPipeEventBatchSegmentLock {
 
   public void lock(final int regionId) {
     initIfNecessary();
-    locks[regionId % locks.length].lock();
+    locks[Math.floorMod(regionId, locks.length)].lock();
   }
 
   public void unlock(final int regionId) {
     initIfNecessary();
-    locks[regionId % locks.length].unlock();
+    locks[Math.floorMod(regionId, locks.length)].unlock();
   }
 }

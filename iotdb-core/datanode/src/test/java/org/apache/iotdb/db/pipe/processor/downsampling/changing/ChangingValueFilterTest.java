@@ -17,47 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.downsampling.sdt;
+package org.apache.iotdb.db.pipe.processor.downsampling.changing;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 
-public class SwingingDoorTrendingFilterTest {
+public class ChangingValueFilterTest {
 
   @Test
   public void testExtremeTimestampDistanceReachesMaxInterval() throws Exception {
-    final SwingingDoorTrendingFilter<Integer> filter =
-        new SwingingDoorTrendingFilter<>(createProcessor(0, Long.MAX_VALUE, 0), Long.MIN_VALUE, 0);
+    final ChangingValueFilter<Integer> filter =
+        new ChangingValueFilter<>(createProcessor(0, Long.MAX_VALUE, 0), Long.MIN_VALUE, 0);
 
     Assert.assertTrue(filter.filter(Long.MAX_VALUE, 0));
   }
 
-  @Test
-  public void testDecreasingTrendIsCompressed() throws Exception {
-    final SwingingDoorTrendingFilter<Integer> filter =
-        new SwingingDoorTrendingFilter<>(createProcessor(0, Long.MAX_VALUE, 0), 0, 10);
-
-    Assert.assertFalse(filter.filter(1, 9));
-  }
-
-  @Test
-  public void testDecreasingTrendIsCompressedAfterReset() throws Exception {
-    final SwingingDoorTrendingFilter<Integer> filter =
-        new SwingingDoorTrendingFilter<>(createProcessor(0, 10, 0), 0, 20);
-
-    Assert.assertTrue(filter.filter(10, 10));
-    Assert.assertFalse(filter.filter(11, 9));
-  }
-
-  private SwingingDoorTrendingSamplingProcessor createProcessor(
+  private ChangingValueSamplingProcessor createProcessor(
       final long compressionMinTimeInterval,
       final long compressionMaxTimeInterval,
       final double compressionDeviation)
       throws Exception {
-    final SwingingDoorTrendingSamplingProcessor processor =
-        new SwingingDoorTrendingSamplingProcessor();
+    final ChangingValueSamplingProcessor processor = new ChangingValueSamplingProcessor();
     setField(processor, "compressionMinTimeInterval", compressionMinTimeInterval);
     setField(processor, "compressionMaxTimeInterval", compressionMaxTimeInterval);
     setField(processor, "compressionDeviation", compressionDeviation);
