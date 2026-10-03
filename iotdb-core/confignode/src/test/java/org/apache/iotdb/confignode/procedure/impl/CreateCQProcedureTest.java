@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 
@@ -67,6 +68,34 @@ public class CreateCQProcedureTest {
   }
 
   @Test
+  public void mixedCalendarRangeWithFixedEveryUsesStructuredEveryDuration() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "mixedFixedEveryCq",
+            0,
+            0,
+            0,
+            0,
+            (byte) 0,
+            "select s1 into root.backup.d1(s1) from root.sg.d1",
+            "create cq mixedFixedEveryCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1_000));
+    req.setStartOffsetDuration(new TCQDuration(1, 1_000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    try {
+      new CreateCQProcedure(req, executor);
+    } finally {
+      executor.shutdown();
+    }
+  }
+
+  @Test
   public void serializeDeserializeTest() {
 
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -104,6 +133,55 @@ public class CreateCQProcedureTest {
       CreateCQProcedure createCQProcedure2 =
           (CreateCQProcedure) ProcedureFactory.getInstance().create(buffer);
       assertEquals(createCQProcedure1, createCQProcedure2);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      executor.shutdown();
+    }
+  }
+
+  @Test
+  public void calendarCqWithOmittedBoundarySurvivesSerializeDeserialize() {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "calendarCq",
+            0,
+            0,
+            0,
+            0,
+            (byte) 0,
+            "select s1 into root.backup.d1(s1) from root.sg.d1",
+            "create cq calendarCq",
+            "Asia/Shanghai",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(1, 0));
+    req.setStartOffsetDuration(new TCQDuration(1, 0));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(false);
+
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    CreateCQProcedure procedure1 = new CreateCQProcedure(req, executor);
+
+    CQManager cqManager = Mockito.mock(CQManager.class);
+    Mockito.when(cqManager.getExecutor()).thenReturn(executor);
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    Mockito.when(configManager.getCQManager()).thenReturn(cqManager);
+    ConfigNode configNode = new ConfigNode();
+    configNode.setConfigManager(configManager);
+
+    try {
+      procedure1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      CreateCQProcedure procedure2 =
+          (CreateCQProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(procedure1, procedure2);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

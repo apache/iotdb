@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.request.write.cq;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +40,10 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
 
   private String cqToken;
 
+  private boolean hasOccurrenceIndex;
+  private long expectedIndex;
+  private long targetIndex;
+
   public UpdateCQLastExecTimePlan() {
     super(UPDATE_CQ_LAST_EXEC_TIME);
   }
@@ -50,6 +55,18 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
     this.cqId = cqId;
     this.executionTime = executionTime;
     this.cqToken = cqToken;
+  }
+
+  public UpdateCQLastExecTimePlan(
+      String cqId, long executionTime, String cqToken, long expectedIndex, long targetIndex) {
+    this(cqId, executionTime, cqToken);
+    if (expectedIndex < 0 || targetIndex <= expectedIndex) {
+      throw new IllegalArgumentException(
+          ManagerMessages.EXCEPTION_INVALID_CQ_OCCURRENCE_INDEX_TRANSITION_AC6BFC4D);
+    }
+    this.hasOccurrenceIndex = true;
+    this.expectedIndex = expectedIndex;
+    this.targetIndex = targetIndex;
   }
 
   public String getCqId() {
@@ -64,12 +81,29 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
     return cqToken;
   }
 
+  public boolean hasOccurrenceIndex() {
+    return hasOccurrenceIndex;
+  }
+
+  public long getExpectedIndex() {
+    return expectedIndex;
+  }
+
+  public long getTargetIndex() {
+    return targetIndex;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(cqId, stream);
     ReadWriteIOUtils.write(executionTime, stream);
     ReadWriteIOUtils.write(cqToken, stream);
+    ReadWriteIOUtils.write(hasOccurrenceIndex, stream);
+    if (hasOccurrenceIndex) {
+      ReadWriteIOUtils.write(expectedIndex, stream);
+      ReadWriteIOUtils.write(targetIndex, stream);
+    }
   }
 
   @Override
@@ -77,6 +111,17 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
     cqId = ReadWriteIOUtils.readString(buffer);
     executionTime = ReadWriteIOUtils.readLong(buffer);
     cqToken = ReadWriteIOUtils.readString(buffer);
+    if (buffer.hasRemaining()) {
+      hasOccurrenceIndex = ReadWriteIOUtils.readBool(buffer);
+      if (hasOccurrenceIndex) {
+        expectedIndex = ReadWriteIOUtils.readLong(buffer);
+        targetIndex = ReadWriteIOUtils.readLong(buffer);
+        if (expectedIndex < 0 || targetIndex <= expectedIndex) {
+          throw new IOException(
+              ManagerMessages.EXCEPTION_INVALID_CQ_OCCURRENCE_INDEX_TRANSITION_AC6BFC4D);
+        }
+      }
+    }
   }
 
   @Override
@@ -92,12 +137,22 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
     }
     UpdateCQLastExecTimePlan that = (UpdateCQLastExecTimePlan) o;
     return executionTime == that.executionTime
+        && hasOccurrenceIndex == that.hasOccurrenceIndex
+        && expectedIndex == that.expectedIndex
+        && targetIndex == that.targetIndex
         && cqId.equals(that.cqId)
         && cqToken.equals(that.cqToken);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), cqId, executionTime, cqToken);
+    return Objects.hash(
+        super.hashCode(),
+        cqId,
+        executionTime,
+        cqToken,
+        hasOccurrenceIndex,
+        expectedIndex,
+        targetIndex);
   }
 }

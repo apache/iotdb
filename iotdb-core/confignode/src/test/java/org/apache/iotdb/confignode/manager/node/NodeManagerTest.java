@@ -20,16 +20,25 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -57,6 +66,8 @@ public class NodeManagerTest {
 
   private IConsensus consensus;
   private ConsensusManager consensusManager;
+  private NodeInfo nodeInfo;
+  private CQManager cqManager;
   private NodeManager nodeManager;
   private int originalCnConnectionTimeout;
   private int originalTransferLeaderTimeout;
@@ -73,10 +84,12 @@ public class NodeManagerTest {
     consensus = Mockito.mock(IConsensus.class);
     consensusManager = Mockito.mock(ConsensusManager.class);
     IManager configManager = Mockito.mock(IManager.class);
-    NodeInfo nodeInfo = Mockito.mock(NodeInfo.class);
+    nodeInfo = Mockito.mock(NodeInfo.class);
     LoadManager loadManager = Mockito.mock(LoadManager.class);
+    cqManager = Mockito.mock(CQManager.class);
 
     Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(configManager.getCQManager()).thenReturn(cqManager);
     Mockito.when(configManager.getLoadManager()).thenReturn(loadManager);
     Mockito.when(consensusManager.getConsensusImpl()).thenReturn(consensus);
     Mockito.when(consensusManager.getConsensusGroupId())
@@ -124,6 +137,64 @@ public class NodeManagerTest {
     Assert.assertEquals(
         Arrays.asList(firstCandidate.getConfigNodeId(), secondCandidate.getConfigNodeId()),
         peerCaptor.getAllValues().stream().map(Peer::getNodeId).collect(Collectors.toList()));
+  }
+
+  @Test
+  public void configNodeWithoutCalendarDurationCapabilityIsRejectedWhileCalendarCQExists() {
+    TNodeVersionInfo unsupportedVersion = new TNodeVersionInfo("old", "old");
+    TConfigNodeRegisterReq registerReq =
+        new TConfigNodeRegisterReq().setConfigNodeLocation(firstCandidate);
+    registerReq.setVersionInfo(unsupportedVersion);
+
+    // The CQ manager is mocked in setUp; make the persisted metadata barrier active for this test.
+    Mockito.when(cqManager.hasCalendarDurationCQ()).thenReturn(true);
+
+    TConfigNodeRegisterResp registerResp = nodeManager.registerConfigNode(registerReq);
+    Assert.assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(), registerResp.getStatus().getCode());
+    Assert.assertEquals(-1, registerResp.getConfigNodeId());
+    Assert.assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+        nodeManager
+            .updateConfigNodeIfNecessary(firstCandidate.getConfigNodeId(), unsupportedVersion)
+            .getCode());
+    Mockito.verify(nodeInfo, Mockito.never()).generateNextNodeId();
+  }
+
+  @Test
+  public void dataNodeWithoutCalendarDurationCapabilityIsRejectedWhileCalendarCQExists() {
+    TNodeVersionInfo unsupportedVersion = new TNodeVersionInfo("old", "old");
+    TDataNodeLocation location =
+        new TDataNodeLocation(
+            11,
+            new TEndPoint("127.0.0.1", 6667),
+            new TEndPoint("127.0.0.1", 10730),
+            new TEndPoint("127.0.0.1", 10740),
+            new TEndPoint("127.0.0.1", 10750),
+            new TEndPoint("127.0.0.1", 10760));
+    TDataNodeConfiguration configuration = new TDataNodeConfiguration().setLocation(location);
+    TDataNodeRegisterReq registerReq =
+        new TDataNodeRegisterReq()
+            .setClusterName("cluster")
+            .setDataNodeConfiguration(configuration)
+            .setVersionInfo(unsupportedVersion);
+
+    Mockito.when(cqManager.hasCalendarDurationCQ()).thenReturn(true);
+
+    DataNodeRegisterResp registerResp =
+        (DataNodeRegisterResp) nodeManager.registerDataNode(registerReq);
+    Assert.assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(), registerResp.getStatus().getCode());
+    Mockito.verify(nodeInfo, Mockito.never()).generateNextNodeId();
+
+    TDataNodeRestartReq restartReq =
+        new TDataNodeRestartReq()
+            .setClusterName("cluster")
+            .setDataNodeConfiguration(configuration)
+            .setVersionInfo(unsupportedVersion);
+    Assert.assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+        nodeManager.updateDataNodeIfNecessary(restartReq).getStatus().getCode());
   }
 
   @Test
