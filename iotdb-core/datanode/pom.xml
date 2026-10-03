@@ -162,10 +162,6 @@
             <artifactId>libthrift</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-common</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-common</artifactId>
         </dependency>
@@ -262,7 +258,6 @@
         <dependency>
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-thirdparty-misc</artifactId>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
