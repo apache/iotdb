@@ -245,7 +245,7 @@ public class DatabasePartitionTable {
                 result.getAndIncrement();
               }
             });
-    return result.getAndIncrement();
+    return result.get();
   }
 
   /**
