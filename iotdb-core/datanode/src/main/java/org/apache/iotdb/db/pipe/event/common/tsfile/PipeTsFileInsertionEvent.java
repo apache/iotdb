@@ -382,6 +382,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return tsFile;
   }
 
+  /**
+   * Returns the original TsFile path stored in the resource. Unlike {@link #getTsFile()}, this path
+   * is not replaced by the hard-linked file in the pipe directory after the reference count is
+   * increased.
+   */
+  public File getSourceTsFile() {
+    return resource.getTsFile();
+  }
+
   public File getModFile() {
     return modFile;
   }
