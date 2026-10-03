@@ -21,6 +21,10 @@ package org.apache.iotdb.rpc.subscription.i18n;
 
 public final class SubscriptionMessages {
 
+  public static final String
+      EXCEPTION_SUBSCRIPTION_REQUEST_EXCEEDS_THE_NEGOTIATED_FRAME_LIMIT_CA8DEB50 =
+          "订阅请求超过协商的帧大小限制";
+
   // --- TopicConstant / ConsumerConstant ---
   public static final String UTILITY_CLASS = "工具类";
 
