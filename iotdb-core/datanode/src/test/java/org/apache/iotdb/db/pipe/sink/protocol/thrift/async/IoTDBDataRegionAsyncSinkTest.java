@@ -19,12 +19,19 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.async;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.lang.reflect.Field;
+import java.util.Map;
 
 public class IoTDBDataRegionAsyncSinkTest {
 
@@ -62,5 +69,47 @@ public class IoTDBDataRegionAsyncSinkTest {
         event, new PipeException("sink transfer wrapper", new NullPointerException()));
 
     Assert.assertEquals("java.lang.NullPointerException", sink.getLastRetryFailureMessage());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testMissingTsFileRetryLimitKeepsEventQueuedAndStopsSink() throws Exception {
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    final PipeTsFileInsertionEvent event = Mockito.mock(PipeTsFileInsertionEvent.class);
+    final File missingTsFile = new File("missing-retry-limit.tsfile").getAbsoluteFile();
+    Mockito.when(event.getTsFile()).thenReturn(missingTsFile);
+
+    final Field retryLimitField =
+        IoTDBDataRegionAsyncSink.class.getDeclaredField("MAX_FILE_NOT_FOUND_RETRY_TIMES");
+    retryLimitField.setAccessible(true);
+    final int retryLimit = retryLimitField.getInt(null);
+
+    final Field retryTimesField =
+        IoTDBDataRegionAsyncSink.class.getDeclaredField("missingFileRetryTimes");
+    retryTimesField.setAccessible(true);
+    ((Map<Event, Integer>) retryTimesField.get(sink)).put(event, retryLimit);
+
+    try {
+      sink.addFailureEventToRetryQueue(
+          event, new FileNotFoundException(missingTsFile.getAbsolutePath()));
+
+      Assert.assertEquals(1, sink.getRetryEventQueueSize());
+      Assert.assertTrue(
+          sink.getLastRetryFailureMessage().contains(missingTsFile.getAbsolutePath()));
+      Assert.assertTrue(sink.getLastRetryFailureMessage().contains(String.valueOf(retryLimit)));
+      Mockito.verify(event, Mockito.never())
+          .clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
+
+      try {
+        sink.transfer(Mockito.mock(Event.class));
+        Assert.fail("The sink should stop transferring after the missing-file retry limit.");
+      } catch (final PipeRuntimeSinkCriticalException e) {
+        Assert.assertTrue(e.getMessage().contains(missingTsFile.getAbsolutePath()));
+      }
+    } finally {
+      sink.clearRetryEventsReferenceCount();
+    }
+
+    Mockito.verify(event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
   }
 }
