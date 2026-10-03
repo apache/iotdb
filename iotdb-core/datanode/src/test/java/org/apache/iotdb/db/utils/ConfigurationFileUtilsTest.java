@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Objects;
 import java.util.Properties;
 
 public class ConfigurationFileUtilsTest {
@@ -40,13 +39,7 @@ public class ConfigurationFileUtilsTest {
 
   @After
   public void tearDown() throws IOException {
-    if (!dir.exists()) {
-      return;
-    }
-    for (File file : Objects.requireNonNull(dir.listFiles())) {
-      Files.delete(file.toPath());
-    }
-    Files.delete(dir.toPath());
+    EnvironmentUtils.cleanDir(dir.getPath());
   }
 
   @Test
