@@ -67,8 +67,7 @@ public class TElasticFramedTransportTest {
     byte[] firstFrame = {1, 2};
     byte[] secondFrame = {3, 4, 5, 6, 7, 8};
     TMemoryBuffer wire = new TMemoryBuffer(128);
-    TSnappyElasticFramedTransport output =
-        new TSnappyElasticFramedTransport(wire, 4, 128, false);
+    TSnappyElasticFramedTransport output = new TSnappyElasticFramedTransport(wire, 4, 128, false);
     output.write(firstFrame);
     output.flush();
     output.write(secondFrame);
@@ -88,8 +87,7 @@ public class TElasticFramedTransportTest {
     TMemoryBuffer underlying = new TMemoryBuffer(configuration, maxMessageSize);
     underlying.write(framedData);
     TSnappyElasticFramedTransport input =
-        new TSnappyElasticFramedTransport(
-            underlying, 4, configuration.getMaxFrameSize(), false);
+        new TSnappyElasticFramedTransport(underlying, 4, configuration.getMaxFrameSize(), false);
 
     byte[] actualFirstFrame = new byte[firstFrame.length];
     input.readAll(actualFirstFrame, 0, actualFirstFrame.length);
