@@ -50,8 +50,7 @@ public class TElasticFramedTransportTest {
     TMemoryBuffer underlying = new TMemoryBuffer(configuration, 10);
     underlying.write(framedData.array());
     TElasticFramedTransport transport =
-        new TElasticFramedTransport(
-            underlying, 4, configuration.getMaxFrameSize(), false);
+        new TElasticFramedTransport(underlying, 4, configuration.getMaxFrameSize(), false);
 
     byte[] actualFirstFrame = new byte[firstFrame.length];
     transport.readAll(actualFirstFrame, 0, actualFirstFrame.length);
