@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -58,6 +59,44 @@ public class TElasticFramedTransportTest {
 
     byte[] actualSecondFrame = new byte[secondFrame.length];
     transport.readAll(actualSecondFrame, 0, actualSecondFrame.length);
+    assertArrayEquals(secondFrame, actualSecondFrame);
+  }
+
+  @Test
+  public void testReadCompressedFramesResetMessageSize() throws TTransportException {
+    byte[] firstFrame = {1, 2};
+    byte[] secondFrame = {3, 4, 5, 6, 7, 8};
+    TMemoryBuffer wire = new TMemoryBuffer(128);
+    TSnappyElasticFramedTransport output =
+        new TSnappyElasticFramedTransport(wire, 4, 128, false);
+    output.write(firstFrame);
+    output.flush();
+    output.write(secondFrame);
+    output.flush();
+
+    byte[] framedData = Arrays.copyOf(wire.getArray(), wire.length());
+    ByteBuffer frameSizes = ByteBuffer.wrap(framedData);
+    int firstCompressedSize = frameSizes.getInt();
+    frameSizes.position(Integer.BYTES + firstCompressedSize);
+    int secondCompressedSize = frameSizes.getInt();
+    int maxMessageSize = Integer.BYTES + Math.max(firstCompressedSize, secondCompressedSize);
+    TConfiguration configuration =
+        TConfiguration.custom()
+            .setMaxMessageSize(maxMessageSize)
+            .setMaxFrameSize(maxMessageSize)
+            .build();
+    TMemoryBuffer underlying = new TMemoryBuffer(configuration, maxMessageSize);
+    underlying.write(framedData);
+    TSnappyElasticFramedTransport input =
+        new TSnappyElasticFramedTransport(
+            underlying, 4, configuration.getMaxFrameSize(), false);
+
+    byte[] actualFirstFrame = new byte[firstFrame.length];
+    input.readAll(actualFirstFrame, 0, actualFirstFrame.length);
+    assertArrayEquals(firstFrame, actualFirstFrame);
+
+    byte[] actualSecondFrame = new byte[secondFrame.length];
+    input.readAll(actualSecondFrame, 0, actualSecondFrame.length);
     assertArrayEquals(secondFrame, actualSecondFrame);
   }
 
