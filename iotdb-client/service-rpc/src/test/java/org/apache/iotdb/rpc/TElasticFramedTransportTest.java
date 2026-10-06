@@ -21,6 +21,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
@@ -46,9 +47,11 @@ public class TElasticFramedTransportTest {
             .flip();
     TConfiguration configuration =
         TConfiguration.custom().setMaxMessageSize(10).setMaxFrameSize(10).build();
+    TMemoryBuffer underlying = new TMemoryBuffer(configuration, 10);
+    underlying.write(framedData.array());
     TElasticFramedTransport transport =
         new TElasticFramedTransport(
-            new TByteBuffer(configuration, framedData), 4, configuration.getMaxFrameSize(), false);
+            underlying, 4, configuration.getMaxFrameSize(), false);
 
     byte[] actualFirstFrame = new byte[firstFrame.length];
     transport.readAll(actualFirstFrame, 0, actualFirstFrame.length);
