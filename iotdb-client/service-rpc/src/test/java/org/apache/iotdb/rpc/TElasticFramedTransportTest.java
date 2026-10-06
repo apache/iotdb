@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
@@ -26,10 +27,37 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class TElasticFramedTransportTest {
+
+  @Test
+  public void testReadFramesResetMessageSize() throws TTransportException {
+    byte[] firstFrame = {1, 2};
+    byte[] secondFrame = {3, 4, 5, 6, 7, 8};
+    ByteBuffer framedData =
+        ByteBuffer.allocate(8 + firstFrame.length + secondFrame.length)
+            .putInt(firstFrame.length)
+            .put(firstFrame)
+            .putInt(secondFrame.length)
+            .put(secondFrame)
+            .flip();
+    TConfiguration configuration =
+        TConfiguration.custom().setMaxMessageSize(10).setMaxFrameSize(10).build();
+    TElasticFramedTransport transport =
+        new TElasticFramedTransport(
+            new TByteBuffer(configuration, framedData), 4, configuration.getMaxFrameSize(), false);
+
+    byte[] actualFirstFrame = new byte[firstFrame.length];
+    transport.readAll(actualFirstFrame, 0, actualFirstFrame.length);
+    assertArrayEquals(firstFrame, actualFirstFrame);
+
+    byte[] actualSecondFrame = new byte[secondFrame.length];
+    transport.readAll(actualSecondFrame, 0, actualSecondFrame.length);
+    assertArrayEquals(secondFrame, actualSecondFrame);
+  }
 
   @Test
   public void testSingularSize() {

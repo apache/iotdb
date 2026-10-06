@@ -194,10 +194,14 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   protected void readFrame() throws TTransportException {
+    // Discard the previous frame's budget before reading the next frame header and payload.
+    resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
     readBuffer.fill(underlying, size);
+    // Bind subsequent protocol reads to the current frame size.
+    resetMessageSizeAndConsumedBytes(size);
   }
 
   protected void validateFrame(int size) throws TTransportException {
@@ -338,6 +342,11 @@ public class TElasticFramedTransport extends TTransport {
             : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
     close();
     error.throwException(numBytes, remoteInfo, limit);
+  }
+
+  @Override
+  public void resetMessageSizeAndConsumedBytes(long newSize) throws TTransportException {
+    underlying.resetMessageSizeAndConsumedBytes(newSize);
   }
 
   @Override
