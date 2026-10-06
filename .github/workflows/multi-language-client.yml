@@ -6,6 +6,7 @@ on:
       - master
       - "rc/*"
     paths:
+      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
@@ -20,6 +21,7 @@ on:
       - "rc/*"
       - 'force_ci/**'
     paths:
+      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
