@@ -30,9 +30,15 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FakedFragmentInstanceContext extends FragmentInstanceContext {
+
+  // Retain the registration-time state: an unclosed file may be sealed before the query finishes.
+  private final Set<TsFileResource> closedResources = new HashSet<>();
+  private final Set<TsFileResource> unclosedResources = new HashSet<>();
 
   public FakedFragmentInstanceContext(Filter timeFilter, DataRegion dataRegion) {
     super(0, new FakedMemoryReservationManager(), timeFilter, dataRegion, false, false);
@@ -67,37 +73,34 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
             ((QueryDataSource) sharedQueryDataSource).getSeqResources();
         if (tsFileList != null) {
           for (TsFileResource tsFile : tsFileList) {
-            FileReaderManager.getInstance().increaseFileReaderReference(tsFile, tsFile.isClosed());
+            addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
           }
         }
         tsFileList = ((QueryDataSource) sharedQueryDataSource).getUnseqResources();
         if (tsFileList != null) {
           for (TsFileResource tsFile : tsFileList) {
-            FileReaderManager.getInstance().increaseFileReaderReference(tsFile, tsFile.isClosed());
+            addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
           }
         }
       }
+    } catch (RuntimeException | Error e) {
+      releaseSharedQueryDataSource();
+      throw e;
     } finally {
       dataRegion.readUnlock();
     }
   }
 
   public void releaseSharedQueryDataSource() {
-    if (sharedQueryDataSource != null) {
-      List<TsFileResource> tsFileList = ((QueryDataSource) sharedQueryDataSource).getSeqResources();
-      if (tsFileList != null) {
-        for (TsFileResource tsFile : tsFileList) {
-          FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, tsFile.isClosed());
-        }
-      }
-      tsFileList = ((QueryDataSource) sharedQueryDataSource).getUnseqResources();
-      if (tsFileList != null) {
-        for (TsFileResource tsFile : tsFileList) {
-          FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, tsFile.isClosed());
-        }
-      }
-      sharedQueryDataSource = null;
+    for (TsFileResource tsFile : closedResources) {
+      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
     }
+    closedResources.clear();
+    for (TsFileResource tsFile : unclosedResources) {
+      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+    }
+    unclosedResources.clear();
+    sharedQueryDataSource = null;
   }
 
   @Override

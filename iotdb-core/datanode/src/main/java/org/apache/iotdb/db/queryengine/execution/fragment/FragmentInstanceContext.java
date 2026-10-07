@@ -1110,14 +1110,20 @@ public class FragmentInstanceContext extends QueryContext {
     addFilePathToMap(tsFile, isClosed, closedFilePaths, unClosedFilePaths);
   }
 
-  private void addFilePathToMap(
+  static void addFilePathToMap(
       TsFileResource tsFile,
       boolean isClosed,
       Set<TsFileResource> closedResources,
       Set<TsFileResource> unclosedResources) {
     Set<TsFileResource> pathSet = isClosed ? closedResources : unclosedResources;
     if (pathSet.add(tsFile)) {
-      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+      try {
+        FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+      } catch (RuntimeException | Error e) {
+        // Registration already rolled back its read lock. Do not release it a second time later.
+        pathSet.remove(tsFile);
+        throw e;
+      }
     }
   }
 
