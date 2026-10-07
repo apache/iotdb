@@ -110,7 +110,9 @@ public class TElasticFramedTransport extends TTransport {
     if (maxMessageSize > Integer.MAX_VALUE) {
       throw new TTransportException(
           TTransportException.MESSAGE_SIZE_LIMIT,
-          "Frame size exceeds the maximum supported message size: " + thriftMaxFrameSize);
+          String.format(
+              RpcMessages.FRAME_ERROR_FRAME_SIZE_EXCEEDS_MAX_MESSAGE_SIZE,
+              thriftMaxFrameSize));
     }
     if (configuration.getMaxFrameSize() < thriftMaxFrameSize) {
       configuration.setMaxFrameSize(thriftMaxFrameSize);

@@ -33,6 +33,8 @@ public final class RpcMessages {
       "Read a negative frame size (%d)%s!";
   public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED =
       "Frame size (%d) larger than protect max size (%d)%s!";
+  public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDS_MAX_MESSAGE_SIZE =
+      "Frame size (%d) exceeds the maximum supported message size!";
   public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
       "String length (%d) larger than protect max size (%d)%s!";
   public static final String

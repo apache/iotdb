@@ -30,6 +30,8 @@ public final class RpcMessages {
   public static final String FRAME_ERROR_NEGATIVE_FRAME_SIZE = "读取到负数帧大小 (%d)%s！";
   public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED =
       "帧大小 (%d) 超过保护最大值 (%d)%s！";
+  public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDS_MAX_MESSAGE_SIZE =
+      "帧大小 (%d) 超过支持的最大消息大小！";
   public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
       "字符串长度 (%d) 超过保护最大值 (%d)%s！";
   public static final String
