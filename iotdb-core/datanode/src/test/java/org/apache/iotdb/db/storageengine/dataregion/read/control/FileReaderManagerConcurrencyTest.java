@@ -18,9 +18,14 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fileInputFactory.FileInputFactory;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.reader.TsFileInput;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
@@ -35,6 +40,8 @@ import java.lang.management.ThreadInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -42,6 +49,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
@@ -50,11 +58,14 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -292,25 +303,173 @@ public class FileReaderManagerConcurrencyTest {
   }
 
   @Test
-  public void closeFailureIsNotServedAndCanBeRetried() throws Exception {
+  public void closeFailureDoesNotPoisonOverlappingQueries() throws Exception {
     TsFileResource a = file(1);
     TsFileSequenceReader reader = mock(TsFileSequenceReader.class);
-    doThrow(new IOException("injected close failure")).doNothing().when(reader).close();
+    doThrow(new IOException("injected close failure")).when(reader).close();
     manager.setReaderForTest(a.getTsFileID(), true, reader);
     manager.increaseFileReaderReference(a, true);
     manager.decreaseFileReaderReference(a, true);
     assertTrue(a.tryWriteLock());
     a.writeUnlock();
-    try {
-      get(a, true);
-      fail("served a reader after a failed close");
-    } catch (IOException expected) {
-      assertNotNull(expected.getCause());
-    }
-    manager.closeFileAndRemoveReader(a.getTsFileID());
-    verify(reader, times(2)).close();
     assertEmpty();
-    assertNotSame(reader, get(a, true));
+    // A long-running query registers this file before reaching it. Other queries must recover
+    // without waiting for its reference (and all the overlapping queries' references) to drain.
+    manager.increaseFileReaderReference(a, true);
+    try {
+      for (int i = 0; i < 5; i++) {
+        manager.increaseFileReaderReference(a, true);
+        try {
+          TsFileSequenceReader reopened = get(a, true);
+          assertNotSame(reader, reopened);
+          assertTrue(reopened.fileSize() > 0);
+        } finally {
+          manager.decreaseFileReaderReference(a, true);
+        }
+      }
+    } finally {
+      manager.decreaseFileReaderReference(a, true);
+    }
+    verify(reader, times(1)).close();
+    assertEmpty();
+  }
+
+  @Test
+  public void failedUnclosedCloseDoesNotLeakAfterSealing() throws Exception {
+    TsFileResource a = file(1);
+    TsFileSequenceReader unclosed = mock(TsFileSequenceReader.class);
+    doThrow(new IOException("injected unclosed close failure")).when(unclosed).close();
+    manager.setReaderForTest(a.getTsFileID(), false, unclosed);
+    manager.increaseFileReaderReference(a, false);
+    manager.decreaseFileReaderReference(a, false);
+    assertEmpty();
+    // All subsequent queries address the closed slot, never the failed unclosed slot again.
+    manager.increaseFileReaderReference(a, true);
+    assertTrue(get(a, true).fileSize() > 0);
+    manager.decreaseFileReaderReference(a, true);
+    assertEmpty();
+  }
+
+  @Test
+  public void failedExternalCloseDoesNotPoisonNextQuery() throws Exception {
+    TsFileResource a = file(1);
+    FileInputFactory original = FSFactoryProducer.getFileInputFactory();
+    TsFileInput input = spy(original.getTsFileInput(a.getTsFilePath()));
+    AtomicBoolean first = new AtomicBoolean(true);
+    doThrow(new IOException("injected external close failure")).when(input).close();
+    FSFactoryProducer.setFileInputFactory(
+        path -> first.getAndSet(false) ? input : original.getTsFileInput(path));
+    try {
+      manager.increaseExternalFileReaderReference(a.getTsFilePath());
+      TsFileSequenceReader failed = manager.get(a.getTsFilePath(), null, true, null, true);
+      manager.decreaseExternalFileReaderReference(a.getTsFilePath());
+      assertEmpty();
+      manager.increaseExternalFileReaderReference(a.getTsFilePath());
+      TsFileSequenceReader reopened = manager.get(a.getTsFilePath(), null, true, null, true);
+      assertNotSame(failed, reopened);
+      assertTrue(reopened.fileSize() > 0);
+      manager.decreaseExternalFileReaderReference(a.getTsFilePath());
+      assertEmpty();
+    } finally {
+      FSFactoryProducer.setFileInputFactory(original);
+      // The injected exception deliberately prevented closing the real input.
+      doCallRealMethod().when(input).close();
+      input.close();
+    }
+  }
+
+  @Test
+  public void slowOpenDoesNotHoldRegionLockDuringReferenceRegistration() throws Exception {
+    referenceRegistrationDuringIo(false);
+  }
+
+  @Test
+  public void slowCloseDoesNotHoldRegionLockDuringReferenceRegistration() throws Exception {
+    referenceRegistrationDuringIo(true);
+  }
+
+  private void referenceRegistrationDuringIo(boolean close) throws Exception {
+    TsFileResource a = file(1);
+    DataRegion region = new DataRegion("root.reference_registration", "1");
+    try (Gate gate = new Gate()) {
+      Future<?> io;
+      if (close) {
+        TsFileSequenceReader reader = mock(TsFileSequenceReader.class);
+        manager.setReaderForTest(a.getTsFileID(), true, reader);
+        manager.increaseFileReaderReference(a, true);
+        doAnswer(
+                invocation -> {
+                  gate.block();
+                  return null;
+                })
+            .when(reader)
+            .close();
+        io = workers.submit(() -> manager.decreaseFileReaderReference(a, true));
+      } else {
+        io =
+            workers.submit(
+                () -> manager.get(a.getTsFilePath(), a.getTsFileID(), true, n -> gate.block()));
+      }
+      gate.await();
+      done(
+          workers.submit(
+              () -> {
+                assertTrue(region.tryReadLock(10_000));
+                try {
+                  manager.increaseFileReaderReference(a, true);
+                } finally {
+                  region.readUnlock();
+                }
+              }));
+      // A writer must progress while reader I/O is still blocked on the same file.
+      done(
+          workers.submit(
+              () -> {
+                region.writeLock("reference registration test");
+                region.writeUnlock();
+              }));
+      assertFalse(io.isDone());
+      gate.close();
+      done(io);
+      assertTrue(get(a, true).fileSize() > 0);
+      assertFalse(a.tryWriteLock());
+      manager.decreaseFileReaderReference(a, true);
+      assertTrue(a.tryWriteLock());
+      a.writeUnlock();
+      assertEmpty();
+    }
+  }
+
+  @Test
+  public void lastReleaseRechecksReferencesAfterWaitingForOpen() throws Exception {
+    TsFileResource a = file(1);
+    manager.increaseFileReaderReference(a, true);
+    try (Gate gate = new Gate()) {
+      Future<TsFileSequenceReader> open =
+          workers.submit(
+              () -> manager.get(a.getTsFilePath(), a.getTsFileID(), true, n -> gate.block()));
+      gate.await();
+      AtomicReference<Thread> releaseThread = new AtomicReference<>();
+      CountDownLatch started = new CountDownLatch(1);
+      Future<?> release =
+          workers.submit(
+              () -> {
+                releaseThread.set(Thread.currentThread());
+                started.countDown();
+                manager.decreaseFileReaderReference(a, true);
+              });
+      assertTrue(started.await(10, TimeUnit.SECONDS));
+      blocked(releaseThread.get(), gate.owner.get());
+      done(workers.submit(() -> manager.increaseFileReaderReference(a, true)));
+      gate.close();
+      TsFileSequenceReader reader = open.get(10, TimeUnit.SECONDS);
+      done(release);
+      assertSame(reader, get(a, true));
+      assertTrue(reader.fileSize() > 0);
+      assertFalse(a.tryWriteLock());
+      manager.decreaseFileReaderReference(a, true);
+      assertEmpty();
+    }
   }
 
   @Test
@@ -458,7 +617,8 @@ public class FileReaderManagerConcurrencyTest {
                 manager.decreaseFileReaderReference(a, true);
               });
       assertTrue(started.await(10, TimeUnit.SECONDS));
-      blocked(releaseThread.get(), gate.owner.get());
+      // Clear already reset the reference count. This release no longer waits for reader I/O.
+      done(release);
       AtomicReference<Thread> secondThread = new AtomicReference<>();
       CountDownLatch secondStarted = new CountDownLatch(1);
       Future<?> second =
@@ -514,7 +674,7 @@ public class FileReaderManagerConcurrencyTest {
   }
 
   @Test
-  public void forceCloseAttemptsBothSlotsAndClearRetriesFailure() throws Exception {
+  public void forceCloseAttemptsBothSlotsAndDiscardsFailure() throws Exception {
     TsFileResource a = file(1);
     TsFileSequenceReader closed = mock(TsFileSequenceReader.class);
     TsFileSequenceReader unclosed = mock(TsFileSequenceReader.class);
@@ -529,8 +689,58 @@ public class FileReaderManagerConcurrencyTest {
       assertFalse(manager.contains(a, false));
     }
     manager.closeAndRemoveAllOpenedReaders();
-    verify(closed, times(2)).close();
+    verify(closed, times(1)).close();
     assertEmpty();
+  }
+
+  @Test
+  public void closeAggregationDoesNotMutateReaderExceptions() throws Exception {
+    TsFileResource a = file(1);
+    TsFileSequenceReader closed = mock(TsFileSequenceReader.class);
+    TsFileSequenceReader unclosed = mock(TsFileSequenceReader.class);
+    IOException first = new IOException("first close failure");
+    IOException second = new IOException("second close failure");
+    doThrow(first).when(closed).close();
+    doThrow(second).when(unclosed).close();
+    manager.setReaderForTest(a.getTsFileID(), true, closed);
+    manager.setReaderForTest(a.getTsFileID(), false, unclosed);
+    IOException aggregate =
+        assertThrows(IOException.class, () -> manager.closeFileAndRemoveReader(a.getTsFileID()));
+    assertSame(first, aggregate.getCause());
+    assertSame(second, aggregate.getSuppressed()[0]);
+    assertEquals(0, first.getSuppressed().length);
+    assertEquals(0, second.getSuppressed().length);
+    assertEmpty();
+  }
+
+  @Test
+  public void clearReopensAdmissionAfterSnapshotOrReclamationError() throws Exception {
+    Field internal = FileReaderManager.class.getDeclaredField("internal");
+    internal.setAccessible(true);
+    Object original = internal.get(manager);
+    for (int failureCall : new int[] {1, 2}) {
+      Map<TsFileID, Object> failing =
+          new HashMap<TsFileID, Object>() {
+            private int calls;
+
+            @Override
+            public Collection<Object> values() {
+              if (++calls == failureCall) {
+                throw new AssertionError("injected registry traversal failure");
+              }
+              return super.values();
+            }
+          };
+      internal.set(manager, failing);
+      try {
+        assertThrows(AssertionError.class, manager::closeAndRemoveAllOpenedReaders);
+        assertEquals(false, field("clearing"));
+      } finally {
+        internal.set(manager, original);
+      }
+    }
+    TsFileResource a = file(1);
+    assertNotNull(get(a, true));
   }
 
   @Test

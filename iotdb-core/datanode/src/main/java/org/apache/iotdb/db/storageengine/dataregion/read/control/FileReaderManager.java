@@ -42,12 +42,15 @@ import java.util.function.LongConsumer;
 /** Manages cached readers with independent locks for independent files. */
 public class FileReaderManager {
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   private static final int MAX_CACHED_FILE_SIZE = 30000;
   private static final int PRINT_INTERVAL = 10000;
 
-  // Lock order: resource read lock -> registry (pin only), then entry, then registry (unpin).
-  // Never hold registry while taking an entry lock or doing I/O. Never acquire a resource,
-  // region, registry, or another entry lock while holding an entry lock.
+  // registryLock protects entry lifetime and reference counts; entry monitors serialize reader I/O.
+  // Never hold registryLock while taking an entry monitor or doing I/O. An entry may briefly take
+  // registryLock to recheck references, but must not acquire resource, region, or other entry
+  // locks.
+  // Reference registration takes only registryLock, even when the caller holds a region read lock.
   private final Object registryLock = new Object();
   private final Object clearLock = new Object();
   private final Map<TsFileID, Entry> internal = new HashMap<>();
@@ -67,8 +70,8 @@ public class FileReaderManager {
 
   private static class Slot {
     private TsFileSequenceReader reader;
+    // Guarded by registryLock, independently of this slot's reader I/O.
     private int references;
-    private IOException closeFailure;
     private final AtomicInteger count;
 
     private Slot(AtomicInteger count) {
@@ -80,13 +83,16 @@ public class FileReaderManager {
         try {
           reader.close();
         } catch (IOException e) {
-          // Retain the handle for a subsequent close attempt, but never serve it again.
-          closeFailure = e;
+          logger.error(
+              StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER, reader.getFileName(), e);
           throw e;
+        } finally {
+          // A failed close must neither poison future reads nor retain an unused entry forever.
+          // As with the original manager, discard the handle after a best-effort close. Pins keep
+          // this entry stable until the attempt finishes, including when close throws unchecked.
+          reader = null;
+          count.decrementAndGet();
         }
-        reader = null;
-        closeFailure = null;
-        count.decrementAndGet();
       }
     }
 
@@ -98,7 +104,7 @@ public class FileReaderManager {
   private static class Entry {
     private final Slot closed;
     private final Slot unclosed;
-    // Guarded by registryLock; slots are guarded by this entry's monitor.
+    // Guarded by registryLock; reader fields are guarded by this entry's monitor.
     private int pins;
 
     private Entry(AtomicInteger closedCount, AtomicInteger unclosedCount) {
@@ -151,7 +157,9 @@ public class FileReaderManager {
       if (!clearing && entry.pins == 0 && entry.empty()) {
         registry.remove(key, entry);
       }
-      registryLock.notifyAll();
+      if (clearing && pins == 0) {
+        registryLock.notifyAll();
+      }
     }
   }
 
@@ -171,22 +179,45 @@ public class FileReaderManager {
   }
 
   private void closeEntry(Entry entry) throws IOException {
+    synchronized (registryLock) {
+      entry.closed.references = 0;
+      entry.unclosed.references = 0;
+    }
     IOException failure = null;
-    for (Slot slot : new Slot[] {entry.closed, entry.unclosed}) {
-      slot.references = 0;
+    try {
       try {
-        slot.close();
+        closeSlot(entry.closed, StorageEngineMessages.CLOSED_TSFILE_READER_CLOSED);
       } catch (IOException e) {
-        if (failure == null) {
-          failure = e;
-        } else if (failure != e) {
-          failure.addSuppressed(e);
-        }
+        failure = mergeFailure(failure, e);
+      }
+    } finally {
+      // Also attempt the second slot if the first close throws an unchecked exception.
+      try {
+        closeSlot(entry.unclosed, StorageEngineMessages.UNCLOSED_TSFILE_READER_CLOSED);
+      } catch (IOException e) {
+        failure = mergeFailure(failure, e);
       }
     }
     if (failure != null) {
       throw failure;
     }
+  }
+
+  private static void closeSlot(Slot slot, String message) throws IOException {
+    TsFileSequenceReader reader = slot.reader;
+    slot.close();
+    if (reader != null && resourceLogger.isDebugEnabled()) {
+      resourceLogger.debug(message, reader.getFileName());
+    }
+  }
+
+  private static IOException mergeFailure(IOException failure, IOException next) {
+    if (failure == null) {
+      return new IOException(next);
+    }
+    // Never attach other files' errors to an exception supplied by a reader.
+    failure.addSuppressed(next);
+    return failure;
   }
 
   public TsFileSequenceReader get(String filePath, TsFileID tsFileID, boolean isClosed)
@@ -221,21 +252,17 @@ public class FileReaderManager {
     try {
       synchronized (entry) {
         Slot slot = entry.slot(isClosed);
-        if (slot.closeFailure != null) {
-          throw new IOException(slot.closeFailure);
-        }
         if (slot.reader == null) {
-          int count = slot.count.get();
-          if (count >= MAX_CACHED_FILE_SIZE && count % PRINT_INTERVAL == 0) {
-            logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, count);
-          }
           slot.reader =
               isClosed
                   ? new TsFileSequenceReader(
                       path, recorder, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(path))
                   : new UnClosedTsFileReader(
                       path, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(path), recorder);
-          slot.count.incrementAndGet();
+          int count = slot.count.incrementAndGet();
+          if (count >= MAX_CACHED_FILE_SIZE && count % PRINT_INTERVAL == 0) {
+            logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, count);
+          }
         }
         return slot.reader;
       }
@@ -262,13 +289,14 @@ public class FileReaderManager {
   }
 
   private <K> void increase(Map<K, Entry> registry, K key, boolean isClosed) {
-    Entry entry = pin(registry, key, true, true);
-    try {
-      synchronized (entry) {
+    // One short registry critical section, with no wait for an opening or closing reader.
+    synchronized (registryLock) {
+      Entry entry = pin(registry, key, true, true);
+      try {
         entry.slot(isClosed).references++;
+      } finally {
+        unpin(registry, key, entry);
       }
-    } finally {
-      unpin(registry, key, entry);
     }
   }
 
@@ -290,18 +318,26 @@ public class FileReaderManager {
       return;
     }
     try {
-      synchronized (entry) {
+      Slot slot;
+      synchronized (registryLock) {
         // Preserve the legacy unclosed -> closed fallback when no unclosed ref is registered.
-        Slot slot = !isClosed && entry.unclosed.references != 0 ? entry.unclosed : entry.closed;
-        if (slot.references > 0 && --slot.references == 0) {
-          try {
-            slot.close();
-          } catch (IOException e) {
-            logger.error(
-                StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER,
-                slot.reader.getFileName(),
-                e);
+        slot = !isClosed && entry.unclosed.references != 0 ? entry.unclosed : entry.closed;
+        if (slot.references == 0 || --slot.references != 0) {
+          return;
+        }
+      }
+      synchronized (entry) {
+        synchronized (registryLock) {
+          // A new query may have registered while this release waited for reader I/O.
+          if (slot.references != 0) {
+            return;
           }
+        }
+        // New references may now register, but their get() waits for this entry's close to finish.
+        try {
+          closeSlot(slot, StorageEngineMessages.TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE);
+        } catch (IOException e) {
+          // Slot.close already logged the error and discarded the unusable handle.
         }
       }
     } finally {
@@ -315,44 +351,48 @@ public class FileReaderManager {
    * are restored only after cleanup and the final release-pin drain, never reopening the gate
    * early.
    */
+  @TestOnly
   public void closeAndRemoveAllOpenedReaders() throws IOException {
     synchronized (clearLock) {
       boolean interrupted = Thread.interrupted();
       IOException failure = null;
-      List<Entry> entries;
-      synchronized (registryLock) {
-        clearing = true;
-        interrupted |= drainPins();
-        entries = new ArrayList<>(internal.values());
-        entries.addAll(external.values());
-      }
       try {
+        List<Entry> entries;
+        synchronized (registryLock) {
+          clearing = true;
+          interrupted |= drainPins();
+          entries = new ArrayList<>(internal.values());
+          entries.addAll(external.values());
+        }
         for (Entry entry : entries) {
           synchronized (entry) {
             try {
               closeEntry(entry);
             } catch (IOException e) {
-              if (failure == null) {
-                failure = e;
-              } else if (failure != e) {
-                failure.addSuppressed(e);
-              }
+              failure = mergeFailure(failure, e);
             }
           }
           interrupted |= Thread.interrupted();
         }
       } finally {
-        synchronized (registryLock) {
-          // Releases can have pinned an entry while clear was closing it. Drain again and remove
-          // entries atomically with reopening admission, so a waiter cannot retain an orphan lock.
-          interrupted |= drainPins();
-          internal.values().removeIf(Entry::empty);
-          external.values().removeIf(Entry::empty);
-          clearing = false;
-          registryLock.notifyAll();
-        }
-        if (interrupted) {
-          Thread.currentThread().interrupt();
+        try {
+          synchronized (registryLock) {
+            try {
+              // Drain and reclaim before reopening admission: releases may still retain an entry.
+              interrupted |= Thread.interrupted();
+              interrupted |= drainPins();
+              internal.values().removeIf(Entry::empty);
+              external.values().removeIf(Entry::empty);
+            } finally {
+              // Even a failed snapshot or reclamation must not permanently close the test gate.
+              clearing = false;
+              registryLock.notifyAll();
+            }
+          }
+        } finally {
+          if (interrupted) {
+            Thread.currentThread().interrupt();
+          }
         }
       }
       if (failure != null) {
