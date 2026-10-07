@@ -91,12 +91,32 @@ public class TElasticFramedTransport extends TTransport {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
+    alignUnderlyingConfiguration();
     try {
       readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
       writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
     } catch (IOException e) {
       closeAllocatedBuffers();
       throw new TTransportException(e);
+    }
+  }
+
+  private void alignUnderlyingConfiguration() throws TTransportException {
+    TConfiguration configuration = underlying.getConfiguration();
+    if (configuration == null) {
+      return;
+    }
+    long maxMessageSize = (long) thriftMaxFrameSize + Integer.BYTES;
+    if (maxMessageSize > Integer.MAX_VALUE) {
+      throw new TTransportException(
+          TTransportException.MESSAGE_SIZE_LIMIT,
+          "Frame size exceeds the maximum supported message size: " + thriftMaxFrameSize);
+    }
+    if (configuration.getMaxFrameSize() < thriftMaxFrameSize) {
+      configuration.setMaxFrameSize(thriftMaxFrameSize);
+    }
+    if (configuration.getMaxMessageSize() < maxMessageSize) {
+      configuration.setMaxMessageSize((int) maxMessageSize);
     }
   }
 

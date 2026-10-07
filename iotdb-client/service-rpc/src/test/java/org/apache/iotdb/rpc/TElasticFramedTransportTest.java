@@ -47,8 +47,8 @@ public class TElasticFramedTransportTest {
             .put(secondFrame)
             .flip();
     TConfiguration configuration =
-        TConfiguration.custom().setMaxMessageSize(10).setMaxFrameSize(10).build();
-    TMemoryBuffer underlying = new TMemoryBuffer(configuration, 10);
+        TConfiguration.custom().setMaxMessageSize(14).setMaxFrameSize(10).build();
+    TMemoryBuffer underlying = new BudgetConsumingMemoryBuffer(configuration, 14);
     underlying.write(framedData.array());
     TElasticFramedTransport transport =
         new TElasticFramedTransport(underlying, 4, configuration.getMaxFrameSize(), false);
@@ -78,16 +78,17 @@ public class TElasticFramedTransportTest {
     int firstCompressedSize = frameSizes.getInt();
     frameSizes.position(Integer.BYTES + firstCompressedSize);
     int secondCompressedSize = frameSizes.getInt();
-    int maxMessageSize = Integer.BYTES + Math.max(firstCompressedSize, secondCompressedSize);
+    int maxFrameSize = Math.max(firstCompressedSize, secondCompressedSize);
     TConfiguration configuration =
         TConfiguration.custom()
-            .setMaxMessageSize(maxMessageSize)
-            .setMaxFrameSize(maxMessageSize)
+            .setMaxMessageSize(maxFrameSize)
+            .setMaxFrameSize(maxFrameSize)
             .build();
-    TMemoryBuffer underlying = new TMemoryBuffer(configuration, maxMessageSize);
+    TMemoryBuffer underlying = new BudgetConsumingMemoryBuffer(configuration, maxFrameSize);
     underlying.write(framedData);
     TSnappyElasticFramedTransport input =
         new TSnappyElasticFramedTransport(underlying, 4, configuration.getMaxFrameSize(), false);
+    assertEquals(Integer.BYTES + maxFrameSize, configuration.getMaxMessageSize());
 
     byte[] actualFirstFrame = new byte[firstFrame.length];
     input.readAll(actualFirstFrame, 0, actualFirstFrame.length);
@@ -96,6 +97,39 @@ public class TElasticFramedTransportTest {
     byte[] actualSecondFrame = new byte[secondFrame.length];
     input.readAll(actualSecondFrame, 0, actualSecondFrame.length);
     assertArrayEquals(secondFrame, actualSecondFrame);
+  }
+
+  @Test
+  public void testFrameSizeAlignsUnderlyingMessageSize() throws TTransportException {
+    byte[] frame = {1, 2, 3, 4, 5, 6, 7, 8};
+    ByteBuffer framedData =
+        ByteBuffer.allocate(Integer.BYTES + frame.length).putInt(frame.length).put(frame).flip();
+    TConfiguration configuration =
+        TConfiguration.custom().setMaxMessageSize(6).setMaxFrameSize(frame.length).build();
+    TMemoryBuffer underlying = new BudgetConsumingMemoryBuffer(configuration, 6);
+    underlying.write(framedData.array());
+    TElasticFramedTransport transport =
+        new TElasticFramedTransport(underlying, 4, frame.length, false);
+
+    assertEquals(Integer.BYTES + frame.length, configuration.getMaxMessageSize());
+    byte[] actualFrame = new byte[frame.length];
+    transport.readAll(actualFrame, 0, actualFrame.length);
+    assertArrayEquals(frame, actualFrame);
+  }
+
+  private static class BudgetConsumingMemoryBuffer extends TMemoryBuffer {
+
+    private BudgetConsumingMemoryBuffer(TConfiguration configuration, int size)
+        throws TTransportException {
+      super(configuration, size);
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) throws TTransportException {
+      int bytesRead = super.read(buffer, offset, length);
+      countConsumedMessageBytes(bytesRead);
+      return bytesRead;
+    }
   }
 
   @Test
