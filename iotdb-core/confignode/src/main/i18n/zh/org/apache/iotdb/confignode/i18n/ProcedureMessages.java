@@ -1137,6 +1137,8 @@ public final class ProcedureMessages {
       "暂停 pid={}, activeCount={}";
   public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D =
       "worker {} 执行 procedure {} 时发生异常";
+  public static final String LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572 =
+      "对表 {}.{} 在 DataNode 上提交释放 {} 失败，失败结果：{}";
   public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 =
       "Worker 卡住 {}({})，运行时间 {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D =
