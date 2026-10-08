@@ -37,7 +37,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -146,5 +148,42 @@ public class FileReaderReferenceLifecycleTest {
     }
     assertTrue(failing.tryWriteLock());
     failing.writeUnlock();
+  }
+
+  @Test
+  public void fakedRollbackPreservesOriginalFailureAndReleasesEveryReference() throws Exception {
+    TsFileResource first = resource(1);
+    TsFileResource second = resource(2);
+    TsFileResource failing = spy(resource(3));
+    first.setStatus(TsFileResourceStatus.NORMAL);
+    second.setStatus(TsFileResourceStatus.NORMAL);
+    FakedFragmentInstanceContext context = context(first, second, failing);
+    TsFileSequenceReader firstReader = mock(TsFileSequenceReader.class);
+    TsFileSequenceReader secondReader = mock(TsFileSequenceReader.class);
+    manager.setReaderForTest(first.getTsFileID(), true, firstReader);
+    manager.setReaderForTest(second.getTsFileID(), true, secondReader);
+    RuntimeException registrationFailure =
+        new IllegalStateException("injected registration failure");
+    RuntimeException closeFailure = new IllegalStateException("injected unchecked close failure");
+    doThrow(registrationFailure).when(failing).getTsFileID();
+    doThrow(closeFailure).when(firstReader).close();
+    first.readLock();
+    try {
+      RuntimeException actual =
+          assertThrows(
+              RuntimeException.class, () -> context.initQueryDataSource(mock(IFullPath.class)));
+      assertSame(registrationFailure, actual);
+      assertEquals(1, actual.getSuppressed().length);
+      assertSame(closeFailure, actual.getSuppressed()[0]);
+      verify(firstReader).close();
+      verify(secondReader).close();
+      assertTrue(second.tryWriteLock());
+      second.writeUnlock();
+      context.releaseSharedQueryDataSource();
+      assertFalse(first.tryWriteLock());
+      assertTrue(manager.getClosedFileReaderMap().isEmpty());
+    } finally {
+      first.readUnlock();
+    }
   }
 }

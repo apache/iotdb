@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.FakedMemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
-import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -56,51 +55,57 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
 
     dataRegion.tryReadLock(Long.MAX_VALUE);
     try {
-      this.sharedQueryDataSource =
-          dataRegion.query(
-              Collections.singletonList(sourcePath),
-              sourcePath.getDeviceId(),
-              this,
-              getGlobalTimeFilter(),
-              null,
-              Long.MAX_VALUE);
+      try {
+        this.sharedQueryDataSource =
+            dataRegion.query(
+                Collections.singletonList(sourcePath),
+                sourcePath.getDeviceId(),
+                this,
+                getGlobalTimeFilter(),
+                null,
+                Long.MAX_VALUE);
 
-      // used files should be added before mergeLock is unlocked, or they may be deleted by
-      // running merge
-      if (sharedQueryDataSource != null) {
-        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(true);
-        List<TsFileResource> tsFileList =
-            ((QueryDataSource) sharedQueryDataSource).getSeqResources();
-        if (tsFileList != null) {
-          for (TsFileResource tsFile : tsFileList) {
-            addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
+        // used files should be added before mergeLock is unlocked, or they may be deleted by
+        // running merge
+        if (sharedQueryDataSource != null) {
+          ((QueryDataSource) sharedQueryDataSource).setSingleDevice(true);
+          List<TsFileResource> tsFileList =
+              ((QueryDataSource) sharedQueryDataSource).getSeqResources();
+          if (tsFileList != null) {
+            for (TsFileResource tsFile : tsFileList) {
+              addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
+            }
+          }
+          tsFileList = ((QueryDataSource) sharedQueryDataSource).getUnseqResources();
+          if (tsFileList != null) {
+            for (TsFileResource tsFile : tsFileList) {
+              addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
+            }
           }
         }
-        tsFileList = ((QueryDataSource) sharedQueryDataSource).getUnseqResources();
-        if (tsFileList != null) {
-          for (TsFileResource tsFile : tsFileList) {
-            addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
-          }
-        }
+      } finally {
+        dataRegion.readUnlock();
       }
     } catch (RuntimeException | Error e) {
-      releaseSharedQueryDataSource();
+      // Rollback can close readers or wait for another close; never retain the region lock here.
+      try {
+        releaseSharedQueryDataSource();
+      } catch (RuntimeException | Error rollbackFailure) {
+        if (rollbackFailure != e) {
+          e.addSuppressed(rollbackFailure);
+        }
+      }
       throw e;
-    } finally {
-      dataRegion.readUnlock();
     }
   }
 
   public void releaseSharedQueryDataSource() {
-    for (TsFileResource tsFile : closedResources) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+    try (DeferredFileReaderReleases releases = new DeferredFileReaderReleases()) {
+      releases.addAll(closedResources, true);
+      releases.addAll(unclosedResources, false);
+    } finally {
+      sharedQueryDataSource = null;
     }
-    closedResources.clear();
-    for (TsFileResource tsFile : unclosedResources) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
-    }
-    unclosedResources.clear();
-    sharedQueryDataSource = null;
   }
 
   @Override

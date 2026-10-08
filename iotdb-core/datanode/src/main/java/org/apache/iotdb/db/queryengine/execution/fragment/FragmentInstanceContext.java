@@ -76,6 +76,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,6 +88,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -774,16 +776,16 @@ public class FragmentInstanceContext extends QueryContext {
   public boolean initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     return initializeQueryDataSource(
         sourcePaths,
-        () -> {
+        deferredReleases -> {
           sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
           return true;
         },
         () -> false,
-        dataSource -> {
+        (dataSource, deferredReleases) -> {
           sharedQueryDataSource = dataSource;
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForQuery(dataSource, closedFilePaths, unClosedFilePaths);
+          addUsedFilesForQuery(dataSource, closedFilePaths, unClosedFilePaths, deferredReleases);
           return true;
         });
   }
@@ -792,7 +794,8 @@ public class FragmentInstanceContext extends QueryContext {
       throws QueryProcessException {
     return initializeQueryDataSource(
         sourcePaths,
-        () -> createBatchQueryDataSourceLease(EMPTY_QUERY_DATA_SOURCE),
+        deferredReleases ->
+            createBatchQueryDataSourceLease(EMPTY_QUERY_DATA_SOURCE, deferredReleases),
         () -> {
           recordQueryDataSourceRetry();
           return null;
@@ -802,14 +805,14 @@ public class FragmentInstanceContext extends QueryContext {
 
   private <T> T initializeQueryDataSource(
       List<IFullPath> sourcePaths,
-      Supplier<T> emptyResultSupplier,
+      Function<DeferredFileReaderReleases, T> emptyResultSupplier,
       Supplier<T> unfinishedResultSupplier,
-      Function<QueryDataSource, T> initializer)
+      BiFunction<QueryDataSource, DeferredFileReaderReleases, T> initializer)
       throws QueryProcessException {
     long startTime = System.nanoTime();
-    try {
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
       if (sourcePaths == null || sourcePaths.isEmpty()) {
-        return emptyResultSupplier.get();
+        return emptyResultSupplier.apply(deferredReleases);
       }
 
       IDeviceID singleDeviceId = findSingleDeviceId(sourcePaths);
@@ -843,7 +846,7 @@ public class FragmentInstanceContext extends QueryContext {
         dataSource.setSingleDevice(singleDeviceId != null);
         // The initializer retains referenced files while the DataRegion read lock is held;
         // otherwise a concurrent merge may delete them after the lock is released.
-        return initializer.apply(dataSource);
+        return initializer.apply(dataSource, deferredReleases);
       } finally {
         dataRegion.readUnlock();
       }
@@ -869,14 +872,23 @@ public class FragmentInstanceContext extends QueryContext {
     return selectedDeviceIdSet.iterator().next();
   }
 
-  private QueryDataSourceLease createBatchQueryDataSourceLease(QueryDataSource dataSource) {
+  private QueryDataSourceLease createBatchQueryDataSourceLease(
+      QueryDataSource dataSource, DeferredFileReaderReleases deferredReleases) {
     Set<TsFileResource> closedResources = new HashSet<>();
     Set<TsFileResource> unclosedResources = new HashSet<>();
-    addUsedFilesForQuery(dataSource, closedResources, unclosedResources);
-    QueryDataSourceLease lease =
-        new QueryDataSourceLease(dataSource, closedResources, unclosedResources, this);
-    batchQueryDataSourceLeases.add(lease);
-    return lease;
+    try {
+      addUsedFilesForQuery(dataSource, closedResources, unclosedResources, deferredReleases);
+      QueryDataSourceLease lease =
+          new QueryDataSourceLease(dataSource, closedResources, unclosedResources, this);
+      batchQueryDataSourceLeases.add(lease);
+      return lease;
+    } catch (RuntimeException | Error e) {
+      // No lease owns a partially initialized batch. Release its retained files after region
+      // unlock.
+      deferredReleases.addAll(closedResources, true);
+      deferredReleases.addAll(unclosedResources, false);
+      throw e;
+    }
   }
 
   public boolean initRegionScanQueryDataSource(Map<IDeviceID, DeviceContext> devicePathsToContext) {
@@ -885,8 +897,11 @@ public class FragmentInstanceContext extends QueryContext {
       return true;
     }
 
-    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
-    if (dataRegion.tryReadLock(waitForLockTime)) {
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
+      long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
+      if (!dataRegion.tryReadLock(waitForLockTime)) {
+        return false;
+      }
       try {
         // minus already consumed time
         waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
@@ -906,19 +921,18 @@ public class FragmentInstanceContext extends QueryContext {
         if (sharedQueryDataSource != null) {
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          addUsedFilesForRegionQuery(
+              (QueryDataSourceForRegionScan) sharedQueryDataSource, deferredReleases);
           return true;
         } else {
           // failed to acquire lock within the specific time
           return false;
         }
       } finally {
-        addInitQueryDataSourceCost(System.nanoTime() - startTime);
         dataRegion.readUnlock();
       }
-    } else {
+    } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
-      return false;
     }
   }
 
@@ -927,8 +941,12 @@ public class FragmentInstanceContext extends QueryContext {
     if (pathList == null) {
       return true;
     }
-    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
-    if (dataRegion.tryReadLock(waitForLockTime)) {
+
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
+      long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
+      if (!dataRegion.tryReadLock(waitForLockTime)) {
+        return false;
+      }
       try {
         // minus already consumed time
         waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
@@ -948,19 +966,18 @@ public class FragmentInstanceContext extends QueryContext {
         if (sharedQueryDataSource != null) {
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          addUsedFilesForRegionQuery(
+              (QueryDataSourceForRegionScan) sharedQueryDataSource, deferredReleases);
           return true;
         } else {
           // failed to acquire lock within the specific time
           return false;
         }
       } finally {
-        addInitQueryDataSourceCost(System.nanoTime() - startTime);
         dataRegion.readUnlock();
       }
-    } else {
+    } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
-      return false;
     }
   }
 
@@ -1021,24 +1038,78 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
+  /** Owns pending file references until they can be released outside region locks. */
+  static final class DeferredFileReaderReleases implements AutoCloseable {
+    private final List<Pair<TsFileResource, Boolean>> references = new ArrayList<>();
+
+    private void add(TsFileResource resource, boolean isClosed, Set<TsFileResource> owners) {
+      if (!owners.contains(resource)) {
+        return;
+      }
+      // Allocate the pending record before removing its old owner, including on allocation failure.
+      references.add(new Pair<>(resource, isClosed));
+      if (!owners.remove(resource)) {
+        references.remove(references.size() - 1);
+      }
+    }
+
+    void addAll(Set<TsFileResource> owners, boolean isClosed) {
+      Iterator<TsFileResource> iterator = owners.iterator();
+      while (iterator.hasNext()) {
+        references.add(new Pair<>(iterator.next(), isClosed));
+        iterator.remove();
+      }
+    }
+
+    @Override
+    public void close() {
+      Throwable failure = null;
+      try {
+        for (Pair<TsFileResource, Boolean> reference : references) {
+          try {
+            FileReaderManager.getInstance()
+                .decreaseFileReaderReference(reference.left, reference.right);
+          } catch (RuntimeException | Error e) {
+            if (failure == null) {
+              failure = e;
+            } else if (failure != e) {
+              failure.addSuppressed(e);
+            }
+          }
+        }
+      } finally {
+        references.clear();
+      }
+      if (failure instanceof Error) {
+        throw (Error) failure;
+      }
+      if (failure != null) {
+        throw (RuntimeException) failure;
+      }
+    }
+  }
+
   /** Lock and check if tsFileResource is deleted */
-  private boolean processTsFileResource(TsFileResource tsFileResource, boolean isClosed) {
-    return processTsFileResource(tsFileResource, isClosed, closedFilePaths, unClosedFilePaths);
+  private boolean processTsFileResource(
+      TsFileResource tsFileResource,
+      boolean isClosed,
+      DeferredFileReaderReleases deferredReleases) {
+    return processTsFileResource(
+        tsFileResource, isClosed, closedFilePaths, unClosedFilePaths, deferredReleases);
   }
 
   private boolean processTsFileResource(
       TsFileResource tsFileResource,
       boolean isClosed,
       Set<TsFileResource> closedResources,
-      Set<TsFileResource> unclosedResources) {
+      Set<TsFileResource> unclosedResources,
+      DeferredFileReaderReleases deferredReleases) {
     addFilePathToMap(tsFileResource, isClosed, closedResources, unclosedResources);
     // this file may be deleted just before we lock it
     if (tsFileResource.isDeleted()) {
       Set<TsFileResource> pathSet = isClosed ? closedResources : unclosedResources;
-      // This resource may be removed by other threads of this query.
-      if (pathSet.remove(tsFileResource)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
-      }
+      // Keep the file reference until region unlock; the last release may wait for reader I/O.
+      deferredReleases.add(tsFileResource, isClosed, pathSet);
       return true;
     } else {
       return false;
@@ -1049,7 +1120,8 @@ public class FragmentInstanceContext extends QueryContext {
   private void addUsedFilesForQuery(
       QueryDataSource dataSource,
       Set<TsFileResource> closedResources,
-      Set<TsFileResource> unclosedResources) {
+      Set<TsFileResource> unclosedResources,
+      DeferredFileReaderReleases deferredReleases) {
 
     // sequence data
     dataSource
@@ -1057,7 +1129,11 @@ public class FragmentInstanceContext extends QueryContext {
         .removeIf(
             tsFileResource ->
                 processTsFileResource(
-                    tsFileResource, tsFileResource.isClosed(), closedResources, unclosedResources));
+                    tsFileResource,
+                    tsFileResource.isClosed(),
+                    closedResources,
+                    unclosedResources,
+                    deferredReleases));
 
     // Record statistics of seqFiles
     int unclosedSeqFileCount = unclosedResources.size();
@@ -1071,19 +1147,25 @@ public class FragmentInstanceContext extends QueryContext {
         .removeIf(
             tsFileResource ->
                 processTsFileResource(
-                    tsFileResource, tsFileResource.isClosed(), closedResources, unclosedResources));
+                    tsFileResource,
+                    tsFileResource.isClosed(),
+                    closedResources,
+                    unclosedResources,
+                    deferredReleases));
 
     // Record statistics of files of unseqFiles
     unclosedUnseqFileNum.addAndGet(unclosedResources.size() - unclosedSeqFileCount);
     closedUnseqFileNum.addAndGet(closedResources.size() - closedSeqFileCount);
   }
 
-  private void addUsedFilesForRegionQuery(QueryDataSourceForRegionScan dataSource) {
+  private void addUsedFilesForRegionQuery(
+      QueryDataSourceForRegionScan dataSource, DeferredFileReaderReleases deferredReleases) {
     dataSource
         .getSeqFileScanHandles()
         .removeIf(
             fileScanHandle ->
-                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
+                processTsFileResource(
+                    fileScanHandle.getTsResource(), fileScanHandle.isClosed(), deferredReleases));
 
     int unclosedSeqFileCount = unClosedFilePaths.size();
     int closedSeqFileCount = closedFilePaths.size();
@@ -1094,7 +1176,8 @@ public class FragmentInstanceContext extends QueryContext {
         .getUnseqFileScanHandles()
         .removeIf(
             fileScanHandle ->
-                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
+                processTsFileResource(
+                    fileScanHandle.getTsResource(), fileScanHandle.isClosed(), deferredReleases));
 
     unclosedUnseqFileNum.addAndGet(unClosedFilePaths.size() - unclosedSeqFileCount);
     closedUnseqFileNum.addAndGet(closedFilePaths.size() - closedSeqFileCount);
