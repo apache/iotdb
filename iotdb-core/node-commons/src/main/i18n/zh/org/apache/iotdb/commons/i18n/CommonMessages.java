@@ -257,6 +257,8 @@ public final class CommonMessages {
           "LTTB 在单个分区或窗口内每列最多缓存 %d 个有效点。";
   public static final String EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE =
       "不支持的 LTTB 值类型：%s";
+  public static final String EXCEPTION_LTTB_WINDOW_BOUNDARIES_EXCEED_THE_TIMESTAMP_RANGE_7C0FC7E2 =
+      "LTTB 窗口边界超出 TIMESTAMP 的取值范围。";
   public static final String
       EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00 =
           "LTTB 缓冲区超过每个处理器 %d 字节的内存上限。";

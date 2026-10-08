@@ -69,6 +69,17 @@ public class IoTDBLTTBTableFunctionIT {
               + "(0, 'd1', 0.0, 1), (1, 'd1', 1.0, 1), (2, 'd1', 2.0, 1),"
               + "(3, 'd1', null, 1), (4, 'd1', null, 1), (5, 'd1', null, 1),"
               + "(6, 'd1', 0.0, 1), (7, 'd1', 0.0, 1), (8, 'd1', 0.0, 1)");
+      statement.execute("CREATE TABLE integral_values(device STRING TAG, value INT64 FIELD)");
+      long baseline = 1L << 60;
+      long[] deltas = {0, 1, 8, 2, 0, 0};
+      for (int i = 0; i < deltas.length; i++) {
+        statement.execute(
+            "INSERT INTO integral_values(time, device, value) VALUES ("
+                + i
+                + ", 'd1', "
+                + (baseline + deltas[i])
+                + ")");
+      }
       statement.execute("FLUSH");
     } catch (Exception e) {
       fail("insertData failed: " + e.getMessage());
@@ -142,6 +153,31 @@ public class IoTDBLTTBTableFunctionIT {
           "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.003Z,d1,1970-01-01T00:00:00.002Z,2.0,",
           "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.006Z,d1,null,null,",
           "1970-01-01T00:00:00.006Z,1970-01-01T00:00:00.009Z,d1,1970-01-01T00:00:00.006Z,0.0,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testInt64SamplingPreservesSmallPeaksAtLargeBaselines() {
+    String prefix =
+        "SELECT * FROM LTTB(DATA => integral_values PARTITION BY device ORDER BY time, "
+            + "TIMECOL => 'time', ";
+    tableResultSetEqualTest(
+        prefix + "N => 3) ORDER BY value_time",
+        new String[] {"window_index", "device", "value_time", "value"},
+        new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,1152921504606846976,",
+          "0,d1,1970-01-01T00:00:00.002Z,1152921504606846984,",
+          "0,d1,1970-01-01T00:00:00.005Z,1152921504606846976,"
+        },
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        prefix + "SIZE => 2) ORDER BY window_index",
+        new String[] {"window_index", "device", "value_time", "value"},
+        new String[] {
+          "0,d1,1970-01-01T00:00:00.001Z,1152921504606846977,",
+          "1,d1,1970-01-01T00:00:00.002Z,1152921504606846984,",
+          "2,d1,1970-01-01T00:00:00.004Z,1152921504606846976,"
         },
         DATABASE_NAME);
   }
