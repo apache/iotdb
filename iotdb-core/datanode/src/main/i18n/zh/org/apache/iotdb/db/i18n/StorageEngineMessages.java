@@ -1424,8 +1424,10 @@ public final class StorageEngineMessages {
       "当前 chunk %s 无法与 time chunk：%s 对齐，第一批中的所有 time chunk 为 %s";
   public static final String WAL_NODE_CLOSED_FMT = "wal node-%s 已关闭";
   public static final String BROKEN_WAL_FILE_FMT = "WAL 文件 %s 损坏，大小为 %d";
-  public static final String TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE =
-      "{} TsFileReader 因没有引用已关闭。";
+  public static final String LOG_READER_FOR_CLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_C3B71A85 =
+      "已封口 TsFile {} 的 reader 因引用计数归零而关闭。";
+  public static final String LOG_READER_FOR_UNCLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_088BDEF8 =
+      "未封口 TsFile {} 的 reader 因引用计数归零而关闭。";
   public static final String CLOSED_TSFILE_READER_CLOSED =
       "{} closedTsFileReader 已关闭。";
   public static final String UNCLOSED_TSFILE_READER_CLOSED =

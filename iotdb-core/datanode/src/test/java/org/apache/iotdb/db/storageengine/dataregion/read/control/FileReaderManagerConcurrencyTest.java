@@ -473,8 +473,11 @@ public class FileReaderManagerConcurrencyTest {
   }
 
   @Test
-  public void namespacesAndLegacyReleaseFallback() throws Exception {
+  public void namespacesAndSlotReferencesAreIndependent() throws Exception {
     TsFileResource a = file(1);
+    manager.increaseFileReaderReference(a, true);
+    manager.increaseFileReaderReference(a, false);
+    manager.increaseExternalFileReaderReference(a.getTsFilePath());
     TsFileSequenceReader closed = get(a, true);
     TsFileSequenceReader unclosed = get(a, false);
     TsFileSequenceReader external =
@@ -482,12 +485,47 @@ public class FileReaderManagerConcurrencyTest {
     assertNotSame(closed, unclosed);
     assertNotSame(closed, external);
     assertSame(external, manager.get(new String(a.getTsFilePath()), null, false, null, true));
-    manager.increaseFileReaderReference(a, true);
-    manager.decreaseFileReaderReference(a, false);
+    manager.decreaseFileReaderReference(a, true);
     assertFalse(manager.contains(a, true));
     assertSame(unclosed, get(a, false));
+    assertTrue(unclosed.fileSize() > 0);
+    manager.decreaseFileReaderReference(a, false);
+    assertFalse(manager.contains(a, false));
+    // Forced internal-reader cleanup must not affect the separately retained external reader.
+    assertNotNull(get(a, true));
+    assertNotNull(get(a, false));
     manager.closeFileAndRemoveReader(a.getTsFileID());
+    assertFalse(manager.contains(a, true));
+    assertFalse(manager.contains(a, false));
     assertSame(external, manager.get(a.getTsFilePath(), null, true, null, true));
+    assertTrue(external.fileSize() > 0);
+    manager.decreaseExternalFileReaderReference(a.getTsFilePath());
+    assertEmpty();
+  }
+
+  @Test
+  public void lateUnclosedReleaseDoesNotCloseNewClosedReader() throws Exception {
+    TsFileResource a = file(1);
+    manager.increaseFileReaderReference(a, false);
+    assertNotNull(get(a, false));
+    // Reader use has stopped, but this query still owes its resource read-lock release.
+    manager.closeAndRemoveAllOpenedReaders();
+    manager.increaseFileReaderReference(a, true);
+    try {
+      TsFileSequenceReader closed = get(a, true);
+      manager.decreaseFileReaderReference(a, false);
+      // The old unclosed reference was already cleared. Its release must not consume the new
+      // query's closed reference or close that query's reader.
+      assertTrue(manager.contains(a, true));
+      assertSame(closed, get(a, true));
+      assertTrue(closed.fileSize() > 0);
+      assertFalse(a.tryWriteLock());
+    } finally {
+      manager.decreaseFileReaderReference(a, true);
+    }
+    assertTrue(a.tryWriteLock());
+    a.writeUnlock();
+    assertEmpty();
   }
 
   @Test

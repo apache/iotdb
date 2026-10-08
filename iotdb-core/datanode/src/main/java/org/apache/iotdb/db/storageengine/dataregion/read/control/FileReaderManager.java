@@ -375,6 +375,13 @@ public class FileReaderManager {
     }
   }
 
+  /**
+   * Retains one reader reference and the resource read lock until the matching release.
+   *
+   * @param tsFile resource whose reader will be used
+   * @param isClosed slot to retain; pass this same value when releasing, even if the file is sealed
+   *     in the meantime
+   */
   public void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     tsFile.readLock();
     boolean registered = false;
@@ -404,6 +411,13 @@ public class FileReaderManager {
     }
   }
 
+  /**
+   * Releases one retained reference and its resource read lock. The resource lock is released even
+   * if global test cleanup has already removed the reader reference.
+   *
+   * @param tsFile resource from the matching successful registration; release it exactly once
+   * @param isClosed slot selected at registration, not the file's current sealed state
+   */
   public void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     try {
       decrease(internal, tsFile.getTsFileID(), isClosed);
@@ -424,8 +438,8 @@ public class FileReaderManager {
     try {
       Slot slot;
       synchronized (registryLock) {
-        // Preserve the legacy unclosed -> closed fallback when no unclosed ref is registered.
-        slot = !isClosed && entry.unclosed.references != 0 ? entry.unclosed : entry.closed;
+        // Sealing a file does not migrate existing references between slots.
+        slot = entry.slot(isClosed);
         if (slot.references == 0 || --slot.references != 0) {
           return;
         }
@@ -439,7 +453,13 @@ public class FileReaderManager {
         }
         // New references may now register, but their get() waits for this entry's close to finish.
         try {
-          closeSlot(slot, StorageEngineMessages.TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE);
+          closeSlot(
+              slot,
+              slot == entry.closed
+                  ? StorageEngineMessages
+                      .LOG_READER_FOR_CLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_C3B71A85
+                  : StorageEngineMessages
+                      .LOG_READER_FOR_UNCLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_088BDEF8);
         } catch (IOException e) {
           // Slot.close already logged the error and discarded the unusable handle.
         }
