@@ -980,6 +980,28 @@ public class ConfigMTree {
         });
   }
 
+  public void setTableColumnProperties(
+      final PartialPath database,
+      final String tableName,
+      final String columnName,
+      final Map<String, String> properties)
+      throws MetadataException {
+    final TsTable table = getTableNode(database, tableName).getTable();
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.isNull(columnSchema)) {
+      throw new ColumnNotExistsException(
+          PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
+    }
+    properties.forEach(
+        (key, value) -> {
+          if (Objects.nonNull(value)) {
+            columnSchema.getProps().put(key, value);
+          } else {
+            columnSchema.getProps().remove(key);
+          }
+        });
+  }
+
   // Return true if removed column is an attribute column
   // false if measurement column
   public boolean preDeleteColumn(

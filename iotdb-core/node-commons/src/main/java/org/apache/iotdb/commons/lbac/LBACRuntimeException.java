@@ -17,40 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence.schema;
+package org.apache.iotdb.commons.lbac;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public enum CNSnapshotFileType {
-  INVALID((byte) 0),
-  USER((byte) 1),
-  ROLE((byte) 2),
-  USER_ROLE((byte) 3),
-  SCHEMA((byte) 4),
-  TTL((byte) 5),
-  LBAC_COMPONENT((byte) 6),
-  LBAC_POLICY((byte) 7);
+@SuppressWarnings("java:S100")
+public class LBACRuntimeException extends IoTDBRuntimeException {
 
-  private static final Map<Byte, CNSnapshotFileType> TYPE_SNAPSHOT_MAP = new HashMap<>();
+  private static final long serialVersionUID = 1L;
 
-  static {
-    for (final CNSnapshotFileType type : CNSnapshotFileType.values()) {
-      TYPE_SNAPSHOT_MAP.put(type.getType(), type);
-    }
-  }
-
-  private final byte type;
-
-  CNSnapshotFileType(byte type) {
-    this.type = type;
-  }
-
-  public byte getType() {
-    return type;
-  }
-
-  public static CNSnapshotFileType deserialize(byte type) {
-    return TYPE_SNAPSHOT_MAP.get(type);
+  public LBACRuntimeException(final String message, final TSStatusCode statusCode) {
+    super(message, statusCode.getStatusCode());
   }
 }

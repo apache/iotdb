@@ -117,6 +117,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
@@ -696,6 +697,7 @@ public class Coordinator {
         || statement instanceof AddColumn
         || statement instanceof AlterColumnDataType
         || statement instanceof SetProperties
+        || statement instanceof SetColumnProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable
         || statement instanceof SetTableComment

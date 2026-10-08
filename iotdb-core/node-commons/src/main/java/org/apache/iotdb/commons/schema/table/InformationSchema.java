@@ -32,7 +32,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class InformationSchema {
   public static final String INFORMATION_DATABASE = "information_schema";
@@ -492,6 +495,41 @@ public class InformationSchema {
             ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
 
     tablesThatSupportPushDownLimitOffset.add(TABLE_DISK_USAGE);
+  }
+
+  // ==================== SPI extension point ====================
+
+  static {
+    for (final InformationSchemaExtension extension :
+        ServiceLoader.load(InformationSchemaExtension.class)) {
+      extension.registerAdditionalInformationSchemaTables(schemaTables::put);
+      extension.enhanceInformationSchemaTables(schemaTables::get);
+    }
+  }
+
+  /** Extends the information schema by adding new tables or enhancing existing tables. */
+  public interface InformationSchemaExtension {
+
+    /**
+     * Registers extension-specific information schema tables that do not exist in the built-in
+     * schema.
+     *
+     * @param registerFunc accepts the table name and its schema definition
+     */
+    default void registerAdditionalInformationSchemaTables(
+        final BiConsumer<String, TsTable> registerFunc) {
+      // Do nothing by default
+    }
+
+    /**
+     * Enhances built-in information schema tables, for example by adding extension-specific
+     * columns. The provider returns the mutable schema definition of the requested table.
+     *
+     * @param tableProvider returns the schema definition for a built-in table name
+     */
+    default void enhanceInformationSchemaTables(final Function<String, TsTable> tableProvider) {
+      // Do nothing by default
+    }
   }
 
   public static Map<String, TsTable> getSchemaTables() {
