@@ -79,11 +79,11 @@ public class SchemaValidator {
       AccessControl accessControl) {
     try {
       final InsertBaseStatement innerInsertStatement = insertStatement.getInnerTreeStatement();
-      final boolean fromPipeBatch =
+      final boolean uniformTargets =
           innerInsertStatement instanceof InsertRowsStatement
-              && ((InsertRowsStatement) innerInsertStatement).isFromPipeBatch();
+              && ((InsertRowsStatement) innerInsertStatement).isUniformTargets();
       for (final QualifiedObjectName targetTable :
-          resolveTargetTables(insertStatement, context, fromPipeBatch)) {
+          resolveTargetTables(insertStatement, context, uniformTargets)) {
         accessControl.checkCanInsertIntoTable(
             context.getSession().getUserName(), targetTable, context);
       }
@@ -97,14 +97,14 @@ public class SchemaValidator {
   }
 
   /**
-   * Resolves the target tables to check. Every row of a pipe batch is considered, since its rows
-   * may target different tables; rows of any other insert share the same table, so the first row is
-   * representative.
+   * Resolves the target tables to check. When the statement is uniform, i.e. every row targets the
+   * same table and carries the same columns, the first row is representative; otherwise every row
+   * is considered, since the rows may target different tables.
    */
   private static Set<QualifiedObjectName> resolveTargetTables(
       final WrappedInsertStatement insertStatement,
       final MPPQueryContext context,
-      final boolean fromPipeBatch) {
+      final boolean uniformTargets) {
     if (!(insertStatement instanceof InsertRows)) {
       return Collections.singleton(
           new QualifiedObjectName(
@@ -114,7 +114,7 @@ public class SchemaValidator {
 
     final List<InsertRowStatement> rowStatements =
         ((InsertRows) insertStatement).getInnerTreeStatement().getInsertRowStatementList();
-    if (!fromPipeBatch) {
+    if (uniformTargets) {
       return rowStatements.isEmpty()
           ? Collections.emptySet()
           : Collections.singleton(resolveTargetTable(rowStatements.get(0), context));
