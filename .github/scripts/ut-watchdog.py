@@ -67,11 +67,16 @@ def capture(command, destination, timeout, test, state):
         output.write(f"UTC={stamp()} tool={Path(command[0]).name} pid={command[-1]}\n")
         output.flush()
         try:
+            # Tool JVMs must not echo inherited JVM options into artifacts or
+            # load the test's agents. The test environment remains unchanged.
+            tool_env = os.environ.copy()
+            for key in ("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"):
+                tool_env.pop(key, None)
             proc = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT,
-                                    start_new_session=os.name != "nt")
+                                    env=tool_env, start_new_session=os.name != "nt")
         except OSError as exc:
             output.write(f"Unable to start diagnostic tool: {exc}\n")
-            return
+            return f"start_error={type(exc).__name__} errno={exc.errno}"
         deadline = time.monotonic() + timeout
         try:
             while proc.poll() is None:
@@ -83,6 +88,7 @@ def capture(command, destination, timeout, test, state):
             if proc.poll() is None:
                 stop_tree(proc)
         output.write(f"UTC={stamp()} diagnostic_exit={proc.returncode}\n")
+        return f"diagnostic_exit={proc.returncode}"
 
 
 def collect(args, test, marker):
@@ -95,14 +101,14 @@ def collect(args, test, marker):
             break
         started = time.monotonic()
         listing = state / "jps.txt"
-        capture([jdk_tool("jps"), "-v"], listing, args.attach_timeout, test, state)
+        discovery_status = capture(
+            [jdk_tool("jps"), "-v"], listing, args.attach_timeout, test, state)
         lines = listing.read_text(encoding="utf-8", errors="replace").splitlines()
         pids = sorted({
             fields[0] for line in lines
             if (fields := line.split()) and fields[0].isdigit() and marker in fields
         })
         # Do not retain VM arguments: they may contain credentials.
-        discovery_status = lines[-1:]
         listing.unlink()
         with (diagnostics / "discovery.txt").open("a", encoding="utf-8") as log:
             log.write(f"UTC={stamp()} round={round_number} pids={','.join(pids) or 'none'} status={discovery_status}\n")

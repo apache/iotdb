@@ -41,7 +41,11 @@ and the different datanode fork settings.
 3. Every discovery/attach operation has a 10-second timeout. Each dump includes
    UTC timestamps, PID, full stdout/stderr and tool exit status. Discovery records
    round numbers, discovered PIDs and tool status. Raw JVM argument listings are
-   removed and excluded from the artifact.
+   removed and excluded from the artifact. Diagnostic subprocesses do not inherit
+   `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS` or `JDK_JAVA_OPTIONS`, preventing tool JVMs
+   from echoing those option values into the artifact. This does not change the
+   test JVM's options. Discovery status is generated explicitly, never copied
+   from a raw JVM argument line.
 4. Once collection completes (or the test exits), `start` returns successfully.
    Maven can still be running. The next action step uploads `diagnostics/` using
    the repository's existing `actions/upload-artifact@v6` dependency. Upload is
@@ -94,3 +98,23 @@ process lifetime, `.exe` invocation, Git Bash, and native JDK 17 attach are not
 locally exercised. macOS is retained and uses the POSIX path but has not been run
 here. YAML parsing and unchanged workflow commands/matrices were checked locally.
 No IoTDB full build, remote CI run, or real artifact upload was performed.
+
+## Review boundaries
+
+The worker redirects all standard handles to a local file or the null device;
+POSIX workers start a new session. Local tests confirm that the `start` process
+can return while the worker/test remain alive, followed by a separate `wait`
+process. This is not an end-to-end validation of GitHub runner process handling.
+The normal runner tracking environment is retained for job cleanup.
+
+Exit codes have been verified with real Python and bash commands, including
+nonzero exits and POSIX signals. Maven is not installed in this cloud image, so
+an actual Maven invocation has not been tested. The workflow's original Maven
+command is passed unchanged through `bash -e -o pipefail -c`.
+
+The wrapper does not enumerate or print environment variables and does not
+upload Maven logs, command files, or raw `jps` listings. GitHub log masking still
+applies to streamed test stdout. A full JVM thread dump can itself contain
+application-defined thread names or exception text; this implementation cannot
+guarantee those application-controlled strings are free of secrets, and artifact
+contents are not covered by GitHub's console log masking.

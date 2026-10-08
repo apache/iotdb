@@ -91,7 +91,7 @@ class WatchdogTest(unittest.TestCase):
         self.assertFalse((self.state / "exit").exists())
         discovery = (self.state / "diagnostics" / "discovery.txt").read_text()
         self.assertEqual(discovery.count("round="), 3)
-        self.assertIn("Unable to start", discovery)
+        self.assertIn("start_error=FileNotFoundError", discovery)
         self.assertEqual(self.cli("wait").returncode, 23)
 
     def test_rediscover_multiple_and_changed_pids(self):
@@ -115,6 +115,24 @@ class WatchdogTest(unittest.TestCase):
         self.assertEqual(attached, ["11", "12", "11", "13", "14"])
         self.assertNotIn("Other", (self.state / "diagnostics" / "discovery.txt").read_text())
         self.assertFalse((self.state / "jps.txt").exists())
+
+    def test_diagnostic_tools_do_not_inherit_sensitive_jvm_options(self):
+        self.state.mkdir()
+        destination = self.root / "dump.txt"
+        options = {key: "TEST_ONLY_SECRET_SENTINEL" for key in
+                   ("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS")}
+        with patch.dict(os.environ, options):
+            watchdog.capture([sys.executable, "-c",
+                              "import os; print([os.environ.get(k) for k in ('JAVA_TOOL_OPTIONS', '_JAVA_OPTIONS', 'JDK_JAVA_OPTIONS')])"],
+                             destination, 2, self.sleeper(), self.state)
+        self.assertIn("[None, None, None]", destination.read_text())
+        self.assertNotIn("TEST_ONLY_SECRET_SENTINEL", destination.read_text())
+
+    @unittest.skipUnless(shutil.which("bash"), "requires bash")
+    def test_bash_command_exit_status(self):
+        result = self.cli("start", "--threshold", "60", "--", "bash", "-e", "-o", "pipefail", "-c", "exit 53")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(self.cli("wait").returncode, 53)
 
     def test_attach_failure_keeps_output(self):
         self.state.mkdir()
@@ -151,10 +169,12 @@ class WatchdogTest(unittest.TestCase):
 
     def test_cancellation_stops_command(self):
         self.env["JAVA_HOME"] = str(self.root / "missing-jdk")
+        unrelated = self.sleeper()
         pidfile = self.root / "command.pid"
         self.assertEqual(self.start(f"import os,time; open({str(pidfile)!r},'w').write(str(os.getpid())); time.sleep(60)").returncode, 0)
         self.assertEqual(self.cli("stop").returncode, 0)
         self.assertNotEqual(self.cli("wait").returncode, 0)
+        self.assertIsNone(unrelated.poll(), "cancellation must not kill unrelated processes")
         if os.name != "nt":
             with self.assertRaises(ProcessLookupError):
                 os.kill(int(pidfile.read_text()), 0)
