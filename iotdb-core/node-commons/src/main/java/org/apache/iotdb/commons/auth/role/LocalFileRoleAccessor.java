@@ -86,7 +86,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
 
   // It might be a good idea to use a Version number to control upgrade compatibility.
   // Version 3 appends an extra segment region after the RBAC privileges.
-  protected static final int VERSION = 3;
+  public static final int VERSION = 3;
 
   /** Types of the extra segments appended after the RBAC privileges in a profile file. */
   public enum ExtraSegmentType {

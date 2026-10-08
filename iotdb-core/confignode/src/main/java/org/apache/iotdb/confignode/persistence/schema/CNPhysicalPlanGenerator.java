@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor.ExtraSegmentType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -204,6 +205,20 @@ public class CNPhysicalPlanGenerator
     try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int tag = dataInputStream.readInt();
+      // Refuse to parse a profile written by a newer version. Older versions used to silently
+      // misread the extra fields of an unknown version, so fail loudly instead of corrupting the
+      // privileges.
+      if (tag > LocalFileRoleAccessor.VERSION) {
+        final String message =
+            String.format(
+                ManagerMessages
+                    .LOG_UNSUPPORTED_USER_ROLE_PROFILE_VERSION_ARG_THIS_NODE_SUPPORTS_UP_TO_ARG_2ABBF4FA,
+                tag,
+                LocalFileRoleAccessor.VERSION);
+        logger.error(message);
+        latestException = new IOException(message);
+        return;
+      }
       String user;
       if (tag < 0) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);

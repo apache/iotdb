@@ -1469,6 +1469,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
               configPhysicalPlan ->
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
     }
+    // Surface parsing failures (e.g. an unsupported profile version written by a newer version)
+    // instead of silently returning success after having applied only part of the snapshot.
+    try {
+      generator.checkException();
+    } catch (final Exception e) {
+      throw new IOException(e.getMessage(), e);
+    }
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }
 
