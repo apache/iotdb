@@ -33,7 +33,14 @@ runs:
       env:
         UT_COMMAND: ${{ inputs.command }}
         UT_STATE: ${{ runner.temp }}/iotdb-ut-watchdog
-      run: python .github/scripts/ut-watchdog.py start --state "$UT_STATE" -- bash -e -o pipefail -c "$UT_COMMAND"
+      run: |
+        # Reuse the shell selected by Actions; bare bash can resolve to WSL on Windows.
+        ut_shell="$BASH"
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          # Native Python needs a Windows path, not Git Bash's /usr/bin path.
+          ut_shell="$(cygpath -w "$ut_shell")"
+        fi
+        python .github/scripts/ut-watchdog.py start --state "$UT_STATE" -- "$ut_shell" -e -o pipefail -c "$UT_COMMAND"
     # This step runs even if Maven never exits. The worker keeps Maven alive.
     - name: Upload long-running UT diagnostics
       uses: actions/upload-artifact@v6

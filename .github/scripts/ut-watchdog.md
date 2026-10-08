@@ -118,3 +118,19 @@ applies to streamed test stdout. A full JVM thread dump can itself contain
 application-defined thread names or exception text; this implementation cannot
 guarantee those application-controlled strings are free of secrets, and artifact
 contents are not covered by GitHub's console log masking.
+
+## Windows shell selection
+
+The first PR CI run exposed a Windows launch failure: Actions selected Git Bash,
+but Python resolved the bare `bash` command to the Windows WSL launcher. The
+wrapper now passes the running action shell's `$BASH` path explicitly and uses
+`cygpath -w` on Windows so native Python receives a Windows absolute path.
+Linux and macOS pass `$BASH` unchanged. No PATH changes or WSL installation are
+needed, and quoting preserves paths containing spaces.
+
+Regression tests execute the action's actual start block with a shadowing `bash`
+on PATH and a shell path containing spaces. The Windows conversion branch is
+simulated on Linux and verifies the exact native path argument. The short-timer
+suite still covers capture, original exit codes and cleanup. The earlier PR run
+passed both Ubuntu jobs; the corrected Windows launch needs validation by the
+next PR CI run. This local test is not a Windows or macOS end-to-end run.

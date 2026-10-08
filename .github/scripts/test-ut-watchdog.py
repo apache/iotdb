@@ -20,6 +20,7 @@
 """Local watchdog tests; no IoTDB build or remote Actions calls required."""
 
 import importlib.util
+import json
 import os
 from pathlib import Path
 import shutil
@@ -133,6 +134,61 @@ class WatchdogTest(unittest.TestCase):
         result = self.cli("start", "--threshold", "60", "--", "bash", "-e", "-o", "pipefail", "-c", "exit 53")
         self.assertEqual(result.returncode, 0)
         self.assertEqual(self.cli("wait").returncode, 53)
+
+    def action_start_script(self):
+        action = SCRIPT.parent.parent / "actions" / "ut-watchdog" / "action.yml"
+        lines = action.read_text().split("      run: |\n", 1)[1].splitlines()
+        return "\n".join(line[8:] for line in lines[:next(
+            i for i, line in enumerate(lines) if not line.startswith("        "))])
+
+    @unittest.skipUnless(os.name == "posix" and shutil.which("bash"), "POSIX shell regression")
+    def test_action_reuses_absolute_shell_with_shadowed_path(self):
+        bindir = self.root / "bin"
+        bindir.mkdir()
+        decoy = bindir / "bash"
+        decoy.write_text("#!/bin/sh\necho 'unexpected PATH bash / WSL' >&2\nexit 99\n")
+        decoy.chmod(0o755)
+        (bindir / "python").symlink_to(sys.executable)
+        shell = self.root / "Git Bash with spaces" / "bash"
+        shell.parent.mkdir()
+        shell.symlink_to(shutil.which("bash"))
+        for runner in ("Linux", "macOS"):
+            with self.subTest(runner=runner):
+                self.state = self.root / runner
+                env = dict(self.env, PATH=str(bindir) + os.pathsep + self.env["PATH"],
+                           RUNNER_OS=runner, UT_STATE=str(self.state), UT_COMMAND="exit 53")
+                result = subprocess.run([str(shell), "-e", "-o", "pipefail", "-c", self.action_start_script()],
+                                        cwd=SCRIPT.parent.parent.parent, env=env,
+                                        capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.cli("wait").returncode, 53)
+                self.assertEqual(json.loads((self.state / "command.json").read_text())[0], str(shell))
+
+    @unittest.skipUnless(os.name == "posix" and shutil.which("bash"), "Windows conversion simulation on POSIX")
+    def test_action_converts_git_bash_path_for_native_python(self):
+        bindir = self.root / "bin"
+        bindir.mkdir()
+        native_shell = r"C:\Program Files\Git\bin\bash.exe"
+        cygpath = bindir / "cygpath"
+        cygpath.write_text(
+            "#!/bin/sh\n"
+            "[ \"$1\" = '-w' ] || exit 91\n"
+            "[ \"$2\" = \"$EXPECTED_BASH\" ] || exit 92\n"
+            "printf '%s' \"$NATIVE_BASH\"\n"
+        )
+        cygpath.chmod(0o755)
+        recorded = self.root / "python-args.json"
+        python = bindir / "python"
+        python.write_text(f"#!{sys.executable}\nimport json,sys\nfrom pathlib import Path\nPath({str(recorded)!r}).write_text(json.dumps(sys.argv[1:]))\n")
+        python.chmod(0o755)
+        shell = str(Path(shutil.which("bash")).resolve())
+        env = dict(self.env, PATH=str(bindir) + os.pathsep + self.env["PATH"], RUNNER_OS="Windows",
+                   EXPECTED_BASH=shell, NATIVE_BASH=native_shell, UT_STATE=str(self.state), UT_COMMAND="exit 53")
+        result = subprocess.run([shell, "-e", "-o", "pipefail", "-c", self.action_start_script()],
+                                env=env, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = json.loads(recorded.read_text())
+        self.assertEqual(args[args.index("--") + 1:], [native_shell, "-e", "-o", "pipefail", "-c", "exit 53"])
 
     def test_attach_failure_keeps_output(self):
         self.state.mkdir()
