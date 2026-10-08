@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.cq.CQCalendarUtils;
+import org.apache.iotdb.confignode.manager.cq.CQDurationUtils;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -41,12 +43,14 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -82,8 +86,19 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     this.req = req;
     this.cqToken = generateCQToken();
     this.executor = executor;
-    this.firstExecutionTime =
-        CQScheduleTask.getFirstExecutionTime(req.boundaryTime, req.everyInterval);
+    TimeDuration everyDuration =
+        CQDurationUtils.toTimeDuration(
+            req, req.isSetEveryDuration() ? req.getEveryDuration() : null, req.everyInterval);
+    if (everyDuration.monthDuration != 0) {
+      ZoneId zone = ZoneId.of(req.zoneId);
+      long boundary = CQDurationUtils.resolveBoundary(req, zone, everyDuration);
+      long now = CQDurationUtils.currentTimeInPrecision();
+      long index = CQCalendarUtils.firstOccurrenceIndex(boundary, everyDuration, now, zone);
+      this.firstExecutionTime = CQCalendarUtils.occurrence(boundary, everyDuration, index, zone);
+    } else {
+      this.firstExecutionTime =
+          CQScheduleTask.getFirstExecutionTime(req.boundaryTime, everyDuration.nonMonthDuration);
+    }
   }
 
   @Override

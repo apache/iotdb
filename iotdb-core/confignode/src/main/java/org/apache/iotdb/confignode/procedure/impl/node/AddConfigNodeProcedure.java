@@ -36,7 +36,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 /** add config node procedure */
 public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeState> {
@@ -156,6 +158,15 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
     ReadWriteIOUtils.write(versionInfo.getVersion(), stream);
     ReadWriteIOUtils.write(versionInfo.getBuildInfo(), stream);
+    // Optional tail preserves the joining node's capability across procedure recovery while old
+    // payloads remain readable because the tail is absent in their serialized form.
+    ReadWriteIOUtils.write(versionInfo.isSetSupportedCQDurationEncodingVersions(), stream);
+    if (versionInfo.isSetSupportedCQDurationEncodingVersions()) {
+      ReadWriteIOUtils.write(versionInfo.getSupportedCQDurationEncodingVersions().size(), stream);
+      for (short version : versionInfo.getSupportedCQDurationEncodingVersions()) {
+        ReadWriteIOUtils.write(version, stream);
+      }
+    }
   }
 
   @Override
@@ -169,6 +180,14 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         versionInfo =
             new TNodeVersionInfo(
                 ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+        if (byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer)) {
+          int size = ReadWriteIOUtils.readInt(byteBuffer);
+          Set<Short> capabilities = new HashSet<>();
+          for (int i = 0; i < size; i++) {
+            capabilities.add(ReadWriteIOUtils.readShort(byteBuffer));
+          }
+          versionInfo.setSupportedCQDurationEncodingVersions(capabilities);
+        }
       } else {
         versionInfo = new TNodeVersionInfo("Unknown", "Unknown");
       }
