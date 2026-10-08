@@ -39,27 +39,68 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongConsumer;
 
-/** Manages cached readers with independent locks for independent files. */
+/**
+ * Caches readers for managed TsFiles and external file paths, with reader I/O serialized per file.
+ *
+ * <p>Each {@link Entry} is a stable lifecycle record and the monitor for its reader slots. An
+ * operation pin keeps the entry registered while a manager call uses it or waits for its monitor.
+ * Pins do not keep a returned reader open: callers retain a {@link Slot#references file-reader
+ * reference} for the duration of reader use, separately from each manager call's pin.
+ *
+ * <p>{@link #registryLock} protects registry membership, pins, and reference counts. Entry monitors
+ * protect reader construction, close, and the cached reader fields, not reads performed by callers
+ * after {@code get} returns. Never hold {@code registryLock} while acquiring an entry monitor or
+ * doing I/O. An entry may briefly acquire {@code registryLock} to recheck references, but must not
+ * acquire a resource lock, region lock, or another entry monitor. Reference registration uses only
+ * the short registry critical section, so callers can register while holding a region read lock.
+ */
 public class FileReaderManager {
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   private static final int MAX_CACHED_FILE_SIZE = 30000;
   private static final int PRINT_INTERVAL = 10000;
 
-  // registryLock protects entry lifetime and reference counts; entry monitors serialize reader I/O.
-  // Never hold registryLock while taking an entry monitor or doing I/O. An entry may briefly take
-  // registryLock to recheck references, but must not acquire resource, region, or other entry
-  // locks.
-  // Reference registration takes only registryLock, even when the caller holds a region read lock.
+  /**
+   * Manager-wide monitor for both registries, {@link #clearing}, both levels of pin counters, and
+   * {@link Slot#references}. It is never held across reader I/O or an entry-monitor acquisition.
+   */
   private final Object registryLock = new Object();
+
+  /** Serializes entire global test-cleanup passes; ordinary reader operations do not acquire it. */
   private final Object clearLock = new Object();
+
+  /**
+   * Managed files keyed by TsFileID, each with independent closed/unclosed slots under one entry
+   * monitor. Guarded by {@link #registryLock}.
+   */
   private final Map<TsFileID, Entry> internal = new HashMap<>();
+
+  /**
+   * External files keyed by the supplied path string, in a namespace separate from {@link
+   * #internal}. External entries use only their closed slot. Guarded by {@link #registryLock}.
+   */
   private final Map<String, Entry> external = new HashMap<>();
+
+  /** Cached closed-reader count for managed files; updated concurrently under different entries. */
   private final AtomicInteger closedCount = new AtomicInteger();
+
+  /** Cached unclosed-reader count for managed files; independent of query references and pins. */
   private final AtomicInteger unclosedCount = new AtomicInteger();
+
+  /** Cached-reader count for the external-path namespace. */
   private final AtomicInteger externalCount = new AtomicInteger();
-  // Guarded by registryLock. Pins count operations (including entry-lock waiters), not queries.
+
+  /**
+   * Test-cleanup admission gate: new acquisitions wait while releases remain allowed. Guarded by
+   * {@link #registryLock}; it remains set through the final pin drain and entry reclamation.
+   */
   private boolean clearing;
+
+  /**
+   * Sum of {@link Entry#pins} across both registries, including operations waiting for entry
+   * monitors. Global test cleanup drains this counter; zero does not imply zero query references.
+   * Guarded by {@link #registryLock}.
+   */
   private int pins;
 
   private FileReaderManager() {}
@@ -68,10 +109,26 @@ public class FileReaderManager {
     return FileReaderManagerHelper.INSTANCE;
   }
 
+  /** One reader state (closed or unclosed) and its independently maintained query references. */
   private static class Slot {
+    /**
+     * Nullable cached handle, created and discarded under the owning entry's monitor. Reclamation
+     * may inspect it under registryLock after that entry's operations have finished.
+     */
     private TsFileSequenceReader reader;
-    // Guarded by registryLock, independently of this slot's reader I/O.
+
+    /**
+     * Outstanding file-reader retains for this slot, guarded by registryLock. May be positive
+     * before any reader is opened; unlike operation pins, these retains span the caller's reader
+     * use.
+     */
     private int references;
+
+    /**
+     * Shared cached-reader counter for this slot's namespace/state. Publishing a reader increments
+     * it; discarding a handle after a close attempt decrements it, even when close fails. This
+     * counts cached handles, not query references or all open OS descriptors.
+     */
     private final AtomicInteger count;
 
     private Slot(AtomicInteger count) {
@@ -101,12 +158,28 @@ public class FileReaderManager {
     }
   }
 
+  /**
+   * Stable per-key record whose monitor serializes reader lifecycle changes. It cannot be reclaimed
+   * while an operation is pinned, even if both slots are empty, because a waiter may still use this
+   * exact monitor. Replacing it early would allow two entries to open readers for the same key.
+   */
   private static class Entry {
+    /** Closed-file reader slot; also the sole slot used by external entries. */
     private final Slot closed;
+
+    /** Unclosed-file reader slot for managed files; unused for external entries. */
     private final Slot unclosed;
-    // Guarded by registryLock; reader fields are guarded by this entry's monitor.
+
+    /**
+     * Manager operations retaining this entry, including monitor waiters; guarded by registryLock.
+     */
     private int pins;
 
+    /**
+     * @param closedCount managed closed-reader counter or external-reader counter, depending on the
+     *     registry that owns this entry
+     * @param unclosedCount managed unclosed-reader counter; external entries never use this slot
+     */
     private Entry(AtomicInteger closedCount, AtomicInteger unclosedCount) {
       closed = new Slot(closedCount);
       unclosed = new Slot(unclosedCount);
@@ -121,6 +194,27 @@ public class FileReaderManager {
     }
   }
 
+  /**
+   * Looks up an entry and retains its identity for one manager operation, optionally creating it.
+   *
+   * <p>The operation is counted before the caller can wait for the entry monitor, so reclamation
+   * cannot replace an entry that a waiter still holds. This method neither acquires that monitor,
+   * opens a reader, nor registers a query reference. Every non-null result must be paired with
+   * exactly one {@code unpin} in a {@code finally} block, after leaving the entry monitor.
+   *
+   * <p>Admission waits are uninterruptible: an interrupt is remembered and restored before this
+   * method returns. Releases bypass the gate so they can complete during global test cleanup.
+   *
+   * @param <K> TsFileID for the internal registry, or String for the external registry
+   * @param registry exactly {@link #internal} or {@link #external}; also selects the cached-reader
+   *     counter for a newly created entry
+   * @param key non-null file identity within the selected registry
+   * @param admission true to wait until global test cleanup reopens admission; false for reference
+   *     releases that must remain allowed during cleanup
+   * @param create true to install an empty entry if the key is absent; false to return null instead
+   * @return the entry with both its own and the global operation-pin count incremented, or null if
+   *     the key is absent and creation is disabled
+   */
   private <K> Entry pin(Map<K, Entry> registry, K key, boolean admission, boolean create) {
     Objects.requireNonNull(key);
     boolean interrupted = false;
@@ -148,6 +242,16 @@ public class FileReaderManager {
     }
   }
 
+  /**
+   * Releases the matching operation pin without changing query references or closing a reader.
+   * Outside global cleanup, an empty entry is reclaimed only when no operation still retains it.
+   * Call after leaving the entry monitor, including when the operation fails.
+   *
+   * @param <K> key type of the selected registry
+   * @param registry the same registry supplied to the matching {@code pin}
+   * @param key the same file identity supplied to the matching {@code pin}
+   * @param entry the exact non-null entry returned by that call, not a fresh registry lookup
+   */
   private <K> void unpin(Map<K, Entry> registry, K key, Entry entry) {
     synchronized (registryLock) {
       entry.pins--;
@@ -401,7 +505,14 @@ public class FileReaderManager {
     }
   }
 
-  // Called with registryLock held; wait releases it so operations can finish and unpin.
+  /**
+   * Waits for all currently admitted manager operations to finish during global test cleanup.
+   * Requires registryLock; waiting releases that monitor so operations can finish and unpin. This
+   * drains operation pins, not query references, and does not acquire any entry monitor.
+   *
+   * @return whether an interrupt was consumed while waiting; the cleanup caller restores it after
+   *     completing cleanup and reopening admission
+   */
   private boolean drainPins() {
     boolean interrupted = false;
     while (pins != 0) {
