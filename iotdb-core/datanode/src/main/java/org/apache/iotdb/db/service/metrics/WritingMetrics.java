@@ -43,10 +43,14 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 
 public class WritingMetrics implements IMetricSet {
   private static final WritingMetrics INSTANCE = new WritingMetrics();
@@ -204,6 +208,8 @@ public class WritingMetrics implements IMetricSet {
   private Histogram readWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram writeWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Gauge walQueueMaxMemSizeGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  // Recorded rarely, so keep the value to restore it when the metric service recreates the gauge
+  private volatile long walQueueMaxMemSize;
 
   private void bindWALMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
@@ -277,6 +283,7 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             WAL_QUEUE_MAX_MEM_COST);
+    walQueueMaxMemSizeGauge.set(walQueueMaxMemSize);
     SystemInfo systemInfo = SystemInfo.getInstance();
     metricService.createAutoGauge(
         Metric.WAL_QUEUE_MEM_COST.toString(),
@@ -455,6 +462,16 @@ public class WritingMetrics implements IMetricSet {
 
   private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  // Recorded rarely, so keep the values to restore them when the metric service recreates the
+  // gauges
+  private volatile long flushThreshold;
+  private volatile long rejectThreshold;
+
+  // The active memtable and time partition counters are levels maintained by deltas, so keep the
+  // levels to restore them when the metric service recreates the counters
+  private final Map<String, Long> activeMemTableCounts = new HashMap<>();
+  private long activeTimePartitionCount;
+  private final Object activeCountLock = new Object();
 
   private Timer memtableLiveTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
@@ -482,6 +499,8 @@ public class WritingMetrics implements IMetricSet {
     manualFlushMemtableCounter = createManualFlushMemTableCounterMetrics();
     memControlFlushMemtableCounter = createMemControlFlushMemTableCounterMetrics();
 
+    restoreActiveCounts(allDataRegionIds);
+
     flushThreholdGauge =
         MetricService.getInstance()
             .getOrCreateGauge(
@@ -489,6 +508,7 @@ public class WritingMetrics implements IMetricSet {
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 FLUSH_THRESHOLD);
+    flushThreholdGauge.set(flushThreshold);
     rejectThreholdGauge =
         MetricService.getInstance()
             .getOrCreateGauge(
@@ -496,6 +516,7 @@ public class WritingMetrics implements IMetricSet {
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 REJECT_THRESHOLD);
+    rejectThreholdGauge.set(rejectThreshold);
 
     memtableLiveTimer =
         MetricService.getInstance()
@@ -981,15 +1002,18 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void recordWALQueueMaxMemorySize(long size) {
+    walQueueMaxMemSize = size;
     walQueueMaxMemSizeGauge.set(size);
   }
 
   public void recordFlushThreshold(double flushThreshold) {
-    flushThreholdGauge.set((long) flushThreshold);
+    this.flushThreshold = (long) flushThreshold;
+    flushThreholdGauge.set(this.flushThreshold);
   }
 
   public void recordRejectThreshold(double rejectThreshold) {
-    rejectThreholdGauge.set((long) rejectThreshold);
+    this.rejectThreshold = (long) rejectThreshold;
+    rejectThreholdGauge.set(this.rejectThreshold);
   }
 
   public void recordMemTableLiveDuration(long durationMillis) {
@@ -1013,18 +1037,52 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void recordActiveMemTableCount(String dataRegionId, int number) {
-    MetricService.getInstance()
-        .count(
-            number,
-            Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId);
+    // Use the region tag of the counter created and removed with the region
+    String region = new DataRegionId(Integer.parseInt(dataRegionId)).toString();
+    synchronized (activeCountLock) {
+      activeMemTableCounts.merge(region, (long) number, Long::sum);
+      MetricService.getInstance()
+          .count(
+              number,
+              Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.REGION.toString(),
+              region);
+    }
   }
 
   public void recordActiveTimePartitionCount(int number) {
-    MetricService.getInstance()
-        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
+    synchronized (activeCountLock) {
+      activeTimePartitionCount += number;
+      MetricService.getInstance()
+          .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
+    }
+  }
+
+  private void restoreActiveCounts(List<DataRegionId> dataRegionIds) {
+    Set<String> existingDataRegionIds =
+        dataRegionIds.stream().map(DataRegionId::toString).collect(Collectors.toSet());
+    synchronized (activeCountLock) {
+      // Do not bring back the counters of the removed regions
+      activeMemTableCounts
+          .entrySet()
+          .removeIf(
+              entry -> entry.getValue() == 0 && !existingDataRegionIds.contains(entry.getKey()));
+      activeMemTableCounts.forEach(
+          (dataRegionId, count) ->
+              restoreCounter(
+                  count,
+                  Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+                  Tag.REGION.toString(),
+                  dataRegionId));
+      restoreCounter(activeTimePartitionCount, Metric.ACTIVE_TIME_PARTITION_COUNT.toString());
+    }
+  }
+
+  private static void restoreCounter(long count, String metric, String... tags) {
+    Counter counter =
+        MetricService.getInstance().getOrCreateCounter(metric, MetricLevel.IMPORTANT, tags);
+    counter.inc(count - counter.getCount());
   }
 
   // endregion

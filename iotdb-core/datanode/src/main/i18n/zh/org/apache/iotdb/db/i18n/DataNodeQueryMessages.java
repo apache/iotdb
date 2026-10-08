@@ -783,6 +783,12 @@ public final class DataNodeQueryMessages {
       "暂不支持 Show Index 语句。";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "UPDATE 只能指定属性列。";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "无法更新 %s 列 '%s'。UPDATE 只能指定 ATTRIBUTE 列。";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "无法在 UPDATE 值中引用 %s 列 '%s'。UPDATE 值只能引用 ATTRIBUTE 或 TAG 列。";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "暂不支持 Drop Function 语句。";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -843,6 +849,7 @@ public final class DataNodeQueryMessages {
       "重复的参数名：%s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持设置按月间隔。";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "参数 %s 不能主动填null值";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "过滤下推不支持 CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =

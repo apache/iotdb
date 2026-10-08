@@ -60,15 +60,9 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
 
   @Override
   public synchronized void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<QueueMetricsKey> keys = ImmutableSet.copyOf(queueMap.keySet());
-    for (final QueueMetricsKey key : keys) {
-      deregister(key);
-    }
-    if (!queueMap.isEmpty()) {
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9);
-    }
+    // Keep the queues registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(queueMap.keySet()).forEach(this::removeMetrics);
   }
 
   //////////////////////////// register & deregister ////////////////////////////

@@ -135,7 +135,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
-  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet = new HashSet<>();
+  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet =
+      ConcurrentHashMap.newKeySet();
 
   private final int thriftMaxFrameSize;
   private final int connectionTimeoutInMs;
@@ -296,7 +297,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 (Integer)
                     properties.getOrDefault(
                         ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY,
-                        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS))
+                        ConsumerConstant.CONNECTION_TIMEOUT_MS_DEFAULT_VALUE))
             .maxPollParallelism(
                 (Integer)
                     properties.getOrDefault(
@@ -1526,6 +1527,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       acceptedCount += acceptedCommitContexts.size();
       if (!nack) {
         overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
+        onAckedCommitContexts(acceptedCommitContexts);
       }
       if (acceptedCommitContexts.size() != groupedCommitContexts.size()) {
         final List<SubscriptionCommitContext> failedInGroup =
@@ -1545,6 +1547,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           failedCommitContexts);
       throw new SubscriptionRuntimeNonCriticalException(errorMessage);
     }
+  }
+
+  /** Invoked after the server accepts commit contexts from an acknowledgement request. */
+  protected void onAckedCommitContexts(
+      final Collection<SubscriptionCommitContext> acceptedCommitContexts) {
+    // Do nothing by default.
   }
 
   protected Set<SubscriptionMessage> ackWithPartialProgress(
@@ -1744,10 +1752,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     @Override
     public void run() {
       try {
-        checkIfFenced();
-        if (isClosed()) {
-          return;
-        }
+        checkIfOpened();
         ack(messages);
         callback.onComplete();
       } catch (final Exception e) {
@@ -1761,10 +1766,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     SubscriptionExecutorServiceManager.submitAsyncCommitWorker(
         () -> {
           try {
-            checkIfFenced();
-            if (isClosed()) {
-              return;
-            }
+            checkIfOpened();
             ack(messages);
             future.complete(null);
           } catch (final Throwable e) {

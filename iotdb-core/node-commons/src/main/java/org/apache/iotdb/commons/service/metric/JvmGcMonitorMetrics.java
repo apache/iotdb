@@ -88,16 +88,14 @@ public class JvmGcMonitorMetrics implements IMetricSet {
         curData,
         GcData::getGcTimePercentage);
 
-    monitorStartTime = System.currentTimeMillis();
-    // Set start time's accumulated GC Time
-    curData.setAccumulatedGcTime(getTotalGCTime());
-    // current collect time: startTime + start delay(50ms)
-    gcDataBuf[startIdx].setValues(monitorStartTime + TimeUnit.MILLISECONDS.toMillis(50), 0);
+    startMonitoring(System.currentTimeMillis(), getTotalGCTime());
     scheduledGcMonitorFuture =
         ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
             scheduledGCInfoMonitor,
             this::scheduledMonitoring,
-            TimeUnit.MILLISECONDS.toMillis(50), // to prevent / ZERO exception
+            // The first sample covers a whole interval, as the later ones do, so the percentage is
+            // never calculated over a tiny window
+            SLEEP_INTERVAL_MS,
             SLEEP_INTERVAL_MS,
             TimeUnit.MILLISECONDS);
   }
@@ -113,8 +111,21 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
   }
 
+  /**
+   * Starts a new observation. The buffer may still hold the samples of a previous binding, e.g.
+   * before the metric service restarts, so start again from an empty buffer.
+   */
+  synchronized void startMonitoring(long startTime, long totalGcTime) {
+    monitorStartTime = startTime;
+    // Set start time's accumulated GC Time
+    curData.setAccumulatedGcTime(totalGcTime);
+    startIdx = 0;
+    endIdx = 0;
+    gcDataBuf[startIdx].setValues(startTime, 0);
+  }
+
   private void scheduledMonitoring() {
-    calculateGCTimePercentageWithinObservedInterval();
+    calculateGCTimePercentageWithinObservedInterval(System.currentTimeMillis(), getTotalGCTime());
 
     // Alert if necessary
     if (alertHandler != null && curData.getGcTimePercentage() > MAX_GC_TIME_PERCENTAGE) {
@@ -130,12 +141,11 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     return totalGcTime;
   }
 
-  private void calculateGCTimePercentageWithinObservedInterval() {
+  synchronized void calculateGCTimePercentageWithinObservedInterval(
+      long curTime, long totalGcTime) {
     long prevTotalGcTime = curData.getAccumulatedGcTime();
-    long totalGcTime = getTotalGCTime();
 
     long gcTimeWithinSleepInterval = totalGcTime - prevTotalGcTime;
-    long curTime = System.currentTimeMillis();
     long gcMonitorRunTime = curTime - monitorStartTime;
 
     endIdx = (endIdx + 1) % bufSize;
@@ -153,10 +163,10 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     // in our observation window.
     long gcTimeWithinObservationWindow =
         Math.min(gcDataBuf[startIdx].gcPause, gcDataBuf[startIdx].ts - startObsWindowTs);
-    if (startIdx != endIdx) {
-      for (int i = (startIdx + 1) % bufSize; i != endIdx; i = (i + 1) % bufSize) {
-        gcTimeWithinObservationWindow += gcDataBuf[i].gcPause;
-      }
+    // The entries after the start one are all within the window, including the latest one
+    for (int i = startIdx; i != endIdx; ) {
+      i = (i + 1) % bufSize;
+      gcTimeWithinObservationWindow += gcDataBuf[i].gcPause;
     }
 
     curData.update(

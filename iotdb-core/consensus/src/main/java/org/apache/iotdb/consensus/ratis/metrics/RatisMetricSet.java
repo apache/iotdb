@@ -100,6 +100,9 @@ public class RatisMetricSet implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     manager = MetricRegistries.global();
+    if (manager instanceof MetricRegistryManager) {
+      ((MetricRegistryManager) manager).bindMetrics();
+    }
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.getOrCreateTimer(
           metricInfo.getName(), MetricLevel.CORE, metricInfo.getTagsInArray());
@@ -108,7 +111,10 @@ public class RatisMetricSet implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    manager.clear();
+    // Keep the registries: Ratis still holds their metrics and never creates them again.
+    if (manager instanceof MetricRegistryManager) {
+      ((MetricRegistryManager) manager).unbindMetrics();
+    }
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.remove(MetricType.TIMER, metricInfo.getName(), metricInfo.getTagsInArray());
     }

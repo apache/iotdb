@@ -243,6 +243,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGenerator;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGeneratorType;
@@ -3007,8 +3008,15 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
   @Override
   public Operator visitLastQuery(LastQueryNode node, LocalExecutionPlanContext context) {
     Filter globalTimeFilter = context.getGlobalTimeFilter();
-    context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(globalTimeFilter));
-    context.setNeedUpdateNullEntry(LastQueryUtil.needUpdateNullEntry(globalTimeFilter));
+    // Virtual regions only provide empty data sources. Their placeholder database must never be
+    // cached as the owner of a real device, including during last-cache initialization below.
+    boolean canUpdateLastCache =
+        !(((DataDriverContext) context.getDriverContext()).getDataRegion()
+                instanceof VirtualDataRegion)
+            && LastQueryUtil.needUpdateCache(globalTimeFilter);
+    context.setNeedUpdateLastCache(canUpdateLastCache);
+    context.setNeedUpdateNullEntry(
+        canUpdateLastCache && LastQueryUtil.needUpdateNullEntry(globalTimeFilter));
 
     List<Operator> operatorList =
         node.getChildren().stream()

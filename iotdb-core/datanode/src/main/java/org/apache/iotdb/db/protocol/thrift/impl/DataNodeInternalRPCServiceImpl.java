@@ -3789,31 +3789,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
             new ThreadPoolExecutor.CallerRunsPolicy());
 
-    for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
-      CompletableFuture<Void> regionFuture =
-          CompletableFuture.runAsync(
-              () -> {
-                TsFileManager tsFileManager = dataRegion.getTsFileManager();
-                String databaseName = dataRegion.getDatabaseName();
-                if (ignoreDatabase.contains(databaseName)) {
-                  return;
-                }
+    try {
+      for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
+        CompletableFuture<Void> regionFuture =
+            CompletableFuture.runAsync(
+                () -> {
+                  TsFileManager tsFileManager = dataRegion.getTsFileManager();
+                  String databaseName = dataRegion.getDatabaseName();
+                  if (ignoreDatabase.contains(databaseName)) {
+                    return;
+                  }
 
-                Set<Long> timePartitionIds = tsFileManager.getTimePartitions();
-                if (timePartitionIds.isEmpty()) {
-                  return;
-                }
-                final long earliestTimeSlotId = Collections.min(timePartitionIds);
-                earliestTimeslots.compute(
-                    databaseName,
-                    (k, v) -> v == null ? earliestTimeSlotId : Math.min(earliestTimeSlotId, v));
-              },
-              findEarliestTimeSlotExecutor);
-      futures.add(regionFuture);
+                  Set<Long> timePartitionIds = tsFileManager.getTimePartitions();
+                  if (timePartitionIds.isEmpty()) {
+                    return;
+                  }
+                  final long earliestTimeSlotId = Collections.min(timePartitionIds);
+                  earliestTimeslots.compute(
+                      databaseName,
+                      (k, v) -> v == null ? earliestTimeSlotId : Math.min(earliestTimeSlotId, v));
+                },
+                findEarliestTimeSlotExecutor);
+        futures.add(regionFuture);
+      }
+
+      // Wait for all tasks to complete
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    } finally {
+      findEarliestTimeSlotExecutor.shutdown();
     }
-
-    // Wait for all tasks to complete
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     LOGGER.info(DataNodeMiscMessages.PROCESS_DATA_DIR_COMPLETED);
   }
 

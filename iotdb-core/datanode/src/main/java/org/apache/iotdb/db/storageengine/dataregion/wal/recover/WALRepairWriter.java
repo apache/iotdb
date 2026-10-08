@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
-import org.apache.iotdb.commons.utils.IOUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
@@ -28,7 +29,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 
 /** Check whether the wal file is broken and repair it. */
@@ -39,36 +44,110 @@ public class WALRepairWriter {
     this.logFile = logFile;
   }
 
-  public void repair(WALMetaData metaData) throws IOException {
-    // locate broken data
-    long truncateSize;
-    WALFileVersion version = WALFileVersion.getVersion(logFile);
-    if (version.getVersionString().equals(readTailMagic(version))) { // complete file
-      return;
-    } else { // file with broken magic string
-      truncateSize = metaData.getTruncateOffSet();
+  /**
+   * Repairs a WAL from the readable prefix. Returns {@code false} when the file has no recoverable
+   * entry and is moved aside with a {@code .broken} suffix.
+   */
+  public boolean repair(WALMetaData metaData) throws IOException {
+    if (isEmptyOrHeaderOnly()) {
+      return true;
     }
 
-    // truncate broken data
-    try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {
-      channel.truncate(truncateSize);
+    WALFileVersion version = WALFileVersion.getVersion(logFile);
+    if (hasReadableMetadata()) {
+      return true;
     }
-    // flush metadata
-    try (WALWriter walWriter = new WALWriter(logFile, version)) {
-      walWriter.updateMetaData(metaData);
+
+    // The caller has already scanned the readable entries and supplied their rebuilt metadata.
+    if (metaData.getBuffersSize().isEmpty()) {
+      quarantine();
+      return false;
+    }
+    // A channel offset may include a partially read entry in the same compressed segment. Rebuild
+    // complete entries in a temporary file instead of truncating at a read-ahead offset. Publish
+    // only after every entry and the new footer have been written and forced successfully.
+    Path repaired =
+        Files.createTempFile(logFile.toPath().toAbsolutePath().getParent(), "wal-repair-", ".tmp");
+    try {
+      try (WALByteBufReader reader = new WALByteBufReader(logFile, metaData)) {
+        if (version == WALFileVersion.V1) {
+          // V1 entries are raw bytes, without the segment framing emitted by modern WALWriter.
+          try (FileChannel output = FileChannel.open(repaired, StandardOpenOption.WRITE)) {
+            while (reader.hasNext()) {
+              writeFully(output, reader.next());
+            }
+            ByteBuffer footer =
+                ByteBuffer.allocate(
+                    1
+                        + metaData.serializedSize(version)
+                        + Integer.BYTES
+                        + version.getVersionBytes().length);
+            footer.put(WALEntryType.WAL_FILE_INFO_END_MARKER.getCode());
+            metaData.serialize(footer, version);
+            footer.putInt(metaData.serializedSize(version)).put(version.getVersionBytes()).flip();
+            writeFully(output, footer);
+            output.force(true);
+          }
+        } else {
+          try (WALWriter writer = new WALWriter(repaired.toFile(), version)) {
+            while (reader.hasNext()) {
+              ByteBuffer entry = reader.next();
+              entry.position(entry.limit());
+              writer.write(entry, false);
+            }
+            writer.updateMetaData(metaData);
+          }
+        }
+      }
+      try {
+        Files.move(
+            repaired,
+            logFile.toPath(),
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING);
+      } catch (AtomicMoveNotSupportedException e) {
+        Files.move(repaired, logFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+    } finally {
+      Files.deleteIfExists(repaired);
+    }
+    return true;
+  }
+
+  private static void writeFully(FileChannel output, ByteBuffer buffer) throws IOException {
+    while (buffer.hasRemaining()) {
+      output.write(buffer);
     }
   }
 
-  private String readTailMagic(WALFileVersion version) throws IOException {
-    int size = version.getVersionBytes().length;
-    if (logFile.length() < size) {
-      return null;
-    }
+  private boolean isEmptyOrHeaderOnly() throws IOException {
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
-      ByteBuffer magicStringBytes = ByteBuffer.allocate(size);
-      IOUtils.readFully(channel, magicStringBytes, channel.size() - size);
-      magicStringBytes.flip();
-      return new String(magicStringBytes.array(), StandardCharsets.UTF_8);
+      return WALFileVersion.isEmptyOrHeaderOnly(channel);
+    }
+  }
+
+  private boolean hasReadableMetadata() {
+    try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
+      WALMetaData.readFromWALFileWithoutRecovery(logFile, channel);
+      return true;
+    } catch (IOException | RuntimeException e) {
+      return false;
+    }
+  }
+
+  /** Moves an unrecoverable WAL aside without replacing an earlier quarantined file. */
+  public void quarantine() throws IOException {
+    int suffix = 0;
+    while (true) {
+      File target = new File(logFile.getPath() + ".broken" + (suffix == 0 ? "" : "." + suffix));
+      try {
+        // ATOMIC_MOVE may overwrite an existing target on some providers. A no-replace move
+        // preserves evidence even when another reader chooses the same quarantine name.
+        Files.move(logFile.toPath(), target.toPath());
+        return;
+      } catch (FileAlreadyExistsException e) {
+        suffix++;
+      }
     }
   }
 }

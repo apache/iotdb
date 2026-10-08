@@ -29,6 +29,8 @@ import java.util.Map;
 
 public interface ITableCache {
 
+  long getInstanceVersion();
+
   void init(final byte[] tableInitializationBytes);
 
   void preUpdateTable(final String database, final TsTable table, final @Nullable String oldName);

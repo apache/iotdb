@@ -149,7 +149,7 @@ public class PartitionCache {
     this.partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             this.seriesSlotExecutorName, this.seriesPartitionSlotNum);
-    this.cacheMetrics = new CacheMetrics();
+    this.cacheMetrics = CacheMetrics.getInstance();
   }
 
   protected void failIfMetadataLeaseFenced() {

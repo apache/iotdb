@@ -316,9 +316,25 @@ public abstract class AbstractMemTable implements IMemTable {
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     try {
+      return insertAlignedTablet(
+          insertTabletNode, start, end, results, insertTabletNode.splitByDevice(start, end));
+    } catch (RuntimeException e) {
+      throw new WriteProcessException(e);
+    }
+  }
+
+  @Override
+  public int insertAlignedTablet(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs)
+      throws WriteProcessException {
+    try {
       int nullPointsNumber =
           computeTabletNullPointsNumber(insertTabletNode, start, end, true, results);
-      writeAlignedTablet(insertTabletNode, start, end, results);
+      writeAlignedTablet(insertTabletNode, start, end, results, deviceEndOffsetPairs);
       // TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
       int validValueCount =
@@ -449,6 +465,16 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public void writeAlignedTablet(
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
+    writeAlignedTablet(
+        insertTabletNode, start, end, results, insertTabletNode.splitByDevice(start, end));
+  }
+
+  public void writeAlignedTablet(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     final int measurementSize =
         insertTabletNode.getMeasurements() == null ? 0 : insertTabletNode.getMeasurements().length;
@@ -474,10 +500,8 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    final List<Pair<IDeviceID, Integer>> deviceEndOffsetPair =
-        insertTabletNode.splitByDevice(start, end);
     int splitStart = start;
-    for (Pair<IDeviceID, Integer> pair : deviceEndOffsetPair) {
+    for (Pair<IDeviceID, Integer> pair : deviceEndOffsetPairs) {
       final IDeviceID deviceID = pair.left;
       int splitEnd = pair.right;
       IWritableMemChunkGroup memChunkGroup =
