@@ -257,6 +257,8 @@ public final class CommonMessages {
           "LTTB 在单个分区或窗口内每列最多缓存 %d 个有效点。";
   public static final String EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE =
       "不支持的 LTTB 值类型：%s";
+  public static final String LTTB_WINDOW_BUFFER_MEMORY_LIMIT_EXCEEDED =
+      "LTTB 窗口缓冲区超过每个处理器 %d 字节的内存上限。请减小 SIZE 或数值列数量，或增大 SLIDE。";
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";

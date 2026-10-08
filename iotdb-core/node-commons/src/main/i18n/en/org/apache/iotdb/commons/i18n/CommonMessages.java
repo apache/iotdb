@@ -361,6 +361,9 @@ public final class CommonMessages {
           "LTTB buffers at most %d eligible points per column in one partition or window.";
   public static final String EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE =
       "Unsupported LTTB value type: %s";
+  public static final String LTTB_WINDOW_BUFFER_MEMORY_LIMIT_EXCEEDED =
+      "LTTB window buffers exceed the per-processor memory limit of %d bytes. Reduce SIZE or the"
+          + " number of numeric columns, or increase SLIDE.";
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";

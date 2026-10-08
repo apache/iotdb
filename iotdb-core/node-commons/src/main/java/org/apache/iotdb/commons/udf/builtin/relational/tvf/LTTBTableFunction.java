@@ -39,6 +39,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpe
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -96,6 +97,9 @@ public class LTTBTableFunction implements TableFunction {
 
   /** Hard cap on eligible points buffered per participant column in one partition or window. */
   public static final int MAX_BUFFERED_POINTS = 1 << 22;
+
+  /** Shared budget for point buffers in all live windows and columns of one processor. */
+  static final long MAX_WINDOW_BUFFER_BYTES = 64L * 1024 * 1024;
 
   public static final String MODE_PROPERTY = "__LTTB_MODE";
   public static final String PARTITION_TYPES_PROPERTY = "__LTTB_PARTITION_TYPES";
@@ -412,6 +416,28 @@ public class LTTBTableFunction implements TableFunction {
   // Column access and buffering
   // ---------------------------------------------------------------------------------------------
 
+  /** Reservations include array capacity, including both old and new arrays during growth. */
+  static final class WindowMemoryBudget {
+    private final long limit;
+    private long reservedBytes;
+
+    WindowMemoryBudget(long limit) {
+      this.limit = limit;
+    }
+
+    void reserve(long bytes) {
+      if (bytes > limit - reservedBytes) {
+        throw new SemanticException(
+            String.format(CommonMessages.LTTB_WINDOW_BUFFER_MEMORY_LIMIT_EXCEEDED, limit));
+      }
+      reservedBytes += bytes;
+    }
+
+    void release(long bytes) {
+      reservedBytes -= bytes;
+    }
+  }
+
   private static final class ParticipantColumn {
     private final int inputIndex;
     private final Type type;
@@ -485,14 +511,40 @@ public class LTTBTableFunction implements TableFunction {
    * keep the exact {@code long} value so INT64 output is not rounded through {@code double}.
    */
   static final class PointBuffer {
-    private long[] times = new long[INITIAL_CAPACITY];
-    private double[] values = new double[INITIAL_CAPACITY];
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(PointBuffer.class);
+
+    private final WindowMemoryBudget memoryBudget;
+    private long[] times;
+    private double[] values;
     private long[] integralValues;
     private int size;
 
     PointBuffer(boolean integral) {
+      this(integral, null);
+    }
+
+    PointBuffer(boolean integral, WindowMemoryBudget memoryBudget) {
+      this.memoryBudget = memoryBudget;
+      if (memoryBudget != null) {
+        memoryBudget.reserve(INSTANCE_SIZE + arrayBytes(INITIAL_CAPACITY, integral));
+      }
+      times = new long[INITIAL_CAPACITY];
+      values = new double[INITIAL_CAPACITY];
       if (integral) {
         integralValues = new long[INITIAL_CAPACITY];
+      }
+    }
+
+    private static long arrayBytes(int capacity, boolean integral) {
+      return RamUsageEstimator.sizeOfLongArray(capacity)
+          + RamUsageEstimator.sizeOfDoubleArray(capacity)
+          + (integral ? RamUsageEstimator.sizeOfLongArray(capacity) : 0);
+    }
+
+    private void release() {
+      if (memoryBudget != null) {
+        memoryBudget.release(INSTANCE_SIZE + arrayBytes(times.length, integralValues != null));
       }
     }
 
@@ -523,10 +575,18 @@ public class LTTBTableFunction implements TableFunction {
                 MAX_BUFFERED_POINTS));
       }
       int newCapacity = (int) Math.min((long) times.length * 2, MAX_BUFFERED_POINTS);
+      long oldArrayBytes = arrayBytes(times.length, integralValues != null);
+      if (memoryBudget != null) {
+        // Reserve before copying: the old arrays remain live until their replacements exist.
+        memoryBudget.reserve(arrayBytes(newCapacity, integralValues != null));
+      }
       times = Arrays.copyOf(times, newCapacity);
       values = Arrays.copyOf(values, newCapacity);
       if (integralValues != null) {
         integralValues = Arrays.copyOf(integralValues, newCapacity);
+      }
+      if (memoryBudget != null) {
+        memoryBudget.release(oldArrayBytes);
       }
     }
 
@@ -580,9 +640,13 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     protected final PointBuffer[] newBuffers() {
+      return newBuffers(null);
+    }
+
+    protected final PointBuffer[] newBuffers(WindowMemoryBudget memoryBudget) {
       PointBuffer[] buffers = new PointBuffer[participantColumns.length];
       for (int i = 0; i < buffers.length; i++) {
-        buffers[i] = new PointBuffer(participantColumns[i].isIntegral());
+        buffers[i] = new PointBuffer(participantColumns[i].isIntegral(), memoryBudget);
       }
       return buffers;
     }
@@ -742,9 +806,16 @@ public class LTTBTableFunction implements TableFunction {
    */
   private abstract static class AbstractWindowLTTBDataProcessor<W extends WindowState>
       extends AbstractLTTBDataProcessor {
+    private static final long WINDOW_INSTANCE_SIZE =
+        Math.max(
+            RamUsageEstimator.shallowSizeOfInstance(TimeWindowState.class),
+            RamUsageEstimator.shallowSizeOfInstance(CountWindowState.class));
+
     protected final long size;
     protected final long slide;
     protected final Deque<W> activeWindows = new ArrayDeque<>();
+    private final WindowMemoryBudget memoryBudget = new WindowMemoryBudget(MAX_WINDOW_BUFFER_BYTES);
+    private final long windowMetadataBytes;
     private final boolean[] hasAnchor;
     private final long[] anchorTimes;
     private final double[] anchorValues;
@@ -754,9 +825,24 @@ public class LTTBTableFunction implements TableFunction {
       super(partitionTypes, participantColumns);
       this.size = size;
       this.slide = slide;
+      this.windowMetadataBytes =
+          WINDOW_INSTANCE_SIZE + RamUsageEstimator.sizeOfObjectArray(participantColumns.length);
       this.hasAnchor = new boolean[participantColumns.length];
       this.anchorTimes = new long[participantColumns.length];
       this.anchorValues = new double[participantColumns.length];
+    }
+
+    protected final PointBuffer[] newWindowBuffers() {
+      // Even an all-NULL window allocates state, so reserve before creating any of its buffers.
+      memoryBudget.reserve(windowMetadataBytes);
+      return newBuffers(memoryBudget);
+    }
+
+    private void releaseWindow(W window) {
+      for (PointBuffer buffer : window.buffers) {
+        buffer.release();
+      }
+      memoryBudget.release(windowMetadataBytes);
     }
 
     @Override
@@ -781,6 +867,7 @@ public class LTTBTableFunction implements TableFunction {
         }
         activeWindows.removeFirst();
         emitWindow(current, next, builders);
+        releaseWindow(current);
       }
     }
 
@@ -800,7 +887,15 @@ public class LTTBTableFunction implements TableFunction {
       while (!activeWindows.isEmpty()) {
         W current = activeWindows.removeFirst();
         emitWindow(current, activeWindows.peekFirst(), properColumnBuilders);
+        releaseWindow(current);
       }
+    }
+
+    @Override
+    public final void beforeDestroy() {
+      activeWindows.clear();
+      // Also covers a reservation made by a window whose construction failed at the limit.
+      memoryBudget.reservedBytes = 0;
     }
 
     private void emitWindow(W current, W next, List<ColumnBuilder> builders) {
@@ -881,7 +976,8 @@ public class LTTBTableFunction implements TableFunction {
 
       while (nextWindowStart <= time && getWindowEnd(nextWindowStart) > time) {
         activeWindows.addLast(
-            new TimeWindowState(newBuffers(), nextWindowStart, getWindowEnd(nextWindowStart)));
+            new TimeWindowState(
+                newWindowBuffers(), nextWindowStart, getWindowEnd(nextWindowStart)));
         nextWindowStart += slide;
       }
 
@@ -915,7 +1011,8 @@ public class LTTBTableFunction implements TableFunction {
       }
       while (nextWindowStart <= rowCount) {
         activeWindows.addLast(
-            new CountWindowState(newBuffers(), getWindowEnd(nextWindowStart), nextWindowIndex++));
+            new CountWindowState(
+                newWindowBuffers(), getWindowEnd(nextWindowStart), nextWindowIndex++));
         nextWindowStart += slide;
       }
 
