@@ -929,14 +929,14 @@ public class FragmentInstanceContext extends QueryContext {
     }
     long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
     if (dataRegion.tryReadLock(waitForLockTime)) {
-      // minus already consumed time
-      waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
-
-      // no remaining time slice
-      if (waitForLockTime <= 0) {
-        return false;
-      }
       try {
+        // minus already consumed time
+        waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
+
+        // no remaining time slice
+        if (waitForLockTime <= 0) {
+          return false;
+        }
         this.sharedQueryDataSource =
             dataRegion.queryForSeriesRegionScan(
                 pathList,
