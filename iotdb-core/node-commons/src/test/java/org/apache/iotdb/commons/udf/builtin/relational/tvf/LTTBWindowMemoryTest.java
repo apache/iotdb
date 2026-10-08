@@ -56,7 +56,7 @@ public class LTTBWindowMemoryTest {
               processor.process(input, Collections.emptyList(), null);
             }
           },
-          LTTBTableFunction.MAX_WINDOW_BUFFER_BYTES);
+          LTTBTableFunction.MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();
     }
@@ -70,7 +70,7 @@ public class LTTBWindowMemoryTest {
       // must be charged even when the input column contains no eligible points.
       assertMemoryLimit(
           () -> processor.process(record(0, (Number) null), Collections.emptyList(), null),
-          LTTBTableFunction.MAX_WINDOW_BUFFER_BYTES);
+          LTTBTableFunction.MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();
     }
@@ -87,7 +87,7 @@ public class LTTBWindowMemoryTest {
               processor.process(input, Collections.emptyList(), null);
             }
           },
-          LTTBTableFunction.MAX_WINDOW_BUFFER_BYTES);
+          LTTBTableFunction.MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();
     }
@@ -96,7 +96,7 @@ public class LTTBWindowMemoryTest {
   @Test
   public void testArrayGrowthReservesOldAndNewIntegralArrays() {
     LTTBTableFunction.PointBuffer buffer =
-        new LTTBTableFunction.PointBuffer(true, new LTTBTableFunction.WindowMemoryBudget(4096));
+        new LTTBTableFunction.PointBuffer(true, new LTTBTableFunction.BufferMemoryBudget(4096));
     for (int i = 0; i < 64; i++) {
       buffer.addIntegral(i, Long.MAX_VALUE);
     }
@@ -109,7 +109,7 @@ public class LTTBWindowMemoryTest {
 
   @Test
   public void testInitialBuffersShareCapacityBudget() {
-    LTTBTableFunction.WindowMemoryBudget budget = new LTTBTableFunction.WindowMemoryBudget(4096);
+    LTTBTableFunction.BufferMemoryBudget budget = new LTTBTableFunction.BufferMemoryBudget(4096);
     new LTTBTableFunction.PointBuffer(true, budget);
     new LTTBTableFunction.PointBuffer(true, budget);
     assertMemoryLimit(() -> new LTTBTableFunction.PointBuffer(true, budget), 4096);
@@ -213,7 +213,10 @@ public class LTTBWindowMemoryTest {
       fail("Expected the shared LTTB window memory limit");
     } catch (SemanticException e) {
       assertEquals(
-          String.format(CommonMessages.LTTB_WINDOW_BUFFER_MEMORY_LIMIT_EXCEEDED, limit),
+          String.format(
+              CommonMessages
+                  .EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00,
+              limit),
           e.getMessage());
     }
   }

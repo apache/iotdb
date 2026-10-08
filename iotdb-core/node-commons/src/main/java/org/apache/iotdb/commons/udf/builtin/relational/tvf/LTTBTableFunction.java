@@ -46,7 +46,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,8 +97,8 @@ public class LTTBTableFunction implements TableFunction {
   /** Hard cap on eligible points buffered per participant column in one partition or window. */
   public static final int MAX_BUFFERED_POINTS = 1 << 22;
 
-  /** Shared budget for point buffers in all live windows and columns of one processor. */
-  static final long MAX_WINDOW_BUFFER_BYTES = 64L * 1024 * 1024;
+  /** Shared budget for point buffers and selection state across all columns of one processor. */
+  static final long MAX_BUFFER_BYTES = 64L * 1024 * 1024;
 
   public static final String MODE_PROPERTY = "__LTTB_MODE";
   public static final String PARTITION_TYPES_PROPERTY = "__LTTB_PARTITION_TYPES";
@@ -352,17 +351,18 @@ public class LTTBTableFunction implements TableFunction {
       int currentStart = (int) (bucket * intermediate / bucketCount) + 1;
       int currentEnd = (int) ((bucket + 1) * intermediate / bucketCount) + 1;
 
+      long anchorTime = times[anchor];
       double avgTime;
       double avgValue;
       if (bucket == bucketCount - 1) {
-        avgTime = times[count - 1];
+        avgTime = relativeTime(times[count - 1], anchorTime);
         avgValue = values[count - 1];
       } else {
         int nextEnd = (int) ((bucket + 2) * intermediate / bucketCount) + 1;
         double sumTime = 0;
         double sumValue = 0;
         for (int i = currentEnd; i < nextEnd; i++) {
-          sumTime += times[i];
+          sumTime += relativeTime(times[i], anchorTime);
           sumValue += values[i];
         }
         int nextSize = nextEnd - currentEnd;
@@ -376,7 +376,7 @@ public class LTTBTableFunction implements TableFunction {
               values,
               currentStart,
               currentEnd,
-              times[anchor],
+              anchorTime,
               values[anchor],
               avgTime,
               avgValue);
@@ -387,13 +387,17 @@ public class LTTBTableFunction implements TableFunction {
     return selected;
   }
 
-  /** Returns the index in {@code [start, end)} maximizing the triangle area; earliest wins ties. */
+  /**
+   * Returns the index in {@code [start, end)} maximizing the triangle area; earliest wins ties.
+   * {@code nextTime} is relative to {@code anchorTime}, avoiding rounding absolute nanosecond
+   * epochs.
+   */
   static int argMaxArea(
       long[] times,
       double[] values,
       int start,
       int end,
-      double anchorTime,
+      long anchorTime,
       double anchorValue,
       double nextTime,
       double nextValue) {
@@ -402,8 +406,8 @@ public class LTTBTableFunction implements TableFunction {
     for (int i = start; i < end; i++) {
       double area =
           Math.abs(
-              (anchorTime - nextTime) * (values[i] - anchorValue)
-                  - (anchorTime - times[i]) * (nextValue - anchorValue));
+              nextTime * (values[i] - anchorValue)
+                  - relativeTime(times[i], anchorTime) * (nextValue - anchorValue));
       if (area > maxArea) {
         maxArea = area;
         pick = i;
@@ -412,23 +416,35 @@ public class LTTBTableFunction implements TableFunction {
     return pick;
   }
 
+  private static double relativeTime(long time, long origin) {
+    long difference = time - origin;
+    // Subtract before converting so nearby timestamps retain their precision. For spans exceeding
+    // the long range, use floating-point subtraction instead of the overflowed long difference.
+    return ((time ^ origin) & (time ^ difference)) < 0
+        ? (double) time - (double) origin
+        : (double) difference;
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Column access and buffering
   // ---------------------------------------------------------------------------------------------
 
   /** Reservations include array capacity, including both old and new arrays during growth. */
-  static final class WindowMemoryBudget {
+  static final class BufferMemoryBudget {
     private final long limit;
     private long reservedBytes;
 
-    WindowMemoryBudget(long limit) {
+    BufferMemoryBudget(long limit) {
       this.limit = limit;
     }
 
     void reserve(long bytes) {
       if (bytes > limit - reservedBytes) {
         throw new SemanticException(
-            String.format(CommonMessages.LTTB_WINDOW_BUFFER_MEMORY_LIMIT_EXCEEDED, limit));
+            String.format(
+                CommonMessages
+                    .EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00,
+                limit));
       }
       reservedBytes += bytes;
     }
@@ -514,17 +530,13 @@ public class LTTBTableFunction implements TableFunction {
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(PointBuffer.class);
 
-    private final WindowMemoryBudget memoryBudget;
+    private final BufferMemoryBudget memoryBudget;
     private long[] times;
     private double[] values;
     private long[] integralValues;
     private int size;
 
-    PointBuffer(boolean integral) {
-      this(integral, null);
-    }
-
-    PointBuffer(boolean integral, WindowMemoryBudget memoryBudget) {
+    PointBuffer(boolean integral, BufferMemoryBudget memoryBudget) {
       this.memoryBudget = memoryBudget;
       if (memoryBudget != null) {
         memoryBudget.reserve(INSTANCE_SIZE + arrayBytes(INITIAL_CAPACITY, integral));
@@ -606,10 +618,10 @@ public class LTTBTableFunction implements TableFunction {
       return values[index];
     }
 
-    double averageTime() {
+    double averageTime(long origin) {
       double sum = 0;
       for (int i = 0; i < size; i++) {
-        sum += times[i];
+        sum += relativeTime(times[i], origin);
       }
       return sum / size;
     }
@@ -639,11 +651,7 @@ public class LTTBTableFunction implements TableFunction {
       this.participantColumns = participantColumns;
     }
 
-    protected final PointBuffer[] newBuffers() {
-      return newBuffers(null);
-    }
-
-    protected final PointBuffer[] newBuffers(WindowMemoryBudget memoryBudget) {
+    protected final PointBuffer[] newBuffers(BufferMemoryBudget memoryBudget) {
       PointBuffer[] buffers = new PointBuffer[participantColumns.length];
       for (int i = 0; i < buffers.length; i++) {
         buffers[i] = new PointBuffer(participantColumns[i].isIntegral(), memoryBudget);
@@ -699,13 +707,15 @@ public class LTTBTableFunction implements TableFunction {
   private static final class TargetCountLTTBDataProcessor extends AbstractLTTBDataProcessor {
     private final long n;
     private final PointBuffer[] buffers;
+    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(MAX_BUFFER_BYTES);
     private boolean hasRows;
 
     private TargetCountLTTBDataProcessor(
         long n, Type[] partitionTypes, ParticipantColumn[] participantColumns) {
       super(partitionTypes, participantColumns);
       this.n = n;
-      this.buffers = newBuffers();
+      memoryBudget.reserve(RamUsageEstimator.sizeOfObjectArray(participantColumns.length));
+      this.buffers = newBuffers(memoryBudget);
     }
 
     @Override
@@ -724,6 +734,13 @@ public class LTTBTableFunction implements TableFunction {
       if (!hasRows) {
         return;
       }
+      long selectionBytes =
+          RamUsageEstimator.sizeOfObjectArray(participantColumns.length)
+              + RamUsageEstimator.sizeOfIntArray(participantColumns.length);
+      for (PointBuffer buffer : buffers) {
+        selectionBytes += RamUsageEstimator.sizeOfIntArray((int) Math.min(buffer.size, n));
+      }
+      memoryBudget.reserve(selectionBytes);
       int[][] selections = new int[participantColumns.length][];
       int rowCount = 1;
       for (int i = 0; i < participantColumns.length; i++) {
@@ -741,15 +758,24 @@ public class LTTBTableFunction implements TableFunction {
         writeRow(properColumnBuilders, 1, buffers, selectedIndexes);
       }
     }
+
+    @Override
+    public void beforeDestroy() {
+      Arrays.fill(buffers, null);
+      memoryBudget.reservedBytes = 0;
+    }
   }
 
   /** One window (= one LTTB bucket) worth of eligible points. */
   private abstract static class WindowState {
     protected final PointBuffer[] buffers;
+    protected final PointBuffer[] nextNonemptyBuffers;
     protected final long endExclusive;
+    protected int unresolvedColumns;
 
     private WindowState(PointBuffer[] buffers, long endExclusive) {
       this.buffers = buffers;
+      this.nextNonemptyBuffers = new PointBuffer[buffers.length];
       this.endExclusive = endExclusive;
     }
 
@@ -814,7 +840,9 @@ public class LTTBTableFunction implements TableFunction {
     protected final long size;
     protected final long slide;
     protected final Deque<W> activeWindows = new ArrayDeque<>();
-    private final WindowMemoryBudget memoryBudget = new WindowMemoryBudget(MAX_WINDOW_BUFFER_BYTES);
+    private final Deque<W> pendingWindows = new ArrayDeque<>();
+    private final WindowState[] lastNonemptyWindows;
+    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(MAX_BUFFER_BYTES);
     private final long windowMetadataBytes;
     private final boolean[] hasAnchor;
     private final long[] anchorTimes;
@@ -826,7 +854,8 @@ public class LTTBTableFunction implements TableFunction {
       this.size = size;
       this.slide = slide;
       this.windowMetadataBytes =
-          WINDOW_INSTANCE_SIZE + RamUsageEstimator.sizeOfObjectArray(participantColumns.length);
+          WINDOW_INSTANCE_SIZE + 2 * RamUsageEstimator.sizeOfObjectArray(participantColumns.length);
+      this.lastNonemptyWindows = new WindowState[participantColumns.length];
       this.hasAnchor = new boolean[participantColumns.length];
       this.anchorTimes = new long[participantColumns.length];
       this.anchorValues = new double[participantColumns.length];
@@ -857,24 +886,36 @@ public class LTTBTableFunction implements TableFunction {
     protected abstract void processRecord(
         Record input, long time, List<ColumnBuilder> properColumnBuilders);
 
-    /** Emits every window whose successor is already closed at {@code position}. */
+    /** Close windows in order and link each column to its next nonempty, closed bucket. */
     protected final void emitClosedWindows(long position, List<ColumnBuilder> builders) {
-      while (activeWindows.size() >= 2) {
-        W current = activeWindows.peekFirst();
-        W next = nextOf(current);
-        if (next.endExclusive > position) {
-          return;
-        }
-        activeWindows.removeFirst();
-        emitWindow(current, next, builders);
-        releaseWindow(current);
+      while (!activeWindows.isEmpty() && activeWindows.peekFirst().endExclusive <= position) {
+        closeWindow(activeWindows.removeFirst());
       }
+      emitReadyWindows(builders, false);
     }
 
-    private W nextOf(W first) {
-      Iterator<W> iterator = activeWindows.iterator();
-      iterator.next();
-      return iterator.next();
+    private void closeWindow(W window) {
+      for (int i = 0; i < participantColumns.length; i++) {
+        if (!window.buffers[i].isEmpty()) {
+          WindowState previous = lastNonemptyWindows[i];
+          if (previous != null) {
+            previous.nextNonemptyBuffers[i] = window.buffers[i];
+            previous.unresolvedColumns--;
+          }
+          lastNonemptyWindows[i] = window;
+          window.unresolvedColumns++;
+        }
+      }
+      pendingWindows.addLast(window);
+    }
+
+    private void emitReadyWindows(List<ColumnBuilder> builders, boolean finishing) {
+      while (!pendingWindows.isEmpty()
+          && (finishing || pendingWindows.peekFirst().unresolvedColumns == 0)) {
+        W current = pendingWindows.removeFirst();
+        emitWindow(current, builders);
+        releaseWindow(current);
+      }
     }
 
     protected final long getWindowEnd(long windowStart) {
@@ -885,20 +926,22 @@ public class LTTBTableFunction implements TableFunction {
     public final void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
       while (!activeWindows.isEmpty()) {
-        W current = activeWindows.removeFirst();
-        emitWindow(current, activeWindows.peekFirst(), properColumnBuilders);
-        releaseWindow(current);
+        closeWindow(activeWindows.removeFirst());
       }
+      emitReadyWindows(properColumnBuilders, true);
+      Arrays.fill(lastNonemptyWindows, null);
     }
 
     @Override
     public final void beforeDestroy() {
       activeWindows.clear();
+      pendingWindows.clear();
+      Arrays.fill(lastNonemptyWindows, null);
       // Also covers a reservation made by a window whose construction failed at the limit.
       memoryBudget.reservedBytes = 0;
     }
 
-    private void emitWindow(W current, W next, List<ColumnBuilder> builders) {
+    private void emitWindow(W current, List<ColumnBuilder> builders) {
       int[] selectedIndexes = new int[participantColumns.length];
       for (int i = 0; i < participantColumns.length; i++) {
         PointBuffer bucket = current.buffers[i];
@@ -914,12 +957,13 @@ public class LTTBTableFunction implements TableFunction {
         }
         double nextTime;
         double nextValue;
-        if (next != null && !next.buffers[i].isEmpty()) {
-          nextTime = next.buffers[i].averageTime();
-          nextValue = next.buffers[i].averageValue();
+        PointBuffer next = current.nextNonemptyBuffers[i];
+        if (next != null) {
+          nextTime = next.averageTime(anchorTimes[i]);
+          nextValue = next.averageValue();
         } else {
           int last = bucket.size() - 1;
-          nextTime = bucket.time(last);
+          nextTime = relativeTime(bucket.time(last), anchorTimes[i]);
           nextValue = bucket.value(last);
         }
         int pick =
@@ -982,10 +1026,7 @@ public class LTTBTableFunction implements TableFunction {
       }
 
       for (TimeWindowState window : activeWindows) {
-        // Closed windows waiting for their successor stay in the deque but must not absorb rows.
-        if (time < window.endExclusive) {
-          collect(input, time, window.buffers);
-        }
+        collect(input, time, window.buffers);
       }
     }
   }
@@ -1017,9 +1058,7 @@ public class LTTBTableFunction implements TableFunction {
       }
 
       for (CountWindowState window : activeWindows) {
-        if (rowCount < window.endExclusive) {
-          collect(input, time, window.buffers);
-        }
+        collect(input, time, window.buffers);
       }
       rowCount++;
     }
