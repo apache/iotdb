@@ -521,7 +521,7 @@ public class ProgressWALIteratorTest {
     final File firstWal =
         dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .toFile();
-    final Path temporarilyHiddenWal = dir.resolve(firstWal.getName() + ".hidden");
+    final Path temporarilyHiddenWal = dir.resolve("temporarily-hidden");
     final File successorWal =
         dir.resolve(WALFileUtils.getLogFileName(1, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .toFile();
