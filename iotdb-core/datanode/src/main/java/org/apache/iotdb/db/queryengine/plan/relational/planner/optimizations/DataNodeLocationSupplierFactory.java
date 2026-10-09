@@ -146,6 +146,7 @@ public class DataNodeLocationSupplierFactory {
           return getReadableDataNodeLocations();
         case InformationSchema.DATABASES:
         case InformationSchema.TABLES:
+        case InformationSchema.DROP_TABLE_PROCEDURES:
         case InformationSchema.COLUMNS:
         case InformationSchema.REGIONS:
         case InformationSchema.PIPES:

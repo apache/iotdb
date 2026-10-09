@@ -20,6 +20,11 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.confignode.procedure.NoopProcedureStore;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.junit.Assert;
@@ -29,8 +34,55 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class DropTableProcedureTest {
+  @Test
+  public void dropTableDoesNotOccupyRegularProcedureWorker() throws Exception {
+    final NoopProcedureStore store = new NoopProcedureStore();
+    final ProcedureExecutor<ConfigNodeProcedureEnv> executor = new ProcedureExecutor<>(null, store);
+    final CountDownLatch dropStarted = new CountDownLatch(1);
+    final CountDownLatch releaseDrop = new CountDownLatch(1);
+    final CountDownLatch regularCompleted = new CountDownLatch(1);
+    store.start();
+    executor.init(1);
+    executor.startWorkers();
+    try {
+      executor.submitProcedureAndPersist(
+          new DropTableProcedure("db", "table", "drop", false) {
+            @Override
+            protected Flow executeFromState(
+                final ConfigNodeProcedureEnv env, final DropTableState state)
+                throws InterruptedException {
+              dropStarted.countDown();
+              releaseDrop.await();
+              return Flow.NO_MORE_STATE;
+            }
+          });
+      Assert.assertTrue(dropStarted.await(10, TimeUnit.SECONDS));
+
+      executor.submitProcedure(
+          new Procedure<ConfigNodeProcedureEnv>() {
+            @Override
+            protected Procedure<ConfigNodeProcedureEnv>[] execute(
+                final ConfigNodeProcedureEnv env) {
+              regularCompleted.countDown();
+              return null;
+            }
+
+            @Override
+            protected void rollback(final ConfigNodeProcedureEnv env) {}
+          });
+      Assert.assertTrue(regularCompleted.await(10, TimeUnit.SECONDS));
+    } finally {
+      releaseDrop.countDown();
+      executor.stop();
+      executor.join();
+      store.stop();
+    }
+  }
+
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final DropTableProcedure dropTableProcedure =

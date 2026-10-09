@@ -151,6 +151,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -915,6 +916,8 @@ public interface IManager {
   TShowTableResp showTables(final String database, final boolean isDetails);
 
   TShowTable4InformationSchemaResp showTables4InformationSchema();
+
+  TShowDropTableProceduresResp showDropTableProcedures();
 
   TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails);

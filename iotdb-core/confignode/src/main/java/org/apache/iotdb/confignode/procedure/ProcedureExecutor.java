@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -71,6 +73,7 @@ public class ProcedureExecutor<Env> {
   // Metrics may be scraped before init() and concurrently with initialization during a ConfigNode
   // leader transition.
   private volatile CopyOnWriteArrayList<WorkerThread> workerThreads;
+  private volatile CopyOnWriteArrayList<WorkerThread> dropTableWorkerThreads;
 
   private TimeoutExecutorThread<Env> timeoutExecutor;
 
@@ -89,6 +92,9 @@ public class ProcedureExecutor<Env> {
   private CompletedProcedureRecycler<Env> completedProcedureRecycler;
 
   private final ProcedureScheduler scheduler;
+  // Drop table can spend a long time deleting data on DataNodes. Keep its worker separate so
+  // unrelated procedures can still make progress.
+  private final ProcedureScheduler dropTableScheduler = new SimpleProcedureScheduler();
 
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
@@ -134,12 +140,17 @@ public class ProcedureExecutor<Env> {
     workId.set(0);
     workerThreads = new CopyOnWriteArrayList<>();
     for (int i = 0; i < corePoolSize; i++) {
-      workerThreads.add(new WorkerThread(threadGroup));
+      workerThreads.add(new WorkerThread(threadGroup, scheduler));
     }
+    dropTableWorkerThreads = new CopyOnWriteArrayList<>();
+    dropTableWorkerThreads.add(
+        new WorkerThread(threadGroup, dropTableScheduler, "DropTableProcedureWorker-"));
     // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
+    dropTableScheduler.clear();
     scheduler.start();
+    dropTableScheduler.start();
     recover();
   }
 
@@ -225,9 +236,10 @@ public class ProcedureExecutor<Env> {
 
     waitingTimeoutList.forEach(timeoutExecutor::add);
 
-    failedList.forEach(scheduler::addBack);
-    runnableList.forEach(scheduler::addBack);
+    failedList.forEach(procedure -> getScheduler(procedure).addBack(procedure));
+    runnableList.forEach(procedure -> getScheduler(procedure).addBack(procedure));
     scheduler.signalAll();
+    dropTableScheduler.signalAll();
   }
 
   private List<Procedure<Env>> getProcedureListFromDifferentVersion() {
@@ -303,6 +315,9 @@ public class ProcedureExecutor<Env> {
     timeoutExecutor.start();
     workerMonitorExecutor.start();
     for (WorkerThread workerThread : workerThreads) {
+      workerThread.start();
+    }
+    for (WorkerThread workerThread : dropTableWorkerThreads) {
       workerThread.start();
     }
     LOG.info(ProcedureMessages.PROCEDURE_WORKERS_ARE_STARTED, workerThreads.size());
@@ -392,7 +407,7 @@ public class ProcedureExecutor<Env> {
                 break;
               case LOCK_YIELD_WAIT:
                 rootProcStack.unsetRollback();
-                scheduler.yield(lockStateResult.procedure);
+                getScheduler(lockStateResult.procedure).yield(lockStateResult.procedure);
                 break;
               default:
                 throw new UnsupportedOperationException();
@@ -409,7 +424,7 @@ public class ProcedureExecutor<Env> {
                   lockEventWaitProcedure = proc;
                   break;
                 case LOCK_YIELD_WAIT:
-                  scheduler.yield(proc);
+                  getScheduler(proc).yield(proc);
                   break;
                 default:
                   throw new UnsupportedOperationException();
@@ -560,7 +575,7 @@ public class ProcedureExecutor<Env> {
       RetryUtils.executeWithEndlessBackoffRetry(
           () -> store.update(parent), "count down children procedure");
       // do not add this procedure when exception occurred
-      scheduler.addFront(parent);
+      getScheduler(parent).addFront(parent);
       LOG.info(
           ProcedureMessages.LOG_FINISHED_SUBPROCEDURE_PID_ARG_RESUME_PROCESSING_PPID_ARG_93ED990B,
           proc.getProcId(),
@@ -577,7 +592,7 @@ public class ProcedureExecutor<Env> {
     for (Procedure<Env> subproc : subprocs) {
       subproc.updateMetricsOnSubmit(getEnvironment());
       procedures.put(subproc.getProcId(), subproc);
-      scheduler.addFront(subproc);
+      getScheduler(subproc).addFront(subproc);
       LOG.info(ProcedureMessages.SUB_PROCEDURE_PID_HAS_BEEN_SUBMITTED, subproc.getProcId());
     }
   }
@@ -665,7 +680,7 @@ public class ProcedureExecutor<Env> {
 
   private void yieldProcedure(Procedure<Env> proc) {
     releaseLock(proc, false);
-    scheduler.yield(proc);
+    getScheduler(proc).yield(proc);
   }
 
   /**
@@ -833,7 +848,7 @@ public class ProcedureExecutor<Env> {
     }
     rollbackStack.put(currentProcId, stack);
     procedures.put(currentProcId, procedure);
-    scheduler.addBack(procedure);
+    getScheduler(procedure).addBack(procedure);
     return procedure.getProcId();
   }
 
@@ -847,22 +862,25 @@ public class ProcedureExecutor<Env> {
   }
 
   private class WorkerThread extends StoppableThread {
+    private final ProcedureScheduler workerScheduler;
     private final AtomicLong startTime = new AtomicLong(Long.MAX_VALUE);
     private final AtomicReference<Procedure<Env>> activeProcedure = new AtomicReference<>();
     protected long keepAliveTime = -1;
 
-    public WorkerThread(ThreadGroup threadGroup) {
-      this(threadGroup, "ProcedureCoreWorker-");
+    public WorkerThread(ThreadGroup threadGroup, ProcedureScheduler workerScheduler) {
+      this(threadGroup, workerScheduler, "ProcedureCoreWorker-");
     }
 
-    public WorkerThread(ThreadGroup threadGroup, String prefix) {
+    public WorkerThread(
+        ThreadGroup threadGroup, ProcedureScheduler workerScheduler, String prefix) {
       super(threadGroup, prefix + workId.incrementAndGet());
+      this.workerScheduler = workerScheduler;
       setDaemon(true);
     }
 
     @Override
     public void sendStopSignal() {
-      scheduler.signalAll();
+      workerScheduler.signalAll();
     }
 
     @Override
@@ -870,7 +888,7 @@ public class ProcedureExecutor<Env> {
       long lastUpdated = System.currentTimeMillis();
       try {
         while (isRunning() && keepAlive(lastUpdated)) {
-          Procedure<Env> procedure = scheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
+          Procedure<Env> procedure = workerScheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
           if (procedure == null) {
             Thread.sleep(1000);
             continue;
@@ -927,7 +945,11 @@ public class ProcedureExecutor<Env> {
       } finally {
         LOG.info(ProcedureMessages.PROCEDURE_WORKER_TERMINATED, getName());
       }
-      workerThreads.remove(this);
+      if (workerScheduler == dropTableScheduler) {
+        dropTableWorkerThreads.remove(this);
+      } else {
+        workerThreads.remove(this);
+      }
     }
 
     protected boolean keepAlive(long lastUpdated) {
@@ -953,7 +975,7 @@ public class ProcedureExecutor<Env> {
   private final class TemporaryWorkerThread extends WorkerThread {
 
     public TemporaryWorkerThread(ThreadGroup group) {
-      super(group, "ProcedureTemporaryWorker-");
+      super(group, scheduler, "ProcedureTemporaryWorker-");
       this.keepAliveTime = TimeUnit.SECONDS.toMillis(10);
     }
 
@@ -1049,6 +1071,7 @@ public class ProcedureExecutor<Env> {
     }
     LOG.info(ProcedureMessages.STOPPING);
     scheduler.stop();
+    dropTableScheduler.stop();
     timeoutExecutor.sendStopSignal();
   }
 
@@ -1056,6 +1079,9 @@ public class ProcedureExecutor<Env> {
     timeoutExecutor.awaitTermination();
     workerMonitorExecutor.awaitTermination();
     for (WorkerThread workerThread : workerThreads) {
+      workerThread.awaitTermination();
+    }
+    for (WorkerThread workerThread : dropTableWorkerThreads) {
       workerThread.awaitTermination();
     }
   }
@@ -1074,6 +1100,12 @@ public class ProcedureExecutor<Env> {
 
   public ConcurrentHashMap<Long, Procedure<Env>> getProcedures() {
     return procedures;
+  }
+
+  public List<Procedure<Env>> getCompletedProcedures() {
+    final List<Procedure<Env>> result = new ArrayList<>();
+    completed.values().forEach(container -> result.add(container.getProcedure()));
+    return result;
   }
 
   // -----------------------------CLIENT IMPLEMENTATION-----------------------------------
@@ -1101,8 +1133,26 @@ public class ProcedureExecutor<Env> {
     return pushProcedure(procedure);
   }
 
+  /** Submit only after the procedure has been stored, for requests acknowledged asynchronously. */
+  public long submitProcedureAndPersist(final Procedure<Env> procedure) throws Exception {
+    Preconditions.checkArgument(procedure.getState() == ProcedureState.INITIALIZING);
+    Preconditions.checkArgument(
+        !procedure.hasParent(), ProcedureMessages.EXCEPTION_UNEXPECTED_PARENT_444B4289, procedure);
+    procedure.setProcId(store.getNextProcId());
+    procedure.setProcRunnable();
+    store.update(procedure);
+    LOG.debug(ProcedureMessages.IS_STORED, procedure);
+    return pushProcedure(procedure);
+  }
+
   public ProcedureScheduler getScheduler() {
     return scheduler;
+  }
+
+  public ProcedureScheduler getScheduler(final Procedure<?> procedure) {
+    return procedure instanceof DropTableProcedure && !(procedure instanceof DropViewProcedure)
+        ? dropTableScheduler
+        : scheduler;
   }
 
   public Env getEnvironment() {

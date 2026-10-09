@@ -47,6 +47,7 @@ public class InformationSchema {
   public static final String QUERIES = "queries";
   public static final String DATABASES = "databases";
   public static final String TABLES = "tables";
+  public static final String DROP_TABLE_PROCEDURES = "drop_table_procedures";
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
@@ -147,6 +148,25 @@ public class InformationSchema {
             ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
+
+    final TsTable dropTableProceduresTable = new TsTable(DROP_TABLE_PROCEDURES);
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROCEDURE_ID_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROGRESS_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ERROR_MESSAGE_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(DROP_TABLE_PROCEDURES, dropTableProceduresTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
     columnTable.addColumnSchema(
