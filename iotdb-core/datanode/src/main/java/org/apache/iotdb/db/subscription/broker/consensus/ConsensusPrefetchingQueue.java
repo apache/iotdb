@@ -198,6 +198,10 @@ public class ConsensusPrefetchingQueue {
    */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
+  private final Object closeLifecycleLock = new Object();
+
+  private boolean closeInProgress;
+
   private volatile boolean isClosed = false;
 
   private volatile boolean closeRequested = false;
@@ -693,7 +697,7 @@ public class ConsensusPrefetchingQueue {
           && Objects.nonNull(staleExecutor)
           && (staleExecutor != currentExecutor || staleSubtask.isClosed())
           && !staleExecutor.isShutdown()) {
-        staleExecutor.deregister(staleSubtask.getTaskId());
+        staleExecutor.deregister(staleSubtask);
       }
 
       final ConsensusPrefetchSubtask newSubtask = new ConsensusPrefetchSubtask(this);
@@ -2203,6 +2207,9 @@ public class ConsensusPrefetchingQueue {
       final long commitLocalSeq,
       final long retainedBytes,
       final long expectedSeekGeneration) {
+    if (closeRequested || isClosed) {
+      return false;
+    }
     if (seekGeneration.get() != expectedSeekGeneration) {
       LOGGER.debug(
           DataNodePipeMessages
@@ -3827,28 +3834,75 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void close(final boolean removeProgressAfterClose) {
-    final PendingSeekRequest seekRequestToFail;
-    final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding;
+    if (!lock.writeLock().tryLock()) {
+      if (beginClose()) {
+        CLOSE_CLEANUP_EXECUTOR.execute(
+            () -> finishCloseAfterWriteLock(removeProgressAfterClose, true));
+      }
+      return;
+    }
 
-    acquireWriteLock();
+    final PendingSeekRequest seekRequestToFail;
     try {
-      if (closeRequested || (isClosed && !closeCleanupPending)) {
+      if (!beginClose()) {
         return;
       }
-      closeRequested = true;
-      closeCleanupPending = true;
       seekRequestToFail = pendingSeekRequest;
       pendingSeekRequest = null;
     } finally {
       releaseWriteLock();
     }
 
-    // Stop receiving real-time in-memory writes before flushing close-time batches. Requests that
-    // remain in pendingEntries have not advanced subscription progress and can be replayed from WAL
-    // if this queue is created again.
-    deregisterPendingEntriesFromConsensusServer();
+    try {
+      finishCloseRequest(seekRequestToFail, removeProgressAfterClose, false);
+    } catch (final Exception e) {
+      handleCloseFailure(e);
+    }
+  }
 
-    prefetchBinding = detachPrefetchSubtask();
+  /** Starts teardown without waiting for an active prefetch round or consensus queue writes. */
+  public void closeAsync(final boolean removeProgressAfterClose) {
+    if (beginClose()) {
+      CLOSE_CLEANUP_EXECUTOR.execute(
+          () -> finishCloseAfterWriteLock(removeProgressAfterClose, true));
+    }
+  }
+
+  private boolean beginClose() {
+    synchronized (closeLifecycleLock) {
+      if (closeInProgress || closeRequested || (isClosed && !closeCleanupPending)) {
+        return false;
+      }
+      closeInProgress = true;
+      closeRequested = true;
+      closeCleanupPending = true;
+      return true;
+    }
+  }
+
+  private void finishCloseAfterWriteLock(
+      final boolean removeProgressAfterClose, final boolean backgroundCleanup) {
+    try {
+      final PendingSeekRequest seekRequestToFail;
+      acquireWriteLock();
+      try {
+        seekRequestToFail = pendingSeekRequest;
+        pendingSeekRequest = null;
+      } finally {
+        releaseWriteLock();
+      }
+      finishCloseRequest(seekRequestToFail, removeProgressAfterClose, backgroundCleanup);
+    } catch (final Exception e) {
+      handleCloseFailure(e);
+    }
+  }
+
+  private void finishCloseRequest(
+      final PendingSeekRequest seekRequestToFail,
+      final boolean removeProgressAfterClose,
+      final boolean backgroundCleanup) {
+    final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding =
+        detachPrefetchSubtask();
 
     if (Objects.nonNull(seekRequestToFail)) {
       seekRequestToFail.fail(
@@ -3861,14 +3915,21 @@ public class ConsensusPrefetchingQueue {
 
     if (Objects.nonNull(prefetchBinding.right)) {
       prefetchBinding.right.cancelPendingExecution();
-      if (prefetchBinding.right.isScheduledOrRunning()) {
-        CLOSE_CLEANUP_EXECUTOR.execute(
-            () -> finishCloseInBackground(prefetchBinding, removeProgressAfterClose));
-        return;
-      }
     }
 
-    finishClose(prefetchBinding, removeProgressAfterClose);
+    if (!backgroundCleanup
+        && Objects.nonNull(prefetchBinding.right)
+        && prefetchBinding.right.isScheduledOrRunning()) {
+      CLOSE_CLEANUP_EXECUTOR.execute(
+          () -> finishCloseInBackground(prefetchBinding, removeProgressAfterClose));
+      return;
+    }
+
+    if (backgroundCleanup) {
+      finishCloseInBackground(prefetchBinding, removeProgressAfterClose);
+    } else {
+      finishClose(prefetchBinding, removeProgressAfterClose);
+    }
   }
 
   private void finishCloseInBackground(
@@ -3877,24 +3938,38 @@ public class ConsensusPrefetchingQueue {
     try {
       finishClose(prefetchBinding, removeProgressAfterClose);
     } catch (final Exception e) {
-      LOGGER.warn("Failed to finish closing consensus prefetching queue {}", this, e);
+      handleCloseFailure(e);
     }
+  }
+
+  private void handleCloseFailure(final Exception e) {
+    closeRequested = false;
+    synchronized (closeLifecycleLock) {
+      closeInProgress = false;
+    }
+    LOGGER.warn(
+        DataNodePipeMessages.LOG_FAILED_TO_FINISH_CLOSING_CONSENSUS_PREFETCHING_QUEUE_ARG_3C31731C,
+        this,
+        e);
   }
 
   private void finishClose(
       final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding,
       final boolean removeProgressAfterClose) {
+    // Queue deregistration may wait for consensus-side WAL/index work. Metadata callers use
+    // closeAsync so this cleanup cannot hold up the consumer-group metadata push.
+    // Requests left in pendingEntries have not advanced subscription progress and can be replayed
+    // from WAL if this queue is created again.
+    deregisterPendingEntriesFromConsensusServer();
+
     if (Objects.nonNull(prefetchBinding.right)) {
       prefetchBinding.right.awaitIdle();
     }
     try {
       acquireWriteLock();
       try {
-        if (!isClosed
-            && pendingSeekRequest == null
-            && seekGeneration.get() == observedSeekGeneration) {
-          flushLingeringBatchOnCloseUnderWriteLock();
-        }
+        // Any uncommitted linger batch is discarded by cleanUp() and replayed from WAL if the
+        // topic is subscribed again. Emitting it during close could recreate removed commit state.
         markClosed();
       } finally {
         releaseWriteLock();
@@ -3905,7 +3980,7 @@ public class ConsensusPrefetchingQueue {
 
       if (Objects.nonNull(prefetchBinding.left) && Objects.nonNull(prefetchBinding.right)) {
         if (!prefetchBinding.left.isShutdown()) {
-          prefetchBinding.left.deregister(prefetchBinding.right.getTaskId());
+          prefetchBinding.left.deregister(prefetchBinding.right);
         } else {
           prefetchBinding.right.close();
         }
@@ -3924,6 +3999,9 @@ public class ConsensusPrefetchingQueue {
       closeCleanupPending = false;
     } finally {
       closeRequested = false;
+      synchronized (closeLifecycleLock) {
+        closeInProgress = false;
+      }
     }
   }
 
@@ -3935,25 +4013,6 @@ public class ConsensusPrefetchingQueue {
           DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7,
           this,
           e);
-    }
-  }
-
-  private void flushLingeringBatchOnCloseUnderWriteLock() {
-    if (lingerBatch.isEmpty()) {
-      return;
-    }
-    LOGGER.info(
-        DataNodePipeMessages
-            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FLUSHING_LINGERING_TABLETS_DURING_4C4AF235,
-        this,
-        lingerBatch.tablets.size());
-    if (!flushBatch(lingerBatch, observedSeekGeneration)) {
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7,
-          this);
-      discardBatch(lingerBatch);
-      resetBatchWriterProgress();
     }
   }
 

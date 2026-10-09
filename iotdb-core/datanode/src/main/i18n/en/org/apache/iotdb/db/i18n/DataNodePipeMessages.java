@@ -2188,6 +2188,8 @@ public final class DataNodePipeMessages {
           + "frontier";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7 =
       "ConsensusPrefetchingQueue {}: error during deregister";
+  public static final String LOG_FAILED_TO_FINISH_CLOSING_CONSENSUS_PREFETCHING_QUEUE_ARG_3C31731C =
+      "Failed to finish closing consensus prefetching queue {}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7 =
       "ConsensusPrefetchingQueue {}: failed to flush lingering batch during close, discarding it";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_ROUND_FAILED_TYPE_MESSAGE_63BC909B =

@@ -2031,6 +2031,8 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue {}：不支持 seekAfterRegionProgress（没有 WAL 目录）";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_READ_WAL_METADATA_FROM_A2ED50D1 =
       "ConsensusPrefetchingQueue {}：计算 seekToEnd frontier 时，从 {} 读取 WAL metadata 失败";
+  public static final String LOG_FAILED_TO_FINISH_CLOSING_CONSENSUS_PREFETCHING_QUEUE_ARG_3C31731C =
+      "未能完成共识预取队列 {} 的关闭";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7 =
       "ConsensusPrefetchingQueue {}：注销期间出错";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7 =

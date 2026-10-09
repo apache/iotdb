@@ -107,6 +107,28 @@ public class ConsensusPrefetchingQueueTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
+  public void testLateOldPrefetchDeregistrationKeepsReplacementTask() {
+    final ConsensusSubscriptionPrefetchExecutor executor =
+        new ConsensusSubscriptionPrefetchExecutor();
+    try {
+      final ConsensusPrefetchSubtask oldSubtask = mock(ConsensusPrefetchSubtask.class);
+      final ConsensusPrefetchSubtask replacementSubtask = mock(ConsensusPrefetchSubtask.class);
+      when(oldSubtask.getTaskId()).thenReturn("same-task-id");
+      when(replacementSubtask.getTaskId()).thenReturn("same-task-id");
+
+      assertTrue(executor.register(oldSubtask));
+      executor.deregister(oldSubtask);
+      assertTrue(executor.register(replacementSubtask));
+
+      executor.deregister(oldSubtask);
+      verify(replacementSubtask, never()).close();
+      verify(replacementSubtask, never()).cancelPendingExecution();
+    } finally {
+      executor.shutdown();
+    }
+  }
+
+  @Test
   public void testCloseDetachesBlockedPrefetchCleanup() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("async-prefetch-close");
@@ -167,11 +189,151 @@ public class ConsensusPrefetchingQueueTest {
 
       releaseCleanup.countDown();
       verify(subtask, timeout(TimeUnit.SECONDS.toMillis(TEST_TIMEOUT_SECONDS))).close();
+      awaitCloseFinished(queue);
       assertTrue(queue.isClosed());
     } finally {
       releaseCleanup.countDown();
       if (queue != null && !queue.isClosed()) {
         queue.close();
+      }
+      if (queue != null) {
+        awaitCloseFinished(queue);
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testCloseDoesNotWaitForActivePrefetchReadLock() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("async-prefetch-read-lock");
+    final ExecutorService closeExecutor = Executors.newSingleThreadExecutor();
+    ConsensusPrefetchingQueue queue = null;
+    ReentrantReadWriteLock queueLock = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.isTableModel()).thenReturn(true);
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final Field lockField = ConsensusPrefetchingQueue.class.getDeclaredField("lock");
+      lockField.setAccessible(true);
+      queueLock = (ReentrantReadWriteLock) lockField.get(queue);
+      queueLock.readLock().lock();
+
+      final ConsensusPrefetchingQueue queueToClose = queue;
+      final Future<?> closeFuture = closeExecutor.submit((Runnable) queueToClose::close);
+      closeFuture.get(1, TimeUnit.SECONDS);
+      assertFalse(queue.isClosed());
+    } finally {
+      if (queueLock != null && queueLock.getReadHoldCount() > 0) {
+        queueLock.readLock().unlock();
+      }
+      closeExecutor.shutdownNow();
+      closeExecutor.awaitTermination(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      if (queue != null && !queue.isClosed()) {
+        queue.close();
+      }
+      if (queue != null) {
+        awaitCloseFinished(queue);
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+    assertTrue(queue.isClosed());
+  }
+
+  @Test
+  public void testCloseDetachesBlockedConsensusQueueDeregistration() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("async-prefetch-deregister");
+    final CountDownLatch deregistrationStarted = new CountDownLatch(1);
+    final CountDownLatch releaseDeregistration = new CountDownLatch(1);
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      doAnswer(
+              invocation -> {
+                deregistrationStarted.countDown();
+                releaseDeregistration.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                return null;
+              })
+          .when(serverImpl)
+          .deregisterSubscriptionQueue(any());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.isTableModel()).thenReturn(true);
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final ConsensusPrefetchSubtask subtask = mock(ConsensusPrefetchSubtask.class);
+      final ConsensusSubscriptionPrefetchExecutor prefetchExecutor =
+          mock(ConsensusSubscriptionPrefetchExecutor.class);
+      when(subtask.isScheduledOrRunning()).thenReturn(false);
+      when(prefetchExecutor.isShutdown()).thenReturn(true);
+      setPrefetchBinding(queue, prefetchExecutor, subtask);
+
+      final long closeStartNanos = System.nanoTime();
+      queue.closeAsync(false);
+      final long closeElapsedMillis =
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - closeStartNanos);
+
+      assertTrue(closeElapsedMillis < 1000L);
+      assertTrue(deregistrationStarted.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+      assertFalse(queue.isClosed());
+
+      releaseDeregistration.countDown();
+      verify(subtask, timeout(TimeUnit.SECONDS.toMillis(TEST_TIMEOUT_SECONDS))).close();
+      awaitCloseFinished(queue);
+      assertTrue(queue.isClosed());
+    } finally {
+      releaseDeregistration.countDown();
+      if (queue != null && !queue.isClosed()) {
+        queue.close();
+      }
+      if (queue != null) {
+        awaitCloseFinished(queue);
       }
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
@@ -2766,6 +2928,27 @@ public class ConsensusPrefetchingQueueTest {
     final Field subtaskField = ConsensusPrefetchingQueue.class.getDeclaredField("prefetchSubtask");
     subtaskField.setAccessible(true);
     subtaskField.set(queue, subtask);
+  }
+
+  private static void awaitCloseFinished(final ConsensusPrefetchingQueue queue) throws Exception {
+    final Field closeLifecycleLockField =
+        ConsensusPrefetchingQueue.class.getDeclaredField("closeLifecycleLock");
+    closeLifecycleLockField.setAccessible(true);
+    final Object closeLifecycleLock = closeLifecycleLockField.get(queue);
+
+    final Field closeInProgressField =
+        ConsensusPrefetchingQueue.class.getDeclaredField("closeInProgress");
+    closeInProgressField.setAccessible(true);
+    final long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TEST_TIMEOUT_SECONDS);
+    while (System.nanoTime() < closeDeadline) {
+      synchronized (closeLifecycleLock) {
+        if (!closeInProgressField.getBoolean(queue)) {
+          return;
+        }
+      }
+      Thread.sleep(10L);
+    }
+    throw new AssertionError("Timed out waiting for queue close cleanup");
   }
 
   private static ProgressWALIterator subscriptionWalIterator(final ConsensusPrefetchingQueue queue)
