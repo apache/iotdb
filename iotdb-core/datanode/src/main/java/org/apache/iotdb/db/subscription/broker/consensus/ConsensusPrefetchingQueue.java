@@ -3074,11 +3074,12 @@ public class ConsensusPrefetchingQueue {
   // ======================== Seek ========================
 
   /**
-   * Seeks to the earliest available WAL position. The actual position depends on WAL retention: if
-   * old files have been reclaimed, the earliest available position may be later than 0.
+   * Seeks to the earliest available WAL position. Local consensus search indexes start at 1; 0
+   * denotes an empty WAL. If old files have been reclaimed, replay may start at a later index.
    */
   public void seekToBeginning() {
-    seekToResolvedPosition(0L, new RegionProgress(Collections.emptyMap()), "beginning");
+    seekToResolvedPosition(
+        FIRST_CONSENSUS_SEARCH_INDEX, new RegionProgress(Collections.emptyMap()), "beginning");
   }
 
   /**
