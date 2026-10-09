@@ -236,12 +236,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>pipe-opc-ua-sink-example</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>pipe-count-point-processor-example</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>

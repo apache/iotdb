@@ -677,8 +677,6 @@ public final class DataNodePipeMessages {
       "无法增加 event {} 的引用计数，在 batch 中忽略";
   public static final String CANNOT_SERIALIZE_BOTH_TABLET_AND_STATEMENT_ARE =
       "无法序列化：tablet 和 statement 均为空";
-  public static final String CERTIFICATE_DIRECTORY_IS_PLEASE_MOVE_CERTIFICATES_FROM =
-      "证书目录为：{}，请将证书从 reject 目录移动到 trusted 目录以允许加密访问";
   public static final String CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL =
       "Client 已归还到连接池。当前 handler 状态为 {}。将不会传输 {}。";
   public static final String CLOSED_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTES =
@@ -720,8 +718,6 @@ public final class DataNodePipeMessages {
   public static final String HANDSHAKE_ERROR_BY_HANDSHAKE_V2_RETRY_WITH_V1 =
       "使用 PipeTransferHandshakeV2Req 与接收端 {}:{} 握手失败，改用 PipeTransferHandshakeV1Req "
           + "重试握手。";
-  public static final String FAILED_TO_BUILD_AND_STARTUP_OPCUASERVER =
-      "构建并启动 OpcUaServer 失败";
   public static final String FAILED_TO_CLOSE_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTE =
       "关闭 AsyncPipeDataTransferServiceClientManager for receiver attributes: {} 失败";
   public static final String FAILED_TO_CLOSE_CLIENT_AFTER_HANDSHAKE_FAILURE =
@@ -735,16 +731,12 @@ public final class DataNodePipeMessages {
       "成功传输 mod 文件后关闭 file reader 失败。";
   public static final String FAILED_TO_CLOSE_OR_INVALIDATE_CLIENT_WHEN =
       "connector 关闭时关闭或作废 client 失败。Client：{}, Exception：{}";
-  public static final String FAILED_TO_CLOSE_TRUSTLISTMANAGER_BECAUSE =
-      "关闭 trustListManager 失败，原因：{}。";
   public static final String FAILED_TO_CONNECT_TO_SERVER_ERROR_CODE =
       "连接 server 失败，错误码：0x";
   public static final String FAILED_TO_CONVERT_STATEMENT_TO_TABLET = "将 statement 转换为 tablet 失败。";
   public static final String FAILED_TO_CONVERT_STATEMENT_TO_TABLET_FOR =
       "为序列化将 statement 转换为 tablet 失败";
   public static final String FAILED_TO_CREATE_GROUP_ERROR_CODE_0X = "创建 group 失败，错误码：0x";
-  public static final String FAILED_TO_CREATE_NODES_AFTER_TRANSFER_DATA =
-      "传输 data value 后创建 node 失败，创建状态：";
   public static final String FAILED_TO_DELETE_BATCH_FILE_THIS_FILE =
       "删除 batch file {} 失败，该文件应稍后手动删除";
   public static final String FAILED_TO_GET_THE_SIZE_OF_PIPETRANSFERBATCHREQBUILDER =
@@ -752,15 +744,8 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_HANDSHAKE = "握手失败。";
   public static final String FAILED_TO_LOG_ERROR_WHEN_FAILED_TO =
       "传输文件失败后记录错误日志失败。";
-  public static final String FAILED_TO_PUSH_VALUE_CHANGE_TO_CLIENT =
-      "向 client 推送 value 变更失败，nodeId={}";
-  public static final String FAILED_TO_SEND_INITIAL_VALUE_TO_NEW =
-      "向新订阅发送初始 value 失败，nodeId={}";
   public static final String FAILED_TO_SERIALIZE_PROGRESS_INDEX = "序列化 progress index {} 失败";
   public static final String FAILED_TO_SHUTDOWN_EXECUTOR = "关闭 executor {} 失败。";
-  public static final String FAILED_TO_TRANSFER_DATAVALUE = "传输 dataValue 失败";
-  public static final String FAILED_TO_TRANSFER_DATAVALUE_AFTER_SUCCESSFULLY_CREATED =
-      "成功创建 node 后传输 dataValue 失败";
   public static final String FAILED_TO_TRANSFER_PIPEDELETENODEEVENT_COMMITTER_KEY_REPLICATE =
       "传输 PipeDeleteNodeEvent {} (committer key={}, replicate index={}) 失败。";
   public static final String FAILED_TO_TRANSFER_SLICE_RETRY_WHOLE_TRANSFER =
@@ -894,12 +879,6 @@ public final class DataNodePipeMessages {
       "LeaderCacheManager.allocatedMemoryBlock 已从 {} 扩展到 {}。";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO =
       "LeaderCacheManager.allocatedMemoryBlock 已从 {} 缩小到 {}。";
-  public static final String LOADING_KEYSTORE_AT = "正在从 {} 加载 KeyStore";
-  public static final String LOADING_KEYSTORE_AT_1 = "正在从 {}. 加载 KeyStore";
-  public static final String LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY =
-      "加载 keyStore 失败，现有 keyStore 可能已过期，正在重新构造...";
-  public static final String NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED =
-      "传输 tablet 时未指定 OPC client 或 server";
   public static final String OPC_DA_SINK_MUST_RUN_ON_WINDOWS = "opc-da-sink 必须在 Windows 系统上运行。";
   public static final String PIPETABLEMODETSFILEBUILDERV2_DOES_NOT_SUPPORT_TREE_MODEL_TABLET =
       "PipeTableModeTsFileBuilderV2 不支持 tree model tablet to build TSFile";
@@ -921,11 +900,6 @@ public final class DataNodePipeMessages {
       "重定向到 position {}，正在传输的 TsFile 为 {}。";
   public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
       "网络接收 TsFile %s 失败，状态：%s";
-  public static final String SECURITY_DIR = "security 目录：{}";
-  public static final String SECURITY_PKI_DIR = "security pki 目录：{}";
-  public static final String
-      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
-          "已选择 OPC UA endpoint：configured={}，advertised={}，effective={}，allowEndpointRedirect={}。";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "当 %s 或 %s 为 true 时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
@@ -951,8 +925,6 @@ public final class DataNodePipeMessages {
       "batch 大小上限已从 {} 扩展到 {}。";
   public static final String THE_BATCH_SIZE_LIMIT_HAS_SHRUNK_FROM =
       "batch 大小上限已从 {} 缩小到 {}。";
-  public static final String THE_DEFAULT_QUALITY_CAN_ONLY_BE_GOOD =
-      "默认 quality 只能为 'GOOD'、'BAD' 或 'UNCERTAIN'。";
   public static final String THE_EVENT_ACK_IS_NOT_FOUND = "未找到 event ack {}。";
   public static final String THE_EVENT_CAN_T_BE_TRANSFERRED_TO =
       "事件 {} 无法传输给 client，将稍后重试。";
@@ -968,18 +940,10 @@ public final class DataNodePipeMessages {
       "pipe {} 已被 drop，出错的 event {} 将被忽略。";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT_2 =
       "pipe {} 已被 drop，event {} 将被丢弃。";
-  public static final String THE_QUALITY_VALUE_ONLY_SUPPORTS_BOOLEAN_TYPE =
-      "quality 值仅支持 boolean 类型，其中 true == GOOD，false == BAD。";
   public static final String THE_SCHEMA_REGION_AIR_GAP_CONNECTOR_DOES =
       "The schema region air gap connector 不支持 transferring single file piece bytes.";
   public static final String THE_SCHEMA_REGION_CONNECTOR_DOES_NOT_SUPPORT =
       "The schema region connector 不支持 transferring single file piece req.";
-  public static final String THE_SECURITY_POLICY_CANNOT_BE_EMPTY =
-      "安全策略不能为空。";
-  public static final String THE_SECURITY_POLICY_CAN_ONLY_BE_NONE =
-      "安全策略只能是 'None'、'Basic128Rsa15'、'Basic256'、'Basic256Sha256'、'Aes128_Sha256_RsaOaep' 或 'Aes256_Sha256_RsaPss'。";
-  public static final String THE_SEGMENTS_OF_TABLETS_MUST_EXIST =
-      "tablet 的 segment 必须存在";
   public static final String THE_TABLET_OF_COMMITID_CAN_T_BE =
       "commitId 为 {} 的 tablet 无法被 client 解析，将稍后重试。";
   public static final String THE_TRANSFER_THREAD_IS_INTERRUPTED = "传输线程被中断。";
@@ -1005,17 +969,12 @@ public final class DataNodePipeMessages {
       "TIoTConsensusV2BatchTransferResp 为空";
   public static final String TIOTCONSENSUSV2TRANSFERRESP_IS_NULL = "TIoTConsensusV2TransferResp 为空";
   public static final String TPIPETRANSFERRESP_IS_NULL = "TPipeTransferResp 为空";
-  public static final String OPC_UA_SINK_MODEL_MUST_BE_CLIENT_SERVER_WHEN_OUTER_OR_WITH_QUALITY =
-      "当 OPC UA sink 指向外部 server 或将 'with-quality' 设置为 true 时，%s 或 %s 必须为 %s。";
-  public static final String WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME =
-      "启用 'with-quality' 模式时，measurement 必须是 \"value-name\" 或 \"quality-name\"。";
   public static final String SESSION_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT =
       "Session {}: 检查 statement {} 权限失败，username = {}，response = {}。";
   public static final String TRANSFER_REQUEST_BODY_TOO_LARGE_WILL_BE_SLICED =
       "请求体过大，将切分请求。原始请求：{}-{}。请求体大小：{}，阈值：{}";
   public static final String TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED =
       "异步传输 tsfile event {} 被中断。";
-  public static final String UNABLE_TO_CREATE_SECURITY_DIR = "无法创建 security dir: ";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY_USE_ROUND_ROBIN =
       "未知的 load balance strategy: {}, use round-robin strategy instead。";
   public static final String UNSUPPORTED_BATCH_TYPE = "不支持的 batch type {}。";
@@ -1032,10 +991,6 @@ public final class DataNodePipeMessages {
       "WebsocketConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。当前事件：{}。";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
       "WebsocketConnector 仅支持 PipeTsFileInsertionEvent。当前事件：{}。";
-  public static final String WHEN_THE_OPC_UA_SINK_POINTS_TO =
-      "当 OPC UA sink 指向外部 server 时，不支持 table model 数据。";
-  public static final String WHEN_THE_OPC_UA_SINK_SETS_WITH =
-      "当 OPC UA sink 将 'with-quality' 设置为 true 时，不支持 table model 数据。";
   public static final String WRITEBACKSINK_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETI =
       "WriteBackSink 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。忽略 {}。";
 
@@ -1447,20 +1402,9 @@ public final class DataNodePipeMessages {
   public static final String ILLEGAL_TREE_PATTERN_FMT = "Pattern \"%s\" 非法。";
 
   // ---------------------------------------------------------------------------
-  // pipe – OpcUaServerBuilder
-  // ---------------------------------------------------------------------------
-  public static final String UNABLE_CREATE_SECURITY_DIR = "无法创建安全目录：";
-  public static final String OPC_UA_SECURITY_DIR =
-      "安全目录：{}";
-  public static final String OPC_UA_SECURITY_PKI_DIR =
-      "安全 PKI 目录：{}";
   public static final String
       EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
           "advertised host 必须是不带 scheme、port 或 path 的 hostname 或 IP 地址。";
-  public static final String
-      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
-          "advertised host {} 不在已加载的 OPC UA server 证书 subject alternative names 中。安全客户端可能拒绝该证书；"
-              + "请替换或重新生成证书并重新建立信任。";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent
@@ -2333,12 +2277,6 @@ public final class DataNodePipeMessages {
       "添加 item %s 失败，opc 错误码：0x%s";
   public static final String FAILED_TO_WRITE_WITH_VALUE_AND_OPC_ERROR_CODE_FMT =
       "写入 %s 失败，值：%s，opc 错误码：0x%s";
-  public static final String NO_CERTIFICATE_FOUND =
-      "未找到证书";
-  public static final String CERTIFICATE_MISSING_APPLICATION_URI =
-      "证书缺少 application URI";
-  public static final String NULL_VALUE =
-      "null";
   public static final String INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT =
       "增加引用计数出错。Holder Message：%s";
   public static final String DECREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT =
@@ -2357,10 +2295,6 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue %s 无法调度 seek(%s)，因为 prefetch runtime 不可用";
   public static final String ERROR_PROGID_INVALID_OR_UNREGISTERED_HRESULT_FMT =
       "错误：ProgID 无效或未注册，(HRESULT=0x%s)";
-  public static final String ERROR_RUNNING_OPC_CLIENT_FMT =
-      "运行 opc client 出错：%s：%s";
-  public static final String ERROR_GETTING_OPC_CLIENT_FMT =
-      "获取 opc client 出错：%s：%s";
 
   // ---------------------------------------------------------------------------
   // slice A1 – datanode pipe (leftover literals)
@@ -2463,10 +2397,4 @@ public final class DataNodePipeMessages {
       "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
   public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
       "Pipe processor worker {} 已连续处理同一 event {} ms。Pipe：{}，DataRegion：{}，subtask：{}，event：{}，线程状态：{}。栈：{}";
-  public static final String LOG_OPC_UA_SERVER_OPERATION_LIMITS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_5D2BCC90 =
-      "OPC UA 服务器操作限制：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
-  public static final String LOG_INTERRUPTED_WHILE_READING_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_357D46A4 =
-      "读取 OPC UA 服务器操作限制时被中断，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
-  public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
-      "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
 }
