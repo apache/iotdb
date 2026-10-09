@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -84,6 +85,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   private final WALRecoverListener recoverListener;
   private final String databaseName;
   private final String dataRegionId;
+  private final boolean isTableModel;
 
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
@@ -92,6 +94,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     super(tsFileResource);
     this.databaseName = tsFileResource.getDatabaseName();
     this.dataRegionId = tsFileResource.getDataRegionId();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
     this.walRedoer = new TsFilePlanRedoer(tsFileResource);
@@ -183,7 +186,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               // delete data already flushed in the MemTable to avoid duplicates
               for (IDeviceID device : tsFileResource.getDevices()) {
                 // iterating the index, must present
-                if (device.isTableModel()) {
+                if (isTableModel) {
                   memTable.delete(
                       new TableDeletionEntry(
                           new DeletionPredicate(device.getTableName(), new FullExactMatch(device)),
@@ -200,7 +203,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               }
             }
             for (IDeviceID deviceID : memTable.getMemTableMap().keySet()) {
-              if (deviceID.isTableModel()) {
+              if (isTableModel) {
                 registerToTsFile(deviceID.getTableName());
               }
             }

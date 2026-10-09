@@ -145,7 +145,7 @@ public class QueryContext {
   }
 
   protected boolean shouldSkipModification(ModEntry modification) {
-    if (tables != null && modification instanceof TableDeletionEntry) {
+    if (isTableModel() && modification instanceof TableDeletionEntry) {
       String tableName = ((TableDeletionEntry) modification).getTableName();
       return !tables.contains(tableName);
     }
@@ -170,7 +170,7 @@ public class QueryContext {
       return Collections.emptyList();
     }
     List<ModEntry> modEntries = fileModEntries.getOverlapped(deviceID, measurement);
-    if (deviceID.isTableModel()) {
+    if (isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
       modEntries =
@@ -200,7 +200,7 @@ public class QueryContext {
     }
     List<ModEntry> modEntries =
         fileModEntries.getOverlapped(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
-    if (deviceID.isTableModel()) {
+    if (isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
       modEntries =
@@ -272,6 +272,11 @@ public class QueryContext {
 
   public boolean isIgnoreAllNullRows() {
     return ignoreAllNullRows;
+  }
+
+  // ignoreAllNullRows is true only for tree-model queries.
+  public boolean isTableModel() {
+    return !ignoreAllNullRows;
   }
 
   public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
