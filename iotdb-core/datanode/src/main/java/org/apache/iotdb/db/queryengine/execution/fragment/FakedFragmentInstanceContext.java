@@ -24,15 +24,20 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.FakedMemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
-import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FakedFragmentInstanceContext extends FragmentInstanceContext {
+
+  // Retain the registration-time state: an unclosed file may be sealed before the query finishes.
+  private final Set<TsFileResource> closedResources = new HashSet<>();
+  private final Set<TsFileResource> unclosedResources = new HashSet<>();
 
   public FakedFragmentInstanceContext(Filter timeFilter, DataRegion dataRegion) {
     super(0, new FakedMemoryReservationManager(), timeFilter, dataRegion, false, false);
@@ -50,52 +55,55 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
 
     dataRegion.tryReadLock(Long.MAX_VALUE);
     try {
-      this.sharedQueryDataSource =
-          dataRegion.query(
-              Collections.singletonList(sourcePath),
-              sourcePath.getDeviceId(),
-              this,
-              getGlobalTimeFilter(),
-              null,
-              Long.MAX_VALUE);
+      try {
+        this.sharedQueryDataSource =
+            dataRegion.query(
+                Collections.singletonList(sourcePath),
+                sourcePath.getDeviceId(),
+                this,
+                getGlobalTimeFilter(),
+                null,
+                Long.MAX_VALUE);
 
-      // used files should be added before mergeLock is unlocked, or they may be deleted by
-      // running merge
-      if (sharedQueryDataSource != null) {
-        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(true);
-        List<TsFileResource> tsFileList =
-            ((QueryDataSource) sharedQueryDataSource).getSeqResources();
-        if (tsFileList != null) {
-          for (TsFileResource tsFile : tsFileList) {
-            FileReaderManager.getInstance().increaseFileReaderReference(tsFile, tsFile.isClosed());
+        // used files should be added before mergeLock is unlocked, or they may be deleted by
+        // running merge
+        if (sharedQueryDataSource != null) {
+          ((QueryDataSource) sharedQueryDataSource).setSingleDevice(true);
+          List<TsFileResource> tsFileList =
+              ((QueryDataSource) sharedQueryDataSource).getSeqResources();
+          if (tsFileList != null) {
+            for (TsFileResource tsFile : tsFileList) {
+              addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
+            }
+          }
+          tsFileList = ((QueryDataSource) sharedQueryDataSource).getUnseqResources();
+          if (tsFileList != null) {
+            for (TsFileResource tsFile : tsFileList) {
+              addFilePathToMap(tsFile, tsFile.isClosed(), closedResources, unclosedResources);
+            }
           }
         }
-        tsFileList = ((QueryDataSource) sharedQueryDataSource).getUnseqResources();
-        if (tsFileList != null) {
-          for (TsFileResource tsFile : tsFileList) {
-            FileReaderManager.getInstance().increaseFileReaderReference(tsFile, tsFile.isClosed());
-          }
+      } finally {
+        dataRegion.readUnlock();
+      }
+    } catch (RuntimeException | Error e) {
+      // Rollback can close readers or wait for another close; never retain the region lock here.
+      try {
+        releaseSharedQueryDataSource();
+      } catch (RuntimeException | Error rollbackFailure) {
+        if (rollbackFailure != e) {
+          e.addSuppressed(rollbackFailure);
         }
       }
-    } finally {
-      dataRegion.readUnlock();
+      throw e;
     }
   }
 
   public void releaseSharedQueryDataSource() {
-    if (sharedQueryDataSource != null) {
-      List<TsFileResource> tsFileList = ((QueryDataSource) sharedQueryDataSource).getSeqResources();
-      if (tsFileList != null) {
-        for (TsFileResource tsFile : tsFileList) {
-          FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, tsFile.isClosed());
-        }
-      }
-      tsFileList = ((QueryDataSource) sharedQueryDataSource).getUnseqResources();
-      if (tsFileList != null) {
-        for (TsFileResource tsFile : tsFileList) {
-          FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, tsFile.isClosed());
-        }
-      }
+    try (DeferredFileReaderReleases releases = new DeferredFileReaderReleases()) {
+      releases.addAll(closedResources, true);
+      releases.addAll(unclosedResources, false);
+    } finally {
       sharedQueryDataSource = null;
     }
   }
