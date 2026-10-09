@@ -2045,8 +2045,6 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：打开 near-live WAL 文件 {} 失败，不加入黑名单并重试";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator：读取 WAL 出错";
-  public static final String MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_ABSENT_FROM_CURRENT_SCAN_RETRYING_5484DEF8 =
-      "上一个活跃 WAL 文件版本 %s 未出现在本次扫描结果中；稍后重试";
   public static final String
       PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
       "ProgressWALIterator：处理 WAL 文件 {} 失败，跳过该文件的剩余条目";
@@ -2060,11 +2058,8 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
           + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";
   public static final String
-      LOG_ARG_WAL_REPLAY_OBSERVED_GAP_ARG_ARG_BEFORE_SEARCHINDEX_ARG_REFRESHING_WAL_AND_RETRYING_0669FB51 =
-          "{}：WAL 回放观察到缺口 [{}, {})，下一个可见 searchIndex={}；正在刷新 WAL 并重试";
-  public static final String
-      LOG_ARG_WAL_GAP_ARG_ARG_PERSISTS_AFTER_REFRESH_SKIPPING_ARG_TOTAL_SKIPPED_ARG_16FE0680 =
-          "{}：WAL 缺口 [{}, {}) 在刷新后仍存在；跳过 {} 条，累计跳过 {} 条";
+      LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A =
+          "{}：WAL 缺口 [{}, {})，跳过 {} 条，累计跳过 {} 条；原因尚未确定";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}：历史传输的终止事件已提交。creationTime：{}，shouldMark：{}。{}";
   public static final String PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19 =

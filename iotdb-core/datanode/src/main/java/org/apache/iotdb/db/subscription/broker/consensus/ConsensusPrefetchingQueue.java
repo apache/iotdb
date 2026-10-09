@@ -297,9 +297,6 @@ public class ConsensusPrefetchingQueue {
 
   private volatile long lastWalGapWaitLogTimeMs = 0L;
 
-  /** Search index whose WAL visibility gap is being retried after forcing a WAL refresh. */
-  private volatile long walGapRetryExpectedSearchIndex = Long.MIN_VALUE;
-
   /** Fallback committed region progress from local persisted state. */
   private final RegionProgress fallbackCommittedRegionProgress;
 
@@ -840,7 +837,6 @@ public class ConsensusPrefetchingQueue {
     // readers without WAL support.
     this.subscriptionWALIterator =
         createSubscriptionWALIterator(resolvedStart.getStartSearchIndex());
-    resetWalGapRetryState();
     this.prefetchInitialized = true;
     this.observedSeekGeneration = seekGeneration.get();
     discardBatch(this.lingerBatch);
@@ -1521,9 +1517,6 @@ public class ConsensusPrefetchingQueue {
 
       if (batch.isEmpty() && lingerBatch.isEmpty()) {
         final MaterializationResult walResult = tryCatchUpFromWAL(observedSeekGeneration);
-        if (walResult == MaterializationResult.WAL_GAP) {
-          return PrefetchRoundResult.rescheduleAfter(WAL_GAP_RETRY_SLEEP_MS);
-        }
         if (walResult == MaterializationResult.MEMORY_BLOCKED) {
           blockRealtimeAdmission();
           return PrefetchRoundResult.rescheduleAfter(MEMORY_RETRY_SLEEP_MS);
@@ -1939,9 +1932,7 @@ public class ConsensusPrefetchingQueue {
         pumpFromSubscriptionWAL(
             batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
     if (materializationResult != MaterializationResult.SUCCESS) {
-      if ((materializationResult == MaterializationResult.MEMORY_BLOCKED
-              || materializationResult == MaterializationResult.WAL_GAP)
-          && !batchState.isEmpty()) {
+      if (materializationResult == MaterializationResult.MEMORY_BLOCKED && !batchState.isEmpty()) {
         if (!flushBatch(batchState, expectedSeekGeneration)) {
           discardBatch(batchState);
           return MaterializationResult.STALE;
@@ -1983,11 +1974,6 @@ public class ConsensusPrefetchingQueue {
 
         if (isBeforeLocalCursor(walEntry)) {
           continue;
-        }
-        final MaterializationResult continuityResult =
-            validateWalReplayContinuity(walEntry, expectedSeekGeneration);
-        if (continuityResult != MaterializationResult.SUCCESS) {
-          return continuityResult;
         }
         if (shouldSkipForRecoveryProgress(walEntry)) {
           advanceWalReplayCursorIfPresent(walEntry);
@@ -2058,7 +2044,7 @@ public class ConsensusPrefetchingQueue {
       final long totalSkippedEntries = walGapSkippedEntries.addAndGet(skippedEntries);
       LOGGER.warn(
           DataNodePipeMessages
-              .LOG_ARG_WAL_GAP_ARG_ARG_PERSISTS_AFTER_REFRESH_SKIPPING_ARG_TOTAL_SKIPPED_ARG_16FE0680,
+              .LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A,
           this,
           expectedSearchIndex,
           actualSearchIndex,
@@ -2066,65 +2052,6 @@ public class ConsensusPrefetchingQueue {
           totalSkippedEntries);
     }
     nextExpectedSearchIndex.set(actualSearchIndex + 1);
-  }
-
-  private MaterializationResult validateWalReplayContinuity(
-      final IndexedConsensusRequest request, final long expectedSeekGeneration) {
-    if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
-      return MaterializationResult.STALE;
-    }
-    if (!hasLocalSearchIndex(request)) {
-      return MaterializationResult.SUCCESS;
-    }
-
-    final long actualSearchIndex = request.getSearchIndex();
-    final long expectedSearchIndex = nextExpectedSearchIndex.get();
-    if (actualSearchIndex <= expectedSearchIndex) {
-      if (actualSearchIndex == expectedSearchIndex
-          && walGapRetryExpectedSearchIndex == expectedSearchIndex) {
-        walGapRetryExpectedSearchIndex = Long.MIN_VALUE;
-        pendingWalGapRetryRequested = false;
-      }
-      return MaterializationResult.SUCCESS;
-    }
-
-    if (walGapRetryExpectedSearchIndex != expectedSearchIndex) {
-      if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
-        return MaterializationResult.STALE;
-      }
-      walGapRetryExpectedSearchIndex = expectedSearchIndex;
-      LOGGER.warn(
-          DataNodePipeMessages
-              .LOG_ARG_WAL_REPLAY_OBSERVED_GAP_ARG_ARG_BEFORE_SEARCHINDEX_ARG_REFRESHING_WAL_AND_RETRYING_0669FB51,
-          this,
-          expectedSearchIndex,
-          actualSearchIndex,
-          actualSearchIndex);
-      if (consensusReqReader instanceof WALNode) {
-        ((WALNode) consensusReqReader).rollWALFile();
-      }
-      if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
-        return MaterializationResult.STALE;
-      }
-      resetSubscriptionWALPosition(expectedSearchIndex);
-      onWalGapRetryScheduled();
-      pendingWalGapRetryRequested = true;
-      return MaterializationResult.WAL_GAP;
-    }
-
-    if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
-      return MaterializationResult.STALE;
-    }
-    walGapRetryExpectedSearchIndex = Long.MIN_VALUE;
-    pendingWalGapRetryRequested = false;
-    return MaterializationResult.SUCCESS;
-  }
-
-  private void resetWalGapRetryState() {
-    pendingWalGapRetryRequested = false;
-    walGapWaitStartTimeMs = 0L;
-    lastWalGapWaitLogTimeMs = 0L;
-    walGapRetryExpectedSearchIndex = Long.MIN_VALUE;
   }
 
   private void ensureSubscriptionWalReadable() {
@@ -3127,7 +3054,9 @@ public class ConsensusPrefetchingQueue {
       reconcileRetainedTabletMemoryAfterCleanup();
       memoryBlockedEntryBytes = -1L;
       resetBatchWriterProgress();
-      resetWalGapRetryState();
+      pendingWalGapRetryRequested = false;
+      walGapWaitStartTimeMs = 0L;
+      lastWalGapWaitLogTimeMs = 0L;
       pendingSubscriptionWalResetSearchIndex = Long.MIN_VALUE;
       pendingSubscriptionWalResetGeneration = Long.MIN_VALUE;
       closeSubscriptionWALIterator();
@@ -3438,7 +3367,9 @@ public class ConsensusPrefetchingQueue {
     reconcileRetainedTabletMemoryAfterCleanup();
     resetBatchWriterProgress();
     observedSeekGeneration = seekGeneration.get();
-    resetWalGapRetryState();
+    pendingWalGapRetryRequested = false;
+    walGapWaitStartTimeMs = 0L;
+    lastWalGapWaitLogTimeMs = 0L;
 
     // 5. Reset commit state to the writer progress immediately before the first re-delivered
     // entry so seek/rebind resumes from the intended frontier.
@@ -3539,7 +3470,6 @@ public class ConsensusPrefetchingQueue {
       return 0L;
     }
 
-    WALFileUtils.ascSortByVersionId(walFiles);
     final int replayFileIndex =
         Math.max(0, WALFileUtils.binarySearchFileBySearchIndex(walFiles, nextExpectedSearchIndex));
     return WALFileUtils.parseVersionId(walFiles[replayFileIndex].getName());
@@ -4156,7 +4086,9 @@ public class ConsensusPrefetchingQueue {
           memoryBlockedEntryBytes = -1L;
           prefetchInitialized = false;
           observedSeekGeneration = seekGeneration.get();
-          resetWalGapRetryState();
+          pendingWalGapRetryRequested = false;
+          walGapWaitStartTimeMs = 0L;
+          lastWalGapWaitLogTimeMs = 0L;
           pendingSubscriptionWalResetSearchIndex = Long.MIN_VALUE;
           pendingSubscriptionWalResetGeneration = Long.MIN_VALUE;
           closeSubscriptionWALIterator();
