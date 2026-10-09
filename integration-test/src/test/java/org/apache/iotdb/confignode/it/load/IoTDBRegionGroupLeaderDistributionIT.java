@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -208,7 +209,7 @@ public class IoTDBRegionGroupLeaderDistributionIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
 
       // Check leader distribution
       isDistributionBalanced = false;

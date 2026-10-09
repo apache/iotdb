@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -38,6 +37,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,6 +57,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TsBlockBuilder builder,
       int nodeId,
       String nodeStatus,
+      String nodeStatusReason,
+      boolean hasStatusReason,
       String internalAddress,
       int internalPort,
       int configConsensusPort,
@@ -102,6 +104,15 @@ public class ShowClusterDetailsTask implements IConfigTask {
           .getColumnBuilder(12)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
+    if (hasStatusReason) {
+      if (nodeStatusReason == null) {
+        builder.getColumnBuilder(13).appendNull();
+      } else {
+        builder
+            .getColumnBuilder(13)
+            .writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
+      }
+    }
     builder.declarePosition();
   }
 
@@ -109,6 +120,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TsBlockBuilder builder,
       int nodeId,
       String nodeStatus,
+      String nodeStatusReason,
+      boolean hasStatusReason,
       String internalAddress,
       int internalPort,
       TNodeVersionInfo versionInfo) {
@@ -123,7 +136,6 @@ public class ShowClusterDetailsTask implements IConfigTask {
     } else {
       builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
     }
-
     if (internalAddress == null) {
       builder.getColumnBuilder(3).appendNull();
     } else {
@@ -152,6 +164,15 @@ public class ShowClusterDetailsTask implements IConfigTask {
           .getColumnBuilder(12)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
+    if (hasStatusReason) {
+      if (nodeStatusReason == null) {
+        builder.getColumnBuilder(13).appendNull();
+      } else {
+        builder
+            .getColumnBuilder(13)
+            .writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
+      }
+    }
     builder.declarePosition();
   }
 
@@ -160,6 +181,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TsBlockBuilder builder,
       int nodeId,
       String nodeStatus,
+      String nodeStatusReason,
+      boolean hasStatusReason,
       String internalAddress,
       int internalPort,
       String rpcAddress,
@@ -219,15 +242,31 @@ public class ShowClusterDetailsTask implements IConfigTask {
           .getColumnBuilder(12)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
+    if (hasStatusReason) {
+      if (nodeStatusReason == null) {
+        builder.getColumnBuilder(13).appendNull();
+      } else {
+        builder
+            .getColumnBuilder(13)
+            .writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
+      }
+    }
     builder.declarePosition();
   }
 
   public static void buildTSBlock(
       TShowClusterResp clusterNodeInfos, SettableFuture<ConfigTaskResult> future) {
+    boolean hasStatusReason =
+        clusterNodeInfos.getNodeStatusReason() != null
+            && clusterNodeInfos.getNodeStatusReason().values().stream()
+                .anyMatch(reason -> reason != null && !reason.isEmpty());
+    List<ColumnHeader> columnHeaders =
+        new ArrayList<>(ColumnHeaderConstant.showClusterDetailsColumnHeaders);
+    if (hasStatusReason) {
+      columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.STATUS_REASON, TSDataType.TEXT));
+    }
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showClusterDetailsColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
+        columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
     clusterNodeInfos
@@ -238,6 +277,10 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     builder,
                     e.getConfigNodeId(),
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
+                    hasStatusReason
+                        ? clusterNodeInfos.getNodeStatusReason().get(e.getConfigNodeId())
+                        : null,
+                    hasStatusReason,
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
                     e.getConsensusEndPoint().getPort(),
@@ -251,6 +294,10 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     builder,
                     e.getDataNodeId(),
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
+                    hasStatusReason
+                        ? clusterNodeInfos.getNodeStatusReason().get(e.getDataNodeId())
+                        : null,
+                    hasStatusReason,
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
                     e.getClientRpcEndPoint().getIp(),
@@ -267,11 +314,15 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     builder,
                     e.getAiNodeId(),
                     clusterNodeInfos.getNodeStatus().get(e.getAiNodeId()),
+                    hasStatusReason
+                        ? clusterNodeInfos.getNodeStatusReason().get(e.getAiNodeId())
+                        : null,
+                    hasStatusReason,
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
                     clusterNodeInfos.getNodeVersionInfo().get(e.getAiNodeId())));
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
+    DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 

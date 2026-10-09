@@ -687,4 +687,7 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5 =
           "IoTDB Edge: ConfigNode internal port %s is not ready within %s ms";
+  public static final String
+      LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
+          "Failed to transfer ConfigNode leadership before shutdown; continuing shutdown.";
 }

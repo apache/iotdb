@@ -139,8 +139,7 @@ public class RetryFailedTasksThread {
               NodeStatus nodeStatus = loadManager.getNodeStatus(dataNodeLocation.getDataNodeId());
               if (nodeStatus == NodeStatus.Running) {
                 oldUnknownNodes.remove(dataNodeLocation);
-              } else if (!oldUnknownNodes.contains(dataNodeLocation)
-                  && nodeStatus == NodeStatus.Unknown) {
+              } else if (!oldUnknownNodes.contains(dataNodeLocation) && nodeStatus.isOffline()) {
                 newUnknownNodes.add(dataNodeLocation);
               }
             });

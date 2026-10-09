@@ -613,7 +613,7 @@ public class WALBuffer extends AbstractWALBuffer {
         failListeners(syncFailure);
         // SET SYSTEM TO RUNNING does not repair a failed batch or an unknown record boundary.
         if (CommonDescriptor.getInstance().getConfig().isRunning()) {
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(syncFailure);
         }
         if (forceFlag && retryAfterFailedBatch) {
           syncFailure = null;
@@ -643,7 +643,7 @@ public class WALBuffer extends AbstractWALBuffer {
         }
         failListeners(e);
         DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         switchSyncingBufferToIdle();
         return;
       }
@@ -676,7 +676,7 @@ public class WALBuffer extends AbstractWALBuffer {
         syncFailure = e instanceof Exception exception ? exception : new IOException(e);
         retryAfterFailedBatch = false;
         failListeners(syncFailure);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         return;
       } finally {
         switchSyncingBufferToIdle();
@@ -710,7 +710,7 @@ public class WALBuffer extends AbstractWALBuffer {
             retryAfterFailedBatch = false;
           }
           DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -727,7 +727,7 @@ public class WALBuffer extends AbstractWALBuffer {
           failListeners(e);
           syncFailure = e;
           retryAfterFailedBatch = false;
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         }
       }
 

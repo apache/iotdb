@@ -117,7 +117,9 @@ public class DataNodeShutdownHook extends Thread {
 
     // Reject write operations to make sure all tsfiles will be sealed
     CommonDescriptor.getInstance().getConfig().setStopping(true);
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.STOPPING);
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 

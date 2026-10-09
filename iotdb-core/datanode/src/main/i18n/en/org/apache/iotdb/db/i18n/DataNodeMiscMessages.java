@@ -1081,8 +1081,7 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
       "DataNode exits. Jvm memory usage: {}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current "
-          + "DataNode as Running for a few seconds.";
+      "Failed to confirm the DataNode shutdown report with the ConfigNode leader.";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
       "Something wrong happened while calling consensus layer's triggerSnapshot API.";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =

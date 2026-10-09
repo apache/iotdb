@@ -1032,10 +1032,9 @@ public class ConfigNodeProcedureEnv {
     return responseMap;
   }
 
-  private boolean isRuntimeActiveWriterNode(final int dataNodeId) {
-    return dataNodeId >= 0
-        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Unknown
-        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Removing;
+  boolean isRuntimeActiveWriterNode(final int dataNodeId) {
+    final NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+    return dataNodeId >= 0 && !nodeStatus.mayBeOffline();
   }
 
   private static Map<Integer, TPushPipeMetaResp> sendPipeMetaRequest(
