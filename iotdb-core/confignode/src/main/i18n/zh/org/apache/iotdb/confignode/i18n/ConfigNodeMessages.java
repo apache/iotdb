@@ -21,6 +21,15 @@ package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
 
+  public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_A_CONFIGREGION_FOLLOWER_NEW_LEADER_NODEID_ARG_STOPPING_LEADER_SERVICES_A1962CD2 =
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] 为 ConfigRegion follower；新 leader 的 nodeId: {}。开始停止 leader 服务。";
+  public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_NO_LONGER_THE_CONFIGREGION_LEADER_STOPPING_LEADER_SERVICES_5DB0DA66 =
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] 不再是 ConfigRegion leader；开始停止 leader 服务。";
+  public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_COMPLETED_STOPPING_LEADER_SERVICES_62381EE1 =
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] 已完成停止 leader 服务。";
+  public static final String LOG_CONFIGREGION_UPDATE_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_FILEPATH_ARG_RETRY_ARG_188A702E =
+      "[ConfigRegion Update] 关闭 ConfigNode SimpleConsensus 日志失败，filePath: {}，重试: {}。";
+
   public static final String ACQUIRE_TRIGGERTABLELOCK = "获取 TriggerTableLock";
   public static final String ACQUIRE_UDFTABLELOCK = "获取 UDFTableLock";
   public static final String ACTIVATING = "正在激活 {}...";
@@ -37,19 +46,17 @@ public final class ConfigNodeMessages {
   public static final String CANNOT_FIND_REGIONGROUP_FOR_REGION_WHEN_REMOVEREGIONOLDLOCATION_IN =
       "在 {} 中执行 removeRegionOldLocation 时，找不到 region {} 对应的 RegionGroup";
   public static final String CAN_ONLY_ALTER_DATATYPE_OF_FIELD_COLUMNS = "只能修改 FIELD 列的数据类型";
-  public static final String CAN_T_CLOSE_STANDALONELOG_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-      "无法为 ConfigNode SimpleConsensus 模式关闭 StandAloneLog，";
   public static final String CAN_T_CONNECT_TO_DATA_NODE = "无法连接到 DataNode：{}";
   public static final String CAN_T_CONSTRUCT_CLUSTERSCHEMAINFO = "无法构建 ClusterSchemaInfo";
   public static final String CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING =
       "无法删除临时快照文件：{}，正在重试...";
   public static final String CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_FLUSHWALFORSIMPLECONSENSUS =
-      "无法为 ConfigNode flushWALForSimpleConsensus 强制写入 logWriter";
+      "[ConfigRegion Update] 无法为 ConfigNode flushWALForSimpleConsensus 强制写入 logWriter";
   public static final String CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-      "无法为 ConfigNode SimpleConsensus 模式强制写入 logWriter";
+      "[ConfigRegion Update] 无法为 ConfigNode SimpleConsensus 模式强制写入 logWriter";
   public static final String
       CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-          "无法为 ConfigNode SimpleConsensus 模式序列化当前 ConfigPhysicalPlan";
+          "[ConfigRegion Update] 无法为 ConfigNode SimpleConsensus 模式序列化当前 ConfigPhysicalPlan";
   public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP = "无法启动 ConfigNode 共识组！";
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
       "在 DataNode: {} 上切换 region leader 失败";
@@ -89,12 +96,12 @@ public final class ConfigNodeMessages {
   public static final String CONFIGNODE_RPC_SERVICE_START_TO_REMOVE_DATANODE_REQ =
       "ConfigNode RPC Service 开始移除 DataNode，请求：{}";
   public static final String CONFIGNODE_SIMPLECONSENSUSFILE_HAS_EXISTED_FILEPATH =
-      "ConfigNode SimpleConsensusFile 已存在，filePath:{}";
+      "[ConfigRegion Update] ConfigNode SimpleConsensusFile 已存在，filePath:{}";
   public static final String
       CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_THE_HISTORICAL =
-          "Config Region Listening Queue 监听快照失败，历史数据可能未被传输。";
+          "[ConfigRegion Update] Config Region Listening Queue 监听快照失败，历史数据可能未被传输。";
   public static final String CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_WHEN_STARTUP =
-      "Config Region Listening Queue 启动时监听快照失败，将在启动 schema 传输 pipe 时再次尝试";
+      "[ConfigRegion Update] Config Region Listening Queue 启动时监听快照失败，将在启动 schema 传输 pipe 时再次尝试";
   public static final String CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER =
       "continuous_query_min_every_interval_in_ms 应大于 0，但当前值为 {}，忽略并使用默认值 {}";
   public static final String CONTINUOUS_QUERY_SUBMIT_THREAD_SHOULD_BE_GREATER_THAN_0 =
@@ -107,18 +114,15 @@ public final class ConfigNodeMessages {
       CREATEREGIONGROUPS_DATABASE_HAS_BEEN_DELETED_CORRESPONDING_REGIONGROUPS =
           "[CreateRegionGroups] Database {} 已被删除，不会创建对应的 RegionGroup。";
   public static final String CREATE_CONFIGNODE_SIMPLECONSENSUSFILE =
-      "创建 ConfigNode SimpleConsensusFile: {}";
+      "[ConfigRegion Update] 创建 ConfigNode SimpleConsensusFile: {}";
   public static final String CREATE_CONFIGNODE_SIMPLECONSENSUSFILE_FAILED_FILEPATH =
-      "创建 ConfigNode SimpleConsensusFile 失败，filePath: {}";
+      "[ConfigRegion Update] 创建 ConfigNode SimpleConsensusFile 失败，filePath: {}";
   public static final String CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS =
-      "当前节点 [nodeId: {}, ip:port: {}] 作为 config region leader 已就绪";
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] 已完成 leader 服务启动流程。";
   public static final String CURRENT_NODE_NODEID_IP_PORT_BECOMES_CONFIG_REGION_LEADER =
-      "当前节点 [nodeId: {}, ip:port: {}] 成为 config region leader";
-  public static final String CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER =
-      "当前节点 [nodeId:{}, ip:port: {}] 已不再是 leader，";
-  public static final String
-      MESSAGE_CURRENT_NODE_NODEID_ARG_IP_PORT_ARG_IS_NO_LONGER_THE_LEADER_SKIP_STARTING_LEADER_SERVICES_BECAUSE_THE_LEADER_EPOCH_IS_STALE_CCF39435 =
-          "当前节点 [nodeId:{}，ip:port: {}] 已不再是 leader，跳过 leader 服务启动，因为 leader epoch 已过期";
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] 成为 ConfigRegion leader；开始启动 leader 服务。";
+  public static final String MESSAGE_CURRENT_NODE_NODEID_ARG_IP_PORT_ARG_IS_NO_LONGER_THE_LEADER_SKIP_STARTING_LEADER_SERVICES_BECAUSE_THE_LEADER_EPOCH_IS_STALE_CCF39435 =
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] 的 leadership epoch 已过期，跳过 leader 服务启动。";
   public static final String
       DATABASE_INCONSISTENCY_DETECTED_WHEN_ADJUSTING_MAX_REGION_GROUP_COUNT_MESSAGE =
           "调整最大 region group 数量时检测到数据库不一致，消息：{}，将通过以下调整计划进行修正";
@@ -130,7 +134,7 @@ public final class ConfigNodeMessages {
   public static final String DELETED_FAILED_TAKE_APPROPRIATE_ACTION = "{} 删除失败，请采取相应处理。";
   public static final String DELETE_USELESS_PROCEDURE_WAL_DIR_FAIL = "删除无用的 procedure WAL 目录失败。";
   public static final String DESERIALIZATION_ERROR_FOR_WRITE_PLAN_REQUEST_BYTEBUFFER =
-      "反序列化写入计划出错，请求：{}，bytebuffer: {}";
+      "[ConfigRegion Update] 反序列化写入计划出错，请求：{}，bytebuffer: {}";
   public static final String DOES_NOT_EXIST = "%s 不存在";
   public static final String DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED = "不支持删除标签列或时间列。";
   public static final String DROP_CQ_FAILED_BECAUSE_ITS_TOKEN_DOESN_T_MATCH =
@@ -149,8 +153,8 @@ public final class ConfigNodeMessages {
   public static final String EXECUTE_GETCLUSTERID_WITH_RESULT = "执行 getClusterId，结果 {}";
   public static final String EXECUTE_GETSYSTEMCONFIGURATION_WITH_RESULT =
       "执行 GetSystemConfiguration，结果 {}";
-  public static final String EXECUTE_NON_QUERY_PLAN_FAILED = "执行非查询计划失败";
-  public static final String EXECUTE_QUERY_PLAN_FAILED = "执行查询计划失败";
+  public static final String EXECUTE_NON_QUERY_PLAN_FAILED = "[ConfigRegion Update] 执行非查询计划失败";
+  public static final String EXECUTE_QUERY_PLAN_FAILED = "[ConfigRegion Update] 执行查询计划失败";
   public static final String EXECUTE_REGISTERAINODEREQUEST_WITH_RESULT =
       "执行 RegisterAINodeRequest {}，结果 {}";
   public static final String EXECUTE_REGISTERCONFIGNODEREQUEST_WITH_RESULT =
@@ -286,7 +290,7 @@ public final class ConfigNodeMessages {
   public static final String ID_TOOK_SNAPSHOT_FAIL = "{} id {} 创建快照失败";
   public static final String
       INITSTANDALONECONFIGNODE_MEETS_ERROR_CAN_T_FIND_STANDALONE_LOG_FILES_FILEPATH =
-          "InitStandAloneConfigNode 出错，找不到 standalone log 文件，filePath: {}";
+          "[ConfigRegion Update] InitStandAloneConfigNode 出错，找不到 standalone log 文件，filePath: {}";
   public static final String INVALID_AUTHOR_TYPE_ORDINAL = "无效的 Author 类型序号";
   public static final String IOTDB_STARTED = "IoTDB 已启动";
   public static final String IS_DEACTIVATED = "{} 已停用。";
@@ -435,15 +439,15 @@ public final class ConfigNodeMessages {
       "time_partition_interval 应为正数";
   public static final String THE_TIME_PARTITION_ORIGIN_SHOULD_BE_NON_NEGATIVE =
       "time_partition_origin 应为非负数";
-  public static final String TRY_LISTEN_TO_PLAN_FAILED = "尝试监听计划失败";
+  public static final String TRY_LISTEN_TO_PLAN_FAILED = "[ConfigRegion Update] 尝试监听计划失败";
   public static final String UNDEFINED_TEMPLATE = "未定义的模板 {}";
   public static final String UNEXPECTED_INTERRUPTION_DURING_THE_CLOSE_METHOD_OF_LOGWRITER =
-      "关闭 logWriter 过程中发生意外中断";
+      "[ConfigRegion Update] 关闭 logWriter 过程中发生意外中断";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_LEADER_ELECTION =
       "等待 leader 选举过程中发生意外中断。";
-  public static final String UNEXPECTED_READ_PLAN = "意外的读取计划：{}";
+  public static final String UNEXPECTED_READ_PLAN = "[ConfigRegion Update] 意外的读取计划：{}";
   public static final String UNEXPECTED_WRITE_PLAN_REQUEST_BYTEBUFFER =
-      "意外的写入计划，请求：{}，bytebuffer: {}";
+      "[ConfigRegion Update] 意外的写入计划，请求：{}，bytebuffer: {}";
   public static final String UNKNOWN_FAILURE_DETECTOR =
       "未知 failure_detector：%s，请设置为 \"fixed\" 或 \"phi_accrual\"";
   public static final String UNKNOWN_HOST_WHEN_CHECKING_SEED_CONFIGNODE_IP =
@@ -654,11 +658,6 @@ public final class ConfigNodeMessages {
   public static final String
       LOG_PID_ARG_FAILED_WRITE_DELETE_API_EXECUTING_CONSENSUS_LAYER_0E758BF5 =
           "pid={} 执行共识层写入删除 API 失败，原因：";
-  public static final String LOG_NEW_LEADER_NODEID_ARG_0A63760B = "新的 leader 为 [nodeId:{}]";
-  public static final String LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261 = "开始清理相关服务";
-  public static final String LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F =
-      "旧 leader 上的所有服务现在均不可用。";
-  public static final String LOG_FILEPATH_ARG_RETRY_ARG_16284354 = "filePath：{}，重试：{}";
   public static final String EXCEPTION_COLON_5D70AD09 = ":";
   public static final String MESSAGE_COLON_CEFF3F4D = ": ";
   public static final String EMPTY_MESSAGE = "";
@@ -669,16 +668,16 @@ public final class ConfigNodeMessages {
           "当前 ConfigNode(nodeId: {}, ip: {}) 启动 leader 服务 [{}] 失败，该";
   public static final String
       MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_NODE_WILL_STILL_FINISH_WARMING_UP_THIS_SERVICE_STAYS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_E89A98E7 =
-          "当前 ConfigNode(nodeId: {}, ip: {}) 启动 leader 服务 [{}] 失败，该节点仍会完成预热；在下次 leader 切换前，该服务保持不可用。";
+          "[ConfigRegion Update] 当前 ConfigNode(nodeId: {}, ip: {}) 启动 leader 服务 [{}] 失败，该节点仍会完成预热；在下次 leader 切换前，该服务保持不可用。";
   public static final String
       MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_0C57A408 =
           "当前 ConfigNode(nodeId: {}, ip: {}) 已完成 leader 服务启动，但 load";
   public static final String
       MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_WARM_UP_IS_STILL_IN_PROGRESS_ARG_17C09A31 =
-          "当前 ConfigNode(nodeId: {}, ip: {}) 已完成 leader 服务启动，但 load 预热仍在进行中：{}";
+          "[ConfigRegion Update] 当前 ConfigNode(nodeId: {}, ip: {}) 已完成 leader 服务启动，但 load 预热仍在进行中：{}";
   public static final String
       MESSAGE_UNEXPECTED_INTERRUPTION_WHILE_WAITING_FOR_CONFIGNODE_LEADER_LOAD_WARM_UP_BB5AA4F7 =
-          "等待 ConfigNode leader load 预热时遭到意外中断。";
+          "[ConfigRegion Update] 等待 ConfigNode leader load 预热时遭到意外中断。";
   public static final String
       EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C =
           "Procedure 文件 %s 超过了加载缓冲区限制 %s，实际大小为 %s";

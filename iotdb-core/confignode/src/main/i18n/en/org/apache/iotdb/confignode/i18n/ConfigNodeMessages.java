@@ -21,6 +21,15 @@ package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
 
+  public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_A_CONFIGREGION_FOLLOWER_NEW_LEADER_NODEID_ARG_STOPPING_LEADER_SERVICES_A1962CD2 =
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] is a ConfigRegion follower; new leader nodeId: {}. Stopping leader services.";
+  public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_NO_LONGER_THE_CONFIGREGION_LEADER_STOPPING_LEADER_SERVICES_5DB0DA66 =
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] is no longer the ConfigRegion leader; stopping leader services.";
+  public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_COMPLETED_STOPPING_LEADER_SERVICES_62381EE1 =
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] completed stopping leader services.";
+  public static final String LOG_CONFIGREGION_UPDATE_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_FILEPATH_ARG_RETRY_ARG_188A702E =
+      "[ConfigRegion Update] Failed to close the ConfigNode SimpleConsensus log, filePath: {}, retry: {}.";
+
   public static final String ACQUIRE_TRIGGERTABLELOCK = "acquire TriggerTableLock";
   public static final String ACQUIRE_UDFTABLELOCK = "acquire UDFTableLock";
   public static final String ACTIVATING = "Activating {}...";
@@ -38,19 +47,17 @@ public final class ConfigNodeMessages {
       "Cannot find RegionGroup for region {} when removeRegionOldLocation in {}";
   public static final String CAN_ONLY_ALTER_DATATYPE_OF_FIELD_COLUMNS =
       "Can only alter datatype of FIELD columns";
-  public static final String CAN_T_CLOSE_STANDALONELOG_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-      "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, ";
   public static final String CAN_T_CONNECT_TO_DATA_NODE = "Can't connect to Data node: {}";
   public static final String CAN_T_CONSTRUCT_CLUSTERSCHEMAINFO =
       "Can't construct ClusterSchemaInfo";
   public static final String CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING =
       "Can't delete temporary snapshot file: {}, retrying...";
   public static final String CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_FLUSHWALFORSIMPLECONSENSUS =
-      "Can't force logWriter for ConfigNode flushWALForSimpleConsensus";
+      "[ConfigRegion Update] Can't force logWriter for ConfigNode flushWALForSimpleConsensus";
   public static final String CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-      "Can't force logWriter for ConfigNode SimpleConsensus mode";
+      "[ConfigRegion Update] Can't force logWriter for ConfigNode SimpleConsensus mode";
   public static final String CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-      "Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode";
+      "[ConfigRegion Update] Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode";
   public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP =
       "Can't start ConfigNode consensus group!";
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
@@ -96,11 +103,11 @@ public final class ConfigNodeMessages {
   public static final String CONFIGNODE_RPC_SERVICE_START_TO_REMOVE_DATANODE_REQ =
       "ConfigNode RPC Service start to remove DataNode, req: {}";
   public static final String CONFIGNODE_SIMPLECONSENSUSFILE_HAS_EXISTED_FILEPATH =
-      "ConfigNode SimpleConsensusFile has existed，filePath:{}";
+      "[ConfigRegion Update] ConfigNode SimpleConsensusFile has existed，filePath:{}";
   public static final String CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_THE_HISTORICAL =
-      "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.";
+      "[ConfigRegion Update] Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.";
   public static final String CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_WHEN_STARTUP =
-      "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes";
+      "[ConfigRegion Update] Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes";
   public static final String CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER =
       "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is {}, ignore that and use the default value {}";
   public static final String CONTINUOUS_QUERY_SUBMIT_THREAD_SHOULD_BE_GREATER_THAN_0 =
@@ -112,18 +119,15 @@ public final class ConfigNodeMessages {
   public static final String CREATEREGIONGROUPS_DATABASE_HAS_BEEN_DELETED_CORRESPONDING_REGIONGROUPS =
       "[CreateRegionGroups] Database {} has been deleted, corresponding RegionGroups will not be created.";
   public static final String CREATE_CONFIGNODE_SIMPLECONSENSUSFILE =
-      "Create ConfigNode SimpleConsensusFile: {}";
+      "[ConfigRegion Update] Create ConfigNode SimpleConsensusFile: {}";
   public static final String CREATE_CONFIGNODE_SIMPLECONSENSUSFILE_FAILED_FILEPATH =
-      "Create ConfigNode SimpleConsensusFile failed, filePath: {}";
+      "[ConfigRegion Update] Create ConfigNode SimpleConsensusFile failed, filePath: {}";
   public static final String CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS =
-      "Current node [nodeId: {}, ip:port: {}] as config region leader is ready to work";
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] completed leader service startup.";
   public static final String CURRENT_NODE_NODEID_IP_PORT_BECOMES_CONFIG_REGION_LEADER =
-      "Current node [nodeId: {}, ip:port: {}] becomes config region leader";
-  public static final String CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER =
-      "Current node [nodeId:{}, ip:port: {}] is no longer the leader, ";
+      "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] became the ConfigRegion leader; starting leader services.";
   public static final String MESSAGE_CURRENT_NODE_NODEID_ARG_IP_PORT_ARG_IS_NO_LONGER_THE_LEADER_SKIP_STARTING_LEADER_SERVICES_BECAUSE_THE_LEADER_EPOCH_IS_STALE_CCF39435 =
-      "Current node [nodeId:{}, ip:port: {}] is no longer the leader, skip starting leader "
-          + "services because the leader epoch is stale";
+      "[ConfigRegion Update] Skipping leader service startup for ConfigNode [nodeId: {}, consensusEndpoint: {}] because the leadership epoch is stale.";
   public static final String DATABASE_INCONSISTENCY_DETECTED_WHEN_ADJUSTING_MAX_REGION_GROUP_COUNT_MESSAGE =
       "Database inconsistency detected when adjusting max region group count, message: {}, will be corrected by the following adjusting plans";
   public static final String DATABASE_NOT_EXIST = "Database not exist";
@@ -136,7 +140,7 @@ public final class ConfigNodeMessages {
   public static final String DELETE_USELESS_PROCEDURE_WAL_DIR_FAIL =
       "Delete useless procedure wal dir fail.";
   public static final String DESERIALIZATION_ERROR_FOR_WRITE_PLAN_REQUEST_BYTEBUFFER =
-      "Deserialization error for write plan, request: {}, bytebuffer: {}";
+      "[ConfigRegion Update] Deserialization error for write plan, request: {}, bytebuffer: {}";
   public static final String DOES_NOT_EXIST = "%s does not exist";
   public static final String DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED =
       "Dropping tag or time column is not supported.";
@@ -162,8 +166,8 @@ public final class ConfigNodeMessages {
       "Execute getClusterId with result {}";
   public static final String EXECUTE_GETSYSTEMCONFIGURATION_WITH_RESULT =
       "Execute GetSystemConfiguration with result {}";
-  public static final String EXECUTE_NON_QUERY_PLAN_FAILED = "Execute non-query plan failed";
-  public static final String EXECUTE_QUERY_PLAN_FAILED = "Execute query plan failed";
+  public static final String EXECUTE_NON_QUERY_PLAN_FAILED = "[ConfigRegion Update] Execute non-query plan failed";
+  public static final String EXECUTE_QUERY_PLAN_FAILED = "[ConfigRegion Update] Execute query plan failed";
   public static final String EXECUTE_REGISTERAINODEREQUEST_WITH_RESULT =
       "Execute RegisterAINodeRequest {} with result {}";
   public static final String EXECUTE_REGISTERCONFIGNODEREQUEST_WITH_RESULT =
@@ -309,7 +313,7 @@ public final class ConfigNodeMessages {
       "{} has successfully started and joined the cluster: {}.";
   public static final String ID_TOOK_SNAPSHOT_FAIL = "{} id {} took snapshot fail";
   public static final String INITSTANDALONECONFIGNODE_MEETS_ERROR_CAN_T_FIND_STANDALONE_LOG_FILES_FILEPATH =
-      "InitStandAloneConfigNode meets error, can't find standalone log files, filePath: {}";
+      "[ConfigRegion Update] InitStandAloneConfigNode meets error, can't find standalone log files, filePath: {}";
   public static final String INVALID_AUTHOR_TYPE_ORDINAL = "Invalid Author Type ordinal";
   public static final String IOTDB_STARTED = "IoTDB started";
   public static final String IS_DEACTIVATED = "{} is deactivated.";
@@ -470,15 +474,15 @@ public final class ConfigNodeMessages {
       "The time_partition_interval should be positive";
   public static final String THE_TIME_PARTITION_ORIGIN_SHOULD_BE_NON_NEGATIVE =
       "The time_partition_origin should be non-negative";
-  public static final String TRY_LISTEN_TO_PLAN_FAILED = "Try listen to plan failed";
+  public static final String TRY_LISTEN_TO_PLAN_FAILED = "[ConfigRegion Update] Try listen to plan failed";
   public static final String UNDEFINED_TEMPLATE = "Undefined template {}";
   public static final String UNEXPECTED_INTERRUPTION_DURING_THE_CLOSE_METHOD_OF_LOGWRITER =
-      "Unexpected interruption during the close method of logWriter";
+      "[ConfigRegion Update] Unexpected interruption during the close method of logWriter";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_LEADER_ELECTION =
       "Unexpected interruption during waiting for leader election.";
-  public static final String UNEXPECTED_READ_PLAN = "Unexpected read plan : {}";
+  public static final String UNEXPECTED_READ_PLAN = "[ConfigRegion Update] Unexpected read plan : {}";
   public static final String UNEXPECTED_WRITE_PLAN_REQUEST_BYTEBUFFER =
-      "Unexpected write plan, request: {}, bytebuffer: {}";
+      "[ConfigRegion Update] Unexpected write plan, request: {}, bytebuffer: {}";
   public static final String UNKNOWN_FAILURE_DETECTOR = "Unknown failure_detector: %s, please set to \"fixed\" or \"phi_accrual\"";
   public static final String UNKNOWN_HOST_WHEN_CHECKING_SEED_CONFIGNODE_IP =
       "Unknown host when checking seed configNode IP {}";
@@ -621,10 +625,6 @@ public final class ConfigNodeMessages {
   public static final String LOG_NO_NEED_REMOVE_IT_NODE_ARG_REGION_ARG_D14062CE = "no need to remove it, node: {}, region: {}";
   public static final String LOG_PID_ARG_FAILED_WRITE_UPDATE_API_EXECUTING_CONSENSUS_LAYER_824FB30E = "pid={} Failed in the write update API executing the consensus layer due to: ";
   public static final String LOG_PID_ARG_FAILED_WRITE_DELETE_API_EXECUTING_CONSENSUS_LAYER_0E758BF5 = "pid={} Failed in the write delete API executing the consensus layer due to: ";
-  public static final String LOG_NEW_LEADER_NODEID_ARG_0A63760B = "the new leader is [nodeId:{}]";
-  public static final String LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261 = "start cleaning up related services";
-  public static final String LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F = "all services on old leader are unavailable now.";
-  public static final String LOG_FILEPATH_ARG_RETRY_ARG_16284354 = "filePath: {}, retry: {}";
   public static final String EXCEPTION_COLON_5D70AD09 = ":";
   public static final String MESSAGE_COLON_CEFF3F4D = ": ";
   public static final String EMPTY_MESSAGE = "";
@@ -633,16 +633,16 @@ public final class ConfigNodeMessages {
   public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_1754011A =
       "Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the";
   public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_NODE_WILL_STILL_FINISH_WARMING_UP_THIS_SERVICE_STAYS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_E89A98E7 =
-      "Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the node will "
+      "[ConfigRegion Update] Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the node will "
           + "still finish warming up; this service stays unavailable until the next leadership "
           + "transition.";
   public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_0C57A408 =
       "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load";
   public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_WARM_UP_IS_STILL_IN_PROGRESS_ARG_17C09A31 =
-      "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load warm-up "
+      "[ConfigRegion Update] Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load warm-up "
           + "is still in progress: {}";
   public static final String MESSAGE_UNEXPECTED_INTERRUPTION_WHILE_WAITING_FOR_CONFIGNODE_LEADER_LOAD_WARM_UP_BB5AA4F7 =
-      "Unexpected interruption while waiting for ConfigNode leader load warm-up.";
+      "[ConfigRegion Update] Unexpected interruption while waiting for ConfigNode leader load warm-up.";
   public static final String EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C =
       "Procedure file %s exceeds the load buffer limit %s, actual size %s";
   public static final String MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_2E051639 =
