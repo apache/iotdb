@@ -85,6 +85,12 @@ public class MemTableFlushTask {
   private String storageGroup;
   private String dataRegionId;
 
+  /**
+   * Whether rows whose values are all null should be ignored when flushing. All-null rows are only
+   * meaningful for table model databases, so it is the negation of {@code isTableModel}.
+   */
+  private final boolean ignoreAllNullRows;
+
   private IMemTable memTable;
 
   private volatile long memSerializeTime = 0L;
@@ -97,16 +103,21 @@ public class MemTableFlushTask {
    * @param memTable the memTable to flush
    * @param writer the writer where memTable will be flushed to (current tsfile writer or vm writer)
    * @param storageGroup current database
+   * @param dataRegionId current data region id
+   * @param isTableModel whether the memTable belongs to a table model database, it cannot be
+   *     inferred when the caller does not know the database, e.g. the pipe tsfile builders
    */
   public MemTableFlushTask(
       IMemTable memTable,
       RestorableTsFileIOWriter writer,
       String storageGroup,
-      String dataRegionId) {
+      String dataRegionId,
+      boolean isTableModel) {
     this.memTable = memTable;
     this.writer = writer;
     this.storageGroup = storageGroup;
     this.dataRegionId = dataRegionId;
+    this.ignoreAllNullRows = !isTableModel;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
 
@@ -160,9 +171,10 @@ public class MemTableFlushTask {
     // sort the IDeviceID in lexicographical order
     Collections.sort(deviceIDList);
     for (IDeviceID deviceID : deviceIDList) {
-      final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
+      final Map<String, IWritableMemChunk> value =
+          memTableMap.get(deviceID).getMemChunkMap(ignoreAllNullRows);
       // skip the empty device/chunk group
-      if (memTableMap.get(deviceID).isEmpty() || value.isEmpty()) {
+      if (memTableMap.get(deviceID).isEmpty(ignoreAllNullRows) || value.isEmpty()) {
         continue;
       }
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID));
@@ -171,7 +183,7 @@ public class MemTableFlushTask {
       for (String seriesId : seriesInOrder) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = value.get(seriesId);
-        if (series.count() == 0) {
+        if (series.count(ignoreAllNullRows) == 0) {
           continue;
         }
         /*
@@ -278,7 +290,7 @@ public class MemTableFlushTask {
               if (writableMemChunk instanceof AlignedWritableMemChunk && times == null) {
                 times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
               }
-              writableMemChunk.encode(ioTaskQueue, encodeInfo, times);
+              writableMemChunk.encode(ioTaskQueue, encodeInfo, times, ignoreAllNullRows);
               long subTaskTime = System.currentTimeMillis() - starTime;
               WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
               memSerializeTime += subTaskTime;

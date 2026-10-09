@@ -192,13 +192,15 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
                           new DeletionPredicate(device.getTableName(), new FullExactMatch(device)),
                           new TimeRange(
                               tsFileResource.getStartTime(device).get(),
-                              tsFileResource.getEndTime(device).get())));
+                              tsFileResource.getEndTime(device).get())),
+                      !isTableModel);
                 } else {
                   memTable.delete(
                       new TreeDeletionEntry(
                           new MeasurementPath(device, "*"),
                           tsFileResource.getStartTime(device).get(),
-                          tsFileResource.getEndTime(device).get()));
+                          tsFileResource.getEndTime(device).get()),
+                      !isTableModel);
                 }
               }
             }
@@ -269,10 +271,10 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       for (Map.Entry<IDeviceID, IWritableMemChunkGroup> deviceEntry : memTableMap.entrySet()) {
         IDeviceID deviceId = deviceEntry.getKey();
         for (Map.Entry<String, IWritableMemChunk> measurementEntry :
-            deviceEntry.getValue().getMemChunkMap().entrySet()) {
+            deviceEntry.getValue().getMemChunkMap(!isTableModel).entrySet()) {
           IWritableMemChunk memChunk = measurementEntry.getValue();
           tsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
-          tsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
+          tsFileResource.updateEndTime(deviceId, memChunk.getLastPoint(!isTableModel));
         }
       }
       // flush memTable
@@ -283,7 +285,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
                   recoveryMemTable,
                   writer,
                   databaseName + FILE_NAME_SEPARATOR + dataRegionId,
-                  dataRegionId);
+                  dataRegionId,
+                  isTableModel);
           tableFlushTask.syncFlushMemTable();
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMinPlanIndex());
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMaxPlanIndex());

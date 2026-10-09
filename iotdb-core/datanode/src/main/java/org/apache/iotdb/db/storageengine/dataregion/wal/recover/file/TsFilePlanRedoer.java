@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -55,11 +56,15 @@ import java.util.Optional;
  */
 public class TsFilePlanRedoer {
   private final TsFileResource tsFileResource;
+  // whether rows whose values are all null should be ignored, which depends on the data model of
+  // the database this tsfile belongs to
+  private final boolean ignoreAllNullRows;
   // store data when redoing logs
   private IMemTable recoveryMemTable;
 
   public TsFilePlanRedoer(TsFileResource tsFileResource) {
     this.tsFileResource = tsFileResource;
+    this.ignoreAllNullRows = !PathUtils.isTableModelDatabase(tsFileResource.getDatabaseName());
     this.recoveryMemTable =
         new PrimitiveMemTable(tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId());
     WritingMetrics.getInstance().recordActiveMemTableCount(tsFileResource.getDataRegionId(), 1);
@@ -73,7 +78,7 @@ public class TsFilePlanRedoer {
       TreeDeletionEntry deletionEntry =
           new TreeDeletionEntry(
               path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
-      recoveryMemTable.delete(deletionEntry);
+      recoveryMemTable.delete(deletionEntry, ignoreAllNullRows);
       deletionEntries.add(deletionEntry);
     }
     tsFileResource.getModFileForWrite().write(deletionEntries);
@@ -81,7 +86,7 @@ public class TsFilePlanRedoer {
 
   void redoDelete(RelationalDeleteDataNode node) throws IOException {
     for (TableDeletionEntry modEntry : node.getModEntries()) {
-      recoveryMemTable.delete(modEntry);
+      recoveryMemTable.delete(modEntry, ignoreAllNullRows);
     }
     tsFileResource.getModFileForWrite().write(node.getModEntries());
   }

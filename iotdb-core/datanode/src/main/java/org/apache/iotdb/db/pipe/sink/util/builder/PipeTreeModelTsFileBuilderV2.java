@@ -257,7 +257,8 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       }
     }
 
-    final MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, null, null);
+    final MemTableFlushTask memTableFlushTask =
+        new MemTableFlushTask(memTable, writer, null, null, false);
     memTableFlushTask.syncFlushMemTable();
 
     writer.endFile();

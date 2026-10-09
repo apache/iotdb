@@ -305,6 +305,49 @@ public class ImportWALTest {
   }
 
   /**
+   * Every directory must declare a database before any replay starts, otherwise the data model of a
+   * WAL snapshot could only be guessed.
+   */
+  @Test
+  public void testUnresolvedDirectoryRequiresExplicitDatabase() {
+    final List<Path> files =
+        Arrays.asList(
+            Paths.get("factory-3/one.wal"),
+            Paths.get("0/two.wal"),
+            Paths.get("root.sg-4/three.wal"));
+    ImportWAL.requireResolvedDatabases(
+        ImportWAL.resolveDirectoryDatabases(files, "target", true, null));
+
+    final Map<Path, String> unresolved =
+        ImportWAL.resolveDirectoryDatabases(files, null, true, null);
+    final IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ImportWAL.requireResolvedDatabases(unresolved));
+    // The inferable directory is not reported, the others are listed in directory order.
+    assertTrue(failure.getMessage().contains("0, root.sg-4"));
+    assertTrue(failure.getMessage().contains("-db/--database"));
+  }
+
+  /** A directory whose database cannot be inferred must fail before any Session is opened. */
+  @Test
+  public void testUnresolvedDatabaseFailsBeforeReplay() throws Exception {
+    final Path directory = temporaryFolder.newFolder("0").toPath();
+    createWALFile(directory, 0);
+    final ByteArrayOutputStream error = new ByteArrayOutputStream();
+
+    assertEquals(
+        1,
+        ImportWAL.run(
+            new String[] {"-f", directory.toString(), "-pw", "password"},
+            new PrintStream(error),
+            new PrintStream(error)));
+
+    assertTrue(error.toString().contains(directory.toString()));
+    assertTrue(error.toString().contains("-db/--database"));
+  }
+
+  /**
    * One thread may visit several databases; each directory needs its own Session and schema cache.
    */
   @Test
@@ -1547,7 +1590,8 @@ public class ImportWALTest {
         new Object[] {10, null, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg")
+        .replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession, times(3)).insertTablet(tabletCaptor.capture());
@@ -1593,7 +1637,8 @@ public class ImportWALTest {
         new Object[] {10, 100L, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg")
+        .replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession).insertAlignedTablet(tabletCaptor.capture());
@@ -1623,7 +1668,7 @@ public class ImportWALTest {
     final ImportWAL.ReplayStatistics statistics =
         ImportWAL.replayWALFiles(
             Collections.singletonList(walFile.toPath()),
-            new ImportWAL.WALReplayer(treeSession, null, null));
+            new ImportWAL.WALReplayer(treeSession, null, "root.sg"));
 
     assertEquals(1, statistics.getReplayedOperationCount());
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
@@ -1644,7 +1689,8 @@ public class ImportWALTest {
     }
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg")
+        .replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession, times(2)).insertTablet(tabletCaptor.capture());

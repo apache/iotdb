@@ -136,14 +136,16 @@ public final class ImportWALMessages {
   public static final String MESSAGE_SKIPPED_ARG_CORRUPTED_WAL_FILES_SOURCE_FILES_RETAINED_A889CCE2 =
       "Skipped %d corrupted WAL files; source files retained.";
 
-  public static final String MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_AND_ASK_FOR_CONFIRMATION_4B1E409D =
-      "Target database for table-model WAL entries. If omitted, infer from the WAL parent directory and ask for confirmation.";
+  public static final String MESSAGE_TARGET_DATABASE_FOR_WAL_REPLAY_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_IF_INFERENCE_FAILS_DB_DATABASE_IS_REQUIRED_6EEBC019 =
+      "Target database for WAL replay. If omitted, infer from the WAL parent directory; if inference fails, -db/--database is required.";
   public static final String MESSAGE_INFERRED_TABLE_DATABASE_ARG_FROM_WAL_DIRECTORY_ARG_REPLAY_INTO_THIS_DATABASE_Y_YES_A_ACCEPT_ALL_INFERRED_DATABASES_N_QUIT_5B59D833 =
       "Inferred table database %s from WAL directory %s. Replay into this database? [y] yes, [a] accept all inferred databases, [N] quit: ";
   public static final String EXCEPTION_DATABASE_CONFIRMATION_REQUIRED_FOR_WAL_DIRECTORY_ARG_INFERRED_DATABASE_ARG_SPECIFY_DB_DATABASE_OR_SKIP_DB_CONFIRMATION_WHEN_INTERACTIVE_INPUT_IS_UNAVAILABLE_14DF6D36 =
       "Database confirmation required for WAL directory %s (inferred database: %s). Specify -db/--database or --skip_db_confirmation when interactive input is unavailable.";
   public static final String EXCEPTION_REPLAY_INTO_INFERRED_DATABASE_ARG_WAS_NOT_CONFIRMED_SPECIFY_DB_DATABASE_TO_SELECT_THE_TARGET_EXPLICITLY_86F81190 =
       "Replay into inferred database %s was not confirmed. Specify -db/--database to select the target explicitly.";
+  public static final String EXCEPTION_CANNOT_DETERMINE_THE_TARGET_DATABASE_OF_WAL_DIRECTORIES_ARG_SPECIFY_DB_DATABASE_WHICH_APPLIES_TO_ALL_IMPORTED_DIRECTORIES_55B174E4 =
+      "Cannot determine the target database of WAL directories %s. Specify -db/--database, which applies to all imported directories.";
 
   public static final String MESSAGE_ACCEPT_ALL_INFERRED_DATABASE_NAMES_WITHOUT_CONFIRMATION_DB_DATABASE_STILL_TAKES_PRECEDENCE_FA49A73C =
       "Accept all inferred database names without confirmation; -db/--database still takes precedence.";
