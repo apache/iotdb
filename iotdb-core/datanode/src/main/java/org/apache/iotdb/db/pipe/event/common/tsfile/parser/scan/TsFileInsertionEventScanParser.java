@@ -691,7 +691,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
-                    currentDevice, Collections.singletonList(measurementID), currentModifications));
+                    currentDevice,
+                    Collections.singletonList(measurementID),
+                    currentModifications,
+                    false));
             return;
           }
         case MetaMarker.VALUE_CHUNK_HEADER:
@@ -830,7 +833,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               chunkHeader.getMeasurementID(),
               statistics.getStartTime(),
               statistics.getEndTime(),
-              currentModifications)) {
+              currentModifications,
+              false)) {
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
       }
@@ -999,7 +1003,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             chunkHeader.getCompressionType()));
     pendingAlignedChunkGroup.modsInfos.addAll(
         ModsOperationUtil.initializeMeasurementMods(
-            currentDevice, Collections.singletonList(measurementID), currentModifications));
+            currentDevice, Collections.singletonList(measurementID), currentModifications, false));
   }
 
   private PendingAlignedChunkGroup getOrCreatePendingAlignedChunkGroup(final int timeChunkIndex) {

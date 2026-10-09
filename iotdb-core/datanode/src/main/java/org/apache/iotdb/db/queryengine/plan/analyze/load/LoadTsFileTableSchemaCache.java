@@ -171,7 +171,7 @@ public class LoadTsFileTableSchemaCache {
   public boolean isDeviceDeletedByMods(final IDeviceID device) {
     try {
       return ModificationUtils.isDeviceDeletedByMods(
-          currentModifications, currentTimeIndex, device);
+          currentModifications, currentTimeIndex, device, true);
     } catch (final IllegalPathException e) {
       LOGGER.warn(
           DataNodeQueryMessages

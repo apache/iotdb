@@ -180,7 +180,7 @@ public class PartitionCache {
             map.computeIfAbsent(databaseName, k -> new ArrayList<>()).add(device);
           }
         };
-    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName);
+    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName, false);
     return result.getMap();
   }
 
@@ -205,7 +205,7 @@ public class PartitionCache {
             map.put(device, databaseName);
           }
         };
-    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName);
+    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName, false);
     return result.getMap();
   }
 
@@ -502,7 +502,8 @@ public class PartitionCache {
       final List<IDeviceID> deviceIDs,
       final boolean tryToFetch,
       final boolean isAutoCreate,
-      final String userName) {
+      final String userName,
+      final boolean isTableModel) {
     if (!isAutoCreate) {
       // TODO: avoid IDeviceID contains "*"
       // miss when deviceId contains *
@@ -530,13 +531,11 @@ public class PartitionCache {
           } else {
             // check if it is to auto create the system or audit database
             for (IDeviceID deviceID : deviceIDs) {
-              if (!deviceID.isTableModel()
-                  && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
+              if (!isTableModel && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
                 createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
                 break;
               }
-              if (!deviceID.isTableModel()
-                  && deviceID.startWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
+              if (!isTableModel && deviceID.startWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
                 createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
                 break;
               }

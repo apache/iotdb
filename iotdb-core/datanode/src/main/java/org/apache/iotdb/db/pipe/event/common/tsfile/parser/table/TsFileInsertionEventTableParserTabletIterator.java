@@ -466,7 +466,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     this.chunkReader = new TableChunkReader(timeChunk, valueChunkList, null);
     this.modsInfoList =
-        ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications);
+        ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications, true);
   }
 
   private boolean areAllFieldsDeletedByMods(
@@ -481,7 +481,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           internMeasurementName(schema),
           alignedChunkMetadata.getStartTime(),
           alignedChunkMetadata.getEndTime(),
-          modifications)) {
+          modifications,
+          true)) {
         return false;
       }
     }
@@ -492,7 +493,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final String measurementID, final long startTime, final long endTime) {
     return !modifications.isEmpty()
         && ModsOperationUtil.isAllDeletedByMods(
-            deviceID, measurementID, startTime, endTime, modifications);
+            deviceID, measurementID, startTime, endTime, modifications, true);
   }
 
   private String internMeasurementName(final IMeasurementSchema schema) {
