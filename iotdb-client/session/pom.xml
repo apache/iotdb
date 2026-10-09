@@ -29,6 +29,8 @@
     <artifactId>iotdb-session</artifactId>
     <name>IoTDB: Client: Session</name>
     <properties>
+        <!-- The complete-record codec lives in the companion TsFile research branch. -->
+        <tsfile.version>2.1.0-SNAPSHOT</tsfile.version>
         <session.it.skip>${session.test.skip}</session.it.skip>
         <session.test.skip>false</session.test.skip>
         <session.ut.skip>${session.test.skip}</session.ut.skip>
