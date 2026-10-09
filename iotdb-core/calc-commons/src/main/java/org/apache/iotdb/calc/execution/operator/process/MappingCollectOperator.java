@@ -50,32 +50,26 @@ public class MappingCollectOperator extends CollectOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (children.get(currentIndex).hasNextWithTimer()) {
-      TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
-      if (tsBlock == null) {
-        return null;
-      } else {
-        Column[] columns = new Column[outputColumnsCount];
-        List<Integer> mapping = mappings.get(currentIndex);
-        for (int i = 0; i < columns.length; i++) {
-          columns[i] = tsBlock.getColumn(mapping.get(i));
-        }
-        return TsBlock.wrapBlocksWithoutCopy(
-            tsBlock.getPositionCount(),
-            new RunLengthEncodedColumn(
-                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlock.getPositionCount()),
-            columns);
-      }
-    } else {
-      closeCurrentChild(currentIndex);
-      currentIndex++;
+    TsBlock tsBlock = super.next();
+    if (tsBlock == null) {
       return null;
     }
+
+    Column[] columns = new Column[outputColumnsCount];
+    List<Integer> mapping = mappings.get(currentIndex);
+    for (int i = 0; i < columns.length; i++) {
+      columns[i] = tsBlock.getColumn(mapping.get(i));
+    }
+    return TsBlock.wrapBlocksWithoutCopy(
+        tsBlock.getPositionCount(),
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlock.getPositionCount()),
+        columns);
   }
 
+  @Override
   protected void closeCurrentChild(int index) throws Exception {
-    children.get(index).close();
-    children.set(index, null);
+    super.closeCurrentChild(index);
     mappings.set(index, null);
   }
 }
