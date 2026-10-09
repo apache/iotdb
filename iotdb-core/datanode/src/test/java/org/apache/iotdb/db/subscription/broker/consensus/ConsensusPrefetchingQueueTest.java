@@ -1211,67 +1211,6 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
-  public void testAtEndInitializationStartsAfterLastWalIndex() throws Exception {
-    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    final File systemDir = temporaryFolder.newFolder("atEndAfterTail");
-    final File walDirectory = temporaryFolder.newFolder("atEndAfterTailWal");
-    ConsensusPrefetchingQueue queue = null;
-    try {
-      final DataRegionId regionId = new DataRegionId(8);
-      final WALNode walNode = mock(WALNode.class);
-      when(walNode.getLogDirectory()).thenReturn(walDirectory);
-      when(walNode.getCurrentSearchIndex()).thenReturn(4L);
-      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
-      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
-      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
-      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
-      when(converter.convert(any())).thenReturn(Collections.singletonList(createTablet()));
-      when(converter.getDatabaseName()).thenReturn("db");
-      final RegionProgress committedProgress =
-          new RegionProgress(
-              Collections.singletonMap(
-                  new WriterId(regionId.toString(), 7), new WriterProgress(1000L, 2L)));
-      queue =
-          new ConsensusPrefetchingQueue(
-              "consumerGroup",
-              "topic",
-              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
-              regionId,
-              serverImpl,
-              new SubscriptionWalRetentionPolicy(
-                  "topic",
-                  SubscriptionWalRetentionPolicy.UNBOUNDED,
-                  SubscriptionWalRetentionPolicy.UNBOUNDED),
-              converter,
-              newCommitManager(systemDir),
-              committedProgress,
-              5L,
-              1L,
-              true) {
-            @Override
-            protected ReplayLocateDecision locateReplayStartForRegionProgress(
-                final RegionProgress regionProgress, final boolean seekAfter) {
-              return ReplayLocateDecision.atEnd(
-                  walNode.getCurrentSearchIndex(), regionProgress, "empty sealed WAL");
-            }
-          };
-      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
-
-      assertNull(queue.poll("consumer"));
-      assertEquals(5L, queue.getCurrentReadSearchIndex());
-      assertTrue(pendingEntries(queue).offer(createRequest(5L)));
-      queue.drivePrefetchOnce();
-      assertEquals(6L, queue.getCurrentReadSearchIndex());
-      assertEquals(1L, queue.getPendingPathAcceptedEntries());
-    } finally {
-      if (queue != null) {
-        queue.close();
-      }
-      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
-    }
-  }
-
-  @Test
   public void testZeroPhysicalTimeUsesWriterLocalSequenceForReplayLookup() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("zeroPhysicalTimeReplay");

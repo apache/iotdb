@@ -882,9 +882,7 @@ public class ConsensusPrefetchingQueue {
       case AT_END:
         final long resolvedReplayStartSearchIndex =
             replayTarget.getStatus() == ReplayLocateStatus.AT_END
-                ? Math.min(
-                    nextSearchIndexAfter(replayTarget.getStartSearchIndex()),
-                    fallbackTailSearchIndex)
+                ? Math.min(replayTarget.getStartSearchIndex(), fallbackTailSearchIndex)
                 : replayTarget.getStartSearchIndex();
         return new ReplayLocateDecision(
             replayTarget.getStatus(),
@@ -2037,6 +2035,7 @@ public class ConsensusPrefetchingQueue {
     if (!hasLocalSearchIndex(request)) {
       return;
     }
+
     final long actualSearchIndex = request.getSearchIndex();
     final long expectedSearchIndex = nextExpectedSearchIndex.get();
     if (actualSearchIndex > expectedSearchIndex) {
@@ -3073,28 +3072,15 @@ public class ConsensusPrefetchingQueue {
    * old files have been reclaimed, the earliest available position may be later than 0.
    */
   public void seekToBeginning() {
-    final RegionProgress beginningProgress = new RegionProgress(Collections.emptyMap());
-    if (consensusReqReader instanceof WALNode) {
-      // The first retained WAL index can be greater than one after older files are reclaimed.
-      seekToRegionProgress(beginningProgress);
-    } else {
-      seekToResolvedPosition(FIRST_CONSENSUS_SEARCH_INDEX, beginningProgress, "beginning");
-    }
+    seekToResolvedPosition(0L, new RegionProgress(Collections.emptyMap()), "beginning");
   }
 
   /**
    * Seeks to the current WAL write position. After this, only newly written data will be consumed.
    */
   public void seekToEnd() {
-    final RegionProgress tailProgress = computeTailRegionProgress();
     seekToResolvedPosition(
-        nextSearchIndexAfter(consensusReqReader.getCurrentSearchIndex()), tailProgress, "end");
-  }
-
-  private static long nextSearchIndexAfter(final long searchIndex) {
-    return searchIndex == Long.MAX_VALUE
-        ? Long.MAX_VALUE
-        : Math.max(FIRST_CONSENSUS_SEARCH_INDEX, searchIndex + 1L);
+        consensusReqReader.getCurrentSearchIndex(), computeTailRegionProgress(), "end");
   }
 
   public void seekToRegionProgress(final RegionProgress regionProgress) {
@@ -3122,9 +3108,7 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getStatus(),
             replayTarget.getStartSearchIndex());
         seekToResolvedPosition(
-            replayTarget.getStatus() == ReplayLocateStatus.AT_END
-                ? nextSearchIndexAfter(replayTarget.getStartSearchIndex())
-                : replayTarget.getStartSearchIndex(),
+            replayTarget.getStartSearchIndex(),
             replayTarget.getRecoveryRegionProgress(),
             "regionProgress");
         return;
@@ -3165,9 +3149,7 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getStatus(),
             replayTarget.getStartSearchIndex());
         seekToResolvedPosition(
-            replayTarget.getStatus() == ReplayLocateStatus.AT_END
-                ? nextSearchIndexAfter(replayTarget.getStartSearchIndex())
-                : replayTarget.getStartSearchIndex(),
+            replayTarget.getStartSearchIndex(),
             replayTarget.getRecoveryRegionProgress(),
             "regionProgressAfter");
         return;
