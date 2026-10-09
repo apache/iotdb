@@ -1294,6 +1294,264 @@ public class PipeRealtimeExtractTest {
     }
   }
 
+  @Test
+  public void testTsFileSourceRegionLevelDowngradingUsesPipeParameters() throws Exception {
+    for (final String key :
+        Arrays.asList(
+            null,
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+            PipeSourceConstant.EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_KEY)) {
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      try (final PipeRealtimeDataRegionTsFileSource extractor =
+          createTsFileSourceForTest(key, pipeTaskMeta)) {
+        final String prefix = key == null ? "120" : key.startsWith("source") ? "121" : "122";
+        final PipeRealtimeEvent firstEvent =
+            extractTsFileForTest(
+                extractor,
+                pipeTaskMeta,
+                createTsFileResource(dataRegion1, prefix + "-1-0-0.tsfile"),
+                false);
+        final PipeRealtimeEvent secondEvent =
+            extractTsFileForTest(
+                extractor,
+                pipeTaskMeta,
+                createTsFileResource(dataRegion1, prefix + "-2-0-0.tsfile"),
+                false);
+        Assert.assertSame(firstEvent.getEvent(), extractor.supply());
+        if (key == null) {
+          Assert.assertSame(secondEvent.getEvent(), extractor.supply());
+        } else {
+          Assert.assertNull(extractor.supply());
+        }
+        firstEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+        if (key != null) {
+          Assert.assertSame(secondEvent.getEvent(), extractor.supply());
+        }
+        secondEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      }
+    }
+  }
+
+  @Test
+  public void testTsFileSourceRegionLevelDowngradingFollowsQueryPriority() throws Exception {
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    try (final PipeRealtimeDataRegionTsFileSource extractor =
+        createTsFileSourceForTest(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      final TsFileResource[] resources = {
+        createTsFileResource(dataRegion1, "300-10-0-0.tsfile"),
+        createTsFileResource(dataRegion1, "150-2-0-0.tsfile"),
+        createTsFileResource(dataRegion1, "200-2-0-0.tsfile"),
+        createTsFileResource(dataRegion1, "1", "200-2-0-0.tsfile"),
+        createTsFileResource(dataRegion1, "200-2-1-0.tsfile"),
+        createTsFileResource(dataRegion1, "100-3-0-0.tsfile")
+      };
+      final PipeRealtimeEvent[] events = new PipeRealtimeEvent[resources.length];
+      // Reverse arrival order: seq/unseq, version, timestamp, compaction version and directory
+      // must all use the same ordering as Hybrid source, including loaded files.
+      for (int i = resources.length - 1; i >= 0; --i) {
+        resources[i].setSeq(i == 0);
+        events[i] = extractTsFileForTest(extractor, pipeTaskMeta, resources[i], i == 5);
+      }
+      for (final PipeRealtimeEvent event : events) {
+        final Event suppliedEvent = extractor.supply();
+        Assert.assertSame(event.getEvent(), suppliedEvent);
+        Assert.assertNull(extractor.supply());
+        commitSuppliedEvent(suppliedEvent, commitManager);
+      }
+      Assert.assertNull(extractor.supply());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testTsFileSourceRegionLevelDowngradingWaitsForGeneratedTablets() throws Exception {
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    try (final PipeRealtimeDataRegionTsFileSource extractor =
+        createTsFileSourceForTest(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      extractTsFileForTest(
+          extractor, pipeTaskMeta, createTsFileResource(dataRegion1, "123-1-0-0.tsfile"), false);
+      final PipeRealtimeEvent progressEvent = createProgressReportRealtimeEvent();
+      Assert.assertTrue(progressEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(progressEvent);
+      final PipeRealtimeEvent secondEvent =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "123-2-0-0.tsfile"),
+              false);
+
+      final PipeTsFileInsertionEvent firstTsFile = (PipeTsFileInsertionEvent) extractor.supply();
+      firstTsFile.markGeneratedTabletInsertionEventsParsingStarted();
+      commitSuppliedEvent(firstTsFile, commitManager);
+      // Committing a TsFile with a retained iterable and no tablets yet must not release the gate.
+      Assert.assertNull(extractor.supply());
+      final PipeRawTabletInsertionEvent firstTablet =
+          createGeneratedTabletEvent(firstTsFile, pipeTaskMeta, "first", false);
+      final PipeRawTabletInsertionEvent secondTablet =
+          createGeneratedTabletEvent(firstTsFile, pipeTaskMeta, "second");
+      firstTsFile.registerGeneratedTabletInsertionEvent(firstTablet);
+      firstTsFile.registerGeneratedTabletInsertionEvent(secondTablet);
+      Assert.assertTrue(firstTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      Assert.assertTrue(secondTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      commitSuppliedEvent(firstTablet, commitManager);
+      Assert.assertNull(extractor.supply());
+      commitSuppliedEvent(secondTablet, commitManager);
+      Assert.assertNull(extractor.supply());
+      firstTsFile.markGeneratedTabletInsertionEventsParsingCompleted();
+
+      final Event secondTsFile = extractor.supply();
+      Assert.assertSame(secondEvent.getEvent(), secondTsFile);
+      Assert.assertNull(extractor.supply());
+      commitSuppliedEvent(secondTsFile, commitManager);
+      Assert.assertSame(progressEvent.getEvent(), extractor.supply());
+      releaseSuppliedEvent(progressEvent.getEvent());
+      Assert.assertNull(extractor.supply());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testTsFileSourceRegionLevelDowngradingCompensatesForDiscardedEvents()
+      throws Exception {
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    try (final PipeRealtimeDataRegionTsFileSource extractor =
+        createTsFileSourceForTest(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      extractTsFileForTest(
+          extractor, pipeTaskMeta, createTsFileResource(dataRegion1, "124-1-0-0.tsfile"), false);
+      final PipeRealtimeEvent secondEvent =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "124-2-0-0.tsfile"),
+              false);
+      final PipeRealtimeEvent thirdEvent =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "124-3-0-0.tsfile"),
+              false);
+
+      final PipeTsFileInsertionEvent firstTsFile = (PipeTsFileInsertionEvent) extractor.supply();
+      final PipeRawTabletInsertionEvent firstTablet =
+          createGeneratedTabletEvent(firstTsFile, pipeTaskMeta, "discarded-first", false);
+      final PipeRawTabletInsertionEvent secondTablet =
+          createGeneratedTabletEvent(firstTsFile, pipeTaskMeta, "discarded-second");
+      firstTsFile.markGeneratedTabletInsertionEventsParsingStarted();
+      firstTsFile.registerGeneratedTabletInsertionEvent(firstTablet);
+      firstTsFile.registerGeneratedTabletInsertionEvent(secondTablet);
+      firstTsFile.markGeneratedTabletInsertionEventsParsingCompleted();
+      Assert.assertTrue(firstTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      Assert.assertTrue(secondTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      commitSuppliedEvent(firstTsFile, commitManager);
+      firstTablet.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      firstTablet.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      Assert.assertNull(extractor.supply());
+      secondTablet.clearReferenceCount(TEST_REFERENCE_HOLDER);
+
+      final Event secondTsFile = extractor.supply();
+      Assert.assertSame(secondEvent.getEvent(), secondTsFile);
+      secondTablet.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      Assert.assertNull(extractor.supply());
+      // Direct TsFile discard releases the gate once, without closing the source.
+      releaseSuppliedEvent(secondTsFile);
+      Assert.assertSame(thirdEvent.getEvent(), extractor.supply());
+      releaseSuppliedEvent(thirdEvent.getEvent());
+      Assert.assertNull(extractor.supply());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testTsFileSourceRegionLevelDowngradingReleasesBufferedEventsOnClose()
+      throws Exception {
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    try (final PipeRealtimeDataRegionTsFileSource extractor =
+        createTsFileSourceForTest(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      final PipeRealtimeEvent firstEvent =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "125-1-0-0.tsfile"),
+              false);
+      final PipeRealtimeEvent bufferedFile =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "125-2-0-0.tsfile"),
+              false);
+      final PipeRealtimeEvent heartbeat =
+          PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+      Assert.assertTrue(heartbeat.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(heartbeat);
+      Assert.assertSame(firstEvent.getEvent(), extractor.supply());
+      final PipeRealtimeEvent pendingFile =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "125-3-0-0.tsfile"),
+              false);
+      extractor.close();
+      Assert.assertEquals(0, bufferedFile.getEvent().getReferenceCount());
+      Assert.assertEquals(0, pendingFile.getEvent().getReferenceCount());
+      Assert.assertEquals(0, heartbeat.getEvent().getReferenceCount());
+      releaseSuppliedEvent(firstEvent.getEvent());
+      final PipeRealtimeEvent lateFile =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "125-4-0-0.tsfile"),
+              false);
+      Assert.assertEquals(0, lateFile.getEvent().getReferenceCount());
+      Assert.assertNull(extractor.supply());
+    }
+  }
+
+  private PipeRealtimeDataRegionTsFileSource createTsFileSourceForTest(
+      final String regionLevelDowngradingKey, final PipeTaskMeta pipeTaskMeta) throws Exception {
+    final HashMap<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+    if (regionLevelDowngradingKey != null) {
+      attributes.put(regionLevelDowngradingKey, Boolean.TRUE.toString());
+    }
+    final PipeParameters parameters = new PipeParameters(attributes);
+    final PipeRealtimeDataRegionTsFileSource extractor = new PipeRealtimeDataRegionTsFileSource();
+    extractor.validate(new PipeParameterValidator(parameters));
+    extractor.customize(
+        parameters,
+        new PipeTaskRuntimeConfiguration(
+            new PipeTaskSourceRuntimeEnvironment(
+                TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta)));
+    return extractor;
+  }
+
+  private PipeRealtimeEvent extractTsFileForTest(
+      final PipeRealtimeDataRegionSource extractor,
+      final PipeTaskMeta pipeTaskMeta,
+      final TsFileResource resource,
+      final boolean isLoaded) {
+    final PipeRealtimeEvent event =
+        bindToTestPipe(
+            PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", resource, isLoaded),
+            extractor,
+            pipeTaskMeta);
+    Assert.assertTrue(event.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+    extractor.extract(event);
+    return event;
+  }
+
   private Future<?> write2DataRegion(
       final int writeNum, final int dataRegionId, final int startNum) {
     final File dataRegionDir =
@@ -1384,8 +1642,15 @@ public class PipeRealtimeExtractTest {
 
   private TsFileResource createTsFileResource(final int dataRegionId, final String fileName)
       throws IOException {
+    return createTsFileResource(dataRegionId, "0", fileName);
+  }
+
+  private TsFileResource createTsFileResource(
+      final int dataRegionId, final String timePartition, final String fileName)
+      throws IOException {
     final File dataRegionDir =
-        new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
+        new File(
+            tsFileDir.getPath() + File.separator + dataRegionId + File.separator + timePartition);
     Assert.assertTrue(dataRegionDir.mkdirs() || dataRegionDir.isDirectory());
 
     final File tsFile = new File(dataRegionDir, fileName);

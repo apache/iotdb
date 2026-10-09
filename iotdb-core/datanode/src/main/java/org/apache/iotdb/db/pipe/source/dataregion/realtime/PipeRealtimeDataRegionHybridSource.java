@@ -34,8 +34,6 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -177,7 +175,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       prepareRegionLevelTailTsFileEpochUnderLock(event.getTsFileEpoch());
       if (canNotUseTabletAnymore(event)) {
         if (regionLevelTailTsFileEpoch == event.getTsFileEpoch()) {
-          promoteRegionLevelTailTsFileEpochUnderLock();
+          degradeRegionLevelTailTsFileEpochUnderLock();
           bufferPendingEventsForRegionLevelExitUnderLock();
           rebalanceRegionLevelBufferedEventsUnderLock();
         }
@@ -374,33 +372,6 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     reportTsFileEpochDegradedStatusUnderLock();
   }
 
-  private static int compareTsFileEpochsByQueryPriority(
-      final TsFileEpoch epoch1, final TsFileEpoch epoch2) {
-    final TsFileResource resource1 = epoch1.getResource();
-    final TsFileResource resource2 = epoch2.getResource();
-
-    int result =
-        new MergeReaderPriority(
-                resource1.getTsFileID().getTimestamp(),
-                resource1.getVersion(),
-                0,
-                resource1.isSeq())
-            .compareTo(
-                new MergeReaderPriority(
-                    resource2.getTsFileID().getTimestamp(),
-                    resource2.getVersion(),
-                    0,
-                    resource2.isSeq()));
-    if (result != 0) {
-      return result;
-    }
-
-    result =
-        Long.compare(
-            resource1.getTsFileID().compactionVersion, resource2.getTsFileID().compactionVersion);
-    return result != 0 ? result : resource1.getTsFilePath().compareTo(resource2.getTsFilePath());
-  }
-
   private boolean shouldOrderTsFileEventUnderLock(final PipeRealtimeEvent event) {
     if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
       return false;
@@ -429,23 +400,23 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     }
 
     if (regionLevelTailTsFileEpoch != null) {
-      promoteRegionLevelTailTsFileEpochUnderLock();
+      degradeRegionLevelTailTsFileEpochUnderLock();
       bufferPendingEventsForRegionLevelExitUnderLock();
       rebalanceRegionLevelBufferedEventsUnderLock();
     }
     regionLevelTailTsFileEpoch = tsFileEpoch;
   }
 
-  private void promoteRegionLevelTailTsFileEpochUnderLock() {
+  private void degradeRegionLevelTailTsFileEpochUnderLock() {
     final TsFileEpoch tsFileEpoch = regionLevelTailTsFileEpoch;
     if (tsFileEpoch == null) {
       return;
     }
 
-    promoteTsFileEpochUnderLock(tsFileEpoch);
+    degradeTsFileEpochUnderLock(tsFileEpoch);
   }
 
-  private void promoteTsFileEpochUnderLock(final TsFileEpoch tsFileEpoch) {
+  private void degradeTsFileEpochUnderLock(final TsFileEpoch tsFileEpoch) {
     if (regionLevelTailTsFileEpoch == tsFileEpoch) {
       regionLevelTailTsFileEpoch = null;
     }
@@ -455,7 +426,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     markTsFileEpochDegradedUnderLock(tsFileEpoch);
   }
 
-  private void promoteLowerPriorityActiveTsFileEpochsUnderLock() {
+  private void degradeLowerPriorityActiveTsFileEpochsUnderLock() {
     final TsFileEpoch nextDegradedTsFileEpoch = regionLevelDegradedTsFileEpochs.peek();
     if (nextDegradedTsFileEpoch == null) {
       return;
@@ -464,10 +435,10 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     // An active epoch may be discovered as degraded only when its queued tablet is supplied. Make
     // every known lower-priority epoch enter the ordered TsFile queue before allowing the current
     // head to pass, including the realtime tail and epochs whose TsFile has not been flushed yet.
-    for (final TsFileEpoch activeTsFileEpoch : activeTsFileEpochs.toArray(new TsFileEpoch[0])) {
+    for (final TsFileEpoch activeTsFileEpoch : activeTsFileEpochs) {
       if (!degradedTsFileEpochs.contains(activeTsFileEpoch)
           && compareTsFileEpochsByQueryPriority(activeTsFileEpoch, nextDegradedTsFileEpoch) < 0) {
-        promoteTsFileEpochUnderLock(activeTsFileEpoch);
+        degradeTsFileEpochUnderLock(activeTsFileEpoch);
       }
     }
   }
@@ -479,7 +450,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
           && !degradedTsFileEpochs.contains(pendingEvent.getTsFileEpoch())) {
         if (regionLevelTailTsFileEpoch != null
             && regionLevelTailTsFileEpoch != pendingEvent.getTsFileEpoch()) {
-          promoteRegionLevelTailTsFileEpochUnderLock();
+          degradeRegionLevelTailTsFileEpochUnderLock();
         }
         regionLevelTailTsFileEpoch = pendingEvent.getTsFileEpoch();
       }
@@ -489,7 +460,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private void rebalanceRegionLevelBufferedEventsUnderLock() {
     bufferPendingEventsForRegionLevelExitUnderLock();
-    promoteLowerPriorityActiveTsFileEpochsUnderLock();
+    degradeLowerPriorityActiveTsFileEpochsUnderLock();
 
     final TsFileEpoch nextDegradedTsFileEpoch = regionLevelDegradedTsFileEpochs.peek();
     final Deque<PipeRealtimeEvent> retainedEvents = new ArrayDeque<>();
@@ -851,7 +822,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
             .filter(event -> event.getTsFileEpoch() == regionLevelTailTsFileEpoch)
             .filter(event -> event.getEvent() instanceof TabletInsertionEvent)
             .anyMatch(event -> event.getEvent().isReleased())) {
-      promoteRegionLevelTailTsFileEpochUnderLock();
+      degradeRegionLevelTailTsFileEpochUnderLock();
       rebalanceRegionLevelBufferedEventsUnderLock();
       return shouldSupplyAfterTransition ? supplyRegionLevelDegradedInternal() : null;
     }
