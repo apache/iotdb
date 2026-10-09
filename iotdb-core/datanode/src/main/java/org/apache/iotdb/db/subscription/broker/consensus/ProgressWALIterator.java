@@ -79,6 +79,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   private int currentFileIndex = -1;
   private ProgressWALReader currentReader;
   private long currentReaderVersionId = -1L;
+  private long pendingNearLiveWalVersionId = -1L;
   private boolean currentReaderUsesLiveSnapshot = false;
   private int consumedEntryCountInCurrentFile = 0;
   private final Set<Long> skippedBrokenWalVersionIds = new HashSet<>();
@@ -390,6 +391,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     pendingRequests.clear();
     pendingSearchIndex = Long.MIN_VALUE;
     pendingLocalSeq = Long.MIN_VALUE;
+    pendingNearLiveWalVersionId = -1L;
     lastError = null;
     incompleteScan = false;
     incompleteScanDetail = null;
@@ -489,9 +491,27 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private boolean openNextReader() throws IOException {
+    if (pendingNearLiveWalVersionId >= 0L) {
+      refresh();
+      final int retryFileIndex = findFileIndexByVersion(pendingNearLiveWalVersionId);
+      if (retryFileIndex < 0) {
+        return false;
+      }
+      currentFileIndex = retryFileIndex - 1;
+      pendingNearLiveWalVersionId = -1L;
+    }
     while (++currentFileIndex < walFiles.length) {
-      if (openReaderAtIndex(currentFileIndex, 0)) {
-        return true;
+      final int candidateFileIndex = currentFileIndex;
+      final long candidateVersionId = walFileVersionIds[candidateFileIndex];
+      try {
+        if (openReaderAtIndex(candidateFileIndex, 0)) {
+          return true;
+        }
+      } catch (final IOException e) {
+        // A near-live WAL file can be temporarily unavailable while it is renamed or sealed.
+        // Retry this version on the next scan instead of jumping to its successor.
+        pendingNearLiveWalVersionId = candidateVersionId;
+        throw e;
       }
     }
     return false;
@@ -520,7 +540,15 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
 
     final int previousFileIndex = findFileIndexByVersion(currentReaderVersionId);
     if (previousFileIndex < 0) {
-      return openFirstReaderAfterVersion(currentReaderVersionId);
+      // The old live file may be between its seal and rename. Its last snapshot does not prove
+      // that every entry in the sealed file was consumed, so wait for the old version to reappear.
+      markIncompleteScan(
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_TEMPORARILY_ABSENT_DURING_ROTATION_CB8C8CE6,
+              currentReaderVersionId),
+          null);
+      return false;
     }
     if (openReaderAtIndex(previousFileIndex, consumedEntryCountInCurrentFile)) {
       return true;
@@ -590,12 +618,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
             }
           }
         }
-        markIncompleteScan(
-            String.format(
-                "failed to open near-live WAL file %s while replay scan was still in progress",
-                walFile.getName()),
-            e);
-        return false;
+        throw e;
       }
       recordSkippedBrokenWalFile(versionId, walFile, e);
       return false;

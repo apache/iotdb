@@ -2045,6 +2045,8 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：打开 near-live WAL 文件 {} 失败，不加入黑名单并重试";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator：读取 WAL 出错";
+  public static final String MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_TEMPORARILY_ABSENT_DURING_ROTATION_CB8C8CE6 =
+      "上一个活跃 WAL 文件版本 %s 在轮转期间暂时不可见";
   public static final String
       PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
       "ProgressWALIterator：处理 WAL 文件 {} 失败，跳过该文件的剩余条目";

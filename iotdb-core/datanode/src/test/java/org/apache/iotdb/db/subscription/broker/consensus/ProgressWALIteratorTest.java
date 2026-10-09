@@ -38,6 +38,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -452,10 +453,115 @@ public class ProgressWALIteratorTest {
         assertFalse(iterator.hasNext());
         assertTrue(iterator.hasIncompleteScan());
         assertTrue(iterator.hasReadError());
-        assertTrue(iterator.getIncompleteScanDetail().contains("near-live WAL file"));
+        assertTrue(iterator.getLastError() != null);
       }
     } finally {
       Files.deleteIfExists(brokenLiveWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testNearLiveWalOpenFailureDoesNotSkipToSuccessor() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-near-live-retry");
+    final File firstWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File temporarilyUnavailableWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 1, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(2, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+      }
+      Files.write(temporarilyUnavailableWal.toPath(), new byte[128]);
+      try (WALWriter writer = new WALWriter(successorWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
+      }
+
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(dir.toFile());
+      when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
+      when(walNode.getCurrentWALMetaDataSnapshot())
+          .thenReturn(singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(walNode, 1L)) {
+        assertTrue(iterator.hasNext());
+        assertEquals(1L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasNext());
+        assertTrue(iterator.hasReadError());
+
+        Files.delete(temporarilyUnavailableWal.toPath());
+        assertFalse(iterator.hasNext());
+        try (WALWriter writer = new WALWriter(temporarilyUnavailableWal, WALFileVersion.V3)) {
+          writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 2L));
+        }
+
+        assertTrue(iterator.hasNext());
+        assertEquals(2L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasReadError());
+        assertTrue(iterator.hasNext());
+        assertEquals(3L, iterator.next().getSearchIndex());
+      }
+    } finally {
+      Files.deleteIfExists(firstWal.toPath());
+      Files.deleteIfExists(temporarilyUnavailableWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testRotatedLiveWalMustReappearBeforeReadingSuccessor() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-rotation-rename");
+    final File firstWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final Path temporarilyHiddenWal = dir.resolve(firstWal.getName() + ".hidden");
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 2L));
+      }
+
+      final AtomicLong currentWalVersion = new AtomicLong(0L);
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(dir.toFile());
+      when(walNode.getCurrentWALFileVersion()).thenAnswer(ignored -> currentWalVersion.get());
+      when(walNode.getCurrentWALMetaDataSnapshot())
+          .thenReturn(singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(walNode, 1L)) {
+        assertTrue(iterator.hasNext());
+        assertEquals(1L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasNext());
+
+        Files.move(firstWal.toPath(), temporarilyHiddenWal);
+        try (WALWriter writer = new WALWriter(successorWal, WALFileVersion.V3)) {
+          writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
+        }
+        currentWalVersion.set(1L);
+        assertFalse(iterator.hasNext());
+        assertTrue(iterator.hasIncompleteScan());
+
+        Files.move(temporarilyHiddenWal, firstWal.toPath());
+        assertTrue(iterator.hasNext());
+        assertEquals(2L, iterator.next().getSearchIndex());
+        assertTrue(iterator.hasNext());
+        assertEquals(3L, iterator.next().getSearchIndex());
+      }
+    } finally {
+      Files.deleteIfExists(firstWal.toPath());
+      Files.deleteIfExists(temporarilyHiddenWal);
+      Files.deleteIfExists(successorWal.toPath());
       Files.deleteIfExists(dir);
     }
   }

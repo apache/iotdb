@@ -2202,6 +2202,8 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: failed to open near-live WAL file {}, retrying without blacklisting";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator: error reading WAL";
+  public static final String MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_TEMPORARILY_ABSENT_DURING_ROTATION_CB8C8CE6 =
+      "previous live WAL file version %s is temporarily absent during rotation";
   public static final String
       PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
       "ProgressWALIterator: failed to process WAL file {}, skipping remaining entries";
