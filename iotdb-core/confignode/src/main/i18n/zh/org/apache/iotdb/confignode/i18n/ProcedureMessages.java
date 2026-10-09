@@ -1137,6 +1137,9 @@ public final class ProcedureMessages {
       "暂停 pid={}, activeCount={}";
   public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D =
       "worker {} 执行 procedure {} 时发生异常";
+  public static final String
+      LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572 =
+          "在 {} procedure 操作中， 对表{}.{} 的正式提交失败，失败结果：{}";
   public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 =
       "Worker 卡住 {}({})，运行时间 {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D =
@@ -1500,11 +1503,9 @@ public final class ProcedureMessages {
   public static final String
       MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
           "上一次尝试因“%s”失败，正在重试此状态。";
-  public static final String
-      MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
-          "此状态因“%s”失败，正在等待回滚。";
-  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 =
-      "正在回滚，失败原因：%s。";
+  public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+      "此状态因“%s”失败，正在等待回滚。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "正在回滚此前发生的失败。";
 }

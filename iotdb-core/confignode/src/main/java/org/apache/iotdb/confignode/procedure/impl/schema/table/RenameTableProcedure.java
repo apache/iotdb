@@ -85,7 +85,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_RENAMING_TABLE,
               database,
               tableName);
-          commitRelease(env, tableName);
+          commitReleaseWithHA(env, tableName);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(

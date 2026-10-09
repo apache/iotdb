@@ -329,7 +329,7 @@ public class DataNodeTableCache implements ITableCache {
             database,
             tableName);
         if (Objects.nonNull(oldName)) {
-          removeTableFromSpecialStatusMap(database, oldName);
+          repairMissedRenamePreUpdate(database, tableName, oldName);
         }
         return;
       }
@@ -368,6 +368,31 @@ public class DataNodeTableCache implements ITableCache {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  /**
+   * Repairs the cache after this DataNode missed the pre-update of a rename procedure. The
+   * ConfigNode has already renamed the table, so the new name can only be re-fetched, and the old
+   * name must not stay in the cache as a usable table.
+   */
+  private void repairMissedRenamePreUpdate(
+      final String database, final String newName, final String oldName) {
+    removeTableFromSpecialStatusMap(database, oldName);
+    // drop the old table
+    databaseTableMap.computeIfPresent(
+        database,
+        (databaseName, tables) -> {
+          tables.remove(oldName);
+          return tables;
+        });
+    // A placeholder makes the next lookup of the new name fetch its definition from the ConfigNode,
+    // which holds the committed rename.
+    if (Objects.isNull(getTableFromCache(database, newName))) {
+      specialStatusMap
+          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+          .put(newName, new Pair<>(new NonCommittableTsTable(newName), 0L));
+    }
+    instanceVersion.incrementAndGet();
   }
 
   private void commitDeleteTable(String database, final String tableName) {

@@ -21,14 +21,18 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -37,7 +41,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Semaphore;
 
 public class DataNodeTableCacheTest {
@@ -121,6 +127,33 @@ public class DataNodeTableCacheTest {
   }
 
   @Test
+  public void commitRenameRepairsCacheWhenPreReleaseWasMissed() throws Exception {
+    final ITableCache cache = DataNodeTableCache.getInstance();
+    final String oldName = "table1";
+    final String newName = "table2";
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      // The activation snapshot of a DataNode that started during the pre-release: the old name is
+      // a using table, and it is also marked as NonCommittable.
+      final Map<String, List<TsTable>> usingTables = new HashMap<>();
+      usingTables.put(TABLE_CACHE_TEST_DATABASE, Collections.singletonList(createTable(oldName)));
+      final Map<String, List<TsTable>> specialTables = new HashMap<>();
+      specialTables.put(
+          TABLE_CACHE_TEST_DATABASE, Collections.singletonList(new NonCommittableTsTable(oldName)));
+      cache.init(
+          TsTableInternalRPCUtil.serializeTableInitializationInfo(usingTables, specialTables));
+
+      // The commit is the only sign of the rename, and the HA broadcast may send it more than once.
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName);
+      assertRenameRepaired(cache, oldName, newName);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName);
+      assertRenameRepaired(cache, oldName, newName);
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
+  }
+
+  @Test
   public void fetchingPreDeleteTableReportsDedicatedStatusCode() throws Exception {
     final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(DATABASE);
@@ -164,6 +197,32 @@ public class DataNodeTableCacheTest {
     method.setAccessible(true);
     method.invoke(
         cache, fetchedTables, DATABASE, tableName, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+  }
+
+  /** The old name must be gone, and the new name left as a placeholder to be re-fetched. */
+  private static void assertRenameRepaired(
+      final ITableCache cache, final String oldName, final String newName) throws Exception {
+    Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, oldName, false));
+    Assert.assertTrue(
+        getSpecialStatusTable(cache, TABLE_CACHE_TEST_DATABASE, newName)
+            instanceof NonCommittableTsTable);
+  }
+
+  /** A placeholder for a table to be re-fetched only shows up in the private specialStatusMap. */
+  @SuppressWarnings("unchecked")
+  private static TsTable getSpecialStatusTable(
+      final ITableCache cache, final String database, final String tableName) throws Exception {
+    final Field field = DataNodeTableCache.class.getDeclaredField("specialStatusMap");
+    field.setAccessible(true);
+    final Map<String, Map<String, Pair<TsTable, Long>>> specialStatusMap =
+        (Map<String, Map<String, Pair<TsTable, Long>>>) field.get(cache);
+    final Map<String, Pair<TsTable, Long>> tableMap =
+        specialStatusMap.get(PathUtils.unQualifyDatabaseName(database));
+    if (Objects.isNull(tableMap)) {
+      return null;
+    }
+    final Pair<TsTable, Long> tablePair = tableMap.get(tableName);
+    return Objects.isNull(tablePair) ? null : tablePair.getLeft();
   }
 
   private Semaphore getFetchTableSemaphore(final ITableCache cache) throws Exception {
