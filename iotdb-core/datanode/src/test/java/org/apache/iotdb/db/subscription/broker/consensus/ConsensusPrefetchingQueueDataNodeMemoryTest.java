@@ -33,6 +33,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -45,12 +46,19 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -67,6 +75,15 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
 
   @Test
   public void testQueuesShareDataNodeMemoryBudget() throws Exception {
+    assertQueuesShareDataNodeMemoryBudget(false);
+  }
+
+  @Test
+  public void testOversizedEntryBlocksOtherQueueUntilAck() throws Exception {
+    assertQueuesShareDataNodeMemoryBudget(true);
+  }
+
+  private void assertQueuesShareDataNodeMemoryBudget(final boolean oversized) throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final int originalBatchMaxDelay =
         CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
@@ -77,7 +94,8 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       final Tablet tablet = createTablet();
       final long oneTabletBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
-      final SubscriptionMemoryManager memoryManager = new SubscriptionMemoryManager(oneTabletBytes);
+      final SubscriptionMemoryManager memoryManager =
+          new SubscriptionMemoryManager(oneTabletBytes - (oversized ? 1L : 0L));
       final ConsensusSubscriptionCommitManager commitManager = newCommitManager(systemDir);
 
       final FakeConsensusReqReader readerA = new FakeConsensusReqReader();
@@ -116,9 +134,10 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertEquals(oneTabletBytes, queueA.getRetainedTabletBytes());
       assertEquals(0L, queueB.getRetainedTabletBytes());
       assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
-      assertTrue(
-          queueA.getRetainedTabletBytes() + queueB.getRetainedTabletBytes()
-              <= memoryManager.getTotalMemorySizeInBytes());
+      assertEquals(oversized ? 1L : 0L, memoryManager.getOvercommitSizeInBytes());
+      assertEquals(oversized ? 1L : 0L, memoryManager.getOversizedEntryCount());
+      assertEquals(
+          oneTabletBytes, queueA.getRetainedTabletBytes() + queueB.getRetainedTabletBytes());
 
       readerB.currentSearchIndex = 1L;
       assertFalse(pendingEntries(queueB).offer(createRequest(1L)));
@@ -132,6 +151,7 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertTrue(queueA.ack("consumerA", eventA.getCommitContext()));
       assertEquals(0L, queueA.getRetainedTabletBytes());
       assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+      assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
 
       queueB.drivePrefetchOnce();
       assertEquals("false", queueB.coreReportMessage().get("realtimeAdmissionBlocked"));
@@ -141,14 +161,16 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertEquals(1, conversionCountB.get());
       assertEquals(oneTabletBytes, queueB.getRetainedTabletBytes());
       assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
-      assertTrue(
-          queueA.getRetainedTabletBytes() + queueB.getRetainedTabletBytes()
-              <= memoryManager.getTotalMemorySizeInBytes());
+      assertEquals(oversized ? 1L : 0L, memoryManager.getOvercommitSizeInBytes());
+      assertEquals(oversized ? 2L : 0L, memoryManager.getOversizedEntryCount());
+      assertEquals(
+          oneTabletBytes, queueA.getRetainedTabletBytes() + queueB.getRetainedTabletBytes());
 
       final SubscriptionEvent eventB = queueB.poll("consumerB");
       assertNotNull(eventB);
       assertTrue(queueB.ack("consumerB", eventB.getCommitContext()));
       assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+      assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
     } finally {
       if (queueA != null) {
         queueA.close();
@@ -161,6 +183,150 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
           .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
+  }
+
+  @Test
+  public void testWatermarkAndAckDoNotHideDataDeliveryGap() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
+    final File systemDir = temporaryFolder.newFolder("delivery-gap");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      queue =
+          newQueue(
+              "consumerGroup",
+              new DataRegionId(1),
+              reader,
+              newConverter(new AtomicInteger()),
+              newCommitManager(systemDir),
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+      final AtomicLong clockNs = new AtomicLong(-1_000_000L);
+      setTimeTracker(queue, new SubscriptionQueueTimeTracker(clockNs::get));
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1_000_000L));
+
+      assertNull(queue.poll("consumer"));
+      reader.currentSearchIndex = 1L;
+      assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+      queue.drivePrefetchOnce();
+      final SubscriptionEvent first = queue.poll("consumer");
+      assertNotNull(first);
+
+      clockNs.addAndGet(TimeUnit.MILLISECONDS.toNanos(60_000L));
+      final Method injectWatermark =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod("injectWatermark", long.class);
+      injectWatermark.setAccessible(true);
+      injectWatermark.invoke(queue, 1L);
+      final SubscriptionEvent watermark = queue.poll("consumer");
+      assertNotNull(watermark);
+      assertEquals(
+          SubscriptionPollResponseType.WATERMARK.getType(),
+          watermark.getCurrentResponse().getResponseType());
+      assertEquals(60_000L, queue.getDeliveryIdleTimeMs());
+      assertTrue(queue.ack("consumer", first.getCommitContext()));
+      assertEquals(60_000L, queue.getDeliveryIdleTimeMs());
+      assertEquals(0L, queue.getLastDeliveryIntervalMs());
+
+      clockNs.addAndGet(TimeUnit.MILLISECONDS.toNanos(1L));
+      reader.currentSearchIndex = 2L;
+      assertTrue(pendingEntries(queue).offer(createRequest(2L)));
+      queue.drivePrefetchOnce();
+      final SubscriptionEvent second = queue.poll("consumer");
+      assertNotNull(second);
+      assertEquals(60_001L, queue.getLastDeliveryIntervalMs());
+      assertEquals(60_001L, queue.getMaxDeliveryIntervalMs());
+      assertEquals(0L, queue.getDeliveryIdleTimeMs());
+      assertTrue(queue.ack("consumer", second.getCommitContext()));
+
+      clockNs.addAndGet(TimeUnit.MILLISECONDS.toNanos(1L));
+      reader.currentSearchIndex = 3L;
+      assertTrue(pendingEntries(queue).offer(createRequest(3L)));
+      queue.drivePrefetchOnce();
+      assertNotNull(queue.poll("consumer"));
+      assertEquals(1L, queue.getLastDeliveryIntervalMs());
+      assertEquals(60_001L, queue.getMaxDeliveryIntervalMs());
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testTimingRemainsReadableDuringBlockedPrefetch() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("blocked-prefetch-timing");
+    final CountDownLatch conversionStarted = new CountDownLatch(1);
+    final CountDownLatch releaseConversion = new CountDownLatch(1);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.convert(any()))
+          .thenAnswer(
+              ignored -> {
+                conversionStarted.countDown();
+                assertTrue(releaseConversion.await(5L, TimeUnit.SECONDS));
+                return Collections.singletonList(createTablet());
+              });
+      queue =
+          newQueue(
+              "consumerGroup",
+              new DataRegionId(1),
+              reader,
+              converter,
+              newCommitManager(systemDir),
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+      final AtomicLong clockNs = new AtomicLong(Long.MAX_VALUE - 1_000_000L);
+      setTimeTracker(queue, new SubscriptionQueueTimeTracker(clockNs::get));
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1_000_000L));
+
+      assertNull(queue.poll("consumer"));
+      reader.currentSearchIndex = 1L;
+      assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+      final ConsensusPrefetchingQueue blockedQueue = queue;
+      final Future<PrefetchRoundResult> round = executor.submit(blockedQueue::drivePrefetchOnce);
+      assertTrue(conversionStarted.await(5L, TimeUnit.SECONDS));
+      clockNs.addAndGet(TimeUnit.MILLISECONDS.toNanos(65_000L));
+
+      assertEquals(65_000L, queue.getPrefetchDurationMs());
+      assertEquals(65_000L, queue.getMaxPrefetchDurationMs());
+      assertEquals(65_000L, queue.getPrefetchIdleTimeMs());
+      assertEquals(65_000L, queue.getDeliveryIdleTimeMs());
+      assertEquals("65000", queue.coreReportMessage().get("prefetchDurationMs"));
+      assertEquals("0", queue.coreReportMessage().get("subscriptionMemoryUsedInBytes"));
+
+      releaseConversion.countDown();
+      round.get(5L, TimeUnit.SECONDS);
+      assertEquals(0L, queue.getPrefetchDurationMs());
+      assertEquals(65_000L, queue.getMaxPrefetchDurationMs());
+      assertEquals(0L, queue.getPrefetchIdleTimeMs());
+      queue.drivePrefetchOnce();
+      assertEquals(65_000L, queue.getMaxPrefetchDurationMs());
+    } finally {
+      releaseConversion.countDown();
+      executor.shutdownNow();
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  private static void setTimeTracker(
+      final ConsensusPrefetchingQueue queue, final SubscriptionQueueTimeTracker tracker)
+      throws Exception {
+    final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("timeTracker");
+    field.setAccessible(true);
+    field.set(queue, tracker);
   }
 
   @Test

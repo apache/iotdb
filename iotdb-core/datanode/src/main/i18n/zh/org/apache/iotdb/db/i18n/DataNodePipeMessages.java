@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String
+      LOG_SUBSCRIPTION_MEMORY_OVERCOMMIT_ENTRYBYTES_ARG_BUDGETBYTES_ARG_OVERCOMMITBYTES_ARG_OTHER_QUEUES_MAY_BE_BLOCKED_UNTIL_RELEASE_DF9B914E =
+          "订阅内存超出预算：entryBytes={}，budgetBytes={}，overcommitBytes={}；其它队列可能阻塞，直到该 entry 释放。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_TOOK_ARG_MS_FOR_ARG_DELIVERYIDLETIMEMS_ARG_MEMORYUSEDBYTES_ARG_MEMORYLIMITBYTES_ARG_INSPECT_WORKER_STACKS_WAL_I_O_AND_JVM_PAUSES_D399CEDD =
+          "订阅预取轮次耗时 {} ms，队列 {}。deliveryIdleTimeMs={}，memoryUsedBytes={}，memoryLimitBytes={}；请检查工作线程栈、WAL I/O 和 JVM 停顿。";
+
   public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
       "解析 transfer exception 失败。";
 

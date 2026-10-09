@@ -285,6 +285,8 @@ public class ConsensusPrefetchingQueue {
 
   private volatile long lastProgressTimeMs = 0L;
 
+  private final SubscriptionQueueTimeTracker timeTracker = new SubscriptionQueueTimeTracker();
+
   private volatile String lastConsumerId = "";
 
   private volatile long lastPendingAcceptedEntries = 0L;
@@ -838,6 +840,7 @@ public class ConsensusPrefetchingQueue {
     this.subscriptionWALIterator =
         createSubscriptionWALIterator(resolvedStart.getStartSearchIndex());
     this.prefetchInitialized = true;
+    timeTracker.start();
     this.observedSeekGeneration = seekGeneration.get();
     discardBatch(this.lingerBatch);
     resetBatchWriterProgress();
@@ -1321,6 +1324,7 @@ public class ConsensusPrefetchingQueue {
 
         // Mark as polled before updating inFlightEvents
         event.recordLastPolledTimestamp();
+        timeTracker.recordDelivery();
         lastPollTimeMs = System.currentTimeMillis();
         lastConsumerId = consumerId;
         inFlightEvents.put(new InFlightEventKey(consumerId, event.getCommitContext()), event);
@@ -1406,7 +1410,28 @@ public class ConsensusPrefetchingQueue {
 
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
 
+  private static final long SLOW_PREFETCH_ROUND_THRESHOLD_MS = 10_000L;
+
   public PrefetchRoundResult drivePrefetchOnce() {
+    timeTracker.beginPrefetch();
+    try {
+      return drivePrefetchOnceInternal();
+    } finally {
+      final long durationMs = timeTracker.endPrefetch();
+      if (durationMs >= SLOW_PREFETCH_ROUND_THRESHOLD_MS) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_SUBSCRIPTION_PREFETCH_ROUND_TOOK_ARG_MS_FOR_ARG_DELIVERYIDLETIMEMS_ARG_MEMORYUSEDBYTES_ARG_MEMORYLIMITBYTES_ARG_INSPECT_WORKER_STACKS_WAL_I_O_AND_JVM_PAUSES_D399CEDD,
+            durationMs,
+            this,
+            getDeliveryIdleTimeMs(),
+            subscriptionMemoryManager.getUsedMemorySizeInBytes(),
+            subscriptionMemoryManager.getTotalMemorySizeInBytes());
+      }
+    }
+  }
+
+  private PrefetchRoundResult drivePrefetchOnceInternal() {
     if (applyPendingSeekRequestIfNecessary()) {
       return closeRequested ? PrefetchRoundResult.dormant() : PrefetchRoundResult.rescheduleNow();
     }
@@ -4135,6 +4160,30 @@ public class ConsensusPrefetchingQueue {
     return lastProgressTimeMs;
   }
 
+  public long getLastDeliveryIntervalMs() {
+    return timeTracker.getLastDeliveryIntervalMs();
+  }
+
+  public long getMaxDeliveryIntervalMs() {
+    return timeTracker.getMaxDeliveryIntervalMs();
+  }
+
+  public long getDeliveryIdleTimeMs() {
+    return timeTracker.getDeliveryIdleTimeMs();
+  }
+
+  public long getPrefetchDurationMs() {
+    return timeTracker.getPrefetchDurationMs();
+  }
+
+  public long getMaxPrefetchDurationMs() {
+    return timeTracker.getMaxPrefetchDurationMs();
+  }
+
+  public long getPrefetchIdleTimeMs() {
+    return timeTracker.getPrefetchIdleTimeMs();
+  }
+
   /** Returns 0=uninitialized, 1=inactive, 2=caught up, 3=catching up, 4=stalled. */
   public long getProgressStatus() {
     switch (getProgressStatusName()) {
@@ -4467,6 +4516,21 @@ public class ConsensusPrefetchingQueue {
     result.put("retainedRequestBytes", String.valueOf(getRetainedRequestBytes()));
     result.put("retainedTabletBytes", String.valueOf(retainedTabletBytes.get()));
     result.put("memoryBlockedEntryBytes", String.valueOf(memoryBlockedEntryBytes));
+    result.put(
+        "subscriptionMemoryUsedInBytes",
+        String.valueOf(subscriptionMemoryManager.getUsedMemorySizeInBytes()));
+    result.put(
+        "subscriptionMemoryOvercommitBytes",
+        String.valueOf(subscriptionMemoryManager.getOvercommitSizeInBytes()));
+    result.put(
+        "subscriptionMemoryOversizedEntryCount",
+        String.valueOf(subscriptionMemoryManager.getOversizedEntryCount()));
+    result.put("lastDeliveryIntervalMs", String.valueOf(getLastDeliveryIntervalMs()));
+    result.put("maxDeliveryIntervalMs", String.valueOf(getMaxDeliveryIntervalMs()));
+    result.put("deliveryIdleTimeMs", String.valueOf(getDeliveryIdleTimeMs()));
+    result.put("prefetchDurationMs", String.valueOf(getPrefetchDurationMs()));
+    result.put("maxPrefetchDurationMs", String.valueOf(getMaxPrefetchDurationMs()));
+    result.put("prefetchIdleTimeMs", String.valueOf(getPrefetchIdleTimeMs()));
     result.put("realtimeAdmissionBlocked", String.valueOf(realtimeAdmissionBlocked.get()));
     result.put(
         "subscriptionMemoryLimitInBytes",

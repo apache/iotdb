@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String
+      LOG_SUBSCRIPTION_MEMORY_OVERCOMMIT_ENTRYBYTES_ARG_BUDGETBYTES_ARG_OVERCOMMITBYTES_ARG_OTHER_QUEUES_MAY_BE_BLOCKED_UNTIL_RELEASE_DF9B914E =
+          "Subscription memory overcommit: entryBytes={}, budgetBytes={}, overcommitBytes={}; other queues may be blocked until release.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_TOOK_ARG_MS_FOR_ARG_DELIVERYIDLETIMEMS_ARG_MEMORYUSEDBYTES_ARG_MEMORYLIMITBYTES_ARG_INSPECT_WORKER_STACKS_WAL_I_O_AND_JVM_PAUSES_D399CEDD =
+          "Subscription prefetch round took {} ms for {}. deliveryIdleTimeMs={}, memoryUsedBytes={}, memoryLimitBytes={}; inspect worker stacks, WAL I/O and JVM pauses.";
+
   public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
       "Failed to resolve transfer exception.";
 
