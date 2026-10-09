@@ -322,8 +322,7 @@ public class ImportWALTest {
         ImportWAL.resolveDirectoryDatabases(files, null, true, null);
     final IllegalArgumentException failure =
         assertThrows(
-            IllegalArgumentException.class,
-            () -> ImportWAL.requireResolvedDatabases(unresolved));
+            IllegalArgumentException.class, () -> ImportWAL.requireResolvedDatabases(unresolved));
     // The inferable directory is not reported, the others are listed in directory order.
     assertTrue(failure.getMessage().contains("0, root.sg-4"));
     assertTrue(failure.getMessage().contains("-db/--database"));
@@ -1590,8 +1589,7 @@ public class ImportWALTest {
         new Object[] {10, null, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, "root.sg")
-        .replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg").replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession, times(3)).insertTablet(tabletCaptor.capture());
@@ -1637,8 +1635,7 @@ public class ImportWALTest {
         new Object[] {10, 100L, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, "root.sg")
-        .replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg").replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession).insertAlignedTablet(tabletCaptor.capture());
@@ -1689,8 +1686,7 @@ public class ImportWALTest {
     }
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, "root.sg")
-        .replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg").replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession, times(2)).insertTablet(tabletCaptor.capture());

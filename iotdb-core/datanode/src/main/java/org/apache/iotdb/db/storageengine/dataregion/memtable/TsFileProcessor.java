@@ -2644,13 +2644,16 @@ public class TsFileProcessor {
   }
 
   private long getQueryTimeLowerBound(IDeviceID deviceID) {
-    long ttl;
-    if (deviceID.getTableName().startsWith("root.")) {
-      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-    } else {
+    final long ttl;
+    if (isTableModel()) {
+      // The table TTL is cached by the database and the table, both known from the data region of
+      // this processor.
       ttl =
           DataNodeTTLCache.getInstance()
-              .getTTLForTable(this.dataRegionName, deviceID.getTableName());
+              .getTTLForTable(
+                  dataRegionInfo.getDataRegion().getDatabaseName(), deviceID.getTableName());
+    } else {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     }
     return ttl != Long.MAX_VALUE ? CommonUtils.getTTLLowerBound(ttl) : Long.MIN_VALUE;
   }

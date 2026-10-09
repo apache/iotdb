@@ -296,8 +296,7 @@ public class WritableMemChunkRegionScanTest {
             new MeasurementSchema("s1", TSDataType.INT32),
             new MeasurementSchema("s2", TSDataType.INT32),
             new MeasurementSchema("s3", TSDataType.INT32));
-    AlignedWritableMemChunk writableMemChunk =
-        new AlignedWritableMemChunk(measurementSchemas);
+    AlignedWritableMemChunk writableMemChunk = new AlignedWritableMemChunk(measurementSchemas);
     int size = 100000;
     for (int i = 0; i < size; i++) {
       if (i <= 10000) {

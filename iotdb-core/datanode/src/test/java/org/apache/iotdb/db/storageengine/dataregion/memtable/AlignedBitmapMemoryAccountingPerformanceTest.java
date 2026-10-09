@@ -289,8 +289,7 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
             "0",
             Collections.singletonMap(
                 deviceId,
-                new AlignedWritableMemChunkGroup(
-                    memChunk, new ArrayList<>(scenario.schemas))));
+                new AlignedWritableMemChunkGroup(memChunk, new ArrayList<>(scenario.schemas))));
     return new AccountingTarget(memTable, deviceId);
   }
 

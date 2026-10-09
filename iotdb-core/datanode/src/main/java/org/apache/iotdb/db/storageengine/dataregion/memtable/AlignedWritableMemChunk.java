@@ -106,9 +106,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   private AlignedWritableMemChunk(
-      List<IMeasurementSchema> schemaList,
-      AlignedTVList list,
-      EncryptParameter encryptParameter) {
+      List<IMeasurementSchema> schemaList, AlignedTVList list, EncryptParameter encryptParameter) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
@@ -1235,8 +1233,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     return chunk;
   }
 
-  public static AlignedWritableMemChunk deserializeSingleTVListMemChunks(
-      DataInputStream stream) throws IOException {
+  public static AlignedWritableMemChunk deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
     int schemaListSize = stream.readInt();
     List<IMeasurementSchema> schemaList = new ArrayList<>(schemaListSize);
     for (int i = 0; i < schemaListSize; i++) {
