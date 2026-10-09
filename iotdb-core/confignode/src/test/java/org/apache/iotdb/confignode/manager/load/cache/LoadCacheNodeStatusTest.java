@@ -24,16 +24,18 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -114,10 +116,10 @@ public class LoadCacheNodeStatusTest {
           .when(consensusManager)
           .write(any(UpdateNodeStatusPlan.class));
       assertTrue(cache.updateNodeStatistics());
-      assertEquals(NodeStatus.Stopped, info.getPersistedNodeStatus(NODE_ID));
+      assertEquals(new Pair<>(NodeStatus.Stopped, null), info.getPersistedNodeStatus(NODE_ID));
       assertSuccess(cache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
       verify(consensusManager, times(2))
-          .write(new UpdateNodeStatusPlan(NODE_ID, Operation.SET_STOPPED));
+          .write(new UpdateNodeStatusPlan(NODE_ID, NodeStatus.Stopped));
     } finally {
       manager.close();
     }
@@ -130,15 +132,83 @@ public class LoadCacheNodeStatusTest {
     verify(consensusManager, never()).write(any());
 
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
-    assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
     verify(consensusManager, times(1)).write(any());
 
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Removing, null, true));
-    assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, true));
     assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
     verify(consensusManager, times(3)).write(any());
+  }
+
+  @Test
+  public void testFailedReadOnlyReasonChangePublishesStatisticsAndRetriesPersistence()
+      throws Exception {
+    assertSuccess(
+        loadCache.trySetNodeStatus(NODE_ID, NodeStatus.ReadOnly, NodeStatus.DISK_FULL, false));
+    UpdateNodeStatusPlan reasonChange =
+        new UpdateNodeStatusPlan(NODE_ID, NodeStatus.ReadOnly, NodeStatus.MANUAL);
+    doReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
+        .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
+        .when(consensusManager)
+        .write(reasonChange);
+
+    assertFailure(
+        loadCache.trySetNodeStatus(NODE_ID, NodeStatus.ReadOnly, NodeStatus.MANUAL, false));
+    assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(NODE_ID));
+    assertEquals(NodeStatus.MANUAL, loadCache.getNodeStatusReason(NODE_ID));
+    assertEquals(
+        new Pair<>(NodeStatus.ReadOnly, NodeStatus.DISK_FULL),
+        nodeInfo.getPersistedNodeStatus(NODE_ID));
+
+    assertTrue(loadCache.updateNodeStatistics());
+    assertEquals(
+        new Pair<>(NodeStatus.ReadOnly, NodeStatus.MANUAL),
+        nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertTrue(loadCache.updateNodeStatistics());
+    verify(consensusManager, times(2)).write(reasonChange);
+  }
+
+  @Test
+  public void testReadOnlyReasonIsRemovedWhenPersistentStatusChanges() throws Exception {
+    for (NodeStatus requested : new NodeStatus[] {NodeStatus.Stopped, NodeStatus.Removing}) {
+      assertSuccess(
+          loadCache.trySetNodeStatus(NODE_ID, NodeStatus.ReadOnly, NodeStatus.MANUAL, true));
+      assertSuccess(loadCache.trySetNodeStatus(NODE_ID, requested, null, false));
+      assertEquals(requested, loadCache.getNodeStatus(NODE_ID));
+      assertNull(loadCache.getNodeStatusReason(NODE_ID));
+      assertEquals(new Pair<>(requested, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
+    }
+  }
+
+  @Test
+  public void testReadOnlyIsClearedOnDisconnectAndPersistedAgainAfterHeartbeat() throws Exception {
+    Pair<NodeStatus, String> readOnly = new Pair<>(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+    assertSuccess(
+        loadCache.trySetNodeStatus(NODE_ID, NodeStatus.ReadOnly, NodeStatus.DISK_FULL, false));
+    assertEquals(readOnly, nodeInfo.getPersistedNodeStatus(NODE_ID));
+
+    assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
+    assertEquals(NodeStatus.Unknown, loadCache.getNodeStatus(NODE_ID));
+    assertNull(loadCache.getNodeStatusReason(NODE_ID));
+    assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
+
+    loadCache.cacheDataNodeHeartbeatSample(
+        NODE_ID,
+        new NodeHeartbeatSample(
+            new TDataNodeHeartbeatResp()
+                .setHeartbeatTimestamp(System.nanoTime())
+                .setStatus(NodeStatus.ReadOnly.getStatus())
+                .setStatusReason(NodeStatus.DISK_FULL)));
+    assertTrue(loadCache.updateNodeStatistics());
+    assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(NODE_ID));
+    assertEquals(NodeStatus.DISK_FULL, loadCache.getNodeStatusReason(NODE_ID));
+    assertEquals(readOnly, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    verify(consensusManager, times(2))
+        .write(new UpdateNodeStatusPlan(NODE_ID, NodeStatus.ReadOnly, NodeStatus.DISK_FULL));
+    verify(consensusManager).write(new UpdateNodeStatusPlan(NODE_ID, null));
   }
 
   @Test
@@ -154,16 +224,15 @@ public class LoadCacheNodeStatusTest {
     // A later connection failure must retain the stop and retry its uncommitted record.
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
-    assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
-    verify(consensusManager, times(2))
-        .write(new UpdateNodeStatusPlan(NODE_ID, Operation.SET_STOPPED));
+    assertEquals(new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
+    verify(consensusManager, times(2)).write(new UpdateNodeStatusPlan(NODE_ID, NodeStatus.Stopped));
 
     doThrow(new ConsensusException("test consensus failure"))
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
         .write(any(UpdateNodeStatusPlan.class));
     assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, false));
-    assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
     assertTrue(loadCache.updateNodeStatistics());
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
@@ -184,12 +253,12 @@ public class LoadCacheNodeStatusTest {
         .when(consensusManager)
         .write(any(UpdateNodeStatusPlan.class));
     assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, false));
-    assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
     assertTrue(loadCache.updateNodeStatistics());
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
-    assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
     verify(consensusManager, times(1)).write(any());
   }
 
@@ -208,11 +277,11 @@ public class LoadCacheNodeStatusTest {
     assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Stopped, null, true));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
     assertFailure(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Running, null, true));
-    assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
     assertFalse(loadCache.updateNodeStatistics());
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
-    assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
 
     doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
@@ -220,8 +289,7 @@ public class LoadCacheNodeStatusTest {
     assertTrue(loadCache.updateNodeStatistics());
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
     assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
-    verify(consensusManager, never())
-        .write(new UpdateNodeStatusPlan(NODE_ID, Operation.SET_REMOVING));
+    verify(consensusManager, never()).write(new UpdateNodeStatusPlan(NODE_ID, NodeStatus.Removing));
   }
 
   @Test
@@ -231,7 +299,7 @@ public class LoadCacheNodeStatusTest {
 
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, false));
     assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(NODE_ID));
-    assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(NODE_ID));
+    assertEquals(new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(NODE_ID));
     verify(consensusManager, never()).write(any());
 
     assertSuccess(loadCache.trySetNodeStatus(NODE_ID, NodeStatus.Unknown, null, true));
@@ -263,7 +331,6 @@ public class LoadCacheNodeStatusTest {
     assertEquals(NodeStatus.Running, loadCache.getNodeStatus(NODE_ID));
     assertNull(nodeInfo.getPersistedNodeStatus(NODE_ID));
     verify(consensusManager, times(1)).write(any());
-    verify(consensusManager, never())
-        .write(new UpdateNodeStatusPlan(NODE_ID, Operation.SET_REMOVING));
+    verify(consensusManager, never()).write(new UpdateNodeStatusPlan(NODE_ID, NodeStatus.Removing));
   }
 }

@@ -25,9 +25,11 @@ import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.external.commons.lang3.function.TriFunction;
+import org.apache.tsfile.utils.Pair;
+
 import java.util.Collections;
 import java.util.List;
-import java.util.function.BiFunction;
 
 /**
  * NodeCache caches the NodeHeartbeatSamples of a Node. Update and cache the current statistics of
@@ -37,7 +39,7 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
 
   protected final int nodeId;
 
-  private BiFunction<BaseNodeCache, NodeStatus, TSStatus> nodeStatusPersister;
+  private TriFunction<BaseNodeCache, NodeStatus, String, TSStatus> nodeStatusPersister;
 
   /** Constructor for NodeCache with default NodeStatistics. */
   protected BaseNodeCache(int nodeId) {
@@ -52,12 +54,13 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
 
   /** Initialize a new cache before adding it to LoadCache's nodeCacheMap. */
   public void initPersistence(
-      NodeStatus persistedStatus,
-      BiFunction<BaseNodeCache, NodeStatus, TSStatus> nodeStatusPersister) {
+      Pair<NodeStatus, String> persistedStatus,
+      TriFunction<BaseNodeCache, NodeStatus, String, TSStatus> nodeStatusPersister) {
     this.nodeStatusPersister = nodeStatusPersister;
     if (persistedStatus != null) {
       currentStatistics.set(
-          new NodeStatistics(System.nanoTime(), persistedStatus, null, Long.MAX_VALUE));
+          new NodeStatistics(
+              System.nanoTime(), persistedStatus.left, persistedStatus.right, Long.MAX_VALUE));
     }
   }
 
@@ -91,7 +94,7 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
     TSStatus result =
         nodeStatusPersister == null
             ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-            : nodeStatusPersister.apply(this, newStats.getStatus());
+            : nodeStatusPersister.apply(this, newStats.getStatus(), newStats.getStatusReason());
     currentStatistics.set(newStats);
     return result;
   }

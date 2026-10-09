@@ -35,6 +35,7 @@ import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -74,7 +75,6 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfi
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -193,10 +193,12 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -218,14 +220,64 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void testUpdateNodeStatusPlan() throws IOException {
-    for (Operation operation : Operation.values()) {
-      UpdateNodeStatusPlan original = new UpdateNodeStatusPlan(37, operation);
-      UpdateNodeStatusPlan restored =
-          (UpdateNodeStatusPlan)
-              ConfigPhysicalPlan.Factory.create(original.serializeToByteBuffer());
-      Assert.assertEquals(original, restored);
-      Assert.assertEquals(37, restored.getNodeId());
-      Assert.assertEquals(operation, restored.getOperation());
+    for (NodeStatus status :
+        new NodeStatus[] {
+          NodeStatus.Stopped,
+          NodeStatus.Removing,
+          NodeStatus.ReadOnly,
+          NodeStatus.Running,
+          NodeStatus.Unknown,
+          null
+        }) {
+      for (String reason :
+          new String[] {
+            null,
+            NodeStatus.MANUAL,
+            NodeStatus.DISK_FULL,
+            NodeStatus.STOPPING,
+            NodeStatus.UNRECOVERABLE_ERROR + ": failed to recover root.test-0"
+          }) {
+        UpdateNodeStatusPlan original = new UpdateNodeStatusPlan(37, status, reason);
+        UpdateNodeStatusPlan restored =
+            (UpdateNodeStatusPlan)
+                ConfigPhysicalPlan.Factory.create(original.serializeToByteBuffer());
+        Assert.assertEquals(original, restored);
+        Assert.assertEquals(original.hashCode(), restored.hashCode());
+        Assert.assertEquals(37, restored.getNodeId());
+        NodeStatus persistedStatus = status != null && status.isPersistentStatus() ? status : null;
+        Assert.assertEquals(persistedStatus, restored.getStatus());
+        Assert.assertEquals(persistedStatus == null ? null : reason, restored.getStatusReason());
+        ByteBuffer serialized = original.serializeToByteBuffer();
+        Assert.assertEquals(
+            ConfigPhysicalPlanType.UpdateNodeStatus.getPlanType(), serialized.getShort());
+        Assert.assertEquals(37, ReadWriteIOUtils.readInt(serialized));
+        Assert.assertEquals(
+            persistedStatus == null ? null : persistedStatus.getStatus(),
+            ReadWriteIOUtils.readString(serialized));
+        Assert.assertEquals(restored.getStatusReason(), ReadWriteIOUtils.readString(serialized));
+        Assert.assertFalse(serialized.hasRemaining());
+      }
+    }
+    Assert.assertNotEquals(
+        new UpdateNodeStatusPlan(37, NodeStatus.ReadOnly, NodeStatus.MANUAL),
+        new UpdateNodeStatusPlan(37, NodeStatus.ReadOnly, NodeStatus.DISK_FULL));
+  }
+
+  @Test
+  public void testNodeStatusPlanNormalizesNonPersistentStatuses() {
+    for (String reason : new String[] {null, "test reason"}) {
+      for (NodeStatus status :
+          new NodeStatus[] {NodeStatus.Stopped, NodeStatus.Removing, NodeStatus.ReadOnly}) {
+        UpdateNodeStatusPlan plan = new UpdateNodeStatusPlan(37, status, reason);
+        Assert.assertEquals(status, plan.getStatus());
+        Assert.assertEquals(reason, plan.getStatusReason());
+      }
+      for (NodeStatus status : new NodeStatus[] {NodeStatus.Running, NodeStatus.Unknown, null}) {
+        UpdateNodeStatusPlan plan = new UpdateNodeStatusPlan(37, status, reason);
+        Assert.assertNull(plan.getStatus());
+        Assert.assertNull(plan.getStatusReason());
+        Assert.assertEquals(new UpdateNodeStatusPlan(37, null), plan);
+      }
     }
   }
 

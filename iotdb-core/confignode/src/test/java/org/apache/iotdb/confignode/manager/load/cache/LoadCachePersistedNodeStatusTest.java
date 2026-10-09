@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -46,6 +45,7 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -129,11 +129,11 @@ public class LoadCachePersistedNodeStatusTest {
 
   @Test
   public void testInitializationRestoresStickyStatusesAndKeepsLeaderRunning() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, Operation.SET_STOPPED));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, NodeStatus.Stopped));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     nodeInfo.applyNodeStatusPlan(
-        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(SELF_ID, Operation.SET_STOPPED));
+        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(SELF_ID, NodeStatus.Stopped));
 
     loadCache.initHeartbeatCache(configManager);
 
@@ -164,7 +164,8 @@ public class LoadCachePersistedNodeStatusTest {
               new DataNodeHeartbeatCache(DATA_NODE_ID),
               new ConfigNodeHeartbeatCache(CONFIG_NODE_ID),
               new AINodeHeartbeatCache(AI_NODE_ID))) {
-        cache.initPersistence(status, (ignoredCache, ignoredStatus) -> success());
+        cache.initPersistence(
+            new Pair<>(status, null), (ignoredCache, ignoredStatus, ignoredReason) -> success());
         Assert.assertEquals(status, cache.getNodeStatus());
         Assert.assertFalse(cache.hasHeartbeatSample());
         cache.updateNodeStatistics();
@@ -175,9 +176,77 @@ public class LoadCachePersistedNodeStatusTest {
   }
 
   @Test
+  public void testRestoredReadOnlyRequiresHeartbeatAndUnknownClearsPersistence() throws Exception {
+    Pair<NodeStatus, String> persisted = new Pair<>(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+    for (BaseNodeCache cache :
+        Arrays.asList(
+            new DataNodeHeartbeatCache(DATA_NODE_ID),
+            new ConfigNodeHeartbeatCache(CONFIG_NODE_ID),
+            new AINodeHeartbeatCache(AI_NODE_ID))) {
+      cache.initPersistence(persisted, (ignoredCache, ignoredStatus, ignoredReason) -> success());
+      Assert.assertEquals(NodeStatus.ReadOnly, cache.getNodeStatus());
+      Assert.assertEquals(NodeStatus.DISK_FULL, cache.getNodeStatusReason());
+      Assert.assertFalse(cache.hasHeartbeatSample());
+    }
+
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, NodeStatus.Stopped));
+    nodeInfo.applyNodeStatusPlan(
+        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
+    nodeInfo.applyNodeStatusPlan(
+        new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.ReadOnly, NodeStatus.DISK_FULL));
+    loadCache.initHeartbeatCache(configManager);
+    Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(NodeStatus.DISK_FULL, loadCache.getNodeStatusReason(DATA_NODE_ID));
+    Assert.assertEquals(
+        Collections.singletonList("nodes=[" + DATA_NODE_ID + "]"),
+        loadCache.getNodeHeartbeatUnreadyReasons());
+
+    // Restoring durable metadata is not evidence that the node is still reachable.
+    Assert.assertTrue(loadCache.updateNodeStatistics());
+    Assert.assertEquals(NodeStatus.Unknown, loadCache.getNodeStatus(DATA_NODE_ID));
+    Assert.assertNull(loadCache.getNodeStatusReason(DATA_NODE_ID));
+    Assert.assertNull(nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(
+        Collections.singletonList("nodes=[" + DATA_NODE_ID + "]"),
+        loadCache.getNodeHeartbeatUnreadyReasons());
+    verify(consensusManager).write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
+  }
+
+  @Test
+  public void testReadOnlyReasonChangesArePersistedAndRunningClearsRecord() throws Exception {
+    loadCache.initHeartbeatCache(configManager);
+    // Each heartbeat replaces the previous reason, including a lower-priority or absent reason.
+    for (String reason :
+        Arrays.asList(NodeStatus.STOPPING, NodeStatus.MANUAL, NodeStatus.DISK_FULL, null)) {
+      loadCache.cacheDataNodeHeartbeatSample(
+          DATA_NODE_ID, readOnlySample(System.nanoTime(), reason));
+      Assert.assertTrue(loadCache.updateNodeStatistics());
+      Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
+      Assert.assertEquals(reason, loadCache.getNodeStatusReason(DATA_NODE_ID));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.ReadOnly, reason), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+
+      // Repeating the same status and reason must not append another consensus log.
+      loadCache.cacheDataNodeHeartbeatSample(
+          DATA_NODE_ID, readOnlySample(System.nanoTime(), reason));
+      Assert.assertTrue(loadCache.updateNodeStatistics());
+      verify(consensusManager, times(1))
+          .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.ReadOnly, reason));
+    }
+
+    loadCache.cacheDataNodeHeartbeatSample(
+        DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
+    Assert.assertTrue(loadCache.updateNodeStatistics());
+    Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(DATA_NODE_ID));
+    Assert.assertNull(loadCache.getNodeStatusReason(DATA_NODE_ID));
+    Assert.assertNull(nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    verify(consensusManager).write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
+  }
+
+  @Test
   public void testLiveHeartbeatClearsStoppedStatusForBothNodeTypes() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, Operation.SET_STOPPED));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, NodeStatus.Stopped));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
 
     loadCache.cacheConfigNodeHeartbeatSample(
@@ -194,29 +263,29 @@ public class LoadCachePersistedNodeStatusTest {
 
   @Test
   public void testRevivalUpdatesStatisticsWhileClearIsRetried() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
     doReturn(failure())
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
 
     Assert.assertFalse(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(DATA_NODE_ID));
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
 
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(DATA_NODE_ID));
     Assert.assertFalse(nodeInfo.getPersistedNodeStatuses().containsKey(DATA_NODE_ID));
-    verify(consensusManager, times(2))
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+    verify(consensusManager, times(2)).write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
   }
 
   @Test
   public void testClearDoesNotRecheckThePreviousPersistedStatus() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
@@ -224,11 +293,11 @@ public class LoadCachePersistedNodeStatusTest {
     doAnswer(
             invocation -> {
               nodeInfo.applyNodeStatusPlan(
-                  new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_REMOVING));
+                  new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Removing));
               return nodeInfo.applyNodeStatusPlan(invocation.getArgument(0));
             })
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
 
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertNull(nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
@@ -236,31 +305,35 @@ public class LoadCachePersistedNodeStatusTest {
   }
 
   @Test
-  public void testReadOnlyRevivalPublishesReasonWhileStoppedMarkerClearIsRetried()
-      throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+  public void testReadOnlyRevivalPublishesReasonWhilePersistenceIsRetried() throws Exception {
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
     doReturn(failure())
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.ReadOnly, NodeStatus.MANUAL));
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, readOnlySample(System.nanoTime(), NodeStatus.MANUAL));
 
     Assert.assertFalse(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
     Assert.assertEquals(NodeStatus.MANUAL, loadCache.getNodeStatusReason(DATA_NODE_ID));
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
 
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
     Assert.assertEquals(NodeStatus.MANUAL, loadCache.getNodeStatusReason(DATA_NODE_ID));
-    Assert.assertFalse(nodeInfo.getPersistedNodeStatuses().containsKey(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.ReadOnly, NodeStatus.MANUAL),
+        nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    verify(consensusManager, times(2))
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.ReadOnly, NodeStatus.MANUAL));
 
-    // The next leader must learn ReadOnly from its own heartbeats, not from durable node state.
+    // A new leader restores the committed reason before receiving its first heartbeat.
     loadCache.initHeartbeatCache(configManager);
-    Assert.assertEquals(NodeStatus.Unknown, loadCache.getNodeStatus(DATA_NODE_ID));
-    Assert.assertNull(loadCache.getNodeStatusReason(DATA_NODE_ID));
+    Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(NodeStatus.MANUAL, loadCache.getNodeStatusReason(DATA_NODE_ID));
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, readOnlySample(System.nanoTime(), NodeStatus.MANUAL));
     Assert.assertTrue(loadCache.updateNodeStatistics());
@@ -271,7 +344,7 @@ public class LoadCachePersistedNodeStatusTest {
   @Test
   public void testReadOnlyHeartbeatIsNotFilteredByCacheInitializationTime() throws Exception {
     long previousLeaderTimestamp = System.nanoTime();
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, readOnlySample(previousLeaderTimestamp, NodeStatus.MANUAL));
@@ -279,14 +352,17 @@ public class LoadCachePersistedNodeStatusTest {
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
     Assert.assertEquals(NodeStatus.MANUAL, loadCache.getNodeStatusReason(DATA_NODE_ID));
-    Assert.assertNull(nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
-    verify(consensusManager).write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.ReadOnly, NodeStatus.MANUAL),
+        nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    verify(consensusManager)
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.ReadOnly, NodeStatus.MANUAL));
   }
 
   @Test
   public void testStoppingReasonIsClearedByShutdownAndCannotOverrideRemoving() throws Exception {
     nodeInfo.applyNodeStatusPlan(
-        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
+        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
     loadCache.initHeartbeatCache(configManager);
     for (int nodeId : Arrays.asList(DATA_NODE_ID, REMOVING_DATA_NODE_ID)) {
       loadCache.cacheDataNodeHeartbeatSample(
@@ -304,9 +380,11 @@ public class LoadCachePersistedNodeStatusTest {
           loadCache.trySetNodeStatus(nodeId, NodeStatus.Stopped, null, false).getCode());
       Assert.assertNull(loadCache.getNodeStatusReason(nodeId));
     }
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
     Assert.assertEquals(
-        NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Removing, null),
+        nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
   }
 
   @Test
@@ -323,7 +401,7 @@ public class LoadCachePersistedNodeStatusTest {
             })
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     ExecutorService executor = Executors.newSingleThreadExecutor();
     try {
       Future<TSStatus> update =
@@ -342,9 +420,10 @@ public class LoadCachePersistedNodeStatusTest {
           DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Unknown));
       Assert.assertTrue(loadCache.updateNodeStatistics());
       Assert.assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(DATA_NODE_ID));
-      Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
       verify(consensusManager, times(2))
-          .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+          .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     } finally {
       finishPersistence.countDown();
       executor.shutdownNow();
@@ -366,7 +445,7 @@ public class LoadCachePersistedNodeStatusTest {
               return nodeInfo.applyNodeStatusPlan(invocation.getArgument(0));
             })
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     ExecutorService executor = Executors.newFixedThreadPool(3);
     try {
       Future<TSStatus> stopped =
@@ -397,14 +476,15 @@ public class LoadCachePersistedNodeStatusTest {
       Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(DATA_NODE_ID));
       Assert.assertNull(nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
       verify(consensusManager, times(1))
-          .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+          .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
 
       finishPersistence.countDown();
       Assert.assertEquals(success().getCode(), stopped.get(5, TimeUnit.SECONDS).getCode());
       heartbeat.get(5, TimeUnit.SECONDS);
       Assert.assertTrue(statistics.get(5, TimeUnit.SECONDS));
       Assert.assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(DATA_NODE_ID));
-      Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
 
       loadCache.cacheDataNodeHeartbeatSample(
           DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
@@ -421,7 +501,7 @@ public class LoadCachePersistedNodeStatusTest {
   @Test
   public void testHeartbeatIsNotFilteredByCacheInitializationTime() throws Exception {
     long oldSampleTimestamp = System.nanoTime() - 1;
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, new NodeHeartbeatSample(oldSampleTimestamp, NodeStatus.Running));
@@ -429,13 +509,13 @@ public class LoadCachePersistedNodeStatusTest {
 
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(DATA_NODE_ID));
     Assert.assertNull(nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
-    verify(consensusManager).write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+    verify(consensusManager).write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
   }
 
   @Test
   public void testForcingAnotherNodeDoesNotClearRemovingStatus() throws Exception {
     nodeInfo.applyNodeStatusPlan(
-        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
+        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
     loadCache.initHeartbeatCache(configManager);
     loadCache.cacheDataNodeHeartbeatSample(
         REMOVING_DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
@@ -446,7 +526,8 @@ public class LoadCachePersistedNodeStatusTest {
 
     Assert.assertEquals(NodeStatus.Removing, loadCache.getNodeStatus(REMOVING_DATA_NODE_ID));
     Assert.assertEquals(
-        NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
+        new Pair<>(NodeStatus.Removing, null),
+        nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
     verify(consensusManager, never())
         .write(
             argThat(
@@ -470,7 +551,7 @@ public class LoadCachePersistedNodeStatusTest {
         Arrays.asList(
             NodeStatus.Unknown, NodeStatus.Stopped, NodeStatus.Running, NodeStatus.ReadOnly)) {
       nodeInfo.applyNodeStatusPlan(
-          new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
+          new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
       loadCache.initHeartbeatCache(configManager);
 
       Assert.assertEquals(
@@ -487,7 +568,10 @@ public class LoadCachePersistedNodeStatusTest {
           rollbackStatus == NodeStatus.ReadOnly ? NodeStatus.MANUAL : null,
           loadCache.getNodeStatusReason(REMOVING_DATA_NODE_ID));
       Assert.assertEquals(
-          rollbackStatus == NodeStatus.Stopped ? NodeStatus.Stopped : null,
+          rollbackStatus.isPersistentStatus()
+              ? new Pair<>(
+                  rollbackStatus, rollbackStatus == NodeStatus.ReadOnly ? NodeStatus.MANUAL : null)
+              : null,
           nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
 
       // Ordinary statistics updates must preserve the successfully committed rollback.
@@ -502,12 +586,12 @@ public class LoadCachePersistedNodeStatusTest {
   @Test
   public void testFailedExplicitRollbackUpdatesStatisticsAndRetriesPeriodically() throws Exception {
     nodeInfo.applyNodeStatusPlan(
-        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
+        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
     loadCache.initHeartbeatCache(configManager);
     doReturn(failure())
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.CLEAR));
+        .write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, null));
 
     Assert.assertEquals(
         failure().getCode(),
@@ -516,22 +600,22 @@ public class LoadCachePersistedNodeStatusTest {
             .getCode());
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(REMOVING_DATA_NODE_ID));
     Assert.assertEquals(
-        NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
+        new Pair<>(NodeStatus.Removing, null),
+        nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
 
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(REMOVING_DATA_NODE_ID));
     Assert.assertFalse(nodeInfo.getPersistedNodeStatuses().containsKey(REMOVING_DATA_NODE_ID));
-    verify(consensusManager, times(2))
-        .write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.CLEAR));
+    verify(consensusManager, times(2)).write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, null));
     verify(consensusManager, never())
-        .write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
+        .write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
   }
 
   @Test
   public void testShutdownReportCannotOverrideRemovingStatus() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, Operation.SET_REMOVING));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, NodeStatus.Removing));
     nodeInfo.applyNodeStatusPlan(
-        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
+        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
     loadCache.initHeartbeatCache(configManager);
 
     for (int nodeId : Arrays.asList(CONFIG_NODE_ID, REMOVING_DATA_NODE_ID)) {
@@ -539,20 +623,18 @@ public class LoadCachePersistedNodeStatusTest {
           success().getCode(),
           loadCache.trySetNodeStatus(nodeId, NodeStatus.Stopped, null, false).getCode());
       Assert.assertEquals(NodeStatus.Removing, loadCache.getNodeStatus(nodeId));
-      Assert.assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(nodeId));
-      verify(consensusManager, never())
-          .write(new UpdateNodeStatusPlan(nodeId, Operation.SET_STOPPED));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(nodeId));
+      verify(consensusManager, never()).write(new UpdateNodeStatusPlan(nodeId, NodeStatus.Stopped));
     }
   }
 
   @Test
   public void testStatisticsFailureDoesNotPreventUpdatingOtherNodes() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(CONFIG_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
-    doReturn(failure())
-        .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+    doReturn(failure()).when(consensusManager).write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
     loadCache.cacheConfigNodeHeartbeatSample(
@@ -561,12 +643,12 @@ public class LoadCachePersistedNodeStatusTest {
     Assert.assertFalse(loadCache.updateNodeStatistics());
 
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(DATA_NODE_ID));
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(CONFIG_NODE_ID));
     Assert.assertFalse(nodeInfo.getPersistedNodeStatuses().containsKey(CONFIG_NODE_ID));
-    verify(consensusManager, never()).write(new UpdateNodeStatusPlan(SELF_ID, Operation.CLEAR));
-    verify(consensusManager, never())
-        .write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.CLEAR));
+    verify(consensusManager, never()).write(new UpdateNodeStatusPlan(SELF_ID, null));
+    verify(consensusManager, never()).write(new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, null));
   }
 
   @Test
@@ -585,7 +667,7 @@ public class LoadCachePersistedNodeStatusTest {
               return nodeInfo.applyNodeStatusPlan(invocation.getArgument(0));
             })
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(CONFIG_NODE_ID, Operation.SET_STOPPED));
+        .write(new UpdateNodeStatusPlan(CONFIG_NODE_ID, NodeStatus.Stopped));
     ExecutorService executor = Executors.newSingleThreadExecutor();
     try {
       Future<TSStatus> shutdown =
@@ -597,14 +679,15 @@ public class LoadCachePersistedNodeStatusTest {
       finishPersistence.countDown();
       Assert.assertEquals(success().getCode(), shutdown.get(5, TimeUnit.SECONDS).getCode());
       Assert.assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(CONFIG_NODE_ID));
-      Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(CONFIG_NODE_ID));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(CONFIG_NODE_ID));
       Assert.assertTrue(loadCache.checkAndSetHeartbeatProcessing(CONFIG_NODE_ID));
 
       Assert.assertTrue(loadCache.updateNodeStatistics());
       Assert.assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(CONFIG_NODE_ID));
-      Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(CONFIG_NODE_ID));
-      verify(consensusManager, never())
-          .write(new UpdateNodeStatusPlan(CONFIG_NODE_ID, Operation.CLEAR));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(CONFIG_NODE_ID));
+      verify(consensusManager, never()).write(new UpdateNodeStatusPlan(CONFIG_NODE_ID, null));
     } finally {
       finishPersistence.countDown();
       executor.shutdownNow();
@@ -613,27 +696,27 @@ public class LoadCachePersistedNodeStatusTest {
 
   @Test
   public void testDiscardedCacheCannotClearNewRemovingMarker() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     loadCache.initHeartbeatCache(configManager);
     Field field = LoadCache.class.getDeclaredField("nodeCacheMap");
     field.setAccessible(true);
     Map<Integer, BaseNodeCache> caches = (Map<Integer, BaseNodeCache>) field.get(loadCache);
     BaseNodeCache discarded = caches.get(DATA_NODE_ID);
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_REMOVING));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Removing));
     loadCache.initHeartbeatCache(configManager);
     Assert.assertEquals(
         failure().getCode(), discarded.trySetNodeStatus(NodeStatus.Running, null, true).getCode());
-    Assert.assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
     Assert.assertEquals(NodeStatus.Removing, loadCache.getNodeStatus(DATA_NODE_ID));
-    verify(consensusManager, never())
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.CLEAR));
+    verify(consensusManager, never()).write(new UpdateNodeStatusPlan(DATA_NODE_ID, null));
   }
 
   @Test
-  public void testReadOnlyHeartbeatClearsStoppedButNotRemoving() throws Exception {
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+  public void testReadOnlyHeartbeatReplacesStoppedButNotRemoving() throws Exception {
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     nodeInfo.applyNodeStatusPlan(
-        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, Operation.SET_REMOVING));
+        new UpdateNodeStatusPlan(REMOVING_DATA_NODE_ID, NodeStatus.Removing));
     loadCache.initHeartbeatCache(configManager);
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.ReadOnly));
@@ -641,10 +724,12 @@ public class LoadCachePersistedNodeStatusTest {
         REMOVING_DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.ReadOnly));
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
-    Assert.assertFalse(nodeInfo.getPersistedNodeStatuses().containsKey(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.ReadOnly, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
     Assert.assertEquals(NodeStatus.Removing, loadCache.getNodeStatus(REMOVING_DATA_NODE_ID));
     Assert.assertEquals(
-        NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
+        new Pair<>(NodeStatus.Removing, null),
+        nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
   }
 
   @Test
@@ -655,7 +740,7 @@ public class LoadCachePersistedNodeStatusTest {
       Assert.assertEquals(
           success().getCode(),
           loadCache.trySetNodeStatus(AI_NODE_ID, status, null, false).getCode());
-      Assert.assertEquals(status, nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
+      Assert.assertEquals(new Pair<>(status, null), nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
       loadCache.initHeartbeatCache(configManager);
       Assert.assertEquals(status, loadCache.getNodeStatus(AI_NODE_ID));
       Assert.assertTrue(loadCache.updateNodeStatistics());
@@ -664,7 +749,8 @@ public class LoadCachePersistedNodeStatusTest {
     loadCache.cacheAINodeHeartbeatSample(AI_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.Removing, loadCache.getNodeStatus(AI_NODE_ID));
-    Assert.assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
   }
 
   @Test
@@ -674,7 +760,7 @@ public class LoadCachePersistedNodeStatusTest {
     doReturn(failure())
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(AI_NODE_ID, Operation.SET_STOPPED));
+        .write(new UpdateNodeStatusPlan(AI_NODE_ID, NodeStatus.Stopped));
     Assert.assertEquals(
         failure().getCode(),
         loadCache.trySetNodeStatus(AI_NODE_ID, NodeStatus.Stopped, null, false).getCode());
@@ -683,16 +769,18 @@ public class LoadCachePersistedNodeStatusTest {
     loadCache.cacheAINodeHeartbeatSample(AI_NODE_ID, new NodeHeartbeatSample(NodeStatus.Unknown));
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(AI_NODE_ID));
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
 
     doReturn(failure())
         .doAnswer(invocation -> nodeInfo.applyNodeStatusPlan(invocation.getArgument(0)))
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(AI_NODE_ID, Operation.CLEAR));
+        .write(new UpdateNodeStatusPlan(AI_NODE_ID, null));
     loadCache.cacheAINodeHeartbeatSample(AI_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
     Assert.assertFalse(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(AI_NODE_ID));
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
     Assert.assertTrue(loadCache.updateNodeStatistics());
     Assert.assertEquals(NodeStatus.Running, loadCache.getNodeStatus(AI_NODE_ID));
     Assert.assertNull(nodeInfo.getPersistedNodeStatus(AI_NODE_ID));
@@ -729,7 +817,8 @@ public class LoadCachePersistedNodeStatusTest {
       loadCache.cacheDataNodeHeartbeatSample(DATA_NODE_ID, olderHeartbeat);
       loadCache.updateNodeStatistics();
       Assert.assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(DATA_NODE_ID));
-      Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
     }
   }
 
@@ -745,7 +834,7 @@ public class LoadCachePersistedNodeStatusTest {
               return nodeInfo.applyNodeStatusPlan(i.getArgument(0));
             })
         .when(consensusManager)
-        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, Operation.SET_STOPPED));
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.Stopped));
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
       Future<TSStatus> blocked =
@@ -759,7 +848,8 @@ public class LoadCachePersistedNodeStatusTest {
                       REMOVING_DATA_NODE_ID, NodeStatus.Removing, null, true));
       Assert.assertEquals(success().getCode(), independent.get(5, TimeUnit.SECONDS).getCode());
       Assert.assertEquals(
-          NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
+          new Pair<>(NodeStatus.Removing, null),
+          nodeInfo.getPersistedNodeStatus(REMOVING_DATA_NODE_ID));
       Assert.assertFalse(blocked.isDone());
       release.countDown();
       Assert.assertEquals(success().getCode(), blocked.get(5, TimeUnit.SECONDS).getCode());
@@ -793,7 +883,8 @@ public class LoadCachePersistedNodeStatusTest {
     Assert.assertEquals(
         success().getCode(),
         loadCache.trySetNodeStatus(DATA_NODE_ID, NodeStatus.Stopped, null, false).getCode());
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
     loadCache.cacheDataNodeHeartbeatSample(
         DATA_NODE_ID, new NodeHeartbeatSample(NodeStatus.Running));
     loadCache.updateNodeStatistics();

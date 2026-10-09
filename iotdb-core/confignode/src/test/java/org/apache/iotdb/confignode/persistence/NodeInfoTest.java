@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePl
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
@@ -43,6 +42,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.utils.Pair;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -82,19 +82,23 @@ public class NodeInfoTest {
     registerConfigNodes();
     registerDataNodes();
     nodeInfo.registerAINode(new RegisterAINodePlan(generateTAINodeConfiguration()));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10001, Operation.SET_STOPPED));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_REMOVING));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, Operation.SET_STOPPED));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10006, Operation.SET_REMOVING));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10001, NodeStatus.Stopped));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Removing));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, NodeStatus.Stopped));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(10006, NodeStatus.Removing));
     Assert.assertTrue(nodeInfo.processTakeSnapshot(snapshotDir));
 
     NodeInfo nodeInfo1 = new NodeInfo();
     nodeInfo1.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(nodeInfo, nodeInfo1);
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo1.getPersistedNodeStatus(10001));
-    Assert.assertEquals(NodeStatus.Removing, nodeInfo1.getPersistedNodeStatus(10003));
-    Assert.assertEquals(NodeStatus.Stopped, nodeInfo1.getPersistedNodeStatus(10004));
-    Assert.assertEquals(NodeStatus.Removing, nodeInfo1.getPersistedNodeStatus(10006));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo1.getPersistedNodeStatus(10001));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Removing, null), nodeInfo1.getPersistedNodeStatus(10003));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, null), nodeInfo1.getPersistedNodeStatus(10004));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Removing, null), nodeInfo1.getPersistedNodeStatus(10006));
   }
 
   @Test
@@ -114,7 +118,7 @@ public class NodeInfoTest {
 
     NodeInfo restored = new NodeInfo();
     restored.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
-    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_REMOVING));
+    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Removing));
     restored.processLoadSnapshot(oldSnapshotDir);
     Assert.assertEquals(oldNodeInfo, restored);
     Assert.assertTrue(restored.getPersistedNodeStatuses().isEmpty());
@@ -125,29 +129,115 @@ public class NodeInfoTest {
   public void testSetOperationsReplacePersistedStatus() {
     NodeInfo info = new NodeInfo();
     info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_STOPPED));
-    Assert.assertEquals(NodeStatus.Stopped, info.getPersistedNodeStatus(10003));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_REMOVING));
-    Assert.assertEquals(NodeStatus.Removing, info.getPersistedNodeStatus(10003));
-    Map<Integer, NodeStatus> snapshot = info.getPersistedNodeStatuses();
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Stopped));
+    Assert.assertEquals(new Pair<>(NodeStatus.Stopped, null), info.getPersistedNodeStatus(10003));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Removing));
+    Assert.assertEquals(new Pair<>(NodeStatus.Removing, null), info.getPersistedNodeStatus(10003));
+    Pair<NodeStatus, String> status = info.getPersistedNodeStatus(10003);
+    status.left = NodeStatus.ReadOnly;
+    status.right = NodeStatus.MANUAL;
+    Assert.assertEquals(new Pair<>(NodeStatus.Removing, null), info.getPersistedNodeStatus(10003));
+    Map<Integer, Pair<NodeStatus, String>> snapshot = info.getPersistedNodeStatuses();
+    snapshot.get(10003).left = NodeStatus.ReadOnly;
+    snapshot.get(10003).right = NodeStatus.MANUAL;
+    Assert.assertEquals(new Pair<>(NodeStatus.Removing, null), info.getPersistedNodeStatus(10003));
     snapshot.clear();
-    Assert.assertEquals(NodeStatus.Removing, info.getPersistedNodeStatus(10003));
+    Assert.assertEquals(new Pair<>(NodeStatus.Removing, null), info.getPersistedNodeStatus(10003));
 
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_STOPPED));
-    Assert.assertEquals(NodeStatus.Stopped, info.getPersistedNodeStatus(10003));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Stopped));
+    Assert.assertEquals(new Pair<>(NodeStatus.Stopped, null), info.getPersistedNodeStatus(10003));
     info.clear();
     Assert.assertTrue(info.getPersistedNodeStatuses().isEmpty());
   }
 
   @Test
-  public void testClearRemovesEitherPersistedStatusAndAllowsRetry() {
+  public void testReadOnlyReasonsSurviveSnapshot() throws TException, IOException {
+    NodeInfo info = new NodeInfo();
+    String[] reasons = {
+      null,
+      NodeStatus.MANUAL,
+      NodeStatus.DISK_FULL,
+      NodeStatus.STOPPING,
+      NodeStatus.UNRECOVERABLE_ERROR + ": failed to recover root.test-0"
+    };
+    for (int i = 0; i < reasons.length; i++) {
+      info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3 + i)));
+      info.applyNodeStatusPlan(
+          new UpdateNodeStatusPlan(10003 + i, NodeStatus.ReadOnly, reasons[i]));
+    }
+    File directory = new File(snapshotDir, "readonly-reasons");
+    Assert.assertTrue(directory.mkdirs());
+    Assert.assertTrue(info.processTakeSnapshot(directory));
+
+    NodeInfo restored = new NodeInfo();
+    restored.processLoadSnapshot(directory);
+    Assert.assertEquals(info, restored);
+    for (int i = 0; i < reasons.length; i++) {
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.ReadOnly, reasons[i]), restored.getPersistedNodeStatus(10003 + i));
+    }
+  }
+
+  @Test
+  public void testStoppedAndRemovingReasonsSurviveSnapshot() throws TException, IOException {
     NodeInfo info = new NodeInfo();
     info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
-    for (Operation operation : new Operation[] {Operation.SET_STOPPED, Operation.SET_REMOVING}) {
-      info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, operation));
+    info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(4)));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Stopped, "stop reason"));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, NodeStatus.Removing, "remove reason"));
+    File directory = new File(snapshotDir, "stopped-removing-reasons");
+    Assert.assertTrue(directory.mkdirs());
+    Assert.assertTrue(info.processTakeSnapshot(directory));
+
+    NodeInfo restored = new NodeInfo();
+    restored.processLoadSnapshot(directory);
+    Assert.assertEquals(info, restored);
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Stopped, "stop reason"), restored.getPersistedNodeStatus(10003));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Removing, "remove reason"), restored.getPersistedNodeStatus(10004));
+  }
+
+  @Test
+  public void testReadOnlyReasonReplacementAndStatusChange() {
+    NodeInfo info = new NodeInfo();
+    info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
+    // Plans contain the caller's final decision, including lower-priority or absent reasons.
+    for (String reason : new String[] {NodeStatus.MANUAL, NodeStatus.DISK_FULL, null}) {
+      info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.ReadOnly, reason));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.ReadOnly, reason), info.getPersistedNodeStatus(10003));
+    }
+    info.applyNodeStatusPlan(
+        new UpdateNodeStatusPlan(10003, NodeStatus.ReadOnly, NodeStatus.MANUAL));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Stopped));
+    Assert.assertEquals(new Pair<>(NodeStatus.Stopped, null), info.getPersistedNodeStatus(10003));
+  }
+
+  @Test
+  public void testNodeRemovalDiscardsReadOnlyReason() {
+    NodeInfo info = new NodeInfo();
+    info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
+    UpdateNodeStatusPlan readOnly =
+        new UpdateNodeStatusPlan(10003, NodeStatus.ReadOnly, NodeStatus.MANUAL);
+    info.applyNodeStatusPlan(readOnly);
+    info.removeDataNode(
+        new RemoveDataNodePlan(Collections.singletonList(generateTDataNodeLocation(3))));
+    Assert.assertNull(info.getPersistedNodeStatus(10003));
+    info.applyNodeStatusPlan(readOnly);
+    Assert.assertNull(info.getPersistedNodeStatus(10003));
+  }
+
+  @Test
+  public void testClearRemovesAnyPersistedStatusAndAllowsRetry() {
+    NodeInfo info = new NodeInfo();
+    info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
+    for (NodeStatus status :
+        new NodeStatus[] {NodeStatus.Stopped, NodeStatus.Removing, NodeStatus.ReadOnly}) {
+      info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, status, NodeStatus.MANUAL));
       Assert.assertNotNull(info.getPersistedNodeStatus(10003));
 
-      UpdateNodeStatusPlan clear = new UpdateNodeStatusPlan(10003, Operation.CLEAR);
+      UpdateNodeStatusPlan clear = new UpdateNodeStatusPlan(10003, null);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), info.applyNodeStatusPlan(clear).getCode());
       Assert.assertNull(info.getPersistedNodeStatus(10003));
@@ -165,11 +255,11 @@ public class NodeInfoTest {
             10001, new TEndPoint("127.0.0.1", 22201), new TEndPoint("127.0.0.1", 22301));
     info.applyConfigNode(new ApplyConfigNodePlan(configNode));
     info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10001, Operation.SET_STOPPED));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_REMOVING));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10001, NodeStatus.Stopped));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Removing));
     TAINodeConfiguration aiNode = generateTAINodeConfiguration();
     info.registerAINode(new RegisterAINodePlan(aiNode));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10006, Operation.SET_REMOVING));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10006, NodeStatus.Removing));
 
     info.removeConfigNode(new RemoveConfigNodePlan(configNode));
     info.removeDataNode(
@@ -179,14 +269,13 @@ public class NodeInfoTest {
 
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10001, Operation.SET_STOPPED)).getCode());
+        info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10001, NodeStatus.Stopped)).getCode());
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_REMOVING))
-            .getCode());
+        info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Removing)).getCode());
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10006, Operation.SET_STOPPED)).getCode());
+        info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10006, NodeStatus.Stopped)).getCode());
     Assert.assertTrue(info.getPersistedNodeStatuses().isEmpty());
   }
 
@@ -209,16 +298,19 @@ public class NodeInfoTest {
 
   @Test
   public void testTruncatedStatusPayloadMustFailSnapshotLoad() throws Exception {
-    NodeInfo info = new NodeInfo();
-    info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_REMOVING));
-    File directory = new File(snapshotDir, "truncated-status-payload");
-    Assert.assertTrue(directory.mkdirs());
-    Assert.assertTrue(info.processTakeSnapshot(directory));
-    try (RandomAccessFile file = new RandomAccessFile(new File(directory, "node_info.bin"), "rw")) {
-      file.setLength(file.length() - 2);
+    for (NodeStatus status : new NodeStatus[] {NodeStatus.Removing, NodeStatus.ReadOnly}) {
+      NodeInfo info = new NodeInfo();
+      info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
+      info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, status, NodeStatus.MANUAL));
+      File directory = new File(snapshotDir, "truncated-status-payload-" + status);
+      Assert.assertTrue(directory.mkdirs());
+      Assert.assertTrue(info.processTakeSnapshot(directory));
+      try (RandomAccessFile file =
+          new RandomAccessFile(new File(directory, "node_info.bin"), "rw")) {
+        file.setLength(file.length() - 2);
+      }
+      Assert.assertThrows(IOException.class, () -> new NodeInfo().processLoadSnapshot(directory));
     }
-    Assert.assertThrows(IOException.class, () -> new NodeInfo().processLoadSnapshot(directory));
   }
 
   @Test
@@ -226,10 +318,10 @@ public class NodeInfoTest {
     NodeInfo info = new NodeInfo();
     info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
     info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(4)));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_STOPPED));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, Operation.SET_REMOVING));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.CLEAR));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, Operation.CLEAR));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Stopped));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, NodeStatus.Removing));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, null));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, null));
     File directory = new File(snapshotDir, "cleared-statuses");
     Assert.assertTrue(directory.mkdirs());
     Assert.assertTrue(info.processTakeSnapshot(directory));
@@ -237,25 +329,26 @@ public class NodeInfoTest {
     restored.processLoadSnapshot(directory);
     Assert.assertTrue(restored.getPersistedNodeStatuses().isEmpty());
     // Replay the entries after that snapshot in their original order.
-    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_STOPPED));
-    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, Operation.SET_REMOVING));
-    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.CLEAR));
+    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Stopped));
+    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10004, NodeStatus.Removing));
+    restored.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, null));
     Assert.assertNull(restored.getPersistedNodeStatus(10003));
-    Assert.assertEquals(NodeStatus.Removing, restored.getPersistedNodeStatus(10004));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.Removing, null), restored.getPersistedNodeStatus(10004));
   }
 
   @Test
   public void testRejoinedNodeDoesNotInheritRemovedNodeStatus() {
     NodeInfo info = new NodeInfo();
     info.registerDataNode(new RegisterDataNodePlan(generateTDataNodeConfiguration(3)));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_REMOVING));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Removing));
     info.removeDataNode(
         new RemoveDataNodePlan(Collections.singletonList(generateTDataNodeLocation(3))));
     int newId = info.generateNextNodeId();
     TDataNodeConfiguration rejoined = generateTDataNodeConfiguration(3);
     rejoined.getLocation().setDataNodeId(newId);
     info.registerDataNode(new RegisterDataNodePlan(rejoined));
-    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, Operation.SET_STOPPED));
+    info.applyNodeStatusPlan(new UpdateNodeStatusPlan(10003, NodeStatus.Stopped));
     Assert.assertNotEquals(10003, newId);
     Assert.assertNull(info.getPersistedNodeStatus(newId));
     Assert.assertNull(info.getPersistedNodeStatus(10003));

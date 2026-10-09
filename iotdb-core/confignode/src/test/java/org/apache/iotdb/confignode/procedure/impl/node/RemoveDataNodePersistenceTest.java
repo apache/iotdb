@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.client.request.AsyncRequestManager;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -47,6 +46,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -243,10 +243,10 @@ public class RemoveDataNodePersistenceTest {
     failStatusWrite = true;
     expectChangeFailure(NodeStatus.Removing);
     assertEquals(NodeStatus.Removing, cache.getNodeStatus(FIRST));
-    assertEquals(NodeStatus.Stopped, nodeInfo.getPersistedNodeStatus(FIRST));
+    assertEquals(new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(FIRST));
     failStatusWrite = false;
     change(FIRST, NodeStatus.Removing);
-    assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(FIRST));
+    assertEquals(new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(FIRST));
   }
 
   @Test
@@ -443,7 +443,7 @@ public class RemoveDataNodePersistenceTest {
         nodeInfo.getRegisteredDataNodes().stream()
             .anyMatch(n -> n.getLocation().getDataNodeId() == FIRST));
     assertNull(nodeInfo.getPersistedNodeStatus(FIRST));
-    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(FIRST, Operation.SET_REMOVING));
+    nodeInfo.applyNodeStatusPlan(new UpdateNodeStatusPlan(FIRST, NodeStatus.Removing));
     assertNull(nodeInfo.getPersistedNodeStatus(FIRST));
     assertTrue(stopRequests > 0);
   }
@@ -467,7 +467,7 @@ public class RemoveDataNodePersistenceTest {
     assertTrue(procedure.finish(env));
     assertNull(nodeInfo.getPersistedNodeStatus(FIRST));
     assertEquals(1, nodeInfo.getRegisteredDataNodes().size());
-    assertStates(SECOND, NodeStatus.ReadOnly, NodeStatus.ReadOnly, null);
+    assertStates(SECOND, NodeStatus.ReadOnly, NodeStatus.ReadOnly, NodeStatus.ReadOnly);
   }
 
   private void assertDeleteFailure() throws Exception {
@@ -477,7 +477,7 @@ public class RemoveDataNodePersistenceTest {
     assertEquals("No remote stop before durable unregister", 0, stopRequests);
     assertFalse("Failed unregister must remain retryable", finished);
     assertEquals(NodeStatus.Removing, cache.getNodeStatus(FIRST));
-    assertEquals(NodeStatus.Removing, nodeInfo.getPersistedNodeStatus(FIRST));
+    assertEquals(new Pair<>(NodeStatus.Removing, null), nodeInfo.getPersistedNodeStatus(FIRST));
     assertEquals(2, nodeInfo.getRegisteredDataNodes().size());
   }
 
@@ -487,7 +487,7 @@ public class RemoveDataNodePersistenceTest {
     assertTrue(
         "Compensation should complete for " + original,
         procedure(original, RemoveDataNodeState.STOP_DATA_NODE).finish(env));
-    assertStates(FIRST, original, original, original == NodeStatus.Stopped ? original : null);
+    assertStates(FIRST, original, original, original.isPersistentStatus() ? original : null);
   }
 
   private void retainRegionOn(int id) {
@@ -516,7 +516,12 @@ public class RemoveDataNodePersistenceTest {
   private void assertStates(int id, NodeStatus remote, NodeStatus published, NodeStatus persisted) {
     assertEquals("DataNode", remote, remoteStatuses.get(id));
     assertEquals("LoadCache", published, cache.getNodeStatus(id));
-    assertEquals("NodeInfo", persisted, nodeInfo.getPersistedNodeStatus(id));
+    assertEquals(
+        "NodeInfo",
+        persisted == null
+            ? null
+            : new Pair<>(persisted, persisted == NodeStatus.ReadOnly ? NodeStatus.MANUAL : null),
+        nodeInfo.getPersistedNodeStatus(id));
   }
 
   private TestProcedure procedure(NodeStatus original, RemoveDataNodeState initial) {

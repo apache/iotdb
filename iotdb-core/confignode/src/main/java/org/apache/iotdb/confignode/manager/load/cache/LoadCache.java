@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -58,6 +57,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.function.CheckedFunction;
 import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +112,7 @@ public class LoadCache {
   private Map<Integer, Set<Integer>> topologyGraph;
   private final AtomicBoolean topologyUpdated;
 
-  private IntFunction<NodeStatus> persistedNodeStatusReader;
+  private IntFunction<Pair<NodeStatus, String>> persistedNodeStatusReader;
   private CheckedFunction<UpdateNodeStatusPlan, TSStatus, ConsensusException> nodeStatusWriter;
 
   public LoadCache() {
@@ -128,7 +128,7 @@ public class LoadCache {
   }
 
   public void setNodeStatusPersistence(
-      IntFunction<NodeStatus> persistedNodeStatusReader,
+      IntFunction<Pair<NodeStatus, String>> persistedNodeStatusReader,
       CheckedFunction<UpdateNodeStatusPlan, TSStatus, ConsensusException> nodeStatusWriter) {
     Objects.requireNonNull(persistedNodeStatusReader);
     Objects.requireNonNull(nodeStatusWriter);
@@ -269,18 +269,19 @@ public class LoadCache {
     heartbeatProcessingMap.putIfAbsent(nodeId, new AtomicBoolean(false));
   }
 
-  private TSStatus persistNodeStatus(BaseNodeCache cache, NodeStatus status) {
+  private TSStatus persistNodeStatus(BaseNodeCache cache, NodeStatus status, String reason) {
     int nodeId = cache.getNodeId();
     if (nodeCacheMap.get(nodeId) != cache) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
-    Operation operation = Operation.fromNodeStatus(status);
-    NodeStatus persistedStatus = operation == Operation.CLEAR ? null : status;
-    if (persistedNodeStatusReader.apply(nodeId) == persistedStatus) {
+    UpdateNodeStatusPlan plan = new UpdateNodeStatusPlan(nodeId, status, reason);
+    Pair<NodeStatus, String> persistedStatus =
+        plan.getStatus() == null ? null : new Pair<>(plan.getStatus(), plan.getStatusReason());
+    if (Objects.equals(persistedNodeStatusReader.apply(nodeId), persistedStatus)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     try {
-      return nodeStatusWriter.apply(new UpdateNodeStatusPlan(nodeId, operation));
+      return nodeStatusWriter.apply(plan);
     } catch (ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -569,8 +570,9 @@ public class LoadCache {
                   || nodeCache instanceof DataNodeHeartbeatCache)
               && !nodeCache.hasHeartbeatSample()
               // Stopped/Removing can be restored from persisted records without waiting for a
-              // heartbeat.
-              && !nodeCache.getNodeStatus().isPersistentStatus()) {
+              // heartbeat. ReadOnly still needs a heartbeat to confirm that the node is reachable.
+              && nodeCache.getNodeStatus() != NodeStatus.Stopped
+              && nodeCache.getNodeStatus() != NodeStatus.Removing) {
             unreadyNodes.add(nodeId);
           }
         });

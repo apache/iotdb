@@ -35,6 +35,7 @@ import org.apache.iotdb.consensus.ratis.utils.Utils;
 import com.google.common.collect.ImmutableMap;
 import org.apache.ratis.util.CodeInjectionForTesting;
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 
 import java.io.OutputStream;
 import java.lang.instrument.Instrumentation;
@@ -126,8 +127,13 @@ public final class NodeStatusTestAgent {
           NodeInfo nodeInfo = manager.getNodeManager().getNodeInfo();
           for (int i = 1; i < args.length; i++) {
             int nodeId = Integer.parseInt(args[i]);
+            Pair<NodeStatus, String> persistedStatus = nodeInfo.getPersistedNodeStatus(nodeId);
             result.setProperty(
-                "persisted." + nodeId, String.valueOf(nodeInfo.getPersistedNodeStatus(nodeId)));
+                "persisted." + nodeId,
+                String.valueOf(persistedStatus == null ? null : persistedStatus.left));
+            result.setProperty(
+                "persistedReason." + nodeId,
+                String.valueOf(persistedStatus == null ? null : persistedStatus.right));
           }
           break;
         default:

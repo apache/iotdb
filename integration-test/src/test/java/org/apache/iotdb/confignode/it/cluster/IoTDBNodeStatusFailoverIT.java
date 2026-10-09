@@ -35,6 +35,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.sun.tools.attach.VirtualMachine;
+import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
@@ -177,6 +178,55 @@ public class IoTDBNodeStatusFailoverIT {
     transfer(second);
     assertStatus(0, stopped, NodeStatus.Unknown);
     assertStatus(1, removing, NodeStatus.Unknown);
+  }
+
+  @Test
+  public void testReadOnlyReasonPersistsAcrossLeaderTransferAndClearsAfterRestart()
+      throws Exception {
+    init(2);
+    TDataNodeLocation dataNode = dataLocation(cluster(), 0);
+    int dataNodeId = dataNode.getDataNodeId();
+    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> pool =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    try (SyncDataNodeInternalServiceClient client =
+        pool.borrowClient(dataNode.getInternalEndPoint())) {
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.setSystemStatus(NodeStatus.ReadOnly.getStatus()).getCode());
+    } finally {
+      pool.close();
+    }
+    assertStatus(0, dataNodeId, NodeStatus.ReadOnly);
+    assertEquals(NodeStatus.MANUAL, cluster().getNodeStatusReason().get(dataNodeId));
+    // Inspect every voter's applied record before election; SHOW alone could pass on heartbeats.
+    for (int i = 0; i < 3; i++) {
+      awaitPersisted(i, dataNodeId, NodeStatus.ReadOnly, NodeStatus.MANUAL);
+    }
+
+    int nextLeader = (EnvFactory.getEnv().getLeaderConfigNodeIndex() + 1) % 3;
+    transfer(nextLeader);
+    assertEquals(nextLeader, EnvFactory.getEnv().getLeaderConfigNodeIndex());
+    for (int i = 0; i < 3; i++) {
+      awaitPersisted(i, dataNodeId, NodeStatus.ReadOnly, NodeStatus.MANUAL);
+    }
+    assertStatus(0, dataNodeId, NodeStatus.ReadOnly);
+    assertEquals(NodeStatus.MANUAL, cluster().getNodeStatusReason().get(dataNodeId));
+
+    // Explicitly report after stopping: Windows process termination does not run shutdown hooks.
+    assertEquals(dataNodeId, stoppedFixture(0));
+    assertNull(cluster().getNodeStatusReason().get(dataNodeId));
+    for (int i = 0; i < 3; i++) {
+      awaitPersisted(i, dataNodeId, NodeStatus.Stopped, null);
+    }
+
+    EnvFactory.getEnv().startDataNode(0);
+    assertStatus(0, dataNodeId, NodeStatus.Running);
+    assertNull(cluster().getNodeStatusReason().get(dataNodeId));
+    for (int i = 0; i < 3; i++) {
+      awaitPersisted(i, dataNodeId, null, null);
+    }
   }
 
   @Test
@@ -376,8 +426,12 @@ public class IoTDBNodeStatusFailoverIT {
           // The snapshot may have been replaced since it was enumerated.
           continue;
         }
-        if (java.util.Objects.equals(first, restored.getPersistedNodeStatus(firstId))
-            && java.util.Objects.equals(second, restored.getPersistedNodeStatus(secondId))) {
+        if (java.util.Objects.equals(
+                first == null ? null : new Pair<>(first, null),
+                restored.getPersistedNodeStatus(firstId))
+            && java.util.Objects.equals(
+                second == null ? null : new Pair<>(second, null),
+                restored.getPersistedNodeStatus(secondId))) {
           return;
         }
       }
@@ -483,6 +537,7 @@ public class IoTDBNodeStatusFailoverIT {
   private int stoppedFixture(int index) throws Exception {
     TDataNodeLocation node = dataLocation(cluster(), index);
     EnvFactory.getEnv().getDataNodeWrapper(index).stopForcibly();
+    assertFalse(EnvFactory.getEnv().getDataNodeWrapper(index).isAlive());
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       assertEquals(200, client.reportDataNodeShutdown(node).getCode());
@@ -579,15 +634,30 @@ public class IoTDBNodeStatusFailoverIT {
   }
 
   private void awaitPersisted(int node, int dataNode, NodeStatus expected) throws Exception {
+    awaitPersisted(node, dataNode, expected, null);
+  }
+
+  private void awaitPersisted(int node, int dataNode, NodeStatus expected, String expectedReason)
+      throws Exception {
     long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
     do {
       Properties state = control(node, "inspect:" + dataNode);
-      if (String.valueOf(expected).equals(state.getProperty("persisted." + dataNode))) {
+      if (String.valueOf(expected).equals(state.getProperty("persisted." + dataNode))
+          && String.valueOf(expectedReason)
+              .equals(state.getProperty("persistedReason." + dataNode))) {
         return;
       }
       TimeUnit.MILLISECONDS.sleep(200);
     } while (System.nanoTime() < deadline);
-    fail("ConfigNode " + node + " did not persist " + expected + " for " + dataNode);
+    fail(
+        "ConfigNode "
+            + node
+            + " did not persist "
+            + expected
+            + " with reason "
+            + expectedReason
+            + " for "
+            + dataNode);
   }
 
   private Path submit(int node, String command) throws Exception {

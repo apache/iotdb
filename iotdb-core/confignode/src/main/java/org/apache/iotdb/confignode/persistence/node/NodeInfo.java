@@ -51,6 +51,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,7 +111,8 @@ public class NodeInfo implements SnapshotProcessor {
   private final Map<Integer, TNodeVersionInfo> nodeVersionInfo;
   private final ReentrantReadWriteLock versionInfoReadWriteLock;
 
-  private final Map<Integer, NodeStatus> persistedNodeStatuses;
+  // Map<NodeId, Pair<status, reason>>. A null reason still belongs to a stored status.
+  private final Map<Integer, Pair<NodeStatus, String>> persistedNodeStatuses;
   private final ReentrantReadWriteLock persistedNodeStatusReadWriteLock;
 
   private static final String SNAPSHOT_FILENAME = "node_info.bin";
@@ -659,16 +661,10 @@ public class NodeInfo implements SnapshotProcessor {
       if (registeredConfigNodes.containsKey(nodeId)
           || registeredDataNodes.containsKey(nodeId)
           || registeredAINodes.containsKey(nodeId)) {
-        switch (plan.getOperation()) {
-          case SET_STOPPED:
-            persistedNodeStatuses.put(nodeId, NodeStatus.Stopped);
-            break;
-          case SET_REMOVING:
-            persistedNodeStatuses.put(nodeId, NodeStatus.Removing);
-            break;
-          case CLEAR:
-            persistedNodeStatuses.remove(nodeId);
-            break;
+        if (plan.getStatus() == null) {
+          persistedNodeStatuses.remove(nodeId);
+        } else {
+          persistedNodeStatuses.put(nodeId, new Pair<>(plan.getStatus(), plan.getStatusReason()));
         }
       }
 
@@ -678,19 +674,24 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  public NodeStatus getPersistedNodeStatus(int nodeId) {
+  public Pair<NodeStatus, String> getPersistedNodeStatus(int nodeId) {
     persistedNodeStatusReadWriteLock.readLock().lock();
     try {
-      return persistedNodeStatuses.get(nodeId);
+      Pair<NodeStatus, String> status = persistedNodeStatuses.get(nodeId);
+      // Pair is mutable, so callers must not receive the value stored in NodeInfo.
+      return status == null ? null : new Pair<>(status.left, status.right);
     } finally {
       persistedNodeStatusReadWriteLock.readLock().unlock();
     }
   }
 
-  public Map<Integer, NodeStatus> getPersistedNodeStatuses() {
+  public Map<Integer, Pair<NodeStatus, String>> getPersistedNodeStatuses() {
     persistedNodeStatusReadWriteLock.readLock().lock();
     try {
-      return new HashMap<>(persistedNodeStatuses);
+      Map<Integer, Pair<NodeStatus, String>> result = new HashMap<>();
+      persistedNodeStatuses.forEach(
+          (nodeId, status) -> result.put(nodeId, new Pair<>(status.left, status.right)));
+      return result;
     } finally {
       persistedNodeStatusReadWriteLock.readLock().unlock();
     }
@@ -793,9 +794,10 @@ public class NodeInfo implements SnapshotProcessor {
 
   private void serializePersistedNodeStatuses(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(persistedNodeStatuses.size(), outputStream);
-    for (Entry<Integer, NodeStatus> entry : persistedNodeStatuses.entrySet()) {
+    for (Entry<Integer, Pair<NodeStatus, String>> entry : persistedNodeStatuses.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue().getStatus(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue().left.getStatus(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue().right, outputStream);
     }
   }
 
@@ -916,7 +918,9 @@ public class NodeInfo implements SnapshotProcessor {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
       int nodeId = ReadWriteIOUtils.readInt(inputStream);
-      persistedNodeStatuses.put(nodeId, NodeStatus.parse(ReadWriteIOUtils.readString(inputStream)));
+      NodeStatus status = NodeStatus.parse(ReadWriteIOUtils.readString(inputStream));
+      String statusReason = ReadWriteIOUtils.readString(inputStream);
+      persistedNodeStatuses.put(nodeId, new Pair<>(status, statusReason));
     }
   }
 

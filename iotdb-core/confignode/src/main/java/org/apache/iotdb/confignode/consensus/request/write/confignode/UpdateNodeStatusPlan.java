@@ -32,54 +32,55 @@ import java.util.Objects;
 
 public class UpdateNodeStatusPlan extends ConfigPhysicalPlan {
 
-  public enum Operation {
-    SET_STOPPED,
-    SET_REMOVING,
-    CLEAR;
-
-    /** Maps the final node status to a persistence command without applying transition rules. */
-    public static Operation fromNodeStatus(NodeStatus status) {
-      return switch (status) {
-        case Stopped -> SET_STOPPED;
-        case Removing -> SET_REMOVING;
-        case Running, ReadOnly, Unknown -> CLEAR;
-      };
-    }
-  }
-
   private int nodeId;
 
-  private Operation operation;
+  // A null status removes the persisted record, including its reason.
+  private NodeStatus status;
+
+  private String statusReason;
 
   public UpdateNodeStatusPlan() {
     super(ConfigPhysicalPlanType.UpdateNodeStatus);
   }
 
-  public UpdateNodeStatusPlan(int nodeId, Operation operation) {
+  public UpdateNodeStatusPlan(int nodeId, NodeStatus status) {
+    this(nodeId, status, null);
+  }
+
+  public UpdateNodeStatusPlan(int nodeId, NodeStatus status, String statusReason) {
     this();
     this.nodeId = nodeId;
-    this.operation = operation;
+    // Resolve clearing before serialization so replay does not depend on future persistence rules.
+    this.status = status != null && status.isPersistentStatus() ? status : null;
+    this.statusReason = this.status == null ? null : statusReason;
   }
 
   public int getNodeId() {
     return nodeId;
   }
 
-  public Operation getOperation() {
-    return operation;
+  public NodeStatus getStatus() {
+    return status;
+  }
+
+  public String getStatusReason() {
+    return statusReason;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
     ReadWriteIOUtils.write(nodeId, stream);
-    ReadWriteIOUtils.write(operation.name(), stream);
+    ReadWriteIOUtils.write(status == null ? null : status.getStatus(), stream);
+    ReadWriteIOUtils.write(statusReason, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     nodeId = ReadWriteIOUtils.readInt(buffer);
-    operation = Operation.valueOf(ReadWriteIOUtils.readString(buffer));
+    String statusName = ReadWriteIOUtils.readString(buffer);
+    status = statusName == null ? null : NodeStatus.parse(statusName);
+    statusReason = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -91,11 +92,13 @@ public class UpdateNodeStatusPlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateNodeStatusPlan that = (UpdateNodeStatusPlan) o;
-    return nodeId == that.nodeId && operation == that.operation;
+    return nodeId == that.nodeId
+        && status == that.status
+        && Objects.equals(statusReason, that.statusReason);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(nodeId, operation);
+    return Objects.hash(nodeId, status, statusReason);
   }
 }

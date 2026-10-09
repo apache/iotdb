@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan.Operation;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -404,9 +403,10 @@ public class LoadManagerTest {
     when(nodeManager.getRegisteredAINodes()).thenReturn(Collections.emptyList());
     when(configManager.getClusterSchemaManager().getDatabaseNames(null))
         .thenReturn(Collections.emptyList());
-    AtomicReference<NodeStatus> persistedLeaderStatus = new AtomicReference<>(NodeStatus.Stopped);
+    AtomicReference<Pair<NodeStatus, String>> persistedLeaderStatus =
+        new AtomicReference<>(new Pair<>(NodeStatus.Stopped, null));
     Function<UpdateNodeStatusPlan, TSStatus> nodeStatusWriter = mock(Function.class);
-    when(nodeStatusWriter.apply(new UpdateNodeStatusPlan(leaderId, Operation.CLEAR)))
+    when(nodeStatusWriter.apply(new UpdateNodeStatusPlan(leaderId, null)))
         .thenReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
         .thenReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
         .thenAnswer(
@@ -427,17 +427,17 @@ public class LoadManagerTest {
           System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(31));
 
       Assert.assertFalse(loadManager.isLoadReady());
-      Assert.assertEquals(NodeStatus.Stopped, persistedLeaderStatus.get());
+      Assert.assertEquals(new Pair<>(NodeStatus.Stopped, null), persistedLeaderStatus.get());
       Assert.assertEquals(
           ManagerMessages.MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809,
           loadManager.getLoadReadyReason());
       // The first-heartbeat timeout must not bypass a repeated persistence failure.
       Assert.assertFalse(loadManager.isLoadReady());
-      Assert.assertEquals(NodeStatus.Stopped, persistedLeaderStatus.get());
+      Assert.assertEquals(new Pair<>(NodeStatus.Stopped, null), persistedLeaderStatus.get());
 
       Assert.assertTrue(loadManager.isLoadReady());
       Assert.assertNull(persistedLeaderStatus.get());
-      verify(nodeStatusWriter, times(3)).apply(new UpdateNodeStatusPlan(leaderId, Operation.CLEAR));
+      verify(nodeStatusWriter, times(3)).apply(new UpdateNodeStatusPlan(leaderId, null));
     } finally {
       loadManager.stopLoadServices();
     }

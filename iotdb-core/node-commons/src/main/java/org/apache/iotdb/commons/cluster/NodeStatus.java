@@ -127,7 +127,7 @@ public enum NodeStatus {
    * existing record when the node recovers.
    */
   public boolean isPersistentStatus() {
-    return this == Stopped || this == Removing;
+    return this == Stopped || this == Removing || this == ReadOnly;
   }
 
   /** No available heartbeat, or an explicit shutdown report. Removing alone is not offline. */

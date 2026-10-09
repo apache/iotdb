@@ -40,6 +40,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -54,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -129,7 +131,11 @@ public class IoTDBNodeStatusPersistenceIT {
     // Verify actual completed snapshots, including their contents, before restarting the quorum.
     // A low snapshot threshold alone would not prove snapshot recovery was exercised.
     for (ConfigNodeWrapper configNode : liveConfigNodes) {
-      awaitStoppedNodeSnapshot(configNode, stoppedConfigNodeId, stoppedDataNodeId);
+      awaitNodeStatusSnapshot(
+          configNode,
+          Map.of(
+              stoppedConfigNodeId, new Pair<>(NodeStatus.Stopped, null),
+              stoppedDataNodeId, new Pair<>(NodeStatus.Stopped, null)));
     }
     restartLiveConfigNodes();
     assertNodeStatuses(stoppedConfigNodeIndex, NodeStatus.Stopped);
@@ -164,7 +170,7 @@ public class IoTDBNodeStatusPersistenceIT {
     setDataNodeSystemStatus(NodeStatus.ReadOnly);
     awaitDataNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
 
-    // ReadOnly and its reason belong to the live DataNode and reach the new leader in heartbeats.
+    // The new leader restores ReadOnly and its reason; live heartbeats continue refreshing them.
     final int leaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
     EnvFactory.getEnv().getConfigNodeWrapper(leaderIndex).stopForcibly();
     assertFalse(EnvFactory.getEnv().getConfigNodeWrapper(leaderIndex).isAlive());
@@ -176,6 +182,30 @@ public class IoTDBNodeStatusPersistenceIT {
     EnvFactory.getEnv().getDataNodeWrapper(0).stopForcibly();
     assertFalse(EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
     awaitDataNodeStatusWithReason(NodeStatus.Unknown, null);
+  }
+
+  @Test
+  public void testReadOnlyReasonSurvivesSnapshotRecovery() throws Exception {
+    initCluster(3, 1);
+    setDataNodeSystemStatus(NodeStatus.ReadOnly);
+    awaitDataNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+
+    final int dataNodeId;
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      dataNodeId = client.showCluster().getDataNodeList().get(0).getDataNodeId();
+    }
+    // Inspect completed snapshots so live heartbeats cannot hide a missing durable reason.
+    for (ConfigNodeWrapper configNode : getLiveConfigNodes()) {
+      awaitNodeStatusSnapshot(
+          configNode,
+          Collections.singletonMap(dataNodeId, new Pair<>(NodeStatus.ReadOnly, NodeStatus.MANUAL)));
+    }
+    restartLiveConfigNodes();
+    awaitDataNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+
+    setDataNodeSystemStatus(NodeStatus.Running);
+    awaitDataNodeStatusWithReason(NodeStatus.Running, null);
   }
 
   private void setDataNodeSystemStatus(NodeStatus status) throws Exception {
@@ -299,8 +329,8 @@ public class IoTDBNodeStatusPersistenceIT {
     liveConfigNodes.forEach(ConfigNodeWrapper::start);
   }
 
-  private void awaitStoppedNodeSnapshot(
-      ConfigNodeWrapper configNode, int stoppedConfigNodeId, int stoppedDataNodeId)
+  private void awaitNodeStatusSnapshot(
+      ConfigNodeWrapper configNode, Map<Integer, Pair<NodeStatus, String>> expectedStatuses)
       throws Exception {
     for (int retry = 0; retry < 60; retry++) {
       final List<Path> snapshotFiles = new ArrayList<>();
@@ -334,13 +364,16 @@ public class IoTDBNodeStatusPersistenceIT {
           // A newer snapshot may have replaced this one since the directory was enumerated.
           continue;
         }
-        if (NodeStatus.Stopped.equals(recovered.getPersistedNodeStatus(stoppedConfigNodeId))
-            && NodeStatus.Stopped.equals(recovered.getPersistedNodeStatus(stoppedDataNodeId))) {
+        if (expectedStatuses.entrySet().stream()
+            .allMatch(
+                entry ->
+                    java.util.Objects.equals(
+                        entry.getValue(), recovered.getPersistedNodeStatus(entry.getKey())))) {
           return;
         }
       }
       TimeUnit.SECONDS.sleep(1);
     }
-    fail("No completed snapshot contains both Stopped nodes on " + configNode.getId());
+    fail("No completed snapshot contains " + expectedStatuses + " on " + configNode.getId());
   }
 }
