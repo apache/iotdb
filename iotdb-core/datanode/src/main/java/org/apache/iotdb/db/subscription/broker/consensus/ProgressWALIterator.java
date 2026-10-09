@@ -757,7 +757,9 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     }
     buffer.position(SEARCH_INDEX_OFFSET);
     final long bodySearchIndex = SearchNode.extractSearchIndex(buffer.getLong());
-    return bodySearchIndex >= 0 ? bodySearchIndex : metadataSearchIndex;
+    // A replicated request has no local search index. The metadata fallback is based on the
+    // WAL entry offset, which also counts fragments and cannot assign a local index to it.
+    return bodySearchIndex;
   }
 
   private void startPending(
