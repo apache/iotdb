@@ -1673,9 +1673,12 @@ public class ConsensusPrefetchingQueueTest {
       assertEquals(2L, queue.getCurrentReadSearchIndex());
 
       assertEquals(
-          "WAL_GAP", validateWalReplayContinuity.invoke(queue, createRequest(4L), 0L).toString());
-      assertEquals(2L, queue.getWalGapSkippedEntries());
+          "SUCCESS", validateWalReplayContinuity.invoke(queue, createRequest(4L), 0L).toString());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
       assertEquals(2L, queue.getCurrentReadSearchIndex());
+      advanceWalReplayCursorIfPresent.invoke(queue, createRequest(4L));
+      assertEquals(2L, queue.getWalGapSkippedEntries());
+      assertEquals(5L, queue.getCurrentReadSearchIndex());
     } finally {
       if (queue != null) {
         queue.close();
@@ -1773,7 +1776,7 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
-  public void testWalReplayFailsCriticallyWhenGapRemainsUnavailable() throws Exception {
+  public void testWalReplayContinuesWhenGapRemainsUnavailable() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("wal-replay-unrecoverable-gap");
     ConsensusPrefetchingQueue queue = null;
@@ -1838,18 +1841,16 @@ public class ConsensusPrefetchingQueueTest {
       queue.drivePrefetchOnce();
       queue.drivePrefetchOnce();
 
-      assertEquals(1L, queue.getWalPathAcceptedEntries());
-      assertEquals(1, conversionCount.get());
+      assertEquals(2L, queue.getWalPathAcceptedEntries());
+      assertEquals(2, conversionCount.get());
       assertEquals(2L, queue.getWalGapSkippedEntries());
-      assertEquals(2L, queue.getCurrentReadSearchIndex());
-      assertEquals(4L, queue.getProgressStatus());
+      assertEquals(5L, queue.getCurrentReadSearchIndex());
 
-      final SubscriptionEvent errorEvent = queue.poll("consumer");
-      assertNotNull(errorEvent);
+      final SubscriptionEvent deliveredEvent = queue.poll("consumer");
+      assertNotNull(deliveredEvent);
       assertEquals(
-          SubscriptionPollResponseType.ERROR.getType(),
-          errorEvent.getCurrentResponse().getResponseType());
-      assertTrue(((ErrorPayload) errorEvent.getCurrentResponse().getPayload()).isCritical());
+          SubscriptionPollResponseType.TABLETS.getType(),
+          deliveredEvent.getCurrentResponse().getResponseType());
     } finally {
       if (queue != null) {
         queue.close();
@@ -1859,7 +1860,7 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
-  public void testSeekClearsCriticalWalGapAndResumesAtTarget() throws Exception {
+  public void testSeekClearsPendingWalGapRetryAndResumesAtTarget() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("wal-gap-seek-recovery");
     ConsensusPrefetchingQueue queue = null;
@@ -1918,16 +1919,8 @@ public class ConsensusPrefetchingQueueTest {
 
       assertNull(queue.poll("consumer"));
       queue.drivePrefetchOnce();
-      queue.drivePrefetchOnce();
 
       assertEquals(2L, queue.getCurrentReadSearchIndex());
-      assertEquals(4L, queue.getProgressStatus());
-      final SubscriptionEvent errorEvent = queue.poll("consumer");
-      assertNotNull(errorEvent);
-      assertEquals(
-          SubscriptionPollResponseType.ERROR.getType(),
-          errorEvent.getCurrentResponse().getResponseType());
-      assertTrue(((ErrorPayload) errorEvent.getCurrentResponse().getPayload()).isCritical());
 
       applySeekForTest(queue, 7L);
 

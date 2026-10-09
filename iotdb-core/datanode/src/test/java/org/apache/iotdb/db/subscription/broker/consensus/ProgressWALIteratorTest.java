@@ -516,8 +516,8 @@ public class ProgressWALIteratorTest {
   }
 
   @Test
-  public void testRotatedLiveWalMustReappearBeforeReadingSuccessor() throws Exception {
-    final Path dir = Files.createTempDirectory("progress-wal-iterator-rotation-rename");
+  public void testTemporarilyAbsentLiveWalMustReappearBeforeReadingSuccessor() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-absent-version");
     final File firstWal =
         dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .toFile();
@@ -544,6 +544,8 @@ public class ProgressWALIteratorTest {
         assertEquals(1L, iterator.next().getSearchIndex());
         assertFalse(iterator.hasNext());
 
+        // Simulate a listing in which an unread version is absent. Normal rotation leaves the
+        // name of a WAL with search-index entries unchanged.
         Files.move(firstWal.toPath(), temporarilyHiddenWal);
         try (WALWriter writer = new WALWriter(successorWal, WALFileVersion.V3)) {
           writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
@@ -551,6 +553,7 @@ public class ProgressWALIteratorTest {
         currentWalVersion.set(1L);
         assertFalse(iterator.hasNext());
         assertTrue(iterator.hasIncompleteScan());
+        assertFalse(iterator.hasNext());
 
         Files.move(temporarilyHiddenWal, firstWal.toPath());
         assertTrue(iterator.hasNext());

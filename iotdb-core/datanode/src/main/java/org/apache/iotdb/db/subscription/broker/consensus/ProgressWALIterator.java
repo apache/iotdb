@@ -508,8 +508,8 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
           return true;
         }
       } catch (final IOException e) {
-        // A near-live WAL file can be temporarily unavailable while it is renamed or sealed.
-        // Retry this version on the next scan instead of jumping to its successor.
+        // Retry this version on the next scan instead of jumping to its successor when the
+        // discovered path cannot be opened.
         pendingNearLiveWalVersionId = candidateVersionId;
         throw e;
       }
@@ -540,12 +540,12 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
 
     final int previousFileIndex = findFileIndexByVersion(currentReaderVersionId);
     if (previousFileIndex < 0) {
-      // The old live file may be between its seal and rename. Its last snapshot does not prove
-      // that every entry in the sealed file was consumed, so wait for the old version to reappear.
+      // The old live version is absent from this scan. Its last snapshot does not prove that every
+      // entry in the sealed file was consumed, so wait for the old version to reappear.
       markIncompleteScan(
           String.format(
               DataNodePipeMessages
-                  .MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_TEMPORARILY_ABSENT_DURING_ROTATION_CB8C8CE6,
+                  .MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_ABSENT_FROM_CURRENT_SCAN_RETRYING_5484DEF8,
               currentReaderVersionId),
           null);
       return false;

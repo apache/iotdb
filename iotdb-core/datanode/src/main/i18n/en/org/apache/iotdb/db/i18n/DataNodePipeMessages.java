@@ -2202,8 +2202,8 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: failed to open near-live WAL file {}, retrying without blacklisting";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator: error reading WAL";
-  public static final String MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_TEMPORARILY_ABSENT_DURING_ROTATION_CB8C8CE6 =
-      "previous live WAL file version %s is temporarily absent during rotation";
+  public static final String MESSAGE_PREVIOUS_LIVE_WAL_FILE_VERSION_ARG_IS_ABSENT_FROM_CURRENT_SCAN_RETRYING_5484DEF8 =
+      "previous live WAL file version %s is absent from current scan; retrying";
   public static final String
       PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
       "ProgressWALIterator: failed to process WAL file {}, skipping remaining entries";
@@ -2218,13 +2218,12 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: skipped {} unreadable retained WAL files in directory {}, "
           + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "
           + "files cannot be replayed";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_FOUND_UNAVAILABLE_SEARCH_INDEXES_E0CBFFFA =
-      "ConsensusPrefetchingQueue {}: WAL replay found unavailable search indexes [{}, {}) before "
-          + "searchIndex {}; forcing WAL refresh before retry";
-  public static final String MESSAGE_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_CANNOT_RECOVER_SEARCH_INDEXES_70781B22 =
-      "ConsensusPrefetchingQueue %s: WAL replay cannot recover search indexes [%s, %s), "
-          + "unavailableEntries=%s, totalWalGapSkippedEntries=%s; subscription delivery is "
-          + "stalled to prevent silent data loss";
+  public static final String
+      LOG_ARG_WAL_REPLAY_OBSERVED_GAP_ARG_ARG_BEFORE_SEARCHINDEX_ARG_REFRESHING_WAL_AND_RETRYING_0669FB51 =
+          "{}: WAL replay observed gap [{}, {}) before searchIndex {}; refreshing WAL and retrying";
+  public static final String
+      LOG_ARG_WAL_GAP_ARG_ARG_PERSISTS_AFTER_REFRESH_SKIPPING_ARG_TOTAL_SKIPPED_ARG_16FE0680 =
+          "{}: WAL gap [{}, {}) persists after refresh; skipping {}, total skipped {}";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, "
           + "shouldMark: {}. {}";
