@@ -53,6 +53,7 @@ import java.util.stream.Stream;
 public abstract class DiskUsageStatisticUtil implements Closeable {
 
   protected static final Logger logger = LoggerFactory.getLogger(DiskUsageStatisticUtil.class);
+  // Collected files retain a reader reference and its resource read lock until released.
   protected Queue<TsFileResource> resourcesWithReadLock;
   protected final long timePartition;
   protected final Iterator<TsFileResource> iterator;
@@ -145,7 +146,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
           tsFileResource.getTsFile().getAbsolutePath(),
           e);
     } finally {
-      // this operation including readUnlock
+      // Release the reader reference registered during collection, including its read lock.
       FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, true);
       iterator.remove();
     }
