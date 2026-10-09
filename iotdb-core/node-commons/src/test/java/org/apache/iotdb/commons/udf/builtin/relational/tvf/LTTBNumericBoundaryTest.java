@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.junit.Test;
 
@@ -109,6 +111,79 @@ public class LTTBNumericBoundaryTest {
       Column[] output = sample(mode, 2, 2, 0, times(6), values);
       assertArrayEquals(new long[] {1, 2, 4}, longValues(output[output.length - 2]));
     }
+  }
+
+  @Test
+  public void testFiniteDoublesPreserveSelectionsWhenAreasOverflow() {
+    assertFloatingScaleInvariant(new double[] {0, 4, 8, 2, 0, 0});
+  }
+
+  @Test
+  public void testFiniteDoublesPreserveSelectionsWhenLookaheadSumOverflows() {
+    assertFloatingScaleInvariant(new double[] {0, 4, 8, 7, 7, 0});
+  }
+
+  @Test
+  public void testFiniteDoublesPreserveSelectionsWhenDifferencesOverflow() {
+    assertFloatingScaleInvariant(new double[] {-8, 4, 8, 2, -8, -8});
+  }
+
+  @Test
+  public void testOverflowFallbackKeepsEarliestAreaTie() {
+    Column[] output =
+        sampleFloating("TARGET_COUNT", 3, new double[] {0, 1.6e308, 1.6e308, 0, 0, 0});
+    assertArrayEquals(new long[] {0, 1, 5}, longValues(output[1]));
+  }
+
+  @Test(timeout = 5000)
+  public void testCountWindowRejectsUnrepresentableEnd() {
+    SemanticException failure =
+        assertThrows(
+            SemanticException.class,
+            () ->
+                sample("COUNT_WINDOW", Long.MAX_VALUE, 1, 0, times(2), new Long[][] {{1L}, {2L}}));
+    assertEquals(
+        CommonMessages.EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE,
+        failure.getMessage());
+  }
+
+  @Test(timeout = 5000)
+  public void testCountWindowWithLargeSlideDoesNotCreateExtraWindow() {
+    Column[] output =
+        sample(
+            "COUNT_WINDOW", Long.MAX_VALUE, Long.MAX_VALUE, 0, times(2), new Long[][] {{1L}, {2L}});
+    assertArrayEquals(new long[] {0}, longValues(output[0]));
+    assertArrayEquals(new long[] {0}, longValues(output[1]));
+  }
+
+  private static void assertFloatingScaleInvariant(double[] values) {
+    double[] scaled = new double[values.length];
+    for (int i = 0; i < values.length; i++) {
+      scaled[i] = values[i] * 2e307;
+    }
+    for (String mode : new String[] {"TARGET_COUNT", "COUNT_WINDOW", "TIME_WINDOW"}) {
+      for (int size : new int[] {3, 4}) {
+        Column[] expected = sampleFloating(mode, size, values);
+        Column[] actual = sampleFloating(mode, size, scaled);
+        int timeColumn = actual.length - 2;
+        assertArrayEquals(
+            mode + ": " + size, longValues(expected[timeColumn]), longValues(actual[timeColumn]));
+        for (int row = 0; row < actual[timeColumn].getPositionCount(); row++) {
+          assertEquals(
+              scaled[(int) actual[timeColumn].getLong(row)],
+              actual[timeColumn + 1].getDouble(row),
+              0.0);
+        }
+      }
+    }
+  }
+
+  private static Column[] sampleFloating(String mode, long size, double[] values) {
+    Double[][] rows = new Double[values.length][1];
+    for (int i = 0; i < values.length; i++) {
+      rows[i][0] = values[i];
+    }
+    return sample(mode, size, size, 0, times(values.length), rows, Type.DOUBLE);
   }
 
   @Test(timeout = 5000)
@@ -204,6 +279,11 @@ public class LTTBNumericBoundaryTest {
 
   private static Column[] sample(
       String mode, long size, long slide, long origin, long[] times, Long[][] values) {
+    return sample(mode, size, slide, origin, times, values, Type.INT64);
+  }
+
+  private static Column[] sample(
+      String mode, long size, long slide, long origin, long[] times, Number[][] values, Type type) {
     int columns = values[0].length;
     MapTableFunctionHandle handle =
         new MapTableFunctionHandle.Builder()
@@ -211,7 +291,7 @@ public class LTTBNumericBoundaryTest {
             .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "")
             .addProperty(
                 LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY,
-                String.join(",", Collections.nCopies(columns, "INT64")))
+                String.join(",", Collections.nCopies(columns, type.name())))
             .addProperty(LTTBTableFunction.N_PARAMETER_NAME, size)
             .addProperty(LTTBTableFunction.SIZE_PARAMETER_NAME, size)
             .addProperty(LTTBTableFunction.SLIDE_PARAMETER_NAME, slide)
@@ -222,7 +302,11 @@ public class LTTBNumericBoundaryTest {
     List<ColumnBuilder> builders = new ArrayList<>();
     int outputColumns = (mode.equals("TIME_WINDOW") ? 2 : 1) + 2 * columns;
     for (int i = 0; i < outputColumns; i++) {
-      builders.add(new LongColumnBuilder(null, 16));
+      int firstValueColumn = mode.equals("TIME_WINDOW") ? 3 : 2;
+      builders.add(
+          type == Type.DOUBLE && i >= firstValueColumn && (i - firstValueColumn) % 2 == 0
+              ? new DoubleColumnBuilder(null, 16)
+              : new LongColumnBuilder(null, 16));
     }
     try {
       for (int i = 0; i < times.length; i++) {
@@ -235,7 +319,7 @@ public class LTTBNumericBoundaryTest {
     }
   }
 
-  private static Record record(long time, Long[] values) {
+  private static Record record(long time, Number[] values) {
     return (Record)
         Proxy.newProxyInstance(
             Record.class.getClassLoader(),
@@ -244,7 +328,9 @@ public class LTTBNumericBoundaryTest {
               int index = (int) arguments[0];
               switch (method.getName()) {
                 case "getLong":
-                  return index == 0 ? time : values[index - 1];
+                  return index == 0 ? time : values[index - 1].longValue();
+                case "getDouble":
+                  return values[index - 1].doubleValue();
                 case "isNull":
                   return index != 0 && values[index - 1] == null;
                 default:
