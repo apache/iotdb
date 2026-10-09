@@ -39,17 +39,19 @@ public class TsFileLock {
   private volatile int writeCnt;
 
   public void readLock() {
+    boolean interrupted = false;
     synchronized (this) {
       while (writeCnt > 0) {
         try {
-          this.wait(1);
+          this.wait();
         } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          // ignore
+          interrupted = true;
         }
       }
-
       readCnt++;
+    }
+    if (interrupted) {
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -63,17 +65,20 @@ public class TsFileLock {
   }
 
   public void writeLock() {
+    boolean interrupted = false;
     synchronized (this) {
-      try {
-        while (writeCnt > 0 || readCnt > 0) {
-          this.wait(1);
+      while (writeCnt > 0 || readCnt > 0) {
+        try {
+          this.wait();
+        } catch (InterruptedException e) {
+          // This API is uninterruptible: preserve exclusion, then restore the interrupt status.
+          interrupted = true;
         }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        // ignore
       }
-
       writeCnt++;
+    }
+    if (interrupted) {
+      Thread.currentThread().interrupt();
     }
   }
 

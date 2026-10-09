@@ -27,10 +27,6 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
-        <repository>
-            <id>apache.iotdb.thrift.0.25.0.0.staging</id>
-            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1203/</url>
-        </repository>
     </repositories>
     <parent>
         <groupId>org.apache</groupId>
@@ -96,7 +92,7 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.25.0.0</iotdb-tools-thrift.version>
-        <jackson.version>2.18.9</jackson.version>
+        <jackson.version>2.18.11</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
         <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
@@ -110,7 +106,7 @@
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <logback.version>1.5.34</logback.version>
-        <lz4-java.version>1.11.1</lz4-java.version>
+        <lz4-java.version>1.11.4</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -1054,12 +1050,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.7.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.apache.maven.shared</groupId>
-                        <artifactId>maven-dependency-tree</artifactId>
-                        <version>3.2.1</version>
+                        <version>1.12.1</version>
                     </dependency>
                 </dependencies>
                 <executions>

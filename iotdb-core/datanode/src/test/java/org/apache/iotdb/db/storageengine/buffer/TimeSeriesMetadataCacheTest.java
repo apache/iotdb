@@ -238,7 +238,7 @@ public class TimeSeriesMetadataCacheTest {
           new TimeSeriesMetadataCacheKey(tsFileID, deviceID, measurement);
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
-      fileReaderManager.getClosedFileReaderMap().put(tsFileID, reader);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(null);
       Mockito.when(
               reader.readTimeseriesMetadata(
@@ -274,7 +274,7 @@ public class TimeSeriesMetadataCacheTest {
     } finally {
       cache.clear();
       bloomFilterCache.clear();
-      fileReaderManager.getClosedFileReaderMap().remove(tsFileID);
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .setMayCacheNonExistSeries(mayCacheNonExistSeries);

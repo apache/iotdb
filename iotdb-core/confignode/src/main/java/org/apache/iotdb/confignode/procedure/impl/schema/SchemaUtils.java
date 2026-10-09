@@ -288,11 +288,9 @@ public class SchemaUtils {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  public static Map<Integer, TSStatus> commitReleaseTable(
-      final String database,
-      final String tableName,
-      final ConfigManager configManager,
-      final @Nullable String oldName) {
+  /** Build the COMMIT_UPDATE_TABLE request used to commit-release a table change to DataNodes. */
+  public static TUpdateTableReq buildCommitUpdateTableReq(
+      final String database, final String tableName, final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.COMMIT_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -304,6 +302,15 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
+    return req;
+  }
+
+  public static Map<Integer, TSStatus> commitReleaseTable(
+      final String database,
+      final String tableName,
+      final ConfigManager configManager,
+      final @Nullable String oldName) {
+    final TUpdateTableReq req = buildCommitUpdateTableReq(database, tableName, oldName);
 
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(

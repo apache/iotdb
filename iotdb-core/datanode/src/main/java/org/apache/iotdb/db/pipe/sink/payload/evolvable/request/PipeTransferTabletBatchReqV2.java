@@ -148,6 +148,9 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         statement.setWriteToTable(true);
         statement.setDatabaseName(insertRows.getKey());
         statement.setInsertRowStatementList(tableInsertRows.getValue());
+        // Rows merged into this batch share the table but may come from different source inserts
+        // with different column sets, so the statement is intentionally left non-uniform and
+        // analysis traverses every row.
         statements.add(statement);
       }
     }
