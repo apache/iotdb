@@ -100,9 +100,9 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
         if (!resource.isClosed()) {
           continue;
         }
-        resource.readLock();
+        FileReaderManager.getInstance().increaseFileReaderReference(resource, true);
         if (resource.isDeleted() || !resource.isClosed()) {
-          resource.readUnlock();
+          FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
           continue;
         }
         resourcesWithReadLock.add(resource);
@@ -118,7 +118,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
       return;
     }
     for (TsFileResource resource : resourcesWithReadLock) {
-      resource.readUnlock();
+      FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
     }
     resourcesWithReadLock = null;
   }
@@ -127,10 +127,9 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     TsFileResource tsFileResource = iterator.next();
     if (tsFileResource.isDeleted() || calculateWithoutOpenFile(tsFileResource)) {
       iterator.remove();
-      tsFileResource.readUnlock();
+      FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, true);
       return;
     }
-    FileReaderManager.getInstance().increaseFileReaderReference(tsFileResource, true);
     try {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
