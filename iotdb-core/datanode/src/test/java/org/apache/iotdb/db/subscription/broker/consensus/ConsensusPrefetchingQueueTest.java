@@ -612,12 +612,13 @@ public class ConsensusPrefetchingQueueTest {
       reader.currentSearchIndex = 5L;
       final ConsensusPrefetchingQueue.ReplayLocateDecision tailDecision =
           queue.scanReplayStartForRequests(
-              Collections.singletonList(createRequest(-1L, 11L, 101L, 8)).iterator(),
+              Arrays.asList(createRequest(5L, 10L, 100L, 8), createRequest(-1L, 11L, 101L, 8))
+                  .iterator(),
               regionProgress,
               true);
 
       assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.AT_END, tailDecision.getStatus());
-      assertEquals(5L, tailDecision.getStartSearchIndex());
+      assertEquals(6L, tailDecision.getStartSearchIndex());
       assertEquals(
           committedProgress,
           tailDecision.getRecoveryRegionProgress().getWriterPositions().get(formerLeader));
@@ -1129,7 +1130,55 @@ public class ConsensusPrefetchingQueueTest {
           queue.scanReplayStartForRequests(Collections.emptyIterator(), requestedProgress, true);
 
       assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.AT_END, decision.getStatus());
+      assertEquals(6L, decision.getStartSearchIndex());
       assertEquals(requestedProgress, decision.getRecoveryRegionProgress());
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testAtEndInitializationHasNoTailGap() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("atEndNoTailGap");
+    final File walDirectory = temporaryFolder.newFolder("atEndNoTailGapWal");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(7);
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(walDirectory);
+      when(walNode.getCurrentSearchIndex()).thenReturn(5L);
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final RegionProgress committedProgress =
+          new RegionProgress(
+              Collections.singletonMap(
+                  new WriterId(regionId.toString(), 7), new WriterProgress(1000L, 5L)));
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(systemDir),
+              committedProgress,
+              6L,
+              1L,
+              true);
+
+      assertNull(queue.poll("consumer"));
+      assertEquals(6L, queue.getCurrentReadSearchIndex());
+      assertEquals(0L, queue.getRawWalGap());
     } finally {
       if (queue != null) {
         queue.close();
