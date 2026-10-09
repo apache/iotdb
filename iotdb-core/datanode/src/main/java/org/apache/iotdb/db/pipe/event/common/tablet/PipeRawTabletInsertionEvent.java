@@ -200,9 +200,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   @TestOnly
-  public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
+  public PipeRawTabletInsertionEvent(
+      final boolean isTableModel, final Tablet tablet, final boolean isAligned) {
     this(
-        null,
+        isTableModel,
         null,
         null,
         null,
@@ -225,9 +226,12 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
-      final Tablet tablet, final boolean isAligned, final TreePattern treePattern) {
+      final boolean isTableModel,
+      final Tablet tablet,
+      final boolean isAligned,
+      final TreePattern treePattern) {
     this(
-        null,
+        isTableModel,
         null,
         null,
         null,
@@ -250,10 +254,27 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
-      final Tablet tablet, final long startTime, final long endTime) {
+      final boolean isTableModel, final Tablet tablet, final long startTime, final long endTime) {
     this(
-        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, null,
-        null, true, startTime, endTime);
+        isTableModel,
+        null,
+        null,
+        null,
+        tablet,
+        false,
+        null,
+        false,
+        null,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -479,8 +500,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private TabletInsertionEventParser initEventParser() {
     if (eventParser == null) {
+      // The data model of the payload is the one declared by the event, it must never be derived
+      // from the device name of the tablet.
       eventParser =
-          tablet.getDeviceId().startsWith("root.")
+          !isTableModelEvent()
               ? new TabletInsertionEventTreePatternParser(
                   pipeTaskMeta,
                   this,
