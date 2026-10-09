@@ -2469,4 +2469,6 @@ public final class DataNodePipeMessages {
       "读取 OPC UA 服务器操作限制时被中断，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
+  public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_EXCEEDING_QUEUE_QUOTA_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_THE_SUBSCRIPTION_PROPORTION_IN_CHUNK_TIMESERIESMETA_FREE_MEMORY_PROPORTION_WAL_PROGRESS_HAS_NOT_ADVANCED_C9120068 =
+      "[%s] 订阅 entry 需要 %d 字节，超过队列配额 %d 字节（DataNode 预算 %d 字节）。请减小写入 batch/字段大小，或提高 chunk_timeseriesmeta_free_memory_proportion 中的 Subscription 比例。WAL 进度未推进。";
 }

@@ -199,6 +199,36 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         queue,
         ConsensusPrefetchingQueue::getProgressStatus,
         key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_USED.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryUsedInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryQuotaInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getRealtimeAdmissionRejectionCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryRejectionCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getOversizedEntryRejectionCount,
+        key.getTags());
   }
 
   private void createRate(final QueueMetricsKey key) {
@@ -308,6 +338,24 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_MEMORY_USED.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS.toString(),
         key.getTags());
   }
 

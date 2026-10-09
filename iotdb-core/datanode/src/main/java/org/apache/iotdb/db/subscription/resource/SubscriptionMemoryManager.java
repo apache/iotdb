@@ -25,11 +25,28 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * DataNode-wide memory manager for materialized subscription data.
+ *
+ * <p>Consensus subscription queues use a handle rather than the legacy manager-level allocation
+ * methods. Handles are accounted independently and receive an equal share of the configured budget.
+ * A queue cannot consume another queue's share, while an entry larger than a share is rejected with
+ * an explicit reason, even when the node budget is otherwise empty. Quotas change as queues become
+ * active or release their retained data; existing allocations are drained rather than revoked.
+ */
 public class SubscriptionMemoryManager {
 
   private static final String MEMORY_BLOCK_NAME = "Subscription";
 
   private final IMemoryBlock memoryBlock;
+  private final Map<Long, MemoryHandle> handles = new HashMap<>();
+  private long nextHandleId;
+
+  // Kept for callers of the original manager-level API. It is deliberately not a fair-share owner.
+  private long legacyUsedMemoryInBytes;
 
   SubscriptionMemoryManager() {
     memoryBlock =
@@ -46,44 +63,300 @@ public class SubscriptionMemoryManager {
             MEMORY_BLOCK_NAME, null, totalMemorySizeInBytes, MemoryBlockType.DYNAMIC);
   }
 
-  /**
-   * Reserves memory for materialized subscription data.
-   *
-   * <p>A single entry larger than the whole budget is allowed only while the budget is otherwise
-   * empty. This avoids permanently blocking progress while keeping the overrun bounded by one
-   * consensus entry.
-   */
+  /** Registers a queue for fair-share accounting. */
+  public synchronized MemoryHandle registerQueue() {
+    final MemoryHandle handle = new MemoryHandle(++nextHandleId);
+    handles.put(handle.id, handle);
+    return handle;
+  }
+
+  /** Reserves memory through the compatibility owner. New queues should use a handle. */
   public synchronized boolean tryAllocate(final long sizeInBytes) {
+    return tryAllocateLegacy(sizeInBytes).isAccepted();
+  }
+
+  private AllocationResult tryAllocateLegacy(final long sizeInBytes) {
     if (sizeInBytes <= 0L) {
-      return true;
+      return AllocationResult.accepted(getTotalMemorySizeInBytes(), getFreeMemorySizeInBytes());
     }
-    if (memoryBlock.allocate(sizeInBytes)) {
-      return true;
+    final long total = getTotalMemorySizeInBytes();
+    final long used = getUsedMemorySizeInBytes();
+    if (total > 0L && used <= total && sizeInBytes <= total - used) {
+      if (!memoryBlock.allocate(sizeInBytes)) {
+        return AllocationResult.rejected(
+            AllocationRejectionReason.MEMORY_LIMIT, total, getFreeMemorySizeInBytes());
+      }
+      legacyUsedMemoryInBytes += sizeInBytes;
+      return AllocationResult.accepted(total, total - used - sizeInBytes);
     }
-    if (memoryBlock.getTotalMemorySizeInBytes() > 0L
-        && memoryBlock.getUsedMemoryInBytes() == 0L
-        && sizeInBytes > memoryBlock.getTotalMemorySizeInBytes()) {
+    if (total > 0L && used == 0L && sizeInBytes > total) {
       memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
-      return true;
+      legacyUsedMemoryInBytes += sizeInBytes;
+      return AllocationResult.accepted(total, total - sizeInBytes);
     }
-    return false;
+    return AllocationResult.rejected(
+        sizeInBytes > total
+            ? AllocationRejectionReason.OVERSIZED_ENTRY
+            : AllocationRejectionReason.MEMORY_LIMIT,
+        total,
+        total - used);
   }
 
   public synchronized void release(final long sizeInBytes) {
-    if (sizeInBytes > 0L) {
-      memoryBlock.release(sizeInBytes);
+    if (sizeInBytes <= 0L) {
+      return;
+    }
+    final long released = Math.min(sizeInBytes, legacyUsedMemoryInBytes);
+    if (released > 0L) {
+      legacyUsedMemoryInBytes -= released;
+      memoryBlock.release(released);
     }
   }
 
-  public long getTotalMemorySizeInBytes() {
+  public synchronized long getTotalMemorySizeInBytes() {
     return memoryBlock.getTotalMemorySizeInBytes();
   }
 
-  public long getUsedMemorySizeInBytes() {
+  public synchronized long getUsedMemorySizeInBytes() {
     return memoryBlock.getUsedMemoryInBytes();
   }
 
-  public long getFreeMemorySizeInBytes() {
+  public synchronized long getFreeMemorySizeInBytes() {
     return memoryBlock.getFreeMemoryInBytes();
+  }
+
+  private synchronized AllocationResult tryAllocate(
+      final MemoryHandle handle, final long sizeInBytes) {
+    final AllocationResult decision = inspectAllocationUnderLock(handle, sizeInBytes);
+    if (!decision.isAccepted() || sizeInBytes <= 0L) {
+      return decision;
+    }
+
+    if (!memoryBlock.allocate(sizeInBytes)) {
+      return AllocationResult.rejected(
+          AllocationRejectionReason.MEMORY_LIMIT,
+          handle.getMemoryQuotaInBytesUnderLock(),
+          getFreeMemorySizeInBytes());
+    }
+    handle.usedMemoryInBytes += sizeInBytes;
+    return AllocationResult.accepted(
+        handle.getMemoryQuotaInBytesUnderLock(),
+        Math.min(
+            handle.getMemoryQuotaInBytesUnderLock() - handle.usedMemoryInBytes,
+            getFreeMemorySizeInBytes()));
+  }
+
+  private AllocationResult inspectAllocationUnderLock(
+      final MemoryHandle handle, final long sizeInBytes) {
+    if (sizeInBytes <= 0L) {
+      return AllocationResult.accepted(
+          handle.getMemoryQuotaInBytes(), handle.getFreeMemorySizeInBytes());
+    }
+    if (!handle.active || handle.closed || !handles.containsKey(handle.id)) {
+      return AllocationResult.rejected(
+          AllocationRejectionReason.MEMORY_LIMIT,
+          getTotalMemorySizeInBytes(),
+          getFreeMemorySizeInBytes());
+    }
+
+    final long total = getTotalMemorySizeInBytes();
+    final long used = getUsedMemorySizeInBytes();
+    final long quota = handle.getMemoryQuotaInBytesUnderLock();
+    final long ownerUsed = handle.usedMemoryInBytes;
+    final boolean fitsInNode = total > 0L && used <= total && sizeInBytes <= total - used;
+    final boolean fitsInShare = ownerUsed <= quota && sizeInBytes <= quota - ownerUsed;
+
+    if (fitsInNode && fitsInShare) {
+      return AllocationResult.accepted(quota, quota - handle.usedMemoryInBytes);
+    }
+
+    final AllocationRejectionReason reason;
+    if (sizeInBytes > quota) {
+      reason = AllocationRejectionReason.OVERSIZED_ENTRY;
+    } else if (!fitsInShare) {
+      reason = AllocationRejectionReason.MEMORY_QUOTA;
+    } else {
+      reason = AllocationRejectionReason.MEMORY_LIMIT;
+    }
+    return AllocationResult.rejected(reason, quota, Math.min(quota - ownerUsed, total - used));
+  }
+
+  private synchronized void release(final MemoryHandle handle, final long sizeInBytes) {
+    if (sizeInBytes <= 0L || handle.closed) {
+      return;
+    }
+    final long released = Math.min(sizeInBytes, handle.usedMemoryInBytes);
+    if (released > 0L) {
+      handle.usedMemoryInBytes -= released;
+      memoryBlock.release(released);
+    }
+  }
+
+  private synchronized void unregister(final MemoryHandle handle) {
+    if (handle.closed) {
+      return;
+    }
+    final long remaining = handle.usedMemoryInBytes;
+    if (remaining > 0L) {
+      memoryBlock.release(remaining);
+      handle.usedMemoryInBytes = 0L;
+    }
+    handles.remove(handle.id);
+    handle.closed = true;
+  }
+
+  private synchronized int activeHandleCountUnderLock() {
+    int count = 0;
+    for (final MemoryHandle handle : handles.values()) {
+      // An inactive queue keeps its share until lifecycle cleanup releases its allocations.
+      if (!handle.closed && (handle.active || handle.usedMemoryInBytes > 0L)) {
+        count++;
+      }
+    }
+    return Math.max(1, count);
+  }
+
+  public enum AllocationRejectionReason {
+    NONE("NONE"),
+    MEMORY_QUOTA("SUBSCRIPTION_MEMORY_QUOTA"),
+    MEMORY_LIMIT("SUBSCRIPTION_MEMORY_LIMIT"),
+    OVERSIZED_ENTRY("SUBSCRIPTION_OVERSIZED_ENTRY");
+
+    private final String code;
+
+    AllocationRejectionReason(final String code) {
+      this.code = code;
+    }
+
+    public String getCode() {
+      return code;
+    }
+  }
+
+  public static final class AllocationResult {
+    private final boolean accepted;
+    private final AllocationRejectionReason rejectionReason;
+    private final long quotaInBytes;
+    private final long freeMemoryInBytes;
+
+    private AllocationResult(
+        final boolean accepted,
+        final AllocationRejectionReason rejectionReason,
+        final long quotaInBytes,
+        final long freeMemoryInBytes) {
+      this.accepted = accepted;
+      this.rejectionReason = rejectionReason;
+      this.quotaInBytes = quotaInBytes;
+      this.freeMemoryInBytes = freeMemoryInBytes;
+    }
+
+    private static AllocationResult accepted(
+        final long quotaInBytes, final long freeMemoryInBytes) {
+      return new AllocationResult(
+          true, AllocationRejectionReason.NONE, quotaInBytes, freeMemoryInBytes);
+    }
+
+    private static AllocationResult rejected(
+        final AllocationRejectionReason reason,
+        final long quotaInBytes,
+        final long freeMemoryInBytes) {
+      return new AllocationResult(false, reason, quotaInBytes, freeMemoryInBytes);
+    }
+
+    public boolean isAccepted() {
+      return accepted;
+    }
+
+    public AllocationRejectionReason getRejectionReason() {
+      return rejectionReason;
+    }
+
+    public long getQuotaInBytes() {
+      return quotaInBytes;
+    }
+
+    public long getFreeMemoryInBytes() {
+      return freeMemoryInBytes;
+    }
+  }
+
+  /** Per-queue view of the shared subscription memory budget. */
+  public final class MemoryHandle implements AutoCloseable {
+    private final long id;
+    private long usedMemoryInBytes;
+    private boolean active = true;
+    private boolean closed;
+
+    private MemoryHandle(final long id) {
+      this.id = id;
+    }
+
+    public AllocationResult tryAllocate(final long sizeInBytes) {
+      return SubscriptionMemoryManager.this.tryAllocate(this, sizeInBytes);
+    }
+
+    public void release(final long sizeInBytes) {
+      SubscriptionMemoryManager.this.release(this, sizeInBytes);
+    }
+
+    public long getUsedMemorySizeInBytes() {
+      synchronized (SubscriptionMemoryManager.this) {
+        return usedMemoryInBytes;
+      }
+    }
+
+    public long getMemoryQuotaInBytes() {
+      synchronized (SubscriptionMemoryManager.this) {
+        return getMemoryQuotaInBytesUnderLock();
+      }
+    }
+
+    private long getMemoryQuotaInBytesUnderLock() {
+      return Math.max(0L, getTotalMemorySizeInBytes() - legacyUsedMemoryInBytes)
+          / activeHandleCountUnderLock();
+    }
+
+    public long getFreeMemorySizeInBytes() {
+      synchronized (SubscriptionMemoryManager.this) {
+        // Realtime request admission uses only this queue's quota. Node-wide allocation checks
+        // happen during materialization, including when pre-existing allocations exceed new shares.
+        return Math.max(0L, getMemoryQuotaInBytesUnderLock() - usedMemoryInBytes);
+      }
+    }
+
+    public boolean isActive() {
+      synchronized (SubscriptionMemoryManager.this) {
+        return active && !closed;
+      }
+    }
+
+    public void setActive(final boolean active) {
+      synchronized (SubscriptionMemoryManager.this) {
+        if (!closed) {
+          this.active = active;
+        }
+      }
+    }
+
+    public boolean canAllocate(final long sizeInBytes) {
+      synchronized (SubscriptionMemoryManager.this) {
+        return SubscriptionMemoryManager.this
+            .inspectAllocationUnderLock(this, sizeInBytes)
+            .isAccepted();
+      }
+    }
+
+    public AllocationRejectionReason inspectRejection(final long sizeInBytes) {
+      synchronized (SubscriptionMemoryManager.this) {
+        return SubscriptionMemoryManager.this
+            .inspectAllocationUnderLock(this, sizeInBytes)
+            .getRejectionReason();
+      }
+    }
+
+    @Override
+    public void close() {
+      SubscriptionMemoryManager.this.unregister(this);
+    }
   }
 }

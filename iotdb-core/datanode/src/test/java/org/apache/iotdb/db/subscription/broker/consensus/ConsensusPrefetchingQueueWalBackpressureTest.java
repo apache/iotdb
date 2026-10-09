@@ -154,7 +154,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       assertEquals(Arrays.asList(1L, 2L), conversionAttempts);
       assertEquals(2L, queue.getCurrentReadSearchIndex());
       assertEquals(1, queue.getPrefetchedEventCount());
-      assertTrue(pendingEntries(queue).isEmpty());
+      assertEquals(0, pendingEntries(queue).size());
       assertEquals("true", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
       assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
       assertMemoryBounded(queue, memoryManager);
@@ -307,22 +307,11 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
     }
 
     @Override
-    public synchronized boolean tryAllocate(final long sizeInBytes) {
-      final boolean allocated = super.tryAllocate(sizeInBytes);
-      observeUsage();
-      return allocated;
-    }
-
-    @Override
-    public synchronized void release(final long sizeInBytes) {
-      super.release(sizeInBytes);
-      observeUsage();
-    }
-
-    private void observeUsage() {
-      final long usedMemorySizeInBytes = getUsedMemorySizeInBytes();
+    public synchronized long getUsedMemorySizeInBytes() {
+      final long usedMemorySizeInBytes = super.getUsedMemorySizeInBytes();
       maximumUsedMemorySizeInBytes = Math.max(maximumUsedMemorySizeInBytes, usedMemorySizeInBytes);
       exceededBudget |= usedMemorySizeInBytes > getTotalMemorySizeInBytes();
+      return usedMemorySizeInBytes;
     }
 
     private long getMaximumUsedMemorySizeInBytes() {
