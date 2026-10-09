@@ -36,7 +36,8 @@ public class CollectOperator implements ProcessOperator {
 
   private final CommonOperatorContext operatorContext;
   protected final List<Operator> children;
-  private boolean inited = false;
+  private final AnyChildBlocked childBlocker;
+  private int remainingChildren;
 
   protected int currentIndex;
 
@@ -44,46 +45,55 @@ public class CollectOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.children = children;
     this.currentIndex = 0;
+    this.remainingChildren = children.size();
+    this.childBlocker =
+        new AnyChildBlocked(
+            children.size(),
+            index -> {
+              Operator child = this.children.get(index);
+              return child == null ? null : child.isBlocked();
+            });
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return currentIndex < children.size();
+    return remainingChildren > 0;
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (children.get(currentIndex).hasNextWithTimer()) {
-      return children.get(currentIndex).nextWithTimer();
-    } else {
-      closeCurrentChild(currentIndex);
-      currentIndex++;
+    int index = childBlocker.takeReadyChildIndex();
+    if (index < 0) {
       return null;
     }
+
+    // Keep the selected index on the driver thread, including while subclasses map the result.
+    currentIndex = index;
+    Operator child = children.get(index);
+    if (child.hasNextWithTimer()) {
+      return child.nextWithTimer();
+    }
+    closeCurrentChild(index);
+    return null;
   }
 
   protected void closeCurrentChild(int index) throws Exception {
-    children.get(index).close();
-    children.set(index, null);
+    Operator child = children.get(index);
+    if (child != null) {
+      child.close();
+      children.set(index, null);
+      remainingChildren--;
+    }
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (!inited) {
-      inited = true;
-      for (Operator child : children) {
-        child.isBlocked();
-      }
-    }
-    if (currentIndex >= children.size()) {
-      return NOT_BLOCKED;
-    }
-    return children.get(currentIndex).isBlocked();
+    return childBlocker.isBlocked();
   }
 
   @Override
   public boolean isFinished() throws Exception {
-    return currentIndex >= children.size();
+    return remainingChildren == 0;
   }
 
   @Override
@@ -93,7 +103,8 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (int i = currentIndex, n = children.size(); i < n; i++) {
+    childBlocker.close();
+    for (int i = 0, n = children.size(); i < n; i++) {
       Operator currentChild = children.get(i);
       if (currentChild != null) {
         closeCurrentChild(i);
@@ -103,9 +114,18 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    long maxPeekMemory = 0;
+    // Switching away from a blocked child may leave its intermediate state retained.
+    long retainedSize = calculateRetainedSizeAfterCallingNext();
+    long maxPeekMemory = retainedSize;
     for (Operator child : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemoryWithCounter());
+      if (child != null) {
+        maxPeekMemory =
+            Math.max(
+                maxPeekMemory,
+                retainedSize
+                    - child.calculateRetainedSizeAfterCallingNext()
+                    + child.calculateMaxPeekMemoryWithCounter());
+      }
     }
     return maxPeekMemory;
   }
@@ -114,14 +134,22 @@ public class CollectOperator implements ProcessOperator {
   public long calculateMaxReturnSize() {
     long maxReturnSize = 0;
     for (Operator child : children) {
-      maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
+      if (child != null) {
+        maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
+      }
     }
     return maxReturnSize;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
+    long retainedSize = 0;
+    for (Operator child : children) {
+      if (child != null) {
+        retainedSize += child.calculateRetainedSizeAfterCallingNext();
+      }
+    }
+    return retainedSize;
   }
 
   @TestOnly
@@ -132,6 +160,7 @@ public class CollectOperator implements ProcessOperator {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
+        + childBlocker.ramBytesUsed()
         + children.stream()
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
