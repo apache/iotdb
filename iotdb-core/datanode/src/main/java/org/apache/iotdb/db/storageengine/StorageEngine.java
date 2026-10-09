@@ -403,7 +403,7 @@ public class StorageEngine implements IService {
       if (dataRegion != null) {
         List<Callable<Void>> asyncTsFileResourceRecoverTasks =
             dataRegion.getAsyncTsFileResourceRecoverTaskList();
-        if (asyncTsFileResourceRecoverTasks != null) {
+        if (asyncTsFileResourceRecoverTasks != null && !asyncTsFileResourceRecoverTasks.isEmpty()) {
           Callable<Void> taskOfRegion =
               () -> {
                 for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
