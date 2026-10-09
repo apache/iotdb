@@ -85,7 +85,8 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       final long largeBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(largeTablet);
       final long smallBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(createTablet());
       final SubscriptionMemoryManager memoryManager =
-          new SubscriptionMemoryManager(largeBytes * 2L);
+          // With two queues, a queue may use 3/4 of the budget; make that exactly one large entry.
+          new SubscriptionMemoryManager(largeBytes + largeBytes / 3L);
       final ConsensusSubscriptionCommitManager commitManager =
           newCommitManager(temporaryFolder.newFolder("large-small-fair-share"));
       final FakeConsensusReqReader largeReader = new FakeConsensusReqReader();
@@ -129,6 +130,10 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
           SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA,
           ((SubscriptionQueueAdmission) pendingEntries(largeQueue)).getLastRejectionReason());
       assertEquals(1L, largeQueue.getRealtimeAdmissionRejectionCount());
+      assertEquals(
+          1L,
+          largeQueue.getRealtimeAdmissionRejectionCount(
+              SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA));
 
       smallReader.currentSearchIndex = 1L;
       assertTrue(pendingEntries(smallQueue).offer(createRequest(1L)));
@@ -320,7 +325,7 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
 
       queueB.drivePrefetchOnce();
-      assertEquals("true", queueB.coreReportMessage().get("realtimeAdmissionBlocked"));
+      assertEquals("false", queueB.coreReportMessage().get("realtimeAdmissionBlocked"));
 
       final SubscriptionEvent eventB = queueB.poll("consumerB");
       assertNotNull(eventB);

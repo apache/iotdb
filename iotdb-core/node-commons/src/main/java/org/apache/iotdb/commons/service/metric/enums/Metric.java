@@ -234,7 +234,10 @@ public enum Metric {
   SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS("subscription_consensus_progress_status"),
   SUBSCRIPTION_CONSENSUS_MEMORY_USED("subscription_consensus_memory_used"),
   SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA("subscription_consensus_memory_quota"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM("subscription_consensus_memory_maximum"),
   SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS("subscription_consensus_admission_rejections"),
+  SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON(
+      "subscription_consensus_admission_rejections_by_reason"),
   SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS("subscription_consensus_memory_rejections"),
   SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS("subscription_consensus_oversized_rejections"),
   // load related

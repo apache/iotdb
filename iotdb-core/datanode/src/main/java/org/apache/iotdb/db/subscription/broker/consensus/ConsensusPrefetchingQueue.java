@@ -94,6 +94,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
@@ -157,6 +158,9 @@ public class ConsensusPrefetchingQueue {
   private SubscriptionMemoryManager.MemoryHandle subscriptionMemoryHandle;
 
   private final AtomicLong realtimeAdmissionRejectionCount = new AtomicLong(0L);
+
+  private final AtomicLongArray realtimeAdmissionRejectionsByReason =
+      new AtomicLongArray(SubscriptionQueueRejectionReason.values().length);
 
   private final AtomicLong subscriptionMemoryRejectionCount = new AtomicLong(0L);
 
@@ -705,7 +709,7 @@ public class ConsensusPrefetchingQueue {
     // accounting.
     if (subscriptionMemoryHandle.getUsedMemorySizeInBytes() > 0L
         && subscriptionMemoryHandle.getFreeMemorySizeInBytes() <= 0L) {
-      return SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA;
+      return toQueueRejectionReason(subscriptionMemoryHandle.inspectRejection(1L));
     }
     return SubscriptionQueueRejectionReason.NONE;
   }
@@ -727,6 +731,7 @@ public class ConsensusPrefetchingQueue {
     }
     lastRejectionReason.set(rejectionReason);
     realtimeAdmissionRejectionCount.incrementAndGet();
+    realtimeAdmissionRejectionsByReason.incrementAndGet(rejectionReason.ordinal());
     recordMemoryRejection(rejectionReason);
   }
 
@@ -870,10 +875,10 @@ public class ConsensusPrefetchingQueue {
             new ErrorPayload(
                 String.format(
                     DataNodePipeMessages
-                        .MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_EXCEEDING_QUEUE_QUOTA_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_THE_SUBSCRIPTION_PROPORTION_IN_CHUNK_TIMESERIESMETA_FREE_MEMORY_PROPORTION_WAL_PROGRESS_HAS_NOT_ADVANCED_C9120068,
+                        .MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC,
                     SubscriptionQueueRejectionReason.SUBSCRIPTION_OVERSIZED_ENTRY.getCode(),
                     blockedEntryBytes,
-                    subscriptionMemoryHandle.getMemoryQuotaInBytes(),
+                    subscriptionMemoryHandle.getMaximumMemorySizeInBytes(),
                     subscriptionMemoryManager.getTotalMemorySizeInBytes()),
                 true),
             createNonCommittableContext(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
@@ -2444,8 +2449,8 @@ public class ConsensusPrefetchingQueue {
     if (blockedEntryBytes <= 0L) {
       if (subscriptionMemoryHandle.getUsedMemorySizeInBytes() > 0L
           && subscriptionMemoryHandle.getFreeMemorySizeInBytes() <= 0L) {
-        memoryBlockReason = SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA;
-        return true;
+        memoryBlockReason = toQueueRejectionReason(subscriptionMemoryHandle.inspectRejection(1L));
+        return memoryBlockReason != SubscriptionQueueRejectionReason.NONE;
       }
       return false;
     }
@@ -2480,6 +2485,8 @@ public class ConsensusPrefetchingQueue {
   private SubscriptionQueueRejectionReason toQueueRejectionReason(
       final SubscriptionMemoryManager.AllocationRejectionReason rejectionReason) {
     switch (rejectionReason) {
+      case NONE:
+        return SubscriptionQueueRejectionReason.NONE;
       case MEMORY_QUOTA:
         return SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA;
       case OVERSIZED_ENTRY:
@@ -4529,8 +4536,17 @@ public class ConsensusPrefetchingQueue {
     return subscriptionMemoryHandle.getMemoryQuotaInBytes();
   }
 
+  public long getSubscriptionMemoryMaximumInBytes() {
+    return subscriptionMemoryHandle.getMaximumMemorySizeInBytes();
+  }
+
   public long getRealtimeAdmissionRejectionCount() {
     return realtimeAdmissionRejectionCount.get();
+  }
+
+  public long getRealtimeAdmissionRejectionCount(
+      final SubscriptionQueueRejectionReason rejectionReason) {
+    return realtimeAdmissionRejectionsByReason.get(rejectionReason.ordinal());
   }
 
   public long getSubscriptionMemoryRejectionCount() {
@@ -4625,6 +4641,8 @@ public class ConsensusPrefetchingQueue {
     result.put("subscriptionMemoryUsedInBytes", String.valueOf(getSubscriptionMemoryUsedInBytes()));
     result.put(
         "subscriptionMemoryQuotaInBytes", String.valueOf(getSubscriptionMemoryQuotaInBytes()));
+    result.put(
+        "subscriptionMemoryMaximumInBytes", String.valueOf(getSubscriptionMemoryMaximumInBytes()));
     result.put(
         "realtimeAdmissionRejectionCount", String.valueOf(getRealtimeAdmissionRejectionCount()));
     result.put(

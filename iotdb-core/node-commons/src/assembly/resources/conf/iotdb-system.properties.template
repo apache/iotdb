@@ -1207,11 +1207,12 @@ may_cache_nonexist_series=true
 # The legacy eight-part form is still accepted and defaults Subscription to 20% of query memory.
 # When subscription is disabled, its memory proportion is 0.
 # The ninth (Subscription) share controls consensus subscription materialization, independently of
-# subscription_cache_memory_usage_percentage. Active queues divide this budget equally. Size it
-# for the largest materialized WAL entry * active queue count * at least 1.2; use a larger multiplier
-# for multiple buffered entries per queue. An entry exceeding a queue's quota reports
-# SUBSCRIPTION_OVERSIZED_ENTRY and does not advance WAL progress. Existing allocations drain via ACK
-# when new queues reduce their quotas.
+# subscription_cache_memory_usage_percentage. Each active queue protects half of its equal share;
+# the remaining idle capacity can be borrowed by another queue, but not revoked until ACK. Size
+# the budget for the largest materialized WAL entry * active queue count * at least 1.2; use a
+# larger multiplier for multiple buffered entries per queue. An entry exceeding the maximum a
+# queue can hold under these protected shares reports SUBSCRIPTION_OVERSIZED_ENTRY and does not
+# advance WAL progress. New queues may wait for existing borrowed allocations to drain via ACK.
 # effectiveMode: restart
 chunk_timeseriesmeta_free_memory_proportion=1:100:200:50:200:200:200:50:250
 

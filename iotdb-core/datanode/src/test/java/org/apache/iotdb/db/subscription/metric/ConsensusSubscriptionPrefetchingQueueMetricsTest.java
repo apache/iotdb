@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.metric;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.type.Rate;
@@ -134,6 +135,18 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
               eq(firstRegionId.toString()));
       verify(metricService)
           .createAutoGauge(
+              eq(Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString()),
+              eq(MetricLevel.IMPORTANT),
+              eq(firstQueue),
+              any(),
+              eq(Tag.NAME.toString()),
+              eq(queueId),
+              eq(Tag.REGION.toString()),
+              eq(firstRegionId.toString()),
+              eq(Tag.REASON.toString()),
+              eq(SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA.getCode()));
+      verify(metricService)
+          .createAutoGauge(
               eq(Metric.SUBSCRIPTION_CONSENSUS_LAG.toString()),
               eq(MetricLevel.IMPORTANT),
               eq(secondQueue),
@@ -164,6 +177,16 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
               queueId,
               Tag.REGION.toString(),
               firstRegionId.toString());
+      verify(metricService)
+          .remove(
+              MetricType.AUTO_GAUGE,
+              Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString(),
+              Tag.NAME.toString(),
+              queueId,
+              Tag.REGION.toString(),
+              firstRegionId.toString(),
+              Tag.REASON.toString(),
+              SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA.getCode());
       verify(metricService, never())
           .remove(
               MetricType.AUTO_GAUGE,

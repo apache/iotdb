@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
 public class SubscriptionQueueRegistry {
@@ -44,8 +43,11 @@ public class SubscriptionQueueRegistry {
   private final String consensusGroupId;
   private final Map<BlockingQueue<IndexedConsensusRequest>, SubscriptionQueueRegistration> queues =
       new ConcurrentHashMap<>();
-  private final AtomicLong rejectedEntries = new AtomicLong();
-  private final AtomicLong lastRejectionLogTimeMs = new AtomicLong();
+  // offer is synchronized, so these counts remain scoped to one reason without extra atomics.
+  private final long[] rejectedEntriesByReason =
+      new long[SubscriptionQueueRejectionReason.values().length];
+  private final long[] lastRejectionLogTimeMsByReason =
+      new long[SubscriptionQueueRejectionReason.values().length];
 
   public SubscriptionQueueRegistry(final String consensusGroupId) {
     this.consensusGroupId = consensusGroupId;
@@ -145,15 +147,16 @@ public class SubscriptionQueueRegistry {
             queue instanceof SubscriptionQueueAdmission
                 ? ((SubscriptionQueueAdmission) queue).getLastRejectionReason()
                 : SubscriptionQueueRejectionReason.QUEUE_CAPACITY;
-        final long rejectedCount = rejectedEntries.incrementAndGet();
+        final int reasonIndex = rejectionReason.ordinal();
+        final long rejectedCount = ++rejectedEntriesByReason[reasonIndex];
         final long now = System.currentTimeMillis();
-        final long lastLogTime = lastRejectionLogTimeMs.get();
-        if (now - lastLogTime >= REJECTION_LOG_INTERVAL_MS
-            && lastRejectionLogTimeMs.compareAndSet(lastLogTime, now)) {
+        if (now - lastRejectionLogTimeMsByReason[reasonIndex] >= REJECTION_LOG_INTERVAL_MS) {
+          lastRejectionLogTimeMsByReason[reasonIndex] = now;
+          rejectedEntriesByReason[reasonIndex] = 0L;
           LOGGER.warn(
               IoTConsensusMessages
                   .LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ARG_ENTRY_S_IN_THE_LAST_ARG_MS_WAL_REPLAY_REQUIRED_GROUP_ARG_LATEST_SEARCHINDEX_ARG_REASONCODE_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_0FBF6226,
-              rejectedEntries.getAndSet(0),
+              rejectedCount,
               REJECTION_LOG_INTERVAL_MS,
               consensusGroupId,
               indexedConsensusRequest.getSearchIndex(),

@@ -32,16 +32,17 @@ import java.util.Map;
  * DataNode-wide memory manager for materialized subscription data.
  *
  * <p>Consensus subscription queues use a handle rather than the legacy manager-level allocation
- * methods. Handles are accounted independently and receive an equal share of the configured budget.
- * A queue cannot consume another queue's share, while an entry larger than a share is rejected with
- * an explicit reason, even when the node budget is otherwise empty. Quotas change as queues become
- * active or release their retained data; existing allocations are drained rather than revoked.
+ * methods. Handles are accounted independently. Each active queue keeps half of its equal share
+ * protected; another queue may borrow only the remaining idle space. Borrowed allocations are
+ * drained rather than revoked when the active queue set changes. An entry larger than the maximum
+ * amount one queue can hold under this policy is rejected explicitly.
  */
 public class SubscriptionMemoryManager {
 
   private static final String MEMORY_BLOCK_NAME = "Subscription";
 
   private final IMemoryBlock memoryBlock;
+  private static final int PROTECTED_SHARE_DIVISOR = 2;
   private final Map<Long, MemoryHandle> handles = new HashMap<>();
   private long nextHandleId;
 
@@ -140,10 +141,7 @@ public class SubscriptionMemoryManager {
     }
     handle.usedMemoryInBytes += sizeInBytes;
     return AllocationResult.accepted(
-        handle.getMemoryQuotaInBytesUnderLock(),
-        Math.min(
-            handle.getMemoryQuotaInBytesUnderLock() - handle.usedMemoryInBytes,
-            getFreeMemorySizeInBytes()));
+        handle.getMemoryQuotaInBytesUnderLock(), handle.getFreeMemorySizeInBytes());
   }
 
   private AllocationResult inspectAllocationUnderLock(
@@ -154,31 +152,40 @@ public class SubscriptionMemoryManager {
     }
     if (!handle.active || handle.closed || !handles.containsKey(handle.id)) {
       return AllocationResult.rejected(
-          AllocationRejectionReason.MEMORY_LIMIT,
-          getTotalMemorySizeInBytes(),
-          getFreeMemorySizeInBytes());
+          AllocationRejectionReason.MEMORY_LIMIT, getTotalMemorySizeInBytes(), 0L);
     }
 
     final long total = getTotalMemorySizeInBytes();
     final long used = getUsedMemorySizeInBytes();
     final long quota = handle.getMemoryQuotaInBytesUnderLock();
+    final long protectedShare = quota / PROTECTED_SHARE_DIVISOR;
+    final long maximum = handle.getMaximumMemorySizeInBytesUnderLock();
+    long reservedByOthers = 0L;
+    for (final MemoryHandle other : handles.values()) {
+      if (other != handle && !other.closed && (other.active || other.usedMemoryInBytes > 0L)) {
+        reservedByOthers += Math.max(protectedShare, other.usedMemoryInBytes);
+      }
+    }
+    final long availableToOwner = Math.max(0L, total - legacyUsedMemoryInBytes - reservedByOthers);
     final long ownerUsed = handle.usedMemoryInBytes;
     final boolean fitsInNode = total > 0L && used <= total && sizeInBytes <= total - used;
-    final boolean fitsInShare = ownerUsed <= quota && sizeInBytes <= quota - ownerUsed;
+    final boolean fitsInShare =
+        ownerUsed <= availableToOwner && sizeInBytes <= availableToOwner - ownerUsed;
 
     if (fitsInNode && fitsInShare) {
-      return AllocationResult.accepted(quota, quota - handle.usedMemoryInBytes);
+      return AllocationResult.accepted(quota, availableToOwner - ownerUsed);
     }
 
     final AllocationRejectionReason reason;
-    if (sizeInBytes > quota) {
+    if (sizeInBytes > maximum) {
       reason = AllocationRejectionReason.OVERSIZED_ENTRY;
-    } else if (!fitsInShare) {
+    } else if (ownerUsed > maximum || sizeInBytes > maximum - ownerUsed) {
       reason = AllocationRejectionReason.MEMORY_QUOTA;
     } else {
       reason = AllocationRejectionReason.MEMORY_LIMIT;
     }
-    return AllocationResult.rejected(reason, quota, Math.min(quota - ownerUsed, total - used));
+    return AllocationResult.rejected(
+        reason, quota, Math.min(availableToOwner - ownerUsed, total - used));
   }
 
   private synchronized void release(final MemoryHandle handle, final long sizeInBytes) {
@@ -316,11 +323,26 @@ public class SubscriptionMemoryManager {
           / activeHandleCountUnderLock();
     }
 
+    public long getMaximumMemorySizeInBytes() {
+      synchronized (SubscriptionMemoryManager.this) {
+        return getMaximumMemorySizeInBytesUnderLock();
+      }
+    }
+
+    private long getMaximumMemorySizeInBytesUnderLock() {
+      final long budget = Math.max(0L, getTotalMemorySizeInBytes() - legacyUsedMemoryInBytes);
+      final long protectedShare = getMemoryQuotaInBytesUnderLock() / PROTECTED_SHARE_DIVISOR;
+      return Math.max(0L, budget - protectedShare * (activeHandleCountUnderLock() - 1L));
+    }
+
     public long getFreeMemorySizeInBytes() {
       synchronized (SubscriptionMemoryManager.this) {
-        // Realtime request admission uses only this queue's quota. Node-wide allocation checks
-        // happen during materialization, including when pre-existing allocations exceed new shares.
-        return Math.max(0L, getMemoryQuotaInBytesUnderLock() - usedMemoryInBytes);
+        // Probe the size of one byte to account for protected shares and live borrowed allocations.
+        return Math.max(
+            0L,
+            SubscriptionMemoryManager.this
+                .inspectAllocationUnderLock(this, 1L)
+                .getFreeMemoryInBytes());
       }
     }
 

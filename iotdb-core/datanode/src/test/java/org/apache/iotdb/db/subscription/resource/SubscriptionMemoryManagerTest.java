@@ -63,7 +63,7 @@ public class SubscriptionMemoryManagerTest {
   }
 
   @Test
-  public void testQueueCannotBorrowAnotherQueuesShare() {
+  public void testQueueCanBorrowIdleMemoryWithoutConsumingAnotherQueuesProtectedShare() {
     final SubscriptionMemoryManager memoryManager = new SubscriptionMemoryManager(10L);
     final SubscriptionMemoryManager.MemoryHandle queueA = memoryManager.registerQueue();
     final SubscriptionMemoryManager.MemoryHandle queueB = memoryManager.registerQueue();
@@ -71,25 +71,58 @@ public class SubscriptionMemoryManagerTest {
     assertEquals(5L, queueA.getMemoryQuotaInBytes());
     assertEquals(
         SubscriptionMemoryManager.AllocationRejectionReason.OVERSIZED_ENTRY,
-        queueA.inspectRejection(6L));
+        queueA.inspectRejection(9L));
     assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
 
-    assertFalse(queueA.tryAllocate(6L).isAccepted());
-    assertTrue(queueA.tryAllocate(4L).isAccepted());
+    assertTrue(queueA.tryAllocate(6L).isAccepted());
+    assertTrue(queueA.tryAllocate(2L).isAccepted());
     assertEquals(
         SubscriptionMemoryManager.AllocationRejectionReason.MEMORY_QUOTA,
-        queueA.inspectRejection(2L));
-    assertTrue(queueB.tryAllocate(5L).isAccepted());
-    assertTrue(queueA.tryAllocate(1L).isAccepted());
+        queueA.inspectRejection(1L));
+    assertTrue(queueB.tryAllocate(2L).isAccepted());
+    assertFalse(queueB.tryAllocate(1L).isAccepted());
     assertEquals(10L, memoryManager.getUsedMemorySizeInBytes());
 
     queueA.close();
     assertEquals(10L, queueB.getMemoryQuotaInBytes());
-    assertTrue(queueB.tryAllocate(5L).isAccepted());
+    assertTrue(queueB.tryAllocate(8L).isAccepted());
     assertEquals(10L, memoryManager.getUsedMemorySizeInBytes());
 
     queueB.close();
     assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testBorrowedMemoryWaitsForAckWhenAnotherQueueNeedsMoreThanItsReserve() {
+    final SubscriptionMemoryManager memoryManager = new SubscriptionMemoryManager(100L);
+    try (SubscriptionMemoryManager.MemoryHandle largeQueue = memoryManager.registerQueue();
+        SubscriptionMemoryManager.MemoryHandle smallQueue = memoryManager.registerQueue()) {
+      assertTrue(largeQueue.tryAllocate(75L).isAccepted());
+      assertEquals(25L, smallQueue.getFreeMemorySizeInBytes());
+      assertEquals(
+          SubscriptionMemoryManager.AllocationRejectionReason.MEMORY_LIMIT,
+          smallQueue.inspectRejection(30L));
+      assertTrue(smallQueue.tryAllocate(25L).isAccepted());
+      assertEquals(0L, smallQueue.getFreeMemorySizeInBytes());
+      largeQueue.release(50L);
+      assertTrue(smallQueue.tryAllocate(30L).isAccepted());
+      assertEquals(80L, memoryManager.getUsedMemorySizeInBytes());
+    }
+  }
+
+  @Test
+  public void testNewQueueWaitsForExistingBorrowedAllocationsToDrain() {
+    final SubscriptionMemoryManager memoryManager = new SubscriptionMemoryManager(100L);
+    try (SubscriptionMemoryManager.MemoryHandle first = memoryManager.registerQueue()) {
+      assertTrue(first.tryAllocate(100L).isAccepted());
+      try (SubscriptionMemoryManager.MemoryHandle second = memoryManager.registerQueue()) {
+        assertEquals(
+            SubscriptionMemoryManager.AllocationRejectionReason.MEMORY_LIMIT,
+            second.inspectRejection(1L));
+        first.release(25L);
+        assertTrue(second.tryAllocate(25L).isAccepted());
+      }
+    }
   }
 
   @Test

@@ -2645,6 +2645,6 @@ public final class DataNodePipeMessages {
       "Interrupted while reading OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
-  public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_EXCEEDING_QUEUE_QUOTA_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_THE_SUBSCRIPTION_PROPORTION_IN_CHUNK_TIMESERIESMETA_FREE_MEMORY_PROPORTION_WAL_PROGRESS_HAS_NOT_ADVANCED_C9120068 =
-      "[%s] Subscription entry requires %d bytes, exceeding queue quota %d bytes (DataNode budget %d bytes). Reduce the write batch/field size or increase the Subscription proportion in chunk_timeseriesmeta_free_memory_proportion. WAL progress has not advanced.";
+  public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
+      "[%s] Subscription entry requires %d bytes, above the current per-queue maximum %d bytes (DataNode budget %d bytes). Reduce the write batch/field size or increase subscription materialization memory. WAL progress has not advanced.";
 }
