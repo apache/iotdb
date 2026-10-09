@@ -183,7 +183,6 @@ public class FastCompactionPerformer
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
-        boolean isTreeModel = !isAligned || device.getTableName().startsWith("root.");
         long ttl = deviceIterator.getTTLForCurrentDevice();
         sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
         // checked above
@@ -193,7 +192,9 @@ public class FastCompactionPerformer
         if (ttl != Long.MAX_VALUE) {
           ttlDeletion =
               CompactionUtils.convertTtlToDeletion(
-                  device, deviceIterator.getTimeLowerBoundForCurrentDevice());
+                  device,
+                  deviceIterator.getTimeLowerBoundForCurrentDevice(),
+                  deviceIterator.isTableModel());
         }
         compactionWriter.setTTLDeletion(ttlDeletion);
 
@@ -205,7 +206,8 @@ public class FastCompactionPerformer
         compactionWriter.startChunkGroup(device, isAligned);
 
         if (isAligned) {
-          compactAlignedSeries(device, deviceIterator, compactionWriter, isTreeModel);
+          compactAlignedSeries(
+              device, deviceIterator, compactionWriter, !deviceIterator.isTableModel());
         } else {
           compactNonAlignedSeries(device, deviceIterator, compactionWriter);
         }

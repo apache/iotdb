@@ -31,13 +31,15 @@ public class CompactionPathUtils {
 
   private CompactionPathUtils() {}
 
-  public static MeasurementPath getPath(final IDeviceID device, final String measurement)
+  public static MeasurementPath getPath(
+      final IDeviceID device, final String measurement, final boolean isTableModel)
       throws IllegalPathException {
-    return getPath(device).concatAsMeasurementPath(measurement);
+    return getPath(device, isTableModel).concatAsMeasurementPath(measurement);
   }
 
-  public static PartialPath getPath(final IDeviceID device) throws IllegalPathException {
-    if (device.isTableModel()) {
+  public static PartialPath getPath(final IDeviceID device, final boolean isTableModel)
+      throws IllegalPathException {
+    if (isTableModel) {
       final String[] nodes = new String[device.segmentNum()];
       nodes[0] = device.getTableName();
       for (int i = 0; i < device.segmentNum() - 1; i++) {
