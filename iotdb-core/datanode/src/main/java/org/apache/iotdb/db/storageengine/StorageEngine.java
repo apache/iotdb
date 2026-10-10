@@ -1080,26 +1080,31 @@ public class StorageEngine implements IService {
       final int sliceIndex,
       final int sliceCount,
       final int originBodySize) {
-    final LoadTsFilePieceNodeAssembler.Result result =
-        loadTsFileManager.appendPieceNodeSlice(
-            dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
-    if (!result.isValid()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
-    }
-    if (!result.isComplete()) {
-      return RpcUtils.SUCCESS_STATUS;
-    }
+    return loadTsFileManager.executeLoadTask(
+        uuid,
+        () -> {
+          final LoadTsFilePieceNodeAssembler.Result result =
+              loadTsFileManager.appendPieceNodeSlice(
+                  dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
+          if (!result.isValid()) {
+            return RpcUtils.getStatus(
+                TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
+          }
+          if (!result.isComplete()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
 
-    try {
-      final Object planNode = PlanNodeType.deserialize(result.getBody());
-      if (!(planNode instanceof LoadTsFilePieceNode)) {
-        return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
-      }
-      return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
-    } catch (final Exception e) {
-      return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
-    }
+          try {
+            final Object planNode = PlanNodeType.deserialize(result.getBody());
+            if (!(planNode instanceof LoadTsFilePieceNode)) {
+              return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+            }
+            return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
+          } catch (final Exception e) {
+            return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+          }
+        },
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
   }
 
   public TSStatus executeLoadCommand(
