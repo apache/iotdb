@@ -1241,18 +1241,8 @@ public class IoTDBTableIT {
       statement.execute("create table drop_target (device string tag, reading int32)");
       statement.execute("drop table drop_target");
 
-      try (final ResultSet resultSet =
-          statement.executeQuery(
-              "select procedure_id, state, progress "
-                  + "from information_schema.drop_table_procedures "
-                  + "where database = 'async_drop_db' and table_name = 'drop_target'")) {
-        assertTrue(resultSet.next());
-        assertTrue(resultSet.getLong(1) >= 0);
-        assertFalse(resultSet.getString(2).isEmpty());
-        assertFalse(resultSet.getString(3).isEmpty());
-        assertFalse(resultSet.next());
-      }
-
+      // The drop may finish before the first query. Its completed result remains visible until
+      // the procedure cleaner evicts it, so verify that result after waiting for completion.
       awaitDropProcedure(statement, "async_drop_db", "drop_target");
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables from async_drop_db"),

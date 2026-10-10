@@ -128,7 +128,7 @@ public class ProcedureExecutor<Env> {
     return PROCEDURE_EXECUTION_CONTEXT.get();
   }
 
-  public void init(int numThreads) {
+  public synchronized void init(int numThreads) {
     this.corePoolSize = numThreads;
     this.maxPoolSize = 10 * numThreads;
     this.timeoutExecutor =
@@ -143,8 +143,6 @@ public class ProcedureExecutor<Env> {
       workerThreads.add(new WorkerThread(threadGroup, scheduler));
     }
     dropTableWorkerThreads = new CopyOnWriteArrayList<>();
-    dropTableWorkerThreads.add(
-        new WorkerThread(threadGroup, dropTableScheduler, "DropTableProcedureWorker-"));
     // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
@@ -307,7 +305,7 @@ public class ProcedureExecutor<Env> {
             });
   }
 
-  public void startWorkers() {
+  public synchronized void startWorkers() {
     if (!running.compareAndSet(false, true)) {
       LOG.warn(ProcedureMessages.ALREADY_RUNNING);
       return;
@@ -1054,6 +1052,12 @@ public class ProcedureExecutor<Env> {
     return workers == null ? 0 : workers.size();
   }
 
+  @TestOnly
+  public int getDropTableWorkerThreadCount() {
+    final CopyOnWriteArrayList<WorkerThread> workers = dropTableWorkerThreads;
+    return workers == null ? 0 : workers.size();
+  }
+
   public long getActiveWorkerThreadCount() {
     final CopyOnWriteArrayList<WorkerThread> workers = workerThreads;
     return workers == null
@@ -1065,7 +1069,7 @@ public class ProcedureExecutor<Env> {
     return running.get();
   }
 
-  public void stop() {
+  public synchronized void stop() {
     if (!running.getAndSet(false)) {
       return;
     }
@@ -1151,8 +1155,22 @@ public class ProcedureExecutor<Env> {
 
   public ProcedureScheduler getScheduler(final Procedure<?> procedure) {
     return procedure instanceof DropTableProcedure && !(procedure instanceof DropViewProcedure)
-        ? dropTableScheduler
+        ? getDropTableScheduler()
         : scheduler;
+  }
+
+  private synchronized ProcedureScheduler getDropTableScheduler() {
+    // Recovery can enqueue drops before startWorkers(), while new submissions arrive after it.
+    // Share the lifecycle lock so the first drop creates and starts exactly one worker.
+    if (dropTableWorkerThreads.isEmpty()) {
+      final WorkerThread worker =
+          new WorkerThread(threadGroup, dropTableScheduler, "DropTableProcedureWorker-");
+      dropTableWorkerThreads.add(worker);
+      if (isRunning()) {
+        worker.start();
+      }
+    }
+    return dropTableScheduler;
   }
 
   public Env getEnvironment() {

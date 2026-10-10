@@ -2536,6 +2536,7 @@ public class ProcedureManager {
     return result;
   }
 
+  /** Returns running drops and completed results retained by the executor's shared TTL cleaner. */
   public List<TDropTableProcedureInfo> getDropTableProcedures() {
     final Map<Long, DropTableProcedure> dropProcedures = new HashMap<>();
     Stream.concat(
