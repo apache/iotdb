@@ -86,6 +86,7 @@ public class PipeRealtimeExtractTest {
   private static final String TEST_PIPE_NAME = "test_degraded_status_pipe";
   private static final long TEST_PIPE_CREATION_TIME = 1L;
   private static final String TEST_REFERENCE_HOLDER = PipeRealtimeExtractTest.class.getName();
+  private static final String DATABASE = "root.sg";
 
   private final int dataRegion1 = 1;
   private final int dataRegion2 = 2;
@@ -114,7 +115,7 @@ public class PipeRealtimeExtractTest {
                 + File.separator
                 + IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
-                + "root.sg");
+                + DATABASE);
   }
 
   @After
@@ -314,7 +315,7 @@ public class PipeRealtimeExtractTest {
       resource.close();
 
       PipeInsertionDataNodeListener.getInstance()
-          .listenToTsFile(dataRegion1, Integer.toString(dataRegion1), resource, false);
+          .listenToTsFile(dataRegion1, DATABASE, resource, false);
 
       final long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(1);
       while (System.currentTimeMillis() < deadline
@@ -353,7 +354,7 @@ public class PipeRealtimeExtractTest {
       final TsFileResource resource = createTsFileResource(dataRegion1, "100-100-0-0.tsfile");
       final PipeRealtimeEvent tabletEvent =
           PipeRealtimeEventFactory.createRealtimeEvent(
-              false, "root.sg", createInsertRowNode("degraded-tablet", "a"), resource);
+              false, DATABASE, createInsertRowNode("degraded-tablet", "a"), resource);
 
       Assert.assertTrue(tabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(tabletEvent);
@@ -364,7 +365,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
 
       final PipeRealtimeEvent tsFileEvent =
-          PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", resource, false);
+          PipeRealtimeEventFactory.createRealtimeEvent(false, DATABASE, resource, false);
 
       Assert.assertTrue(tsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(tsFileEvent);
@@ -411,7 +412,7 @@ public class PipeRealtimeExtractTest {
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,
-                    Integer.toString(dataRegionId),
+                    DATABASE,
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
                         new PartialPath(device),
@@ -425,7 +426,7 @@ public class PipeRealtimeExtractTest {
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,
-                    Integer.toString(dataRegionId),
+                    DATABASE,
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
                         new PartialPath(device),
@@ -437,7 +438,7 @@ public class PipeRealtimeExtractTest {
                         false),
                     resource);
             PipeInsertionDataNodeListener.getInstance()
-                .listenToTsFile(dataRegionId, Integer.toString(dataRegionId), resource, false);
+                .listenToTsFile(dataRegionId, DATABASE, resource, false);
           }
         });
   }
