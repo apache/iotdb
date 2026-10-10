@@ -33,6 +33,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBResultMetadataTest {
 
@@ -172,5 +173,27 @@ public class IoTDBResultMetadataTest {
     for (int i = 1; i <= types.length; i++) {
       assertEquals(metadata.getColumnType(i + 1), types[i - 1]);
     }
+  }
+
+  @Test
+  public void getCatalogNameOutOfRangeThrowsSQLExceptionNotIndexOutOfBounds() throws SQLException {
+    String[] columns = {"root.a.b.c1", "root.a.b.c2", "root.a.b.c3"};
+    metadata = new IoTDBResultMetadata(false, null, "LIST_USER", Arrays.asList(columns), null, false);
+
+    // out-of-range columns must throw SQLException, not a raw IndexOutOfBoundsException from
+    // columnInfoList.get(column - 1) running before the range check.
+    for (int badColumn : new int[] {0, columns.length + 1}) {
+      try {
+        metadata.getCatalogName(badColumn);
+        fail("getCatalogName(" + badColumn + ") should throw SQLException for an out-of-range column");
+      } catch (SQLException expected) {
+        // expected
+      } catch (IndexOutOfBoundsException e) {
+        fail("getCatalogName(" + badColumn + ") threw IndexOutOfBoundsException instead of SQLException");
+      }
+    }
+
+    // a valid column is unaffected by the added guard
+    assertEquals("_system_user", metadata.getCatalogName(1));
   }
 }
