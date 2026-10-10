@@ -232,7 +232,7 @@ io.swagger.core.v3:swagger-integration-jakarta:2.2.50
 io.swagger.core.v3:swagger-jaxrs2-jakarta:2.2.50
 io.swagger.core.v3:swagger-models-jakarta:2.2.50
 jakarta.inject:jakarta.inject-api:2.0.1
-at.yawk.lz4:lz4-java:1.11.1
+at.yawk.lz4:lz4-java:1.11.4
 com.github.ben-manes.caffeine:caffeine:2.9.3
 org.eclipse.jetty:jetty-http:12.0.36
 org.eclipse.jetty:jetty-io:12.0.36
@@ -243,7 +243,7 @@ org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.36
 org.eclipse.jetty:jetty-util:12.0.36
 com.google.code.findbugs:jsr305:3.0.2
 com.librato.metrics:librato-java:2.1.0
-org.apache.thrift:libthrift:0.24.0
+org.apache.thrift:libthrift:0.25.0
 io.dropwizard.metrics:metrics-core:4.2.19
 io.dropwizard.metrics:metrics-jvm:3.2.2
 com.librato.metrics:metrics-librato:5.1.0

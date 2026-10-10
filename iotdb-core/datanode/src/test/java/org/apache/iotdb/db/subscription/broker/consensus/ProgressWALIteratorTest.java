@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
@@ -87,7 +88,7 @@ public class ProgressWALIteratorTest {
   }
 
   @Test
-  public void testIteratorUsesMetadataSearchIndexForStartFiltering() throws Exception {
+  public void testIteratorUsesBodySearchIndexForStartFiltering() throws Exception {
     final Path dir = Files.createTempDirectory("progress-wal-iterator-metadata-search-index");
     final File firstWal =
         dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
@@ -98,8 +99,8 @@ public class ProgressWALIteratorTest {
 
     try {
       try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(-1L), singleEntryMeta(19, 5L, 1L, 1000L, 7, 105L));
-        writer.write(searchableEntry(-1L), singleEntryMeta(19, 6L, 1L, 2000L, 7, 106L));
+        writer.write(searchableEntry(5L), singleEntryMeta(19, 5L, 1L, 1000L, 7, 105L));
+        writer.write(searchableEntry(6L), singleEntryMeta(19, 6L, 1L, 2000L, 7, 106L));
       }
       try (WALWriter ignored = new WALWriter(lastWal, WALFileVersion.V3)) {
         // Create a sealed successor so the first WAL becomes historical and readable.
@@ -117,6 +118,75 @@ public class ProgressWALIteratorTest {
     } finally {
       Files.deleteIfExists(firstWal.toPath());
       Files.deleteIfExists(lastWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testIteratorPreservesAbsentLocalIndexAfterManyFragments() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-mixed-fragments");
+    final File dataWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 1878, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        // Physical WAL entries count fragments, not local consensus requests. The old fallback
+        // assigns the replicated entry 1877 + 550 = 2427, creating a false [1878, 2427) gap.
+        for (int fragment = 0; fragment < 550; fragment++) {
+          writer.write(searchableEntry(1877L), singleEntryMeta(19, 1877L, 1L, 1000L, 7, 1877L));
+        }
+        writer.write(
+            searchableEntry(SearchNode.NO_CONSENSUS_INDEX),
+            singleEntryMeta(19, SearchNode.NO_CONSENSUS_INDEX, 1L, 2000L, 8, 10000L));
+        writer.write(searchableEntry(1878L), singleEntryMeta(19, 1878L, 1L, 3000L, 7, 1878L));
+      }
+      try (WALWriter ignored = new WALWriter(successorWal, WALFileVersion.V3)) {
+        // Keep both files retained and sealed; there is no deletion or concurrent write.
+      }
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), Long.MIN_VALUE)) {
+        assertTrue(iterator.hasNext());
+        final IndexedConsensusRequest fragmented = iterator.next();
+        assertEquals(1877L, fragmented.getSearchIndex());
+        assertEquals(1877L, fragmented.getProgressLocalSeq());
+        assertEquals(7, fragmented.getNodeId());
+        assertEquals(550, fragmented.getRequests().size());
+
+        assertTrue(iterator.hasNext());
+        final IndexedConsensusRequest replicated = iterator.next();
+        assertEquals(SearchNode.NO_CONSENSUS_INDEX, replicated.getSearchIndex());
+        assertEquals(10000L, replicated.getProgressLocalSeq());
+        assertEquals(2000L, replicated.getPhysicalTime());
+        assertEquals(8, replicated.getNodeId());
+        assertEquals(1, replicated.getRequests().size());
+
+        assertTrue(iterator.hasNext());
+        final IndexedConsensusRequest nextLocal = iterator.next();
+        assertEquals(1878L, nextLocal.getSearchIndex());
+        assertEquals(1878L, nextLocal.getProgressLocalSeq());
+        assertEquals(7, nextLocal.getNodeId());
+        assertEquals(1, nextLocal.getRequests().size());
+        assertFalse(iterator.hasNext());
+        assertFalse(iterator.hasIncompleteScan());
+        assertTrue(dataWal.isFile());
+      }
+
+      // A local-index seek must also retain replicated requests with their own writer progress.
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 1878L)) {
+        assertTrue(iterator.hasNext());
+        assertEquals(SearchNode.NO_CONSENSUS_INDEX, iterator.next().getSearchIndex());
+        assertTrue(iterator.hasNext());
+        assertEquals(1878L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasNext());
+        assertFalse(iterator.hasIncompleteScan());
+      }
+    } finally {
+      Files.deleteIfExists(dataWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
       Files.deleteIfExists(dir);
     }
   }

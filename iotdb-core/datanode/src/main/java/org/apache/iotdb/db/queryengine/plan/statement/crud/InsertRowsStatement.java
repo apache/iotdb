@@ -53,6 +53,15 @@ public class InsertRowsStatement extends InsertBaseStatement {
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
 
+  /**
+   * Whether every row of this statement targets the same table and carries the same column set.
+   * Only producers that build all rows from a single (table, column) definition set this, e.g. a
+   * parsed {@code INSERT INTO <table> ... VALUES ...}. It stays {@code false} by default so that a
+   * statement assembled from multiple sources (pipe batches, data type conversions, splits) is
+   * analysed row by row and no target table is skipped.
+   */
+  private boolean uniformTargets;
+
   public InsertRowsStatement() {
     super();
     statementType = StatementType.BATCH_INSERT_ROWS;
@@ -97,6 +106,14 @@ public class InsertRowsStatement extends InsertBaseStatement {
 
   public void setInsertRowStatementList(List<InsertRowStatement> insertRowStatementList) {
     this.insertRowStatementList = insertRowStatementList;
+  }
+
+  public boolean isUniformTargets() {
+    return uniformTargets;
+  }
+
+  public void setUniformTargets(final boolean uniformTargets) {
+    this.uniformTargets = uniformTargets;
   }
 
   @Override

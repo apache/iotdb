@@ -101,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableDropColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetColumnPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CountDBTask;
@@ -208,6 +209,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
@@ -264,6 +266,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterParser;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -289,6 +292,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
@@ -846,6 +850,40 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   }
 
   @Override
+  public IConfigTask visitSetColumnProperties(
+      final SetColumnProperties node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.OTHER);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+    final QualifiedObjectName table = new QualifiedObjectName(database, tableName);
+
+    accessControl.checkCanAlterTable(context.getSession().getUserName(), table, context);
+
+    if (!metadata.tableExists(table)) {
+      if (node.tableIfExists()) {
+        return configTaskExecutor ->
+            immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+      if (!DataNodeTableCache.getInstance().isDatabaseExist(database)) {
+        throw new SemanticException(
+            new org.apache.iotdb.commons.exception.IoTDBException(
+                String.format(DataNodeQueryMessages.UNKNOWN_DATABASE, database),
+                TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+      }
+    }
+
+    return new AlterTableSetColumnPropertiesTask(
+        database,
+        tableName,
+        node.getColumnName().getValue(),
+        convertColumnPropertiesToMap(node.getProperties(), true),
+        context.getQueryId().getId(),
+        node.tableIfExists(),
+        node.columnIfExists());
+  }
+
+  @Override
   public IConfigTask visitSetProperties(final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
@@ -986,6 +1024,37 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
             DataNodeQueryMessages.TABLE_PROPERTY
                 + key
                 + DataNodeQueryMessages.IS_CURRENTLY_NOT_ALLOWED);
+      }
+    }
+    return map;
+  }
+
+  private Map<String, String> convertColumnPropertiesToMap(
+      final List<Property> propertyList, final boolean serializeDefault) {
+    final Map<String, String> map = new HashMap<>();
+    final Set<String> deduplicate = new HashSet<>();
+    for (final Property property : propertyList) {
+      final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+      if (!deduplicate.add(key)) {
+        throw new SemanticException(DataNodeQueryMessages.DUPLICATED_PROPERTY + key);
+      }
+      if (!TsTable.COLUMN_ALLOWED_PROPERTIES.contains(key)) {
+        throw new SemanticException(
+            DataNodeQueryMessages.TABLE_PROPERTY
+                + key
+                + DataNodeQueryMessages.IS_CURRENTLY_NOT_ALLOWED);
+      }
+      if (!property.isSetToDefault()) {
+        map.put(
+            key,
+            parseStringFromLiteralIfBinary(property.getNonDefaultValue())
+                .orElseThrow(
+                    () ->
+                        new SemanticException(
+                            DataNodeQueryMessages
+                                .EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250)));
+      } else if (serializeDefault) {
+        map.put(key, null);
       }
     }
     return map;

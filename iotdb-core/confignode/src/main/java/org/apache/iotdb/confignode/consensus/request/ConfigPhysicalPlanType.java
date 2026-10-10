@@ -30,6 +30,8 @@ public enum ConfigPhysicalPlanType {
   UpdateVersionInfo((short) 2),
   UpdateClusterId((short) 3),
 
+  UpdateNodeStatus((short) 4),
+
   /** DataNode. */
   RegisterDataNode((short) 100),
   GetDataNodeConfiguration((short) 101),
@@ -233,6 +235,7 @@ public enum ConfigPhysicalPlanType {
   AlterColumnDataType((short) 878),
   PreAlterColumnDataType((short) 879),
   RollbackPreDeleteTable((short) 880),
+  SetTableColumnProperties((short) 881),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

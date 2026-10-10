@@ -1495,8 +1495,10 @@ public final class StorageEngineMessages {
       "Current chunk %s cannot be aligned with time chunk: %s, all time chunk in first batch is %s";
   public static final String WAL_NODE_CLOSED_FMT = "wal node-%s has been closed";
   public static final String BROKEN_WAL_FILE_FMT = "Broken wal file %s, size %d";
-  public static final String TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE =
-      "{} TsFileReader is closed because of no reference.";
+  public static final String LOG_READER_FOR_CLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_C3B71A85 =
+      "Reader for closed TsFile {} is closed because its reference count reached zero.";
+  public static final String LOG_READER_FOR_UNCLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_088BDEF8 =
+      "Reader for unclosed TsFile {} is closed because its reference count reached zero.";
   public static final String CLOSED_TSFILE_READER_CLOSED =
       "{} closedTsFileReader is closed.";
   public static final String UNCLOSED_TSFILE_READER_CLOSED =

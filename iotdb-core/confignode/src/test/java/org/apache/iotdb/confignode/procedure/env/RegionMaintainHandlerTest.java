@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -58,8 +60,12 @@ import java.util.Optional;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -231,5 +237,67 @@ public class RegionMaintainHandlerTest {
     } finally {
       clientManagerField.set(clientPool, originalClientManager);
     }
+  }
+
+  private RegionMaintainHandler stubStatusAndSubmit(
+      final NodeStatus status, final TSStatus submitResult) {
+    RegionMaintainHandler retryHandler = spy(handler);
+    doReturn(status).when(retryHandler).getDataNodeStatus(original.getDataNodeId());
+    doReturn(submitResult)
+        .when(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            any(CnToDnSyncRequestType.class),
+            any(Boolean.class));
+    return retryHandler;
+  }
+
+  @Test
+  public void testDeleteOldRegionPeerUsesSingleRetryForStoppedDataNode() {
+    final TSStatus success = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    final RegionMaintainHandler retryHandler = stubStatusAndSubmit(NodeStatus.Stopped, success);
+
+    final TSStatus status = retryHandler.submitDeleteOldRegionPeerTask(1L, original, regionId);
+
+    assertEquals(success.getCode(), status.getCode());
+    // A Stopped node does not respond to requests either: like Unknown, it gets a single retry.
+    verify(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            eq(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER),
+            eq(false));
+  }
+
+  @Test
+  public void testDeleteOldRegionPeerUsesFullRetryForRunningDataNode() {
+    final TSStatus success = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    final RegionMaintainHandler retryHandler = stubStatusAndSubmit(NodeStatus.Running, success);
+
+    retryHandler.submitDeleteOldRegionPeerTask(1L, original, regionId);
+
+    verify(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            eq(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER),
+            eq(true));
+  }
+
+  @Test
+  public void testDeleteOldRegionPeerUsesFullRetryForReadOnlyDataNode() {
+    final TSStatus success = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    final RegionMaintainHandler retryHandler = stubStatusAndSubmit(NodeStatus.ReadOnly, success);
+
+    retryHandler.submitDeleteOldRegionPeerTask(1L, original, regionId);
+
+    // Only Unknown and Stopped are treated as down; ReadOnly still responds.
+    verify(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            eq(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER),
+            eq(true));
   }
 }

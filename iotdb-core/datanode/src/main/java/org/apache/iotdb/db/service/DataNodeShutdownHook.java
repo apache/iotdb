@@ -117,7 +117,9 @@ public class DataNodeShutdownHook extends Thread {
     ExternalRPCService.getInstance().stop();
 
     // Reject write operations to make sure all tsfiles will be sealed
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.STOPPING);
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 
