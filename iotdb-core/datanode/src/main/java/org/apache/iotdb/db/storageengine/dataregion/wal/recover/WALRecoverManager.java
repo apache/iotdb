@@ -51,7 +51,11 @@ import java.util.concurrent.Future;
 
 import static org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils.getTsFileRelativePath;
 
-/** First set allVsgScannedLatch, then call recover method. */
+/**
+ * Coordinates WAL recovery after every DataRegion has scanned its local unsealed TsFiles.
+ *
+ * <p>Callers must install the all-data-region-scanned latch before invoking {@link #recover()}.
+ */
 public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
