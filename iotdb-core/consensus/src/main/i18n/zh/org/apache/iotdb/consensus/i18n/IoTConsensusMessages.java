@@ -328,6 +328,10 @@ public final class IoTConsensusMessages {
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D = "订阅队列已满，丢弃了 {} 个 entry，最近 {} ms，最新 ";
   public static final String LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED = "searchIndex={}, queueSize={}, queueRemaining={}";
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8 = "订阅队列已满，丢弃 entry，searchIndex={}，droppedCount={}";
+  public static final String LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ARG_ENTRY_S_IN_THE_LAST_ARG_MS_WAL_REPLAY_REQUIRED_GROUP_ARG_LATEST_SEARCHINDEX_ARG_REASONCODE_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_0FBF6226 =
+      "订阅实时准入拒绝了 {} 个 entry（最近 {} ms）；需通过 WAL 回放补齐，group={}，最新 searchIndex={}，reasonCode={}，queueSize={}，queueRemaining={}";
+  public static final String LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ENTRY_WAL_REPLAY_REQUIRED_GROUP_ARG_SEARCHINDEX_ARG_REASONCODE_ARG_REJECTEDCOUNT_ARG_7F76D6A9 =
+      "订阅实时准入拒绝 entry；需通过 WAL 回放补齐，group={}，searchIndex={}，reasonCode={}，rejectedCount={}";
   public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "预留 {} 字节给批次 {}-{}，当前总使用量 {}";
   public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}：无法向 {} 发送 idle writer safe-time barrier。状态={}";
   public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}：写入操作失败。searchIndex: {}。Code: {}，订阅队列：{}，当前对象：{}";

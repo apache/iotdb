@@ -330,6 +330,10 @@ public final class IoTConsensusMessages {
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D = "Subscription queue full, dropped {} entry(s) in the last {} ms, latest ";
   public static final String LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED = "searchIndex={}, queueSize={}, queueRemaining={}";
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8 = "Subscription queue full, dropped entry searchIndex={}, droppedCount={}";
+  public static final String LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ARG_ENTRY_S_IN_THE_LAST_ARG_MS_WAL_REPLAY_REQUIRED_GROUP_ARG_LATEST_SEARCHINDEX_ARG_REASONCODE_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_0FBF6226 =
+      "Subscription realtime admission rejected {} entry(s) in the last {} ms; WAL replay required, group={}, latest searchIndex={}, reasonCode={}, queueSize={}, queueRemaining={}";
+  public static final String LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ENTRY_WAL_REPLAY_REQUIRED_GROUP_ARG_SEARCHINDEX_ARG_REASONCODE_ARG_REJECTEDCOUNT_ARG_7F76D6A9 =
+      "Subscription realtime admission rejected entry; WAL replay required, group={}, searchIndex={}, reasonCode={}, rejectedCount={}";
   public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "Reserved {} bytes for batch {}-{}, current total usage {}";
   public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}: Failed to send idle writer safe-time barrier to {}. status={}";
   public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}: write operation failed. searchIndex: {}. Code: {}, subscriptionQueues: {}, this: {}";
