@@ -2043,7 +2043,7 @@ public class ConsensusPrefetchingQueue {
       final long totalSkippedEntries = walGapSkippedEntries.addAndGet(skippedEntries);
       LOGGER.warn(
           DataNodePipeMessages
-              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64,
+              .LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A,
           this,
           expectedSearchIndex,
           actualSearchIndex,
