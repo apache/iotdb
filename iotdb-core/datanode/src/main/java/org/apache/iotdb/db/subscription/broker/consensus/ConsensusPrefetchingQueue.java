@@ -213,9 +213,15 @@ public class ConsensusPrefetchingQueue {
 
   private final AtomicLong walGapSkippedEntries = new AtomicLong(0);
 
+  private final AtomicLong unreadableWalFileCount = new AtomicLong(0);
+
+  private final AtomicLong unreadableWalEntryCount = new AtomicLong(0);
+
   private final AtomicReference<String> pendingWalReplayError = new AtomicReference<>();
 
   private int reportedSkippedBrokenWalFileCount = 0;
+
+  private long reportedSkippedBrokenWalEntryCount = 0L;
 
   /**
    * Guards queue state transitions that touch replay positioning, seek state, and writer buffers.
@@ -849,7 +855,7 @@ public class ConsensusPrefetchingQueue {
       }
       final String walReplayError = pendingWalReplayError.getAndSet(null);
       if (Objects.nonNull(walReplayError)) {
-        return generateErrorResponse(walReplayError);
+        return generateErrorResponse(walReplayError, true);
       }
       if (!prefetchInitialized && !initPrefetch(regionProgress)) {
         return null;
@@ -2135,12 +2141,24 @@ public class ConsensusPrefetchingQueue {
     if (skippedBrokenWalFileCount <= reportedSkippedBrokenWalFileCount) {
       return;
     }
+    final long skippedBrokenWalEntryCount = subscriptionWALIterator.getSkippedBrokenWalEntryCount();
+    final long totalSkippedFiles =
+        unreadableWalFileCount.addAndGet(
+            skippedBrokenWalFileCount - reportedSkippedBrokenWalFileCount);
+    unreadableWalEntryCount.addAndGet(
+        skippedBrokenWalEntryCount - reportedSkippedBrokenWalEntryCount);
+    final String detail =
+        subscriptionWALIterator.getSkippedBrokenWalFileDetails(reportedSkippedBrokenWalFileCount);
     reportedSkippedBrokenWalFileCount = skippedBrokenWalFileCount;
+    reportedSkippedBrokenWalEntryCount = skippedBrokenWalEntryCount;
     pendingWalReplayError.set(
         String.format(
             DataNodePipeMessages
-                .SUBSCRIPTION_ERROR_WAL_REPLAY_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_D60C5FB2,
-            skippedBrokenWalFileCount));
+                .MESSAGE_SUBSCRIPTION_WAL_REPLAY_SKIPPED_ARG_UNREADABLE_RETAINED_WAL_FILE_S_IN_QUEUE_ARG_REGION_ARG_HISTORICAL_DATA_MAY_BE_LOST_DETAILS_RECENT_FILES_FULL_DETAILS_IN_SERVER_LOG_ARG_FEDEFF7E,
+            totalSkippedFiles,
+            getPrefetchingQueueId(),
+            consensusGroupId,
+            detail));
   }
 
   private void advanceWalReplayCursorIfPresent(final IndexedConsensusRequest request) {
@@ -2183,6 +2201,10 @@ public class ConsensusPrefetchingQueue {
       return;
     }
     reportUnreadableWalReplayIfNecessary();
+    if (subscriptionWALIterator.isWaitingForReadableWal()) {
+      // A retry must preserve the incomplete writer request and its file/entry offset.
+      return;
+    }
     if (!(consensusReqReader instanceof WALNode)) {
       return;
     }
@@ -2205,6 +2227,7 @@ public class ConsensusPrefetchingQueue {
   private void resetSubscriptionWALPosition(final long startSearchIndex) {
     closeSubscriptionWALIterator();
     reportedSkippedBrokenWalFileCount = 0;
+    reportedSkippedBrokenWalEntryCount = 0L;
     subscriptionWALIterator = createSubscriptionWALIterator(startSearchIndex);
   }
 
@@ -2223,7 +2246,12 @@ public class ConsensusPrefetchingQueue {
       // applies the pending realignment. Returning true keeps the worker scheduled for that round.
       return true;
     }
-    return Objects.nonNull(subscriptionWALIterator) && subscriptionWALIterator.hasNext();
+    if (Objects.isNull(subscriptionWALIterator)) {
+      return false;
+    }
+    final boolean readable = subscriptionWALIterator.hasNext();
+    reportUnreadableWalReplayIfNecessary();
+    return readable;
   }
 
   private void requestSubscriptionWalReset(
@@ -2257,6 +2285,7 @@ public class ConsensusPrefetchingQueue {
     if (Objects.isNull(subscriptionWALIterator)) {
       return;
     }
+    reportUnreadableWalReplayIfNecessary();
     try {
       subscriptionWALIterator.close();
     } catch (final IOException e) {
@@ -4096,9 +4125,14 @@ public class ConsensusPrefetchingQueue {
   }
 
   private SubscriptionEvent generateErrorResponse(final String errorMessage) {
+    return generateErrorResponse(errorMessage, false);
+  }
+
+  private SubscriptionEvent generateErrorResponse(
+      final String errorMessage, final boolean critical) {
     return new SubscriptionEvent(
         SubscriptionPollResponseType.ERROR.getType(),
-        new ErrorPayload(errorMessage, false),
+        new ErrorPayload(errorMessage, critical),
         createNonCommittableContext(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
   }
 
@@ -4153,6 +4187,16 @@ public class ConsensusPrefetchingQueue {
 
   public long getWalGapSkippedEntries() {
     return walGapSkippedEntries.get();
+  }
+
+  /** Cumulative file-skip occurrences, including replay after an iterator reset or seek. */
+  public long getUnreadableWalFileCount() {
+    return unreadableWalFileCount.get();
+  }
+
+  /** Known skipped WAL entries/fragments; unreadable footers leave their entry counts unknown. */
+  public long getUnreadableWalEntryCount() {
+    return unreadableWalEntryCount.get();
   }
 
   public long getEpochChangeCount() {
@@ -4659,6 +4703,8 @@ public class ConsensusPrefetchingQueue {
     result.put("walPathAcceptedEntries", String.valueOf(getWalPathAcceptedEntries()));
     result.put("seekGeneration", String.valueOf(seekGeneration.get()));
     result.put("walGapSkippedEntries", String.valueOf(walGapSkippedEntries.get()));
+    result.put("unreadableWalFileCount", String.valueOf(getUnreadableWalFileCount()));
+    result.put("unreadableWalEntryCount", String.valueOf(getUnreadableWalEntryCount()));
     result.put("bufferedRealtimeEntryCount", String.valueOf(getRealtimeBufferedEntryCount()));
     result.put("lag", String.valueOf(getLag()));
     result.put("isClosed", String.valueOf(isClosed));
