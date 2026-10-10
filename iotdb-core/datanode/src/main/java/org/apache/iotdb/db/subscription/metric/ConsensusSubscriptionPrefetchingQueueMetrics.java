@@ -117,6 +117,18 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         ConsensusPrefetchingQueue::getWalGapSkippedEntries,
         key.getTags());
     metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getUnreadableWalFileCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getUnreadableWalEntryCount,
+        key.getTags());
+    metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE.toString(),
         MetricLevel.IMPORTANT,
         queue,
@@ -309,6 +321,14 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_LAG.toString(), key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_WAL_GAP.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES.toString(),
+        key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE.toString(),

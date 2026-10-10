@@ -216,6 +216,8 @@ public enum Metric {
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   SUBSCRIPTION_CONSENSUS_LAG("subscription_consensus_lag"),
   SUBSCRIPTION_CONSENSUS_WAL_GAP("subscription_consensus_wal_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP("subscription_consensus_wal_file_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES("subscription_consensus_wal_file_gap_entries"),
   SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE("subscription_consensus_routing_epoch_change"),
   SUBSCRIPTION_CONSENSUS_WATERMARK("subscription_consensus_watermark"),
   SUBSCRIPTION_CONSENSUS_SEEK_GENERATION("subscription_consensus_seek_generation"),

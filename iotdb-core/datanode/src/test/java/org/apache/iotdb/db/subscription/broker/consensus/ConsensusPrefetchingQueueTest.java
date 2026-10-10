@@ -391,8 +391,15 @@ public class ConsensusPrefetchingQueueTest {
 
       final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
       when(iterator.getSkippedBrokenWalFileCount()).thenReturn(1);
+      when(iterator.getSkippedBrokenWalEntryCount()).thenReturn(5L);
+      when(iterator.getSkippedBrokenWalFileDetails(0))
+          .thenReturn("file=_0-0-1.wal, versionId=0, error=EOFException");
       setSubscriptionWalIterator(queue, iterator);
       invokeReportUnreadableWalReplayIfNecessary(queue);
+      invokeReportUnreadableWalReplayIfNecessary(queue);
+      assertEquals(1L, queue.getUnreadableWalFileCount());
+      assertEquals(5L, queue.getUnreadableWalEntryCount());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
 
       final SubscriptionEvent event = queue.poll("consumer");
       assertNotNull(event);
@@ -400,7 +407,32 @@ public class ConsensusPrefetchingQueueTest {
           SubscriptionPollResponseType.ERROR.getType(),
           event.getCurrentResponse().getResponseType());
       assertTrue(event.getCurrentResponse().getPayload() instanceof ErrorPayload);
+      final ErrorPayload error = (ErrorPayload) event.getCurrentResponse().getPayload();
+      assertTrue(error.isCritical());
+      assertTrue(error.getErrorMessage().contains("_0-0-1.wal"));
+      assertTrue(error.getErrorMessage().contains("EOFException"));
+      assertTrue(error.getErrorMessage().contains(queue.getPrefetchingQueueId()));
+      assertTrue(error.getErrorMessage().contains(queue.getConsensusGroupId().toString()));
       assertNull(queue.poll("consumer"));
+
+      final Method reset =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "resetSubscriptionWALPosition", long.class);
+      reset.setAccessible(true);
+      reset.invoke(queue, 1L);
+      assertEquals(1L, queue.getUnreadableWalFileCount());
+      assertEquals(5L, queue.getUnreadableWalEntryCount());
+      final ProgressWALIterator replacement = mock(ProgressWALIterator.class);
+      when(replacement.getSkippedBrokenWalFileCount()).thenReturn(2);
+      // No readable footer: file skips remain observable even when entry counts are unknown.
+      when(replacement.getSkippedBrokenWalFileDetails(0))
+          .thenReturn("file=_1-1-1.wal, skippedEntries=unknown, error=BrokenWALFileException");
+      setSubscriptionWalIterator(queue, replacement);
+      invokeReportUnreadableWalReplayIfNecessary(queue);
+      assertEquals(3L, queue.getUnreadableWalFileCount());
+      assertEquals(5L, queue.getUnreadableWalEntryCount());
+      assertTrue(
+          ((ErrorPayload) queue.poll("consumer").getCurrentResponse().getPayload()).isCritical());
     } finally {
       if (queue != null) {
         queue.close();
