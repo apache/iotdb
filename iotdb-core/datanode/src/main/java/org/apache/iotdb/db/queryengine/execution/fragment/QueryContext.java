@@ -145,7 +145,10 @@ public class QueryContext {
   }
 
   protected boolean shouldSkipModification(ModEntry modification) {
-    if (isTableModel() && modification instanceof TableDeletionEntry) {
+    // tables is only collected by the table model query planning. Compaction and other contexts
+    // leave it null, which means that there is no table filter at all, so no modification can be
+    // skipped.
+    if (tables != null && modification instanceof TableDeletionEntry) {
       String tableName = ((TableDeletionEntry) modification).getTableName();
       return !tables.contains(tableName);
     }
