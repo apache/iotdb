@@ -35,11 +35,13 @@ import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
+import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -60,6 +62,87 @@ import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTest
 
 /** Use optimize rule: LimitOffsetPushDown and OrderByExpressionWithLimitChangeToTopK */
 public class LimitOffsetPushDownTest {
+
+  @Test
+  public void testGroupByTimePushDownAcrossLongRange() {
+    QueryStatement statement =
+        newBoundaryGroupByStatement(Long.MIN_VALUE, Long.MAX_VALUE, 10, 2, 1);
+    LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter(statement, ZoneId.of("UTC"));
+
+    Assert.assertFalse(statement.isResultSetEmpty());
+    Assert.assertEquals(Long.MIN_VALUE + 10, statement.getGroupByTimeComponent().getStartTime());
+    Assert.assertEquals(Long.MIN_VALUE + 30, statement.getGroupByTimeComponent().getEndTime());
+    Assert.assertEquals(0, statement.getRowLimit());
+    Assert.assertEquals(0, statement.getRowOffset());
+  }
+
+  @Test
+  public void testDescendingGroupByTimePushDownAcrossLongRange() {
+    QueryStatement statement =
+        newBoundaryGroupByStatement(Long.MIN_VALUE, Long.MAX_VALUE, 10, 2, 1);
+    OrderByComponent orderBy = new OrderByComponent();
+    orderBy.addSortItem(new SortItem(OrderByKey.TIME, Ordering.DESC));
+    statement.setOrderByComponent(orderBy);
+    LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter(statement, ZoneId.of("UTC"));
+
+    Assert.assertFalse(statement.isResultSetEmpty());
+    Assert.assertEquals(Long.MAX_VALUE - 25, statement.getGroupByTimeComponent().getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE - 5, statement.getGroupByTimeComponent().getEndTime());
+    Assert.assertEquals(0, statement.getRowLimit());
+    Assert.assertEquals(0, statement.getRowOffset());
+  }
+
+  @Test
+  public void testLargeLimitDoesNotWrapGroupByEndTime() {
+    QueryStatement statement = newBoundaryGroupByStatement(100, 200, 10, Long.MAX_VALUE, 0);
+    LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter(statement, ZoneId.of("UTC"));
+
+    Assert.assertFalse(statement.isResultSetEmpty());
+    Assert.assertEquals(100, statement.getGroupByTimeComponent().getStartTime());
+    Assert.assertEquals(200, statement.getGroupByTimeComponent().getEndTime());
+  }
+
+  @Test
+  public void testDeviceWindowCountProductOverflows() throws Exception {
+    List<PartialPath> devices =
+        Arrays.asList(new PartialPath("root.sg.d1"), new PartialPath("root.sg.d2"));
+    QueryStatement statement = newBoundaryGroupByStatement(0, Long.MAX_VALUE, 1, 1, Long.MAX_VALUE);
+
+    Assert.assertEquals(
+        Collections.singletonList(devices.get(1)),
+        LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice(
+            devices, statement, ZoneId.of("UTC")));
+    Assert.assertFalse(statement.isResultSetEmpty());
+    Assert.assertEquals(0, statement.getRowOffset());
+  }
+
+  @Test
+  public void testLargeLimitDoesNotWrapEndDeviceIndex() throws Exception {
+    List<PartialPath> devices =
+        Arrays.asList(new PartialPath("root.sg.d1"), new PartialPath("root.sg.d2"));
+    QueryStatement statement = newBoundaryGroupByStatement(0, 100, 10, Long.MAX_VALUE, 0);
+
+    Assert.assertEquals(
+        devices,
+        LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice(
+            devices, statement, ZoneId.of("UTC")));
+    Assert.assertFalse(statement.isResultSetEmpty());
+    Assert.assertEquals(Long.MAX_VALUE, statement.getRowLimit());
+  }
+
+  private QueryStatement newBoundaryGroupByStatement(
+      long start, long end, long interval, long limit, long offset) {
+    GroupByTimeComponent groupBy = new GroupByTimeComponent();
+    groupBy.setStartTime(start);
+    groupBy.setEndTime(end);
+    groupBy.setInterval(new TimeDuration(0, interval));
+    groupBy.setSlidingStep(new TimeDuration(0, interval));
+    QueryStatement statement = new QueryStatement();
+    statement.setGroupByTimeComponent(groupBy);
+    statement.setRowLimit(limit);
+    statement.setRowOffset(offset);
+    return statement;
+  }
 
   @Test
   public void testNonAlignedPushDown() {
