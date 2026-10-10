@@ -1534,12 +1534,53 @@ public class ConsensusPrefetchingQueue {
 
   private static final long SLOW_PREFETCH_ROUND_THRESHOLD_MS = 10_000L;
 
+  private String getPrefetchDebugId() {
+    return getPrefetchingQueueId() + "/" + consensusGroupId;
+  }
+
   public PrefetchRoundResult drivePrefetchOnce() {
     timeTracker.beginPrefetch();
+    final boolean debugEnabled = LOGGER.isDebugEnabled();
+    final long startReadSearchIndex = debugEnabled ? nextExpectedSearchIndex.get() : 0L;
+    final long startPendingAccepted = debugEnabled ? pendingPathAcceptedEntries.get() : 0L;
+    final long startWalAccepted = debugEnabled ? walPathAcceptedEntries.get() : 0L;
+    PrefetchRoundResult result = null;
     try {
-      return drivePrefetchOnceInternal();
+      if (debugEnabled) {
+        LOGGER.debug(
+            DataNodePipeMessages
+                .LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD,
+            getPrefetchDebugId(),
+            isActive,
+            prefetchInitialized,
+            closeRequested || isClosed,
+            pendingEntries.size(),
+            prefetchingQueue.size(),
+            inFlightEvents.size(),
+            startReadSearchIndex);
+      }
+      result = drivePrefetchOnceInternal();
+      return result;
     } finally {
       final long durationMs = timeTracker.endPrefetch();
+      if (debugEnabled) {
+        LOGGER.debug(
+            DataNodePipeMessages
+                .LOG_SUBSCRIPTION_PREFETCH_ROUND_COMPLETED_FOR_ARG_DURATIONMS_ARG_RESULT_ARG_DELAYMS_ARG_READSEARCHINDEX_ARG_ARG_PENDINGACCEPTED_ARG_WALACCEPTED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_MEMORYBLOCKREASON_ARG_ADMISSIONBLOCKREASON_ARG_0F0A3D57,
+            getPrefetchDebugId(),
+            durationMs,
+            Objects.nonNull(result) ? result.getType() : null,
+            Objects.nonNull(result) ? result.getDelayMs() : null,
+            startReadSearchIndex,
+            nextExpectedSearchIndex.get(),
+            pendingPathAcceptedEntries.get() - startPendingAccepted,
+            walPathAcceptedEntries.get() - startWalAccepted,
+            pendingEntries.size(),
+            prefetchingQueue.size(),
+            inFlightEvents.size(),
+            memoryBlockReason,
+            realtimeAdmissionBlockReason);
+      }
       if (durationMs >= SLOW_PREFETCH_ROUND_THRESHOLD_MS) {
         LOGGER.warn(
             DataNodePipeMessages
@@ -1564,6 +1605,13 @@ public class ConsensusPrefetchingQueue {
         return PrefetchRoundResult.dormant();
       }
 
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodePipeMessages
+                .LOG_SUBSCRIPTION_PREFETCH_ACQUIRED_QUEUE_READ_LOCK_FOR_ARG_AFTER_ARG_MS_425E9A20,
+            getPrefetchDebugId(),
+            getPrefetchDurationMs());
+      }
       logPeriodicStatsIfNecessary();
 
       final long currentSeekGeneration = seekGeneration.get();
@@ -2105,6 +2153,15 @@ public class ConsensusPrefetchingQueue {
       return MaterializationResult.SUCCESS;
     }
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          DataNodePipeMessages
+              .LOG_SUBSCRIPTION_PREFETCH_SCANNING_WAL_FOR_ARG_NEXTREADSEARCHINDEX_ARG_MAXWALENTRIES_ARG_PREFETCHEDEVENTS_ARG_AA16EEA1,
+          getPrefetchDebugId(),
+          nextExpectedSearchIndex.get(),
+          maxWalEntries,
+          prefetchingQueue.size());
+    }
     ensureSubscriptionWalReadable();
     reportUnreadableWalReplayIfNecessary();
 
@@ -2329,6 +2386,17 @@ public class ConsensusPrefetchingQueue {
   }
 
   private PreparedEntry prepareEntry(final IndexedConsensusRequest indexedRequest) {
+    final boolean debugEnabled = LOGGER.isDebugEnabled();
+    final long prepareStartNs = debugEnabled ? System.nanoTime() : 0L;
+    if (debugEnabled) {
+      LOGGER.debug(
+          DataNodePipeMessages
+              .LOG_SUBSCRIPTION_PREFETCH_PREPARING_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_EE485CC7,
+          getPrefetchDebugId(),
+          indexedRequest.getSearchIndex(),
+          indexedRequest.getNodeId(),
+          indexedRequest.getProgressLocalSeq());
+    }
     final InsertNode insertNode =
         ConsensusLogToTabletConverter.deserializeToInsertNode(indexedRequest);
     if (Objects.isNull(insertNode)) {
@@ -2355,6 +2423,18 @@ public class ConsensusPrefetchingQueue {
     }
     final List<Tablet> tablets = converter.convert(insertNode);
     final long estimatedBytes = estimateTabletsBytes(tablets);
+    if (debugEnabled) {
+      LOGGER.debug(
+          DataNodePipeMessages
+              .LOG_SUBSCRIPTION_PREFETCH_PREPARED_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_TABLETS_ARG_ESTIMATEDBYTES_ARG_DURATIONMS_ARG_E91BA0CD,
+          getPrefetchDebugId(),
+          searchIndex,
+          writerNodeId,
+          localSeq,
+          tablets.size(),
+          estimatedBytes,
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - prepareStartNs));
+    }
     if (!tryReserveTabletMemory(estimatedBytes)) {
       return null;
     }
@@ -2497,6 +2577,16 @@ public class ConsensusPrefetchingQueue {
     final SubscriptionMemoryManager.AllocationResult allocationResult =
         subscriptionMemoryHandle.tryAllocate(bytes);
     if (!allocationResult.isAccepted()) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodePipeMessages
+                .LOG_SUBSCRIPTION_PREFETCH_MEMORY_RESERVATION_REJECTED_FOR_ARG_ENTRYBYTES_ARG_REASON_ARG_QUOTABYTES_ARG_FREEBYTES_ARG_98903D3B,
+            getPrefetchDebugId(),
+            bytes,
+            allocationResult.getRejectionReason(),
+            allocationResult.getQuotaInBytes(),
+            allocationResult.getFreeMemoryInBytes());
+      }
       memoryBlockedEntryBytes = bytes;
       final SubscriptionQueueRejectionReason rejectionReason =
           toQueueRejectionReason(allocationResult.getRejectionReason());

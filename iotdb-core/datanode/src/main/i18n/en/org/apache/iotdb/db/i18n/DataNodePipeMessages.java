@@ -22,6 +22,38 @@ package org.apache.iotdb.db.i18n;
 public final class DataNodePipeMessages {
 
   public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =
+          "Subscription prefetch round starting for {}: active={}, initialized={}, closed={}, pendingEntries={}, prefetchedEvents={}, inFlightEvents={}, nextReadSearchIndex={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_COMPLETED_FOR_ARG_DURATIONMS_ARG_RESULT_ARG_DELAYMS_ARG_READSEARCHINDEX_ARG_ARG_PENDINGACCEPTED_ARG_WALACCEPTED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_MEMORYBLOCKREASON_ARG_ADMISSIONBLOCKREASON_ARG_0F0A3D57 =
+          "Subscription prefetch round completed for {}: durationMs={}, result={}, delayMs={}, readSearchIndex={} -> {}, pendingAccepted={}, walAccepted={}, pendingEntries={}, prefetchedEvents={}, inFlightEvents={}, memoryBlockReason={}, admissionBlockReason={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ACQUIRED_QUEUE_READ_LOCK_FOR_ARG_AFTER_ARG_MS_425E9A20 =
+          "Subscription prefetch acquired queue read lock for {} after {} ms.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_SCANNING_WAL_FOR_ARG_NEXTREADSEARCHINDEX_ARG_MAXWALENTRIES_ARG_PREFETCHEDEVENTS_ARG_AA16EEA1 =
+          "Subscription prefetch scanning WAL for {}: nextReadSearchIndex={}, maxWalEntries={}, prefetchedEvents={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARING_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_EE485CC7 =
+          "Subscription prefetch preparing entry for {}: searchIndex={}, writerNodeId={}, localSeq={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARED_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_TABLETS_ARG_ESTIMATEDBYTES_ARG_DURATIONMS_ARG_E91BA0CD =
+          "Subscription prefetch prepared entry for {}: searchIndex={}, writerNodeId={}, localSeq={}, tablets={}, estimatedBytes={}, durationMs={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_MEMORY_RESERVATION_REJECTED_FOR_ARG_ENTRYBYTES_ARG_REASON_ARG_QUOTABYTES_ARG_FREEBYTES_ARG_98903D3B =
+          "Subscription prefetch memory reservation rejected for {}: entryBytes={}, reason={}, quotaBytes={}, freeBytes={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_TASK_ARG_SCHEDULING_AFTER_ROUND_RESULT_ARG_WAKEUPPENDING_ARG_ENQUEUENOW_ARG_DELAYMS_ARG_602EA4A4 =
+          "Subscription prefetch task {} scheduling after round: result={}, wakeupPending={}, enqueueNow={}, delayMs={}.";
+
+  public static final String
       LOG_SUBSCRIPTION_MEMORY_OVERCOMMIT_ENTRYBYTES_ARG_BUDGETBYTES_ARG_OVERCOMMITBYTES_ARG_OTHER_QUEUES_MAY_BE_BLOCKED_UNTIL_RELEASE_DF9B914E =
           "Subscription memory overcommit: entryBytes={}, budgetBytes={}, overcommitBytes={}; other queues may be blocked until release.";
 
