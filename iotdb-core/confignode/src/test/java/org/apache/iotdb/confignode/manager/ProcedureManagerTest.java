@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
@@ -52,6 +53,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -147,6 +149,19 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+  }
+
+  @Test
+  public void testPreSubmissionFailureWithNoProcedureIdIsReportedImmediately() {
+    final Procedure<ConfigNodeProcedureEnv> procedure = mock(Procedure.class);
+    when(procedure.getProcId()).thenReturn(Procedure.NO_PROC_ID);
+    when(procedure.isFinished()).thenReturn(false);
+    when(procedure.isFailed()).thenReturn(true);
+    when(procedure.getException()).thenReturn(new ProcedureException("conflict"));
+
+    Assert.assertEquals(
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+        PROCEDURE_MANAGER.waitingProcedureFinished(procedure, 0).getCode());
   }
 
   @Test
