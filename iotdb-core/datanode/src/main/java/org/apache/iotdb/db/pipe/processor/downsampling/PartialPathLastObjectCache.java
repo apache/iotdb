@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.processor.downsampling;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -39,7 +40,13 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
   private final Cache<String, T> partialPath2ObjectCache;
 
   protected PartialPathLastObjectCache(final long memoryLimitInBytes) {
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().tryAllocate(memoryLimitInBytes);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .tryAllocate(
+                PartialPathLastObjectCache.class.getSimpleName(),
+                memoryLimitInBytes,
+                PipeMemoryBlockCategory.CACHE,
+                PartialPathLastObjectCache.class.getSimpleName());
 
     // Currently disable the metric here because it's not a constant cache and the number may
     // fluctuate. In the future all the "processorCache"s may be recorded in single metric entry
