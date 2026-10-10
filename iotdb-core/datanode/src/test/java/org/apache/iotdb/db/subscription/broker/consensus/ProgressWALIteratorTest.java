@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
@@ -397,7 +398,8 @@ public class ProgressWALIteratorTest {
         final String detail = iterator.getSkippedBrokenWalFileDetails(0);
         assertTrue(detail.contains(firstBrokenWal.getName()));
         assertTrue(detail.contains(secondBrokenWal.getName()));
-        assertTrue(detail.contains("skippedEntries=unknown"));
+        assertTrue(
+            detail.contains("skippedEntries=" + DataNodePipeMessages.MESSAGE_UNKNOWN_AD921D60));
         assertEquals(2L, iterator.next().getSearchIndex());
         assertFalse(iterator.hasNext());
         assertTrue(iterator.hasSkippedBrokenWalFiles());
