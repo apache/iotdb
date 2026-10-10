@@ -32,12 +32,14 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -60,6 +62,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
@@ -159,6 +162,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
@@ -2375,15 +2379,63 @@ public class ProcedureManager {
 
   public TSStatus dropTable(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        isView ? ProcedureType.DROP_VIEW_PROCEDURE : ProcedureType.DROP_TABLE_PROCEDURE,
-        isView
-            ? new DropViewProcedure(req.database, req.tableName, req.queryId, false)
-            : new DropTableProcedure(req.database, req.tableName, req.queryId, false));
+    if (isView) {
+      return executeWithoutDuplicate(
+          req.database,
+          null,
+          req.tableName,
+          req.queryId,
+          ProcedureType.DROP_VIEW_PROCEDURE,
+          new DropViewProcedure(req.database, req.tableName, req.queryId, false));
+    }
+    synchronized (this) {
+      if (!executor.isRunning()) {
+        return RpcUtils.getStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP);
+      }
+      final Pair<Long, Boolean> duplicate =
+          checkDuplicateTableTask(
+              req.database,
+              null,
+              req.tableName,
+              null,
+              req.queryId,
+              ProcedureType.DROP_TABLE_PROCEDURE);
+      if (duplicate.getLeft() != -1) {
+        return StatusUtils.OK;
+      }
+      if (Boolean.TRUE.equals(duplicate.getRight())) {
+        return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+      }
+      try {
+        final Optional<Pair<TsTable, TableNodeStatus>> table =
+            configManager
+                .getClusterSchemaManager()
+                .getTableAndStatusIfExists(req.database, req.tableName);
+        if (table.isEmpty()) {
+          final TableNotExistsException e =
+              new TableNotExistsException(req.database, req.tableName);
+          return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        }
+        if (table.get().getRight() == TableNodeStatus.PRE_DELETE) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        final Optional<Pair<TSStatus, TsTable>> viewCheck =
+            ClusterSchemaManager.checkTable4View(req.database, table.get().getLeft(), false);
+        if (viewCheck.isPresent()) {
+          return viewCheck.get().getLeft();
+        }
+      } catch (final MetadataException e) {
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      final Procedure<ConfigNodeProcedureEnv> procedure =
+          new DropTableProcedure(req.database, req.tableName, req.queryId, false);
+      try {
+        executor.submitProcedureAndPersist(procedure);
+        return StatusUtils.OK;
+      } catch (final Exception e) {
+        return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+    }
   }
 
   public TSStatus renameTable(final TAlterOrDropTableReq req) {
@@ -2481,6 +2533,35 @@ public class ProcedureManager {
       }
     }
     return result;
+  }
+
+  /** Returns running drops and completed results retained by the executor's shared TTL cleaner. */
+  public List<TDropTableProcedureInfo> getDropTableProcedures() {
+    final Map<Long, DropTableProcedure> dropProcedures = new HashMap<>();
+    Stream.concat(
+            executor.getProcedures().values().stream(), executor.getCompletedProcedures().stream())
+        .filter(
+            procedure ->
+                procedure instanceof DropTableProcedure
+                    && !(procedure instanceof DropViewProcedure))
+        .map(procedure -> (DropTableProcedure) procedure)
+        .forEach(procedure -> dropProcedures.put(procedure.getProcId(), procedure));
+    return dropProcedures.values().stream()
+        .map(
+            procedure -> {
+              final TDropTableProcedureInfo info =
+                  new TDropTableProcedureInfo(
+                      procedure.getDatabase(),
+                      procedure.getTableName(),
+                      procedure.getProcId(),
+                      procedure.getState().name(),
+                      procedure.getDropProgress());
+              if (procedure.hasException()) {
+                info.setErrorMessage(procedure.getException().getMessage());
+              }
+              return info;
+            })
+        .collect(Collectors.toList());
   }
 
   public TSStatus executeWithoutDuplicate(

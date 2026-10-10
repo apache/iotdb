@@ -1314,6 +1314,20 @@ struct TShowTable4InformationSchemaResp {
    2: optional map<string, list<TTableInfo>> databaseTableInfoMap
 }
 
+struct TShowDropTableProceduresResp {
+   1: required common.TSStatus status
+   2: optional list<TDropTableProcedureInfo> dropTableProcedureInfoList
+}
+
+struct TDropTableProcedureInfo {
+   1: required string database
+   2: required string tableName
+   3: required i64 procedureId
+   4: required string state
+   5: required string progress
+   6: optional string errorMessage
+}
+
 struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
@@ -2142,6 +2156,7 @@ service IConfigNodeRPCService {
   TShowTableResp showTables(string database, bool isDetails)
 
   TShowTable4InformationSchemaResp showTables4InformationSchema()
+  TShowDropTableProceduresResp showDropTableProcedures()
 
   TDescTableResp describeTable(string database, string tableName, bool isDetails)
 

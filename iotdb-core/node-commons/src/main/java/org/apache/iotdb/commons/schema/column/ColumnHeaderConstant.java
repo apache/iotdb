@@ -305,6 +305,9 @@ public class ColumnHeaderConstant {
   public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_processor";
   public static final String PIPE_SINK_TABLE_MODEL = "pipe_sink";
   public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
+  public static final String PROCEDURE_ID_TABLE_MODEL = "procedure_id";
+  public static final String PROGRESS_TABLE_MODEL = "progress";
+  public static final String ERROR_MESSAGE_TABLE_MODEL = "error_message";
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
