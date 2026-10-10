@@ -2190,7 +2190,10 @@ public class ConsensusPrefetchingQueue {
                 walEntry, batchState, expectedSeekGeneration, maxTablets, maxBatchBytes, false);
         if (appendResult != MaterializationResult.SUCCESS) {
           if (appendResult == MaterializationResult.MEMORY_BLOCKED) {
-            resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
+            // next() has removed this request from the iterator, but replay progress has not
+            // advanced. Keep it buffered so the next round retries it without reopening the WAL
+            // and rescanning the prefix before the current reader position.
+            subscriptionWALIterator.retry(walEntry);
           }
           return appendResult;
         }
