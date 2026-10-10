@@ -26,6 +26,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -66,9 +67,13 @@ public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
     Map<String, String> params = new HashMap<>();
     final ByteBuffer bodyBuffer = transferReq.body.duplicate();
     final int size = ReadWriteIOUtils.readInt(bodyBuffer);
+    // Each parameter needs at least two string length prefixes, even for null or empty strings.
+    if (size < 0 || size > bodyBuffer.remaining() / (2 * Integer.BYTES)) {
+      throw new BufferUnderflowException();
+    }
     for (int i = 0; i < size; ++i) {
-      final String key = ReadWriteIOUtils.readString(bodyBuffer);
-      final String value = ReadWriteIOUtils.readString(bodyBuffer);
+      final String key = PipeTransferPayloadReader.readString(bodyBuffer);
+      final String value = PipeTransferPayloadReader.readString(bodyBuffer);
       params.put(key, value);
     }
     this.params = params;

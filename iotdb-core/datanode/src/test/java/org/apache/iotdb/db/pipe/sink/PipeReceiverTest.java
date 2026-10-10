@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -38,6 +39,63 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 
 public class PipeReceiverTest {
+
+  @Test
+  public void testMalformedPreHandshakePayloadsRejected() throws IOException {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final long minimumReceiverMemory = config.getPipeMinimumReceiverMemory();
+    config.setPipeMinimumReceiverMemory(0);
+    try {
+      final IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
+      assertMalformedRequestRejected(
+          receiver,
+          PipeRequestType.HANDSHAKE_DATANODE_V1,
+          ByteBuffer.allocate(5).putInt(Integer.MAX_VALUE).put((byte) 1).flip());
+      assertMalformedRequestRejected(
+          receiver,
+          PipeRequestType.HANDSHAKE_DATANODE_V2,
+          ByteBuffer.allocate(9).putInt(1).putInt(Integer.MAX_VALUE).put((byte) 1).flip());
+      assertMalformedRequestRejected(
+          receiver,
+          PipeRequestType.TRANSFER_SLICE,
+          ByteBuffer.allocate(26)
+              .putInt(0)
+              .putShort(PipeRequestType.HANDSHAKE_DATANODE_V1.getType())
+              .putInt(0)
+              .putInt(Integer.MAX_VALUE)
+              .putInt(0)
+              .putInt(0)
+              .putInt(1)
+              .flip());
+      assertMalformedRequestRejected(
+          receiver,
+          PipeRequestType.TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP,
+          ByteBuffer.allocate(12).putInt(Integer.MAX_VALUE).putLong(1).flip());
+    } finally {
+      config.setPipeMinimumReceiverMemory(minimumReceiverMemory);
+    }
+  }
+
+  private void assertMalformedRequestRejected(
+      final IoTDBDataNodeReceiver receiver, final PipeRequestType type, final ByteBuffer body)
+      throws IOException {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.setVersion(IoTDBSinkRequestVersion.VERSION_1.getVersion());
+    req.setType(type.getType());
+    req.setBody(body);
+    final TPipeTransferReq compressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(req, Collections.emptyList());
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_ERROR.getStatusCode(), receiver.receive(req).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.PIPE_ERROR.getStatusCode(),
+        receiver.receive(compressedReq).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.NOT_LOGIN.getStatusCode(),
+        receiver.receive(buildEmptyRawTabletTransferReq()).getStatus().getCode());
+  }
+
   @Test
   public void testUnauthenticatedPipeTransferRejected() {
     final IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
