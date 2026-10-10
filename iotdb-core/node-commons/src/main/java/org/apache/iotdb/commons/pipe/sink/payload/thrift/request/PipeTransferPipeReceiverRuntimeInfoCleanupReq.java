@@ -74,7 +74,7 @@ public class PipeTransferPipeReceiverRuntimeInfoCleanupReq extends TPipeTransfer
     req.body = transferReq.body;
 
     final ByteBuffer bodyBuffer = transferReq.body.duplicate();
-    req.pipeName = ReadWriteIOUtils.readString(bodyBuffer);
+    req.pipeName = PipeTransferPayloadReader.readString(bodyBuffer);
     req.pipeCreationTime = ReadWriteIOUtils.readLong(bodyBuffer);
     return req;
   }

@@ -121,7 +121,7 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
     sliceReq.originReqType = ReadWriteIOUtils.readShort(transferReq.body);
     sliceReq.originBodySize = ReadWriteIOUtils.readInt(transferReq.body);
 
-    sliceReq.sliceBody = ReadWriteIOUtils.readBinary(transferReq.body).getValues();
+    sliceReq.sliceBody = PipeTransferPayloadReader.readBinary(transferReq.body);
 
     sliceReq.sliceIndex = ReadWriteIOUtils.readInt(transferReq.body);
     sliceReq.sliceCount = ReadWriteIOUtils.readInt(transferReq.body);
