@@ -2216,10 +2216,9 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: skipped {} unreadable retained WAL files in directory {}, "
           + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "
           + "files cannot be replayed";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
-      "ConsensusPrefetchingQueue {}: WAL replay skipped unavailable search indexes [{}, {}), "
-          + "skippedEntries={}, totalWalGapSkippedEntries={}; the missing WAL data may have been "
-          + "reclaimed before subscription consumption";
+  public static final String
+      LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A =
+          "{}: WAL gap [{}, {}), skipped {}, total skipped {}; cause undetermined";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, "
           + "shouldMark: {}. {}";
