@@ -1787,7 +1787,7 @@ public class ConsensusPrefetchingQueue {
         prefetchingQueue.size(),
         inFlightEvents.size(),
         realtimeEntriesByWriter.size(),
-        hasReadableWalEntries(),
+        Objects.nonNull(subscriptionWALIterator) && subscriptionWALIterator.hasBufferedNext(),
         isActive,
         Objects.nonNull(prefetchSubtask) && prefetchSubtask.isScheduledOrRunning());
     lastStatsLogTimeMs = nowMs;
@@ -1892,24 +1892,9 @@ public class ConsensusPrefetchingQueue {
     return hasLocalSearchIndex(request) && request.getSearchIndex() < nextExpectedSearchIndex.get();
   }
 
-  private boolean advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
+  private void advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
     if (hasLocalSearchIndex(request)) {
       nextExpectedSearchIndex.set(request.getSearchIndex() + 1);
-      return true;
-    }
-    return false;
-  }
-
-  private void advanceLocalCursorFromPendingIfPresent(
-      final IndexedConsensusRequest request, final long expectedSeekGeneration) {
-    if (advanceLocalCursorIfPresent(request)) {
-      // Pending delivery advances independently of the WAL reader. Raise its local lower bound in
-      // place so stale local requests are filtered without rebuilding and rescanning retained WAL.
-      final ProgressWALIterator iterator = subscriptionWALIterator;
-      if (Objects.nonNull(iterator) && seekGeneration.get() == expectedSeekGeneration) {
-        iterator.advanceTo(
-            nextExpectedSearchIndex.get(), this::isWriterProgressCoveredForWalFastForward);
-      }
     }
   }
 
@@ -1968,76 +1953,90 @@ public class ConsensusPrefetchingQueue {
 
     int processedCount = 0;
     int skippedCount = 0;
+    final long startSearchIndex = nextExpectedSearchIndex.get();
 
-    for (int index = 0; index < batch.size(); index++) {
-      final IndexedConsensusRequest request = batch.get(index);
-      final long searchIndex = request.getSearchIndex();
+    try {
+      for (int index = 0; index < batch.size(); index++) {
+        final IndexedConsensusRequest request = batch.get(index);
+        final long searchIndex = request.getSearchIndex();
 
-      // Only local-indexed requests participate in the internal WAL read cursor.
-      final long expected = nextExpectedSearchIndex.get();
-      if (hasLocalSearchIndex(request) && searchIndex > expected) {
-        LOGGER.debug(
-            DataNodePipeMessages
-                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_GAP_DETECTED_EXPECTED_GOT_FILLING_70DD08B3,
-            this,
-            expected,
-            searchIndex,
-            searchIndex - expected);
-        final MaterializationResult gapFillResult =
-            fillGapFromWAL(
-                expected,
-                searchIndex,
-                lingerBatch,
-                expectedSeekGeneration,
-                maxWalEntries,
-                maxTablets,
-                maxBatchBytes);
-        if (gapFillResult != MaterializationResult.SUCCESS) {
-          return gapFillResult;
+        // Only local-indexed requests participate in the internal WAL read cursor.
+        final long expected = nextExpectedSearchIndex.get();
+        if (hasLocalSearchIndex(request) && searchIndex > expected) {
+          LOGGER.debug(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_GAP_DETECTED_EXPECTED_GOT_FILLING_70DD08B3,
+              this,
+              expected,
+              searchIndex,
+              searchIndex - expected);
+          final MaterializationResult gapFillResult =
+              fillGapFromWAL(
+                  expected,
+                  searchIndex,
+                  lingerBatch,
+                  expectedSeekGeneration,
+                  maxWalEntries,
+                  maxTablets,
+                  maxBatchBytes);
+          if (gapFillResult != MaterializationResult.SUCCESS) {
+            return gapFillResult;
+          }
+        }
+
+        if (isBeforeLocalCursor(request)) {
+          skippedCount++;
+          continue;
+        }
+
+        if (shouldSkipForRecoveryProgress(request)) {
+          skippedCount++;
+          advanceLocalCursorIfPresent(request);
+          continue;
+        }
+        if (shouldSkipForMaterializedProgress(request)) {
+          skippedCount++;
+          advanceLocalCursorIfPresent(request);
+          continue;
+        }
+
+        final MaterializationResult appendResult =
+            appendRealtimeRequest(
+                request, lingerBatch, expectedSeekGeneration, maxTablets, maxBatchBytes, true);
+        if (appendResult != MaterializationResult.SUCCESS) {
+          return appendResult;
+        }
+        markMaterializedProgress(request);
+        processedCount++;
+        advanceLocalCursorIfPresent(request);
+        if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+          break;
         }
       }
 
-      if (isBeforeLocalCursor(request)) {
-        skippedCount++;
-        continue;
-      }
+      LOGGER.debug(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ACCUMULATE_COMPLETE_BATCHSIZE_FA3F3B41,
+          this,
+          batch.size(),
+          processedCount,
+          skippedCount,
+          lingerBatch.tablets.size(),
+          nextExpectedSearchIndex.get());
 
-      if (shouldSkipForRecoveryProgress(request)) {
-        skippedCount++;
-        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
-        continue;
-      }
-      if (shouldSkipForMaterializedProgress(request)) {
-        skippedCount++;
-        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
-        continue;
-      }
-
-      final MaterializationResult appendResult =
-          appendRealtimeRequest(
-              request, lingerBatch, expectedSeekGeneration, maxTablets, maxBatchBytes, true);
-      if (appendResult != MaterializationResult.SUCCESS) {
-        return appendResult;
-      }
-      markMaterializedProgress(request);
-      processedCount++;
-      advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
-      if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
-        break;
+      return MaterializationResult.SUCCESS;
+    } finally {
+      // Advance once for the consumed prefix, including when a gap or memory block stops the
+      // batch. Per-entry fast-forward can repeatedly inspect the same uncovered WAL file footer.
+      // Gap recovery creates its own iterator at the current cursor before reading WAL.
+      final ProgressWALIterator iterator = subscriptionWALIterator;
+      if (nextExpectedSearchIndex.get() > startSearchIndex
+          && Objects.nonNull(iterator)
+          && seekGeneration.get() == expectedSeekGeneration) {
+        iterator.advanceTo(
+            nextExpectedSearchIndex.get(), this::isWriterProgressCoveredForWalFastForward);
       }
     }
-
-    LOGGER.debug(
-        DataNodePipeMessages
-            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ACCUMULATE_COMPLETE_BATCHSIZE_FA3F3B41,
-        this,
-        batch.size(),
-        processedCount,
-        skippedCount,
-        lingerBatch.tablets.size(),
-        nextExpectedSearchIndex.get());
-
-    return MaterializationResult.SUCCESS;
   }
 
   /**

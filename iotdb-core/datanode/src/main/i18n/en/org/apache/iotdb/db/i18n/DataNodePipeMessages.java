@@ -2164,7 +2164,7 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue {}: periodic stats, lag={}, pendingDelta={}, walDelta={}, "
           + "pendingTotal={}, walTotal={}, walGapSkippedEntries={}, pendingQueueSize={}, "
           + "prefetchingQueueSize={}, inFlightEventsSize={}, realtimeWriterCount={}, "
-          + "walHasNext={}, isActive={}, subtaskScheduled={}";
+          + "walNextBuffered={}, isActive={}, subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}: waiting {}ms for WAL gap [{}, {}) to become visible, "
           + "currentNextExpected={}, currentWalIndex={}, seekGeneration={}";

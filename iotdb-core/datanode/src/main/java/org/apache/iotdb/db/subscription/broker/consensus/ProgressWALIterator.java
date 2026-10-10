@@ -206,6 +206,14 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   /**
+   * Returns whether a usable request is already buffered, without reading or advancing WAL. A false
+   * result does not imply that the iterator is exhausted.
+   */
+  boolean hasBufferedNext() {
+    return nextReady != null && !shouldSkip(nextReady);
+  }
+
+  /**
    * Advances the local search-index lower bound without rebuilding the iterator. Whole WAL files
    * are skipped only when every writer progress tuple in them is already covered by queue state.
    */
