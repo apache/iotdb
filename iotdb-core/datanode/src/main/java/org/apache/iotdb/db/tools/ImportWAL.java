@@ -1349,9 +1349,10 @@ public class ImportWAL {
       if (memTable == null || memTable.isSignalMemTable()) {
         return false;
       }
-      if (targetDatabaseName == null) {
+      if (targetDatabaseName == null && memTable.size(false) > 0) {
         // Without a resolved target database the data model of the snapshot is unknown, and
-        // guessing it would replay table model data into the tree session.
+        // guessing it would replay table model data into the tree session. An empty snapshot
+        // carries no data, so it stays ignorable.
         throw new StatementExecutionException(
             ImportWALMessages
                 .EXCEPTION_A_WAL_SNAPSHOT_REQUIRES_A_DECLARED_TARGET_DATABASE_TO_DETERMINE_ITS_DATA_MODEL_SPECIFY_DB_DATABASE_382FC74C);
