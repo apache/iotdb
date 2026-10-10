@@ -1,0 +1,113 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.utils.concurrent;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
+
+public class FiniteSemaphoreTest {
+
+  @Test
+  public void testRejectNegativeCapacity() {
+    assertIllegalArgument(() -> new FiniteSemaphore(-1, -2));
+  }
+
+  @Test
+  public void testRejectNegativeInitialPermits() {
+    assertIllegalArgument(() -> new FiniteSemaphore(1, -1));
+  }
+
+  @Test
+  public void testRejectInitialPermitsLargerThanCapacity() {
+    assertIllegalArgument(() -> new FiniteSemaphore(1, 2));
+  }
+
+  @Test
+  public void testReleaseDoesNotExceedCapacity() throws InterruptedException {
+    FiniteSemaphore semaphore = new FiniteSemaphore(1, 0);
+
+    semaphore.release();
+    semaphore.release();
+
+    semaphore.acquire();
+    Thread waiter =
+        new Thread(
+            () -> {
+              try {
+                semaphore.acquire();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+    waiter.start();
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, waiter.getState()));
+
+    waiter.interrupt();
+    waiter.join();
+  }
+
+  @Test
+  public void testAcquireWaitsUntilRelease() throws InterruptedException {
+    FiniteSemaphore semaphore = new FiniteSemaphore(1, 0);
+    Thread waiter =
+        new Thread(
+            () -> {
+              try {
+                semaphore.acquire();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+    waiter.start();
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, waiter.getState()));
+
+    semaphore.release();
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, waiter.getState()));
+    waiter.join();
+  }
+
+  @Test
+  public void testPermitCanBeReused() throws InterruptedException {
+    FiniteSemaphore semaphore = new FiniteSemaphore(1, 1);
+
+    semaphore.acquire();
+    semaphore.release();
+    semaphore.acquire();
+  }
+
+  private void assertIllegalArgument(Runnable runnable) {
+    try {
+      runnable.run();
+      Assert.fail();
+    } catch (IllegalArgumentException ignored) {
+      // expected exception
+    }
+  }
+}

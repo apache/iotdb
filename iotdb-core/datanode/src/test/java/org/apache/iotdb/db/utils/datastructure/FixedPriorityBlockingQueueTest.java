@@ -44,6 +44,26 @@ public class FixedPriorityBlockingQueueTest {
   }
 
   @Test
+  public void testRejectZeroMaxSize() {
+    try {
+      new FixedPriorityBlockingQueue<>(0, Integer::compare);
+      Assert.fail();
+    } catch (IllegalArgumentException ignored) {
+      // expected exception
+    }
+  }
+
+  @Test
+  public void testRejectNegativeMaxSize() {
+    try {
+      new FixedPriorityBlockingQueue<>(-1, Integer::compare);
+      Assert.fail();
+    } catch (IllegalArgumentException ignored) {
+      // expected exception
+    }
+  }
+
+  @Test
   public void testBlockingTake() throws InterruptedException {
     final AtomicBoolean hasTaken = new AtomicBoolean(false);
     Thread t1 =

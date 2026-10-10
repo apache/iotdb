@@ -87,7 +87,7 @@ public class PipePluginClassLoader extends URLClassLoader {
   }
 
   public synchronized void release() throws IOException {
-    activeInstanceCount.decrementAndGet();
+    activeInstanceCount.updateAndGet(count -> count > 0 ? count - 1 : 0);
     closeIfPossible();
   }
 

@@ -129,6 +129,7 @@ public class DefaultDriverSchedulerTest {
     fragmentRelatedTask.put(instanceId, taskSet);
     manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
+    reserveReadyQueueSlotForPolledTask(testTask);
     defaultScheduler.blockedToReady(testTask);
     Assert.assertEquals(DriverTaskStatus.READY, testTask.getStatus());
     Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
@@ -294,6 +295,7 @@ public class DefaultDriverSchedulerTest {
     fragmentRelatedTask.put(instanceId, taskSet);
     manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
+    reserveReadyQueueSlotForPolledTask(testTask);
     ExecutionContext context = new ExecutionContext();
     context.setTimeSlice(new Duration(1, TimeUnit.SECONDS));
     context.setCpuDuration(new CpuTimer.CpuDuration());
@@ -356,6 +358,7 @@ public class DefaultDriverSchedulerTest {
     fragmentRelatedTask.put(instanceId, taskSet);
     manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
+    reserveReadyQueueSlotForPolledTask(testTask);
     ExecutionContext context = new ExecutionContext();
     context.setTimeSlice(new Duration(1, TimeUnit.SECONDS));
     context.setCpuDuration(new CpuTimer.CpuDuration());
@@ -418,6 +421,7 @@ public class DefaultDriverSchedulerTest {
     fragmentRelatedTask.put(instanceId, taskSet);
     manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
+    reserveReadyQueueSlotForPolledTask(testTask);
     ExecutionContext context = new ExecutionContext();
     context.setTimeSlice(new Duration(1, TimeUnit.SECONDS));
     context.setCpuDuration(new CpuTimer.CpuDuration());
@@ -514,6 +518,17 @@ public class DefaultDriverSchedulerTest {
       fragmentRelatedTask.put(instanceId2, taskSet2);
       manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask1);
+      manager.getTimeoutQueue().push(testTask2);
+      reserveReadyQueueSlotForPolledTask(testTask2);
+      manager.getBlockedTasks().add(testTask2);
+      if (status == DriverTaskStatus.READY) {
+        manager.getReadyQueue().push(testTask1);
+      } else {
+        reserveReadyQueueSlotForPolledTask(testTask1);
+        if (status == DriverTaskStatus.BLOCKED) {
+          manager.getBlockedTasks().add(testTask1);
+        }
+      }
       defaultScheduler.toAborted(testTask1);
 
       Mockito.reset(mockMppServiceClient);
@@ -616,5 +631,19 @@ public class DefaultDriverSchedulerTest {
     manager.getBlockedTasks().clear();
     manager.getReadyQueue().clear();
     manager.getTimeoutQueue().clear();
+  }
+
+  private void reserveReadyQueueSlotForPolledTask(DriverTask task) {
+    DriverTaskStatus status = task.getStatus();
+    try {
+      task.setStatus(DriverTaskStatus.READY);
+      manager.getReadyQueue().push(task);
+      Assert.assertSame(task, manager.getReadyQueue().poll());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      Assert.fail("Interrupted while preparing ready queue reservation");
+    } finally {
+      task.setStatus(status);
+    }
   }
 }
