@@ -940,9 +940,9 @@ public class ImportWAL {
     private SessionWALReplayer(
         final Session treeSession,
         final Session tableSession,
-        final String tableDatabaseName,
+        final String targetDatabaseName,
         final WALReplayer.ReplayDecisionController replayDecisionController) {
-      super(treeSession, tableSession, tableDatabaseName, replayDecisionController);
+      super(treeSession, tableSession, targetDatabaseName, replayDecisionController);
       this.treeSession = treeSession;
       this.tableSession = tableSession;
     }
@@ -958,17 +958,18 @@ public class ImportWAL {
 
     private final Session treeSession;
     private final Session tableSession;
+    private final String targetDatabaseName;
     private final boolean isTableModel;
     private final ConsensusLogToTabletConverter converter;
     private final ReplayDecisionPrompt replayDecisionPrompt;
     private final Map<String, TableSchema> tableSchemas = new HashMap<>();
 
     WALReplayer(
-        final Session treeSession, final Session tableSession, final String tableDatabaseName) {
+        final Session treeSession, final Session tableSession, final String targetDatabaseName) {
       this(
           treeSession,
           tableSession,
-          tableDatabaseName,
+          targetDatabaseName,
           new ReplayDecisionController(System.console()));
     }
 
@@ -976,24 +977,26 @@ public class ImportWAL {
      * @param treeSession the session which replays tree model entries, it carries no database
      * @param tableSession the session which replays table model entries, null when no table
      *     database is declared
-     * @param tableDatabaseName the target database resolved before replay; null means no table
-     *     database is declared, so the entries are replayed with the tree model only
+     * @param targetDatabaseName the target database resolved before replay; null means no target
+     *     database is resolved, so the data model is unknown and snapshot entries are rejected
+     *     until -db/--database is declared
      * @param replayDecisionPrompt the prompt which decides how to handle entries that cannot be
      *     replayed automatically
      */
     WALReplayer(
         final Session treeSession,
         final Session tableSession,
-        final String tableDatabaseName,
+        final String targetDatabaseName,
         final ReplayDecisionPrompt replayDecisionPrompt) {
       this.treeSession = treeSession;
       this.tableSession = tableSession;
+      this.targetDatabaseName = targetDatabaseName;
       this.isTableModel =
-          tableDatabaseName != null && PathUtils.isTableModelDatabase(tableDatabaseName);
+          targetDatabaseName != null && PathUtils.isTableModelDatabase(targetDatabaseName);
       this.replayDecisionPrompt = replayDecisionPrompt;
       converter =
           new ConsensusLogToTabletConverter(
-              null, null, ColumnFilterMatcher.matchAll(), isTableModel ? tableDatabaseName : null);
+              null, null, ColumnFilterMatcher.matchAll(), isTableModel ? targetDatabaseName : null);
     }
 
     @Override
@@ -1345,6 +1348,13 @@ public class ImportWAL {
         throws IoTDBConnectionException, StatementExecutionException {
       if (memTable == null || memTable.isSignalMemTable()) {
         return false;
+      }
+      if (targetDatabaseName == null) {
+        // Without a resolved target database the data model of the snapshot is unknown, and
+        // guessing it would replay table model data into the tree session.
+        throw new StatementExecutionException(
+            ImportWALMessages
+                .EXCEPTION_A_WAL_SNAPSHOT_REQUIRES_A_DECLARED_TARGET_DATABASE_TO_DETERMINE_ITS_DATA_MODEL_SPECIFY_DB_DATABASE_382FC74C);
       }
       boolean replayed = false;
       for (Map.Entry<IDeviceID, IWritableMemChunkGroup> deviceEntry :

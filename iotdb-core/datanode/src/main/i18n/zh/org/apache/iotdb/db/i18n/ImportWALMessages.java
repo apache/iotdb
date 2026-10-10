@@ -79,6 +79,9 @@ public final class ImportWALMessages {
           "不支持的 on_success 值：%s。应为 none 或 delete。";
   public static final String EXCEPTION_TABLE_MODEL_WAL_ENTRIES_REQUIRE_DB_DATABASE_F7597726 =
       "表模型 WAL 条目要求指定 -db/--database。";
+  public static final String
+      EXCEPTION_A_WAL_SNAPSHOT_REQUIRES_A_DECLARED_TARGET_DATABASE_TO_DETERMINE_ITS_DATA_MODEL_SPECIFY_DB_DATABASE_382FC74C =
+          "WAL 快照需要先声明目标数据库才能确定其数据模型。请指定 -db/--database。";
   public static final String EXCEPTION_UNSUPPORTED_WAL_OPERATION_ARG_ABD227A0 =
       "不支持的 WAL 操作：%s";
   public static final String

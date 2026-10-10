@@ -80,6 +80,9 @@ public final class ImportWALMessages {
           "Unsupported on_success value: %s. Expected none or delete.";
   public static final String EXCEPTION_TABLE_MODEL_WAL_ENTRIES_REQUIRE_DB_DATABASE_F7597726 =
       "Table-model WAL entries require -db/--database.";
+  public static final String
+      EXCEPTION_A_WAL_SNAPSHOT_REQUIRES_A_DECLARED_TARGET_DATABASE_TO_DETERMINE_ITS_DATA_MODEL_SPECIFY_DB_DATABASE_382FC74C =
+          "A WAL snapshot requires a declared target database to determine its data model. Specify -db/--database.";
   public static final String EXCEPTION_UNSUPPORTED_WAL_OPERATION_ARG_ABD227A0 =
       "Unsupported WAL operation: %s";
   public static final String
