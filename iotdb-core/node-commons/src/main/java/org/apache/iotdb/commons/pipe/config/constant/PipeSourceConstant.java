@@ -142,6 +142,11 @@ public class PipeSourceConstant {
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE = "path";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE = "all";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE = "";
+  public static final String EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_KEY =
+      "extractor.realtime.region-level-downgrading";
+  public static final String SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY =
+      "source.realtime.region-level-downgrading";
+  public static final boolean EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_DEFAULT_VALUE = false;
 
   public static final String EXTRACTOR_MODE_STREAMING_KEY = "extractor.mode.streaming";
   public static final String SOURCE_MODE_STREAMING_KEY = "source.mode.streaming";
