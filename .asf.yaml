@@ -34,11 +34,11 @@ github:
     discussions: true
   enabled_merge_buttons:
     # enable squash button:
-    squash:  true
+    squash: true
     # enable merge button:
-    merge:   false
+    merge: false
     # disable rebase button:
-    rebase:  true
+    rebase: true
   collaborators:
     - shuwenwei
     - liyuheng55555
@@ -49,5 +49,18 @@ github:
     - Wei-hao-Li
     - Colinleeo
     - Caideyipi
+  rulesets:
+    - name: "Default Branch Protection"
+      type: branch
+      branches:
+        includes:
+          - "~DEFAULT_BRANCH"
+          - "release/*"
+          - "rel/*"
+        excludes: []
+      bypass_teams:
+        - root
+      restrict_deletion: true
+      restrict_force_push: true
 notifications:
   discussions: dev@iotdb.apache.org
