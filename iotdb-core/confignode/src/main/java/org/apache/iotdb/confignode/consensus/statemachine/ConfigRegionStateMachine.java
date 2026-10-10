@@ -277,8 +277,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     final int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     if (currentNodeId != newLeaderId) {
       LOGGER.info(
-          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-              + ConfigNodeMessages.LOG_NEW_LEADER_NODEID_ARG_0A63760B,
+          ConfigNodeMessages
+              .LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_A_CONFIGREGION_FOLLOWER_NEW_LEADER_NODEID_ARG_STOPPING_LEADER_SERVICES_A1962CD2,
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
@@ -292,8 +292,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // couldn't initialize earlier than the ConfigRegionStateMachine
     final int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     LOGGER.info(
-        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + ConfigNodeMessages.LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261,
+        ConfigNodeMessages
+            .LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_NO_LONGER_THE_CONFIGREGION_LEADER_STOPPING_LEADER_SERVICES_5DB0DA66,
         currentNodeId,
         currentNodeTEndPoint);
     resignLeaderAsync();
@@ -449,8 +449,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
     LOGGER.info(
-        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + ConfigNodeMessages.LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F,
+        ConfigNodeMessages
+            .LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_COMPLETED_STOPPING_LEADER_SERVICES_62381EE1,
         currentNodeId,
         currentNodeTEndPoint);
   }
@@ -595,8 +595,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           simpleLogWriter.close();
         } catch (IOException e) {
           LOGGER.warn(
-              ConfigNodeMessages.CAN_T_CLOSE_STANDALONELOG_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE
-                  + ConfigNodeMessages.LOG_FILEPATH_ARG_RETRY_ARG_16284354,
+              ConfigNodeMessages
+                  .LOG_CONFIGREGION_UPDATE_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_FILEPATH_ARG_RETRY_ARG_188A702E,
               simpleLogFile.getAbsolutePath(),
               retry);
           try {
