@@ -54,6 +54,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -497,22 +498,30 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public void extendColumn(TSDataType dataType) {
-    List<Object> columnValue = new ArrayList<>();
-    for (int i = 0; i < timestamps.size(); i++) {
-      columnValue.add(null);
-    }
-    if (bitMaps != null) {
-      bitMaps.add(null);
-    }
-    this.values.add(columnValue);
-    this.dataTypes.add(dataType);
-    materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
-    refreshArrayMemCostWithoutIndex();
+    extendColumns(Collections.singletonList(dataType));
+  }
 
-    long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
-    memoryBinaryChunkSize = new long[dataTypes.size()];
-    System.arraycopy(
-        tmpValueChunkRawSize, 0, memoryBinaryChunkSize, 0, tmpValueChunkRawSize.length);
+  /** Add columns with implicit nulls for existing rows, resizing accounting arrays once. */
+  public void extendColumns(List<TSDataType> newDataTypes) {
+    if (newDataTypes.isEmpty()) {
+      return;
+    }
+    for (TSDataType dataType : newDataTypes) {
+      List<Object> columnValue = new ArrayList<>(timestamps.size());
+      for (int i = 0; i < timestamps.size(); i++) {
+        // New columns contain only implicit nulls until their first non-null write.
+        columnValue.add(null);
+      }
+      if (bitMaps != null) {
+        bitMaps.add(null);
+      }
+      values.add(columnValue);
+      dataTypes.add(dataType);
+    }
+    // Recompute the full-width memory estimate only once for the entire batch.
+    refreshArrayMemCostWithoutIndex();
+    memoryBinaryChunkSize = Arrays.copyOf(memoryBinaryChunkSize, dataTypes.size());
+    materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
   }
 
   /**
