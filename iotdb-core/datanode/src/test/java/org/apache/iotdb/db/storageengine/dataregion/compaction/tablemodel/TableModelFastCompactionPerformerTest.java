@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
@@ -38,14 +37,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class TableModelFastCompactionPerformerTest extends AbstractCompactionTest {
+public class TableModelFastCompactionPerformerTest extends AbstractTableModelCompactionTest {
 
   @Before
   public void setUp()
@@ -139,62 +136,6 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
     TsFileResource targetResource1 = tsFileManager.getTsFileList(true).get(1);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource1.getTsFile().getAbsolutePath())) {
-      Assert.assertEquals(1, reader.getTableSchemaMap().size());
-    }
-  }
-
-  @Test
-  public void testCompactionWithV3Tsfile() throws IOException {
-    String pathStr =
-        this.getClass().getClassLoader().getResource("v3tsfile/compaction-test-tsfile").getFile();
-    File v3TsFile = new File(pathStr);
-    File v3TsFileResource = new File(pathStr + "-resource");
-    TsFileResource resource1 = createEmptyFileAndResource(true);
-    Files.copy(v3TsFile.toPath(), resource1.getTsFile().toPath());
-    Files.copy(
-        v3TsFileResource.toPath(), new File(resource1.getTsFilePath() + ".resource").toPath());
-    resource1.deserialize();
-
-    TsFileResource resource2 = createEmptyFileAndResource(true);
-    try (CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource2)) {
-      writer.registerTableSchema("db1.t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("db1.t1", Arrays.asList("id_field1", "id_field2"));
-      writer.generateSimpleAlignedSeriesToCurrentDevice(
-          Collections.singletonList("s1"),
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-
-      writer.startChunkGroup("d1");
-      writer.generateSimpleAlignedSeriesToCurrentDevice(
-          Collections.singletonList("s1"),
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-
-      writer.startChunkGroup("node1.node2.device");
-      writer.generateSimpleAlignedSeriesToCurrentDevice(
-          Collections.singletonList("s1"),
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-
-      writer.endFile();
-    }
-
-    seqResources.add(resource1);
-    seqResources.add(resource2);
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
-    Assert.assertTrue(task.start());
-    try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(
-            tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
   }

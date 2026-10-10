@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel.AbstractTableModelCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -50,9 +51,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel.AbstractTableModelCompactionTest.TABLE_MODEL_TEST_SG;
 
 @RunWith(Parameterized.class)
 public class CompactionDataTypeAlterTableTest extends AbstractCompactionAlterDataTypeTest {
@@ -80,19 +84,44 @@ public class CompactionDataTypeAlterTableTest extends AbstractCompactionAlterDat
         });
   }
 
+  @Override
+  protected String getTestStorageGroup() {
+    return TABLE_MODEL_TEST_SG;
+  }
+
+  @Override
+  protected File getSeqStorageGroupDir() {
+    return AbstractTableModelCompactionTest.TABLE_MODEL_SEQ_STORAGE_GROUP_DIR;
+  }
+
+  @Override
+  protected File getUnseqStorageGroupDir() {
+    return AbstractTableModelCompactionTest.TABLE_MODEL_UNSEQ_STORAGE_GROUP_DIR;
+  }
+
+  @Override
+  protected File getSeqDirs() {
+    return AbstractTableModelCompactionTest.TABLE_MODEL_SEQ_DIRS;
+  }
+
+  @Override
+  protected File getUnseqDirs() {
+    return AbstractTableModelCompactionTest.TABLE_MODEL_UNSEQ_DIRS;
+  }
+
   @Before
   @Override
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    DataNodeTableCache.getInstance().invalid(COMPACTION_TEST_SG);
+    DataNodeTableCache.getInstance().invalid(TABLE_MODEL_TEST_SG);
   }
 
   @After
   @Override
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    DataNodeTableCache.getInstance().invalid(COMPACTION_TEST_SG);
+    DataNodeTableCache.getInstance().invalid(TABLE_MODEL_TEST_SG);
   }
 
   @Test
@@ -159,8 +188,8 @@ public class CompactionDataTypeAlterTableTest extends AbstractCompactionAlterDat
     tsTable.addColumnSchema(new TagColumnSchema("id_column", TSDataType.STRING));
     tsTable.addColumnSchema(
         new FieldColumnSchema("s1", dataType, TSEncoding.PLAIN, CompressionType.LZ4));
-    DataNodeTableCache.getInstance().preUpdateTable(this.COMPACTION_TEST_SG, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(this.COMPACTION_TEST_SG, tableName, null);
+    DataNodeTableCache.getInstance().preUpdateTable(TABLE_MODEL_TEST_SG, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(TABLE_MODEL_TEST_SG, tableName, null);
   }
 
   private TsFileResource generateInt32TableFile(TimeRange timeRange, boolean seq)
