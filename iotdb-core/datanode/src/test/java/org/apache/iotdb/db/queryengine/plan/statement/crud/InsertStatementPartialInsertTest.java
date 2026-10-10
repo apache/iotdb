@@ -248,6 +248,34 @@ public class InsertStatementPartialInsertTest {
   }
 
   @Test
+  public void testSwapColumnRemapsFailedMeasurementIndex() throws Exception {
+    final InsertRowStatement statement = createInsertRowStatement();
+    statement.markFailedMeasurement(0, new RuntimeException("failed"));
+
+    statement.swapColumn(0, 1);
+
+    Assert.assertEquals("s2", statement.getMeasurements()[0]);
+    Assert.assertNull(statement.getMeasurements()[1]);
+    Assert.assertEquals(1, statement.getFailedMeasurementInfoMap().size());
+    Assert.assertEquals("s1", statement.getFailedMeasurementInfoMap().get(1).getMeasurement());
+  }
+
+  @Test
+  public void testRebuildArraysAfterExpansionRemapsFailedMeasurementIndex() throws Exception {
+    final InsertRowStatement statement = createInsertRowStatement();
+    statement.markFailedMeasurement(0, new RuntimeException("failed"));
+
+    // A failed column's name is null in the rebuilt measurement array, mirroring
+    // expandAndReorderTagColumns, which copies the (nulled) old measurement for the non-TAG area.
+    statement.rebuildArraysAfterExpansion(new int[] {-1, 0, 1}, new String[] {"tag1", null, "s2"});
+
+    Assert.assertEquals(1, statement.getFailedMeasurementInfoMap().size());
+    Assert.assertEquals("s1", statement.getFailedMeasurementInfoMap().get(1).getMeasurement());
+    Assert.assertNull(statement.getMeasurements()[1]);
+    Assert.assertEquals("s2", statement.getMeasurements()[2]);
+  }
+
+  @Test
   public void testInsertRowStatementSwapColumnInvalidatesTableDeviceId() throws Exception {
     final InsertRowStatement statement = createInsertRowStatement();
     statement.setColumnCategories(
