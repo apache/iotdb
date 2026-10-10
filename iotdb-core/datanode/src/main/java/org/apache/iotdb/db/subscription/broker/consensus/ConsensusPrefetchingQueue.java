@@ -1103,9 +1103,15 @@ public class ConsensusPrefetchingQueue {
           "resolved first uncovered replayable WAL record");
     }
     return ReplayLocateDecision.atEnd(
-        consensusReqReader.getCurrentSearchIndex(),
+        nextSearchIndexAfterCurrent(),
         effectiveRecoveryRegionProgress,
         "all locally replayable WAL records are already covered");
+  }
+
+  private long nextSearchIndexAfterCurrent() {
+    // The reader reports the last local WAL index, while the subscription cursor is the next
+    // index to read. Starting at the last index would replay it and report one spurious WAL gap.
+    return consensusReqReader.getCurrentSearchIndex() + 1L;
   }
 
   protected ReplayLocateDecision locateReplayStartForRegionProgress(
@@ -3068,19 +3074,19 @@ public class ConsensusPrefetchingQueue {
   // ======================== Seek ========================
 
   /**
-   * Seeks to the earliest available WAL position. The actual position depends on WAL retention: if
-   * old files have been reclaimed, the earliest available position may be later than 0.
+   * Seeks to the earliest available WAL position. Local consensus search indexes start at 1; 0
+   * denotes an empty WAL. If old files have been reclaimed, replay may start at a later index.
    */
   public void seekToBeginning() {
-    seekToResolvedPosition(0L, new RegionProgress(Collections.emptyMap()), "beginning");
+    seekToResolvedPosition(
+        FIRST_CONSENSUS_SEARCH_INDEX, new RegionProgress(Collections.emptyMap()), "beginning");
   }
 
   /**
    * Seeks to the current WAL write position. After this, only newly written data will be consumed.
    */
   public void seekToEnd() {
-    seekToResolvedPosition(
-        consensusReqReader.getCurrentSearchIndex(), computeTailRegionProgress(), "end");
+    seekToResolvedPosition(nextSearchIndexAfterCurrent(), computeTailRegionProgress(), "end");
   }
 
   public void seekToRegionProgress(final RegionProgress regionProgress) {
