@@ -2219,6 +2219,22 @@ public final class DataNodePipeMessages {
           + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "
           + "files cannot be replayed";
   public static final String
+      LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILE_ARG_HISTORICAL_SUBSCRIPTION_DATA_MAY_BE_LOST_AE0DBAB1 =
+          "ProgressWALIterator: skipped unreadable retained WAL file {}; historical subscription data may be lost";
+  public static final String
+      MESSAGE_FILE_ARG_VERSIONID_ARG_FILESEARCHINDEXRANGE_ARG_ARG_ENTRYRANGE_ARG_ARG_SKIPPEDENTRIES_ARG_ERROR_ARG_0D6D77B0 =
+          "file=%s, versionId=%d, fileSearchIndexRange=(%s, %s], entryRange=[%d, %s), skippedEntries=%s, error=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_WAL_REPLAY_SKIPPED_ARG_UNREADABLE_RETAINED_WAL_FILE_S_IN_QUEUE_ARG_REGION_ARG_HISTORICAL_DATA_MAY_BE_LOST_DETAILS_RECENT_FILES_FULL_DETAILS_IN_SERVER_LOG_ARG_FEDEFF7E =
+          "Subscription WAL replay skipped %d unreadable retained WAL file(s) in queue %s, region %s. Historical data may be lost. Details (recent files; full details in server log): %s";
+  public static final String MESSAGE_UNKNOWN_AD921D60 = "unknown";
+  public static final String
+      MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
+          "WAL file %s (versionId=%d, entryOffset=%d) is temporarily unreadable; replay will retry without skipping: %s";
+  public static final String
+      MESSAGE_FAILED_TO_REOPEN_WAL_FILE_ARG_AT_ENTRY_OFFSET_ARG_ITERATOR_COULD_NOT_SKIP_TO_THE_REQUESTED_POSITION_332B3AD9 =
+          "failed to reopen WAL file %s at entry offset %s: iterator could not skip to the requested position";
+  public static final String
       LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A =
           "{}: WAL gap [{}, {}), skipped {}, total skipped {}; cause undetermined";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =

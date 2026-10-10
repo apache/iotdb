@@ -130,6 +130,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
   private final AtomicReference<SubscriptionConsumerFencedException> fencedException =
       new AtomicReference<>();
+  private final AtomicReference<SubscriptionRuntimeCriticalException> pendingCriticalPollError =
+      new AtomicReference<>();
   // This variable indicates whether the consumer has ever been closed.
   private final AtomicBoolean isReleased = new AtomicBoolean(false);
 
@@ -779,6 +781,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   protected List<SubscriptionMessage> multiplePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
     checkIfFenced();
+    final SubscriptionRuntimeCriticalException pendingError =
+        pendingCriticalPollError.getAndSet(null);
+    if (pendingError != null) {
+      throw pendingError;
+    }
     if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
@@ -865,10 +872,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     // case.
     checkIfFenced();
 
-    // even if a SubscriptionRuntimeCriticalException is encountered, try to deliver the message to
-    // the client
-    if (messages.isEmpty() && Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
-      throw lastSubscriptionRuntimeCriticalException;
+    if (Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
+      if (messages.isEmpty()) {
+        throw lastSubscriptionRuntimeCriticalException;
+      }
+      // Deliver healthy sibling results once, then surface the critical error on the next poll.
+      // Otherwise a busy topic can indefinitely mask another topic's permanent WAL replay gap.
+      pendingCriticalPollError.compareAndSet(null, lastSubscriptionRuntimeCriticalException);
     }
 
     return messages;

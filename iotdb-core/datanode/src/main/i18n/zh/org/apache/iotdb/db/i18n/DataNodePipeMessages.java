@@ -2060,6 +2060,22 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
           + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";
   public static final String
+      LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILE_ARG_HISTORICAL_SUBSCRIPTION_DATA_MAY_BE_LOST_AE0DBAB1 =
+          "ProgressWALIterator：跳过了无法读取的保留 WAL 文件 {}；历史订阅数据可能丢失";
+  public static final String
+      MESSAGE_FILE_ARG_VERSIONID_ARG_FILESEARCHINDEXRANGE_ARG_ARG_ENTRYRANGE_ARG_ARG_SKIPPEDENTRIES_ARG_ERROR_ARG_0D6D77B0 =
+          "file=%s，versionId=%d，fileSearchIndexRange=(%s, %s]，entryRange=[%d, %s)，skippedEntries=%s，error=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_WAL_REPLAY_SKIPPED_ARG_UNREADABLE_RETAINED_WAL_FILE_S_IN_QUEUE_ARG_REGION_ARG_HISTORICAL_DATA_MAY_BE_LOST_DETAILS_RECENT_FILES_FULL_DETAILS_IN_SERVER_LOG_ARG_FEDEFF7E =
+          "订阅 WAL 重放累计跳过了 %d 个无法读取的保留 WAL 文件，队列 %s，region %s。历史数据可能丢失。详情（近期文件；完整信息见服务端日志）：%s";
+  public static final String MESSAGE_UNKNOWN_AD921D60 = "未知";
+  public static final String
+      MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
+          "WAL 文件 %s（versionId=%d，entryOffset=%d）暂不可读；重放将重试而不跳过：%s";
+  public static final String
+      MESSAGE_FAILED_TO_REOPEN_WAL_FILE_ARG_AT_ENTRY_OFFSET_ARG_ITERATOR_COULD_NOT_SKIP_TO_THE_REQUESTED_POSITION_332B3AD9 =
+          "重新打开 WAL 文件 %s（条目偏移 %s）失败：迭代器无法跳到请求的位置";
+  public static final String
       LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A =
           "{}：WAL 缺口 [{}, {})，跳过 {} 条，累计跳过 {} 条；原因尚未确定";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
