@@ -32,20 +32,22 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
 public class SubscriptionQueueRegistry {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionQueueRegistry.class);
 
-  private static final long QUEUE_FULL_LOG_INTERVAL_MS = TimeUnit.SECONDS.toMillis(10);
+  private static final long REJECTION_LOG_INTERVAL_MS = TimeUnit.SECONDS.toMillis(10);
 
   private final String consensusGroupId;
   private final Map<BlockingQueue<IndexedConsensusRequest>, SubscriptionQueueRegistration> queues =
       new ConcurrentHashMap<>();
-  private final AtomicLong droppedEntries = new AtomicLong();
-  private final AtomicLong lastDropLogTimeMs = new AtomicLong();
+  // offer is synchronized, so these counts remain scoped to one reason without extra atomics.
+  private final long[] rejectedEntriesByReason =
+      new long[SubscriptionQueueRejectionReason.values().length];
+  private final long[] lastRejectionLogTimeMsByReason =
+      new long[SubscriptionQueueRejectionReason.values().length];
 
   public SubscriptionQueueRegistry(final String consensusGroupId) {
     this.consensusGroupId = consensusGroupId;
@@ -141,27 +143,34 @@ public class SubscriptionQueueRegistry {
             queue.remainingCapacity());
       }
       if (!offered) {
-        final long droppedCount = droppedEntries.incrementAndGet();
+        final SubscriptionQueueRejectionReason rejectionReason =
+            queue instanceof SubscriptionQueueAdmission
+                ? ((SubscriptionQueueAdmission) queue).getLastRejectionReason()
+                : SubscriptionQueueRejectionReason.QUEUE_CAPACITY;
+        final int reasonIndex = rejectionReason.ordinal();
+        final long rejectedCount = ++rejectedEntriesByReason[reasonIndex];
         final long now = System.currentTimeMillis();
-        final long lastLogTime = lastDropLogTimeMs.get();
-        if (now - lastLogTime >= QUEUE_FULL_LOG_INTERVAL_MS
-            && lastDropLogTimeMs.compareAndSet(lastLogTime, now)) {
+        if (now - lastRejectionLogTimeMsByReason[reasonIndex] >= REJECTION_LOG_INTERVAL_MS) {
+          lastRejectionLogTimeMsByReason[reasonIndex] = now;
+          rejectedEntriesByReason[reasonIndex] = 0L;
           LOGGER.warn(
               IoTConsensusMessages
-                      .LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D
-                  + IoTConsensusMessages
-                      .LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED,
-              droppedEntries.getAndSet(0),
-              QUEUE_FULL_LOG_INTERVAL_MS,
+                  .LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ARG_ENTRY_S_IN_THE_LAST_ARG_MS_WAL_REPLAY_REQUIRED_GROUP_ARG_LATEST_SEARCHINDEX_ARG_REASONCODE_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_0FBF6226,
+              rejectedCount,
+              REJECTION_LOG_INTERVAL_MS,
+              consensusGroupId,
               indexedConsensusRequest.getSearchIndex(),
+              rejectionReason.getCode(),
               queue.size(),
               queue.remainingCapacity());
         } else if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
               IoTConsensusMessages
-                  .LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8,
+                  .LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ENTRY_WAL_REPLAY_REQUIRED_GROUP_ARG_SEARCHINDEX_ARG_REASONCODE_ARG_REJECTEDCOUNT_ARG_7F76D6A9,
+              consensusGroupId,
               indexedConsensusRequest.getSearchIndex(),
-              droppedCount);
+              rejectionReason.getCode(),
+              rejectedCount);
         }
       }
     }

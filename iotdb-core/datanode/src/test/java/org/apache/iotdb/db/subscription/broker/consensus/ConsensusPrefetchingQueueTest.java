@@ -30,6 +30,8 @@ import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueAdmission;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
@@ -81,8 +83,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -636,7 +639,8 @@ public class ConsensusPrefetchingQueueTest {
     final Class<?> queueClass =
         Class.forName(ConsensusPrefetchingQueue.class.getName() + "$WakeableIndexedConsensusQueue");
     final Constructor<?> constructor =
-        queueClass.getDeclaredConstructor(int.class, Runnable.class, BooleanSupplier.class);
+        queueClass.getDeclaredConstructor(
+            int.class, Runnable.class, Supplier.class, Consumer.class);
     constructor.setAccessible(true);
 
     final AtomicBoolean admissionEnabled = new AtomicBoolean(true);
@@ -646,7 +650,7 @@ public class ConsensusPrefetchingQueueTest {
     final CountDownLatch clearCompleted = new CountDownLatch(1);
     final AtomicReference<Boolean> offered = new AtomicReference<>();
     final AtomicReference<Throwable> asyncFailure = new AtomicReference<>();
-    final BooleanSupplier admissionSupplier =
+    final Supplier<SubscriptionQueueRejectionReason> admissionSupplier =
         () -> {
           final boolean admitted = admissionEnabled.get();
           admissionChecked.countDown();
@@ -658,11 +662,17 @@ public class ConsensusPrefetchingQueueTest {
             Thread.currentThread().interrupt();
             throw new AssertionError(e);
           }
-          return admitted;
+          return admitted
+              ? SubscriptionQueueRejectionReason.NONE
+              : SubscriptionQueueRejectionReason.INACTIVE_OR_CLOSED;
         };
     final BlockingQueue<IndexedConsensusRequest> queue =
         (BlockingQueue<IndexedConsensusRequest>)
-            constructor.newInstance(8, (Runnable) () -> {}, admissionSupplier);
+            constructor.newInstance(
+                8,
+                (Runnable) () -> {},
+                admissionSupplier,
+                (Consumer<SubscriptionQueueRejectionReason>) reason -> {});
 
     final Thread offerThread =
         new Thread(
@@ -715,6 +725,77 @@ public class ConsensusPrefetchingQueueTest {
     }
     assertTrue(Boolean.TRUE.equals(offered.get()));
     assertTrue(queue.isEmpty());
+    assertFalse(queue.offer(createRequest(2L)));
+    assertEquals(
+        SubscriptionQueueRejectionReason.INACTIVE_OR_CLOSED,
+        ((SubscriptionQueueAdmission) queue).getLastRejectionReason());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testConcurrentOffersKeepTheirOwnRejectionReasons() throws Exception {
+    final Class<?> queueClass =
+        Class.forName(ConsensusPrefetchingQueue.class.getName() + "$WakeableIndexedConsensusQueue");
+    final Constructor<?> constructor =
+        queueClass.getDeclaredConstructor(
+            int.class, Runnable.class, Supplier.class, Consumer.class);
+    constructor.setAccessible(true);
+    final BlockingQueue<IndexedConsensusRequest> queue =
+        (BlockingQueue<IndexedConsensusRequest>)
+            constructor.newInstance(
+                8,
+                (Runnable) () -> {},
+                (Supplier<SubscriptionQueueRejectionReason>)
+                    () ->
+                        Thread.currentThread().getName().equals("first-offer")
+                            ? SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA
+                            : SubscriptionQueueRejectionReason.WRITER_BACKLOG,
+                (Consumer<SubscriptionQueueRejectionReason>) reason -> {});
+    final CountDownLatch firstOffered = new CountDownLatch(1);
+    final CountDownLatch secondOffered = new CountDownLatch(1);
+    final AtomicReference<SubscriptionQueueRejectionReason> firstReason = new AtomicReference<>();
+    final AtomicReference<SubscriptionQueueRejectionReason> secondReason = new AtomicReference<>();
+    final AtomicReference<Throwable> asyncFailure = new AtomicReference<>();
+    final Thread first =
+        new Thread(
+            () -> {
+              try {
+                assertFalse(queue.offer(createRequest(1L)));
+                firstOffered.countDown();
+                assertTrue(secondOffered.await(5, TimeUnit.SECONDS));
+                firstReason.set(((SubscriptionQueueAdmission) queue).getLastRejectionReason());
+              } catch (final Throwable t) {
+                asyncFailure.compareAndSet(null, t);
+              }
+            },
+            "first-offer");
+    final Thread second =
+        new Thread(
+            () -> {
+              try {
+                assertTrue(firstOffered.await(5, TimeUnit.SECONDS));
+                assertFalse(queue.offer(createRequest(2L)));
+                secondReason.set(((SubscriptionQueueAdmission) queue).getLastRejectionReason());
+              } catch (final Throwable t) {
+                asyncFailure.compareAndSet(null, t);
+              } finally {
+                secondOffered.countDown();
+              }
+            },
+            "second-offer");
+    first.setDaemon(true);
+    second.setDaemon(true);
+    first.start();
+    second.start();
+    first.join(TimeUnit.SECONDS.toMillis(5));
+    second.join(TimeUnit.SECONDS.toMillis(5));
+    assertFalse(first.isAlive());
+    assertFalse(second.isAlive());
+    if (asyncFailure.get() != null) {
+      throw new AssertionError(asyncFailure.get());
+    }
+    assertEquals(SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA, firstReason.get());
+    assertEquals(SubscriptionQueueRejectionReason.WRITER_BACKLOG, secondReason.get());
   }
 
   @Test
@@ -723,7 +804,8 @@ public class ConsensusPrefetchingQueueTest {
     final Class<?> queueClass =
         Class.forName(ConsensusPrefetchingQueue.class.getName() + "$WakeableIndexedConsensusQueue");
     final Constructor<?> constructor =
-        queueClass.getDeclaredConstructor(int.class, Runnable.class, BooleanSupplier.class);
+        queueClass.getDeclaredConstructor(
+            int.class, Runnable.class, Supplier.class, Consumer.class);
     constructor.setAccessible(true);
     final Method retainedBytesMethod = queueClass.getDeclaredMethod("getRetainedRequestBytes");
     retainedBytesMethod.setAccessible(true);
@@ -735,10 +817,20 @@ public class ConsensusPrefetchingQueueTest {
         new AtomicLongMemoryBlock("SubscriptionPendingTest", null, 100L);
     final BlockingQueue<IndexedConsensusRequest> firstQueue =
         (BlockingQueue<IndexedConsensusRequest>)
-            constructor.newInstance(8, (Runnable) () -> {}, (BooleanSupplier) () -> true);
+            constructor.newInstance(
+                8,
+                (Runnable) () -> {},
+                (Supplier<SubscriptionQueueRejectionReason>)
+                    () -> SubscriptionQueueRejectionReason.NONE,
+                (Consumer<SubscriptionQueueRejectionReason>) reason -> {});
     final BlockingQueue<IndexedConsensusRequest> secondQueue =
         (BlockingQueue<IndexedConsensusRequest>)
-            constructor.newInstance(8, (Runnable) () -> {}, (BooleanSupplier) () -> true);
+            constructor.newInstance(
+                8,
+                (Runnable) () -> {},
+                (Supplier<SubscriptionQueueRejectionReason>)
+                    () -> SubscriptionQueueRejectionReason.NONE,
+                (Consumer<SubscriptionQueueRejectionReason>) reason -> {});
 
     memoryManager.init(testMemoryBlock, 0.6);
     try {
@@ -750,6 +842,9 @@ public class ConsensusPrefetchingQueueTest {
       assertEquals(40L, retainedBytesMethod.invoke(secondQueue));
 
       assertFalse(firstQueue.offer(createSizedRequest(2L, 10L, 30)));
+      assertEquals(
+          SubscriptionQueueRejectionReason.CONSENSUS_REQUEST_MEMORY_LIMIT,
+          ((SubscriptionQueueAdmission) firstQueue).getLastRejectionReason());
       assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
 
       firstQueue.clear();
@@ -989,6 +1084,7 @@ public class ConsensusPrefetchingQueueTest {
               1L,
               1L,
               true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1024L * 1024L));
 
       final IndexedConsensusRequest dataRequest =
           new IndexedConsensusRequest(
@@ -1809,6 +1905,7 @@ public class ConsensusPrefetchingQueueTest {
               1L,
               1L,
               true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1024L * 1024L));
 
       final IndexedConsensusRequest dataRequest =
           new IndexedConsensusRequest(
@@ -1877,6 +1974,7 @@ public class ConsensusPrefetchingQueueTest {
               1L,
               1L,
               true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1024L * 1024L));
 
       final IndexedConsensusRequest dataRequest =
           new IndexedConsensusRequest(
@@ -2685,6 +2783,7 @@ public class ConsensusPrefetchingQueueTest {
               1L,
               1L,
               true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1024L * 1024L));
 
       reader.currentSearchIndex = 2L;
       assertTrue(pendingEntries(queue).offer(createRequest(1L)));

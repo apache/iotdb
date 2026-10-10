@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -199,6 +200,53 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         queue,
         ConsensusPrefetchingQueue::getProgressStatus,
         key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_USED.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryUsedInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryQuotaInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryMaximumInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getRealtimeAdmissionRejectionCount,
+        key.getTags());
+    for (final SubscriptionQueueRejectionReason reason :
+        SubscriptionQueueRejectionReason.values()) {
+      if (reason != SubscriptionQueueRejectionReason.NONE) {
+        metricService.createAutoGauge(
+            Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString(),
+            MetricLevel.IMPORTANT,
+            queue,
+            q -> q.getRealtimeAdmissionRejectionCount(reason),
+            key.getTagsWithReason(reason));
+      }
+    }
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryRejectionCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getOversizedEntryRejectionCount,
+        key.getTags());
   }
 
   private void createRate(final QueueMetricsKey key) {
@@ -309,6 +357,37 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricType.AUTO_GAUGE,
         Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString(),
         key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_MEMORY_USED.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS.toString(),
+        key.getTags());
+    for (final SubscriptionQueueRejectionReason reason :
+        SubscriptionQueueRejectionReason.values()) {
+      if (reason != SubscriptionQueueRejectionReason.NONE) {
+        metricService.remove(
+            MetricType.AUTO_GAUGE,
+            Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString(),
+            key.getTagsWithReason(reason));
+      }
+    }
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS.toString(),
+        key.getTags());
   }
 
   private void removeRate(final QueueMetricsKey key) {
@@ -354,6 +433,17 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
     private String[] getTags() {
       return new String[] {
         Tag.NAME.toString(), queueId, Tag.REGION.toString(), regionId,
+      };
+    }
+
+    private String[] getTagsWithReason(final SubscriptionQueueRejectionReason reason) {
+      return new String[] {
+        Tag.NAME.toString(),
+        queueId,
+        Tag.REGION.toString(),
+        regionId,
+        Tag.REASON.toString(),
+        reason.getCode(),
       };
     }
 
