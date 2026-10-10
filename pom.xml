@@ -91,7 +91,7 @@
       This is the version of the thrift binary, that we release separately from here:
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
-        <iotdb-tools-thrift.version>0.23.0.0</iotdb-tools-thrift.version>
+        <iotdb-tools-thrift.version>0.25.0.0</iotdb-tools-thrift.version>
         <jackson.version>2.18.11</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
@@ -142,7 +142,7 @@
         <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
-        <thrift.version>0.24.0</thrift.version>
+        <thrift.version>0.25.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
         <tsfile.version>2.4.1-260915-SNAPSHOT</tsfile.version>
