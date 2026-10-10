@@ -178,6 +178,16 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
         </dependency>
@@ -462,6 +472,12 @@
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                         <ignoredDependency>at.yawk.lz4:lz4-java</ignoredDependency>
                     </ignoredDependencies>
+                    <ignoredNonTestScopedDependencies>
+                        <!-- Logback supplies the server's runtime SLF4J backend and LogbackMetrics.
+                             Direct references in this module also support test log assertions. -->
+                        <ignoredNonTestScopedDependency>ch.qos.logback:logback-classic</ignoredNonTestScopedDependency>
+                        <ignoredNonTestScopedDependency>ch.qos.logback:logback-core</ignoredNonTestScopedDependency>
+                    </ignoredNonTestScopedDependencies>
                 </configuration>
             </plugin>
             <plugin>

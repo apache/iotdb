@@ -483,8 +483,8 @@ public final class ManagerMessages {
       "Successfully transferred config region snapshot {}.";
   public static final String THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ =
       "There is no RUNNING DataNode to execute CQ {}";
-  public static final String THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The ConfigNode-{} will be shutdown soon, mark it as Unknown";
+  public static final String LOG_NODE_ARG_REPORTED_SHUTDOWN_CURRENT_STATUS_IS_ARG_A375D665 =
+      "Node {} reported shutdown; current status is {}.";
   public static final String THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING =
       "The config region air gap connector does not support transferring single file piece bytes.";
   public static final String THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE =
@@ -493,8 +493,6 @@ public final class ManagerMessages {
       "The config region snapshots %s cannot be parsed.";
   public static final String THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE =
       "The Database: {} doesn't exist. Maybe it has been pre-deleted.";
-  public static final String THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The DataNode-{} will be shutdown soon, mark it as Unknown";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_GREEDYREGIONGROUPALLOCATOR_IS_YET =
       "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR =
@@ -717,4 +715,6 @@ public final class ManagerMessages {
       MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
           "%s Please manually check later whether the procedure is executed successfully.";
 
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
+      "ConfigNode leader is waiting for node status persistence.";
 }

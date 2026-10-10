@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -49,7 +50,6 @@ import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
@@ -278,23 +278,24 @@ public class IoTDBConnectionsIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       // Wait for shutdown check
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
+      boolean isShutdownDetected = false;
+      for (int retry = 0; retry < 60; retry++) {
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (containUnknown.get()) {
+        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          // A gracefully stopped DataNode is reported as Stopped by its shutdown hook; if
+          // the report fails it becomes Unknown instead
+          if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())
+              || NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
+            isShutdownDetected = true;
+            break;
+          }
+        }
+        if (isShutdownDetected) {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      Assert.assertTrue(isShutdownDetected);
     }
 
     int activeDataNodeId = (int) allDataNodeId.toArray()[1];
@@ -327,23 +328,25 @@ public class IoTDBConnectionsIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Wait for restart check
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
+      boolean isRestartDetected = false;
+      for (int retry = 0; retry < 60; retry++) {
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (!containUnknown.get()) {
+        boolean containDown = false;
+        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          // The restarted DataNode keeps Stopped until its first heartbeat revives it
+          if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())
+              || NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
+            containDown = true;
+            break;
+          }
+        }
+        if (!containDown) {
+          isRestartDetected = true;
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      Assert.assertTrue(isRestartDetected);
     }
 
     // The ConfigNode may report the restarted DataNode as Running before its client RPC service is

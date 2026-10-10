@@ -2039,6 +2039,8 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue {}：不支持 seekAfterRegionProgress（没有 WAL 目录）";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_READ_WAL_METADATA_FROM_A2ED50D1 =
       "ConsensusPrefetchingQueue {}：计算 seekToEnd frontier 时，从 {} 读取 WAL metadata 失败";
+  public static final String LOG_FAILED_TO_FINISH_CLOSING_CONSENSUS_PREFETCHING_QUEUE_ARG_3C31731C =
+      "未能完成共识预取队列 {} 的关闭";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7 =
       "ConsensusPrefetchingQueue {}：注销期间出错";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7 =
@@ -2065,9 +2067,25 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
       "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
           + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
-      "ConsensusPrefetchingQueue {}：WAL 重放跳过了不可用的 searchIndex 区间 [{}, {})，"
-          + "skippedEntries={}，totalWalGapSkippedEntries={}；缺失的 WAL 数据可能已在订阅消费前被回收";
+  public static final String
+      LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILE_ARG_HISTORICAL_SUBSCRIPTION_DATA_MAY_BE_LOST_AE0DBAB1 =
+          "ProgressWALIterator：跳过了无法读取的保留 WAL 文件 {}；历史订阅数据可能丢失";
+  public static final String
+      MESSAGE_FILE_ARG_VERSIONID_ARG_FILESEARCHINDEXRANGE_ARG_ARG_ENTRYRANGE_ARG_ARG_SKIPPEDENTRIES_ARG_ERROR_ARG_0D6D77B0 =
+          "file=%s，versionId=%d，fileSearchIndexRange=(%s, %s]，entryRange=[%d, %s)，skippedEntries=%s，error=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_WAL_REPLAY_SKIPPED_ARG_UNREADABLE_RETAINED_WAL_FILE_S_IN_QUEUE_ARG_REGION_ARG_HISTORICAL_DATA_MAY_BE_LOST_DETAILS_RECENT_FILES_FULL_DETAILS_IN_SERVER_LOG_ARG_FEDEFF7E =
+          "订阅 WAL 重放累计跳过了 %d 个无法读取的保留 WAL 文件，队列 %s，region %s。历史数据可能丢失。详情（近期文件；完整信息见服务端日志）：%s";
+  public static final String MESSAGE_UNKNOWN_AD921D60 = "未知";
+  public static final String
+      MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
+          "WAL 文件 %s（versionId=%d，entryOffset=%d）暂不可读；重放将重试而不跳过：%s";
+  public static final String
+      MESSAGE_FAILED_TO_REOPEN_WAL_FILE_ARG_AT_ENTRY_OFFSET_ARG_ITERATOR_COULD_NOT_SKIP_TO_THE_REQUESTED_POSITION_332B3AD9 =
+          "重新打开 WAL 文件 %s（条目偏移 %s）失败：迭代器无法跳到请求的位置";
+  public static final String
+      LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A =
+          "{}：WAL 缺口 [{}, {})，跳过 {} 条，累计跳过 {} 条；原因尚未确定";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}：历史传输的终止事件已提交。creationTime：{}，shouldMark：{}。{}";
   public static final String PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19 =
@@ -2477,4 +2495,6 @@ public final class DataNodePipeMessages {
       "读取 OPC UA 服务器操作限制时被中断，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
+  public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
+      "[%s] 订阅 entry 需要 %d 字节，超过当前队列可用上限 %d 字节（DataNode 预算 %d 字节）。请减小写入 batch/字段大小或增加订阅物化内存。WAL 进度未推进。";
 }

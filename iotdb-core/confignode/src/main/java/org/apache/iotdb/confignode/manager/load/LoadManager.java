@@ -22,9 +22,9 @@ package org.apache.iotdb.confignode.manager.load;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -33,13 +33,14 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.service.EventService;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
@@ -92,6 +93,10 @@ public class LoadManager {
     this.routeBalancer = new RouteBalancer(configManager);
 
     this.loadCache = new LoadCache();
+    this.loadCache.setNodeStatusPersistence(
+        configManager.getNodeManager().getNodeInfo()::getPersistedNodeStatus,
+        // Consensus is initialized after construction; obtain the manager when submitting the plan.
+        plan -> configManager.getConsensusManager().write(plan));
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
     this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
@@ -209,7 +214,13 @@ public class LoadManager {
       return false;
     }
 
-    loadCache.updateNodeStatistics(false);
+    if (!loadCache.updateNodeStatistics()) {
+      // In particular, do not serve as leader until its own old Stopped marker is cleared.
+      loadReadyReason =
+          ManagerMessages.MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809;
+      return false;
+    }
+
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
 
     List<String> unreadyReasons = loadCache.getNodeHeartbeatUnreadyReasons();
@@ -259,22 +270,24 @@ public class LoadManager {
   }
 
   /**
-   * Safely get the specified Node's current status with reason.
+   * Safely get the specified Node's current status reason.
    *
    * @param nodeId The specified NodeId
-   * @return The specified Node's current status if the nodeCache contains it, Unknown otherwise
+   * @return The reason why the Node is in its current status, null if the node has no reason or the
+   *     cache doesn't exist
    */
-  public String getNodeStatusWithReason(int nodeId) {
-    return loadCache.getNodeStatusWithReason(nodeId);
+  public String getNodeStatusReason(int nodeId) {
+    return loadCache.getNodeStatusReason(nodeId);
   }
 
   /**
-   * Get all Node's current status with reason.
+   * Get all Nodes' current statistics in a single traversal of the node cache, so that each node's
+   * status and reason come from the same statistics snapshot.
    *
-   * @return Map<NodeId, NodeStatus with reason>
+   * @return Map<NodeId, NodeStatistics>
    */
-  public Map<Integer, String> getNodeStatusWithReason() {
-    return loadCache.getNodeStatusWithReason();
+  public Map<Integer, NodeStatistics> getNodeStatisticsSnapshot() {
+    return loadCache.getCurrentNodeStatisticsMap();
   }
 
   /**
@@ -336,42 +349,37 @@ public class LoadManager {
     return loadCache.getLowestLoadDataNode(dataNodeIds);
   }
 
-  /**
-   * Force update the specified Node's cache, update statistics and broadcast statistics change
-   * event if necessary.
-   *
-   * @param nodeType Specified NodeType
-   * @param nodeId Specified NodeId
-   * @param heartbeatSample Specified NodeHeartbeatSample
-   */
-  public void forceUpdateNodeCache(
-      NodeType nodeType, int nodeId, NodeHeartbeatSample heartbeatSample) {
-    switch (nodeType) {
-      case ConfigNode:
-        loadCache.cacheConfigNodeHeartbeatSample(nodeId, heartbeatSample);
-        break;
-      case DataNode:
-        loadCache.cacheDataNodeHeartbeatSample(nodeId, heartbeatSample);
-        break;
-      case AINode:
-        loadCache.cacheAINodeHeartbeatSample(nodeId, heartbeatSample);
-        break;
-      default:
-        break;
-    }
-    loadCache.updateNodeStatistics(true);
-    eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
+  /** Try to set the specified Node's status without a reason. */
+  public TSStatus trySetNodeStatus(int nodeId, NodeStatus nodeStatus, boolean force) {
+    return trySetNodeStatus(nodeId, nodeStatus, null, force);
   }
 
   /**
-   * Remove the NodeHeartbeatCache of the specified Node, update statistics and broadcast statistics
-   * change event if necessary.
+   * Try to set the specified Node's status according to transition rules and broadcast statistics
+   * changes, including when persistence fails. Does not send a status-change RPC to the node.
+   *
+   * @param nodeId Specified NodeId
+   * @param nodeStatus requested status
+   * @param statusReason reason supplied by the caller, or null when no reason is known
+   * @param force whether an administrative update may replace Stopped or Removing
+   * @return processing result; success does not imply that the requested status replaced the old
+   *     one
+   */
+  public TSStatus trySetNodeStatus(
+      int nodeId, NodeStatus nodeStatus, String statusReason, boolean force) {
+    TSStatus status = loadCache.trySetNodeStatus(nodeId, nodeStatus, statusReason, force);
+    eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
+    return status;
+  }
+
+  /**
+   * Remove the NodeHeartbeatCache of the specified Node and broadcast statistics changes if
+   * necessary.
    *
    * @param nodeId the index of the specified Node
    */
   public void removeNodeCache(int nodeId) {
     loadCache.removeNodeCache(nodeId);
-    loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 

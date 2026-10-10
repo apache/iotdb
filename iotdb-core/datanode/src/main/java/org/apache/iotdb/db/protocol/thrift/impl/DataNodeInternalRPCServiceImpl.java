@@ -2435,12 +2435,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(commonConfig.getNodeStatus().getStatus());
-    // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
-    // treat
-    // it as safely fenced when unreachable (older DataNodes that omit this are handled strictly).
-    if (commonConfig.getStatusReason() != null) {
-      resp.setStatusReason(commonConfig.getStatusReason());
+    // Read status and reason under the same monitor used by their setters.
+    synchronized (commonConfig) {
+      resp.setStatus(commonConfig.getNodeStatus().getStatus());
+      final String statusReason = commonConfig.getStatusReason();
+      if (statusReason != null) {
+        resp.setStatusReason(statusReason);
+      }
     }
     MetadataLeaseFencedException schemaUsageCollectionException = null;
     if (req.getSchemaRegionIds() != null) {
@@ -2620,12 +2621,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
-        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
-        commonConfig.setNodeStatus(NodeStatus.Running);
-        commonConfig.setStatusReason(null);
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+      } else {
+        synchronized (commonConfig) {
+          // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
+          if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+              && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
+            commonConfig.setNodeStatus(NodeStatus.Running);
+          }
+        }
       }
     }
   }
@@ -2800,7 +2804,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      commonConfig.setNodeStatus(NodeStatus.parse(status));
+      NodeStatus nodeStatus = NodeStatus.parse(status);
+      if (nodeStatus == NodeStatus.ReadOnly) {
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+      } else {
+        commonConfig.setNodeStatus(nodeStatus);
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

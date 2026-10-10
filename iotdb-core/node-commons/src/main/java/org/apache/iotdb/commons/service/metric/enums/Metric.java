@@ -216,6 +216,8 @@ public enum Metric {
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   SUBSCRIPTION_CONSENSUS_LAG("subscription_consensus_lag"),
   SUBSCRIPTION_CONSENSUS_WAL_GAP("subscription_consensus_wal_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP("subscription_consensus_wal_file_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES("subscription_consensus_wal_file_gap_entries"),
   SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE("subscription_consensus_routing_epoch_change"),
   SUBSCRIPTION_CONSENSUS_WATERMARK("subscription_consensus_watermark"),
   SUBSCRIPTION_CONSENSUS_SEEK_GENERATION("subscription_consensus_seek_generation"),
@@ -245,6 +247,14 @@ public enum Metric {
   SUBSCRIPTION_MEMORY_LIMIT_BYTES("subscription_memory_limit_bytes"),
   SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES("subscription_memory_overcommit_bytes"),
   SUBSCRIPTION_MEMORY_OVERSIZED_ENTRY_COUNT("subscription_memory_oversized_entry_count"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_USED("subscription_consensus_memory_used"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA("subscription_consensus_memory_quota"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM("subscription_consensus_memory_maximum"),
+  SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS("subscription_consensus_admission_rejections"),
+  SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON(
+      "subscription_consensus_admission_rejections_by_reason"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS("subscription_consensus_memory_rejections"),
+  SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS("subscription_consensus_oversized_rejections"),
   // load related
   ACTIVE_LOADING_FILES_NUMBER("active_loading_files_number"),
   ACTIVE_LOADING_FILES_SIZE("active_loading_files_size"),

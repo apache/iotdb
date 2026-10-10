@@ -120,7 +120,7 @@ import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
@@ -575,17 +575,19 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) {
+    return reportNodeShutdown(dataNodeLocation.getDataNodeId());
+  }
+
+  private TSStatus reportNodeShutdown(int nodeId) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Force updating the target DataNode's status to Unknown
-      getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.DataNode,
-              dataNodeLocation.getDataNodeId(),
-              new NodeHeartbeatSample(NodeStatus.Unknown));
-      LOGGER.info(
-          ManagerMessages.THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
-          dataNodeLocation.getDataNodeId());
+      status = getLoadManager().trySetNodeStatus(nodeId, NodeStatus.Stopped, false);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            ManagerMessages.LOG_NODE_ARG_REPORTED_SHUTDOWN_CURRENT_STATUS_IS_ARG_A375D665,
+            nodeId,
+            getLoadManager().getNodeStatus(nodeId));
+      }
     }
     return status;
   }
@@ -620,7 +622,17 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
-      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
+      Map<Integer, NodeStatistics> nodeStatisticsSnapshot =
+          getLoadManager().getNodeStatisticsSnapshot();
+      Map<Integer, String> nodeStatus = new HashMap<>();
+      Map<Integer, String> nodeStatusReason = new HashMap<>();
+      nodeStatisticsSnapshot.forEach(
+          (nodeId, statistics) -> {
+            nodeStatus.put(nodeId, statistics.getStatus().getStatus());
+            if (statistics.getStatusReason() != null) {
+              nodeStatusReason.put(nodeId, statistics.getStatusReason());
+            }
+          });
       configNodeLocations.forEach(
           configNodeLocation ->
               nodeStatus.putIfAbsent(
@@ -635,11 +647,9 @@ public class ConfigManager implements IManager {
               .map(TAINodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TAINodeLocation::getAiNodeId))
               .collect(Collectors.toList());
-      Map<Integer, String> nodeStatusMap = getLoadManager().getNodeStatusWithReason();
       aiNodeLocations.forEach(
           aiNodeLocation ->
-              nodeStatusMap.putIfAbsent(
-                  aiNodeLocation.getAiNodeId(), NodeStatus.Unknown.toString()));
+              nodeStatus.putIfAbsent(aiNodeLocation.getAiNodeId(), NodeStatus.Unknown.toString()));
 
       return new TShowClusterResp()
           .setStatus(status)
@@ -647,6 +657,7 @@ public class ConfigManager implements IManager {
           .setDataNodeList(dataNodeLocations)
           .setAiNodeList(aiNodeLocations)
           .setNodeStatus(nodeStatus)
+          .setNodeStatusReason(nodeStatusReason)
           .setNodeVersionInfo(nodeVersionInfo);
     } else {
       return new TShowClusterResp()
@@ -655,6 +666,7 @@ public class ConfigManager implements IManager {
           .setDataNodeList(Collections.emptyList())
           .setAiNodeList(Collections.emptyList())
           .setNodeStatus(Collections.emptyMap())
+          .setNodeStatusReason(Collections.emptyMap())
           .setNodeVersionInfo(Collections.emptyMap());
     }
   }
@@ -1629,19 +1641,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Force updating the target ConfigNode's status to Unknown
-      getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.ConfigNode,
-              configNodeLocation.getConfigNodeId(),
-              new NodeHeartbeatSample(NodeStatus.Unknown));
-      LOGGER.info(
-          ManagerMessages.THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
-          configNodeLocation.getConfigNodeId());
-    }
-    return status;
+    return reportNodeShutdown(configNodeLocation.getConfigNodeId());
   }
 
   @Override

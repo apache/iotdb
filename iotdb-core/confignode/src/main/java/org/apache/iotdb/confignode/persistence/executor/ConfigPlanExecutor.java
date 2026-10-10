@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
@@ -523,6 +524,8 @@ public class ConfigPlanExecutor {
         return nodeInfo.removeConfigNode((RemoveConfigNodePlan) physicalPlan);
       case UpdateVersionInfo:
         return nodeInfo.updateVersionInfo((UpdateVersionInfoPlan) physicalPlan);
+      case UpdateNodeStatus:
+        return nodeInfo.applyNodeStatusPlan((UpdateNodeStatusPlan) physicalPlan);
       case UpdateClusterId:
         return clusterInfo.updateClusterId((UpdateClusterIdPlan) physicalPlan);
       case CreateFunction:

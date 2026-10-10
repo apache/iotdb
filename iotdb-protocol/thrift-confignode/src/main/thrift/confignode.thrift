@@ -643,6 +643,9 @@ struct TShowClusterResp {
   4: required list<common.TAINodeLocation> aiNodeList
   5: required map<i32, string> nodeStatus
   6: required map<i32, TNodeVersionInfo> nodeVersionInfo
+  // The reason why the node is in its current status, independent of nodeStatus.
+  // Absent when the ConfigNode is an old version.
+  7: optional map<i32, string> nodeStatusReason
 }
 
 struct TGetClusterIdResp {
@@ -685,6 +688,9 @@ struct TDataNodeInfo {
   5: required i32 dataRegionNum
   6: required i32 schemaRegionNum
   7: optional i32 cpuCoreNum
+  // The reason why the DataNode is in its current status, independent of status.
+  // Absent when the ConfigNode is an old version.
+  8: optional string statusReason
 }
 
 struct TAINodeInfo {
@@ -723,6 +729,9 @@ struct TConfigNodeInfo {
   3: required string internalAddress
   4: required i32 internalPort
   5: required string roleType
+  // The reason why the ConfigNode is in its current status, independent of status.
+  // Absent when the ConfigNode is an old version.
+  6: optional string statusReason
 }
 
 struct TShowConfigNodesResp {
@@ -1422,9 +1431,11 @@ service IConfigNodeRPCService {
 
   /**
    * Report that the specified DataNode will be shutdown.
-   * The ConfigNode-leader will mark it as Unknown.
+   * The leader requests Stopped, retaining Removing if set. Success confirms persistence.
+   * Without a report, heartbeat timeout produces Unknown only if no Stopped or Removing
+   * status can be retained, including a status restored from persistence.
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return SUCCESS_STATUS if the resulting status is persisted
    */
   common.TSStatus reportDataNodeShutdown(common.TDataNodeLocation dataNodeLocation)
 
@@ -1657,9 +1668,11 @@ service IConfigNodeRPCService {
 
   /**
    * Report that the specified ConfigNode will be shutdown.
-   * The ConfigNode-leader will mark it as Unknown.
+   * The leader requests Stopped, retaining Removing if set. Success confirms persistence.
+   * Without a report, heartbeat timeout produces Unknown only if no Stopped or Removing
+   * status can be retained, including a status restored from persistence.
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return SUCCESS_STATUS if the resulting status is persisted
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 

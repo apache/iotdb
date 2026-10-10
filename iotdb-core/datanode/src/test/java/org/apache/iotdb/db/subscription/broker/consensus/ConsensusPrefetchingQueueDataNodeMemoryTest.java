@@ -26,12 +26,15 @@ import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueAdmission;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
@@ -74,16 +77,199 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
-  public void testQueuesShareDataNodeMemoryBudget() throws Exception {
-    assertQueuesShareDataNodeMemoryBudget(false);
+  public void testLargeQueueQuotaDoesNotBlockSmallQueueAndPreservesPendingEntries()
+      throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
+    final int originalMaxWalEntries =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxWalEntries();
+    ConsensusPrefetchingQueue largeQueue = null;
+    ConsensusPrefetchingQueue smallQueue = null;
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxWalEntries(1);
+      final Tablet largeTablet = createLargeTablet();
+      final long largeBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(largeTablet);
+      final long smallBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(createTablet());
+      final SubscriptionMemoryManager memoryManager =
+          // With two queues, a queue may use 3/4 of the budget; make that exactly one large entry.
+          new SubscriptionMemoryManager(largeBytes + largeBytes / 3L);
+      final ConsensusSubscriptionCommitManager commitManager =
+          newCommitManager(temporaryFolder.newFolder("large-small-fair-share"));
+      final FakeConsensusReqReader largeReader = new FakeConsensusReqReader();
+      final FakeConsensusReqReader smallReader = new FakeConsensusReqReader();
+      final AtomicInteger largeConversions = new AtomicInteger();
+      final AtomicInteger smallConversions = new AtomicInteger();
+      largeQueue =
+          newQueue(
+              "largeGroup",
+              new DataRegionId(1),
+              largeReader,
+              newConverter(largeConversions, largeTablet),
+              commitManager,
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+      smallQueue =
+          newQueue(
+              "smallGroup",
+              new DataRegionId(2),
+              smallReader,
+              newConverter(smallConversions),
+              commitManager,
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+      largeQueue.setSubscriptionMemoryManager(memoryManager);
+      smallQueue.setSubscriptionMemoryManager(memoryManager);
+      assertNull(largeQueue.poll("largeConsumer"));
+      assertNull(smallQueue.poll("smallConsumer"));
+
+      largeReader.currentSearchIndex = 2L;
+      assertTrue(pendingEntries(largeQueue).offer(createRequest(1L)));
+      assertTrue(pendingEntries(largeQueue).offer(createRequest(2L)));
+      largeQueue.drivePrefetchOnce();
+      assertEquals(largeBytes, largeQueue.getRetainedTabletBytes());
+      final long retainedPendingBytes = largeQueue.getRetainedRequestBytes();
+      assertTrue(retainedPendingBytes > 0L);
+      largeQueue.drivePrefetchOnce();
+      assertEquals(1, largeConversions.get());
+      assertEquals(1, pendingEntries(largeQueue).size());
+      assertEquals(retainedPendingBytes, largeQueue.getRetainedRequestBytes());
+      assertFalse(pendingEntries(largeQueue).offer(createRequest(3L)));
+      assertEquals(
+          SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA,
+          ((SubscriptionQueueAdmission) pendingEntries(largeQueue)).getLastRejectionReason());
+      assertEquals(1L, largeQueue.getRealtimeAdmissionRejectionCount());
+      assertEquals(
+          1L,
+          largeQueue.getRealtimeAdmissionRejectionCount(
+              SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA));
+
+      smallReader.currentSearchIndex = 1L;
+      assertTrue(pendingEntries(smallQueue).offer(createRequest(1L)));
+      smallQueue.drivePrefetchOnce();
+      assertEquals(1, smallConversions.get());
+      assertEquals(largeBytes + smallBytes, memoryManager.getUsedMemorySizeInBytes());
+      final SubscriptionEvent smallEvent = smallQueue.poll("smallConsumer");
+      assertNotNull(smallEvent);
+      assertTrue(smallQueue.ack("smallConsumer", smallEvent.getCommitContext()));
+      assertEquals(largeBytes, memoryManager.getUsedMemorySizeInBytes());
+
+      final SubscriptionEvent largeEvent = largeQueue.poll("largeConsumer");
+      assertNotNull(largeEvent);
+      assertTrue(largeQueue.ack("largeConsumer", largeEvent.getCommitContext()));
+      largeQueue.drivePrefetchOnce();
+      assertEquals(2, largeConversions.get());
+      assertEquals(0, pendingEntries(largeQueue).size());
+      assertEquals(0L, largeQueue.getRetainedRequestBytes());
+      final SubscriptionEvent secondLargeEvent = largeQueue.poll("largeConsumer");
+      assertNotNull(secondLargeEvent);
+      assertTrue(largeQueue.ack("largeConsumer", secondLargeEvent.getCommitContext()));
+      assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+    } finally {
+      if (largeQueue != null) {
+        largeQueue.close();
+      }
+      if (smallQueue != null) {
+        smallQueue.close();
+      }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxWalEntries(originalMaxWalEntries);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
   @Test
-  public void testOversizedEntryBlocksOtherQueueUntilAck() throws Exception {
-    assertQueuesShareDataNodeMemoryBudget(true);
+  public void testOversizedEntryReportsErrorWhileOtherQueueHoldsMemory() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
+    ConsensusPrefetchingQueue largeQueue = null;
+    ConsensusPrefetchingQueue smallQueue = null;
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
+      final Tablet largeTablet = createLargeTablet();
+      final long largeBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(largeTablet);
+      // This entry exceeds the entire node budget, which is also partly held by another queue.
+      final SubscriptionMemoryManager memoryManager =
+          new SubscriptionMemoryManager(largeBytes / 2L);
+      final ConsensusSubscriptionCommitManager commitManager =
+          newCommitManager(temporaryFolder.newFolder("oversized-queue-error"));
+      final FakeConsensusReqReader largeReader = new FakeConsensusReqReader();
+      final FakeConsensusReqReader smallReader = new FakeConsensusReqReader();
+      final AtomicInteger largeConversions = new AtomicInteger();
+      largeQueue =
+          newQueue(
+              "largeGroup",
+              new DataRegionId(1),
+              largeReader,
+              newConverter(largeConversions, largeTablet),
+              commitManager,
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+      smallQueue =
+          newQueue(
+              "smallGroup",
+              new DataRegionId(2),
+              smallReader,
+              newConverter(new AtomicInteger()),
+              commitManager,
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+      largeQueue.setSubscriptionMemoryManager(memoryManager);
+      smallQueue.setSubscriptionMemoryManager(memoryManager);
+      assertNull(largeQueue.poll("largeConsumer"));
+      assertNull(smallQueue.poll("smallConsumer"));
+      smallReader.currentSearchIndex = 1L;
+      assertTrue(pendingEntries(smallQueue).offer(createRequest(1L)));
+      smallQueue.drivePrefetchOnce();
+      final long smallBytes = memoryManager.getUsedMemorySizeInBytes();
+      assertTrue(smallBytes > 0L);
+
+      largeReader.currentSearchIndex = 1L;
+      assertTrue(pendingEntries(largeQueue).offer(createRequest(1L)));
+      largeQueue.drivePrefetchOnce();
+      assertEquals(1, largeConversions.get());
+      assertEquals(1L, largeQueue.getCurrentReadSearchIndex());
+      assertEquals(1L, largeQueue.getOversizedEntryRejectionCount());
+      assertEquals(0L, largeQueue.getRealtimeAdmissionRejectionCount());
+      assertEquals(smallBytes, memoryManager.getUsedMemorySizeInBytes());
+      assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
+      assertEquals(0L, memoryManager.getOversizedEntryCount());
+      assertEquals("0", largeQueue.coreReportMessage().get("subscriptionMemoryUsedInBytes"));
+      assertEquals(
+          String.valueOf(smallBytes),
+          largeQueue.coreReportMessage().get("dataNodeSubscriptionMemoryUsedInBytes"));
+      final SubscriptionEvent error = largeQueue.poll("largeConsumer");
+      assertNotNull(error);
+      final ErrorPayload payload = (ErrorPayload) error.getCurrentResponse().getPayload();
+      assertTrue(payload.isCritical());
+      assertTrue(payload.getErrorMessage().contains("SUBSCRIPTION_OVERSIZED_ENTRY"));
+      for (int i = 0; i < 10; i++) {
+        largeQueue.drivePrefetchOnce();
+      }
+      assertEquals(1, largeConversions.get());
+      assertEquals(1L, largeQueue.getCurrentReadSearchIndex());
+      final SubscriptionEvent smallEvent = smallQueue.poll("smallConsumer");
+      assertNotNull(smallEvent);
+      assertTrue(smallQueue.ack("smallConsumer", smallEvent.getCommitContext()));
+      assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+    } finally {
+      if (largeQueue != null) {
+        largeQueue.close();
+      }
+      if (smallQueue != null) {
+        smallQueue.close();
+      }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
-  private void assertQueuesShareDataNodeMemoryBudget(final boolean oversized) throws Exception {
+  @Test
+  public void testQueuesShareDataNodeMemoryBudget() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final int originalBatchMaxDelay =
         CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
@@ -95,7 +281,7 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       final Tablet tablet = createTablet();
       final long oneTabletBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
       final SubscriptionMemoryManager memoryManager =
-          new SubscriptionMemoryManager(oneTabletBytes - (oversized ? 1L : 0L));
+          new SubscriptionMemoryManager(oneTabletBytes * 2L);
       final ConsensusSubscriptionCommitManager commitManager = newCommitManager(systemDir);
 
       final FakeConsensusReqReader readerA = new FakeConsensusReqReader();
@@ -134,43 +320,36 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertEquals(oneTabletBytes, queueA.getRetainedTabletBytes());
       assertEquals(0L, queueB.getRetainedTabletBytes());
       assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
-      assertEquals(oversized ? 1L : 0L, memoryManager.getOvercommitSizeInBytes());
-      assertEquals(oversized ? 1L : 0L, memoryManager.getOversizedEntryCount());
+      assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
+      assertEquals(0L, memoryManager.getOversizedEntryCount());
       assertEquals(
           oneTabletBytes, queueA.getRetainedTabletBytes() + queueB.getRetainedTabletBytes());
 
       readerB.currentSearchIndex = 1L;
-      assertFalse(pendingEntries(queueB).offer(createRequest(1L)));
+      assertTrue(pendingEntries(queueB).offer(createRequest(1L)));
       queueB.drivePrefetchOnce();
-      assertEquals(0, conversionCountB.get());
-      assertEquals("true", queueB.coreReportMessage().get("realtimeAdmissionBlocked"));
-      assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
+      assertEquals(1, conversionCountB.get());
+      assertEquals("false", queueB.coreReportMessage().get("realtimeAdmissionBlocked"));
+      assertEquals(oneTabletBytes * 2L, memoryManager.getUsedMemorySizeInBytes());
+      assertEquals(oneTabletBytes, queueB.getRetainedTabletBytes());
 
       final SubscriptionEvent eventA = queueA.poll("consumerA");
       assertNotNull(eventA);
       assertTrue(queueA.ack("consumerA", eventA.getCommitContext()));
       assertEquals(0L, queueA.getRetainedTabletBytes());
-      assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+      assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
       assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
 
       queueB.drivePrefetchOnce();
       assertEquals("false", queueB.coreReportMessage().get("realtimeAdmissionBlocked"));
-      assertTrue(pendingEntries(queueB).offer(createRequest(1L)));
-      queueB.drivePrefetchOnce();
-
-      assertEquals(1, conversionCountB.get());
-      assertEquals(oneTabletBytes, queueB.getRetainedTabletBytes());
-      assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
-      assertEquals(oversized ? 1L : 0L, memoryManager.getOvercommitSizeInBytes());
-      assertEquals(oversized ? 2L : 0L, memoryManager.getOversizedEntryCount());
-      assertEquals(
-          oneTabletBytes, queueA.getRetainedTabletBytes() + queueB.getRetainedTabletBytes());
 
       final SubscriptionEvent eventB = queueB.poll("consumerB");
       assertNotNull(eventB);
       assertTrue(queueB.ack("consumerB", eventB.getCommitContext()));
       assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
       assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
+      queueB.drivePrefetchOnce();
+      assertEquals("false", queueB.coreReportMessage().get("realtimeAdmissionBlocked"));
     } finally {
       if (queueA != null) {
         queueA.close();
@@ -303,6 +482,7 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertEquals(65_000L, queue.getDeliveryIdleTimeMs());
       assertEquals("65000", queue.coreReportMessage().get("prefetchDurationMs"));
       assertEquals("0", queue.coreReportMessage().get("subscriptionMemoryUsedInBytes"));
+      assertEquals("0", queue.coreReportMessage().get("dataNodeSubscriptionMemoryUsedInBytes"));
 
       releaseConversion.countDown();
       round.get(5L, TimeUnit.SECONDS);
@@ -369,23 +549,20 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertEquals(1, conversionCount.get());
       assertEquals(2L, queue.getCurrentReadSearchIndex());
       assertEquals("1", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
-      assertEquals("0", queue.coreReportMessage().get("pendingEntriesSize"));
+      assertEquals("1", queue.coreReportMessage().get("pendingEntriesSize"));
       assertEquals("true", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
+      assertFalse(pendingEntries(queue).offer(createRequest(3L)));
+      assertEquals("SUBSCRIPTION_WRITER_BACKLOG", queue.getLastAdmissionRejectionCode());
+      assertEquals(0L, queue.getSubscriptionMemoryRejectionCount());
 
       queue.setActiveWriterNodeIds(Collections.singleton(7));
-      queue.drivePrefetchOnce();
-
-      assertEquals(1, conversionCount.get());
-      assertEquals("0", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
-      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
-
-      assertTrue(pendingEntries(queue).offer(createRequest(2L)));
       queue.drivePrefetchOnce();
 
       assertEquals(2, conversionCount.get());
       assertEquals(3L, queue.getCurrentReadSearchIndex());
       assertEquals("0", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
       assertEquals("0", queue.coreReportMessage().get("pendingEntriesSize"));
+      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
     } finally {
       if (queue != null) {
         queue.close();
@@ -426,12 +603,17 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
   }
 
   private static ConsensusLogToTabletConverter newConverter(final AtomicInteger conversionCount) {
+    return newConverter(conversionCount, createTablet());
+  }
+
+  private static ConsensusLogToTabletConverter newConverter(
+      final AtomicInteger conversionCount, final Tablet tablet) {
     final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
     when(converter.convert(any()))
         .thenAnswer(
             ignored -> {
               conversionCount.incrementAndGet();
-              return Collections.singletonList(createTablet());
+              return Collections.singletonList(tablet);
             });
     when(converter.getDatabaseName()).thenReturn("db");
     return converter;
@@ -453,6 +635,21 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
     tablet.addTimestamp(0, 1L);
     tablet.addValue(0, 0, "d1");
     tablet.addValue(0, 1, 36.5);
+    tablet.setRowSize(1);
+    return tablet;
+  }
+
+  private static Tablet createLargeTablet() {
+    final Tablet tablet =
+        new Tablet(
+            "sensors",
+            Arrays.asList("device", "payload"),
+            Arrays.asList(TSDataType.STRING, TSDataType.STRING),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue(0, 0, "d1");
+    tablet.addValue(0, 1, "v".repeat(20_000));
     tablet.setRowSize(1);
     return tablet;
   }
