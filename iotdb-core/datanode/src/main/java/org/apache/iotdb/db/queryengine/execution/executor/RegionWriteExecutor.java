@@ -842,9 +842,9 @@ public class RegionWriteExecutor {
     }
 
     /**
-     * Check the quota before creating time series.
+     * Check region availability, data types and quota before creating time series.
      *
-     * @return null if the quota is not exceeded, otherwise return the execution result.
+     * @return null if all checks pass, otherwise return the execution result.
      */
     private RegionExecutionResult checkQuotaAndTypeBeforeCreatingTimeSeries(
         final ISchemaRegion schemaRegion,
@@ -852,6 +852,14 @@ public class RegionWriteExecutor {
         final int size,
         final List<String> measurements,
         final List<TSDataType> dataTypes) {
+      // Shutdown may clear SchemaEngine while the region's validation lock still exists.
+      // Reject the request as retryable before dereferencing the missing region.
+      if (schemaRegion == null) {
+        final String message =
+            DataNodeQueryMessages.MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A;
+        return RegionExecutionResult.create(
+            false, message, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP, message));
+      }
       for (int i = 0; i < measurements.size(); ++i) {
         if (dataTypes.get(i) == TSDataType.OBJECT) {
           final String errorStr =
