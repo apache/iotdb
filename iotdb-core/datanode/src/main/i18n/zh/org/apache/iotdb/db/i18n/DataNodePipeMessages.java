@@ -21,6 +21,46 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =
+          "订阅预取轮次开始，队列 {}：active={}，initialized={}，closed={}，pendingEntries={}，prefetchedEvents={}，inFlightEvents={}，nextReadSearchIndex={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_COMPLETED_FOR_ARG_DURATIONMS_ARG_RESULT_ARG_DELAYMS_ARG_READSEARCHINDEX_ARG_ARG_PENDINGACCEPTED_ARG_WALACCEPTED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_MEMORYBLOCKREASON_ARG_ADMISSIONBLOCKREASON_ARG_0F0A3D57 =
+          "订阅预取轮次结束，队列 {}：durationMs={}，result={}，delayMs={}，readSearchIndex={} -> {}，pendingAccepted={}，walAccepted={}，pendingEntries={}，prefetchedEvents={}，inFlightEvents={}，memoryBlockReason={}，admissionBlockReason={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ACQUIRED_QUEUE_READ_LOCK_FOR_ARG_AFTER_ARG_MS_425E9A20 =
+          "订阅预取已获取队列 {} 的读锁，距离轮次开始已过 {} ms。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_SCANNING_WAL_FOR_ARG_NEXTREADSEARCHINDEX_ARG_MAXWALENTRIES_ARG_PREFETCHEDEVENTS_ARG_AA16EEA1 =
+          "订阅预取开始扫描队列 {} 的 WAL：nextReadSearchIndex={}，maxWalEntries={}，prefetchedEvents={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARING_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_EE485CC7 =
+          "订阅预取开始解析和转换队列 {} 的 entry：searchIndex={}，writerNodeId={}，localSeq={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARED_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_TABLETS_ARG_ESTIMATEDBYTES_ARG_DURATIONMS_ARG_E91BA0CD =
+          "订阅预取完成队列 {} 的 entry 解析和转换：searchIndex={}，writerNodeId={}，localSeq={}，tablets={}，estimatedBytes={}，durationMs={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_MEMORY_RESERVATION_REJECTED_FOR_ARG_ENTRYBYTES_ARG_REASON_ARG_QUOTABYTES_ARG_FREEBYTES_ARG_98903D3B =
+          "订阅预取队列 {} 的内存预留被拒绝：entryBytes={}，reason={}，quotaBytes={}，freeBytes={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_TASK_ARG_SCHEDULING_AFTER_ROUND_RESULT_ARG_WAKEUPPENDING_ARG_ENQUEUENOW_ARG_DELAYMS_ARG_602EA4A4 =
+          "订阅预取任务 {} 的轮次后调度：result={}，wakeupPending={}，enqueueNow={}，delayMs={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_MEMORY_OVERCOMMIT_ENTRYBYTES_ARG_BUDGETBYTES_ARG_OVERCOMMITBYTES_ARG_OTHER_QUEUES_MAY_BE_BLOCKED_UNTIL_RELEASE_DF9B914E =
+          "订阅内存超出预算：entryBytes={}，budgetBytes={}，overcommitBytes={}；其它队列可能阻塞，直到该 entry 释放。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_TOOK_ARG_MS_FOR_ARG_DELIVERYIDLETIMEMS_ARG_MEMORYUSEDBYTES_ARG_MEMORYLIMITBYTES_ARG_INSPECT_WORKER_STACKS_WAL_I_O_AND_JVM_PAUSES_D399CEDD =
+          "订阅预取轮次耗时 {} ms，队列 {}。deliveryIdleTimeMs={}，memoryUsedBytes={}，memoryLimitBytes={}；请检查工作线程栈、WAL I/O 和 JVM 停顿。";
+
   public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
       "解析 transfer exception 失败。";
 
@@ -1970,7 +2010,7 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608 =
       "ConsensusPrefetchingQueue {}：周期统计，lag={}，pendingDelta={}，walDelta={}，pendingTotal={}，"
           + "walTotal={}，walGapSkippedEntries={}，pendingQueueSize={}，prefetchingQueueSize={}，"
-          + "inFlightEventsSize={}，realtimeWriterCount={}，walHasNext={}，isActive={}，"
+          + "inFlightEventsSize={}，realtimeWriterCount={}，walNextBuffered={}，isActive={}，"
           + "subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}：等待 {}ms，使 WAL 缺口 [{}, {}) 可见，currentNextExpected={}，"

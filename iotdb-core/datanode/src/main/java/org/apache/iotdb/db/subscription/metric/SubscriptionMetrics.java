@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.subscription.metric;
 
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
+import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 public class SubscriptionMetrics implements IMetricSet {
 
@@ -30,12 +35,41 @@ public class SubscriptionMetrics implements IMetricSet {
   public void bindTo(final AbstractMetricService metricService) {
     SubscriptionPrefetchingQueueMetrics.getInstance().bindTo(metricService);
     ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().bindTo(metricService);
+    // Read the shared allocator directly; queue snapshots taken at different times cannot be
+    // summed to establish whether a DataNode exceeded its subscription memory budget.
+    final SubscriptionMemoryManager memoryManager = SubscriptionDataNodeResourceManager.memory();
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_MEMORY_USED_BYTES.toString(),
+        MetricLevel.IMPORTANT,
+        memoryManager,
+        SubscriptionMemoryManager::getUsedMemorySizeInBytes);
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_MEMORY_LIMIT_BYTES.toString(),
+        MetricLevel.IMPORTANT,
+        memoryManager,
+        SubscriptionMemoryManager::getTotalMemorySizeInBytes);
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES.toString(),
+        MetricLevel.IMPORTANT,
+        memoryManager,
+        SubscriptionMemoryManager::getOvercommitSizeInBytes);
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_MEMORY_OVERSIZED_ENTRY_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        memoryManager,
+        SubscriptionMemoryManager::getOversizedEntryCount);
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
     SubscriptionPrefetchingQueueMetrics.getInstance().unbindFrom(metricService);
     ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().unbindFrom(metricService);
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_MEMORY_USED_BYTES.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_MEMORY_LIMIT_BYTES.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_MEMORY_OVERSIZED_ENTRY_COUNT.toString());
   }
 
   //////////////////////////// singleton ////////////////////////////

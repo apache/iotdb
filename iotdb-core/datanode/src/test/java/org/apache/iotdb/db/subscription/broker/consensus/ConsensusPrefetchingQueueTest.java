@@ -94,7 +94,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -2389,14 +2389,13 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
-  public void testPendingCursorAdvanceFastForwardsWalIteratorInPlace() throws Exception {
+  public void testPeriodicStatsDoNotReadWal() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    final File systemDir = temporaryFolder.newFolder("deferred-wal-realignment");
+    final File systemDir = temporaryFolder.newFolder("stats-without-wal-read");
     ConsensusPrefetchingQueue queue = null;
     try {
-      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
-      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getConsensusReqReader()).thenReturn(new FakeConsensusReqReader());
       when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
       queue =
           new ConsensusPrefetchingQueue(
@@ -2416,21 +2415,73 @@ public class ConsensusPrefetchingQueueTest {
               1L,
               true);
 
+      final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
+      setSubscriptionWalIterator(queue, iterator);
+      final Field lastStatsLogTime =
+          ConsensusPrefetchingQueue.class.getDeclaredField("lastStatsLogTimeMs");
+      lastStatsLogTime.setAccessible(true);
+      lastStatsLogTime.setLong(queue, 0L);
+      final Method logStats =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod("logPeriodicStatsIfNecessary");
+      logStats.setAccessible(true);
+      logStats.invoke(queue);
+
+      verify(iterator).hasBufferedNext();
+      verify(iterator, never()).hasNext();
+      verify(iterator, never()).next();
+      verify(iterator, never()).refresh();
+      assertEquals(1L, queue.getCurrentReadSearchIndex());
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testPendingCursorAdvanceFastForwardsWalIteratorInPlace() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("deferred-wal-realignment");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any())).thenReturn(Collections.emptyList());
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      for (long searchIndex = 1L; searchIndex <= 7L; searchIndex++) {
+        assertTrue(pendingEntries(queue).offer(createRequest(searchIndex)));
+      }
+      reader.currentSearchIndex = 7L;
+      assertNull(queue.poll("consumer"));
       final ProgressWALIterator staleIterator = mock(ProgressWALIterator.class);
       setSubscriptionWalIterator(queue, staleIterator);
-
-      final Method advancePendingCursor =
-          ConsensusPrefetchingQueue.class.getDeclaredMethod(
-              "advanceLocalCursorFromPendingIfPresent", IndexedConsensusRequest.class, long.class);
-      advancePendingCursor.setAccessible(true);
-      advancePendingCursor.invoke(
-          queue,
-          new IndexedConsensusRequest(7L, Collections.emptyList()),
-          queue.getCurrentSeekGeneration());
+      queue.drivePrefetchOnce();
 
       assertEquals(8L, queue.getCurrentReadSearchIndex());
+      verify(converter, times(7)).convert(any());
       verify(staleIterator)
-          .advanceTo(anyLong(), any(ProgressWALIterator.WriterProgressCoverage.class));
+          .advanceTo(eq(8L), any(ProgressWALIterator.WriterProgressCoverage.class));
       verify(staleIterator, never()).close();
       assertSame(staleIterator, subscriptionWalIterator(queue));
     } finally {
@@ -2545,10 +2596,14 @@ public class ConsensusPrefetchingQueueTest {
       reader.currentSearchIndex = 3L;
 
       assertNull(queue.poll("consumer"));
+      final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
+      setSubscriptionWalIterator(queue, iterator);
       queue.drivePrefetchOnce();
 
       assertEquals(2, conversionCount.get());
       assertEquals(2L, queue.getCurrentReadSearchIndex());
+      verify(iterator).advanceTo(eq(2L), any(ProgressWALIterator.WriterProgressCoverage.class));
+      verify(iterator, never()).close();
       assertEquals(oneTabletBytes, queue.getRetainedTabletBytes());
       assertTrue(memoryManager.getFreeMemorySizeInBytes() > 0L);
       assertEquals(1, queue.getPrefetchedEventCount());

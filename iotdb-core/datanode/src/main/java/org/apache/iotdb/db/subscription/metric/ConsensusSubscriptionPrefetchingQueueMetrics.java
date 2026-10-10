@@ -207,6 +207,42 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         ConsensusPrefetchingQueue::getLastProgressTimeMs,
         key.getTags());
     metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getLastDeliveryIntervalMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getMaxDeliveryIntervalMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getDeliveryIdleTimeMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getPrefetchDurationMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getMaxPrefetchDurationMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getPrefetchIdleTimeMs,
+        key.getTags());
+    metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString(),
         MetricLevel.IMPORTANT,
         queue,
@@ -372,6 +408,30 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SUBSCRIPTION_CONSENSUS_LAST_PROGRESS_TIME.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS.toString(),
         key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE,

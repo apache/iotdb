@@ -233,7 +233,20 @@ public enum Metric {
   SUBSCRIPTION_CONSENSUS_PENDING_EVENT_COUNT("subscription_consensus_pending_event_count"),
   SUBSCRIPTION_CONSENSUS_LAST_POLL_TIME("subscription_consensus_last_poll_time"),
   SUBSCRIPTION_CONSENSUS_LAST_PROGRESS_TIME("subscription_consensus_last_progress_time"),
+  SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS(
+      "subscription_consensus_last_delivery_interval_ms"),
+  SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS(
+      "subscription_consensus_max_delivery_interval_ms"),
+  SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS("subscription_consensus_delivery_idle_time_ms"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS("subscription_consensus_prefetch_duration_ms"),
+  SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS(
+      "subscription_consensus_max_prefetch_duration_ms"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS("subscription_consensus_prefetch_idle_time_ms"),
   SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS("subscription_consensus_progress_status"),
+  SUBSCRIPTION_MEMORY_USED_BYTES("subscription_memory_used_bytes"),
+  SUBSCRIPTION_MEMORY_LIMIT_BYTES("subscription_memory_limit_bytes"),
+  SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES("subscription_memory_overcommit_bytes"),
+  SUBSCRIPTION_MEMORY_OVERSIZED_ENTRY_COUNT("subscription_memory_oversized_entry_count"),
   SUBSCRIPTION_CONSENSUS_MEMORY_USED("subscription_consensus_memory_used"),
   SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA("subscription_consensus_memory_quota"),
   SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM("subscription_consensus_memory_maximum"),
