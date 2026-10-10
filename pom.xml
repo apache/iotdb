@@ -27,6 +27,17 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
+        <!-- Remove this staging repository once TsFile 2.5.0 is available from Maven Central. -->
+        <repository>
+            <id>apache.tsfile.staging</id>
+            <url>https://repository.apache.org/content/repositories/orgapachetsfile-1042/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
     </repositories>
     <parent>
         <groupId>org.apache</groupId>
