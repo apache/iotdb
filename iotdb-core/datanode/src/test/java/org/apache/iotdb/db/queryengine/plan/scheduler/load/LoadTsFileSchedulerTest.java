@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -36,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,9 +43,9 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -82,6 +81,58 @@ public class LoadTsFileSchedulerTest {
     Assert.assertNull(t.getFragmentInfo());
   }
 
+  /**
+   * The coordinator stops the execution of a query once its state is done, and a load that finished
+   * passes no failure to that stop. The load must not answer with a failure it was never given:
+   * reporting an explicit stop after a successful load makes the client fail a LOAD whose files are
+   * already committed.
+   */
+  @Test
+  public void testStopWithoutAFailureKeepsASuccessfulLoadSuccessful() {
+    final QueryStateMachine stateMachine = newStateMachine("load_stop_finished");
+    stateMachine.transitionToFinished();
+    final String failureMessageBeforeTheStop = stateMachine.getFailureMessage();
+
+    newScheduler(stateMachine).stop(null);
+
+    Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    Assert.assertEquals(
+        "a stop that was given no failure must not invent one",
+        failureMessageBeforeTheStop,
+        stateMachine.getFailureMessage());
+  }
+
+  /** A stop that carries the failure of the load still fails the task. */
+  @Test
+  public void testStopWithAFailureFailsTheLoad() {
+    final QueryStateMachine stateMachine = newStateMachine("load_stop_failed");
+    stateMachine.transitionToRunning();
+
+    newScheduler(stateMachine).stop(new LoadFileException("the staging file is gone"));
+
+    Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
+    Assert.assertEquals("the staging file is gone", stateMachine.getFailureMessage());
+  }
+
+  private LoadTsFileScheduler newScheduler(final QueryStateMachine stateMachine) {
+    return new LoadTsFileScheduler(
+        distributedQueryPlan,
+        mock(MPPQueryContext.class),
+        stateMachine,
+        mock(IClientManager.class),
+        mock(IPartitionFetcher.class),
+        false);
+  }
+
+  /**
+   * The state machine of these tests dispatches its listeners on the calling thread: a test must
+   * not leave a thread pool behind, and the failure a stop records is written before the listeners
+   * run.
+   */
+  private static QueryStateMachine newStateMachine(final String queryId) {
+    return new QueryStateMachine(new QueryId(queryId), MoreExecutors.newDirectExecutorService());
+  }
+
   @Test
   public void testGetPartitionQueryDatabaseForPipeGeneratedTreeModelLoad() {
     final LoadSingleTsFileNode node = mock(LoadSingleTsFileNode.class);
@@ -103,16 +154,15 @@ public class LoadTsFileSchedulerTest {
 
   @Test
   public void testBuildRetryTreeLoadStatementUpdatesDatabaseLevel() throws Exception {
-    final LoadTsFileScheduler scheduler =
-        new LoadTsFileScheduler(
-            distributedQueryPlan,
+    final LoadFallbackHandler fallbackHandler =
+        new LoadFallbackHandler(
             mock(MPPQueryContext.class),
-            mock(QueryStateMachine.class),
-            mock(IClientManager.class),
-            mock(IPartitionFetcher.class),
-            true);
+            true,
+            Collections.emptyList(),
+            new ArrayList<>(),
+            mock(QueryStateMachine.class));
     final Method method =
-        LoadTsFileScheduler.class.getDeclaredMethod(
+        LoadFallbackHandler.class.getDeclaredMethod(
             "buildRetryTreeLoadStatement", String.class, boolean.class, String.class);
     method.setAccessible(true);
 
@@ -121,7 +171,7 @@ public class LoadTsFileSchedulerTest {
 
     final LoadTsFileStatement statement =
         (LoadTsFileStatement)
-            method.invoke(scheduler, tsFile.getAbsolutePath(), true, "root.test.sg_0");
+            method.invoke(fallbackHandler, tsFile.getAbsolutePath(), true, "root.test.sg_0");
 
     Assert.assertEquals("root.test.sg_0", statement.getDatabase());
     Assert.assertEquals(2, statement.getDatabaseLevel());
@@ -129,78 +179,24 @@ public class LoadTsFileSchedulerTest {
   }
 
   @Test
-  public void testTsFileDataManagerClearReleasesCachedMemory() throws Exception {
+  public void testMemoryBoundedBufferClearReleasesCachedMemory() throws Exception {
     final Constructor<LoadTsFileDataCacheMemoryBlock> memoryBlockConstructor =
         LoadTsFileDataCacheMemoryBlock.class.getDeclaredConstructor(long.class);
     memoryBlockConstructor.setAccessible(true);
     final LoadTsFileDataCacheMemoryBlock memoryBlock =
         memoryBlockConstructor.newInstance(1024 * 1024L);
 
-    final Class<?> dataManagerClass =
-        Class.forName(LoadTsFileScheduler.class.getName() + "$TsFileDataManager");
-    final Constructor<?> dataManagerConstructor =
-        dataManagerClass.getDeclaredConstructor(
-            LoadTsFileScheduler.class,
-            LoadSingleTsFileNode.class,
-            LoadTsFileDataCacheMemoryBlock.class);
-    dataManagerConstructor.setAccessible(true);
-    final Object dataManager =
-        dataManagerConstructor.newInstance(
-            mock(LoadTsFileScheduler.class), mock(LoadSingleTsFileNode.class), memoryBlock);
-
     // Simulate data buffered before split or routing aborts. clear() is the last chance to return
     // this accounting to the shared LOAD memory block.
     final long cachedMemorySize = 128L;
-    memoryBlock.addMemoryUsage(cachedMemorySize);
-    final Field dataSizeField = dataManagerClass.getDeclaredField("dataSize");
-    dataSizeField.setAccessible(true);
-    dataSizeField.setLong(dataManager, cachedMemorySize);
-
-    final Method clearMethod = dataManagerClass.getDeclaredMethod("clear");
-    clearMethod.setAccessible(true);
-    clearMethod.invoke(dataManager);
+    final MemoryBoundedBuffer memoryBoundedBuffer = new MemoryBoundedBuffer(memoryBlock);
+    memoryBoundedBuffer.add(cachedMemorySize);
+    memoryBoundedBuffer.clear();
 
     final Method getMemoryUsageMethod =
         LoadTsFileDataCacheMemoryBlock.class.getDeclaredMethod("getMemoryUsageInBytes");
     getMemoryUsageMethod.setAccessible(true);
     Assert.assertEquals(0L, getMemoryUsageMethod.invoke(memoryBlock));
-    Assert.assertEquals(0L, dataSizeField.getLong(dataManager));
-  }
-
-  @Test
-  public void testRegionReplicaSetComparison() {
-    final TDataNodeLocation dataNode1 = createDataNodeLocation(1, 10731);
-    final TDataNodeLocation dataNode3 = createDataNodeLocation(3, 10733);
-    final TDataNodeLocation dataNode5 = createDataNodeLocation(5, 10735);
-    final TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
-    final TRegionReplicaSet original =
-        new TRegionReplicaSet(regionId, Arrays.asList(dataNode5, dataNode3, dataNode1));
-
-    Assert.assertTrue(
-        LoadTsFileScheduler.isSameRegionReplicaSet(
-            original,
-            new TRegionReplicaSet(regionId, Arrays.asList(dataNode3, dataNode5, dataNode1))));
-    Assert.assertFalse(
-        LoadTsFileScheduler.isSameRegionReplicaSet(
-            original,
-            new TRegionReplicaSet(
-                regionId, Arrays.asList(dataNode3, dataNode5, createDataNodeLocation(7, 10737)))));
-    Assert.assertFalse(
-        LoadTsFileScheduler.isSameRegionReplicaSet(
-            original,
-            new TRegionReplicaSet(
-                regionId, Arrays.asList(dataNode3, dataNode5, createDataNodeLocation(1, 11731)))));
-    Assert.assertFalse(
-        LoadTsFileScheduler.isSameRegionReplicaSet(
-            original,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
-                Arrays.asList(dataNode3, dataNode5, dataNode1))));
-  }
-
-  private static TDataNodeLocation createDataNodeLocation(int dataNodeId, int internalPort) {
-    return new TDataNodeLocation()
-        .setDataNodeId(dataNodeId)
-        .setInternalEndPoint(new TEndPoint("127.0.0.1", internalPort));
+    Assert.assertEquals(0L, memoryBoundedBuffer.getDataSize());
   }
 }

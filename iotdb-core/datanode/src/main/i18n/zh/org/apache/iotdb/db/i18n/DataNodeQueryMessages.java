@@ -26,6 +26,62 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
       "Thrift 最大帧大小 %d 无效，来源：%s";
+  public static final String EXCEPTION_CLIENTMANAGER_CANNOT_BE_NULL_FAF70317 =
+      "clientManager 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_QUERY_FRAME_SIZE_FROM_ARG_4A82B38D =
+      "从 %s 查询帧大小失败";
+  public static final String EXCEPTION_BODYSIZELIMIT_MUST_BE_POSITIVE_EECFA175 =
+      "bodySizeLimit 必须为正数";
+  public static final String EXCEPTION_INVALID_SLICE_COUNT_ARGUMENTS_5ADCE8CC =
+      "分片数量参数无效";
+  public static final String EXCEPTION_FETCHER_CANNOT_BE_NULL_6C143C90 = "fetcher 不能为 null";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRIEVE_PARTITION_FROM_FETCHER_PARTITION_RESULT_IS_NULL_9CD4434D =
+          "从 fetcher 获取分区失败：分区结果为 null";
+  public static final String
+      EXCEPTION_MISSING_DATA_REGION_REPLICA_SET_FOR_DEVICE_ARG_AT_PARTITION_ARG_18A9E160 =
+          "device %s 在分区 %s 上缺少 data region 副本集";
+  public static final String EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8 =
+      "partitionFetcher 不能为 null";
+  public static final String EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B =
+      "索引 %d 处的 ChunkData 不能为 null";
+  public static final String EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC =
+      "chunk 的 device 不能为 null";
+  public static final String EXCEPTION_CHUNK_TIME_PARTITION_SLOT_CANNOT_BE_NULL_E5B04C6F =
+      "chunk 的时间分区槽不能为 null";
+  public static final String
+      EXCEPTION_PARTITION_FETCHER_RETURNED_MISMATCHED_REPLICA_SET_SIZE_EXPECTED_ARG_ACTUAL_ARG_B7A988CD =
+          "分区获取器返回的副本集数量不匹配：期望 %d，实际 %d";
+  public static final String
+      EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2 =
+          "device %s 在分区 %s 上解析到 null 副本集";
+  public static final String EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22 =
+      "queryContext 不能为 null";
+  public static final String EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4 =
+      "tsFileNodeList 不能为 null";
+  public static final String EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6 =
+      "failedTsFileNodeIndexes 不能为 null";
+  public static final String EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790 =
+      "stateMachine 不能为 null";
+  public static final String LOG_ILLEGAL_FAILED_NODE_INDEX_ARG_OUT_OF_BOUNDS_0_ARG_285B9862 =
+      "非法的失败节点索引 {}，超出范围 [0, {})";
+  public static final String EXCEPTION_FRAGMENTID_CANNOT_BE_NULL_7726B33B =
+      "fragmentId 不能为 null";
+  public static final String EXCEPTION_DISPATCHER_CANNOT_BE_NULL_6118319E =
+      "dispatcher 不能为 null";
+  public static final String EXCEPTION_TSFILERESOURCE_CANNOT_BE_NULL_C63F7B08 =
+      "TsFileResource 不能为 null";
+  public static final String EXCEPTION_SINGLETSFILENODE_CANNOT_BE_NULL_4EA6CF51 =
+      "singleTsFileNode 不能为 null";
+  public static final String EXCEPTION_MEMORYBUFFER_CANNOT_BE_NULL_77101F0C =
+      "memoryBuffer 不能为 null";
+  public static final String EXCEPTION_DISPATCHCALLBACK_CANNOT_BE_NULL_C7A1AC6A =
+      "dispatchCallback 不能为 null";
+  public static final String EXCEPTION_BLOCK_CANNOT_BE_NULL_7E31451D = "block 不能为 null";
+  public static final String EXCEPTION_TSFILEDATA_CANNOT_BE_NULL_EE1DDEC2 =
+      "tsFileData 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_OFFER_CHUNK_TO_DISPATCHER_0300D5DD =
+      "向 dispatcher 提交 chunk 失败";
   public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
       "向节点派发 Load 命令失败，命令：%s，节点：%s，异常：%s";
 
@@ -1191,6 +1247,9 @@ public final class DataNodeQueryMessages {
       "开始本地加载 TsFile {}。";
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "加载：所有失败的 TsFile 已转换为 Tablet 并插入。";
+  public static final String
+      LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3 =
+          "加载：部分 TsFile 通过转换为 Tablet 仍加载失败。失败的 TsFile：%s";
 
   // --- Plan / Statement ---
 
@@ -3237,6 +3296,8 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移，将转换为 insertion 以避免数据丢失。";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "成功加载 TsFile {}，加载进度 [{}/{}]";
+  public static final String LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9 =
+      "LOAD 批次结束，删除 %d 个源 TsFile";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
 
       "无法加载 TsFile {}，加载进度 [{}/{}]。";
@@ -3252,6 +3313,8 @@ public final class DataNodeQueryMessages {
   public static final String DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG =
 
       "分发 TsFile 片段到 ReplicaSet {} 出错。结果状态码 {}。 ";
+  public static final String LOG_LOAD_CONSENSUS_SUBMIT_TRANSIENT_FAILURE_RETRY_D7E1D9A6 =
+      "提交 LOAD 共识 {}（load {}）到 {} 时遇到瞬时失败，将重试（{}/{}）：{}";
   public static final String RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG =
 
       "结果状态消息 {}。分发片段节点出错：%n{}";
@@ -3261,6 +3324,10 @@ public final class DataNodeQueryMessages {
   public static final String WAIT_FOR_LOADING_S_TIME_OUT =
 
       "等待加载 %s 超时。";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B =
+      "任务加载期间 region {} 的路由已从 {} 变为 {}，任务将跟随新路由";
+  public static final String EXCEPTION_NO_ROUTE_IS_KNOWN_FOR_REGION_ARG_OF_THE_LOAD_TASK_BC8F698F =
+      "加载任务中 region %s 没有已知路由";
   public static final String DISPATCH_LOAD_COMMAND_ARG_OF_TSFILE_ARG_ERROR_TO_REPLICASETS_ARG_ERROR =
 
       "分发加载命令 {}（TsFile {}）到 replicaSets {} 时出错。 ";
@@ -4629,6 +4696,13 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "'percentile' 函数的第二个参数 percentage 必须是 double 字面量";
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "测点 %s%s%s 的数据类型不匹配，TsFile 中类型：%s，IoTDB 中类型：%s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "释放外部 TsFile 查询资源失败";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2 = "未知的 LoadTsFileConsensusOp 序号：";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_EC07D9BE =
+      "未知的 LoadTsFileConsensusOp 序号：%s";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_B7269F99 =
+      "无法重新查询 region %s 的路由：LOAD 任务 %s 的 %s 不会在失败的路由上重试。";
+  public static final String LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_935B3C4F =
+      "LOAD 任务 %s 在 region %s 的提交结果无法确定：%s";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "在 IoTDBLocal 查询开始前，外层查询已超时";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "关闭索引 {} 处的 UDF 结果集失败";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "未找到内部查询执行";
@@ -4693,5 +4767,20 @@ public final class DataNodeQueryMessages {
       "没有更多可用的 DeviceEntry 记录";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
+      "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
 
+  public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
+      "ChunkData 中不包含任何物理 chunk";
+  public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device 不能为 null";
+  public static final String EXCEPTION_CHUNK_CANNOT_BE_NULL_280ECF98 = "chunk 不能为 null";
+  public static final String EXCEPTION_CHUNKDATA_CANNOT_BE_NULL_7D931C4D = "chunkData 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_GROUP_HEADER_SIZE_E6B40B2C =
+      "计算 chunk group header 大小失败";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_HEADER_SIZE_2E88289A =
+      "计算 chunk header 大小失败";
+  public static final String LOG_DISPATCH_LOAD_PIECE_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_TSFILE_ARG_DATASIZE_ARG_REPLICASET_ARG_D9C87EB7 =
+      "下发 LOAD piece：loadId={}，regionId={}，pieceIndex={}，tsFile={}，dataSize={}，replicaSet={}";
+  public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
+      "下发 LOAD piece 成功：loadId={}，regionId={}，pieceIndex={}，dataSize={}";
 }

@@ -26,6 +26,62 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
       "Invalid Thrift maximum frame size %d from %s";
+  public static final String EXCEPTION_CLIENTMANAGER_CANNOT_BE_NULL_FAF70317 =
+      "clientManager cannot be null";
+  public static final String EXCEPTION_FAILED_TO_QUERY_FRAME_SIZE_FROM_ARG_4A82B38D =
+      "Failed to query frame size from %s";
+  public static final String EXCEPTION_BODYSIZELIMIT_MUST_BE_POSITIVE_EECFA175 =
+      "bodySizeLimit must be positive";
+  public static final String EXCEPTION_INVALID_SLICE_COUNT_ARGUMENTS_5ADCE8CC =
+      "Invalid slice count arguments";
+  public static final String EXCEPTION_FETCHER_CANNOT_BE_NULL_6C143C90 = "fetcher cannot be null";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRIEVE_PARTITION_FROM_FETCHER_PARTITION_RESULT_IS_NULL_9CD4434D =
+          "Failed to retrieve partition from fetcher: partition result is null";
+  public static final String
+      EXCEPTION_MISSING_DATA_REGION_REPLICA_SET_FOR_DEVICE_ARG_AT_PARTITION_ARG_18A9E160 =
+          "Missing data region replica set for device %s at partition %s";
+  public static final String EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8 =
+      "partitionFetcher cannot be null";
+  public static final String EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B =
+      "ChunkData at index %d cannot be null";
+  public static final String EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC =
+      "Chunk device cannot be null";
+  public static final String EXCEPTION_CHUNK_TIME_PARTITION_SLOT_CANNOT_BE_NULL_E5B04C6F =
+      "Chunk time partition slot cannot be null";
+  public static final String
+      EXCEPTION_PARTITION_FETCHER_RETURNED_MISMATCHED_REPLICA_SET_SIZE_EXPECTED_ARG_ACTUAL_ARG_B7A988CD =
+          "Partition fetcher returned mismatched replica set size: expected %d, actual %d";
+  public static final String
+      EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2 =
+          "Null replica set resolved for device %s at partition %s";
+  public static final String EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22 =
+      "queryContext cannot be null";
+  public static final String EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4 =
+      "tsFileNodeList cannot be null";
+  public static final String EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6 =
+      "failedTsFileNodeIndexes cannot be null";
+  public static final String EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790 =
+      "stateMachine cannot be null";
+  public static final String LOG_ILLEGAL_FAILED_NODE_INDEX_ARG_OUT_OF_BOUNDS_0_ARG_285B9862 =
+      "Illegal failed node index {} out of bounds [0, {})";
+  public static final String EXCEPTION_FRAGMENTID_CANNOT_BE_NULL_7726B33B =
+      "fragmentId cannot be null";
+  public static final String EXCEPTION_DISPATCHER_CANNOT_BE_NULL_6118319E =
+      "dispatcher cannot be null";
+  public static final String EXCEPTION_TSFILERESOURCE_CANNOT_BE_NULL_C63F7B08 =
+      "TsFileResource cannot be null";
+  public static final String EXCEPTION_SINGLETSFILENODE_CANNOT_BE_NULL_4EA6CF51 =
+      "singleTsFileNode cannot be null";
+  public static final String EXCEPTION_MEMORYBUFFER_CANNOT_BE_NULL_77101F0C =
+      "memoryBuffer cannot be null";
+  public static final String EXCEPTION_DISPATCHCALLBACK_CANNOT_BE_NULL_C7A1AC6A =
+      "dispatchCallback cannot be null";
+  public static final String EXCEPTION_BLOCK_CANNOT_BE_NULL_7E31451D = "block cannot be null";
+  public static final String EXCEPTION_TSFILEDATA_CANNOT_BE_NULL_EE1DDEC2 =
+      "tsFileData cannot be null";
+  public static final String EXCEPTION_FAILED_TO_OFFER_CHUNK_TO_DISPATCHER_0300D5DD =
+      "Failed to offer chunk to dispatcher";
   public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
       "failed to dispatch load command %s to node %s because of exception: %s";
 
@@ -1211,6 +1267,9 @@ public final class DataNodeQueryMessages {
       "Start load TsFile {} locally.";
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "Load: all failed TsFiles are converted to tablets and inserted.";
+  public static final String
+      LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3 =
+          "Load: failed to load some TsFiles by converting them into tablets. Failed TsFiles: %s";
 
   // --- Plan / Statement ---
 
@@ -2761,6 +2820,8 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "Load TsFile {} Successfully, load process [{}/{}]";
+  public static final String LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9 =
+      "LOAD batch finished, deleting %d source TsFiles after load";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
       "Can not Load TsFile {}, load process [{}/{}]";
   public static final String LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG =
@@ -2771,12 +2832,18 @@ public final class DataNodeQueryMessages {
       "Parse or send TsFile %s error.";
   public static final String DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG =
       "Dispatch one piece to ReplicaSet {} error. Result status code {}. ";
+  public static final String LOG_LOAD_CONSENSUS_SUBMIT_TRANSIENT_FAILURE_RETRY_D7E1D9A6 =
+      "Transient failure while submitting LOAD consensus {} (load {}) to {}, will retry ({}/{}): {}";
   public static final String RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG =
       "Result status message {}. Dispatch piece node error:%n{}";
   public static final String SUB_STATUS_CODE_ARG_SUB_STATUS_MESSAGE_ARG =
       "Sub status code {}. Sub status message {}.";
   public static final String WAIT_FOR_LOADING_S_TIME_OUT =
       "Wait for loading %s time out.";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B =
+      "The route of region {} changed from {} to {} while the task is being loaded, the task follows it";
+  public static final String EXCEPTION_NO_ROUTE_IS_KNOWN_FOR_REGION_ARG_OF_THE_LOAD_TASK_BC8F698F =
+      "No route is known for region %s of the load task";
   public static final String DISPATCH_LOAD_COMMAND_ARG_OF_TSFILE_ARG_ERROR_TO_REPLICASETS_ARG_ERROR =
       "Dispatch load command {} of TsFile {} error to replicaSets {} error. ";
   public static final String RESULT_STATUS_CODE_ARG_RESULT_STATUS_MESSAGE_ARG =
@@ -3874,6 +3941,13 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "The second argument of 'percentile' function percentage must be a double literal";
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "Failed to release external TsFile query resource";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2 = "Unknown LoadTsFileConsensusOp ordinal: ";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_EC07D9BE =
+      "Unknown LoadTsFileConsensusOp ordinal: %s";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_B7269F99 =
+      "The route of region %s cannot be looked up again: %s of LOAD task %s is not repeated on the route it failed on.";
+  public static final String LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_935B3C4F =
+      "The commit outcome of LOAD task %s in region %s could not be resolved: %s";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "Outer query timeout exceeded before IoTDBLocal query starts";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "Failed to close UDF result set at index {}";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "Internal query execution not found";
@@ -3937,5 +4011,21 @@ public final class DataNodeQueryMessages {
       "No more DeviceEntry records are available";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
+      "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
 
+  public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
+      "ChunkData contains no physical chunk";
+  public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device cannot be null";
+  public static final String EXCEPTION_CHUNK_CANNOT_BE_NULL_280ECF98 = "chunk cannot be null";
+  public static final String EXCEPTION_CHUNKDATA_CANNOT_BE_NULL_7D931C4D =
+      "chunkData cannot be null";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_GROUP_HEADER_SIZE_E6B40B2C =
+      "Failed to compute chunk group header size";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_HEADER_SIZE_2E88289A =
+      "Failed to compute chunk header size";
+  public static final String LOG_DISPATCH_LOAD_PIECE_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_TSFILE_ARG_DATASIZE_ARG_REPLICASET_ARG_D9C87EB7 =
+      "Dispatch LOAD piece: loadId={}, regionId={}, pieceIndex={}, tsFile={}, dataSize={}, replicaSet={}";
+  public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
+      "Dispatch LOAD piece success: loadId={}, regionId={}, pieceIndex={}, dataSize={}";
 }
