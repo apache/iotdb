@@ -268,6 +268,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterParser;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterParser;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -315,6 +316,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
 
   private static final ColumnFilterParser COLUMN_FILTER_PARSER = new ColumnFilterParser();
+  private static final TagFilterParser TAG_FILTER_PARSER = new TagFilterParser();
 
   private final IClientSession clientSession;
 
@@ -1604,6 +1606,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     node.getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     validateAndNormalizeColumnFilter(node.getTopicAttributes());
+    validateAndNormalizeTagFilter(node.getTopicAttributes());
 
     return new CreateTopicTask(node);
   }
@@ -1616,42 +1619,63 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     node.getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     validateAndNormalizeColumnFilter(node.getTopicAttributes());
+    validateAndNormalizeTagFilter(node.getTopicAttributes());
 
     return new AlterTopicTask(node);
   }
 
   private static void validateAndNormalizeColumnFilter(final Map<String, String> topicAttributes) {
-    String columnFilterKey = null;
-    String columnFilter = null;
-    boolean hasColumnFilter = false;
+    validateAndNormalizeSubscriptionFilter(
+        topicAttributes, TopicConstant.COLUMN_FILTER_KEY, COLUMN_FILTER_PARSER::parseAndValidate);
+  }
+
+  private static void validateAndNormalizeTagFilter(final Map<String, String> topicAttributes) {
+    validateAndNormalizeSubscriptionFilter(
+        topicAttributes, TopicConstant.TAG_FILTER_KEY, TAG_FILTER_PARSER::parseAndValidate);
+  }
+
+  private static void validateAndNormalizeSubscriptionFilter(
+      final Map<String, String> topicAttributes,
+      final String expectedKey,
+      final SubscriptionFilterValidator validator) {
+    String filterKey = null;
+    String filter = null;
+    boolean hasFilter = false;
     for (final Map.Entry<String, String> entry : topicAttributes.entrySet()) {
-      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(entry.getKey())) {
-        if (hasColumnFilter) {
+      if (expectedKey.equalsIgnoreCase(entry.getKey())) {
+        if (hasFilter) {
           throw new SemanticException(
               String.format(
-                  "Failed to create or alter topic, duplicate %s attributes are not allowed",
-                  TopicConstant.COLUMN_FILTER_KEY));
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578,
+                  expectedKey));
         }
-        hasColumnFilter = true;
-        columnFilterKey = entry.getKey();
-        columnFilter = entry.getValue();
+        hasFilter = true;
+        filterKey = entry.getKey();
+        filter = entry.getValue();
       }
     }
 
-    if (!hasColumnFilter) {
+    if (!hasFilter) {
       return;
     }
 
-    if (!TopicConstant.COLUMN_FILTER_KEY.equals(columnFilterKey)) {
-      topicAttributes.remove(columnFilterKey);
-      topicAttributes.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+    if (!expectedKey.equals(filterKey)) {
+      topicAttributes.remove(filterKey);
+      topicAttributes.put(expectedKey, filter);
     }
 
     try {
-      COLUMN_FILTER_PARSER.parseAndValidate(columnFilter);
+      validator.validate(filter);
     } catch (final SubscriptionException e) {
       throw new SemanticException(e.getMessage());
     }
+  }
+
+  @FunctionalInterface
+  private interface SubscriptionFilterValidator {
+
+    void validate(String filter) throws SubscriptionException;
   }
 
   @Override

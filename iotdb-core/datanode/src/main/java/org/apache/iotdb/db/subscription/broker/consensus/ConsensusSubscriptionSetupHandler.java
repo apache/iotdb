@@ -632,6 +632,7 @@ public class ConsensusSubscriptionSetupHandler {
 
     if (isTableTopic) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, topicConfig);
+      SubscriptionAgent.broker().refreshTagFilter(topicName, topicConfig);
       // Table model: database + table name pattern
       tablePattern = buildTablePattern(topicConfig);
       return new ConsensusLogToTabletConverter(

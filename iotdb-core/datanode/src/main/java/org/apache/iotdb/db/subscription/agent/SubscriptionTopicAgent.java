@@ -112,11 +112,16 @@ public class SubscriptionTopicAgent {
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
     if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
-    } else if (!metaFromCoordinator.getConfig().isTableTopic()
+    }
+    if (shouldRefreshTagFilter(oldMeta, metaFromCoordinator)) {
+      SubscriptionAgent.broker().refreshTagFilter(topicName, metaFromCoordinator.getConfig());
+    }
+    if (!metaFromCoordinator.getConfig().isTableTopic()
         && !topicMetaKeeper.containsTopicMeta(topicName, true)) {
       // ConfigNode rejects column-filter on tree topics. Drop defensively in case stale or replayed
       // topic metadata reaches this DataNode after a table-topic to tree-topic transition.
       SubscriptionAgent.broker().dropColumnFilter(topicName);
+      SubscriptionAgent.broker().dropTagFilter(topicName);
     }
     SubscriptionAgent.broker()
         .refreshConsensusQueueOrderMode(
@@ -152,6 +157,35 @@ public class SubscriptionTopicAgent {
                     newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
   }
 
+  static boolean shouldRefreshTagFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
+    if (Objects.isNull(newMeta) || !newMeta.getConfig().isTableTopic()) {
+      return false;
+    }
+    if (Objects.isNull(oldMeta) || !oldMeta.getConfig().isTableTopic()) {
+      return true;
+    }
+
+    final TopicConfig oldConfig = oldMeta.getConfig();
+    final TopicConfig newConfig = newMeta.getConfig();
+    return !Objects.equals(
+            normalizeTagFilterValue(oldConfig.getTagFilter()),
+            normalizeTagFilterValue(newConfig.getTagFilter()))
+        || !Objects.equals(
+            normalizeTagFilterValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)),
+            normalizeTagFilterValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)))
+        || !Objects.equals(
+            normalizeTagFilterValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)),
+            normalizeTagFilterValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
+  }
+
   private static String getAttributeIgnoreCase(
       final TopicConfig topicConfig, final String key, final String defaultValue) {
     return topicConfig.getAttribute().entrySet().stream()
@@ -164,6 +198,10 @@ public class SubscriptionTopicAgent {
 
   private static String normalizeColumnFilterBindingValue(final String value) {
     return Objects.nonNull(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
+  }
+
+  private static String normalizeTagFilterValue(final String value) {
+    return Objects.nonNull(value) ? value.trim() : "";
   }
 
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
@@ -232,6 +270,7 @@ public class SubscriptionTopicAgent {
     }
     if (Objects.nonNull(topicMeta) && topicMeta.visibleUnderTableModel()) {
       SubscriptionAgent.broker().dropColumnFilter(topicName);
+      SubscriptionAgent.broker().dropTagFilter(topicName);
     }
   }
 

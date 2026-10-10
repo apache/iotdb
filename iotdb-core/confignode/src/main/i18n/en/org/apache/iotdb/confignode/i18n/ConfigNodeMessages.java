@@ -676,6 +676,15 @@ public final class ConfigNodeMessages {
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
   public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "Failed to create or alter topic, duplicate %s attributes are not allowed";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "Failed to create or alter topic, %s is only supported for table topics";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_SHOULD_NOT_BE_EMPTY_767B1148 =
+          "Failed to create or alter topic, %s should not be empty";
+  public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
           "Failed to create or alter topic, subscribing only to the __audit database or paths under it is not allowed";
   public static final String LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605 =

@@ -39,6 +39,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -93,14 +94,41 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test
+  public void testFilteredTabletBatchIsAckedWithoutReturningEmptyMessage()
+      throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, true);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(1_000L);
+
+      Assert.assertTrue(messages.isEmpty());
+      Assert.assertEquals(1, consumer.getAcknowledgedCommitContexts().size());
+      Assert.assertEquals(
+          new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 0L),
+          consumer.getAcknowledgedCommitContexts().get(0));
+    } finally {
+      consumer.close();
+    }
+  }
+
   private static class TestPullConsumer extends AbstractSubscriptionPullConsumer {
 
     private final Map<Integer, Integer> pollCounts = new HashMap<>();
+    private final List<SubscriptionCommitContext> acknowledgedCommitContexts = new ArrayList<>();
     private final int dataProviderId;
     private final int emptyPollsBeforeData;
+    private final boolean emptyTabletBatch;
     private int backoffCount;
 
     private TestPullConsumer(final int dataProviderId, final int emptyPollsBeforeData) {
+      this(dataProviderId, emptyPollsBeforeData, false);
+    }
+
+    private TestPullConsumer(
+        final int dataProviderId, final int emptyPollsBeforeData, final boolean emptyTabletBatch) {
       super(
           new AbstractSubscriptionPullConsumerBuilder()
               .host(HOST)
@@ -112,6 +140,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
               .autoCommit(false));
       this.dataProviderId = dataProviderId;
       this.emptyPollsBeforeData = emptyPollsBeforeData;
+      this.emptyTabletBatch = emptyTabletBatch;
     }
 
     @Override
@@ -141,7 +170,8 @@ public class SubscriptionConsumerMultiProviderPollTest {
           connectionTimeoutInMs,
           pollCounts,
           dataProviderId,
-          emptyPollsBeforeData);
+          emptyPollsBeforeData,
+          emptyTabletBatch);
     }
 
     private void subscribeTopic() {
@@ -161,6 +191,17 @@ public class SubscriptionConsumerMultiProviderPollTest {
       return backoffCount;
     }
 
+    private List<SubscriptionCommitContext> getAcknowledgedCommitContexts() {
+      return acknowledgedCommitContexts;
+    }
+
+    @Override
+    protected void ack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+      for (final SubscriptionMessage message : messages) {
+        acknowledgedCommitContexts.add(message.getCommitContext());
+      }
+    }
+
     @Override
     void sleepAfterEmptyPollRound() {
       backoffCount++;
@@ -173,6 +214,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private final Map<Integer, Integer> pollCounts;
     private final int dataProviderId;
     private final int emptyPollsBeforeData;
+    private final boolean emptyTabletBatch;
 
     private TestSubscriptionProvider(
         final TEndPoint endPoint,
@@ -188,7 +230,8 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final int connectionTimeoutInMs,
         final Map<Integer, Integer> pollCounts,
         final int dataProviderId,
-        final int emptyPollsBeforeData) {
+        final int emptyPollsBeforeData,
+        final boolean emptyTabletBatch) {
       super(
           endPoint,
           username,
@@ -205,6 +248,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
       this.pollCounts = pollCounts;
       this.dataProviderId = dataProviderId;
       this.emptyPollsBeforeData = emptyPollsBeforeData;
+      this.emptyTabletBatch = emptyTabletBatch;
     }
 
     @Override
@@ -265,6 +309,18 @@ public class SubscriptionConsumerMultiProviderPollTest {
       }
       final SubscriptionCommitContext commitContext =
           new SubscriptionCommitContext(dataNodeId, 0, TOPIC, CONSUMER_GROUP_ID, 0L);
+      if (emptyTabletBatch) {
+        final int pollCount = pollCounts.get(dataNodeId);
+        if (pollCount != emptyPollsBeforeData + 1) {
+          return Collections.emptyList();
+        }
+        return new ArrayList<>(
+            Collections.singletonList(
+                new SubscriptionPollResponse(
+                    SubscriptionPollResponseType.TABLETS.getType(),
+                    new TabletsPayload(Collections.emptyMap(), 1),
+                    commitContext)));
+      }
       final List<IMeasurementSchema> schemas =
           Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
       final Tablet tablet = new Tablet("root.sg.d1", schemas, 1);
@@ -276,6 +332,20 @@ public class SubscriptionConsumerMultiProviderPollTest {
               SubscriptionPollResponseType.TABLETS.getType(),
               new TabletsPayload(Collections.singletonList(tablet), -1),
               commitContext));
+    }
+
+    @Override
+    List<SubscriptionPollResponse> pollTablets(
+        final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
+        throws SubscriptionException {
+      if (emptyTabletBatch && dataNodeId == dataProviderId && offset == 1) {
+        return Collections.singletonList(
+            new SubscriptionPollResponse(
+                SubscriptionPollResponseType.TABLETS.getType(),
+                new TabletsPayload(Collections.emptyMap(), 0),
+                commitContext));
+      }
+      return Collections.emptyList();
     }
   }
 }

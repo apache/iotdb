@@ -66,11 +66,74 @@ public class SubscriptionTopicAgentTest {
         SubscriptionTopicAgent.shouldRefreshColumnFilter(null, createTreeTopicMeta()));
   }
 
+  @Test
+  public void testTagFilterRefreshSkippedForOwnerOnlyUpdate() {
+    final TopicMeta oldMeta =
+        createTableTopicMeta("column_name = \"temperature\"", "region = \"north\"", "db", "t1");
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "owner-1");
+    updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
+
+    Assert.assertFalse(
+        SubscriptionTopicAgent.shouldRefreshTagFilter(
+            oldMeta, oldMeta.deepCopyWithUpdatedAttributes(updatedAttributes)));
+  }
+
+  @Test
+  public void testTagFilterRefreshTriggeredForBindingInputUpdate() {
+    final TopicMeta oldMeta =
+        createTableTopicMeta("column_name = \"temperature\"", "region = \"north\"", "db", "t1");
+
+    Assert.assertTrue(
+        SubscriptionTopicAgent.shouldRefreshTagFilter(
+            oldMeta,
+            createTableTopicMeta(
+                "column_name = \"temperature\"", "region = \"north\"", "db2", "t1")));
+    Assert.assertTrue(
+        SubscriptionTopicAgent.shouldRefreshTagFilter(
+            oldMeta,
+            createTableTopicMeta(
+                "column_name = \"temperature\"", "region = \"north\"", "db", "t2")));
+  }
+
+  @Test
+  public void testTagFilterRefreshTriggeredForCaseSensitiveExpressionUpdate() {
+    final TopicMeta oldMeta =
+        createTableTopicMeta("column_name = \"temperature\"", "region = \"north\"", "db", "t1");
+
+    Assert.assertTrue(
+        SubscriptionTopicAgent.shouldRefreshTagFilter(
+            oldMeta,
+            createTableTopicMeta(
+                "column_name = \"temperature\"", "region = \"North\"", "db", "t1")));
+  }
+
+  @Test
+  public void testTagFilterRefreshTriggeredForNewTableTopicOnly() {
+    Assert.assertTrue(
+        SubscriptionTopicAgent.shouldRefreshTagFilter(
+            null,
+            createTableTopicMeta(
+                "column_name = \"temperature\"", "region = \"north\"", "db", "t1")));
+    Assert.assertFalse(SubscriptionTopicAgent.shouldRefreshTagFilter(null, createTreeTopicMeta()));
+  }
+
   private static TopicMeta createTableTopicMeta(
       final String columnFilter, final String database, final String table) {
+    return createTableTopicMeta(columnFilter, null, database, table);
+  }
+
+  private static TopicMeta createTableTopicMeta(
+      final String columnFilter,
+      final String tagFilter,
+      final String database,
+      final String table) {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put("__system.sql-dialect", "table");
     attributes.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+    if (tagFilter != null) {
+      attributes.put(TopicConstant.TAG_FILTER_KEY, tagFilter);
+    }
     attributes.put(TopicConstant.DATABASE_KEY, database);
     attributes.put(TopicConstant.TABLE_KEY, table);
     return new TopicMeta("topic", 1L, attributes);
