@@ -162,11 +162,15 @@ public class PartitionCache {
   /**
    * get database to device map
    *
+   * <p>Tree model only: a tree model device path contains its database, while a table model device
+   * (table + tags) can only be resolved with a known database.
+   *
    * @param deviceIDs the devices that need to hit
    * @param tryToFetch whether try to get all database from config node
    * @param isAutoCreate whether auto create database when cache miss
    * @param userName the userName
    */
+  @TreeModel
   public Map<String, List<IDeviceID>> getDatabaseToDevice(
       final List<IDeviceID> deviceIDs,
       final boolean tryToFetch,
@@ -180,18 +184,23 @@ public class PartitionCache {
             map.computeIfAbsent(databaseName, k -> new ArrayList<>()).add(device);
           }
         };
-    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName);
+    // Tree model only, see the javadoc above.
+    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName, false);
     return result.getMap();
   }
 
   /**
    * get device to database map
    *
+   * <p>Tree model only: a tree model device path contains its database, while a table model device
+   * (table + tags) can only be resolved with a known database.
+   *
    * @param deviceIDs the devices that need to hit
    * @param tryToFetch whether try to get all database from config node
    * @param isAutoCreate whether auto create database when cache miss
    * @param userName the userName
    */
+  @TreeModel
   public Map<IDeviceID, String> getDeviceToDatabase(
       final List<IDeviceID> deviceIDs,
       final boolean tryToFetch,
@@ -205,7 +214,8 @@ public class PartitionCache {
             map.put(device, databaseName);
           }
         };
-    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName);
+    // Tree model only, see the javadoc above.
+    getDatabaseCacheResult(result, deviceIDs, tryToFetch, isAutoCreate, userName, false);
     return result.getMap();
   }
 
@@ -242,9 +252,12 @@ public class PartitionCache {
   /**
    * get all database from configNode and update database cache
    *
+   * <p>Tree model only: the databases requested from the config node are the tree model ones.
+   *
    * @param result the result of get database cache
    * @param deviceIDs the devices that need to hit
    */
+  @TreeModel
   private void fetchDatabaseAndUpdateCache(
       final DatabaseCacheResult<?, ?> result, final List<IDeviceID> deviceIDs)
       throws ClientManagerException, TException {
@@ -290,7 +303,12 @@ public class PartitionCache {
     return Objects.isNull(needLastCache) || needLastCache;
   }
 
-  /** get all database from configNode and update database cache. */
+  /**
+   * get all database from configNode and update database cache.
+   *
+   * @param isTableModel the data model of the requested databases, it must be the model of the
+   *     caller, i.e. {@code false} for a tree model caller and {@code true} for a table model one
+   */
   private void fetchDatabaseAndUpdateCache(final boolean isTableModel)
       throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
@@ -313,11 +331,15 @@ public class PartitionCache {
   /**
    * create not existed database and update database cache
    *
+   * <p>Tree model only: only tree model databases, i.e. {@code root.__system} and {@code
+   * root.__audit}, are created here.
+   *
    * @param result the result of get database cache
    * @param deviceIDs the devices that need to hit
    * @param userName the username
    * @throws RuntimeException if failed to create database
    */
+  @TreeModel
   private void createDatabaseAndUpdateCache(
       final DatabaseCacheResult<?, ?> result,
       final List<IDeviceID> deviceIDs,
@@ -399,10 +421,13 @@ public class PartitionCache {
   /**
    * create not existed database and update database cache
    *
+   * <p>Table model only: the database created here is a table model database.
+   *
    * @param database the database
    * @param userName the username
    * @throws RuntimeException if failed to create database
    */
+  @TableModel
   private void createDatabaseAndUpdateCache(final String database, final String userName)
       throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
@@ -496,13 +521,16 @@ public class PartitionCache {
    * @param tryToFetch whether try to get all database from confignode
    * @param isAutoCreate whether auto create database when device miss
    * @param userName
+   * @param isTableModel the data model of the queried devices; the current callers resolve tree
+   *     model devices, because only a tree model device path contains its database
    */
   private void getDatabaseCacheResult(
       final DatabaseCacheResult<?, ?> result,
       final List<IDeviceID> deviceIDs,
       final boolean tryToFetch,
       final boolean isAutoCreate,
-      final String userName) {
+      final String userName,
+      final boolean isTableModel) {
     if (!isAutoCreate) {
       // TODO: avoid IDeviceID contains "*"
       // miss when deviceId contains *
@@ -530,13 +558,11 @@ public class PartitionCache {
           } else {
             // check if it is to auto create the system or audit database
             for (IDeviceID deviceID : deviceIDs) {
-              if (!deviceID.isTableModel()
-                  && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
+              if (!isTableModel && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
                 createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
                 break;
               }
-              if (!deviceID.isTableModel()
-                  && deviceID.startWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
+              if (!isTableModel && deviceID.startWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
                 createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
                 break;
               }

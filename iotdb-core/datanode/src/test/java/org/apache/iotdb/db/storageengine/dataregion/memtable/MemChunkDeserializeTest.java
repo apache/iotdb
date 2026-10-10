@@ -239,7 +239,7 @@ public class MemChunkDeserializeTest {
             new MeasurementSchema("s4", TSDataType.FLOAT),
             new MeasurementSchema("s5", TSDataType.DOUBLE),
             new MeasurementSchema("s6", TSDataType.TEXT));
-    AlignedWritableMemChunk series = new AlignedWritableMemChunk(schemaList, false);
+    AlignedWritableMemChunk series = new AlignedWritableMemChunk(schemaList);
 
     int count = 1000;
     for (int i = 0; i < count; i++) {
@@ -261,7 +261,7 @@ public class MemChunkDeserializeTest {
     series.serializeToWAL(walBuffer);
     DataInputStream inputStream =
         new DataInputStream(new ByteArrayInputStream(walBuffer.getBuffer().array()));
-    AlignedWritableMemChunk memChunk = AlignedWritableMemChunk.deserialize(inputStream, false);
+    AlignedWritableMemChunk memChunk = AlignedWritableMemChunk.deserialize(inputStream);
 
     AlignedReadOnlyMemChunk readableChunk =
         (AlignedReadOnlyMemChunk) getAlignedReadOnlyChunk(memChunk, schemaList, measurementList);
@@ -293,7 +293,7 @@ public class MemChunkDeserializeTest {
     series.writeNonAlignedPoint(1, 1);
 
     WritableMemChunkGroup group = new WritableMemChunkGroup();
-    group.getMemChunkMap().put(measurement, series);
+    group.getMemChunkMap(true).put(measurement, series);
 
     WALByteBufferForTest walBuffer =
         new WALByteBufferForTest(ByteBuffer.allocate(group.serializedSize()));
@@ -303,7 +303,7 @@ public class MemChunkDeserializeTest {
     DataInputStream inputStream =
         new DataInputStream(new ByteArrayInputStream(walBuffer.getBuffer().array()));
     WritableMemChunkGroup deserialized = WritableMemChunkGroup.deserialize(inputStream);
-    Assert.assertTrue(deserialized.getMemChunkMap().containsKey(measurement));
+    Assert.assertTrue(deserialized.getMemChunkMap(true).containsKey(measurement));
   }
 
   private WritableMemChunk createWritableMemChunkFromBytes(WritableMemChunk series)
@@ -319,7 +319,7 @@ public class MemChunkDeserializeTest {
   private ReadOnlyMemChunk getReadOnlyChunk(WritableMemChunk memChunk, TSDataType dataType)
       throws QueryProcessException, IOException, MetadataException {
     WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
-    memChunkGroup.getMemChunkMap().put("s1", memChunk);
+    memChunkGroup.getMemChunkMap(true).put("s1", memChunk);
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = new HashMap<>();
     memTableMap.put(deviceID, memChunkGroup);
     IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);
@@ -343,7 +343,7 @@ public class MemChunkDeserializeTest {
       List<String> measurementList)
       throws QueryProcessException, IOException, MetadataException {
     AlignedWritableMemChunkGroup memChunkGroup =
-        new AlignedWritableMemChunkGroup(memChunk, schemaList, false);
+        new AlignedWritableMemChunkGroup(memChunk, schemaList);
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = new HashMap<>();
     memTableMap.put(deviceID, memChunkGroup);
     IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);

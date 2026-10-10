@@ -816,7 +816,10 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       return null;
     }
     IWritableMemChunk memChunk =
-        memTableMap.get(deviceID).getMemChunkMap().get(fullPath.getMeasurement());
+        memTableMap
+            .get(deviceID)
+            .getMemChunkMap(context.isIgnoreAllNullRows())
+            .get(fullPath.getMeasurement());
     // check If data type matches
     if (memChunk.getSchema().getType() != fullPath.getMeasurementSchema().getType()
         && !fullPath

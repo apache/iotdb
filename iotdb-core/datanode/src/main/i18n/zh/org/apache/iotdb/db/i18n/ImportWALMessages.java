@@ -24,6 +24,9 @@ public final class ImportWALMessages {
 
   public static final String MESSAGE_IMPORT_WAL_5E42804E = "import-wal";
   public static final String
+      MESSAGE_UNSUPPORTED_WALS_1_WALS_WRITTEN_WITH_THE_ELASTICSTRATEGY_2_WALS_WRITTEN_WITH_THE_ROUNDROBINSTRATEGY_REPLAYING_THEM_MAY_FAIL_C542F812 =
+          "不支持导入以下两类 WAL：(1) 使用 ElasticStrategy 写入的 WAL；(2) 使用 RoundRobinStrategy 写入的 WAL。强行导入可能会出错。";
+  public static final String
       MESSAGE_PATH_OF_A_WAL_FILE_OR_A_DIRECTORY_CONTAINING_WAL_FILES_473D0554 =
           "WAL 文件或包含 WAL 文件的目录路径。";
   public static final String MESSAGE_TARGET_IOTDB_HOST_DEFAULT_127_0_0_1_3729156F =
@@ -79,6 +82,9 @@ public final class ImportWALMessages {
           "不支持的 on_success 值：%s。应为 none 或 delete。";
   public static final String EXCEPTION_TABLE_MODEL_WAL_ENTRIES_REQUIRE_DB_DATABASE_F7597726 =
       "表模型 WAL 条目要求指定 -db/--database。";
+  public static final String
+      EXCEPTION_A_WAL_SNAPSHOT_REQUIRES_A_DECLARED_TARGET_DATABASE_TO_DETERMINE_ITS_DATA_MODEL_SPECIFY_DB_DATABASE_382FC74C =
+          "WAL 快照需要先声明目标数据库才能确定其数据模型。请指定 -db/--database。";
   public static final String EXCEPTION_UNSUPPORTED_WAL_OPERATION_ARG_ABD227A0 =
       "不支持的 WAL 操作：%s";
   public static final String
@@ -135,14 +141,16 @@ public final class ImportWALMessages {
   public static final String MESSAGE_SKIPPED_ARG_CORRUPTED_WAL_FILES_SOURCE_FILES_RETAINED_A889CCE2 =
       "已跳过 %d 个损坏的 WAL 文件；源文件已保留。";
 
-  public static final String MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_AND_ASK_FOR_CONFIRMATION_4B1E409D =
-      "表模型 WAL 条目的目标数据库。省略时尝试从 WAL 文件的父目录名推断，并请求确认。";
+  public static final String MESSAGE_TARGET_DATABASE_FOR_WAL_REPLAY_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_IF_INFERENCE_FAILS_DB_DATABASE_IS_REQUIRED_6EEBC019 =
+      "WAL 重放的目标数据库。省略时尝试从 WAL 文件的父目录名推断；无法推断时必须指定 -db/--database。";
   public static final String MESSAGE_INFERRED_TABLE_DATABASE_ARG_FROM_WAL_DIRECTORY_ARG_REPLAY_INTO_THIS_DATABASE_Y_YES_A_ACCEPT_ALL_INFERRED_DATABASES_N_QUIT_5B59D833 =
       "推断目标表模型数据库为 %s，来源 WAL 目录为 %s。是否向此数据库重放？[y] 同意，[a] 全部同意推断的数据库，[N] 退出：";
   public static final String EXCEPTION_DATABASE_CONFIRMATION_REQUIRED_FOR_WAL_DIRECTORY_ARG_INFERRED_DATABASE_ARG_SPECIFY_DB_DATABASE_OR_SKIP_DB_CONFIRMATION_WHEN_INTERACTIVE_INPUT_IS_UNAVAILABLE_14DF6D36 =
       "需要确认 WAL 目录 %s 的目标数据库（推断结果：%s）。无交互终端时请指定 -db/--database 或 --skip_db_confirmation。";
   public static final String EXCEPTION_REPLAY_INTO_INFERRED_DATABASE_ARG_WAS_NOT_CONFIRMED_SPECIFY_DB_DATABASE_TO_SELECT_THE_TARGET_EXPLICITLY_86F81190 =
       "未确认向推断出的数据库 %s 重放。请使用 -db/--database 显式选择目标。";
+  public static final String EXCEPTION_CANNOT_DETERMINE_THE_TARGET_DATABASE_OF_WAL_DIRECTORIES_ARG_SPECIFY_DB_DATABASE_WHICH_APPLIES_TO_ALL_IMPORTED_DIRECTORIES_55B174E4 =
+      "无法推断 WAL 目录 %s 的目标数据库，请使用 -db/--database 显式指定（-db 会作用于本次导入的所有目录）。";
 
   public static final String MESSAGE_ACCEPT_ALL_INFERRED_DATABASE_NAMES_WITHOUT_CONFIRMATION_DB_DATABASE_STILL_TAKES_PRECEDENCE_FA49A73C =
       "自动接受所有推断出的数据库名，不再询问确认；-db/--database 仍优先。";

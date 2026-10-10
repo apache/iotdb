@@ -165,6 +165,6 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   }
 
   private boolean matchPathPattern(IDeviceID deviceID) throws IllegalPathException {
-    return pathPattern.matchFullPath(CompactionPathUtils.getPath(deviceID));
+    return pathPattern.matchFullPath(CompactionPathUtils.getPath(deviceID, false));
   }
 }

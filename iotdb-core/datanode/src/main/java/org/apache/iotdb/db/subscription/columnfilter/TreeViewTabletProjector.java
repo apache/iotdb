@@ -66,7 +66,6 @@ public class TreeViewTabletProjector {
   public Tablet project(final Tablet treeTablet) {
     if (Objects.isNull(treeTablet)
         || Objects.isNull(treeTablet.getDeviceId())
-        || !treeTablet.getDeviceId().startsWith("root.")
         || Objects.isNull(treeTablet.getValues())) {
       return null;
     }

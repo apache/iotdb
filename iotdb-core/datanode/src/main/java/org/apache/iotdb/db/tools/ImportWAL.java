@@ -163,6 +163,17 @@ public class ImportWAL {
                               .MESSAGE_INFERRED_TABLE_DATABASE_ARG_FROM_WAL_DIRECTORY_ARG_REPLAY_INTO_THIS_DATABASE_Y_YES_A_ACCEPT_ALL_INFERRED_DATABASES_N_QUIT_5B59D833,
                           inferredDatabase,
                           directory));
+      try {
+        requireResolvedDatabases(directoryDatabases);
+      } catch (final IllegalArgumentException e) {
+        // The ElasticStrategy and RoundRobinStrategy WAL node allocation strategies share WAL nodes
+        // between regions, so such a WAL has no per-directory database or data model; repeat the
+        // declaration where the operator has to decide.
+        err.println(
+            ImportWALMessages
+                .MESSAGE_UNSUPPORTED_WALS_1_WALS_WRITTEN_WITH_THE_ELASTICSTRATEGY_2_WALS_WRITTEN_WITH_THE_ROUNDROBINSTRATEGY_REPLAYING_THEM_MAY_FAIL_C542F812);
+        throw e;
+      }
       final ReplayStatistics statistics =
           replayWALDirectories(
               walFiles,
@@ -255,7 +266,7 @@ public class ImportWAL {
             .hasArg()
             .desc(
                 ImportWALMessages
-                    .MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_AND_ASK_FOR_CONFIRMATION_4B1E409D)
+                    .MESSAGE_TARGET_DATABASE_FOR_WAL_REPLAY_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_IF_INFERENCE_FAILS_DB_DATABASE_IS_REQUIRED_6EEBC019)
             .build());
     options.addOption(
         Option.builder()
@@ -383,7 +394,8 @@ public class ImportWAL {
         new PrintWriter(stream, true),
         120,
         ImportWALMessages.MESSAGE_IMPORT_WAL_5E42804E,
-        null,
+        ImportWALMessages
+            .MESSAGE_UNSUPPORTED_WALS_1_WALS_WRITTEN_WITH_THE_ELASTICSTRATEGY_2_WALS_WRITTEN_WITH_THE_ROUNDROBINSTRATEGY_REPLAYING_THEM_MAY_FAIL_C542F812,
         options,
         2,
         2,
@@ -444,8 +456,9 @@ public class ImportWAL {
       final WALReplayer.ReplayDecisionController replayDecisionController)
       throws IOException {
     final Session treeSession = createSession(host, port, username, password, null);
+    final boolean isTableModel = database != null && PathUtils.isTableModelDatabase(database);
     final Session tableSession =
-        database == null ? null : createSession(host, port, username, password, database);
+        isTableModel ? createSession(host, port, username, password, database) : null;
     try {
       treeSession.open(false);
       if (tableSession != null) {
@@ -574,6 +587,26 @@ public class ImportWAL {
       databases.put(directory, database);
     }
     return databases;
+  }
+
+  /**
+   * The data model of every directory must be known before any replay starts, otherwise a WAL
+   * snapshot could only be replayed with a guessed model.
+   */
+  static void requireResolvedDatabases(final Map<Path, String> directoryDatabases) {
+    final List<String> unresolvedDirectories = new ArrayList<>();
+    for (final Map.Entry<Path, String> entry : directoryDatabases.entrySet()) {
+      if (entry.getValue() == null) {
+        unresolvedDirectories.add(entry.getKey().toString());
+      }
+    }
+    if (!unresolvedDirectories.isEmpty()) {
+      throw new IllegalArgumentException(
+          String.format(
+              ImportWALMessages
+                  .EXCEPTION_CANNOT_DETERMINE_THE_TARGET_DATABASE_OF_WAL_DIRECTORIES_ARG_SPECIFY_DB_DATABASE_WHICH_APPLIES_TO_ALL_IMPORTED_DIRECTORIES_55B174E4,
+              String.join(", ", unresolvedDirectories)));
+    }
   }
 
   private static final Comparator<Path> WAL_FILE_COMPARATOR =
@@ -918,9 +951,9 @@ public class ImportWAL {
     private SessionWALReplayer(
         final Session treeSession,
         final Session tableSession,
-        final String tableDatabaseName,
+        final String targetDatabaseName,
         final WALReplayer.ReplayDecisionController replayDecisionController) {
-      super(treeSession, tableSession, tableDatabaseName, replayDecisionController);
+      super(treeSession, tableSession, targetDatabaseName, replayDecisionController);
       this.treeSession = treeSession;
       this.tableSession = tableSession;
     }
@@ -936,30 +969,45 @@ public class ImportWAL {
 
     private final Session treeSession;
     private final Session tableSession;
+    private final String targetDatabaseName;
+    private final boolean isTableModel;
     private final ConsensusLogToTabletConverter converter;
     private final ReplayDecisionPrompt replayDecisionPrompt;
     private final Map<String, TableSchema> tableSchemas = new HashMap<>();
 
     WALReplayer(
-        final Session treeSession, final Session tableSession, final String tableDatabaseName) {
+        final Session treeSession, final Session tableSession, final String targetDatabaseName) {
       this(
           treeSession,
           tableSession,
-          tableDatabaseName,
+          targetDatabaseName,
           new ReplayDecisionController(System.console()));
     }
 
+    /**
+     * @param treeSession the session which replays tree model entries, it carries no database
+     * @param tableSession the session which replays table model entries, null when no table
+     *     database is declared
+     * @param targetDatabaseName the target database resolved before replay; null means no target
+     *     database is resolved, so the data model is unknown and snapshot entries are rejected
+     *     until -db/--database is declared
+     * @param replayDecisionPrompt the prompt which decides how to handle entries that cannot be
+     *     replayed automatically
+     */
     WALReplayer(
         final Session treeSession,
         final Session tableSession,
-        final String tableDatabaseName,
+        final String targetDatabaseName,
         final ReplayDecisionPrompt replayDecisionPrompt) {
       this.treeSession = treeSession;
       this.tableSession = tableSession;
+      this.targetDatabaseName = targetDatabaseName;
+      this.isTableModel =
+          targetDatabaseName != null && PathUtils.isTableModelDatabase(targetDatabaseName);
       this.replayDecisionPrompt = replayDecisionPrompt;
       converter =
           new ConsensusLogToTabletConverter(
-              null, null, ColumnFilterMatcher.matchAll(), tableDatabaseName);
+              null, null, ColumnFilterMatcher.matchAll(), isTableModel ? targetDatabaseName : null);
     }
 
     @Override
@@ -972,9 +1020,8 @@ public class ImportWAL {
         throws IoTDBConnectionException, StatementExecutionException {
       if (entry.getType() == WALEntryType.MEMORY_TABLE_SNAPSHOT
           || entry.getType() == WALEntryType.OLD_MEMORY_TABLE_SNAPSHOT) {
-        return replayMemTableSnapshot((IMemTable) entry.getValue())
-            ? ReplayResult.REPLAYED
-            : ReplayResult.IGNORED;
+        final IMemTable memTable = (IMemTable) entry.getValue();
+        return replayMemTableSnapshot(memTable) ? ReplayResult.REPLAYED : ReplayResult.IGNORED;
       }
       if (entry.getValue() instanceof InsertNode insertNode) {
         replayInsert(insertNode);
@@ -1313,13 +1360,21 @@ public class ImportWAL {
       if (memTable == null || memTable.isSignalMemTable()) {
         return false;
       }
+      if (targetDatabaseName == null && memTable.size(false) > 0) {
+        // Without a resolved target database the data model of the snapshot is unknown, and
+        // guessing it would replay table model data into the tree session. An empty snapshot
+        // carries no data, so it stays ignorable.
+        throw new StatementExecutionException(
+            ImportWALMessages
+                .EXCEPTION_A_WAL_SNAPSHOT_REQUIRES_A_DECLARED_TARGET_DATABASE_TO_DETERMINE_ITS_DATA_MODEL_SPECIFY_DB_DATABASE_382FC74C);
+      }
       boolean replayed = false;
       for (Map.Entry<IDeviceID, IWritableMemChunkGroup> deviceEntry :
           memTable.getMemTableMap().entrySet()) {
         final IDeviceID deviceId = deviceEntry.getKey();
         final IWritableMemChunkGroup group = deviceEntry.getValue();
-        for (IWritableMemChunk chunk : group.getMemChunkMap().values()) {
-          if (chunk == null || chunk.isEmpty()) {
+        for (IWritableMemChunk chunk : group.getMemChunkMap(!isTableModel).values()) {
+          if (chunk == null || chunk.isEmpty(!isTableModel)) {
             continue;
           }
           if (chunk instanceof AlignedWritableMemChunk) {
@@ -1336,8 +1391,7 @@ public class ImportWAL {
         final IDeviceID deviceId, final IWritableMemChunk chunk)
         throws IoTDBConnectionException, StatementExecutionException {
       final List<IMeasurementSchema> schemas = Collections.singletonList(chunk.getSchema());
-      final boolean tableModel = deviceId.isTableModel();
-      requireTableSessionIfNeeded(tableModel);
+      requireTableSessionIfNeeded(isTableModel);
       final TableTabletSchema tabletSchema = createTableTabletSchema(deviceId, schemas);
       final List<TVList> lists = new ArrayList<>();
       lists.addAll(chunk.getSortedList());
@@ -1354,7 +1408,7 @@ public class ImportWAL {
           final int end = Math.min(start + SNAPSHOT_TABLET_ROW_LIMIT, list.rowCount());
           final Tablet tablet =
               buildNonAlignedTablet(deviceId, tabletSchema, schemas, list, start, end);
-          sendTablet(tablet, tableModel, false);
+          sendTablet(tablet, isTableModel, false);
           replayed = true;
         }
       }
@@ -1364,8 +1418,7 @@ public class ImportWAL {
     private boolean replayAlignedMemChunk(
         final IDeviceID deviceId, final AlignedWritableMemChunk chunk)
         throws IoTDBConnectionException, StatementExecutionException {
-      final boolean tableModel = deviceId.isTableModel();
-      requireTableSessionIfNeeded(tableModel);
+      requireTableSessionIfNeeded(isTableModel);
       final List<IMeasurementSchema> schemas = chunk.getSchemaList();
       final TableTabletSchema tabletSchema = createTableTabletSchema(deviceId, schemas);
       final List<AlignedTVList> lists = new ArrayList<>();
@@ -1384,7 +1437,7 @@ public class ImportWAL {
           final int end = Math.min(start + SNAPSHOT_TABLET_ROW_LIMIT, replayableRows.size());
           final Tablet tablet =
               buildAlignedTablet(deviceId, tabletSchema, schemas, list, replayableRows, start, end);
-          sendTablet(tablet, tableModel, true);
+          sendTablet(tablet, isTableModel, true);
           replayed = true;
         }
       }
@@ -1412,7 +1465,7 @@ public class ImportWAL {
     private TableTabletSchema createTableTabletSchema(
         final IDeviceID deviceId, final List<IMeasurementSchema> fieldSchemas)
         throws IoTDBConnectionException, StatementExecutionException {
-      if (!deviceId.isTableModel()) {
+      if (!isTableModel) {
         return new TableTabletSchema(fieldSchemas, null, 0);
       }
       final List<IMeasurementSchema> tagSchemas =

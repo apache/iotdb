@@ -222,7 +222,12 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public long count() {
+  public long count(boolean ignoreAllNullRows) {
+    // a non-aligned chunk never stores all-null rows, so ignoreAllNullRows makes no difference
+    return pointCount();
+  }
+
+  private long pointCount() {
     long count = list.count();
     for (TVList tvList : sortedList) {
       count += tvList.count();
@@ -241,7 +246,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public long getMaxTime() {
+  public long getMaxTime(boolean ignoreAllNullRows) {
     long maxTime = list.getMaxTime();
     for (TVList tvList : sortedList) {
       maxTime = Math.max(maxTime, tvList.getMaxTime());
@@ -260,23 +265,23 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public long getFirstPoint() {
-    if (count() == 0) {
+    if (pointCount() == 0) {
       return Long.MAX_VALUE;
     }
     return getMinTime();
   }
 
   @Override
-  public long getLastPoint() {
-    if (count() == 0) {
+  public long getLastPoint(boolean ignoreAllNullRows) {
+    if (pointCount() == 0) {
       return Long.MIN_VALUE;
     }
-    return getMaxTime();
+    return getMaxTime(ignoreAllNullRows);
   }
 
   @Override
-  public boolean isEmpty() {
-    return count() == 0;
+  public boolean isEmpty(boolean ignoreAllNullRows) {
+    return pointCount() == 0;
   }
 
   @Override
@@ -389,7 +394,11 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public void encode(BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
+  public void encode(
+      BlockingQueue<Object> ioTaskQueue,
+      BatchEncodeInfo encodeInfo,
+      long[] times,
+      boolean ignoreAllNullRows) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingTVList(
           ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.targetChunkSize);

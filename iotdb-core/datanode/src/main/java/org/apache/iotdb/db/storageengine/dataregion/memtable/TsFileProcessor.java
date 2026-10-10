@@ -1584,6 +1584,11 @@ public class TsFileProcessor {
     }
   }
 
+  /** Whether the data region of this processor belongs to a table model database. */
+  private boolean isTableModel() {
+    return dataRegionInfo.getDataRegion().isTableModel();
+  }
+
   /**
    * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
    * <= 'timestamp' in the deletion. <br>
@@ -1599,7 +1604,7 @@ public class TsFileProcessor {
     try {
       boolean deleted = false;
       if (workMemTable != null) {
-        long pointDeleted = workMemTable.delete(deletion);
+        long pointDeleted = workMemTable.delete(deletion, !isTableModel());
         logger.info(
             StorageEngineMessages
                 .STORAGE_LOG_DELETION_DELETION_WITH_IN_WORKMEMTABLE_POINTS_DELETED_00EA995A,
@@ -1767,7 +1772,7 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private Future<?> addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    final Map<IDeviceID, Long> lastTimeForEachDevice = tobeFlushed.getMaxTime();
+    final Map<IDeviceID, Long> lastTimeForEachDevice = tobeFlushed.getMaxTime(!isTableModel());
 
     // If some devices have been removed in MemTable, the number of device in MemTable and
     // tsFileResource will not be the same. And the endTime of these devices in resource will be
@@ -1911,7 +1916,8 @@ public class TsFileProcessor {
                   memTableToFlush,
                   writer,
                   dataRegionName,
-                  dataRegionInfo.getDataRegion().getDataRegionIdString());
+                  dataRegionInfo.getDataRegion().getDataRegionIdString(),
+                  isTableModel());
           flushTask.syncFlushMemTable();
           memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
@@ -2638,13 +2644,16 @@ public class TsFileProcessor {
   }
 
   private long getQueryTimeLowerBound(IDeviceID deviceID) {
-    long ttl;
-    if (deviceID.getTableName().startsWith("root.")) {
-      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-    } else {
+    final long ttl;
+    if (isTableModel()) {
+      // The table TTL is cached by the database and the table, both known from the data region of
+      // this processor.
       ttl =
           DataNodeTTLCache.getInstance()
-              .getTTLForTable(this.dataRegionName, deviceID.getTableName());
+              .getTTLForTable(
+                  dataRegionInfo.getDataRegion().getDatabaseName(), deviceID.getTableName());
+    } else {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     }
     return ttl != Long.MAX_VALUE ? CommonUtils.getTTLLowerBound(ttl) : Long.MIN_VALUE;
   }

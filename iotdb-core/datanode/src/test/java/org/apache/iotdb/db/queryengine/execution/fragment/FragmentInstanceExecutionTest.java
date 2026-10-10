@@ -209,7 +209,7 @@ public class FragmentInstanceExecutionTest {
                   new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
                   new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
                   new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN)));
-      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, true);
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
       for (int i = 0; i < 100; i++) {
         memChunk.putAlignedRow(i, new Object[] {(long) i, (long) i * 2, (long) i * 3});
       }
@@ -265,8 +265,8 @@ public class FragmentInstanceExecutionTest {
       IMemTable memTable = createMemTable(deviceId, measurementId);
       assertEquals(1, memTable.getMemTableMap().size());
       IWritableMemChunkGroup memChunkGroup = memTable.getMemTableMap().values().iterator().next();
-      assertEquals(1, memChunkGroup.getMemChunkMap().size());
-      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap().values().iterator().next();
+      assertEquals(1, memChunkGroup.getMemChunkMap(true).size());
+      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap(true).values().iterator().next();
       TVList tvList = memChunk.getWorkingTVList();
       assertFalse(tvList.isSorted());
 
@@ -330,8 +330,8 @@ public class FragmentInstanceExecutionTest {
 
       assertEquals(1, memTable.getMemTableMap().size());
       IWritableMemChunkGroup memChunkGroup = memTable.getMemTableMap().values().iterator().next();
-      assertEquals(1, memChunkGroup.getMemChunkMap().size());
-      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap().values().iterator().next();
+      assertEquals(1, memChunkGroup.getMemChunkMap(true).size());
+      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap(true).values().iterator().next();
       AlignedTVList workingTvList = (AlignedTVList) memChunk.getWorkingTVList();
       assertFalse(workingTvList.isSorted());
       assertEquals(100, workingTvList.rowCount());
