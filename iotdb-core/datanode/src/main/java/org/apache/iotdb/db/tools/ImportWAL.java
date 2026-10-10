@@ -169,7 +169,9 @@ public class ImportWAL {
         // The ElasticStrategy and RoundRobinStrategy WAL node allocation strategies share WAL nodes
         // between regions, so such a WAL has no per-directory database or data model; repeat the
         // declaration where the operator has to decide.
-        err.println(ImportWALMessages.MESSAGE_UNSUPPORTED_WALS_1_WALS_WRITTEN_WITH_THE_ELASTICSTRATEGY_2_WALS_WRITTEN_WITH_THE_ROUNDROBINSTRATEGY_REPLAYING_THEM_MAY_FAIL_C542F812);
+        err.println(
+            ImportWALMessages
+                .MESSAGE_UNSUPPORTED_WALS_1_WALS_WRITTEN_WITH_THE_ELASTICSTRATEGY_2_WALS_WRITTEN_WITH_THE_ROUNDROBINSTRATEGY_REPLAYING_THEM_MAY_FAIL_C542F812);
         throw e;
       }
       final ReplayStatistics statistics =
