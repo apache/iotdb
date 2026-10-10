@@ -743,7 +743,10 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   }
 
   public void unbindConsensusPrefetchingQueue(final String topicName) {
-    closeAndRemoveConsensusPrefetchingQueues(topicName, true, true);
+    // Subscription setup teardown and rollback manage commit state after this call returns. Let
+    // queue close persist the current state, while avoiding an asynchronous close deleting state
+    // restored by a concurrent setup rollback.
+    closeAndRemoveConsensusPrefetchingQueues(topicName, true, false);
   }
 
   @Override
@@ -774,7 +777,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
 
     for (int i = 0; i < queuesToClose.size(); i++) {
-      queuesToClose.get(i).close();
+      queuesToClose.get(i).closeAsync(false);
       LOGGER.info(
           DataNodePipeMessages
               .PIPE_LOG_SUBSCRIPTION_CLOSED_CONSENSUS_PREFETCHING_QUEUE_FOR_TOPIC_3A9DDEC5,
@@ -874,7 +877,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
 
     for (final ConsensusPrefetchingQueue q : queuesToClose) {
-      q.close(removeProgressAfterClose);
+      q.closeAsync(removeProgressAfterClose);
     }
     LOGGER.info(
         DataNodePipeMessages

@@ -191,6 +191,7 @@ public class ConsensusPrefetchSubtask {
 
   public void cancelPendingExecution() {
     synchronized (monitor) {
+      closed = true;
       delayedWakeToken++;
       wakeupPending = false;
       if (scheduledOrRunning && !running) {

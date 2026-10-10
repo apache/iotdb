@@ -104,6 +104,16 @@ public class ConsensusSubscriptionPrefetchExecutor {
     subtask.close();
   }
 
+  /** Removes a detached queue's task only if it still owns the registration. */
+  public synchronized void deregister(final ConsensusPrefetchSubtask subtask) {
+    if (!taskIdToSubtask.remove(subtask.getTaskId(), subtask)) {
+      return;
+    }
+    readyQueue.remove(subtask);
+    subtask.cancelPendingExecution();
+    subtask.close();
+  }
+
   public void enqueue(final ConsensusPrefetchSubtask subtask) {
     if (shutdown.get() || subtask.isClosed()) {
       return;
