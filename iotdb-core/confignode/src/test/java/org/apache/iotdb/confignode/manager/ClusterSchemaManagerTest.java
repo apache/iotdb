@@ -18,13 +18,19 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
+import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
 import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
@@ -33,6 +39,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,6 +53,9 @@ import java.util.List;
 import java.util.Map;
 
 public class ClusterSchemaManagerTest {
+
+  private static final String DATABASE = "root.pending_column_test";
+  private static final String TABLE = "table1";
 
   @Test
   public void testCalcMaxRegionGroupNum() {
@@ -170,6 +181,106 @@ public class ClusterSchemaManagerTest {
         () ->
             clusterSchemaManager.updateTableProperties(
                 database, table, new HashMap<>(), new HashMap<>(), false));
+  }
+
+  @Test
+  public void testAddColumnRejectsPendingColumnNames() throws Exception {
+    final ClusterSchemaManager clusterSchemaManager = prepareTableWithPendingColumns();
+
+    // A name whose deletion has not finished, and a name whose data type change has not finished,
+    // are both rejected by the entry point the ADD COLUMN procedure uses.
+    Assert.assertThrows(
+        ColumnInDeletionException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnExtension(
+                DATABASE, TABLE, columns("deleting"), false));
+    Assert.assertThrows(
+        ColumnInAlterException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnExtension(
+                DATABASE, TABLE, columns("altering"), false));
+    // A name that no pending column takes can still be added.
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        clusterSchemaManager
+            .tableColumnCheckForColumnExtension(DATABASE, TABLE, columns("added"), false)
+            .getLeft()
+            .getCode());
+  }
+
+  @Test
+  public void testAlterColumnTypeRejectsDeletingColumn() throws Exception {
+    final ClusterSchemaManager clusterSchemaManager = prepareTableWithPendingColumns();
+
+    // Changing the data type of a column whose deletion has not finished is rejected.
+    Assert.assertThrows(
+        ColumnInDeletionException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnAltering(
+                DATABASE, TABLE, "deleting", TSDataType.INT64, false));
+    // A column that already has a pending data type change may be changed again. Only the check is
+    // used here, because the entry point above writes the new pending type through the consensus
+    // layer, which a unit test does not provide.
+    Assert.assertTrue(
+        clusterSchemaManager
+            .checkTableAndColumnForAltering(DATABASE, TABLE, "altering")
+            .isPresent());
+  }
+
+  @Test
+  public void testRenameColumnRejectsPendingNames() throws Exception {
+    final ClusterSchemaManager clusterSchemaManager = prepareTableWithPendingColumns();
+
+    // The entry point the RENAME COLUMN procedure uses rejects an old name that is being deleted,
+    // and a new name that a pending column already takes.
+    Assert.assertThrows(
+        ColumnInDeletionException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnRenaming(
+                DATABASE, TABLE, "deleting", "renamed", false));
+    Assert.assertThrows(
+        ColumnInAlterException.class,
+        () ->
+            clusterSchemaManager.tableColumnCheckForColumnRenaming(
+                DATABASE, TABLE, "live", "altering", false));
+    // Renaming between two names that no pending column takes is allowed.
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        clusterSchemaManager
+            .tableColumnCheckForColumnRenaming(DATABASE, TABLE, "live", "added", false)
+            .getLeft()
+            .getCode());
+  }
+
+  /** A table whose {@code deleting} column is being deleted and {@code altering} column altered. */
+  private static ClusterSchemaManager prepareTableWithPendingColumns() throws Exception {
+    final ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema(DATABASE).setIsTableModel(true)));
+    final TsTable table = new TsTable(TABLE);
+    table.addColumnSchema(field("live"));
+    table.addColumnSchema(field("deleting"));
+    table.addColumnSchema(field("altering"));
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(DATABASE, table));
+    clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(DATABASE, TABLE));
+    clusterSchemaInfo.preDeleteColumn(new PreDeleteColumnPlan(DATABASE, TABLE, "deleting"));
+    clusterSchemaInfo.preAlterColumnDataType(
+        new PreAlterColumnDataTypePlan(DATABASE, TABLE, "altering", TSDataType.INT64));
+    return managerOf(clusterSchemaInfo);
+  }
+
+  private static List<TsTableColumnSchema> columns(final String... columnNames) {
+    final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>();
+    for (final String columnName : columnNames) {
+      columnSchemaList.add(field(columnName));
+    }
+    return columnSchemaList;
+  }
+
+  private static FieldColumnSchema field(final String columnName) {
+    return new FieldColumnSchema(columnName, TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4);
   }
 
   private static ClusterSchemaManager managerOf(final ClusterSchemaInfo clusterSchemaInfo) {

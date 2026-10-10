@@ -99,6 +99,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
+import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
@@ -1554,6 +1555,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       return tableModelMTree.getTableAndStatusIfExists(
+          getQualifiedDatabasePartialPath(database), tableName);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Optional<ConfigTableNode> getTableNodeIfExists(
+      final String database, final String tableName) throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return tableModelMTree.getTableNodeIfExists(
           getQualifiedDatabasePartialPath(database), tableName);
     } finally {
       databaseReadWriteLock.readLock().unlock();

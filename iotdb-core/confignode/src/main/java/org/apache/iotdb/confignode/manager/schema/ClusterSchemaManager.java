@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
+import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
 import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -100,6 +102,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ConfigSchemaStatistics;
+import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
@@ -1541,17 +1544,113 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
-  public Optional<TsTable> getTableWithUsingStatusIfExists(
+  /**
+   * The table must exist and must not be in the pre-delete status.
+   *
+   * @return the table node, or empty when the table does not exist
+   */
+  private Optional<ConfigTableNode> getTableNodeForModification(
       final String database, final String tableName) throws MetadataException {
-    final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
-        getTableAndStatusIfExists(database, tableName);
-    if (tableAndStatus.isEmpty()) {
-      return Optional.empty();
-    }
-    if (TableNodeStatus.PRE_DELETE == tableAndStatus.get().getRight()) {
+    final Optional<ConfigTableNode> tableNodeOptional =
+        clusterSchemaInfo.getTableNodeIfExists(database, tableName);
+    if (tableNodeOptional.isPresent()
+        && TableNodeStatus.PRE_DELETE == tableNodeOptional.get().getStatus()) {
       throw new TableInDeletionException(database, tableName);
     }
-    return Optional.of(tableAndStatus.get().getLeft());
+    return tableNodeOptional;
+  }
+
+  public Optional<TsTable> getTableWithUsingStatusIfExists(
+      final String database, final String tableName) throws MetadataException {
+    return getTableNodeForModification(database, tableName).map(ConfigTableNode::getTable);
+  }
+
+  /**
+   * The new column names must not belong to a column whose deletion or data type change has not
+   * finished, otherwise the column being added would collide with it.
+   *
+   * @return the table, or empty when the table does not exist
+   */
+  public Optional<TsTable> checkTableAndColumnsForAddition(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
+    final Optional<ConfigTableNode> tableNodeOptional =
+        getTableNodeForModification(database, tableName);
+    if (tableNodeOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final ConfigTableNode tableNode = tableNodeOptional.get();
+    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
+      final String columnName = columnSchema.getColumnName();
+      checkColumnNotDeleting(tableNode, database, tableName, columnName);
+      checkColumnNotAltering(tableNode, database, tableName, columnName);
+    }
+    return Optional.of(tableNode.getTable());
+  }
+
+  /**
+   * The column must not be one whose deletion has not finished. A pending data type change is
+   * allowed here: the new type replaces the pending one.
+   *
+   * @return the table, or empty when the table does not exist
+   */
+  public Optional<TsTable> checkTableAndColumnForAltering(
+      final String database, final String tableName, final String columnName)
+      throws MetadataException {
+    final Optional<ConfigTableNode> tableNodeOptional =
+        getTableNodeForModification(database, tableName);
+    if (tableNodeOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final ConfigTableNode tableNode = tableNodeOptional.get();
+    checkColumnNotDeleting(tableNode, database, tableName, columnName);
+    return Optional.of(tableNode.getTable());
+  }
+
+  /**
+   * Neither the old nor the new column name may belong to a column whose deletion or data type
+   * change has not finished.
+   *
+   * @return the table, or empty when the table does not exist
+   */
+  public Optional<TsTable> checkTableAndColumnsForRenaming(
+      final String database, final String tableName, final String oldName, final String newName)
+      throws MetadataException {
+    final Optional<ConfigTableNode> tableNodeOptional =
+        getTableNodeForModification(database, tableName);
+    if (tableNodeOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final ConfigTableNode tableNode = tableNodeOptional.get();
+    checkColumnNotDeleting(tableNode, database, tableName, oldName);
+    checkColumnNotAltering(tableNode, database, tableName, oldName);
+    checkColumnNotDeleting(tableNode, database, tableName, newName);
+    checkColumnNotAltering(tableNode, database, tableName, newName);
+    return Optional.of(tableNode.getTable());
+  }
+
+  private void checkColumnNotDeleting(
+      final ConfigTableNode tableNode,
+      final String database,
+      final String tableName,
+      final String columnName)
+      throws ColumnInDeletionException {
+    if (tableNode.getPreDeletedColumns().contains(columnName)) {
+      throw new ColumnInDeletionException(database, tableName, columnName);
+    }
+  }
+
+  private void checkColumnNotAltering(
+      final ConfigTableNode tableNode,
+      final String database,
+      final String tableName,
+      final String columnName)
+      throws ColumnInAlterException {
+    if (tableNode.getPreAlteredColumns().containsKey(columnName)) {
+      throw new ColumnInAlterException(database, tableName, columnName);
+    }
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
@@ -1560,7 +1659,8 @@ public class ClusterSchemaManager {
       final List<TsTableColumnSchema> columnSchemaList,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
+    final TsTable originalTable =
+        checkTableAndColumnsForAddition(database, tableName, columnSchemaList).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1615,7 +1715,8 @@ public class ClusterSchemaManager {
       final TSDataType dataType,
       final boolean isGeneratedByPipe)
       throws MetadataException {
-    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
+    final TsTable originalTable =
+        checkTableAndColumnForAltering(database, tableName, columnName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1652,7 +1753,8 @@ public class ClusterSchemaManager {
       final String newName,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
+    final TsTable originalTable =
+        checkTableAndColumnsForRenaming(database, tableName, oldName, newName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
