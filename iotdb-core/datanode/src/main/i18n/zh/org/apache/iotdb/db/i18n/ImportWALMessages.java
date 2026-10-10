@@ -24,6 +24,9 @@ public final class ImportWALMessages {
 
   public static final String MESSAGE_IMPORT_WAL_5E42804E = "import-wal";
   public static final String
+      MESSAGE_UNSUPPORTED_WALS_1_WALS_WRITTEN_WITH_THE_ELASTICSTRATEGY_2_WALS_WRITTEN_WITH_THE_ROUNDROBINSTRATEGY_REPLAYING_THEM_MAY_FAIL_C542F812 =
+          "不支持导入以下两类 WAL：(1) 使用 ElasticStrategy 写入的 WAL；(2) 使用 RoundRobinStrategy 写入的 WAL。强行导入可能会出错。";
+  public static final String
       MESSAGE_PATH_OF_A_WAL_FILE_OR_A_DIRECTORY_CONTAINING_WAL_FILES_473D0554 =
           "WAL 文件或包含 WAL 文件的目录路径。";
   public static final String MESSAGE_TARGET_IOTDB_HOST_DEFAULT_127_0_0_1_3729156F =

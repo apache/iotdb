@@ -344,6 +344,7 @@ public class ImportWALTest {
 
     assertTrue(error.toString().contains(directory.toString()));
     assertTrue(error.toString().contains("-db/--database"));
+    assertTrue(error.toString().contains("ElasticStrategy"));
   }
 
   /**
@@ -445,6 +446,8 @@ public class ImportWALTest {
     assertTrue(output.toString().contains("--on_unsupported"));
     assertTrue(output.toString().contains("--on_corrupted"));
     assertTrue(output.toString().contains("--skip_db_confirmation"));
+    assertTrue(output.toString().contains("ElasticStrategy"));
+    assertTrue(output.toString().contains("RoundRobinStrategy"));
   }
 
   @Test
