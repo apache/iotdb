@@ -265,7 +265,9 @@ public class InsertStatementPartialInsertTest {
     final InsertRowStatement statement = createInsertRowStatement();
     statement.markFailedMeasurement(0, new RuntimeException("failed"));
 
-    statement.rebuildArraysAfterExpansion(new int[] {-1, 0, 1}, new String[] {"tag1", "s1", "s2"});
+    // A failed column's name is null in the rebuilt measurement array, mirroring
+    // expandAndReorderTagColumns, which copies the (nulled) old measurement for the non-TAG area.
+    statement.rebuildArraysAfterExpansion(new int[] {-1, 0, 1}, new String[] {"tag1", null, "s2"});
 
     Assert.assertEquals(1, statement.getFailedMeasurementInfoMap().size());
     Assert.assertEquals("s1", statement.getFailedMeasurementInfoMap().get(1).getMeasurement());
