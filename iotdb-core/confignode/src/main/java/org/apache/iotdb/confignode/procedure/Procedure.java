@@ -267,6 +267,15 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return false;
   }
 
+  /**
+   * Delay in milliseconds before retrying a failed rollback. A negative value keeps the default
+   * behavior of completing rollback after an exception. Procedures opting in must make rollback
+   * idempotent and retain the state needed by the next attempt.
+   */
+  protected long getRollbackRetryTimeout() {
+    return -1;
+  }
+
   // -------------------------Internal methods - called by the procedureExecutor------------------
   final boolean tryAcquireExecution() {
     return executing.compareAndSet(false, true);
@@ -696,6 +705,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected synchronized boolean setTimeoutFailure(Env env) {
     if (state == ProcedureState.WAITING_TIMEOUT) {
+      if (exception != null && getRollbackRetryTimeout() >= 0) {
+        // Resume compensation without replacing the original execution failure.
+        setState(ProcedureState.FAILED);
+        return true;
+      }
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",
