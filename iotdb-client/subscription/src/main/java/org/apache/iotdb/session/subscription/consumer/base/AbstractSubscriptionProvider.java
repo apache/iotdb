@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -36,6 +37,7 @@ import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
@@ -45,6 +47,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqBuilder;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
@@ -66,8 +69,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -79,6 +85,9 @@ public abstract class AbstractSubscriptionProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProvider.class);
 
   private static final int CLOSE_TIMEOUT_IN_MS = 5_000;
+  private static final int REQUEST_FRAME_RESERVED_BYTES = 1024;
+  // A commit response echoes accepted contexts and may also carry committed progress.
+  private static final int COMMIT_RESPONSE_HEADROOM_FACTOR = 3;
 
   private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
@@ -100,6 +109,9 @@ public abstract class AbstractSubscriptionProvider {
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private final AtomicBoolean isAvailable = new AtomicBoolean(false);
   private final ReentrantLock rpcLock = new ReentrantLock();
+
+  private final int localThriftMaxFrameSize;
+  private volatile int requestBodySizeLimit;
 
   private final TEndPoint endPoint;
   private int dataNodeId;
@@ -149,6 +161,8 @@ public abstract class AbstractSubscriptionProvider {
     this.username = username;
     this.password = password;
     this.encryptedPassword = encryptedPassword;
+    this.localThriftMaxFrameSize = thriftMaxFrameSize;
+    this.requestBodySizeLimit = getRequestBodySizeLimit(thriftMaxFrameSize);
     this.heartbeatIntervalMs = heartbeatIntervalMs;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
@@ -161,9 +175,63 @@ public abstract class AbstractSubscriptionProvider {
       throws TException, IoTDBConnectionException {
     rpcLock.lock();
     try {
-      return getSessionConnection().pipeSubscribe(req);
+      final SubscriptionSessionConnection connection = getSessionConnection();
+      return pipeSubscribeWithOptionalSlicing(req, requestBodySizeLimit, connection::pipeSubscribe);
     } finally {
       rpcLock.unlock();
+    }
+  }
+
+  static TPipeSubscribeResp pipeSubscribeWithOptionalSlicing(
+      final TPipeSubscribeReq req,
+      final int bodySizeLimit,
+      final PipeSubscribeRequestSender requestSender)
+      throws TException {
+    if (!PipeSubscribeSliceReqBuilder.shouldSlice(req, bodySizeLimit)) {
+      if (bodySizeLimit <= 0 || (req.isSetBody() && req.body.remaining() > bodySizeLimit)) {
+        throw new TException(
+            SubscriptionMessages
+                .EXCEPTION_SUBSCRIPTION_REQUEST_EXCEEDS_THE_NEGOTIATED_FRAME_LIMIT_CA8DEB50);
+      }
+      return requestSender.send(req);
+    }
+
+    final int orderId = PipeSubscribeSliceReqBuilder.nextOrderId();
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(req, bodySizeLimit);
+    TPipeSubscribeResp resp = null;
+    for (int sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++) {
+      try {
+        resp =
+            requestSender.send(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    req, orderId, sliceIndex, sliceCount, bodySizeLimit));
+      } catch (final IOException e) {
+        throw new TException(e);
+      }
+      if (sliceIndex < sliceCount - 1
+          && (resp == null
+              || resp.getStatus() == null
+              || resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+        return resp;
+      }
+    }
+    return resp;
+  }
+
+  private static int getRequestBodySizeLimit(final int maxFrameSize) {
+    return Math.max(0, maxFrameSize - REQUEST_FRAME_RESERVED_BYTES);
+  }
+
+  private void updateRequestBodySizeLimit() {
+    try {
+      final int serverMaxFrameSize =
+          getSessionConnection().getServerThriftMaxFrameSize(localThriftMaxFrameSize);
+      if (serverMaxFrameSize > 0) {
+        requestBodySizeLimit =
+            getRequestBodySizeLimit(Math.min(localThriftMaxFrameSize, serverMaxFrameSize));
+      }
+    } catch (final TException | IoTDBConnectionException ignored) {
+      // Keep the local limit for servers that do not expose their frame size.
     }
   }
 
@@ -207,6 +275,7 @@ public abstract class AbstractSubscriptionProvider {
     }
 
     session.open(); // throw IoTDBConnectionException
+    updateRequestBodySizeLimit();
 
     // TODO: pass the complete consumer parameter configuration to the server
     final Map<String, String> consumerAttributes = new HashMap<>();
@@ -369,6 +438,40 @@ public abstract class AbstractSubscriptionProvider {
   }
 
   PipeSubscribeHeartbeatResp heartbeat(
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts)
+      throws SubscriptionException {
+    final List<List<SubscriptionCommitContext>> batches;
+    try {
+      batches =
+          partitionCommitContexts(
+              processorBufferedCommitContexts, requestBodySizeLimit, Integer.BYTES);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_HEARTBEAT_REQUEST_ARG_634C8333,
+          this,
+          processorBufferedCommitContexts,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+
+    PipeSubscribeHeartbeatResp latestResp = null;
+    final Set<String> topicNamesToUnsubscribe = new LinkedHashSet<>();
+    rpcLock.lock();
+    try {
+      for (final List<SubscriptionCommitContext> batch : batches) {
+        latestResp = heartbeatOnce(batch);
+        topicNamesToUnsubscribe.addAll(latestResp.getTopicNamesToUnsubscribe());
+      }
+    } finally {
+      rpcLock.unlock();
+    }
+    latestResp.getTopicNamesToUnsubscribe().clear();
+    latestResp.getTopicNamesToUnsubscribe().addAll(topicNamesToUnsubscribe);
+    return latestResp;
+  }
+
+  private PipeSubscribeHeartbeatResp heartbeatOnce(
       final List<SubscriptionCommitContext> processorBufferedCommitContexts)
       throws SubscriptionException {
     final SubscriptionHeartbeatReq req;
@@ -634,6 +737,41 @@ public abstract class AbstractSubscriptionProvider {
   CommitResult commit(
       final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
       throws SubscriptionException {
+    final List<List<SubscriptionCommitContext>> batches;
+    try {
+      batches =
+          partitionCommitContexts(
+              subscriptionCommitContexts,
+              Math.max(1, requestBodySizeLimit / COMMIT_RESPONSE_HEADROOM_FACTOR),
+              Integer.BYTES + Byte.BYTES);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_COMMIT_REQUEST_ARG_D5335538,
+          this,
+          subscriptionCommitContexts,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+
+    final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
+    final Map<String, TopicProgress> committedProgressByTopic = new LinkedHashMap<>();
+    rpcLock.lock();
+    try {
+      for (final List<SubscriptionCommitContext> batch : batches) {
+        final CommitResult result = commitOnce(batch, nack);
+        acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
+        mergeTopicProgress(committedProgressByTopic, result.getCommittedProgressByTopic());
+      }
+    } finally {
+      rpcLock.unlock();
+    }
+    return new CommitResult(acceptedCommitContexts, committedProgressByTopic);
+  }
+
+  private CommitResult commitOnce(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
+      throws SubscriptionException {
     final PipeSubscribeCommitReq req;
     try {
       req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts, nack);
@@ -664,6 +802,52 @@ public abstract class AbstractSubscriptionProvider {
     final PipeSubscribeCommitResp commitResp = PipeSubscribeCommitResp.fromTPipeSubscribeResp(resp);
     return new CommitResult(
         commitResp.getAcceptedCommitContexts(), commitResp.getCommittedProgressByTopic());
+  }
+
+  static List<List<SubscriptionCommitContext>> partitionCommitContexts(
+      final List<SubscriptionCommitContext> commitContexts,
+      final int maxBodySize,
+      final int fixedBodySize)
+      throws IOException {
+    if (commitContexts == null || commitContexts.isEmpty()) {
+      return Collections.singletonList(Collections.emptyList());
+    }
+
+    final List<List<SubscriptionCommitContext>> batches = new ArrayList<>();
+    List<SubscriptionCommitContext> currentBatch = new ArrayList<>();
+    long currentBodySize = fixedBodySize;
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      final int contextSize = SubscriptionCommitContext.serialize(commitContext).remaining();
+      if (!currentBatch.isEmpty() && currentBodySize + contextSize > maxBodySize) {
+        batches.add(currentBatch);
+        currentBatch = new ArrayList<>();
+        currentBodySize = fixedBodySize;
+      }
+      currentBatch.add(commitContext);
+      currentBodySize += contextSize;
+    }
+    batches.add(currentBatch);
+    return batches;
+  }
+
+  static void mergeTopicProgress(
+      final Map<String, TopicProgress> target, final Map<String, TopicProgress> source) {
+    source.forEach(
+        (topicName, newProgress) ->
+            target.merge(
+                topicName,
+                newProgress,
+                (oldProgress, ignored) -> {
+                  final Map<String, RegionProgress> mergedRegionProgress =
+                      new LinkedHashMap<>(oldProgress.getRegionProgress());
+                  mergedRegionProgress.putAll(newProgress.getRegionProgress());
+                  return new TopicProgress(mergedRegionProgress);
+                }));
+  }
+
+  @FunctionalInterface
+  interface PipeSubscribeRequestSender {
+    TPipeSubscribeResp send(TPipeSubscribeReq req) throws TException;
   }
 
   static final class CommitResult {

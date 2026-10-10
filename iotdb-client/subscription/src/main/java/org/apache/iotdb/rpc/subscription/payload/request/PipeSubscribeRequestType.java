@@ -32,6 +32,7 @@ public enum PipeSubscribeRequestType {
   SUBSCRIBE((short) 5),
   UNSUBSCRIBE((short) 6),
   SEEK((short) 7),
+  SLICE((short) 8),
   ;
 
   private final short type;
