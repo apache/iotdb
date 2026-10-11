@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
 /**
@@ -102,6 +103,12 @@ public class FileReaderManager {
    * Guarded by {@link #registryLock}.
    */
   private int pins;
+
+  private final AtomicLong openReaderCost = new AtomicLong(0);
+  private final AtomicLong openReaderCount = new AtomicLong(0);
+
+  private final AtomicLong closeReaderCost = new AtomicLong(0);
+  private final AtomicLong closeReaderCount = new AtomicLong(0);
 
   private FileReaderManager() {}
 
@@ -357,12 +364,15 @@ public class FileReaderManager {
       synchronized (entry) {
         Slot slot = entry.slot(isClosed);
         if (slot.reader == null) {
+          long startTime = System.nanoTime();
           slot.reader =
               isClosed
                   ? new TsFileSequenceReader(
                       path, recorder, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(path))
                   : new UnClosedTsFileReader(
                       path, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(path), recorder);
+          openReaderCount.incrementAndGet();
+          openReaderCost.addAndGet(System.nanoTime() - startTime);
           int count = slot.count.incrementAndGet();
           if (count >= MAX_CACHED_FILE_SIZE && count % PRINT_INTERVAL == 0) {
             logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, count);
@@ -452,6 +462,7 @@ public class FileReaderManager {
           }
         }
         // New references may now register, but their get() waits for this entry's close to finish.
+        long startTime = System.nanoTime();
         try {
           closeSlot(
               slot,
@@ -462,6 +473,9 @@ public class FileReaderManager {
                       .LOG_READER_FOR_UNCLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_088BDEF8);
         } catch (IOException e) {
           // Slot.close already logged the error and discarded the unusable handle.
+        } finally {
+          closeReaderCount.incrementAndGet();
+          closeReaderCost.addAndGet(System.nanoTime() - startTime);
         }
       }
     } finally {
@@ -593,6 +607,15 @@ public class FileReaderManager {
       }
     }
     return result;
+  }
+
+  public void printReaderCost() {
+    logger.info(
+        "openReaderCount: {}, openReaderCost: {}, closeReaderCount: {}, closeReaderCost: {}",
+        openReaderCount.get(),
+        openReaderCost.get(),
+        closeReaderCount.get(),
+        closeReaderCost.get());
   }
 
   @TestOnly

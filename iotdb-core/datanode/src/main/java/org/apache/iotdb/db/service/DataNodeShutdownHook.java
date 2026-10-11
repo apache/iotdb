@@ -45,6 +45,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -97,6 +98,7 @@ public class DataNodeShutdownHook extends Thread {
   @Override
   public void run() {
     logger.info(DataNodeMiscMessages.DATANODE_EXITING);
+    FileReaderManager.getInstance().printReaderCost();
     AuditLogFields fields =
         new AuditLogFields(
             -1,
