@@ -124,6 +124,7 @@ public class ConsensusPrefetchSubtask {
     boolean shouldEnqueue = false;
     Long delayedWakeMs = null;
     long delayedToken = 0L;
+    boolean wakeupRequested;
     synchronized (monitor) {
       running = false;
       if (closed) {
@@ -132,6 +133,7 @@ public class ConsensusPrefetchSubtask {
         return;
       }
 
+      wakeupRequested = wakeupPending;
       if (wakeupPending) {
         wakeupPending = false;
         shouldEnqueue = true;
@@ -157,6 +159,15 @@ public class ConsensusPrefetchSubtask {
       }
       monitor.notifyAll();
     }
+
+    LOGGER.debug(
+        DataNodePipeMessages
+            .LOG_SUBSCRIPTION_PREFETCH_TASK_ARG_SCHEDULING_AFTER_ROUND_RESULT_ARG_WAKEUPPENDING_ARG_ENQUEUENOW_ARG_DELAYMS_ARG_602EA4A4,
+        taskId,
+        result.getType(),
+        wakeupRequested,
+        shouldEnqueue,
+        delayedWakeMs);
 
     final ConsensusSubscriptionPrefetchExecutor currentExecutor = executor;
     if (currentExecutor == null) {

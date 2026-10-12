@@ -134,7 +134,9 @@ public class ConsensusLogToTabletConverter {
       try {
         if (req instanceof IoTConsensusRequest) {
           // WAL entries read from file are wrapped as IoTConsensusRequest (ByteBuffer).
-          planNode = WALEntry.deserializeForConsensus(req.serializeToByteBuffer());
+          // Preserve the request's buffer position so memory backpressure can retry every
+          // fragment. duplicate() shares the bytes without retaining a second payload copy.
+          planNode = WALEntry.deserializeForConsensus(req.serializeToByteBuffer().duplicate());
         } else if (req instanceof InsertNode) {
           // In-memory entries that are not yet flushed to WAL file may already be PlanNode.
           planNode = (PlanNode) req;

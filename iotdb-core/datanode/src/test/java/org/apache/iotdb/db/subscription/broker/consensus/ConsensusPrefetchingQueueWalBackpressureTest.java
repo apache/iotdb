@@ -66,6 +66,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -210,6 +211,127 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
     }
   }
 
+  @Test
+  public void testWalMemoryBlockRetriesWithoutRecreatingIterator() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final int originalBatchMaxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
+    final int originalBatchMaxTabletCount = config.getSubscriptionConsensusBatchMaxTabletCount();
+    final long originalBatchMaxSize = config.getSubscriptionConsensusBatchMaxSizeInBytes();
+    final int originalBatchMaxDelay = config.getSubscriptionConsensusBatchMaxDelayInMs();
+    final File systemDir = temporaryFolder.newFolder("system-wal-memory-retry");
+    final File walDirectory = temporaryFolder.newFolder("wal-memory-retry");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final Tablet sampleTablet = createTablet();
+      final long oneTabletBytes = sampleTablet.ramBytesUsed();
+      config.setSubscriptionConsensusBatchMaxWalEntries(128);
+      config.setSubscriptionConsensusBatchMaxTabletCount(128);
+      config.setSubscriptionConsensusBatchMaxSizeInBytes(oneTabletBytes * 16L);
+      config.setSubscriptionConsensusBatchMaxDelayInMs(0);
+
+      writeSealedWal(walDirectory);
+
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(walDirectory);
+      when(walNode.getCurrentSearchIndex()).thenReturn((long) REQUEST_COUNT);
+      when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
+      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final List<Long> conversionAttempts = new ArrayList<>();
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenAnswer(
+              invocation -> {
+                final InsertNode insertNode = (InsertNode) invocation.getArgument(0);
+                conversionAttempts.add(insertNode.getSearchIndex());
+                return Collections.singletonList(createTablet());
+              });
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      final DataRegionId regionId = new DataRegionId(1);
+      final ConsensusSubscriptionCommitManager commitManager = newCommitManager(systemDir);
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              commitManager,
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      final TrackingSubscriptionMemoryManager memoryManager =
+          new TrackingSubscriptionMemoryManager(oneTabletBytes + Math.max(1L, oneTabletBytes / 2L));
+      queue.setSubscriptionMemoryManager(memoryManager);
+
+      assertNull(queue.poll("consumer"));
+      final ProgressWALIterator iterator = subscriptionWalIterator(queue);
+
+      queue.drivePrefetchOnce();
+      assertEquals(Arrays.asList(1L, 2L), conversionAttempts);
+      assertEquals(2L, queue.getCurrentReadSearchIndex());
+      assertTrue(iterator.hasBufferedNext());
+      assertSame(iterator, subscriptionWalIterator(queue));
+      assertMemoryBounded(queue, memoryManager);
+
+      // No memory has been released yet: another round must neither convert nor lose the request.
+      queue.drivePrefetchOnce();
+      assertEquals(Arrays.asList(1L, 2L), conversionAttempts);
+      assertEquals(2L, queue.getCurrentReadSearchIndex());
+      assertSame(iterator, subscriptionWalIterator(queue));
+
+      for (long expectedLocalSeq = 1L; expectedLocalSeq <= REQUEST_COUNT; expectedLocalSeq++) {
+        final SubscriptionEvent event = queue.poll("consumer");
+        assertNotNull(event);
+        assertEquals(expectedLocalSeq, event.getCommitContext().getWriterProgress().getLocalSeq());
+        assertEquals(
+            1000L + expectedLocalSeq,
+            event.getCommitContext().getWriterProgress().getPhysicalTime());
+        assertTrue(queue.ack("consumer", event.getCommitContext()));
+        assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+
+        queue.drivePrefetchOnce();
+        assertSame(iterator, subscriptionWalIterator(queue));
+        assertMemoryBounded(queue, memoryManager);
+      }
+
+      assertEquals(Arrays.asList(1L, 2L, 2L, 3L, 3L), conversionAttempts);
+      assertEquals(3L, queue.getWalPathAcceptedEntries());
+      assertEquals(4L, queue.getCurrentReadSearchIndex());
+      assertEquals(0, queue.getPrefetchedEventCount());
+      assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
+      assertEquals(0L, queue.getRetainedTabletBytes());
+      assertNull(queue.poll("consumer"));
+      assertEquals(
+          new WriterProgress(1000L + REQUEST_COUNT, REQUEST_COUNT),
+          commitManager
+              .getCommittedRegionProgress("consumerGroup", "topic", regionId)
+              .getWriterPositions()
+              .get(new WriterId(regionId.toString(), WRITER_NODE_ID)));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      config.setSubscriptionConsensusBatchMaxWalEntries(originalBatchMaxWalEntries);
+      config.setSubscriptionConsensusBatchMaxTabletCount(originalBatchMaxTabletCount);
+      config.setSubscriptionConsensusBatchMaxSizeInBytes(originalBatchMaxSize);
+      config.setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
   private static void writeSealedWal(final File walDirectory) throws Exception {
     final File historicalWal =
         new File(
@@ -286,6 +408,13 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
     final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("pendingEntries");
     field.setAccessible(true);
     return (BlockingQueue<IndexedConsensusRequest>) field.get(queue);
+  }
+
+  private static ProgressWALIterator subscriptionWalIterator(final ConsensusPrefetchingQueue queue)
+      throws Exception {
+    final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("subscriptionWALIterator");
+    field.setAccessible(true);
+    return (ProgressWALIterator) field.get(queue);
   }
 
   private static ConsensusSubscriptionCommitManager newCommitManager(final File systemDir)

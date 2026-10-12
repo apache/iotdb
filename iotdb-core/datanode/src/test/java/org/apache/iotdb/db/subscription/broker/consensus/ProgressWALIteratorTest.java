@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
@@ -397,7 +398,8 @@ public class ProgressWALIteratorTest {
         final String detail = iterator.getSkippedBrokenWalFileDetails(0);
         assertTrue(detail.contains(firstBrokenWal.getName()));
         assertTrue(detail.contains(secondBrokenWal.getName()));
-        assertTrue(detail.contains("skippedEntries=unknown"));
+        assertTrue(
+            detail.contains("skippedEntries=" + DataNodePipeMessages.MESSAGE_UNKNOWN_AD921D60));
         assertEquals(2L, iterator.next().getSearchIndex());
         assertFalse(iterator.hasNext());
         assertTrue(iterator.hasSkippedBrokenWalFiles());
@@ -731,6 +733,47 @@ public class ProgressWALIteratorTest {
       }
     } finally {
       Files.deleteIfExists(brokenLiveWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testBufferedNextDoesNotScanPastStaleLocalRequest() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-buffered-next");
+    final File dataWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    try {
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+        writer.write(searchableEntry(-1L), singleEntryMeta(19, -1L, 1L, 200L, 8, 20L));
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 300L, 7, 2L));
+      }
+      try (WALWriter ignored = new WALWriter(successorWal, WALFileVersion.V3)) {
+        // Seal the data file so all requests can be read from retained WAL.
+      }
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 1L)) {
+        assertFalse(iterator.hasBufferedNext());
+        assertTrue(iterator.hasNext());
+        assertTrue(iterator.hasBufferedNext());
+
+        iterator.advanceTo(2L, null);
+        assertFalse(iterator.hasBufferedNext());
+        assertTrue(iterator.hasNext());
+        assertTrue(iterator.hasBufferedNext());
+
+        iterator.advanceTo(3L, null);
+        assertTrue(iterator.hasBufferedNext());
+        assertEquals(-1L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasBufferedNext());
+        assertFalse(iterator.hasNext());
+      }
+    } finally {
+      Files.deleteIfExists(dataWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
       Files.deleteIfExists(dir);
     }
   }
