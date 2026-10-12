@@ -135,13 +135,13 @@ public class IoTDBLTTBTableFunctionIT {
 
   @Test
   public void testDuplicateTimestampsAreRejectedWith701() {
-    // one input partition holding (1, 1.0), (1, 9.0), (2, 2.0), (3, 3.0)
+    // the same six d1 rows twice: (0, 1, 2, 3, 4, 5) each occurs twice in one partition
     String duplicated =
         "SELECT * FROM LTTB(DATA => (SELECT time, device, s1 FROM metrics WHERE device = 'd1' "
-            + "UNION ALL SELECT 1, 'd1', 9.0) "
+            + "UNION ALL SELECT time, device, s1 FROM metrics WHERE device = 'd1') "
             + "PARTITION BY device ORDER BY time, TIMECOL => 'time', ";
     String expected =
-        "701: LTTB does not support duplicate timestamps, but timestamp 1 appears more than once"
+        "701: LTTB does not support duplicate timestamps, but timestamp 0 appears more than once"
             + " in the same partition.";
 
     tableAssertTestFail(duplicated + "N => 3)", expected, DATABASE_NAME);
