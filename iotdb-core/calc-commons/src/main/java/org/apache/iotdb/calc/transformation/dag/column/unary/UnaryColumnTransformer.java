@@ -74,6 +74,12 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
+  public void clearCacheForNewInput() {
+    super.clearCacheForNewInput();
+    childColumnTransformer.clearCacheForNewInput();
+  }
+
+  @Override
   public void close() {
     super.close();
     childColumnTransformer.close();

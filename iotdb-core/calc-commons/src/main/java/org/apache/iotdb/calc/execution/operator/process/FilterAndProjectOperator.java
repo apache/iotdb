@@ -155,9 +155,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // Short-circuit evaluation can reset cache reference counts when a shared expression is
     // recomputed. Invalidate the whole DAG before feeding a new block, including intermediate
     // expressions whose caches may still have unconsumed references from the previous block.
-    filterOutputTransformer.clearCache();
+    filterOutputTransformer.clearCacheForNewInput();
     for (ColumnTransformer columnTransformer : commonTransformerList) {
-      columnTransformer.clearCache();
+      columnTransformer.clearCacheForNewInput();
     }
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
@@ -272,7 +272,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     final int positionCount = originTimeColumn.getPositionCount();
     // Clear all output DAGs before evaluating any output, preserving reuse within this block.
     for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
-      columnTransformer.clearCache();
+      columnTransformer.clearCacheForNewInput();
     }
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {

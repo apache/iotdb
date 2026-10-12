@@ -723,4 +723,26 @@ public class IoTDBCaseWhenThenTableIT {
           DATABASE);
     }
   }
+
+  @Test
+  public void testReusingCasePreservesPendingSiblingColumn() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_sibling_cache (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_sibling_cache(time, dev, x) VALUES "
+              + "(0, 'd0', -3.0), (1, 'd0', 0.0), (2, 'd0', 2.0)"
+        });
+
+    String sharedCase = "CASE WHEN x > 0 THEN 1.0 ELSE 0.0 END";
+    tableResultSetEqualTest(
+        "SELECT "
+            + sharedCase
+            + " AS a, x + CASE WHEN ("
+            + sharedCase
+            + ") > 0 THEN 2.0 ELSE 3.0 END AS b FROM case_sibling_cache ORDER BY time",
+        new String[] {"a", "b"},
+        new String[] {"0.0,0.0,", "0.0,3.0,", "1.0,4.0,"},
+        DATABASE);
+  }
 }

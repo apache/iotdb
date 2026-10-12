@@ -115,4 +115,13 @@ public abstract class ColumnTransformer {
   public void clearCache() {
     this.columnCache.clear();
   }
+
+  /**
+   * Clears cached columns throughout this DAG before initializing a new input block. Unlike {@link
+   * #clearCache()}, this also visits CASE descendants. Only call this before evaluating any
+   * expressions for the new block, when no sibling expression can still need a cached column.
+   */
+  public void clearCacheForNewInput() {
+    this.columnCache.clear();
+  }
 }

@@ -100,4 +100,12 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
       columnTransformer.clearCache();
     }
   }
+
+  @Override
+  public void clearCacheForNewInput() {
+    super.clearCacheForNewInput();
+    for (ColumnTransformer columnTransformer : inputColumnTransformers) {
+      columnTransformer.clearCacheForNewInput();
+    }
+  }
 }

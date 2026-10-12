@@ -98,6 +98,14 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
   }
 
   @Override
+  public void clearCacheForNewInput() {
+    super.clearCacheForNewInput();
+    for (ColumnTransformer columnTransformer : columnTransformerList) {
+      columnTransformer.clearCacheForNewInput();
+    }
+  }
+
+  @Override
   public void close() {
     super.close();
     for (ColumnTransformer columnTransformer : columnTransformerList) {

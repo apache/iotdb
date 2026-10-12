@@ -220,6 +220,27 @@ public class FilterAndProjectOperatorTest {
     }
   }
 
+  @Test
+  public void testReusingCasePreservesPendingSiblingColumn() throws Exception {
+    Graph graph = new Graph();
+    ColumnTransformer input = graph.input(0);
+    ColumnTransformer sharedCase =
+        graph.caseWhen(graph.greaterThan(input, 0), graph.constant(1), graph.constant(0));
+    ColumnTransformer nestedCase =
+        graph.caseWhen(graph.greaterThan(sharedCase, 0), graph.constant(2), graph.constant(3));
+    // The first output leaves sharedCase cached. In the second output, input is evaluated before
+    // nestedCase reuses sharedCase. Its cleanup must preserve input until the addition reads it.
+    try (Operator operator =
+        project(
+            graph,
+            new TsBlock[] {block(-3, 0, 2), block(4, -1)},
+            sharedCase,
+            graph.add(input, nestedCase))) {
+      assertBlock(operator.next(), new Double[] {0.0, 0.0, 1.0}, new Double[] {0.0, 3.0, 4.0});
+      assertBlock(operator.next(), new Double[] {1.0, 0.0}, new Double[] {6.0, 2.0});
+    }
+  }
+
   private static FilterAndProjectOperator project(
       Graph graph, TsBlock[] blocks, ColumnTransformer... outputs) {
     return operator(blocks, null, null, Collections.emptyList(), graph, outputs);
