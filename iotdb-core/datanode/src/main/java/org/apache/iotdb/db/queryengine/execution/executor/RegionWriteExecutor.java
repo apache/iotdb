@@ -971,6 +971,9 @@ public class RegionWriteExecutor {
                 new PipeEnrichedWritePlanNode(node), context)
             : PlanVisitor.super.visitAlterTimeSeries(node, context);
       } catch (MetadataException e) {
+        if (schemaEngine.isClearing()) {
+          return createSchemaRegionUnavailableResult();
+        }
         return RegionExecutionResult.create(
             true, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }

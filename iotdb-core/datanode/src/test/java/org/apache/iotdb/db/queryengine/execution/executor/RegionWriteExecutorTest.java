@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
@@ -216,7 +217,7 @@ public class RegionWriteExecutorTest {
             invocation -> {
               // The region was obtained before shutdown cleared its MTree.
               clearing.set(true);
-              throw new NullPointerException();
+              throw new PathNotExistException("root.sg.d.s", true);
             })
         .when(region)
         .fetchMeasurementPath(Mockito.any());
