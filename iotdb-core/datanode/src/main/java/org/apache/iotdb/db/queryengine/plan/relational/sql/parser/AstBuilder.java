@@ -880,6 +880,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -950,6 +952,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -1037,17 +1041,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
 
       Expression timeExpression = expressions.get(timeColumnIndex);
-      if (timeExpression instanceof LongLiteral) {
-        timestamp = ((LongLiteral) timeExpression).getParsedValue();
-      } else if (timeExpression instanceof NullLiteral) {
-        throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
-      } else {
-        timestamp =
-            parseDateTimeFormat(
-                ((StringLiteral) timeExpression).getValue(),
-                CommonDateTimeUtils.currentTime(),
-                zoneId);
-      }
+      timestamp = AstUtil.expressionToTimestamp(timeExpression, zoneId);
       nonTimeColCnt = expressions.size() - 1;
     }
 

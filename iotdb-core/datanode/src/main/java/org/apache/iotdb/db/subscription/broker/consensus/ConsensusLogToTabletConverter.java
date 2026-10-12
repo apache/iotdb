@@ -46,7 +46,7 @@ import org.apache.iotdb.db.subscription.columnfilter.TabletColumnPruner;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -104,6 +104,10 @@ public class ConsensusLogToTabletConverter {
     return databaseName;
   }
 
+  boolean isTableModel() {
+    return Objects.nonNull(tablePattern);
+  }
+
   static String safeDeviceIdForLog(final InsertNode node) {
     try {
       final Object deviceId = node.getDeviceID();
@@ -130,7 +134,9 @@ public class ConsensusLogToTabletConverter {
       try {
         if (req instanceof IoTConsensusRequest) {
           // WAL entries read from file are wrapped as IoTConsensusRequest (ByteBuffer).
-          planNode = WALEntry.deserializeForConsensus(req.serializeToByteBuffer());
+          // Preserve the request's buffer position so memory backpressure can retry every
+          // fragment. duplicate() shares the bytes without retaining a second payload copy.
+          planNode = WALEntry.deserializeForConsensus(req.serializeToByteBuffer().duplicate());
         } else if (req instanceof InsertNode) {
           // In-memory entries that are not yet flushed to WAL file may already be PlanNode.
           planNode = (PlanNode) req;
@@ -714,38 +720,7 @@ public class ConsensusLogToTabletConverter {
       final int columnIndex,
       final TSDataType dataType,
       final Object value) {
-    switch (dataType) {
-      case BOOLEAN:
-        ((boolean[]) tablet.getValues()[columnIndex])[rowIndex] = (boolean) value;
-        break;
-      case INT32:
-        ((int[]) tablet.getValues()[columnIndex])[rowIndex] = (int) value;
-        break;
-      case DATE:
-        ((LocalDate[]) tablet.getValues()[columnIndex])[rowIndex] =
-            value instanceof LocalDate
-                ? (LocalDate) value
-                : DateUtils.parseIntToLocalDate((int) value);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        ((long[]) tablet.getValues()[columnIndex])[rowIndex] = (long) value;
-        break;
-      case FLOAT:
-        ((float[]) tablet.getValues()[columnIndex])[rowIndex] = (float) value;
-        break;
-      case DOUBLE:
-        ((double[]) tablet.getValues()[columnIndex])[rowIndex] = (double) value;
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        ((Binary[]) tablet.getValues()[columnIndex])[rowIndex] = (Binary) value;
-        break;
-      default:
-        LOGGER.warn(DataNodePipeMessages.PIPE_LOG_UNSUPPORTED_DATA_TYPE_C8929F11, dataType);
-        return;
-    }
+    Type.fromTsDataType(dataType).addValue(rowIndex, value, tablet.getValues()[columnIndex]);
     // Unmark the bitmap position to indicate this value is NOT null.
     // addTimestamp() triggers initBitMapsWithApiUsage() which marks all positions as null.
     final BitMap[] bitMaps = tablet.getBitMaps();
@@ -762,45 +737,9 @@ public class ConsensusLogToTabletConverter {
       final TSDataType dataType,
       final Object sourceColumn,
       final int sourceRowIndex) {
-    switch (dataType) {
-      case BOOLEAN:
-        ((boolean[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
-            ((boolean[]) sourceColumn)[sourceRowIndex];
-        break;
-      case INT32:
-        ((int[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
-            ((int[]) sourceColumn)[sourceRowIndex];
-        break;
-      case DATE:
-        ((LocalDate[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
-            sourceColumn instanceof LocalDate[]
-                ? ((LocalDate[]) sourceColumn)[sourceRowIndex]
-                : DateUtils.parseIntToLocalDate(((int[]) sourceColumn)[sourceRowIndex]);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        ((long[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
-            ((long[]) sourceColumn)[sourceRowIndex];
-        break;
-      case FLOAT:
-        ((float[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
-            ((float[]) sourceColumn)[sourceRowIndex];
-        break;
-      case DOUBLE:
-        ((double[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
-            ((double[]) sourceColumn)[sourceRowIndex];
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        ((Binary[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
-            ((Binary[]) sourceColumn)[sourceRowIndex];
-        break;
-      default:
-        LOGGER.warn(
-            DataNodePipeMessages.PIPE_LOG_UNSUPPORTED_DATA_TYPE_FOR_COPY_8AD25FE7, dataType);
-        return;
-    }
+    Type.fromTsDataType(dataType)
+        .copyArrayElement(
+            sourceColumn, sourceRowIndex, tablet.getValues()[targetColumnIndex], targetRowIndex);
     // Unmark the bitmap position to indicate this value is NOT null.
     final BitMap[] bitMaps = tablet.getBitMaps();
     if (bitMaps != null && bitMaps[targetColumnIndex] != null) {

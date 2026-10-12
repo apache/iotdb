@@ -453,6 +453,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
           pipeInsertNodeTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
+      clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+    }
   }
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
@@ -787,7 +791,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
   @Override
   public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+    if (Objects.nonNull(sinkTaskId)) {
+      // Do not cache the timer, the metric service replaces it when it restarts
       compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(req);

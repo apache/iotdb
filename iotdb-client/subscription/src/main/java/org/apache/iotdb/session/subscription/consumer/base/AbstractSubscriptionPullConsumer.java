@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -163,6 +164,13 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     try {
       synchronized (this) {
         if (isClosed.get()) {
+          return;
+        }
+
+        if (isFenced()) {
+          isClosed.set(true);
+          prepareClose();
+          super.close();
           return;
         }
 
@@ -543,6 +551,24 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     super.commitAsync(messages, callback);
   }
 
+  @Override
+  protected void onAckedCommitContexts(
+      final Collection<SubscriptionCommitContext> acceptedCommitContexts) {
+    if (!autoCommit
+        || Objects.isNull(uncommittedCommitContexts)
+        || acceptedCommitContexts.isEmpty()) {
+      return;
+    }
+
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
+      entry.getValue().removeAll(acceptedCommitContexts);
+      if (entry.getValue().isEmpty()) {
+        uncommittedCommitContexts.remove(entry.getKey(), entry.getValue());
+      }
+    }
+  }
+
   private List<SubscriptionMessage> filterUserVisibleMessages(
       final List<SubscriptionMessage> messages) {
     if (messages.isEmpty()) {
@@ -640,7 +666,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     future[0] =
         SubscriptionExecutorServiceManager.submitAutoCommitWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.PULL_CONSUMER_CANCEL_AUTO_COMMIT, this);
@@ -656,7 +682,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private class AutoCommitWorker implements Runnable {
     @Override
     public void run() {
-      if (isClosed()) {
+      if (isClosed() || isFenced()) {
         return;
       }
 
@@ -690,6 +716,9 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   private void commitAllUncommittedMessages() {
+    if (isFenced()) {
+      return;
+    }
     for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
         uncommittedCommitContexts.entrySet()) {
       try {

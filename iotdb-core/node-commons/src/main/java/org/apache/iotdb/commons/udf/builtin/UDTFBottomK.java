@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
-
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Comparator;
@@ -32,63 +28,50 @@ import java.util.PriorityQueue;
 public class UDTFBottomK extends UDTFSelectK {
 
   @Override
-  protected void constructPQ() throws UDFInputSeriesDataTypeNotValidException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        intPQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longPQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
-        break;
-      case FLOAT:
-        floatPQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
-        break;
-      case DOUBLE:
-        doublePQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
-        break;
-      case TEXT:
-      case STRING:
-        stringPQ =
-            new PriorityQueue<>(
-                k,
-                (pairA, pairB) -> {
-                  final String cs1 = pairB.right;
-                  final String cs2 = pairA.right;
+  protected void constructPQ() {
+    TypeServices.BOTTOM_K_QUEUE_CONSTRUCTOR_SERVICE
+        .call(org.apache.tsfile.read.common.type.Type.fromTsDataType(dataType))
+        .construct(this);
+  }
 
-                  if (Objects.requireNonNull(cs1).equals(Objects.requireNonNull(cs2))) {
-                    return 0;
-                  }
+  void initializeIntQueue() {
+    intPQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
+  }
 
-                  for (int i = 0, len = Math.min(cs1.length(), cs2.length()); i < len; i++) {
-                    final char a = cs1.charAt(i);
-                    final char b = cs2.charAt(i);
-                    if (a != b) {
-                      return a - b;
-                    }
-                  }
+  void initializeLongQueue() {
+    longPQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
+  }
 
-                  return cs1.length() - cs2.length();
-                });
-        break;
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE,
-            Type.TEXT,
-            Type.DATE,
-            Type.TIMESTAMP,
-            Type.STRING);
-    }
+  void initializeFloatQueue() {
+    floatPQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
+  }
+
+  void initializeDoubleQueue() {
+    doublePQ = new PriorityQueue<>(k, Comparator.comparing(o -> -o.right));
+  }
+
+  void initializeStringQueue() {
+    stringPQ =
+        new PriorityQueue<>(
+            k,
+            (pairA, pairB) -> {
+              final String cs1 = pairB.right;
+              final String cs2 = pairA.right;
+
+              if (Objects.requireNonNull(cs1).equals(Objects.requireNonNull(cs2))) {
+                return 0;
+              }
+
+              for (int i = 0, len = Math.min(cs1.length(), cs2.length()); i < len; i++) {
+                final char a = cs1.charAt(i);
+                final char b = cs2.charAt(i);
+                if (a != b) {
+                  return a - b;
+                }
+              }
+
+              return cs1.length() - cs2.length();
+            });
   }
 
   @Override

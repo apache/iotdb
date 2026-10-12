@@ -101,8 +101,8 @@ public class WALBufferRollRecoveryTest {
       doCallRealMethod().when(firstWriter).close();
       buffer.close();
     } finally {
-      commonConfig.setNodeStatus(previousStatus);
-      commonConfig.setStatusReason(previousReason);
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      commonConfig.setNodeStatusWithReason(previousStatus, previousReason);
     }
   }
 

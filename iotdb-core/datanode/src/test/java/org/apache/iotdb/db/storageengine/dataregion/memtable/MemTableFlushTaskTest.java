@@ -213,6 +213,89 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
+  public void testAlignedFlushMergesDuplicateTimestampsUsingLastNonNullValue() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestamps(false);
+  }
+
+  @Test
+  public void testAlignedFlushMergesDuplicateTimestampsAfterMeasurementDeletion() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestamps(true);
+  }
+
+  private void checkAlignedFlushMergesDuplicateTimestamps(boolean removeSecondMeasurement)
+      throws Exception {
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, true);
+    String alignedFilePath =
+        TestConstant.OUTPUT_DATA_DIR.concat(
+            "duplicateAlignedRows-" + removeSecondMeasurement + ".tsfile");
+
+    try {
+      memChunk.putAlignedRow(1, new Object[] {10L, 100L});
+      memChunk.putAlignedRow(2, new Object[] {20L, null});
+      memChunk.putAlignedRow(2, new Object[] {null, 200L});
+      memChunk.putAlignedRow(2, new Object[] {null, null});
+      memChunk.putAlignedRow(3, new Object[] {30L, null});
+      if (removeSecondMeasurement) {
+        memChunk.removeColumn("s1");
+      }
+      memChunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+      try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+        alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+        Object task;
+        while ((task = ioTaskQueue.poll()) != null) {
+          if (task instanceof IChunkWriter chunkWriter) {
+            chunkWriter.writeToFileWriter(alignedWriter);
+          }
+        }
+        alignedWriter.endChunkGroup();
+        alignedWriter.endFile();
+      }
+
+      try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+          TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+        List<Path> paths = new ArrayList<>();
+        paths.add(new Path("root.d", "s0", false));
+        if (!removeSecondMeasurement) {
+          paths.add(new Path("root.d", "s1", false));
+        }
+        QueryDataSet dataSet = fileReader.query(QueryExpression.create(paths, null));
+
+        RowRecord row = dataSet.next();
+        assertEquals(1, row.getTimestamp());
+        assertEquals(10L, row.getFields().get(0).getLongV());
+        if (!removeSecondMeasurement) {
+          assertEquals(100L, row.getFields().get(1).getLongV());
+        }
+
+        row = dataSet.next();
+        assertEquals(2, row.getTimestamp());
+        assertEquals(20L, row.getFields().get(0).getLongV());
+        if (!removeSecondMeasurement) {
+          assertEquals(200L, row.getFields().get(1).getLongV());
+        }
+
+        row = dataSet.next();
+        assertEquals(3, row.getTimestamp());
+        assertEquals(30L, row.getFields().get(0).getLongV());
+        if (!removeSecondMeasurement) {
+          assertTrue(
+              row.getFields().get(1) == null || row.getFields().get(1).getDataType() == null);
+        }
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      memChunk.release();
+    }
+  }
+
+  @Test
   public void testAlignedFastPathKeepsPagesAndValuesAlignedAfterPartialSegmentSort()
       throws IOException, InterruptedException {
     // Covers one moved segment and several untouched segments across multiple logical pages.

@@ -46,10 +46,13 @@ import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
@@ -416,6 +419,38 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   }
 
   protected abstract void doExtract(final PipeRealtimeEvent event);
+
+  protected static int compareTsFileEpochsByQueryPriority(
+      final TsFileEpoch epoch1, final TsFileEpoch epoch2) {
+    final TsFileResource resource1 = epoch1.getResource();
+    final TsFileResource resource2 = epoch2.getResource();
+
+    final int queryPriorityComparison =
+        new MergeReaderPriority(
+                resource1.getTsFileID().getTimestamp(),
+                resource1.getVersion(),
+                0,
+                resource1.isSeq())
+            .compareTo(
+                new MergeReaderPriority(
+                    resource2.getTsFileID().getTimestamp(),
+                    resource2.getVersion(),
+                    0,
+                    resource2.isSeq()));
+    if (queryPriorityComparison != 0) {
+      return queryPriorityComparison;
+    }
+
+    // Equal query priority does not imply the same file: this file-level comparison omits
+    // compaction versions and directories, and fixes the chunk offset at zero. Use deterministic
+    // tie-breakers for distinct files with the same seq/unseq flag, version and timestamp.
+    final int compactionVersionComparison =
+        Long.compare(
+            resource1.getTsFileID().compactionVersion, resource2.getTsFileID().compactionVersion);
+    return compactionVersionComparison != 0
+        ? compactionVersionComparison
+        : resource1.getTsFilePath().compareTo(resource2.getTsFilePath());
+  }
 
   protected void extractHeartbeat(final PipeRealtimeEvent event) {
     // Record the pending queue size before trying to put heartbeatEvent into queue

@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvi
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
@@ -39,12 +41,18 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -70,6 +78,35 @@ public class CachedSchemaPatternMatcherTest {
     @Override
     public boolean shouldParsePattern() {
       return false;
+    }
+  }
+
+  private static class CountingCachedSchemaPatternMatcher extends CachedSchemaPatternMatcher {
+
+    private final int sourcesToAddOnEachMatch;
+    private int tableMatchCount;
+
+    private CountingCachedSchemaPatternMatcher(final int sourcesToAddOnEachMatch) {
+      this.sourcesToAddOnEachMatch = sourcesToAddOnEachMatch;
+    }
+
+    @Override
+    protected void matchTableModelEvent(
+        final String databaseName,
+        final String tableName,
+        final Set<PipeRealtimeDataRegionSource> matchedSources) {
+      ++tableMatchCount;
+      int addedSourceCount = 0;
+      for (final PipeRealtimeDataRegionSource source : sources) {
+        matchedSources.add(source);
+        if (++addedSourceCount >= sourcesToAddOnEachMatch) {
+          break;
+        }
+      }
+    }
+
+    private int getTableMatchCount() {
+      return tableMatchCount;
     }
   }
 
@@ -176,6 +213,52 @@ public class CachedSchemaPatternMatcherTest {
             + ((double) (epochNum * (deviceNum + 1)) / (double) (totalTime) * 1000.0));
 
     future.get();
+  }
+
+  @Test
+  public void testTableModelMatchesEachTableOncePerEvent() throws Exception {
+    final CountingCachedSchemaPatternMatcher countingMatcher =
+        new CountingCachedSchemaPatternMatcher(1);
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
+
+    final PipeInsertionEvent insertionEvent = Mockito.mock(PipeInsertionEvent.class);
+    Mockito.when(insertionEvent.getTableModelDatabaseName()).thenReturn("db");
+    final Map<IDeviceID, String[]> schemaInfo = new LinkedHashMap<>();
+    schemaInfo.put(new StringArrayDeviceID("table1", "tag1"), new String[0]);
+    schemaInfo.put(new StringArrayDeviceID("table1", "tag2"), new String[0]);
+
+    Assert.assertEquals(
+        1,
+        countingMatcher
+            .match(new MockedPipeRealtimeEvent(insertionEvent, null, schemaInfo))
+            .getLeft()
+            .size());
+    Assert.assertEquals(1, countingMatcher.getTableMatchCount());
+  }
+
+  @Test
+  public void testMultiTableTsFileCollectsAllTableNamesAfterAllSourcesMatched() throws Exception {
+    final CountingCachedSchemaPatternMatcher countingMatcher =
+        new CountingCachedSchemaPatternMatcher(Integer.MAX_VALUE);
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
+
+    final PipeTsFileInsertionEvent tsFileInsertionEvent =
+        Mockito.mock(PipeTsFileInsertionEvent.class);
+    Mockito.when(tsFileInsertionEvent.isTableModelEvent()).thenReturn(true);
+    Mockito.when(tsFileInsertionEvent.getTableModelDatabaseName()).thenReturn("db");
+    final Map<IDeviceID, String[]> schemaInfo = new LinkedHashMap<>();
+    schemaInfo.put(new StringArrayDeviceID("table1", "tag1"), new String[0]);
+    schemaInfo.put(new StringArrayDeviceID("table2", "tag2"), new String[0]);
+
+    countingMatcher.match(new MockedPipeRealtimeEvent(tsFileInsertionEvent, null, schemaInfo));
+
+    final ArgumentCaptor<Set<String>> tableNamesCaptor = ArgumentCaptor.forClass(Set.class);
+    Mockito.verify(tsFileInsertionEvent).setTableNames(tableNamesCaptor.capture());
+    Assert.assertEquals(
+        new HashSet<>(Arrays.asList("table1", "table2")), tableNamesCaptor.getValue());
+    Assert.assertEquals(1, countingMatcher.getTableMatchCount());
   }
 
   public static class PipeRealtimeDataRegionFakeSource extends PipeRealtimeDataRegionSource {

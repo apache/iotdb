@@ -57,6 +57,7 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 
 public class IoTDBAirGapReceiverTest {
@@ -161,6 +162,80 @@ public class IoTDBAirGapReceiverTest {
 
     Assert.assertTrue(receiver.receive(toAirGapData(toRawRequestBytes()), "udp-client"));
     Assert.assertArrayEquals(AirGapOneByteResponse.OK, socket.getWrittenBytes());
+  }
+
+  @Test
+  public void testTemporaryUnavailableRetryUsesFreshRequestBody() throws Exception {
+    assertTemporaryUnavailableRetryUsesFreshRequestBody(null);
+  }
+
+  @Test
+  public void testTemporaryUnavailableRetryUsesFreshRequestBodyWithSpecifiedReceiverKey()
+      throws Exception {
+    assertTemporaryUnavailableRetryUsesFreshRequestBody("udp-client");
+  }
+
+  private void assertTemporaryUnavailableRetryUsesFreshRequestBody(final String receiverKey)
+      throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final long originalRetryLocalIntervalMs = commonConfig.getPipeAirGapRetryLocalIntervalMs();
+    final long originalRetryMaxMs = commonConfig.getPipeAirGapRetryMaxMs();
+
+    try {
+      commonConfig.setPipeAirGapRetryLocalIntervalMs(0);
+      commonConfig.setPipeAirGapRetryMaxMs(10_000);
+
+      final RecordingSocket socket = new RecordingSocket();
+      final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(socket, 4L);
+      final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+      final byte[] expectedBody = new byte[] {1, 2, 3};
+      final AtomicInteger receiveCount = new AtomicInteger();
+      stubAgent.setStubReceiver(
+          receiverKey,
+          new IoTDBReceiver() {
+            @Override
+            public TPipeTransferResp receive(final TPipeTransferReq req) {
+              final byte[] actualBody = new byte[req.body.remaining()];
+              req.body.get(actualBody);
+              Assert.assertArrayEquals(expectedBody, actualBody);
+              return new TPipeTransferResp(
+                  new TSStatus(
+                      receiveCount.getAndIncrement() == 0
+                          ? TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
+                              .getStatusCode()
+                          : TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+            }
+
+            @Override
+            public void handleExit() {
+              // noop for unit test
+            }
+
+            @Override
+            public IoTDBSinkRequestVersion getVersion() {
+              return IoTDBSinkRequestVersion.VERSION_1;
+            }
+          });
+      setField(receiver, "agent", stubAgent);
+
+      final AirGapPseudoTPipeTransferRequest req = new AirGapPseudoTPipeTransferRequest();
+      req.setVersion(IoTDBSinkRequestVersion.VERSION_1.getVersion());
+      req.setType((short) 0);
+      req.setBody(ByteBuffer.wrap(expectedBody));
+
+      final Method handleReq =
+          IoTDBAirGapReceiver.class.getDeclaredMethod(
+              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class, String.class);
+      handleReq.setAccessible(true);
+      handleReq.invoke(receiver, req, System.currentTimeMillis(), receiverKey);
+
+      Assert.assertEquals(2, receiveCount.get());
+      Assert.assertEquals(0, req.body.position());
+      Assert.assertArrayEquals(AirGapOneByteResponse.OK, socket.getWrittenBytes());
+    } finally {
+      commonConfig.setPipeAirGapRetryLocalIntervalMs(originalRetryLocalIntervalMs);
+      commonConfig.setPipeAirGapRetryMaxMs(originalRetryMaxMs);
+    }
   }
 
   @Test

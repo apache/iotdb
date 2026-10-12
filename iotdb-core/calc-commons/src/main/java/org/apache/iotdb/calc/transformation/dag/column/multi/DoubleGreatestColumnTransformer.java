@@ -28,7 +28,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 
 public class DoubleGreatestColumnTransformer extends AbstractGreatestLeastColumnTransformer {
-  protected DoubleGreatestColumnTransformer(
+  public DoubleGreatestColumnTransformer(
       Type returnType, List<ColumnTransformer> columnTransformerList) {
     super(returnType, columnTransformerList);
   }
