@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
@@ -39,8 +35,6 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.rpc.subscription.config.TopicConfig;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
@@ -50,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -73,8 +66,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   private final Meter insertNodeTabletInsertionEventSizeEstimator;
   private final Meter rawTabletInsertionEventSizeEstimator;
-  private volatile boolean treeViewTabletProjectorInitialized;
-  private volatile TreeViewTabletProjector treeViewTabletProjector;
+  private final TableViewTabletProjectorProvider tableViewTabletProjectorProvider;
 
   private volatile SubscriptionPipeTabletIterationSnapshot iterationSnapshot;
   private final AtomicInteger referenceCount = new AtomicInteger();
@@ -88,12 +80,28 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       final SubscriptionPrefetchingTabletQueue prefetchingQueue,
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
+    this(
+        regionId,
+        prefetchingQueue,
+        new TableViewTabletProjectorProvider(prefetchingQueue),
+        maxDelayInMs,
+        maxBatchSizeInBytes);
+  }
+
+  public SubscriptionPipeTabletEventBatch(
+      final int regionId,
+      final SubscriptionPrefetchingTabletQueue prefetchingQueue,
+      final TableViewTabletProjectorProvider tableViewTabletProjectorProvider,
+      final int maxDelayInMs,
+      final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
 
     this.insertNodeTabletInsertionEventSizeEstimator =
         new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
     this.rawTabletInsertionEventSizeEstimator =
         new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+
+    this.tableViewTabletProjectorProvider = tableViewTabletProjectorProvider;
 
     resetForIteration();
   }
@@ -163,7 +171,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() {
-    if (!prepareTreeViewTabletProjectorForEmission()) {
+    if (!tableViewTabletProjectorProvider.prepareForEmission()) {
       return null;
     }
     resetForIteration();
@@ -217,16 +225,19 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       return null;
     }
 
-    return pruneTablets(projectTreeViewTabletsIfNecessary(result));
+    return pruneTablets(projectTableViewTabletsIfNecessary(result));
   }
 
-  private Pair<String, List<Tablet>> projectTreeViewTabletsIfNecessary(
+  private Pair<String, List<Tablet>> projectTableViewTabletsIfNecessary(
       final Pair<String, List<Tablet>> tablets) {
     if (Objects.isNull(tablets) || Objects.nonNull(tablets.left) || Objects.isNull(tablets.right)) {
       return tablets;
     }
 
-    final TreeViewTabletProjector projector = getTreeViewTabletProjector();
+    final TreeViewTabletProjector projector =
+        tableViewTabletProjectorProvider.prepareForEmission()
+            ? tableViewTabletProjectorProvider.getTreeViewTabletProjector()
+            : null;
     if (Objects.isNull(projector)) {
       return tablets;
     }
@@ -241,90 +252,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     return projectedTablets.isEmpty()
         ? null
         : new Pair<>(projector.getDatabaseName(), projectedTablets);
-  }
-
-  private TreeViewTabletProjector getTreeViewTabletProjector() {
-    return prepareTreeViewTabletProjectorForEmission() ? treeViewTabletProjector : null;
-  }
-
-  private boolean prepareTreeViewTabletProjectorForEmission() {
-    if (treeViewTabletProjectorInitialized) {
-      return true;
-    }
-
-    synchronized (this) {
-      if (treeViewTabletProjectorInitialized) {
-        return true;
-      }
-
-      final TopicConfig topicConfig =
-          SubscriptionAgent.topic()
-              .getTopicConfigs(
-                  Collections.singleton(prefetchingQueue.getTopicName()),
-                  SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()))
-              .get(prefetchingQueue.getTopicName());
-      if (Objects.isNull(topicConfig)) {
-        return false;
-      }
-      if (!topicConfig.isTableTopic()) {
-        treeViewTabletProjectorInitialized = true;
-        return true;
-      }
-
-      final String database =
-          topicConfig.getStringOrDefault(
-              TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
-      final String tableName =
-          topicConfig.getStringOrDefault(
-              TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
-      if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
-          || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
-          || !isLiteralTopicPattern(database)
-          || !isLiteralTopicPattern(tableName)) {
-        treeViewTabletProjectorInitialized = true;
-        return true;
-      }
-
-      if (!isTreeCapturedByTopic(topicConfig) && topicConfig.isColumnFilterTrivial()) {
-        treeViewTabletProjectorInitialized = true;
-        return true;
-      }
-
-      final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
-      if (Objects.isNull(table)) {
-        LOGGER.debug(
-            DataNodePipeMessages
-                .PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_POSTPONE_EMITTING_SUBSCRIPTION_TABLET_BATCH_FOR_TOPIC_ARG_BECAUSE_TABLE_SCHEMA_ARG_ARG_IS_NOT_AVAILABLE_LOCALLY_996C618D,
-            prefetchingQueue.getTopicName(),
-            database,
-            tableName);
-        return false;
-      }
-      if (TreeViewSchema.isTreeViewTable(table)) {
-        treeViewTabletProjector = new TreeViewTabletProjector(database, table);
-      }
-
-      treeViewTabletProjectorInitialized = true;
-      return true;
-    }
-  }
-
-  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
-    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
-  }
-
-  private static boolean isLiteralTopicPattern(final String pattern) {
-    final String regexMetaCharacters = ".*+?[](){}\\|^$";
-    return Objects.nonNull(pattern)
-        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
-  }
-
-  private static boolean isTreeCapturedByTopic(final TopicConfig topicConfig) {
-    return topicConfig.getBooleanOrDefault(
-        Arrays.asList(
-            PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-            PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY),
-        false);
   }
 
   private Pair<String, List<Tablet>> pruneTablets(final Pair<String, List<Tablet>> tablets) {
