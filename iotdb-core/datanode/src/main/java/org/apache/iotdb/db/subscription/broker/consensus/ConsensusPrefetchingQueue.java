@@ -378,6 +378,7 @@ public class ConsensusPrefetchingQueue {
   protected enum ReplayLocateStatus {
     FOUND,
     AT_END,
+    RETRY_LATER,
     LOCATE_MISS
   }
 
@@ -431,6 +432,12 @@ public class ConsensusPrefetchingQueue {
         final RegionProgress recoveryRegionProgress, final String detail) {
       return new ReplayLocateDecision(
           ReplayLocateStatus.LOCATE_MISS, Long.MIN_VALUE, recoveryRegionProgress, detail);
+    }
+
+    static ReplayLocateDecision retryLater(
+        final RegionProgress recoveryRegionProgress, final String detail) {
+      return new ReplayLocateDecision(
+          ReplayLocateStatus.RETRY_LATER, Long.MIN_VALUE, recoveryRegionProgress, detail);
     }
 
     protected ReplayLocateStatus getStatus() {
@@ -941,6 +948,11 @@ public class ConsensusPrefetchingQueue {
             recoveryRegionProgress,
             progressSource,
             configNodeProgressAvailable || hasPersistedState);
+    if (resolvedStart.getStatus() == ReplayLocateStatus.RETRY_LATER) {
+      // A rolling or temporarily unreadable WAL must leave initialization dormant. The next poll
+      // repeats the lookup before installing recovery frontiers or advancing the replay cursor.
+      return false;
+    }
 
     clearRecoveryWriterProgress();
     final RegionProgress effectiveRecoveryRegionProgress =
@@ -1008,6 +1020,8 @@ public class ConsensusPrefetchingQueue {
             resolvedReplayStartSearchIndex,
             replayTarget.getRecoveryRegionProgress(),
             progressSource + " (" + replayTarget.getDetail() + ")");
+      case RETRY_LATER:
+        return replayTarget;
       case LOCATE_MISS:
       default:
         throw new IllegalStateException(
@@ -1245,9 +1259,13 @@ public class ConsensusPrefetchingQueue {
       final ReplayLocateDecision decision =
           scanReplayStartForRequests(iterator, regionProgress, seekAfter);
       if (iterator.hasIncompleteScan()) {
-        return ReplayLocateDecision.locateMiss(
-            regionProgress,
-            "replay lookup did not complete: " + iterator.getIncompleteScanDetail());
+        final String detail =
+            "replay lookup did not complete: " + iterator.getIncompleteScanDetail();
+        // Retry only a deferred read. Confirmed corruption encountered earlier in the scan must
+        // still surface as a lookup failure, even if a later file is temporarily unreadable.
+        return iterator.isWaitingForReadableWal() && !iterator.hasSkippedBrokenWalFiles()
+            ? ReplayLocateDecision.retryLater(regionProgress, detail)
+            : ReplayLocateDecision.locateMiss(regionProgress, detail);
       }
       return decision;
     } catch (final IOException e) {
@@ -3402,6 +3420,7 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getRecoveryRegionProgress(),
             "regionProgress");
         return;
+      case RETRY_LATER:
       case LOCATE_MISS:
       default:
         throw new IllegalStateException(
@@ -3443,6 +3462,7 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getRecoveryRegionProgress(),
             "regionProgressAfter");
         return;
+      case RETRY_LATER:
       case LOCATE_MISS:
       default:
         throw new IllegalStateException(
