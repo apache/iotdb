@@ -74,8 +74,17 @@ import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentC
  *       window).
  * </ul>
  *
- * <p>{@code NULL} and non-finite participant values are ignored per column. Ties in the triangle
- * area are broken deterministically by the earliest timestamp (stable input order).
+ * <p>{@code NULL} participant values are ignored per column; every non-null value, including {@code
+ * NaN} and the infinities, participates in the selection and is reproduced in the output. Ties in
+ * the triangle area are broken deterministically by the earliest timestamp (stable input order).
+ *
+ * <p>The timestamps of the input rows of one partition must be unique. As soon as two rows of the
+ * same partition carry the same timestamp the query fails with a semantic error ({@code 701}); the
+ * check runs at the partition input boundary, before per-column {@code NULL} filtering and before
+ * window expansion, so a row that several overlapping windows share is still a single input row.
+ * Equal timestamps in different partitions remain valid. Since the input is ordered by {@code
+ * TIMECOL}, equal timestamps are adjacent, and the check compares each row with the previous one
+ * and carries the last seen timestamp across input blocks.
  */
 public class LTTBTableFunction implements TableFunction {
 
@@ -425,7 +434,12 @@ public class LTTBTableFunction implements TableFunction {
       return type == Type.INT32 || type == Type.INT64;
     }
 
-    /** Appends the record's value to {@code buffer} if it is a non-null finite number. */
+    /**
+     * Appends the record's value to {@code buffer} if it is non-null. All non-null values are
+     * eligible, including {@code NaN} and the infinities: the definition only excludes {@code NULL}
+     * participants, and dropping non-finite values would silently turn populated input into an
+     * all-{@code NULL} result.
+     */
     private void collect(Record record, long time, PointBuffer buffer) {
       if (record.isNull(inputIndex)) {
         return;
@@ -438,16 +452,10 @@ public class LTTBTableFunction implements TableFunction {
           buffer.addIntegral(time, record.getLong(inputIndex));
           break;
         case FLOAT:
-          float floatValue = record.getFloat(inputIndex);
-          if (Float.isFinite(floatValue)) {
-            buffer.addFloating(time, floatValue);
-          }
+          buffer.addFloating(time, record.getFloat(inputIndex));
           break;
         case DOUBLE:
-          double doubleValue = record.getDouble(inputIndex);
-          if (Double.isFinite(doubleValue)) {
-            buffer.addFloating(time, doubleValue);
-          }
+          buffer.addFloating(time, record.getDouble(inputIndex));
           break;
         default:
           throw new IllegalArgumentException(
@@ -567,16 +575,48 @@ public class LTTBTableFunction implements TableFunction {
   // Processors
   // ---------------------------------------------------------------------------------------------
 
+  /**
+   * Partition-local timestamp uniqueness of the input rows. The input is ordered by {@code
+   * TIMECOL}, so a duplicate timestamp is always adjacent to its predecessor; the last accepted
+   * timestamp is kept in the instance so the rule also spans input blocks of the same partition.
+   */
+  static final class TimestampUniquenessChecker {
+    private long previousTimestamp;
+    private boolean hasPreviousTimestamp;
+
+    void check(long time) {
+      if (hasPreviousTimestamp && time == previousTimestamp) {
+        throw new SemanticException(
+            String.format(
+                CommonMessages
+                    .EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD,
+                time));
+      }
+      previousTimestamp = time;
+      hasPreviousTimestamp = true;
+    }
+  }
+
   private abstract static class AbstractLTTBDataProcessor implements TableFunctionDataProcessor {
     protected final Type[] partitionTypes;
     protected final Object[] partitionValues;
     protected final ParticipantColumn[] participantColumns;
+    private final TimestampUniquenessChecker timestampChecker = new TimestampUniquenessChecker();
 
     protected AbstractLTTBDataProcessor(
         Type[] partitionTypes, ParticipantColumn[] participantColumns) {
       this.partitionTypes = partitionTypes;
       this.partitionValues = new Object[partitionTypes.length];
       this.participantColumns = participantColumns;
+    }
+
+    /**
+     * Rejects a repeated input timestamp of the partition. Runs at the partition input boundary,
+     * before per-column {@code NULL} filtering and before window expansion, so a row shared by
+     * several overlapping windows is still a single input row.
+     */
+    protected final void checkTimestamp(long time) {
+      timestampChecker.check(time);
     }
 
     protected final PointBuffer[] newBuffers() {
@@ -650,8 +690,10 @@ public class LTTBTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
       hasRows = true;
+      long time = input.getLong(0);
+      checkTimestamp(time);
       capturePartitionValues(input);
-      collect(input, input.getLong(0), buffers);
+      collect(input, time, buffers);
     }
 
     @Override
@@ -764,8 +806,10 @@ public class LTTBTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
+      long time = input.getLong(0);
+      checkTimestamp(time);
       capturePartitionValues(input);
-      processRecord(input, input.getLong(0), properColumnBuilders);
+      processRecord(input, time, properColumnBuilders);
     }
 
     protected abstract void processRecord(

@@ -255,6 +255,9 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_LTTB_BUFFERS_AT_MOST_ARG_ELIGIBLE_POINTS_PER_COLUMN_IN_ONE_PARTITION_OR_WINDOW_4C746D82 =
           "LTTB 在单个分区或窗口内每列最多缓存 %d 个有效点。";
+  public static final String
+      EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD =
+          "LTTB 不支持重复的时间戳，但时间戳 %s 在同一分区中出现了多次。";
   public static final String EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE =
       "不支持的 LTTB 值类型：%s";
   public static final String

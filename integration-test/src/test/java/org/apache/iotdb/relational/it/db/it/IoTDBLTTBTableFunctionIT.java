@@ -116,6 +116,59 @@ public class IoTDBLTTBTableFunctionIT {
   }
 
   @Test
+  public void testDuplicateTimestampsAreRejectedWith701() {
+    // one input partition holding (1, 1.0), (1, 9.0), (2, 2.0), (3, 3.0)
+    String duplicated =
+        "SELECT * FROM LTTB(DATA => (SELECT time, device, s1 FROM metrics WHERE device = 'd1' "
+            + "UNION ALL SELECT 1, 'd1', 9.0) "
+            + "PARTITION BY device ORDER BY time, TIMECOL => 'time', ";
+    String expected =
+        "701: LTTB does not support duplicate timestamps, but timestamp 1 appears more than once"
+            + " in the same partition.";
+
+    tableAssertTestFail(duplicated + "N => 3)", expected, DATABASE_NAME);
+    tableAssertTestFail(duplicated + "SIZE => 2)", expected, DATABASE_NAME);
+    tableAssertTestFail(
+        duplicated + "SIZE => 2ms, ORIGIN => 1970-01-01T00:00:00.000+00:00)",
+        expected,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDuplicateTimestampsInDifferentPartitionsRemainValid() {
+    // each partition is unique on its own, so the query must succeed and keep both rows
+    tableResultSetEqualTest(
+        "SELECT * FROM LTTB(DATA => (SELECT time, device, s1 FROM metrics "
+            + "WHERE time = 0 AND (device = 'd1' OR device = 'd2')) "
+            + "PARTITION BY device ORDER BY time, TIMECOL => 'time', N => 3) "
+            + "ORDER BY device",
+        new String[] {"window_index", "device", "s1_time", "s1"},
+        new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,0.0,", "0,d2,null,null,",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNonFiniteValuesAreKeptInShortSeries() {
+    // three non-NULL input points whose values are NaN/Infinity for N => 3
+    String nonFinite =
+        "SELECT * FROM LTTB(DATA => (SELECT time, device, s1 / 0.0 AS s1 FROM metrics "
+            + "WHERE device = 'd1' AND time <= 2) "
+            + "PARTITION BY device ORDER BY time, TIMECOL => 'time', ";
+
+    tableResultSetEqualTest(
+        nonFinite + "N => 3) ORDER BY s1_time",
+        new String[] {"window_index", "device", "s1_time", "s1"},
+        new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,NaN,",
+          "0,d1,1970-01-01T00:00:00.001Z,Infinity,",
+          "0,d1,1970-01-01T00:00:00.002Z,Infinity,",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testInvalidParameterCombinations() {
     String prefix =
         "SELECT * FROM LTTB(DATA => metrics PARTITION BY device ORDER BY time, TIMECOL => 'time', ";
