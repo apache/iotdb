@@ -30,16 +30,18 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryManager;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -57,16 +59,15 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.BufferedTsFileInput;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -93,9 +94,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private IChunkReader chunkReader;
   private BatchData data;
-  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
-  private PipeMemoryBlock allocatedMemoryBlockForTsFileInput;
+  private BatchData pendingPageDataAfterMemoryPressure;
+  private Tablet pendingTabletAfterMemoryPressure;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForBatchData;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunk;
+  private TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTsFileInput;
 
   private boolean currentIsMultiPage;
   private IDeviceID currentDevice;
@@ -115,6 +118,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private CachedAlignedValueChunk cachedAlignedValueChunk;
 
   private byte lastMarker = Byte.MIN_VALUE;
+  private boolean shouldRetryChunkHeaderAfterMemoryPressure;
 
   public TsFileInsertionEventScanParser(
       final String pipeName,
@@ -129,6 +133,35 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException, IllegalPathException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventScanParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException, IllegalPathException {
     super(
         tsFile,
         pipeName,
@@ -141,16 +174,15 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         entity,
         skipIfNoPrivileges,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        memoryManager);
 
     this.startTime = startTime;
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    this.allocatedMemoryBlockForBatchData =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
-    this.allocatedMemoryBlockForChunk =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
 
     try {
       currentModifications =
@@ -158,8 +190,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
 
       tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -184,6 +215,27 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final boolean isWithMod)
       throws IOException, IllegalPathException {
     this(
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException, IllegalPathException {
+    this(
         null,
         0,
         tsFile,
@@ -194,7 +246,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         null,
         false,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        memoryManager);
   }
 
   private TsFileSequenceReader createTsFileSequenceReader(
@@ -204,8 +257,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     allocatedMemoryBlockForTsFileInput =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
+        memoryManager.forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
     return new TsFileSequenceReader(
         new BufferedTsFileInput(tsFile.toPath(), TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES),
         false,
@@ -223,6 +275,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 @Override
                 public boolean hasNext() {
                   throwIfDeferredException();
+                  retryChunkHeaderAfterMemoryPressureIfNecessary();
                   final boolean hasNext = Objects.nonNull(chunkReader);
                   if (hasNext && !parseStartTimeRecorded) {
                     // Record start time on first hasNext() that returns true
@@ -242,8 +295,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   }
 
                   // Release the previous parser-owned tablet buffer before allocating the next
-                  // tablet.
-                  releaseTabletMemoryBlock();
+                  // tablet. A tablet retained after memory pressure still owns this block and must
+                  // keep it until the retry has successfully returned the pending event.
+                  if (pendingTabletAfterMemoryPressure == null) {
+                    releaseTabletMemoryBlock();
+                  }
                   // currentIsAligned is initialized when TsFileInsertionEventScanParser is
                   // constructed.
                   // When the getNextTablet function is called, currentIsAligned may be updated,
@@ -302,6 +358,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           @Override
           public boolean hasNext() {
             throwIfDeferredException();
+            retryChunkHeaderAfterMemoryPressureIfNecessary();
             return Objects.nonNull(chunkReader);
           }
 
@@ -346,15 +403,25 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   }
 
   private Tablet getNextTablet() {
+    Tablet tablet = null;
+    boolean tabletMemoryReserved = false;
     try {
-      Tablet tablet = null;
+      if (data != null && !data.hasCurrent() && pendingPageDataAfterMemoryPressure != null) {
+        data = nextPageData();
+      }
+      tablet = pendingTabletAfterMemoryPressure;
+      tabletMemoryReserved = tablet != null;
+      pendingTabletAfterMemoryPressure = null;
 
       if (!data.hasCurrent()) {
-        tablet = new Tablet(currentDeviceString, currentMeasurements, 1);
-        return tablet;
+        if (tablet != null) {
+          PipeTabletUtils.compactBitMaps(tablet);
+          return tablet;
+        }
+        return new Tablet(currentDeviceString, currentMeasurements, 1);
       }
 
-      boolean isFirstRow = true;
+      boolean isFirstRow = tablet == null;
       while (data.hasCurrent()) {
         if (currentIsMultiPage
             || data.currentTime() >= startTime && data.currentTime() <= endTime) {
@@ -367,9 +434,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     currentDeviceString, currentMeasurements, rowCountAndMemorySize.getLeft());
             if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
                 < rowCountAndMemorySize.getRight()) {
-              PipeDataNodeResourceManager.memory()
-                  .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
+              allocatedMemoryBlockForTablet.forceResize(rowCountAndMemorySize.getRight());
             }
+            tabletMemoryReserved = true;
+            pendingTabletAfterMemoryPressure = tablet;
             isFirstRow = false;
           }
 
@@ -403,8 +471,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         }
       }
       PipeTabletUtils.compactBitMaps(tablet);
+      pendingTabletAfterMemoryPressure = null;
       return tablet;
-    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+    } catch (final PipeRuntimeOutOfMemoryCriticalException | LoadRuntimeOutOfMemoryException e) {
+      pendingTabletAfterMemoryPressure = tabletMemoryReserved ? tablet : null;
       // Keep the parser state so the caller can yield its parser slot and retry from the same
       // unconsumed data after memory is available again.
       throw e;
@@ -424,6 +494,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     throw new PipeException(
         DataNodePipeMessages.EXCEPTION_FAILED_TO_PREPARE_NEXT_TABLET_INSERTION_EVENT_70A57827,
         exception);
+  }
+
+  private void retryChunkHeaderAfterMemoryPressureIfNecessary() {
+    if (!shouldRetryChunkHeaderAfterMemoryPressure) {
+      return;
+    }
+    try {
+      prepareData();
+      shouldRetryChunkHeaderAfterMemoryPressure = false;
+    } catch (final PipeRuntimeOutOfMemoryCriticalException | LoadRuntimeOutOfMemoryException e) {
+      throw e;
+    } catch (final Exception e) {
+      close();
+      throw new PipeException(DataNodePipeMessages.FAILED_TO_GET_NEXT_TABLET_INSERTION_EVENT, e);
+    }
   }
 
   private boolean isLastTabletWithoutDeferredException() {
@@ -454,9 +539,24 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   }
 
   private BatchData nextPageData() throws IOException {
+    if (pendingPageDataAfterMemoryPressure != null) {
+      resizePageDataMemoryIfNeeded(
+          PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(pendingPageDataAfterMemoryPressure));
+      final BatchData pendingPageData = pendingPageDataAfterMemoryPressure;
+      pendingPageDataAfterMemoryPressure = null;
+      return pendingPageData;
+    }
+
     resizePageDataMemoryForCurrentPageIfNeeded();
     final BatchData nextData = chunkReader.nextPageData();
-    resizePageDataMemoryIfNeeded(PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(nextData));
+    try {
+      resizePageDataMemoryIfNeeded(PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(nextData));
+    } catch (final PipeRuntimeOutOfMemoryCriticalException | LoadRuntimeOutOfMemoryException e) {
+      // The chunk reader has already advanced. Retain the decoded page until its memory can be
+      // accounted for instead of advancing to the following page on retry.
+      pendingPageDataAfterMemoryPressure = nextData;
+      throw e;
+    }
     return nextData;
   }
 
@@ -472,8 +572,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private void resizePageDataMemoryIfNeeded(final long estimatedMemoryUsageInBytes) {
     if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < estimatedMemoryUsageInBytes) {
-      PipeDataNodeResourceManager.memory()
-          .forceResize(allocatedMemoryBlockForBatchData, estimatedMemoryUsageInBytes);
+      allocatedMemoryBlockForBatchData.forceResize(estimatedMemoryUsageInBytes);
     }
   }
 
@@ -482,79 +581,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < tablet.getSchemas().size(); ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
+        final TSDataType dataType = tablet.getSchemas().get(i).getType();
         if (Objects.isNull(primitiveType)
             || ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i))) {
-          switch (tablet.getSchemas().get(i).getType()) {
-            case TEXT:
-            case BLOB:
-            case STRING:
-              PipeTabletUtils.putValue(
-                  tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), Binary.EMPTY_VALUE);
+          if (dataType.isBinary()) {
+            ((Binary[]) tablet.getValues()[i])[rowIndex] = Binary.EMPTY_VALUE;
           }
           PipeTabletUtils.markNullValue(tablet, rowIndex, i);
           continue;
         }
 
         isNeedFillTime = true;
-        switch (tablet.getSchemas().get(i).getType()) {
-          case BOOLEAN:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                primitiveType.getBoolean());
-            break;
-          case INT32:
-            PipeTabletUtils.putValue(
-                tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), primitiveType.getInt());
-            break;
-          case DATE:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                DateUtils.parseIntToLocalDate(primitiveType.getInt()));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            PipeTabletUtils.putValue(
-                tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), primitiveType.getLong());
-            break;
-          case FLOAT:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                primitiveType.getFloat());
-            break;
-          case DOUBLE:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                primitiveType.getDouble());
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            final Binary binary = primitiveType.getBinary();
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                Objects.isNull(binary) || Objects.isNull(binary.getValues())
-                    ? Binary.EMPTY_VALUE
-                    : binary);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
-        }
+        TypeServices.Pipe.PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .write(primitiveType, tablet.getValues()[i], rowIndex);
+        PipeTabletUtils.unmarkNullValue(tablet, rowIndex, i);
       }
     } else {
       if (!modsInfos.isEmpty()
@@ -563,53 +604,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
 
       isNeedFillTime = true;
-      switch (tablet.getSchemas().get(0).getType()) {
-        case BOOLEAN:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getBoolean());
-          break;
-        case INT32:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getInt());
-          break;
-        case DATE:
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              0,
-              tablet.getSchemas().get(0).getType(),
-              DateUtils.parseIntToLocalDate(data.getInt()));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getLong());
-          break;
-        case FLOAT:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getFloat());
-          break;
-        case DOUBLE:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getDouble());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          final Binary binary = data.getBinary();
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              0,
-              tablet.getSchemas().get(0).getType(),
-              Objects.isNull(binary) || Objects.isNull(binary.getValues())
-                  ? Binary.EMPTY_VALUE
-                  : binary);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              DataNodePipeMessages.UNSUPPORTED + data.getDataType());
-      }
+      final TSDataType dataType = tablet.getSchemas().get(0).getType();
+      TypeServices.Pipe.PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE
+          .call(Type.fromTsDataType(dataType))
+          .write(data, tablet.getValues()[0], rowIndex);
+      PipeTabletUtils.unmarkNullValue(tablet, rowIndex, 0);
     }
     return isNeedFillTime;
   }
@@ -653,9 +652,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               break;
             }
 
-            if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-              PipeDataNodeResourceManager.memory()
-                  .forceResize(allocatedMemoryBlockForChunk, chunkHeader.getDataSize());
+            try {
+              if (chunkHeader.getDataSize()
+                  > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+                allocatedMemoryBlockForChunk.forceResize(chunkHeader.getDataSize());
+              }
+            } catch (final PipeRuntimeOutOfMemoryCriticalException
+                | LoadRuntimeOutOfMemoryException e) {
+              // The marker has already been consumed. Rewind to the start of the header and retain
+              // the marker so a retry does not interpret header bytes as a marker.
+              tsFileSequenceReader.position(currentChunkHeaderOffset + 1);
+              lastMarker = marker;
+              chunkReader = null;
+              shouldRetryChunkHeaderAfterMemoryPressure = true;
+              throw e;
             }
 
             Chunk chunk =
@@ -717,10 +727,19 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               cachedAlignedValueChunk = null;
             }
 
-            if (returnPendingAlignedChunkBeforeCaching(valueChunk)) {
-              return;
+            try {
+              if (returnPendingAlignedChunkBeforeCaching(valueChunk)) {
+                return;
+              }
+              cacheAlignedValueChunk(valueChunk);
+            } catch (final PipeRuntimeOutOfMemoryCriticalException
+                | LoadRuntimeOutOfMemoryException e) {
+              // The value chunk has already been read from the file. Keep it as the next logical
+              // input so a retry neither skips it nor reads it twice.
+              cachedAlignedValueChunk = valueChunk;
+              shouldRetryChunkHeaderAfterMemoryPressure = true;
+              throw e;
             }
-            cacheAlignedValueChunk(valueChunk);
             break;
           }
         case MetaMarker.CHUNK_GROUP_HEADER:
@@ -837,56 +856,70 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   }
 
   private boolean useNextPendingAlignedChunk(final byte marker) throws IOException {
-    while (!pendingAlignedChunkGroups.isEmpty()) {
-      final PendingAlignedChunkGroup pendingAlignedChunkGroup = pendingAlignedChunkGroups.remove(0);
-      pendingAlignedChunkSize =
-          Math.max(0, pendingAlignedChunkSize - pendingAlignedChunkGroup.chunkSize);
+    try {
+      while (!pendingAlignedChunkGroups.isEmpty()) {
+        final PendingAlignedChunkGroup pendingAlignedChunkGroup = pendingAlignedChunkGroups.get(0);
 
-      if (pendingAlignedChunkGroup.valueChunkList.isEmpty()) {
-        continue;
-      }
+        if (pendingAlignedChunkGroup.valueChunkList.isEmpty()) {
+          pendingAlignedChunkGroups.remove(0);
+          pendingAlignedChunkSize =
+              Math.max(0, pendingAlignedChunkSize - pendingAlignedChunkGroup.chunkSize);
+          continue;
+        }
 
-      final Chunk timeChunk = timeChunkList.get(pendingAlignedChunkGroup.timeChunkIndex);
-      timeChunk.getData().rewind();
-      for (final Chunk valueChunk : pendingAlignedChunkGroup.valueChunkList) {
-        valueChunk.getData().rewind();
-      }
+        final Chunk timeChunk = timeChunkList.get(pendingAlignedChunkGroup.timeChunkIndex);
+        timeChunk.getData().rewind();
+        for (final Chunk valueChunk : pendingAlignedChunkGroup.valueChunkList) {
+          valueChunk.getData().rewind();
+        }
 
-      currentMeasurements.clear();
-      currentMeasurements.addAll(pendingAlignedChunkGroup.measurements);
-      modsInfos.clear();
-      modsInfos.addAll(pendingAlignedChunkGroup.modsInfos);
+        final boolean nextIsMultiPage =
+            isMultiPageList.get(pendingAlignedChunkGroup.timeChunkIndex);
+        if (!nextIsMultiPage) {
+          resizePageDataMemoryIfNeeded(
+              AlignedSinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
+                  timeChunk, pendingAlignedChunkGroup.valueChunkList));
+        }
+        final List<Long> pageEstimatedMemoryUsageInBytesList =
+            nextIsMultiPage
+                ? AlignedSinglePageWholeChunkReader
+                    .calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(
+                        timeChunk, pendingAlignedChunkGroup.valueChunkList)
+                : Collections.emptyList();
+        final long maxPageEstimatedMemoryUsageInBytes =
+            pageEstimatedMemoryUsageInBytesList.isEmpty()
+                ? 0
+                : pageEstimatedMemoryUsageInBytesList.get(0);
+        resizePageDataMemoryIfNeeded(maxPageEstimatedMemoryUsageInBytes);
+        final IChunkReader nextChunkReader =
+            nextIsMultiPage
+                ? new MemoryControlledChunkReader(
+                    new AlignedChunkReader(
+                        timeChunk, pendingAlignedChunkGroup.valueChunkList, filter),
+                    pageEstimatedMemoryUsageInBytesList)
+                : new AlignedSinglePageWholeChunkReader(
+                    timeChunk, pendingAlignedChunkGroup.valueChunkList, null);
 
-      currentIsMultiPage = isMultiPageList.get(pendingAlignedChunkGroup.timeChunkIndex);
-      if (!currentIsMultiPage) {
-        resizePageDataMemoryIfNeeded(
-            AlignedSinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
-                timeChunk, pendingAlignedChunkGroup.valueChunkList));
+        // Publish the state transition only after all memory reservations and reader construction
+        // succeed. Otherwise a retry would lose the already-read aligned chunk group.
+        pendingAlignedChunkGroups.remove(0);
+        pendingAlignedChunkSize =
+            Math.max(0, pendingAlignedChunkSize - pendingAlignedChunkGroup.chunkSize);
+        currentMeasurements.clear();
+        currentMeasurements.addAll(pendingAlignedChunkGroup.measurements);
+        modsInfos.clear();
+        modsInfos.addAll(pendingAlignedChunkGroup.modsInfos);
+        currentIsMultiPage = nextIsMultiPage;
+        chunkReader = nextChunkReader;
+        currentIsAligned = true;
+        if (marker != Byte.MIN_VALUE) {
+          lastMarker = marker;
+        }
+        return true;
       }
-      final List<Long> pageEstimatedMemoryUsageInBytesList =
-          currentIsMultiPage
-              ? AlignedSinglePageWholeChunkReader
-                  .calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(
-                      timeChunk, pendingAlignedChunkGroup.valueChunkList)
-              : Collections.emptyList();
-      final long maxPageEstimatedMemoryUsageInBytes =
-          pageEstimatedMemoryUsageInBytesList.isEmpty()
-              ? 0
-              : pageEstimatedMemoryUsageInBytesList.get(0);
-      resizePageDataMemoryIfNeeded(maxPageEstimatedMemoryUsageInBytes);
-      chunkReader =
-          currentIsMultiPage
-              ? new MemoryControlledChunkReader(
-                  new AlignedChunkReader(
-                      timeChunk, pendingAlignedChunkGroup.valueChunkList, filter),
-                  pageEstimatedMemoryUsageInBytesList)
-              : new AlignedSinglePageWholeChunkReader(
-                  timeChunk, pendingAlignedChunkGroup.valueChunkList, null);
-      currentIsAligned = true;
-      if (marker != Byte.MIN_VALUE) {
-        lastMarker = marker;
-      }
-      return true;
+    } catch (final PipeRuntimeOutOfMemoryCriticalException | LoadRuntimeOutOfMemoryException e) {
+      shouldRetryChunkHeaderAfterMemoryPressure = true;
+      throw e;
     }
     return false;
   }
@@ -1030,7 +1063,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     final long chunkSize = pendingAlignedChunkGroup.chunkSize + valueChunk.valueChunkSize;
     if (chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, chunkSize);
+      allocatedMemoryBlockForChunk.forceResize(chunkSize);
     }
   }
 
@@ -1046,8 +1079,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         calculateMaxAlignedPageMemorySizeWithBatchData(
             pendingAlignedChunkGroup.timeChunkIndex, pendingAlignedChunkGroup, valueChunk);
     if (pageMemorySize > getPageDataMemoryLimitInBytes()) {
-      PipeDataNodeResourceManager.memory()
-          .forceResize(allocatedMemoryBlockForBatchData, pageMemorySize);
+      allocatedMemoryBlockForBatchData.forceResize(pageMemorySize);
     }
   }
 
@@ -1114,6 +1146,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   @Override
   public void close() {
     super.close();
+    pendingPageDataAfterMemoryPressure = null;
+    pendingTabletAfterMemoryPressure = null;
+    cachedAlignedValueChunk = null;
+    pendingAlignedChunkGroups.clear();
+    pendingAlignedChunkSize = 0;
 
     if (allocatedMemoryBlockForBatchData != null) {
       allocatedMemoryBlockForBatchData.close();

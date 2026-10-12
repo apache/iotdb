@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchem
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -118,6 +120,18 @@ public class LoadTsFileAnalyzerTest {
     Assert.assertTrue(schemaCache.containsDevice("table1", "tagA"));
     Assert.assertTrue(schemaCache.containsDevice("table1", "tagB"));
     Assert.assertEquals(2, schemaCache.getVerifiedDeviceCount());
+  }
+
+  @Test
+  public void testTableLoadEmptyPathIsRejected() {
+    try {
+      new LoadTsFile(null, "", Collections.emptyMap());
+      Assert.fail("Expected empty LOAD TSFILE path to be rejected.");
+    } catch (final RuntimeException e) {
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(DataNodeQueryMessages.EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181));
+    }
   }
 
   @Test
@@ -220,7 +234,8 @@ public class LoadTsFileAnalyzerTest {
             Assert.assertThrows(
                 InvocationTargetException.class,
                 () -> getAutoCreateDatabaseMethod().invoke(verifier));
-        Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeException);
+        Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeInvalidPathException);
+        Assert.assertThrows(LoadAnalyzeInvalidPathException.class, verifier::flush);
       } finally {
         verifier.close();
       }
@@ -260,6 +275,13 @@ public class LoadTsFileAnalyzerTest {
             Collections.singleton(databaseWithSameStringPrefix), databasesNeededToBeSet);
         Assert.assertEquals(
             Collections.singleton(database), getTreeSchemaCache(verifier).getAlreadySetDatabases());
+
+        getTreeSchemaCache(verifier)
+            .addTimeSeries(
+                new StringArrayDeviceID(new String[] {"root.sg", "d1"}),
+                new MeasurementSchema("s1", TSDataType.INT32));
+        // A valid device still uses its existing database despite the legacy root. entry.
+        getAutoCreateDatabaseMethod().invoke(verifier);
       } finally {
         verifier.close();
       }

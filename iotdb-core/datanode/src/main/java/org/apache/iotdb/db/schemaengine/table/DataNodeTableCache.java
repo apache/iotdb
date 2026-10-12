@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -196,6 +198,12 @@ public class DataNodeTableCache implements ITableCache {
                 }
               });
       LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
+      // Since a pre-updated table can be used for query planning before commit-release, stale
+      // last cache should stop serving as soon as need_last_cache turns off.
+      if (!table.getCachedNeedLastCache()) {
+        TableDeviceSchemaCache.getInstance().invalidateLastCache(database, table.getTableName());
+      }
+
       if (table instanceof PreDeleteTsTable) {
         if (databaseTableMap.containsKey(database)) {
           databaseTableMap.get(database).remove(table.getTableName());
@@ -280,6 +288,18 @@ public class DataNodeTableCache implements ITableCache {
     return Objects.nonNull(tableVersionPair) ? tableVersionPair.getLeft() : null;
   }
 
+  private @Nullable TsTable getTableFromCache(final String database, final String tableName) {
+    final Map<String, TsTable> tableMap = databaseTableMap.get(database);
+    return Objects.nonNull(tableMap) ? tableMap.get(tableName) : null;
+  }
+
+  private void invalidateLastCacheIfDisabled(
+      final String database, final String tableName, final TsTable currentTable) {
+    if (Objects.nonNull(currentTable) && !currentTable.getCachedNeedLastCache()) {
+      TableDeviceSchemaCache.getInstance().invalidateLastCache(database, tableName);
+    }
+  }
+
   private void removeTableFromSpecialStatusMap(final String database, final String tableName) {
     specialStatusMap.computeIfPresent(
         database,
@@ -309,7 +329,7 @@ public class DataNodeTableCache implements ITableCache {
             database,
             tableName);
         if (Objects.nonNull(oldName)) {
-          removeTableFromSpecialStatusMap(database, oldName);
+          repairMissedRenamePreUpdate(database, tableName, oldName);
         }
         return;
       }
@@ -329,6 +349,7 @@ public class DataNodeTableCache implements ITableCache {
           databaseTableMap
               .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
               .put(tableName, newTable);
+      invalidateLastCacheIfDisabled(database, tableName, newTable);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
@@ -347,6 +368,31 @@ public class DataNodeTableCache implements ITableCache {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  /**
+   * Repairs the cache after this DataNode missed the pre-update of a rename procedure. The
+   * ConfigNode has already renamed the table, so the new name can only be re-fetched, and the old
+   * name must not stay in the cache as a usable table.
+   */
+  private void repairMissedRenamePreUpdate(
+      final String database, final String newName, final String oldName) {
+    removeTableFromSpecialStatusMap(database, oldName);
+    // drop the old table
+    databaseTableMap.computeIfPresent(
+        database,
+        (databaseName, tables) -> {
+          tables.remove(oldName);
+          return tables;
+        });
+    // A placeholder makes the next lookup of the new name fetch its definition from the ConfigNode,
+    // which holds the committed rename.
+    if (Objects.isNull(getTableFromCache(database, newName))) {
+      specialStatusMap
+          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+          .put(newName, new Pair<>(new NonCommittableTsTable(newName), 0L));
+    }
+    instanceVersion.incrementAndGet();
   }
 
   private void commitDeleteTable(String database, final String tableName) {
@@ -415,6 +461,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @Override
   public long getInstanceVersion() {
     return instanceVersion.get();
   }
@@ -613,6 +660,7 @@ public class DataNodeTableCache implements ITableCache {
                       databaseTableMap
                           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                           .put(tableName, tsTable);
+                      invalidateLastCacheIfDisabled(database, tableName, tsTable);
                     } else if (databaseTableMap.containsKey(database)) {
                       databaseTableMap.get(database).remove(tableName);
                     }
@@ -689,9 +737,11 @@ public class DataNodeTableCache implements ITableCache {
       if (targetTableIsStillDeleting) {
         throw new SemanticException(
             String.format(
-                DataNodeSchemaMessages.THE_TABLE_IS_IN_PRE_DELETE_STATE,
+                CommonMessages
+                    .EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F,
                 targetDatabase,
-                targetTable));
+                targetTable),
+            TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode());
       }
     } finally {
       readWriteLock.writeLock().unlock();

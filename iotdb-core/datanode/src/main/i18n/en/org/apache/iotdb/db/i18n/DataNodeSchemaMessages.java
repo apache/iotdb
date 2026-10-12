@@ -44,6 +44,9 @@ public final class DataNodeSchemaMessages {
   public static final String PEER_IS_SHUTTING_DOWN = "Peer is shutting down now.";
   public static final String SCHEMA_REGION_DUPLICATED =
       "SchemaRegion [%s] is duplicated between [%s] and [%s], and the former one has been recovered.";
+  public static final String
+      EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05 =
+          "Cannot recover duplicated SchemaRegion [%s] found in databases [%s] and [%s].";
 
   // ======================== MemSchemaEngineStatistics ========================
 
@@ -584,8 +587,6 @@ public final class DataNodeSchemaMessages {
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
       "Update table {}.{} by table fetch, {}";
   public static final String UPDATE_TABLE_BY_FETCH = "Update table {}.{} by table fetch.";
-  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
-      "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
   public static final String COMPARE_TABLE_ADDED = "Added table: ";
   public static final String COMPARE_TABLE_REMOVED = "Removed table: ";
   public static final String COMPARE_TABLE_NAME = "Table name: ";

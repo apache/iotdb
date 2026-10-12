@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
@@ -143,6 +144,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.TsTable.NEED_LAST_CACHE_PROPERTY;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
@@ -268,6 +270,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             ConfigNodeMessages.SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO,
             currentSchema.getName(),
             currentSchema.getTTL());
+      }
+
+      if (alterSchema.isSetNeedLastCache()) {
+        currentSchema.setNeedLastCache(alterSchema.isNeedLastCache());
+        LOGGER.info(
+            ConfigNodeMessages
+                .LOG_SETNEEDLASTCACHE_THE_NEED_LAST_CACHE_FLAG_OF_DATABASE_ARG_IS_ADJUSTED_TO_ARG_C7CFFABC,
+            currentSchema.getName(),
+            currentSchema.isNeedLastCache());
       }
 
       mTree
@@ -1333,13 +1344,20 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                             TreeViewSchema.isTreeViewTable(pair.getLeft())
                                 ? TableType.VIEW_FROM_TREE.ordinal()
                                 : TableType.BASE_TABLE.ordinal());
+                        info.setNeedLastCache(
+                            pair.getLeft()
+                                .getPropValue(NEED_LAST_CACHE_PROPERTY)
+                                .map(Boolean::parseBoolean)
+                                .orElse(true));
                         return info;
                       })
                   .collect(Collectors.toList())
               : tableModelMTree
-                  .getAllUsingTablesUnderSpecificDatabase(
+                  .getAllTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
+                  .filter(pair -> pair.getRight() != TableNodeStatus.PRE_CREATE)
+                  .map(Pair::getLeft)
                   .map(
                       tsTable ->
                           new TTableInfo(
@@ -1381,6 +1399,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                         TreeViewSchema.isTreeViewTable(pair.getLeft())
                                             ? TableType.VIEW_FROM_TREE.ordinal()
                                             : TableType.BASE_TABLE.ordinal());
+                                    info.setNeedLastCache(
+                                        pair.getLeft()
+                                            .getPropValue(NEED_LAST_CACHE_PROPERTY)
+                                            .map(Boolean::parseBoolean)
+                                            .orElse(true));
                                     return info;
                                   })
                               .collect(Collectors.toList()))));
@@ -1427,7 +1450,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       return new DescTableResp(
           StatusUtils.OK,
-          tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          tableModelMTree.getTableSchemaForDesc(databasePath, plan.getTableName()),
           null,
           null);
     } catch (final MetadataException e) {
@@ -1570,6 +1593,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             tableModelMTree.setTableProperties(
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
+                plan.getProperties()));
+  }
+
+  public TSStatus setTableColumnProperties(final SetTableColumnPropertiesPlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableColumnProperties(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnName(),
                 plan.getProperties()));
   }
 

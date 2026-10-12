@@ -42,6 +42,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.text.CharacterIterator;
@@ -326,6 +327,33 @@ public class FileUtils {
       }
     }
     return file;
+  }
+
+  /**
+   * Checks whether a target path is strictly under one of the allowed directories after
+   * canonicalization.
+   *
+   * <p>The method returns {@code false} if the target equals an allowed directory or if any path
+   * cannot be canonicalized.
+   */
+  public static boolean isFilePathAllowed(String targetFilePath, String[] allowedDirectories) {
+    if (targetFilePath == null || allowedDirectories == null) {
+      return false;
+    }
+    try {
+      final Path targetPath = new File(targetFilePath).getCanonicalFile().toPath();
+      for (String allowedDirectory : allowedDirectories) {
+        if (allowedDirectory != null && !allowedDirectory.isEmpty()) {
+          final Path allowedPath = new File(allowedDirectory).getCanonicalFile().toPath();
+          if (!targetPath.equals(allowedPath) && targetPath.startsWith(allowedPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (IOException e) {
+      return false;
+    }
   }
 
   /**
@@ -658,5 +686,20 @@ public class FileUtils {
       return WindowsOSUtils.OS_SEGMENT_ERROR;
     }
     return null;
+  }
+
+  /**
+   * Validates a path segment before it is used to construct a path.
+   *
+   * <p>In addition to the application-level checks above, constructing a {@link Path} validates
+   * platform-specific path syntax (for example, NUL characters on Unix).
+   */
+  public static String validatePathSegment(final String pathSegment) {
+    final String pathError = getIllegalError4Directory(pathSegment);
+    if (pathError != null) {
+      throw new IllegalArgumentException(pathError);
+    }
+    Paths.get(pathSegment);
+    return pathSegment;
   }
 }

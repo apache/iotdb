@@ -1,0 +1,804 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.udf.builtin.relational.tvf;
+
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.fft.DoubleFFT_1D;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.fft.FloatFFT_1D;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
+import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
+import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
+import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.utils.Binary;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
+
+public class FFTTableFunction implements TableFunction {
+
+  public static final String DATA_PARAMETER_NAME = "DATA";
+  public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
+  public static final String SAMPLE_INTERVAL_PARAMETER_NAME = "SAMPLE_INTERVAL";
+  public static final String N_PARAMETER_NAME = "N";
+  public static final String NORM_PARAMETER_NAME = "NORM";
+  public static final String SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME =
+      "__FFT_SAMPLE_INTERVAL_SPECIFIED";
+
+  private static final String DEFAULT_TIME_COLUMN_NAME = "time";
+  private static final String OUTPUT_FREQUENCY_INDEX_COLUMN = "frequency_index";
+  private static final String OUTPUT_FREQUENCY_COLUMN = "frequency";
+  private static final String PARTITION_TYPES_PROPERTY = "__FFT_PARTITION_TYPES";
+  private static final String VALUE_TYPES_PROPERTY = "__FFT_VALUE_TYPES";
+  private static final String VALUE_NAMES_PROPERTY = "__FFT_VALUE_NAMES";
+  private static final long UNSPECIFIED_SAMPLE_INTERVAL = Long.MIN_VALUE;
+  private static final long UNSPECIFIED_N = -1L;
+  private static final long MAX_TRANSFORM_LENGTH = 65_536L;
+  private static final long MAX_SPECTRUM_VALUES = 16_777_216L;
+  private static final String NORM_BACKWARD = "backward";
+  private static final String NORM_FORWARD = "forward";
+  private static final String NORM_ORTHO = "ortho";
+  private static final Set<Type> SUPPORTED_PARTITION_TYPES =
+      new HashSet<>(
+          Arrays.asList(
+              Type.BOOLEAN,
+              Type.INT32,
+              Type.INT64,
+              Type.FLOAT,
+              Type.DOUBLE,
+              Type.TEXT,
+              Type.TIMESTAMP,
+              Type.DATE,
+              Type.BLOB,
+              Type.STRING));
+  private static final Set<Type> SUPPORTED_VALUE_TYPES =
+      new HashSet<>(Arrays.asList(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
+
+  @Override
+  public List<ParameterSpecification> getArgumentsSpecifications() {
+    return Arrays.asList(
+        TableParameterSpecification.builder().name(DATA_PARAMETER_NAME).setSemantics().build(),
+        ScalarParameterSpecification.builder()
+            .name(SAMPLE_INTERVAL_PARAMETER_NAME)
+            .type(Type.INT64)
+            .defaultValue(UNSPECIFIED_SAMPLE_INTERVAL)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(N_PARAMETER_NAME)
+            .type(Type.INT64)
+            .defaultValue(UNSPECIFIED_N)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(NORM_PARAMETER_NAME)
+            .type(Type.STRING)
+            .defaultValue(NORM_BACKWARD)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(TIMECOL_PARAMETER_NAME)
+            .type(Type.STRING)
+            .defaultValue(DEFAULT_TIME_COLUMN_NAME)
+            .build());
+  }
+
+  @Override
+  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
+    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
+    if (tableArgument.getOrderBy().isEmpty()) {
+      throw new SemanticException(QueryMessages.FFT_DATA_REQUIRES_ORDER_BY);
+    }
+
+    String timeColumn =
+        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
+    int timeColumnIndex =
+        findColumnIndex(tableArgument, timeColumn, Collections.singleton(Type.TIMESTAMP));
+    validateOrderBy(tableArgument, timeColumn);
+
+    List<Integer> partitionIndexes = getPartitionIndexes(tableArgument);
+    Set<Integer> excludedIndexes = new HashSet<>(partitionIndexes);
+    excludedIndexes.add(timeColumnIndex);
+
+    List<Integer> valueIndexes = new ArrayList<>();
+    List<String> valueNames = new ArrayList<>();
+    List<Type> valueTypes = new ArrayList<>();
+    List<Type> partitionTypes = new ArrayList<>();
+    DescribedSchema.Builder schemaBuilder = new DescribedSchema.Builder();
+
+    for (int partitionIndex : partitionIndexes) {
+      Type type = tableArgument.getFieldTypes().get(partitionIndex);
+      partitionTypes.add(type);
+      schemaBuilder.addField(tableArgument.getFieldNames().get(partitionIndex).get(), type);
+    }
+    schemaBuilder
+        .addField(OUTPUT_FREQUENCY_INDEX_COLUMN, Type.INT64)
+        .addField(OUTPUT_FREQUENCY_COLUMN, Type.DOUBLE);
+
+    for (int i = 0; i < tableArgument.getFieldTypes().size(); i++) {
+      if (excludedIndexes.contains(i)) {
+        continue;
+      }
+      Type type = tableArgument.getFieldTypes().get(i);
+      if (!SUPPORTED_VALUE_TYPES.contains(type)) {
+        continue;
+      }
+      String columnName =
+          tableArgument
+              .getFieldNames()
+              .get(i)
+              .orElseThrow(
+                  () -> new SemanticException(QueryMessages.FFT_REQUIRES_NAMED_NUMERIC_COLUMNS));
+      valueIndexes.add(i);
+      valueNames.add(columnName);
+      valueTypes.add(type);
+      schemaBuilder.addField(columnName + "_real", Type.DOUBLE);
+      schemaBuilder.addField(columnName + "_imag", Type.DOUBLE);
+    }
+
+    if (valueIndexes.isEmpty()) {
+      throw new SemanticException(QueryMessages.FFT_NO_NUMERIC_COLUMNS);
+    }
+
+    long transformLength = (long) ((ScalarArgument) arguments.get(N_PARAMETER_NAME)).getValue();
+    validateTransformLength(transformLength, valueIndexes.size());
+    String norm =
+        ((String) ((ScalarArgument) arguments.get(NORM_PARAMETER_NAME)).getValue())
+            .toLowerCase(Locale.ROOT);
+    validateNorm(norm);
+
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                SAMPLE_INTERVAL_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SAMPLE_INTERVAL_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME,
+                (boolean)
+                    ((ScalarArgument) arguments.get(SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME))
+                        .getValue())
+            .addProperty(N_PARAMETER_NAME, transformLength)
+            .addProperty(NORM_PARAMETER_NAME, norm)
+            .addProperty(PARTITION_TYPES_PROPERTY, joinTypes(partitionTypes))
+            .addProperty(VALUE_TYPES_PROPERTY, joinTypes(valueTypes))
+            .addProperty(VALUE_NAMES_PROPERTY, encodeStrings(valueNames))
+            .build();
+
+    List<Integer> requiredColumns = new ArrayList<>();
+    requiredColumns.add(timeColumnIndex);
+    requiredColumns.addAll(partitionIndexes);
+    requiredColumns.addAll(valueIndexes);
+
+    return TableFunctionAnalysis.builder()
+        .properColumnSchema(schemaBuilder.build())
+        .requireRecordSnapshot(false)
+        .requiredColumns(DATA_PARAMETER_NAME, requiredColumns)
+        .handle(handle)
+        .build();
+  }
+
+  @Override
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
+    MapTableFunctionHandle handle = (MapTableFunctionHandle) tableFunctionHandle;
+    boolean sampleIntervalSpecified =
+        (boolean) handle.getProperty(SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME);
+    long sampleInterval = (long) handle.getProperty(SAMPLE_INTERVAL_PARAMETER_NAME);
+    long transformLength = (long) handle.getProperty(N_PARAMETER_NAME);
+    String norm = (String) handle.getProperty(NORM_PARAMETER_NAME);
+    Type[] partitionTypes = parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
+    Type[] valueTypes = parseTypes((String) handle.getProperty(VALUE_TYPES_PROPERTY));
+    String[] valueNames = decodeStrings((String) handle.getProperty(VALUE_NAMES_PROPERTY));
+
+    return new TableFunctionProcessorProvider() {
+      @Override
+      public TableFunctionDataProcessor getDataProcessor() {
+        return new FFTDataProcessor(
+            sampleIntervalSpecified,
+            sampleInterval,
+            transformLength,
+            norm,
+            createColumns(partitionTypes, 1),
+            createNumericColumns(valueTypes, valueNames, partitionTypes.length + 1));
+      }
+    };
+  }
+
+  private static void validateOrderBy(TableArgument tableArgument, String timeColumn) {
+    if (tableArgument.getOrderBy().size() != 1
+        || !tableArgument.getOrderBy().get(0).equalsIgnoreCase(timeColumn)) {
+      throw new SemanticException(QueryMessages.FFT_ORDER_BY_MUST_CONTAIN_TIMECOL);
+    }
+  }
+
+  private static List<Integer> getPartitionIndexes(TableArgument tableArgument)
+      throws UDFException {
+    List<Integer> indexes = new ArrayList<>();
+    for (String partitionColumn : tableArgument.getPartitionBy()) {
+      indexes.add(findColumnIndex(tableArgument, partitionColumn, SUPPORTED_PARTITION_TYPES));
+    }
+    return indexes;
+  }
+
+  public static void validateTransformLength(long transformLength, int valueColumnCount) {
+    if (transformLength == UNSPECIFIED_N) {
+      return;
+    }
+    if (transformLength > MAX_TRANSFORM_LENGTH) {
+      throw new SemanticException(
+          String.format(QueryMessages.FFT_TRANSFORM_LENGTH_EXCEEDS_LIMIT, MAX_TRANSFORM_LENGTH));
+    }
+    long spectrumValues;
+    try {
+      spectrumValues =
+          Math.multiplyExact(Math.multiplyExact(transformLength, 2L), valueColumnCount);
+    } catch (ArithmeticException e) {
+      throw new SemanticException(QueryMessages.FFT_SPECTRUM_BUFFER_TOO_LARGE);
+    }
+    if (spectrumValues > MAX_SPECTRUM_VALUES) {
+      throw new SemanticException(QueryMessages.FFT_SPECTRUM_BUFFER_TOO_LARGE);
+    }
+  }
+
+  private static void validateNorm(String norm) {
+    if (!NORM_BACKWARD.equals(norm) && !NORM_FORWARD.equals(norm) && !NORM_ORTHO.equals(norm)) {
+      throw new SemanticException(QueryMessages.FFT_INVALID_NORM);
+    }
+  }
+
+  private static String joinTypes(List<Type> types) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < types.size(); i++) {
+      if (i > 0) {
+        builder.append(',');
+      }
+      builder.append(types.get(i).name());
+    }
+    return builder.toString();
+  }
+
+  private static Type[] parseTypes(String value) {
+    if (value.isEmpty()) {
+      return new Type[0];
+    }
+    String[] values = value.split(",");
+    Type[] types = new Type[values.length];
+    for (int i = 0; i < values.length; i++) {
+      types[i] = Type.valueOf(values[i]);
+    }
+    return types;
+  }
+
+  private static String encodeStrings(List<String> values) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < values.size(); i++) {
+      if (i > 0) {
+        builder.append(',');
+      }
+      builder.append(
+          Base64.getEncoder().encodeToString(values.get(i).getBytes(StandardCharsets.UTF_8)));
+    }
+    return builder.toString();
+  }
+
+  private static String[] decodeStrings(String value) {
+    if (value.isEmpty()) {
+      return new String[0];
+    }
+    String[] encodedValues = value.split(",");
+    String[] decodedValues = new String[encodedValues.length];
+    for (int i = 0; i < encodedValues.length; i++) {
+      decodedValues[i] =
+          new String(Base64.getDecoder().decode(encodedValues[i]), StandardCharsets.UTF_8);
+    }
+    return decodedValues;
+  }
+
+  private static ValueColumn[] createColumns(Type[] types, int firstInputIndex) {
+    ValueColumn[] columns = new ValueColumn[types.length];
+    for (int i = 0; i < types.length; i++) {
+      columns[i] = new ValueColumn(firstInputIndex + i, ValueOperator.fromType(types[i]));
+    }
+    return columns;
+  }
+
+  private static NumericColumn[] createNumericColumns(
+      Type[] types, String[] names, int firstInputIndex) {
+    NumericColumn[] columns = new NumericColumn[types.length];
+    for (int i = 0; i < types.length; i++) {
+      columns[i] =
+          new NumericColumn(firstInputIndex + i, names[i], NumericOperator.fromType(types[i]));
+    }
+    return columns;
+  }
+
+  private enum ValueOperator {
+    BOOLEAN(Type.BOOLEAN) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getBoolean(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeBoolean((Boolean) value);
+      }
+    },
+    INT32(Type.INT32) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getInt(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeInt((Integer) value);
+      }
+    },
+    INT64(Type.INT64) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getLong(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeLong((Long) value);
+      }
+    },
+    FLOAT(Type.FLOAT) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getFloat(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeFloat((Float) value);
+      }
+    },
+    DOUBLE(Type.DOUBLE) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getDouble(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeDouble((Double) value);
+      }
+    },
+    TEXT(Type.TEXT) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getBinary(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeBinary((Binary) value);
+      }
+    },
+    BLOB(Type.BLOB) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getBinary(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeBinary((Binary) value);
+      }
+    },
+    TIMESTAMP(Type.TIMESTAMP) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getLong(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeLong((Long) value);
+      }
+    },
+    DATE(Type.DATE) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getLocalDate(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeObject(value);
+      }
+    },
+    STRING(Type.STRING) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getBinary(index);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeBinary((Binary) value);
+      }
+    };
+
+    private final Type type;
+
+    ValueOperator(Type type) {
+      this.type = type;
+    }
+
+    abstract Object read(Record record, int index);
+
+    abstract void write(ColumnBuilder builder, Object value);
+
+    static ValueOperator fromType(Type type) {
+      for (ValueOperator valueOperator : values()) {
+        if (valueOperator.type == type) {
+          return valueOperator;
+        }
+      }
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.FFT_UNSUPPORTED_PARTITION_TYPE, type));
+    }
+  }
+
+  private enum NumericOperator {
+    INT32(Type.INT32, false) {
+      @Override
+      Number read(Record record, int index) {
+        return record.getInt(index);
+      }
+    },
+    INT64(Type.INT64, false) {
+      @Override
+      Number read(Record record, int index) {
+        return record.getLong(index);
+      }
+    },
+    FLOAT(Type.FLOAT, true) {
+      @Override
+      Number read(Record record, int index) {
+        return record.getFloat(index);
+      }
+    },
+    DOUBLE(Type.DOUBLE, false) {
+      @Override
+      Number read(Record record, int index) {
+        return record.getDouble(index);
+      }
+    };
+
+    private final Type type;
+    private final boolean floatFft;
+
+    NumericOperator(Type type, boolean floatFft) {
+      this.type = type;
+      this.floatFft = floatFft;
+    }
+
+    abstract Number read(Record record, int index);
+
+    boolean usesFloatFft() {
+      return floatFft;
+    }
+
+    static NumericOperator fromType(Type type) {
+      for (NumericOperator numericOperator : values()) {
+        if (numericOperator.type == type) {
+          return numericOperator;
+        }
+      }
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.FFT_UNSUPPORTED_VALUE_TYPE, type));
+    }
+  }
+
+  private static class ValueColumn {
+    private final int inputIndex;
+    private final ValueOperator valueOperator;
+
+    private ValueColumn(int inputIndex, ValueOperator valueOperator) {
+      this.inputIndex = inputIndex;
+      this.valueOperator = valueOperator;
+    }
+
+    private Object read(Record record) {
+      return valueOperator.read(record, inputIndex);
+    }
+
+    private void write(ColumnBuilder builder, Object value) {
+      valueOperator.write(builder, value);
+    }
+  }
+
+  private static class NumericColumn {
+    private final int inputIndex;
+    private final String name;
+    private final NumericOperator numericOperator;
+
+    private NumericColumn(int inputIndex, String name, NumericOperator numericOperator) {
+      this.inputIndex = inputIndex;
+      this.name = name;
+      this.numericOperator = numericOperator;
+    }
+
+    private Number read(Record record) {
+      return numericOperator.read(record, inputIndex);
+    }
+
+    private boolean usesFloatFft() {
+      return numericOperator.usesFloatFft();
+    }
+  }
+
+  private static class Spectrum {
+    private final double[] doubleValues;
+    private final float[] floatValues;
+
+    private Spectrum(double[] doubleValues, float[] floatValues) {
+      this.doubleValues = doubleValues;
+      this.floatValues = floatValues;
+    }
+
+    private static Spectrum fromDouble(double[] values) {
+      return new Spectrum(values, null);
+    }
+
+    private static Spectrum fromFloat(float[] values) {
+      return new Spectrum(null, values);
+    }
+
+    private double real(int frequencyIndex, double scaleFactor) {
+      int index = 2 * frequencyIndex;
+      return (doubleValues == null ? floatValues[index] : doubleValues[index]) * scaleFactor;
+    }
+
+    private double imaginary(int frequencyIndex, double scaleFactor) {
+      int index = 2 * frequencyIndex + 1;
+      return (doubleValues == null ? floatValues[index] : doubleValues[index]) * scaleFactor;
+    }
+  }
+
+  private static class FFTDataProcessor implements TableFunctionDataProcessor {
+    private final boolean sampleIntervalSpecified;
+    private final long sampleInterval;
+    private final long specifiedTransformLength;
+    private final String norm;
+    private final ValueColumn[] partitionColumns;
+    private final NumericColumn[] valueColumns;
+    private final Object[] partitionValues;
+    private final boolean[] partitionValueIsNull;
+    private final List<Number[]> rows = new ArrayList<>();
+    private long inputRowCount;
+    private long firstTime;
+    private long previousTime;
+    private boolean initialized;
+
+    private FFTDataProcessor(
+        boolean sampleIntervalSpecified,
+        long sampleInterval,
+        long specifiedTransformLength,
+        String norm,
+        ValueColumn[] partitionColumns,
+        NumericColumn[] valueColumns) {
+      this.sampleIntervalSpecified = sampleIntervalSpecified;
+      this.sampleInterval = sampleInterval;
+      this.specifiedTransformLength = specifiedTransformLength;
+      this.norm = norm;
+      this.partitionColumns = partitionColumns;
+      this.valueColumns = valueColumns;
+      this.partitionValues = new Object[partitionColumns.length];
+      this.partitionValueIsNull = new boolean[partitionColumns.length];
+    }
+
+    @Override
+    public void process(
+        Record input,
+        List<ColumnBuilder> properColumnBuilders,
+        ColumnBuilder passThroughIndexBuilder) {
+      long currentTime = input.getLong(0);
+      if (!initialized) {
+        capturePartitionValues(input);
+        firstTime = currentTime;
+        initialized = true;
+      } else if (currentTime <= previousTime) {
+        throw new SemanticException(QueryMessages.FFT_TIME_MUST_BE_STRICTLY_ASCENDING);
+      }
+      previousTime = currentTime;
+
+      if (specifiedTransformLength == UNSPECIFIED_N) {
+        validateTransformLength(inputRowCount + 1, valueColumns.length);
+      }
+
+      boolean shouldCacheRow =
+          specifiedTransformLength == UNSPECIFIED_N || rows.size() < specifiedTransformLength;
+      Number[] row = shouldCacheRow ? new Number[valueColumns.length] : null;
+      for (int i = 0; i < valueColumns.length; i++) {
+        NumericColumn valueColumn = valueColumns[i];
+        if (input.isNull(valueColumn.inputIndex)) {
+          throw new SemanticException(
+              String.format(QueryMessages.FFT_NULL_VALUE_NOT_SUPPORTED, valueColumn.name));
+        }
+        if (shouldCacheRow) {
+          row[i] = valueColumn.read(input);
+        }
+      }
+      inputRowCount++;
+      if (shouldCacheRow) {
+        rows.add(row);
+      }
+    }
+
+    @Override
+    public void finish(
+        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      if (inputRowCount == 0) {
+        return;
+      }
+
+      int transformLength = getTransformLength();
+      double sampleIntervalSeconds = getSampleIntervalSeconds();
+      double scaleFactor = getScaleFactor(transformLength);
+      Spectrum[] spectra = new Spectrum[valueColumns.length];
+
+      int copiedRows = Math.min(rows.size(), transformLength);
+      DoubleFFT_1D doubleFft = null;
+      FloatFFT_1D floatFft = null;
+      for (int columnIndex = 0; columnIndex < valueColumns.length; columnIndex++) {
+        if (valueColumns[columnIndex].usesFloatFft()) {
+          float[] spectrum = new float[2 * transformLength];
+          for (int rowIndex = 0; rowIndex < copiedRows; rowIndex++) {
+            spectrum[2 * rowIndex] = rows.get(rowIndex)[columnIndex].floatValue();
+          }
+          if (floatFft == null) {
+            floatFft = new FloatFFT_1D(transformLength);
+          }
+          floatFft.complexForward(spectrum);
+          spectra[columnIndex] = Spectrum.fromFloat(spectrum);
+        } else {
+          double[] spectrum = new double[2 * transformLength];
+          for (int rowIndex = 0; rowIndex < copiedRows; rowIndex++) {
+            spectrum[2 * rowIndex] = rows.get(rowIndex)[columnIndex].doubleValue();
+          }
+          if (doubleFft == null) {
+            doubleFft = new DoubleFFT_1D(transformLength);
+          }
+          doubleFft.complexForward(spectrum);
+          spectra[columnIndex] = Spectrum.fromDouble(spectrum);
+        }
+      }
+
+      for (int frequencyIndex = 0; frequencyIndex < transformLength; frequencyIndex++) {
+        int outputColumnIndex = 0;
+        for (int partitionIndex = 0; partitionIndex < partitionColumns.length; partitionIndex++) {
+          if (partitionValueIsNull[partitionIndex]) {
+            properColumnBuilders.get(outputColumnIndex++).appendNull();
+          } else {
+            partitionColumns[partitionIndex].write(
+                properColumnBuilders.get(outputColumnIndex++), partitionValues[partitionIndex]);
+          }
+        }
+        properColumnBuilders.get(outputColumnIndex++).writeLong(frequencyIndex);
+        properColumnBuilders
+            .get(outputColumnIndex++)
+            .writeDouble(
+                calculateFrequency(frequencyIndex, transformLength, sampleIntervalSeconds));
+        for (int columnIndex = 0; columnIndex < valueColumns.length; columnIndex++) {
+          properColumnBuilders
+              .get(outputColumnIndex++)
+              .writeDouble(spectra[columnIndex].real(frequencyIndex, scaleFactor));
+          properColumnBuilders
+              .get(outputColumnIndex++)
+              .writeDouble(spectra[columnIndex].imaginary(frequencyIndex, scaleFactor));
+        }
+      }
+    }
+
+    private void capturePartitionValues(Record input) {
+      for (int i = 0; i < partitionColumns.length; i++) {
+        if (input.isNull(partitionColumns[i].inputIndex)) {
+          partitionValueIsNull[i] = true;
+        } else {
+          partitionValues[i] = partitionColumns[i].read(input);
+        }
+      }
+    }
+
+    private int getTransformLength() {
+      long transformLength =
+          specifiedTransformLength == UNSPECIFIED_N ? inputRowCount : specifiedTransformLength;
+      validateTransformLength(transformLength, valueColumns.length);
+      return (int) transformLength;
+    }
+
+    private double getSampleIntervalSeconds() {
+      double interval;
+      if (sampleIntervalSpecified) {
+        interval = sampleInterval;
+      } else {
+        if (inputRowCount < 2) {
+          throw new SemanticException(QueryMessages.FFT_NEEDS_TWO_ROWS_FOR_INTERVAL);
+        }
+        // Convert before subtracting so nanosecond timestamps spanning more than Long.MAX_VALUE
+        // do not overflow as longs.
+        interval = ((double) previousTime - (double) firstTime) / (inputRowCount - 1);
+      }
+      double intervalSeconds =
+          interval * TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
+      if (intervalSeconds <= 0) {
+        throw new SemanticException(QueryMessages.FFT_SAMPLE_INTERVAL_MUST_BE_POSITIVE);
+      }
+      return intervalSeconds;
+    }
+
+    private double getScaleFactor(int transformLength) {
+      if (NORM_FORWARD.equals(norm)) {
+        return 1.0 / transformLength;
+      }
+      if (NORM_ORTHO.equals(norm)) {
+        return 1.0 / Math.sqrt(transformLength);
+      }
+      return 1.0;
+    }
+
+    private double calculateFrequency(
+        int frequencyIndex, int transformLength, double sampleIntervalSeconds) {
+      int positiveFrequencyCount = (transformLength + 1) / 2;
+      int signedIndex =
+          frequencyIndex < positiveFrequencyCount
+              ? frequencyIndex
+              : frequencyIndex - transformLength;
+      return signedIndex / (transformLength * sampleIntervalSeconds);
+    }
+  }
+}

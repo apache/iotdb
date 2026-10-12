@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRPCRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -76,6 +77,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_DEFAULT_VALUE;
@@ -124,6 +127,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_FORMAT_KEY;
@@ -188,10 +192,14 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
   protected boolean shouldReceiverConvertOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
+  protected boolean shouldAsyncLoadTsFileOnTypeMismatch =
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE;
   private final AtomicLong totalUncompressedSize = new AtomicLong(0);
   private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
   protected String sinkTaskId;
+  protected String pipeName;
+  protected long creationTime = Long.MIN_VALUE;
   protected Timer compressionTimer;
   protected boolean isRealtimeFirst;
 
@@ -400,6 +408,8 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
           (PipeTaskSinkRuntimeEnvironment) environment;
       attributeSortedString = sinkEnvironment.getAttributeSortedString();
       sinkTaskId = sinkEnvironment.getSinkTaskId();
+      pipeName = sinkEnvironment.getPipeName();
+      creationTime = sinkEnvironment.getCreationTime();
     }
 
     nodeUrls.clear();
@@ -492,10 +502,20 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
                 CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
                 SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY),
             CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE);
+    shouldAsyncLoadTsFileOnTypeMismatch =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY,
+                SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY),
+            CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE);
     LOGGER.info(
         PipeMessages.LOG_IOTDBSINK_ARG_ARG_4E140C06,
         CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
         shouldReceiverConvertOnTypeMismatch);
+    LOGGER.info(
+        PipeMessages.LOG_IOTDBSINK_ARG_ARG_4E140C06,
+        CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY,
+        shouldAsyncLoadTsFileOnTypeMismatch);
     isRealtimeFirst =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -593,6 +613,18 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     PIPE_END_POINT_RATE_LIMITER_MAP.clear();
   }
 
+  public void discardReceiverRuntimeSessions() {
+    // Do nothing by default.
+  }
+
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
   public TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
     // Explanation for +3: version 1 byte, type 2 bytes
     totalUncompressedSize.addAndGet(req.body.array().length + 3);
@@ -629,6 +661,16 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     return totalUncompressedSize.get();
   }
 
+  protected void appendPipeInfoToHandshakeParams(final Map<String, String> params) {
+    if (pipeName == null) {
+      return;
+    }
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME, pipeName);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME,
+        String.valueOf(creationTime));
+  }
+
   public void rateLimitIfNeeded(
       final String pipeName,
       final long creationTime,
@@ -662,6 +704,14 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
 
   public boolean shouldWaitForSchemaBeforeLoad() {
     return shouldWaitForSchemaBeforeLoad;
+  }
+
+  public boolean shouldAsyncLoadTsFileOnTypeMismatch() {
+    return shouldAsyncLoadTsFileOnTypeMismatch;
+  }
+
+  public String getSinkTaskId() {
+    return sinkTaskId;
   }
 
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {

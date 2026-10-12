@@ -215,6 +215,21 @@ public class DeviceFilterUtilTest {
     Assert.assertEquals(1, visitor.getTargetChildrenIterationCount());
   }
 
+  @Test
+  public void testUseDirectLookupForSingleCandidate() {
+    final TestNode root = new TestNode("root");
+    final TestNode parent = new TestNode("meter");
+    root.addChild(parent);
+    parent.addChildren("card1");
+
+    final TestVisitor visitor =
+        new TestVisitor(root, createAdaptivePattern(Set.of("card1")), parent);
+
+    Assert.assertEquals(Collections.singletonList("card1"), collect(visitor));
+    Assert.assertEquals(1, visitor.getTargetDirectLookupCount());
+    Assert.assertEquals(0, visitor.getTargetChildrenIterationCount());
+  }
+
   private static ExtendedPartialPath createAdaptivePattern(final Set<String> values) {
     final ExtendedPartialPath pattern =
         new ExtendedPartialPath(new String[] {"root", "*", "*"}, true);

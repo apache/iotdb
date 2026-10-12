@@ -91,6 +91,8 @@ public final class ProcedureMessages {
   public static final String AUTHENTICATION_FAILED = "认证失败。";
   public static final String AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY =
       "Auth procedure：成功清理 datanode 缓存";
+  public static final String AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED =
+      "权限计划已提交，但 DataNode 权限缓存失效失败。部分 DataNode 可能仍持有过期权限，请手动清理权限缓存。";
   public static final String BEGIN_TO_CHANGE_DATANODE_STATUS_NODESTATUSMAP =
       "{}, 开始修改 DataNode 状态，nodeStatusMap：{}";
   public static final String BEGIN_TO_STOP_DATANODES_AND_KILL_THE_DATANODE_PROCESS =
@@ -344,7 +346,7 @@ public final class ProcedureMessages {
   public static final String ERROR_IN_DESERIALIZE_PROCID_THIS_PROCEDURE_WILL_BE_IGNORED_IT =
       "反序列化 {}（procID {}）出错。该 procedure 将被忽略。它可能属于旧版本，目前无法使用。";
   public static final String EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES =
-      "执行 auth plan {} 成功。使 datanode 缓存失效：{}";
+      "执行 auth plan {} 成功。";
   public static final String EXECUTING_ON_REGION_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN =
       "删除列时在表 {}.{} 中列 {} 对应的 region 上执行";
   public static final String FAILED_TO_ACTIVE_CQ_BECAUSE_OF_NO_SUCH_CQ =
@@ -531,7 +533,6 @@ public final class ProcedureMessages {
       "重试 {} 次后删除 pipe plugin [{}] 仍失败";
   public static final String FAIL_TO_DROP_TRIGGER_AT_STATE = "在 STATE [%s] 处删除 trigger [%s] 失败";
   public static final String FAIL_TO_DROP_TRIGGER_ON_DATA_NODES = "在 DataNode 上删除 trigger [%s] 失败";
-  public static final String FAIL_TO_EXECUTE_PLAN_AT_STATE = "在 state[%s] 处执行 plan [%s] 失败";
   public static final String FAIL_TO_REMOVE_AINODE_AT_STATE = "在 STATE [%s] 处移除 AINode [%s] 失败，%s";
   public static final String FAIL_TO_REMOVE_AINODE_ON_CONFIG_NODES =
       "在 ConfigNode [%s] 上移除 [%s] 个 AINode 失败";
@@ -818,8 +819,6 @@ public final class ProcedureMessages {
       "尝试创建 pipe plugin [{}] 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_DROP_PIPE_PLUGIN_STATE =
       "尝试删除 pipe plugin [{}] 时发生可重试错误，状态：{}";
-  public static final String RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE =
-      "尝试执行 plan {} 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "尝试移除 AINode [{}] 时发生可重试错误，状态 [{}]";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
@@ -1138,6 +1137,9 @@ public final class ProcedureMessages {
       "暂停 pid={}, activeCount={}";
   public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D =
       "worker {} 执行 procedure {} 时发生异常";
+  public static final String
+      LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572 =
+          "在 {} procedure 操作中， 对表{}.{} 的正式提交失败，失败结果：{}";
   public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 =
       "Worker 卡住 {}({})，运行时间 {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D =
@@ -1168,6 +1170,9 @@ public final class ProcedureMessages {
           "移除 ConfigNode 失败，原因：更新 ConsensusGroup peer 信息失败。";
   public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 =
       "无法移除 DataNode，原因：受副本因子限制，";
+  public static final String
+      MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6 =
+          "提交 RemoveDataNodesProcedure 失败：共识组内存在非移除目标且状态为 Unknown、Stopped 或 ReadOnly 的其他节点时，出于安全考虑无法执行移除操作。请检查节点 %s 的状态并确保其处于 Running 状态。";
   public static final String
       MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C =
           "availableDataNodeSize：%s，maxReplicaFactor：%s，允许移除的最大 DataNode 数量为：%s";
@@ -1501,11 +1506,13 @@ public final class ProcedureMessages {
   public static final String
       MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
           "上一次尝试因“%s”失败，正在重试此状态。";
-  public static final String
-      MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
-          "此状态因“%s”失败，正在等待回滚。";
-  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 =
-      "正在回滚，失败原因：%s。";
+  public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+      "此状态因“%s”失败，正在等待回滚。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "正在回滚此前发生的失败。";
+  public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
+      "DataNode setSystemStatus RPC 失败：%s：%s：%s； ";
+  public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
+      "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
 }

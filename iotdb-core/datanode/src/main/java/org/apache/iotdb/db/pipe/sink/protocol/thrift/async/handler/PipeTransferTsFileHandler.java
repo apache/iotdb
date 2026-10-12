@@ -51,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
@@ -79,13 +80,20 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private File currentFile;
 
   private final boolean transferMod;
+  // A mod file can be cleaned up after the event is created. Keep the requested mode immutable,
+  // but downgrade the requests sent by this handler when the sidecar is no longer available.
+  private boolean effectiveTransferMod;
 
   private final String dataBaseName;
+  private String conversionTaskId;
+  private final int outputIndex;
 
   private final int readFileBufferSize;
   private PipeTsFileMemoryBlock memoryBlock;
   private byte[] readBuffer;
   private long position;
+  private boolean transferringModFile;
+  private boolean transferringTsFile;
 
   private RandomAccessFile reader;
 
@@ -104,6 +112,31 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final boolean transferMod,
       final String dataBaseName)
       throws InterruptedException {
+    this(
+        connector,
+        pipeName2WeightMap,
+        events,
+        eventsReferenceCount,
+        eventsHadBeenAddedToRetryQueue,
+        tsFile,
+        modFile,
+        transferMod,
+        dataBaseName,
+        0);
+  }
+
+  public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncSink connector,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
+      final File tsFile,
+      final File modFile,
+      final boolean transferMod,
+      final String dataBaseName,
+      final int outputIndex)
+      throws InterruptedException {
     super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
@@ -115,8 +148,17 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.tsFile = tsFile;
     this.modFile = modFile;
     this.transferMod = transferMod;
+    this.effectiveTransferMod = transferMod && modFile != null && modFile.exists();
     this.dataBaseName = dataBaseName;
-    currentFile = transferMod ? modFile : tsFile;
+    this.outputIndex = outputIndex;
+    this.transferringModFile = false;
+    this.transferringTsFile = false;
+    conversionTaskId =
+        connector.shouldAsyncLoadTsFileOnTypeMismatch()
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                connector.getSinkTaskId(), events, dataBaseName, outputIndex, effectiveTransferMod)
+            : null;
+    currentFile = effectiveTransferMod ? modFile : tsFile;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
     // TsFile events are producing and consuming at the same time, and the memory of a TsFile
@@ -126,7 +168,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     // will cause a deadlock.
     waitForResourceEnough4Slicing((long) ((1 + Math.random()) * 20 * 1000)); // 20 - 40 seconds
     final long maxFileLength =
-        transferMod && Objects.nonNull(modFile)
+        effectiveTransferMod && Objects.nonNull(modFile)
             ? Math.max(tsFile.length(), modFile.length())
             : tsFile.length();
     readFileBufferSize =
@@ -173,7 +215,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (reader == null) {
-      reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
+      openNextFile();
     }
 
     client.setShouldReturnSelf(false);
@@ -182,33 +224,31 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     final int readLength = readNextFilePiece(reader, readBuffer);
 
     if (readLength == -1) {
-      if (currentFile == modFile) {
-        currentFile = tsFile;
-        position = 0;
-        try {
-          reader.close();
-        } catch (final IOException e) {
-          LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_WHEN_SUCCESSFULLY, e);
-        }
-        reader = new RandomAccessFile(tsFile, "r");
+      reader.close();
+      reader = null;
+      if (openNextFile()) {
         transfer(clientManager, client);
-      } else if (currentFile == tsFile) {
+      } else {
         isSealSignalSent.set(true);
 
         final TPipeTransferReq uncompressedReq =
-            transferMod
+            effectiveTransferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName,
-                    sink.shouldWaitForSchemaBeforeLoad())
+                        modFile.getName(),
+                        modFile.length(),
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        sink.shouldWaitForSchemaBeforeLoad())
+                    .setConversionTaskInfo(
+                        conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch())
                 : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName,
-                    sink.shouldWaitForSchemaBeforeLoad());
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        sink.shouldWaitForSchemaBeforeLoad())
+                    .setConversionTaskInfo(
+                        conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
@@ -231,7 +271,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
     final TPipeTransferReq uncompressedReq =
-        transferMod
+        effectiveTransferMod
             ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
@@ -270,13 +310,12 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void onComplete(final TPipeTransferResp response) {
+  public synchronized void onComplete(final TPipeTransferResp response) {
     try {
       super.onComplete(response);
     } finally {
       if (sink.isClosed()) {
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
+        releaseReadBufferAndReturnClient();
       }
     }
   }
@@ -302,45 +341,34 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       }
 
       try {
-        if (reader != null) {
-          reader.close();
-        }
-
-        // Delete current file when using tsFile as batch
-        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.delete(currentFile);
-                return null;
-              });
-        }
-      } catch (final IOException e) {
-        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE_1, e);
+        closeReaderAndDeleteBatchFile(true);
       } finally {
-        final int referenceCount = eventsReferenceCount.decrementAndGet();
-        if (referenceCount <= 0) {
-          events.forEach(
-              event ->
-                  event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
-        }
+        try {
+          final int referenceCount = eventsReferenceCount.decrementAndGet();
+          if (referenceCount <= 0) {
+            sink.clearFileNotFoundRetryTimes(events);
+            events.forEach(
+                event ->
+                    event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
+          }
 
-        if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-          LOGGER.info(
-              DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_COMMIT_ID,
-              tsFile,
-              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-              events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
-              referenceCount);
-        } else {
-          LOGGER.info(
-              DataNodePipeMessages
-                  .SUCCESSFULLY_TRANSFERRED_FILE_BATCHED_TABLEINSERTIONEVENTS_REFERENCE_COUNT,
-              tsFile,
-              referenceCount);
+          if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+            LOGGER.info(
+                DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_COMMIT_ID,
+                tsFile,
+                events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+                events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
+                referenceCount);
+          } else {
+            LOGGER.info(
+                DataNodePipeMessages
+                    .SUCCESSFULLY_TRANSFERRED_FILE_BATCHED_TABLEINSERTIONEVENTS_REFERENCE_COUNT,
+                tsFile,
+                referenceCount);
+          }
+        } finally {
+          releaseReadBufferAndReturnClient();
         }
-
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
       }
 
       return true;
@@ -378,12 +406,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void onError(final Exception exception) {
+  public synchronized void onError(final Exception exception) {
     try {
       super.onError(exception);
     } finally {
-      releaseReadBufferMemoryBlock();
-      returnClientIfNecessary();
+      releaseReadBufferAndReturnClient();
     }
   }
 
@@ -418,27 +445,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     try {
-      if (reader != null) {
-        reader.close();
-      }
-
-      // Delete current file when using tsFile as batch
-      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(currentFile);
-              return null;
-            });
-      }
-    } catch (final IOException e) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
+      closeReaderAndDeleteBatchFile(false);
     } finally {
       try {
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
+        releaseReadBufferAndReturnClient();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          sink.addFailureEventsToRetryQueue(events, exception);
+          sink.addFailureEventsToRetryQueue(events, exception, this);
         }
       }
     }
@@ -493,35 +506,134 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
   }
 
-  @Override
-  public void close() {
-    try {
-      if (reader != null) {
-        reader.close();
-        reader = null;
+  private boolean advanceToNextFile() {
+    if (transferMod && !transferringModFile) {
+      transferringModFile = true;
+      if (modFile != null && modFile.exists()) {
+        effectiveTransferMod = true;
+        conversionTaskId = generateConversionTaskId();
+        currentFile = modFile;
+        position = 0;
+        return true;
       }
 
-      if (currentFile.exists()
-          && events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+      // The mod file is an optional sidecar. It may have been cleaned up after the event was
+      // created, so transfer the TsFile without modifications instead of creating a WithMod
+      // request that the receiver can never finish.
+      effectiveTransferMod = false;
+      conversionTaskId = generateConversionTaskId();
+      if (modFile != null) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9,
+            tsFile,
+            modFile);
+      }
+    }
+    if (!transferringTsFile) {
+      transferringTsFile = true;
+      currentFile = tsFile;
+      position = 0;
+      return true;
+    }
+    return false;
+  }
+
+  private boolean openNextFile() throws IOException {
+    while (advanceToNextFile()) {
+      try {
+        reader = new RandomAccessFile(currentFile, "r");
+        return true;
+      } catch (final FileNotFoundException e) {
+        if (currentFile == modFile && effectiveTransferMod) {
+          // Re-check after advanceToNextFile(). The sidecar can disappear in this small window.
+          effectiveTransferMod = false;
+          conversionTaskId = generateConversionTaskId();
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9,
+              tsFile,
+              modFile);
+          continue;
+        }
+        throw e;
+      }
+    }
+    return false;
+  }
+
+  private String generateConversionTaskId() {
+    return sink.shouldAsyncLoadTsFileOnTypeMismatch()
+        ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            sink.getSinkTaskId(), events, dataBaseName, outputIndex, effectiveTransferMod)
+        : null;
+  }
+
+  @Override
+  public synchronized void close() {
+    try {
+      closeReaderAndDeleteBatchFile(false);
+    } finally {
+      try {
+        super.close();
+      } finally {
+        releaseReadBufferMemoryBlock();
+      }
+    }
+  }
+
+  private void closeReaderAndDeleteBatchFile(final boolean transferSucceeded) {
+    final String errorMessage =
+        transferSucceeded
+            ? DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE_1
+            : DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE;
+
+    final RandomAccessFile readerToClose = reader;
+    if (readerToClose != null) {
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              readerToClose.close();
+              return null;
+            });
+        if (reader == readerToClose) {
+          reader = null;
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(errorMessage, e);
+      }
+    }
+
+    // Reader cleanup and generated-file cleanup are intentionally independent. A failed close
+    // must not leave a tablet-batch TsFile behind.
+    if (currentFile.exists()
+        && events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+      try {
         RetryUtils.retryOnException(
             () -> {
               FileUtils.delete(currentFile);
               return null;
             });
+      } catch (final IOException e) {
+        LOGGER.warn(errorMessage, e);
       }
-    } catch (final IOException e) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
-    } finally {
-      super.close();
+    }
+  }
+
+  private void releaseReadBufferAndReturnClient() {
+    try {
       releaseReadBufferMemoryBlock();
+    } finally {
+      returnClientIfNecessary();
     }
   }
 
   private void releaseReadBufferMemoryBlock() {
-    if (memoryBlock != null) {
-      memoryBlock.close();
-      memoryBlock = null;
-      readBuffer = null;
+    final PipeTsFileMemoryBlock block = memoryBlock;
+    memoryBlock = null;
+    readBuffer = null;
+    if (block != null) {
+      block.close();
     }
   }
 

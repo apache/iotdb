@@ -20,9 +20,15 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
@@ -367,6 +373,105 @@ public class SubscriptionTopicAgent {
       }
     }
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  /**
+   * Check that the authenticated session can read all data covered by the requested topics.
+   * ConsumerConfig is client-controlled and therefore must not be used as the authorization
+   * identity.
+   */
+  public TSStatus checkTopicReadPermissions(
+      final String username,
+      final ConsumerConfig consumerConfig,
+      final Iterable<String> topicNames) {
+    if (Objects.isNull(username)) {
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+    }
+
+    acquireReadLock();
+    try {
+      for (final String topicName : topicNames) {
+        final TopicMeta topicMeta =
+            topicMetaKeeper.getTopicMeta(topicName, isTableModel(consumerConfig));
+        if (Objects.isNull(topicMeta)) {
+          continue;
+        }
+
+        final TSStatus status =
+            topicMeta.getConfig().isTableTopic()
+                ? checkTableTopicReadPermission(username, topicMeta)
+                : checkTreeTopicReadPermission(username, topicMeta);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+      }
+      return RpcUtils.SUCCESS_STATUS;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private TSStatus checkTreeTopicReadPermission(final String username, final TopicMeta topicMeta) {
+    final TopicConfig topicConfig = topicMeta.getConfig();
+    final TreePattern treePattern =
+        topicConfig.getAttribute().containsKey(TopicConstant.PATTERN_KEY)
+            ? new PrefixTreePattern(topicConfig.getAttribute().get(TopicConstant.PATTERN_KEY))
+            : new IoTDBTreePattern(
+                topicConfig.getStringOrDefault(
+                    TopicConstant.PATH_KEY, TopicConstant.PATH_DEFAULT_VALUE));
+    for (final PartialPath path : treePattern.getBaseInclusionPaths()) {
+      if (!AuthorityChecker.checkFullPathOrPatternPermission(
+          username, path, PrivilegeType.READ_DATA)) {
+        return AuthorityChecker.getTSStatus(false, path, PrivilegeType.READ_DATA);
+      }
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  private TSStatus checkTableTopicReadPermission(final String username, final TopicMeta topicMeta) {
+    if (AuthorityChecker.SUPER_USER.equals(username)) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+    final TopicConfig topicConfig = topicMeta.getConfig();
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String table =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+
+    // A database-level SELECT grant covers all tables in one database. For a topic whose
+    // database/table is a regular expression, only an any-scope SELECT grant is broad enough to
+    // cover every object matched by the topic.
+    final boolean databasePattern = isRegexPattern(database);
+    final boolean tablePattern = isRegexPattern(table);
+    final boolean allowed =
+        (databasePattern
+            ? AuthorityChecker.checkDBPermission(
+                username, AuthorityChecker.ANY_SCOPE, PrivilegeType.SELECT)
+            : AuthorityChecker.checkDBPermission(username, database, PrivilegeType.SELECT)
+                || (!tablePattern
+                    && AuthorityChecker.checkTablePermission(
+                        username, database, table, PrivilegeType.SELECT)));
+    return allowed
+        ? RpcUtils.SUCCESS_STATUS
+        : AuthorityChecker.getTSStatus(false, PrivilegeType.SELECT, database, table);
+  }
+
+  private static boolean isRegexPattern(final String value) {
+    return value.indexOf('.') >= 0
+        || value.indexOf('*') >= 0
+        || value.indexOf('+') >= 0
+        || value.indexOf('?') >= 0
+        || value.indexOf('[') >= 0
+        || value.indexOf(']') >= 0
+        || value.indexOf('(') >= 0
+        || value.indexOf(')') >= 0
+        || value.indexOf('{') >= 0
+        || value.indexOf('}') >= 0
+        || value.indexOf('|') >= 0
+        || value.indexOf('^') >= 0
+        || value.indexOf('$') >= 0
+        || value.indexOf('\\') >= 0;
   }
 
   /**

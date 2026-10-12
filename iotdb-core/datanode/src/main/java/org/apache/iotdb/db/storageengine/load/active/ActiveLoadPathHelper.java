@@ -46,6 +46,14 @@ public final class ActiveLoadPathHelper {
 
   private static final String SEGMENT_SEPARATOR = "-";
   public static final String USER_KEY = "user";
+  public static final String PIPE_CONVERSION_TASK_ID_KEY = "pipe-conversion-task-id";
+
+  /**
+   * Prefix for directories used while a load handoff is being assembled. Active-load scanning must
+   * ignore these directories until the completed directory is published with a rename.
+   */
+  private static final String TRANSFER_STAGING_DIRECTORY_PREFIX = ".iotdb-load-staging-";
+
   // Keep a version in the user path segment so future encryption algorithms can be added safely.
   private static final String USER_VALUE_MASK_PREFIX = "v1-";
   private static final BaseEncoding USER_VALUE_ENCODING = BaseEncoding.base32().omitPadding();
@@ -54,6 +62,7 @@ public final class ActiveLoadPathHelper {
       Collections.unmodifiableList(
           Arrays.asList(
               USER_KEY,
+              PIPE_CONVERSION_TASK_ID_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
@@ -116,6 +125,32 @@ public final class ActiveLoadPathHelper {
     return attributes;
   }
 
+  public static Map<String, String> buildAttributes(
+      final String databaseName,
+      final Integer databaseLevel,
+      final Boolean convertOnTypeMismatch,
+      final Boolean verify,
+      final Boolean autoCreateSchema,
+      final Long tabletConversionThresholdBytes,
+      final Boolean pipeGenerated,
+      final String userName,
+      final String conversionTaskId) {
+    final Map<String, String> attributes =
+        buildAttributes(
+            databaseName,
+            databaseLevel,
+            convertOnTypeMismatch,
+            verify,
+            autoCreateSchema,
+            tabletConversionThresholdBytes,
+            pipeGenerated,
+            userName);
+    if (conversionTaskId != null && !conversionTaskId.isEmpty()) {
+      attributes.put(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
+    }
+    return attributes;
+  }
+
   public static File resolveTargetDir(final File baseDir, final Map<String, String> attributes) {
     File current = baseDir;
     for (final String key : KEY_ORDER) {
@@ -126,6 +161,58 @@ public final class ActiveLoadPathHelper {
       current = new File(current, formatSegment(key, value));
     }
     return current;
+  }
+
+  /**
+   * Resolves the shared attribute directory used by a pipe transfer. The conversion task id is
+   * deliberately kept out of this path because it is unique per file and belongs in the transfer
+   * directory itself (see {@link #formatPipeTaskTransferDirectoryName(String)}).
+   */
+  public static File resolvePipeTransferTargetDir(
+      final File baseDir, final Map<String, String> attributes) {
+    File current = baseDir;
+    for (final String key : KEY_ORDER) {
+      if (PIPE_CONVERSION_TASK_ID_KEY.equals(key)) {
+        continue;
+      }
+      final String value = attributes.get(key);
+      if (value == null) {
+        continue;
+      }
+      current = new File(current, formatSegment(key, value));
+    }
+    return current;
+  }
+
+  public static String formatPipeTaskTransferDirectoryName(final String conversionTaskId) {
+    return formatSegment(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
+  }
+
+  public static String formatTransferStagingDirectoryName(final String uniqueSuffix) {
+    return TRANSFER_STAGING_DIRECTORY_PREFIX + uniqueSuffix;
+  }
+
+  /**
+   * Returns whether a path is below an internal transfer staging directory. The pending directory
+   * bounds the walk so a user directory outside active-load roots cannot accidentally affect the
+   * result.
+   */
+  public static boolean isTransferStagingFile(final File file, final File pendingDir) {
+    if (file == null) {
+      return false;
+    }
+    final File normalizedPendingDir = pendingDir == null ? null : pendingDir.getAbsoluteFile();
+    File current = file.getAbsoluteFile();
+    while (current != null) {
+      if (normalizedPendingDir != null && current.equals(normalizedPendingDir)) {
+        return false;
+      }
+      if (current.getName().startsWith(TRANSFER_STAGING_DIRECTORY_PREFIX)) {
+        return true;
+      }
+      current = current.getParentFile();
+    }
+    return false;
   }
 
   public static Map<String, String> parseAttributes(final File file, final File pendingDir) {
@@ -288,6 +375,12 @@ public final class ActiveLoadPathHelper {
         break;
       case LoadTsFileConfigurator.VERIFY_KEY:
         LoadTsFileConfigurator.validateVerifyParam(value);
+        break;
+      case PIPE_CONVERSION_TASK_ID_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException(
+              StorageEngineMessages.EXCEPTION_CONVERSION_TASK_ID_MUST_NOT_BE_EMPTY_411D064E);
+        }
         break;
       case USER_KEY:
         if (value == null || value.isEmpty()) {

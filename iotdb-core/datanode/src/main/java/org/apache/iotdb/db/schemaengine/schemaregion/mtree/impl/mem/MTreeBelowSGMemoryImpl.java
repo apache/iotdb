@@ -1041,6 +1041,9 @@ public class MTreeBelowSGMemoryImpl {
   public IMemMNode getNodeByPath(final PartialPath path) throws PathNotExistException {
     final String[] nodes = path.getNodes();
     IMemMNode cur = databaseMNode;
+    if (cur == null) {
+      throw new PathNotExistException(path.getFullPath(), true);
+    }
     IMemMNode next;
     for (int i = levelOfDB + 1; i < nodes.length; i++) {
       next = cur.getChild(nodes[i]);
@@ -1924,6 +1927,9 @@ public class MTreeBelowSGMemoryImpl {
   // region table device management
 
   public int getTableDeviceNotExistNum(final String tableName, final List<Object[]> deviceIdList) {
+    if (databaseMNode == null) {
+      return deviceIdList.size();
+    }
     final IMemMNode tableNode = databaseMNode.getChild(tableName);
     int notExistNum = deviceIdList.size();
     if (tableNode == null) {

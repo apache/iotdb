@@ -21,11 +21,13 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.r
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 public final class OrderedDeltaAccumulator extends AbstractDeltaTableAccumulator {
@@ -56,30 +58,27 @@ public final class OrderedDeltaAccumulator extends AbstractDeltaTableAccumulator
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
     RateFunctionValidation.validateArgumentCount(arguments, RateFunctionType.DELTA);
-    int selectedCount = mask.getSelectedPositionCount();
-    int[] selectedPositions = mask.isSelectAll() ? null : mask.getSelectedPositions();
-    for (int index = 0; index < selectedCount; index++) {
-      int position = mask.isSelectAll() ? index : selectedPositions[index];
-      if (arguments[0].isNull(position)) {
-        continue;
-      }
-      double value =
-          RateFunctionValidation.readValue(
-              arguments[0], position, valueDataType, RateFunctionType.DELTA);
-      long time =
-          RateFunctionValidation.readRequiredTime(
-              arguments[1], position, RateFunctionType.DELTA, 2);
-      long currentWindowStart =
-          RateFunctionValidation.readRequiredTime(
-              arguments[2], position, RateFunctionType.DELTA, 3);
-      long currentWindowEnd =
-          RateFunctionValidation.readRequiredTime(
-              arguments[3], position, RateFunctionType.DELTA, 4);
-      RateFunctionValidation.validateWindow(
-          RateFunctionType.DELTA, time, currentWindowStart, currentWindowEnd);
-      initializeOrValidateWindow(currentWindowStart, currentWindowEnd);
-      update(time, value);
-    }
+    TypeServices.RATE_INPUT_SERVICE
+        .call(Type.fromTsDataType(valueDataType))
+        .addInput(
+            arguments[0],
+            mask,
+            RateFunctionType.DELTA,
+            (position, value) -> {
+              long time =
+                  RateFunctionValidation.readRequiredTime(
+                      arguments[1], position, RateFunctionType.DELTA, 2);
+              long currentWindowStart =
+                  RateFunctionValidation.readRequiredTime(
+                      arguments[2], position, RateFunctionType.DELTA, 3);
+              long currentWindowEnd =
+                  RateFunctionValidation.readRequiredTime(
+                      arguments[3], position, RateFunctionType.DELTA, 4);
+              RateFunctionValidation.validateWindow(
+                  RateFunctionType.DELTA, time, currentWindowStart, currentWindowEnd);
+              initializeOrValidateWindow(currentWindowStart, currentWindowEnd);
+              update(time, value);
+            });
   }
 
   @Override

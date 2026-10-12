@@ -56,7 +56,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::createMetrics);
   }
@@ -135,16 +135,16 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::deregister);
-    if (!remainingEventAndTimeOperatorMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the operators registered: they hold the states of the pipes and register only once, so
+    // a metric service restart must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.remove(pipeID);
+        remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.nonNull(operator) && Objects.nonNull(metricService)) {
       removeAutoGauge(operator);
     }
@@ -210,15 +210,20 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   private PipeDataNodeRemainingEventAndTimeOperator getOrCreateOperatorIfPipeAlive(
       final String pipeName, final long creationTime) {
+    final String pipeID = generatePipeID(pipeName, creationTime);
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.nonNull(operator)) {
+      return operator;
+    }
     if (!isPipeAlive(pipeName, creationTime)) {
       return null;
     }
     return remainingEventAndTimeOperatorMap.computeIfAbsent(
-        generatePipeID(pipeName, creationTime),
-        key -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+        pipeID, key -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
   }
 
-  public void register(final IoTDBDataRegionSource source) {
+  public synchronized void register(final IoTDBDataRegionSource source) {
     // The metric is global thus the regionId is omitted
     final String pipeID = generatePipeID(source.getPipeName(), source.getCreationTime());
     remainingEventAndTimeOperatorMap
@@ -233,7 +238,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
     }
   }
 
-  public void register(final IoTDBSchemaRegionSource source) {
+  public synchronized void register(final IoTDBSchemaRegionSource source) {
     // The metric is global thus the regionId is omitted
     final String pipeID = generatePipeID(source.getPipeName(), source.getCreationTime());
     remainingEventAndTimeOperatorMap
@@ -364,12 +369,16 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
     remainingEventAndTimeOperatorMap.get(pipeID).freezeRate(true);
   }
 
-  public void deregister(final String pipeID) {
-    if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
+  public synchronized void deregister(final String pipeID) {
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.remove(pipeID);
+    if (Objects.isNull(operator)) {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_REMAINING_EVENT_AND, pipeID);
       return;
     }
-    removeMetrics(pipeID);
+    if (Objects.nonNull(metricService)) {
+      removeAutoGauge(operator);
+    }
   }
 
   public void markRegionCommit(final String pipeID, final boolean isDataRegion) {

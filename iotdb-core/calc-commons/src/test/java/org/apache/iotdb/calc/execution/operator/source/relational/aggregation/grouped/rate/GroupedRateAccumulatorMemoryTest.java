@@ -75,6 +75,11 @@ public class GroupedRateAccumulatorMemoryTest {
     }
 
     @Override
+    public void releaseMemoryImmediately(long size) {
+      cumulativeRelease += size;
+    }
+
+    @Override
     public void releaseAllReservedMemory() {}
 
     @Override

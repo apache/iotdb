@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,6 +44,8 @@ import java.util.Set;
 
 public class LoadUtilTest {
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private String[] originalListeningDirs;
   private File tempDir;
   private File sourceDir;
   private File targetDir;
@@ -50,11 +57,56 @@ public class LoadUtilTest {
     targetDir = new File(tempDir, "target");
     Assert.assertTrue(sourceDir.mkdirs());
     Assert.assertTrue(targetDir.mkdirs());
+    originalListeningDirs = config.getLoadActiveListeningDirs();
+    config.setLoadActiveListeningDirs(new String[] {targetDir.getAbsolutePath()});
+    LoadUtil.updateLoadDiskSelector();
   }
 
   @After
   public void tearDown() {
+    config.setLoadActiveListeningDirs(originalListeningDirs);
+    LoadUtil.updateLoadDiskSelector();
     deleteRecursively(tempDir);
+  }
+
+  @Test
+  public void testAsyncLoadValidatesCompleteBatchBeforeTransfer() throws Exception {
+    final File validTsFile = createCompletedTsFile("valid.tsfile");
+    final File invalidTsFile = new File(sourceDir, "invalid.tsfile");
+    Files.write(invalidTsFile.toPath(), "invalid".getBytes(StandardCharsets.UTF_8));
+
+    Assert.assertFalse(
+        LoadUtil.loadTsFileAsyncToActiveDir(Arrays.asList(validTsFile, invalidTsFile), null, true));
+    Assert.assertTrue(validTsFile.exists());
+    Assert.assertTrue(invalidTsFile.exists());
+    Assert.assertEquals(0, targetDir.listFiles().length);
+  }
+
+  @Test
+  public void testPipeAsyncLoadReportsInvalidTsFileAndKeepsSources() throws Exception {
+    final File invalidTsFile = new File(sourceDir, "invalid.tsfile");
+    final File resourceFile =
+        new File(invalidTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    Files.write(invalidTsFile.toPath(), "invalid".getBytes(StandardCharsets.UTF_8));
+    Files.write(resourceFile.toPath(), "resource".getBytes(StandardCharsets.UTF_8));
+
+    try {
+      LoadUtil.loadFilesToActiveDir(
+          null,
+          Arrays.asList(resourceFile.getAbsolutePath(), invalidTsFile.getAbsolutePath()),
+          true);
+      Assert.fail("Expected invalid TsFile error");
+    } catch (final IOException e) {
+      Assert.assertEquals(
+          String.format(
+              DataNodeQueryMessages.THE_FILE_S_IS_NOT_A_VALID_TSFILE_PLEASE_CHECK_THE_INPUT_FILE,
+              invalidTsFile.getAbsolutePath()),
+          e.getMessage());
+    }
+
+    Assert.assertTrue(invalidTsFile.exists());
+    Assert.assertTrue(resourceFile.exists());
+    Assert.assertEquals(0, targetDir.listFiles().length);
   }
 
   @Test
@@ -114,8 +166,105 @@ public class LoadUtilTest {
     }
   }
 
+  @Test
+  public void testDeterministicTransferFailsWhenSourceAndTargetAreMissing() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertTrue(sourceFile.delete());
+    }
+
+    try {
+      LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "missing-task");
+      Assert.fail("Expected IOException");
+    } catch (final IOException ignored) {
+      // A missing source and missing deterministic target cannot prove a durable handoff.
+    }
+  }
+
+  @Test
+  public void testDeterministicTransferIsIdempotentAfterSourcesAreDeleted() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "retry-task");
+
+    final File transferDir =
+        new File(targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("retry-task"));
+    Assert.assertTrue(transferDir.isDirectory());
+    LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "retry-task");
+
+    final File[] transferDirs = targetDir.listFiles(File::isDirectory);
+    Assert.assertNotNull(transferDirs);
+    Assert.assertEquals(1, transferDirs.length);
+    Assert.assertEquals(transferDir.getAbsolutePath(), transferDirs[0].getAbsolutePath());
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertFalse(sourceFile.exists());
+    }
+  }
+
+  @Test
+  public void testDeterministicTransferUsesTaskIdentityWhenFileNameChanges() throws Exception {
+    final List<File> firstSourceFiles = createTsFileAndCompanions("1-0-0-0.tsfile");
+    LoadUtil.transferFilesToActiveDir(targetDir, firstSourceFiles, true, "stable-task");
+
+    final List<File> retrySourceFiles = createTsFileAndCompanions("2-0-0-0.tsfile");
+    LoadUtil.transferFilesToActiveDir(targetDir, retrySourceFiles, true, "stable-task");
+
+    final File transferDir =
+        new File(
+            targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("stable-task"));
+    Assert.assertTrue(new File(transferDir, "1-0-0-0.tsfile").exists());
+    Assert.assertFalse(new File(transferDir, "2-0-0-0.tsfile").exists());
+    for (final File sourceFile : retrySourceFiles) {
+      Assert.assertFalse(sourceFile.exists());
+    }
+  }
+
+  @Test
+  public void testIncompleteDeterministicTargetIsNotDeleted() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    final File transferDir =
+        new File(
+            targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("partial-task"));
+    Assert.assertTrue(transferDir.mkdirs());
+    Assert.assertTrue(new File(transferDir, sourceFiles.get(0).getName()).createNewFile());
+
+    try {
+      LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "partial-task");
+      Assert.fail("Expected IOException");
+    } catch (final IOException ignored) {
+      // Do not remove a target which may already be visible to active load.
+    }
+    Assert.assertTrue(transferDir.exists());
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertTrue(sourceFile.exists());
+    }
+  }
+
+  @Test
+  public void testDeterministicTargetWithOnlyTsFileIsIncomplete() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    final File transferDir =
+        new File(targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("partial-ts"));
+    Assert.assertTrue(transferDir.mkdirs());
+    final File tsFile = sourceFiles.get(sourceFiles.size() - 1);
+    Files.copy(tsFile.toPath(), new File(transferDir, tsFile.getName()).toPath());
+
+    try {
+      LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "partial-ts");
+      Assert.fail("Expected IOException");
+    } catch (final IOException ignored) {
+      // expected
+    }
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertTrue(sourceFile.exists());
+    }
+  }
+
   private List<File> createTsFileAndCompanions() throws Exception {
-    final File tsFile = new File(sourceDir, "1-0-0-0.tsfile");
+    return createTsFileAndCompanions("1-0-0-0.tsfile");
+  }
+
+  private List<File> createTsFileAndCompanions(final String tsFileName) throws Exception {
+    final File tsFile = new File(sourceDir, tsFileName);
     final File resourceFile = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     final File modsV1File = new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX);
     final File modsV2File = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
@@ -124,6 +273,14 @@ public class LoadUtilTest {
       Files.write(sourceFile.toPath(), sourceFile.getName().getBytes(StandardCharsets.UTF_8));
     }
     return sourceFiles;
+  }
+
+  private File createCompletedTsFile(final String fileName) throws Exception {
+    final File tsFile = new File(sourceDir, fileName);
+    try (final TsFileIOWriter writer = new TsFileIOWriter(tsFile)) {
+      writer.endFile();
+    }
+    return tsFile;
   }
 
   private static void deleteRecursively(final File file) {

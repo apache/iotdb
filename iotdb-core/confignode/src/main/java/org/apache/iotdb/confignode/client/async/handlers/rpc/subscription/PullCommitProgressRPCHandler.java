@@ -54,7 +54,8 @@ public class PullCommitProgressRPCHandler
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
           ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
-    } else {
+    } else if (response.getStatus().getCode()
+        != TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()) {
       LOGGER.error(
           ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
           requestType,

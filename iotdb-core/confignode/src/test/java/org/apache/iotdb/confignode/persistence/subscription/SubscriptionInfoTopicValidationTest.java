@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.subscription;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -83,6 +84,92 @@ public class SubscriptionInfoTopicValidationTest {
     attributes.put("Column-Filter", "column_name = \"id1\"");
 
     assertCreateRejected(subscriptionInfo, attributes, "only supported for table topics");
+  }
+
+  @Test
+  public void testRejectTopicThatOnlySelectsAuditDatabase() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final Map<String, String> tableAttributes = newInitialTableTopicAttributes();
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit");
+    assertCreateRejected(subscriptionInfo, tableAttributes, "only to the __audit database");
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__AUDIT");
+    assertCreateRejected(subscriptionInfo, tableAttributes, "only to the __audit database");
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit_data");
+    assertCreateAccepted(subscriptionInfo, "table_topic", tableAttributes);
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit|user_db");
+    assertCreateAccepted(subscriptionInfo, "table_regex_topic", tableAttributes);
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit");
+    tableAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "user_db");
+    assertCreateAccepted(subscriptionInfo, "table_source_override_topic", tableAttributes);
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "user_db");
+    tableAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "__audit");
+    assertCreateRejected(subscriptionInfo, tableAttributes, "only to the __audit database");
+
+    final Map<String, String> treeAttributes = new HashMap<>();
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.**");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.log.device");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.log.**,root.__audit.user.**");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.**,root.user.**");
+    assertCreateAccepted(subscriptionInfo, "tree_topic", treeAttributes);
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit_data.**");
+    assertCreateAccepted(subscriptionInfo, "tree_similar_name_topic", treeAttributes);
+
+    treeAttributes.remove(TopicConstant.PATH_KEY);
+    treeAttributes.put(TopicConstant.PATTERN_KEY, "root.__audit.log");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATTERN_KEY, "root.__audit");
+    assertCreateAccepted(subscriptionInfo, "tree_prefix_topic", treeAttributes);
+  }
+
+  @Test
+  public void testAuditOnlyValidationHandlesSourceInclusionAndExclusion() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.PATH_KEY, "root.__audit.**");
+    attributes.put("source.path.exclusion", "root.__audit.internal.**");
+    assertCreateRejected(subscriptionInfo, attributes, "only to the __audit database");
+
+    attributes.put("source.path.inclusion", "root.user.**");
+    assertCreateAccepted(subscriptionInfo, "tree_source_inclusion_topic", attributes);
+
+    final Map<String, String> attributesWithFullyExcludedUserPath = new HashMap<>();
+    attributesWithFullyExcludedUserPath.put(TopicConstant.PATH_KEY, "root.__audit.**,root.user.**");
+    attributesWithFullyExcludedUserPath.put("source.path.exclusion", "root.user.**");
+    assertCreateRejected(
+        subscriptionInfo, attributesWithFullyExcludedUserPath, "only to the __audit database");
+  }
+
+  @Test
+  public void testRejectAlteringTopicToOnlySelectAuditDatabase() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = new HashMap<>();
+    originalAttributes.put(TopicConstant.PATH_KEY, "root.user.**");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("tree_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.PATH_KEY, "root.__audit.log.**");
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(
+          new TopicMeta("tree_topic", 2L, updatedAttributes));
+      Assert.fail("Expected audit-only topic validation to fail");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("only to the __audit database"));
+    }
   }
 
   @Test
@@ -351,6 +438,19 @@ public class SubscriptionInfoTopicValidationTest {
       Assert.fail("Expected topic validation to fail");
     } catch (final SubscriptionException e) {
       Assert.assertTrue(e.getMessage().contains(expectedMessagePart));
+    }
+  }
+
+  private static void assertCreateAccepted(
+      final SubscriptionInfo subscriptionInfo,
+      final String topicName,
+      final Map<String, String> attributes) {
+    try {
+      Assert.assertTrue(
+          subscriptionInfo.validateBeforeCreatingTopic(
+              new TCreateTopicReq(topicName).setTopicAttributes(attributes)));
+    } catch (final SubscriptionException e) {
+      Assert.fail(e.getMessage());
     }
   }
 }

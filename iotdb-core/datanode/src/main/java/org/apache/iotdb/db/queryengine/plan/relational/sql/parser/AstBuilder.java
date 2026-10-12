@@ -880,6 +880,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -950,6 +952,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -1037,17 +1041,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
 
       Expression timeExpression = expressions.get(timeColumnIndex);
-      if (timeExpression instanceof LongLiteral) {
-        timestamp = ((LongLiteral) timeExpression).getParsedValue();
-      } else if (timeExpression instanceof NullLiteral) {
-        throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
-      } else {
-        timestamp =
-            parseDateTimeFormat(
-                ((StringLiteral) timeExpression).getValue(),
-                CommonDateTimeUtils.currentTime(),
-                zoneId);
-      }
+      timestamp = AstUtil.expressionToTimestamp(timeExpression, zoneId);
       nonTimeColCnt = expressions.size() - 1;
     }
 
@@ -1455,7 +1449,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.ShowSubscriptionsStatementContext ctx) {
     final String topicName =
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
-    return new ShowSubscriptions(topicName);
+    return new ShowSubscriptions(topicName, ctx.DETAILS() != null);
   }
 
   @Override
@@ -1754,6 +1748,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         orderBy,
         offset,
         limit);
+  }
+
+  @Override
+  public Node visitShowReceiversStatement(RelationalSqlParser.ShowReceiversStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.RECEIVERS,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override
@@ -3537,14 +3542,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     long time;
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if ("+".equals(ctx.getChild(i).getText())) {
-        time +=
+      try {
+        long duration =
             DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), false);
-      } else {
-        time -=
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
+        time =
+            "+".equals(ctx.getChild(i).getText())
+                ? Math.addExact(time, duration)
+                : Math.subtractExact(time, duration);
+      } catch (ArithmeticException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;

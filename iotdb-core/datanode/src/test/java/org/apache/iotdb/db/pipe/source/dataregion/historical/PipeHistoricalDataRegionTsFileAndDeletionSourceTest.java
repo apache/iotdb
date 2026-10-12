@@ -31,12 +31,14 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -141,6 +143,30 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       Assert.assertEquals(
           Arrays.asList(firstResource.getTsFilePath()), source.getSuppliedTsFiles());
       Assert.assertEquals(1, source.getPendingQueueSize());
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testMissingTsFileResourceDoesNotBlockHistoricalExtraction() throws Exception {
+    final PipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    final File tempDir = Files.createTempDirectory("pipeHistoricalMissingResource").toFile();
+
+    try {
+      final TsFileResource resource = createTsFileResource(tempDir, "missing-resource.tsfile");
+      resource.setTimeIndex(new FileTimeIndex());
+      setPrivateField(source, "pipeName", "pipe");
+      setPrivateField(source, "dataRegionId", 1);
+      setPrivateField(source, "treePattern", new PrefixTreePattern("root.**"));
+
+      final Method method =
+          PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredMethod(
+              "mayTsFileResourceOverlappedWithPattern", TsFileResource.class);
+      method.setAccessible(true);
+
+      Assert.assertTrue((Boolean) method.invoke(source, resource));
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
     }

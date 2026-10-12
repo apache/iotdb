@@ -129,10 +129,13 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     // Iterate over each sorted topic name and poll the corresponding events
     int remainingTopicSize = sortedTopicNames.size();
     for (final String topicName : sortedTopicNames) {
-      remainingTopicSize -= 1;
       // Check pipe-based queue
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
+      // Include the current topic when splitting the remaining receiver deadline. Otherwise, the
+      // first topic receives too large a share and later topics are polled after it has mostly
+      // elapsed.
+      final int currentTopicSize = remainingTopicSize--;
 
       // Recheck
       if (Objects.isNull(prefetchingQueue) || prefetchingQueue.isClosed()) {
@@ -146,7 +149,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         final PollTimer timer =
             new PollTimer(
                 System.currentTimeMillis(),
-                SubscriptionAgent.receiver().remainingMs() / Math.max(1, remainingTopicSize));
+                SubscriptionAgent.receiver().remainingMs() / Math.max(1, currentTopicSize));
         event = prefetchingQueue.pollV2(consumerId, timer);
       } else {
         // TODO: migrate poll to pollV2
@@ -166,6 +169,14 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         continue;
       }
 
+      // Preserve the existing handling for a single oversized event. Once this response already
+      // contains data, defer an event that does not fit instead of returning an oversized batch.
+      if (totalSize > 0
+          && currentSize > maxBytes - totalSize
+          && prefetchingQueue.requeue(consumerId, event.getCommitContext())) {
+        break;
+      }
+
       // Add the event to the poll list
       eventsToPoll.add(event);
 
@@ -175,8 +186,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       // Update the total size
       totalSize += currentSize;
 
-      // If adding this event exceeds the maxBytes (pessimistic estimation), break the loop
-      if (totalSize + currentSize > maxBytes) {
+      // If the response has reached maxBytes, stop polling more events.
+      if (totalSize >= maxBytes) {
         break;
       }
     }
@@ -373,6 +384,22 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       }
     }
     return successfulCommitContexts;
+  }
+
+  @Override
+  public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(commitContext.getTopicName());
+    return Objects.nonNull(prefetchingQueue)
+        && !prefetchingQueue.isClosed()
+        && prefetchingQueue.requeue(consumerId, commitContext);
+  }
+
+  @Override
+  public int requeueInFlightEvents(final String consumerId) {
+    return topicNameToPrefetchingQueue.values().stream()
+        .mapToInt(queue -> queue.requeueInFlightEvents(consumerId))
+        .sum();
   }
 
   @Override
