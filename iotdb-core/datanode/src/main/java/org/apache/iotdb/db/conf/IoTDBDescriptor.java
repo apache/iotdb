@@ -2602,6 +2602,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                String.valueOf(conf.getLoadCleanupTaskIdleTimeoutSeconds()))));
     conf.setLoadTsFileRetryCountOnRegionChange(
         Integer.parseInt(
             properties.getProperty(
@@ -2747,6 +2752,13 @@ public class IoTDBDescriptor {
                 "load_clean_up_task_execution_delay_time_seconds",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_clean_up_task_execution_delay_time_seconds"))));
+
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_clean_up_task_idle_timeout_seconds"))));
 
     conf.setLoadWriteThroughputBytesPerSecond(
         Double.parseDouble(

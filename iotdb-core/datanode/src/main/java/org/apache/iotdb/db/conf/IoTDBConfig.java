@@ -1171,6 +1171,8 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private long loadCleanupTaskIdleTimeoutSeconds = 900L; // 15 min, idle LOAD staging is reclaimed
+
   private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
@@ -4287,6 +4289,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   public void setLoadCleanupTaskExecutionDelayTimeSeconds(
       long loadCleanupTaskExecutionDelayTimeSeconds) {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public long getLoadCleanupTaskIdleTimeoutSeconds() {
+    return loadCleanupTaskIdleTimeoutSeconds;
+  }
+
+  public void setLoadCleanupTaskIdleTimeoutSeconds(final long loadCleanupTaskIdleTimeoutSeconds) {
+    this.loadCleanupTaskIdleTimeoutSeconds = loadCleanupTaskIdleTimeoutSeconds;
   }
 
   public int getLoadTsFileRetryCountOnRegionChange() {

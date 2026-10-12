@@ -48,8 +48,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Singleton cleanup service for staged LOAD TsFile directories. Periodically cleans up completed or
- * aborted staged directories once WAL watermarks permit.
+ * Cleans staged LOAD directories: finished ones once the watermark permits, abandoned ones when the
+ * region has not received a command of the task for the idle timeout.
  */
 public class LoadTsFileCleaner {
 
@@ -60,6 +60,13 @@ public class LoadTsFileCleaner {
   private static final String SWEEP_JOB_ID = "LoadTsFileCleaner#sweep";
 
   private final Map<String, RetainedTask> loadId2RetainedTask = new ConcurrentHashMap<>();
+
+  /**
+   * When the sweep first saw a staged directory the region does not know, which is how leftovers of
+   * a crashed run are judged: they have no command time of their own.
+   */
+  private final Map<String, Long> unmanagedTaskDirFirstSeenMillis = new ConcurrentHashMap<>();
+
   private final AtomicBoolean sweepJobRegistered = new AtomicBoolean(false);
 
   private volatile boolean sweeping;
@@ -80,19 +87,21 @@ public class LoadTsFileCleaner {
     if (!sweepJobRegistered.compareAndSet(false, true)) {
       return;
     }
-    // PipeDataNodeAgent.runtime() is the DataNode-wide periodical-job registry, and the only
-    // node-level one that takes a per-job interval.
+    // Sweep at the smaller of the two intervals, so the idle timeout is not delayed.
+    final long idleTimeoutSeconds = CONFIG.getLoadCleanupTaskIdleTimeoutSeconds();
+    final long sweepPeriodSeconds =
+        idleTimeoutSeconds > 0
+            ? Math.min(CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), idleTimeoutSeconds)
+            : CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds();
     PipeDataNodeAgent.runtime()
-        .registerPeriodicalJob(
-            SWEEP_JOB_ID,
-            this::sweepSafely,
-            Math.max(1L, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds()));
+        .registerPeriodicalJob(SWEEP_JOB_ID, this::sweepSafely, Math.max(1L, sweepPeriodSeconds));
   }
 
   /** Stops the background cleaning loop and clears tracked tasks. */
   public void stop() {
     sweeping = false;
     loadId2RetainedTask.clear();
+    unmanagedTaskDirFirstSeenMillis.clear();
   }
 
   /** Registers a finished load task for delayed physical directory deletion. */
@@ -136,7 +145,9 @@ public class LoadTsFileCleaner {
       }
     }
 
-    // 2. Discover and sweep unmanaged directories left behind by unexpected crashes
+    // 2. Discover and sweep unmanaged directories left behind by unexpected crashes, forgetting the
+    // ones that are gone whatever removed them
+    unmanagedTaskDirFirstSeenMillis.keySet().removeIf(path -> !new File(path).exists());
     scanRegions();
   }
 
@@ -165,7 +176,11 @@ public class LoadTsFileCleaner {
           }
 
           final LoadTsFileProgress.TerminalRecord terminal = readTerminal(taskDir);
+          // A task that never reached COMMIT or ABORT belongs to a coordinator that died before it
+          // sent one: nothing else would ever revisit its staged data.
           if (terminal == null) {
+            reclaimIfIdle(
+                dataRegion, taskDir.getName(), taskDir, lastCommandTimeMillis(dataRegion, taskDir));
             continue;
           }
 
@@ -193,6 +208,101 @@ public class LoadTsFileCleaner {
     // Aborted tasks are pure garbage once synchronized; committed tasks must also be complete
     return retainedTask.terminalOp() == LoadTsFileConsensusOp.ABORT
         || isComplete(retainedTask.taskDir());
+  }
+
+  /**
+   * Reclaims the staged data of a task that received no command for the idle timeout, once the
+   * watermark has passed the chunk payloads it recorded. A task whose coordinator is only stalled
+   * then fails its PREPARE or COMMIT, and the client retries the load.
+   *
+   * @param lastCommandTimeMillis when the task last received a command, see {@link
+   *     #lastCommandTimeMillis(DataRegion, File)}
+   */
+  void reclaimIfIdle(
+      final DataRegion dataRegion,
+      final String loadId,
+      final File taskDir,
+      final long lastCommandTimeMillis) {
+    final long idleTimeoutMillis = CONFIG.getLoadCleanupTaskIdleTimeoutSeconds() * 1000L;
+    if (idleTimeoutMillis <= 0 || !isIdle(lastCommandTimeMillis, idleTimeoutMillis)) {
+      // A non-positive timeout turns the reclamation of abandoned tasks off.
+      return;
+    }
+    final long searchIndex;
+    try {
+      searchIndex = lastRecordedSearchIndex(taskDir);
+    } catch (final IOException e) {
+      // Left alone rather than deleted on a transient read error.
+      LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, taskDir.getPath(), e);
+      return;
+    }
+    if (searchIndex >= 0 && !replicasReached(dataRegion, searchIndex)) {
+      return;
+    }
+
+    // The region may still hold the writers of this task: they are open on the files to delete.
+    dataRegion.getLoadTsFileManagerIfPresent().ifPresent(manager -> manager.dropTask(loadId));
+    LOGGER.warn(
+        StorageEngineMessages
+            .LOG_RECLAIMED_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_WHICH_RECEIVED_NO_COMMAND_FOR_ARG_MS_E2348276,
+        taskDir.getAbsolutePath(),
+        loadId,
+        System.currentTimeMillis() - lastCommandTimeMillis);
+    cleanTaskDir(taskDir);
+    unmanagedTaskDirFirstSeenMillis.remove(taskDir.getPath());
+  }
+
+  /**
+   * Whether no command arrived for the timeout. The clock is the one the region records for its
+   * tasks, so nothing here depends on the timestamps of the file system.
+   */
+  static boolean isIdle(final long lastCommandTimeMillis, final long idleTimeoutMillis) {
+    return lastCommandTimeMillis >= 0
+        && System.currentTimeMillis() - lastCommandTimeMillis > idleTimeoutMillis;
+  }
+
+  /**
+   * When the task of this directory last received a command: what the region recorded when it knows
+   * the task, otherwise when the sweep first saw the directory, so that the leftovers of a crashed
+   * run are reclaimed too instead of lingering forever.
+   */
+  long lastCommandTimeMillis(final DataRegion dataRegion, final File taskDir) {
+    final long recorded = recordedCommandTimeMillis(dataRegion, taskDir.getName());
+    if (recorded >= 0) {
+      unmanagedTaskDirFirstSeenMillis.remove(taskDir.getPath());
+      return recorded;
+    }
+    return unmanagedTaskDirFirstSeenMillis.computeIfAbsent(
+        taskDir.getPath(), path -> System.currentTimeMillis());
+  }
+
+  /** When the region last received a command of this task, or -1 when it does not know the task. */
+  private static long recordedCommandTimeMillis(final DataRegion dataRegion, final String loadId) {
+    return dataRegion
+        .getLoadTsFileManagerIfPresent()
+        .map(manager -> manager.getLastCommandTimeMillis(loadId))
+        .orElse(-1L);
+  }
+
+  /** The largest consensus index recorded in the directory, or -1 when it holds no record. */
+  static long lastRecordedSearchIndex(final File taskDir) throws IOException {
+    final File[] files = taskDir.listFiles();
+    if (files == null) {
+      return -1L;
+    }
+    long lastSearchIndex = -1L;
+    for (final File file : files) {
+      final String name = file.getName();
+      final int progressSuffixAt = name.lastIndexOf(LoadTsFileProgress.PROGRESS_SUFFIX);
+      if (progressSuffixAt < 0) {
+        continue;
+      }
+      final File tsFile = new File(file.getParentFile(), name.substring(0, progressSuffixAt));
+      final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
+      progress.readAllRecords();
+      lastSearchIndex = Math.max(lastSearchIndex, progress.getLastRecordedSearchIndex());
+    }
+    return lastSearchIndex;
   }
 
   /** Verifies that every staged TsFile in the directory has no missing chunks. */

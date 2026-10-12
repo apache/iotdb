@@ -107,6 +107,9 @@ final class TsFileWriterManager {
   private volatile long currentSearchIndex = -1L;
   private volatile boolean isClosed;
 
+  /** When this task last received a command; a new or recovered task counts as heard from now. */
+  private volatile long lastCommandTimeMillis = System.currentTimeMillis();
+
   TsFileWriterManager(final DataRegion dataRegion, final File taskDir) {
     this.dataRegion =
         Objects.requireNonNull(
@@ -143,7 +146,17 @@ final class TsFileWriterManager {
       final List<TsFileData> tsFileDataList, final long searchIndex)
       throws IOException, PageException {
     this.currentSearchIndex = searchIndex;
+    touch();
     return writePiece(tsFileDataList);
+  }
+
+  /** Records that a command of this task arrived now. */
+  void touch() {
+    lastCommandTimeMillis = System.currentTimeMillis();
+  }
+
+  long getLastCommandTimeMillis() {
+    return lastCommandTimeMillis;
   }
 
   /**
@@ -397,6 +410,7 @@ final class TsFileWriterManager {
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     checkNotClosed();
+    touch();
 
     // 1. Close modification files first to freeze deletion views
     for (final ModificationFile modFile : dataPartition2ModificationFile.values()) {

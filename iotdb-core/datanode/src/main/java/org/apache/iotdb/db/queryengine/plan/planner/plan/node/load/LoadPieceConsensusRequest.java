@@ -34,8 +34,8 @@ import java.nio.ByteBuffer;
  * staged TsFile only when the bytes are needed for sending.
  *
  * <p>The staged TsFile holds the only copy of a payload, so it may be released only once the
- * <em>replicated</em> watermark has passed the task's COMMIT or ABORT (see LoadTaskRetention), and
- * it is kept when the coordinator dies before sending one, so a retried LOAD can resume it.
+ * <em>replicated</em> watermark has passed the task's COMMIT or ABORT (see LoadTaskRetention), or
+ * when LoadTsFileCleaner reclaims it as abandoned after its idle timeout.
  */
 public class LoadPieceConsensusRequest extends IoTConsensusRequest {
 

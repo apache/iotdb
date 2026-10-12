@@ -133,6 +133,30 @@ public class LoadTsFileManager {
   }
 
   /**
+   * When the task last received a command, or -1 when this region does not know it. A command path
+   * only ever asks about its own tasks, so -1 here means the task is gone.
+   */
+  long getLastCommandTimeMillis(final String loadId) {
+    final TsFileWriterManager writerManager = uuid2WriterManager.get(loadId);
+    return writerManager == null ? -1L : writerManager.getLastCommandTimeMillis();
+  }
+
+  /**
+   * Reclaims the tasks of this region that received no command for the idle timeout. A LOAD command
+   * of any task triggers it, so a task that went quiet is reclaimed without waiting for the sweep.
+   */
+  private void reclaimIdleTasks() {
+    final LoadTsFileCleaner cleaner = LoadTsFileCleaner.getInstance();
+    for (final Map.Entry<String, TsFileWriterManager> entry : uuid2WriterManager.entrySet()) {
+      cleaner.reclaimIfIdle(
+          dataRegion,
+          entry.getKey(),
+          entry.getValue().getTaskDir(),
+          entry.getValue().getLastCommandTimeMillis());
+    }
+  }
+
+  /**
    * Appends one slice of a piece. Slices are dispatched in order, so a slice that is not the first
    * one is rejected when the slices before it did not arrive, and the assembler is dropped as soon
    * as the piece is complete or one of its slices turned out to be invalid.
@@ -280,6 +304,7 @@ public class LoadTsFileManager {
       logLoadNodeToWAL(node);
       dataRegion.insertSeparatorToWAL(node);
     }
+    reclaimIdleTasks();
     return refs;
   }
 
@@ -365,6 +390,7 @@ public class LoadTsFileManager {
         .prepare(node.isGeneratedByPipe(), timePartitionProgressIndexMap);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
+    reclaimIdleTasks();
     return true;
   }
 
@@ -468,6 +494,11 @@ public class LoadTsFileManager {
     if (Objects.nonNull(writerManager)) {
       writerManager.close();
     }
+  }
+
+  /** Drops the writers of a task whose staged files are being deleted, see LoadTsFileCleaner. */
+  void dropTask(final String loadId) {
+    forceCloseWriterManager(loadId);
   }
 
   public static void cleanTsFile(final File tsFile) {

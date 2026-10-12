@@ -129,6 +129,8 @@ public final class StorageEngineMessages {
       "恢复 LOAD 任务 {} 的任务元数据失败：{}";
   public static final String LOG_LOAD_CONSENSUS_TASK_META_WRITE_FAILED_5D2420BF =
       "持久化 LOAD 任务 {} 的任务元数据到 {} 失败：{}";
+  public static final String LOG_RECLAIMED_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_WHICH_RECEIVED_NO_COMMAND_FOR_ARG_MS_E2348276 =
+      "已回收 LOAD 任务 {} 的暂存目录 {}：该任务已 {} 毫秒未收到任何命令";
   public static final String LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433 =
       "写入 LOAD 任务 {} 的终止标记到 {} 失败：{}";
   public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_ARG_FROM_STAGED_FILE_ARG_3AF462A6 =
