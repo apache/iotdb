@@ -59,6 +59,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.junit.Assert.assertEquals;
@@ -197,6 +198,56 @@ public class RegionWriteExecutorTest {
     // The guard must preserve quota checks and consensus writes for both live-region requests.
     checkInternalCreateWithRegionAvailability(false, true);
     checkInternalCreateWithRegionAvailability(true, true);
+  }
+
+  @Test
+  public void testSchemaWriteWhenRegionIsClearedAfterLookup() throws Exception {
+    final IConsensus consensus = Mockito.mock(IConsensus.class);
+    final DataNodeRegionManager regionManager = Mockito.mock(DataNodeRegionManager.class);
+    final SchemaEngine schemaEngine = Mockito.mock(SchemaEngine.class);
+    final SchemaRegionId regionId = new SchemaRegionId(1);
+    final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    final ISchemaRegion region = Mockito.mock(ISchemaRegion.class);
+    final AtomicBoolean clearing = new AtomicBoolean(false);
+    Mockito.when(regionManager.getRegionLock(regionId)).thenReturn(lock);
+    Mockito.when(schemaEngine.getSchemaRegion(regionId)).thenReturn(region);
+    Mockito.when(schemaEngine.isClearing()).thenAnswer(invocation -> clearing.get());
+    Mockito.doAnswer(
+            invocation -> {
+              // The region was obtained before shutdown cleared its MTree.
+              clearing.set(true);
+              throw new NullPointerException();
+            })
+        .when(region)
+        .fetchMeasurementPath(Mockito.any());
+
+    final RegionWriteExecutor executor =
+        new RegionWriteExecutor(
+            Mockito.mock(IConsensus.class),
+            consensus,
+            regionManager,
+            schemaEngine,
+            Mockito.mock(ClusterTemplateManager.class),
+            Mockito.mock(TriggerFireVisitor.class));
+    final AlterTimeSeriesNode request =
+        new AlterTimeSeriesNode(
+            new PlanNodeId("alter"),
+            new MeasurementPath("root.sg.d.s"),
+            AlterType.ADD_TAGS,
+            Collections.singletonMap("tag", "value"),
+            null,
+            null,
+            null,
+            false);
+
+    final RegionExecutionResult result = executor.execute(regionId, request);
+
+    assertFalse(result.isAccepted());
+    assertEquals(
+        TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode(), result.getStatus().getCode());
+    assertFalse(lock.isWriteLocked());
+    assertEquals(0, lock.getReadLockCount());
+    Mockito.verifyZeroInteractions(consensus);
   }
 
   private void checkInternalCreateWithRegionAvailability(boolean batch, boolean available)

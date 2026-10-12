@@ -176,6 +176,12 @@ public class RegionWriteExecutor {
         return RegionExecutionResult.create(
             false, errorMsg, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
       }
+      // SchemaEngine clears regions before DataNodeRegionManager removes their validation locks.
+      // Failures from an in-flight schema write during that window must remain retryable.
+      if (groupId instanceof SchemaRegionId && schemaEngine.isClearing()) {
+        return RegionExecutionResult.create(
+            false, e.getMessage(), RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
+      }
       LOGGER.warn(e.getMessage(), e);
       return RegionExecutionResult.create(
           false,
