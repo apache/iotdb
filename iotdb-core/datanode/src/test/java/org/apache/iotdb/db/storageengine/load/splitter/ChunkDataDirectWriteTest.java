@@ -553,16 +553,32 @@ public class ChunkDataDirectWriteTest {
         createPopulatedNonAlignedChunkData(DEFAULT_DEVICE, "s4", 0, 4);
     new ChunkOffsetCalculator().assign(placed);
     assertCalculatedSize(placed);
+
+    // An aligned record is sized in the state the WAL asks about, with its pages already ended: a
+    // record that still holds decoded pages is encoded by serialization itself.
+    final AlignedChunkData decoded = createAlignedTimeChunkData(DEFAULT_DEVICE);
+    decoded.writeDecodePage(new long[] {1L, 2L}, new Object[] {null, null}, 2);
+    decoded.endChunk();
+    assertCalculatedSize(decoded);
+    decoded.setChunkPayloadRefs(
+        Collections.singletonList(new ChunkPayloadRef("staged.tsfile", 0L, 32L)));
+    assertCalculatedSize(decoded);
+
+    new ChunkOffsetCalculator().assign(decoded);
+    assertCalculatedSize(decoded);
   }
 
   private static void assertCalculatedSize(final TsFileData data) throws Exception {
     for (final boolean includeContent : new boolean[] {false, true}) {
+      // Asked before the bytes are written, as the WAL asks it: encoding a record that still holds
+      // decoded pages ends them, so the size belongs to the state that is about to be written.
+      final int calculated = data.serializedSize(includeContent);
       final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
       data.serialize(new DataOutputStream(bytes), includeContent);
       assertEquals(
           "the calculated size of a " + data.getType() + " must be the bytes it writes",
           bytes.size(),
-          data.serializedSize(includeContent));
+          calculated);
     }
   }
 

@@ -490,6 +490,8 @@ public class LoadTsFileManagerSplitCoverageTest {
             ((ChunkData) data).getChunkPayloadRefs().isEmpty());
       }
 
+      // The size is asked before the bytes are written, as the WAL asks it
+      final int calculatedSize = node.serializedSize();
       // The forwarded form carries the payload, the logged form only references it
       final byte[] forwarded = toByteArray(node.serialize());
       final byte[] logged = toByteArray(node.serialize(false));
@@ -497,7 +499,7 @@ public class LoadTsFileManagerSplitCoverageTest {
       // The size a node calculates for itself must be the bytes of the logged form: its envelope,
       // the search index, the body, the plan node id and the child count.
       assertEquals(
-          node.serializedSize()
+          calculatedSize
               + ReadWriteIOUtils.sizeToWrite(node.getPlanNodeId().getId())
               + Integer.BYTES
               + DISPATCH_ENVELOPE_BYTES

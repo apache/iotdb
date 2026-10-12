@@ -47,6 +47,10 @@ public interface TsFileData {
   /**
    * The bytes {@link #serialize(DataOutputStream, boolean)} writes, calculated without serializing
    * anything, so that a size can be asked for without allocating a buffer to measure.
+   *
+   * <p>It describes the state the record is in: one that still holds decoded pages is encoded by
+   * {@link #serialize} itself, so it is sized once its pages have been ended, which is the state a
+   * piece arrives at the WAL in.
    */
   int serializedSize(boolean includeContent);
 
