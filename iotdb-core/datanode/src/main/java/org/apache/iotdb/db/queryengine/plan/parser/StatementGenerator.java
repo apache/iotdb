@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -278,19 +279,22 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  public static InsertRowStatement createStatement(TSInsertRecordReq insertRecordReq)
+  public static InsertBaseStatement createStatement(TSInsertRecordReq insertRecordReq)
       throws IllegalPathException, QueryProcessException {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(
-        DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
+        insertRecordReq.isIsWriteToTable()
+            ? new PartialPath(insertRecordReq.getPrefixPath(), false)
+            : DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
     TimestampPrecisionUtils.checkTimestampPrecision(insertRecordReq.getTimestamp());
-    insertStatement.setTime(insertRecordReq.getTimestamp());
+
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
+    insertStatement.setTime(insertRecordReq.getTimestamp());
     insertStatement.fillValues(insertRecordReq.values);
-    if (insertRecordReq.isSetIsWriteToTable()) {
+    if (insertRecordReq.isIsWriteToTable()) {
       insertStatement.setWriteToTable(insertRecordReq.isIsWriteToTable());
       if (!insertRecordReq.isSetColumnCategoryies()
           || insertRecordReq.getColumnCategoryiesSize() != insertRecordReq.getMeasurementsSize()) {

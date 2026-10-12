@@ -1352,8 +1352,7 @@ public class Session implements ISession {
     }
   }
 
-  private SessionConnection getSessionConnection(IDeviceID deviceId)
-      throws IoTDBConnectionException {
+  SessionConnection getSessionConnection(IDeviceID deviceId) throws IoTDBConnectionException {
     TEndPoint endPoint;
     if (enableRedirection
         && tableModelDeviceIdToEndpoint != null
@@ -1435,7 +1434,7 @@ public class Session implements ISession {
     }
   }
 
-  private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
+  void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {

@@ -20,6 +20,10 @@
 package org.apache.iotdb.session.i18n;
 
 public final class SessionMessages {
+  public static final String EXCEPTION_NUMERIC_ROW_NULL_BITMAP_SIZE_MISMATCH_EXPECTED_ARG_FIELDS_BUT_GOT_ARG_8D30F6A0 =
+      "Numeric row null bitmap size mismatch: expected %d FIELDs but got %d";
+  public static final String EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233 = "Numeric row arguments must be non-null; column metadata lengths and per-category value counts must match.";
+  public static final String EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA = "Numeric rows support numeric FIELD columns and STRING TAG columns only.";
 
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls shouldn't be empty.";
@@ -286,4 +290,11 @@ public final class SessionMessages {
   public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 = "retry to execute statement on %s failed %d times: %s";
   public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 = "SessionPool doesn't support executing %s directly";
 
+  public static final String EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_AND_COLUMN_NAMES_TYPES_CATEGORIES_AND_VALUES_MUST_HAVE_EQUAL_LENGTHS_AB102B01 = "Numeric row arguments must be non-null and column names, types, categories and values must have equal lengths.";
+  public static final String EXCEPTION_NUMERIC_ROWS_SUPPORT_ONLY_FIELD_COLUMNS_DA7A8EE7 = "Numeric rows support only FIELD columns.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_BELONGS_TO_ANOTHER_CONNECTION_PREPARE_IT_AGAIN_055CC7BC = "Prepared numeric row is closed or belongs to another connection; prepare it again.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_PREPARE_RETURNED_NO_STATUS_6FF7BC24 = "Prepared numeric row prepare returned no status";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_COUNT_MISMATCH_9ACD3A0C = "Prepared numeric row value count mismatch";
+  public static final String EXCEPTION_UNSUPPORTED_NUMERIC_TYPE_06DD3044 = "Unsupported numeric type";
+  public static final String EXCEPTION_TABLE_SESSION_IS_CLOSED_77FE359B = "Table session is closed.";
 }

@@ -123,6 +123,33 @@ public class SessionUtils {
     return buffer;
   }
 
+  public static void validateNumericRowNullBitmap(BitMap nullBitmap, int fieldCount) {
+    if (nullBitmap != null && nullBitmap.getSize() != fieldCount) {
+      throw new IllegalArgumentException(
+          String.format(
+              SessionMessages
+                  .EXCEPTION_NUMERIC_ROW_NULL_BITMAP_SIZE_MISMATCH_EXPECTED_ARG_FIELDS_BUT_GOT_ARG_8D30F6A0,
+              fieldCount,
+              nullBitmap.getSize()));
+    }
+  }
+
+  /** Encodes FIELD bits LSB first with zero padding, including when BitMap.markAll() was used. */
+  public static ByteBuffer encodeNumericRowNullBitmap(BitMap nullBitmap, ByteBuffer buffer) {
+    int fieldCount = nullBitmap.getSize();
+    int length = (fieldCount + 7) / 8;
+    if (buffer == null) {
+      buffer = ByteBuffer.allocate(length);
+    }
+    buffer.clear();
+    buffer.put(nullBitmap.getByteArray(), 0, length);
+    if (fieldCount % 8 != 0) {
+      buffer.put(length - 1, (byte) (buffer.get(length - 1) & ((1 << (fieldCount % 8)) - 1)));
+    }
+    buffer.flip();
+    return buffer;
+  }
+
   public static Object sortValueList(Object valueList, TSDataType dataType, int[] index) {
     return SessionTypeServices.valueListSorter(dataType).sort(valueList, index);
   }

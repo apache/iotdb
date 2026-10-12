@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
+import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -483,6 +484,46 @@ public abstract class AlignedTVList extends TVList {
       Type.fromTsDataType(dataType).addValue(elementIndex, columnValue, valueArray);
       if (dataType.isBinary()) {
         memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
+      }
+    }
+    if (indices != null) {
+      indices.get(arrayIndex)[elementIndex] = rowCount;
+    }
+    rowCount++;
+    if (sorted) {
+      if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+        sorted = false;
+        segmentMovedMap = null;
+      } else {
+        seqRowCount++;
+      }
+    }
+  }
+
+  /** Writes row bits into native column arrays without a boxed intermediate row. */
+  public synchronized void putAlignedNumericValue(
+      long timestamp, NumericRowValues row, int[] columnMapping) {
+    checkExpansion();
+    int arrayIndex = rowCount / ARRAY_SIZE;
+    int elementIndex = rowCount % ARRAY_SIZE;
+    maxTime = Math.max(maxTime, timestamp);
+    minTime = Math.min(minTime, timestamp);
+    timestamps.get(arrayIndex)[elementIndex] = timestamp;
+    for (int i = 0; i < values.size(); i++) {
+      int source = columnMapping[i];
+      if (source < 0 || row.isNull(source)) {
+        markNullValue(i, arrayIndex, elementIndex);
+        continue;
+      }
+      Object valueArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
+      long value = row.get(source);
+      switch (dataTypes.get(i)) {
+        case BOOLEAN -> ((boolean[]) valueArray)[elementIndex] = value != 0;
+        case INT32, DATE -> ((int[]) valueArray)[elementIndex] = (int) value;
+        case INT64, TIMESTAMP -> ((long[]) valueArray)[elementIndex] = value;
+        case FLOAT -> ((float[]) valueArray)[elementIndex] = Float.intBitsToFloat((int) value);
+        case DOUBLE -> ((double[]) valueArray)[elementIndex] = Double.longBitsToDouble(value);
+        default -> throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
       }
     }
     if (indices != null) {

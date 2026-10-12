@@ -377,6 +377,16 @@ public class TsTable {
     return new Pair<>(creationId, instanceVersion.get());
   }
 
+  /** Checks both table identity and schema revision, waiting for any ongoing schema write. */
+  public boolean matchesInstanceVersion(final Pair<Long, Long> version) {
+    readWriteLock.readLock().lock();
+    try {
+      return creationId.equals(version.left) && instanceVersion.get() == version.right;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public boolean containsPropWithoutLock(final String propKey) {
     return props != null && props.containsKey(propKey);
   }

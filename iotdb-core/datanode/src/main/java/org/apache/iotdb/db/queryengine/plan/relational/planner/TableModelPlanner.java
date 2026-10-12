@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -239,6 +240,19 @@ public class TableModelPlanner implements IPlanner {
         ((WrappedInsertStatement) statementToRedirect).getInnerTreeStatement();
 
     if (!analysis.isFinishQueryAfterAnalyze()) {
+      if (insertStatement instanceof InsertNumericRowStatement) {
+        // A numeric row uses insertRecord, whose redirect response carries one endpoint.
+        if (tsstatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          List<TEndPoint> endpoints = analysis.getRedirectNodeList();
+          if (endpoints != null
+              && !endpoints.isEmpty()
+              && !localEndPoint.equals(endpoints.get(0))) {
+            tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+            tsstatus.setRedirectNode(endpoints.get(0));
+          }
+        }
+        return;
+      }
       // Table Model Session supports insertTablet and pipe-generated insertRows statements.
       if (insertStatement instanceof InsertTabletStatement
           || insertStatement instanceof InsertRowsStatement) {

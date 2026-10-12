@@ -191,7 +191,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
@@ -3452,7 +3452,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus insertRecord(TSInsertRecordReq req) throws TException {
     try {
-      InsertRowStatement statement = StatementGenerator.createStatement(req);
+      InsertBaseStatement statement = StatementGenerator.createStatement(req);
       SessionInfo sessionInfo =
           new SessionInfo(
               0,

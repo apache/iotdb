@@ -24,6 +24,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.BitMap;
 
@@ -101,6 +103,21 @@ public class DefaultOperationQuota implements OperationQuota {
       }
       final StatementType statementType = s.getType();
       switch (statementType) {
+        case INSERT_NUMERIC_ROW:
+          InsertNumericRowStatement numeric = (InsertNumericRowStatement) s;
+          for (int i = 0; i < numeric.getValueCount(); i++) {
+            if (!numeric.getNumericValues().isNull(i)) {
+              avgSize +=
+                  numeric.getDataType(i) == TSDataType.STRING
+                      ? numeric
+                          .getNumericValues()
+                          .getTag(i)
+                          .getBytes(TSFileConfig.STRING_CHARSET)
+                          .length
+                      : numeric.getDataType(i).getDataTypeSize();
+            }
+          }
+          break;
         case INSERT:
           // InsertStatement  InsertRowStatement
           if (s instanceof InsertStatement) {

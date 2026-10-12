@@ -120,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -165,6 +166,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(stream);
       case 2000:
         return RelationalInsertTabletNode.deserializeFromWAL(stream);
+      case 2005:
+        return RelationalInsertNumericRowNode.deserializeFromWAL(stream);
       case 2001:
         return RelationalInsertRowNode.deserializeFromWAL(stream);
       case 2002:
@@ -194,6 +197,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserializeFromWAL(buffer);
+      case 2005:
+        return RelationalInsertNumericRowNode.deserializeFromWAL(buffer);
       case 2001:
         return RelationalInsertRowNode.deserializeFromWAL(buffer);
       case 2002:
@@ -476,6 +481,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return NonAlignedAggregationTreeDeviceViewScanNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
+      case 2005:
+        return RelationalInsertNumericRowNode.deserialize(buffer);
       case 2001:
         return RelationalInsertRowNode.deserialize(buffer);
       case 2002:

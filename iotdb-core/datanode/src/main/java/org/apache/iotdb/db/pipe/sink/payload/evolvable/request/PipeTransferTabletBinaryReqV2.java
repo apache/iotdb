@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -56,7 +56,7 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
   public InsertBaseStatement constructStatement() {
     final InsertNode insertNode = parseByteBuffer();
 
-    if (!(insertNode instanceof InsertRowNode
+    if (!(insertNode instanceof AbstractInsertRowNode
         || insertNode instanceof InsertTabletNode
         || insertNode instanceof InsertRowsNode)) {
       throw new UnsupportedOperationException(

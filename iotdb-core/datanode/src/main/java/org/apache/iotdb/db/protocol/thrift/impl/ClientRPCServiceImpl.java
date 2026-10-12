@@ -64,6 +64,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.PreparedNumericRowInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -107,8 +108,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -166,6 +168,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDeallocatePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedNumericRowReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -187,6 +190,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowResp;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -2600,6 +2605,82 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSPrepareNumericRowResp prepareNumericRow(TSPrepareNumericRowReq req) {
+    IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(session)) {
+      return new TSPrepareNumericRowResp(getNotLoggedInStatus());
+    }
+    try {
+      if (req.getSessionId() != session.getId()) {
+        return new TSPrepareNumericRowResp(RpcUtils.getStatus(TSStatusCode.NOT_LOGIN));
+      }
+      PreparedNumericRowInfo info = new PreparedNumericRowInfo(session.getDatabaseName(), req);
+      TSPrepareNumericRowResp response = new TSPrepareNumericRowResp();
+      response.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      response.setPreparedId(session.addPreparedNumericRow(info));
+      return response;
+    } catch (Exception e) {
+      return new TSPrepareNumericRowResp(
+          onQueryException(
+              e, OperationType.INSERT_RECORD.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR));
+    }
+  }
+
+  @Override
+  public TSStatus executePreparedNumericRow(TSExecutePreparedNumericRowReq req) {
+    IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(session)) return getNotLoggedInStatus();
+    InsertNumericRowStatement statement = null;
+    OperationQuota quota = null;
+    try {
+      if (req.getSessionId() != session.getId()) return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN);
+      statement =
+          session
+              .getPreparedNumericRow(req.getPreparedId())
+              .bind(
+                  req.getTimestamp(),
+                  ByteBuffer.wrap(req.getTagValues()),
+                  ByteBuffer.wrap(req.getValues()),
+                  req.bufferForNullBitmap());
+      quota =
+          DataNodeThrottleQuotaManager.getInstance().checkQuota(session.getUsername(), statement);
+      long queryId = SESSION_MANAGER.requestQueryId();
+      return COORDINATOR.executeForTableModel(
+              statement,
+              relationSqlParser,
+              session,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              metadata,
+              config.getConnectionTimeoutInMS())
+          .status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
+    } catch (Exception e) {
+      return onQueryException(
+          e, OperationType.INSERT_RECORD.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      if (statement != null && statement.isTableSchemaValidationFailed()) {
+        // Remove only this session's invalid handle, releasing its reservation exactly once.
+        session.removePreparedNumericRow(req.getPreparedId());
+      }
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSStatus closePreparedNumericRow(long sessionId, long preparedId) {
+    IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(session) || session.getId() != sessionId)
+      return getNotLoggedInStatus();
+    session.removePreparedNumericRow(preparedId);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   public TSStatus insertRecord(TSInsertRecordReq req) {
     long t1 = System.nanoTime();
     OperationQuota quota = null;
@@ -2615,22 +2696,24 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
       }
 
-      InsertRowStatement statement = StatementGenerator.createStatement(req);
+      InsertBaseStatement statement = StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
       if (statement.isEmpty()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      // permission check
-      TSStatus status =
-          AuthorityChecker.checkAuthority(
-              statement,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
+      // Table-model privileges are checked during relational analysis.
+      if (!statement.isWriteToTable()) {
+        TSStatus status =
+            AuthorityChecker.checkAuthority(
+                statement,
+                new TreeAccessCheckContext(
+                    clientSession.getUserId(),
+                    clientSession.getUsername(),
+                    clientSession.getClientAddress()));
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
       }
 
       quota =
@@ -3561,7 +3644,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // check whether measurement is legal according to syntax convention
       req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
-      final InsertRowStatement statement = StatementGenerator.createStatement(req);
+      final InsertBaseStatement statement = StatementGenerator.createStatement(req);
 
       // Permission check
       final TSStatus status =

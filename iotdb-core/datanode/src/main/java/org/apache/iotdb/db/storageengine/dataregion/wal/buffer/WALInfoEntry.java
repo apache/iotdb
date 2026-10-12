@@ -22,9 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -102,7 +102,7 @@ public class WALInfoEntry extends WALEntry {
             .serializeToWAL(buffer, tabletInfo.tabletRangeList, encodedSearchIndex);
         break;
       case INSERT_ROW_NODE:
-        ((InsertRowNode) value).serializeToWAL(buffer, encodedSearchIndex);
+        ((AbstractInsertRowNode) value).serializeToWAL(buffer, encodedSearchIndex);
         break;
       case INSERT_ROWS_NODE:
         ((InsertRowsNode) value).serializeToWAL(buffer, encodedSearchIndex);

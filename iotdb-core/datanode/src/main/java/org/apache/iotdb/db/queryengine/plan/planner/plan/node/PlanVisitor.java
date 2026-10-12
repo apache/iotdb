@@ -118,6 +118,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -583,6 +584,10 @@ public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   default R visitInsertRow(InsertRowNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  default R visitRelationalInsertNumericRow(RelationalInsertNumericRowNode node, C context) {
     return visitPlan(node, context);
   }
 

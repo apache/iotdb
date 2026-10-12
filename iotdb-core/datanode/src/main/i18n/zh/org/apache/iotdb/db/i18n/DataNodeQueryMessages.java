@@ -20,6 +20,12 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_NUMERIC_ROW_NULL_BITMAP_LENGTH_MISMATCH_EXPECTED_ARG_BYTES_FOR_ARG_FIELDS_BUT_GOT_ARG_31F1DB42 =
+      "Numeric row 的 null bitmap 长度不匹配：预期 %d 字节（对应 %d 个 FIELD），实际为 %d";
+  public static final String EXCEPTION_NUMERIC_ROW_NULL_BITMAP_HAS_SET_BITS_OUTSIDE_ARG_FIELDS_AD6066D1 =
+      "Numeric row 的 null bitmap 在 %d 个 FIELD 范围外存在置位";
+  public static final String EXCEPTION_NUMERIC_ROW_PAYLOAD_HAS_ARG_TRAILING_BYTES_89E46A34 =
+      "Numeric row 数据存在 %d 个多余的尾随字节";
 
   public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
       "Fragment instance %s 已处于 %s 状态";

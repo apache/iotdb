@@ -204,4 +204,5 @@ public enum StatementType {
 
   SHOW_DISK_USAGE,
   SHOW_RECEIVERS,
+  INSERT_NUMERIC_ROW,
 }

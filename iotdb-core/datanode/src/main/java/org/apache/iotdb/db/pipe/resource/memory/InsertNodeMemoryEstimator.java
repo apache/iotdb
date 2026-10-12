@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -74,6 +75,7 @@ public class InsertNodeMemoryEstimator {
   private static final String INSERT_MULTI_TABLETS_NODE = "InsertMultiTabletsNode";
   private static final String RELATIONAL_INSERT_ROWS_NODE = "RelationalInsertRowsNode";
   private static final String RELATIONAL_INSERT_ROW_NODE = "RelationalInsertRowNode";
+  private static final String RELATIONAL_INSERT_NUMERIC_ROW_NODE = "RelationalInsertNumericRowNode";
   private static final String RELATIONAL_INSERT_TABLET_NODE = "RelationalInsertTabletNode";
 
   private static final long NUM_BYTES_OBJECT_REF = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
@@ -105,6 +107,9 @@ public class InsertNodeMemoryEstimator {
 
   private static final long RELATIONAL_INSERT_ROW_NODE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(RelationalInsertRowNode.class);
+
+  private static final long RELATIONAL_INSERT_NUMERIC_ROW_NODE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertNumericRowNode.class);
 
   private static final long RELATIONAL_INSERT_TABLET_NODE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(RelationalInsertTabletNode.class);
@@ -176,6 +181,8 @@ public class InsertNodeMemoryEstimator {
           return sizeOfRelationalInsertRowsNode((RelationalInsertRowsNode) insertNode);
         case RELATIONAL_INSERT_ROW_NODE:
           return sizeOfRelationalInsertRowNode((RelationalInsertRowNode) insertNode);
+        case RELATIONAL_INSERT_NUMERIC_ROW_NODE:
+          return sizeOfRelationalInsertNumericRowNode((RelationalInsertNumericRowNode) insertNode);
         case RELATIONAL_INSERT_TABLET_NODE:
           return sizeOfRelationalInsertTabletNode((RelationalInsertTabletNode) insertNode);
         default:
@@ -318,6 +325,13 @@ public class InsertNodeMemoryEstimator {
     size += calculateFullInsertNodeSize(node, deduplicatedObjects);
     size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
     return size;
+  }
+
+  private static long sizeOfRelationalInsertNumericRowNode(
+      final RelationalInsertNumericRowNode node) {
+    return RELATIONAL_INSERT_NUMERIC_ROW_NODE_SIZE
+        + calculateFullInsertNodeSize(node)
+        + node.getNumericValues().ramBytesUsed();
   }
 
   private static long sizeOfRelationalInsertTabletNode(final RelationalInsertTabletNode node) {

@@ -299,7 +299,7 @@ public class StatementGeneratorTest {
             Arrays.asList("s1", "s2"),
             ByteBuffer.wrap(new byte[] {0, 0, 0, 0}),
             1000L);
-    InsertRowStatement statement = StatementGenerator.createStatement(req);
+    InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
     assertEquals(1000L, statement.getTime());
   }
 

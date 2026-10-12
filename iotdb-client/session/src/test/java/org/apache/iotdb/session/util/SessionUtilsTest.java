@@ -46,6 +46,23 @@ import static org.junit.Assert.assertThrows;
 public class SessionUtilsTest {
 
   @Test
+  public void testNumericRowNullBitmapBoundaries() {
+    for (int size : new int[] {1, 7, 8, 9, 16}) {
+      BitMap nulls = new BitMap(size);
+      nulls.markAll();
+      byte[] original = nulls.getByteArray().clone();
+      ByteBuffer bitmap = SessionUtils.encodeNumericRowNullBitmap(nulls, null);
+      Assert.assertEquals((size + 7) / 8, bitmap.remaining());
+      Assert.assertEquals(
+          size % 8 == 0 ? 255 : (1 << (size % 8)) - 1, bitmap.get(bitmap.limit() - 1) & 255);
+      Assert.assertArrayEquals(original, nulls.getByteArray());
+    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SessionUtils.validateNumericRowNullBitmap(new BitMap(2), 1));
+  }
+
+  @Test
   public void testGetTimeBuffer() {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();

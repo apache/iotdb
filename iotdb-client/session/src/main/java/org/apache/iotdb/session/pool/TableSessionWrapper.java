@@ -20,16 +20,22 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.TableSession;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -46,12 +52,15 @@ public class TableSessionWrapper implements ITableSession {
 
   private Session session;
 
+  private final TableSession tableSession;
+
   private final SessionPool sessionPool;
 
   private final AtomicBoolean closed;
 
   protected TableSessionWrapper(Session session, SessionPool sessionPool) {
     this.session = session;
+    this.tableSession = new TableSession(session);
     this.sessionPool = sessionPool;
     this.closed = new AtomicBoolean(false);
   }
@@ -66,6 +75,64 @@ public class TableSessionWrapper implements ITableSession {
       session = null;
       throw e;
     }
+  }
+
+  @Override
+  public NumericRowPreparedStatement prepareInsertNumericRow(
+      String tableName,
+      List<String> columnNames,
+      List<TSDataType> dataTypes,
+      List<ColumnCategory> columnCategories)
+      throws StatementExecutionException, IoTDBConnectionException {
+    checkOpen();
+    try {
+      return tableSession.prepareInsertNumericRow(
+          tableName, columnNames, dataTypes, columnCategories);
+    } catch (IoTDBConnectionException e) {
+      invalidateSession();
+      throw e;
+    }
+  }
+
+  @Override
+  public void executePreparedInsertNumericRow(
+      NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)
+      throws StatementExecutionException, IoTDBConnectionException {
+    executePreparedInsertNumericRow(prepared, timestamp, values, tagValues, null);
+  }
+
+  @Override
+  public void executePreparedInsertNumericRow(
+      NumericRowPreparedStatement prepared,
+      long timestamp,
+      long[] values,
+      String[] tagValues,
+      BitMap nullBitmap)
+      throws StatementExecutionException, IoTDBConnectionException {
+    checkOpen();
+    try {
+      tableSession.executePreparedInsertNumericRow(
+          prepared, timestamp, values, tagValues, nullBitmap);
+    } catch (IoTDBConnectionException e) {
+      invalidateSession();
+      throw e;
+    }
+  }
+
+  private void checkOpen() throws IoTDBConnectionException {
+    // The cached delegate still references the physical session after it returns to the pool.
+    if (closed.get() || session == null) {
+      throw new IoTDBConnectionException(
+          SessionMessages.EXCEPTION_TABLE_SESSION_IS_CLOSED_77FE359B);
+    }
+  }
+
+  private void invalidateSession() {
+    Session failedSession = session;
+    // Invalidate before cleanup so close() cannot return a failed connection to the pool.
+    closed.set(true);
+    session = null;
+    sessionPool.cleanSessionAndMayThrowConnectionException(failedSession);
   }
 
   @Override
@@ -109,6 +176,9 @@ public class TableSessionWrapper implements ITableSession {
 
   @Override
   public void close() throws IoTDBConnectionException {
+    if (closed.get() || session == null) {
+      return;
+    }
     if (!Objects.equals(session.getSqlDialect(), sessionPool.sqlDialect)) {
       try {
         session.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);

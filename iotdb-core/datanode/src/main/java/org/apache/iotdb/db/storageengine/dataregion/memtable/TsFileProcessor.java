@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -293,7 +295,7 @@ public class TsFileProcessor {
     }
   }
 
-  private static void clearDataRegionReplicaSet(final InsertRowNode insertRowNode) {
+  private static void clearDataRegionReplicaSet(final AbstractInsertRowNode insertRowNode) {
     insertRowNode.setDataRegionReplicaSet(null);
   }
 
@@ -313,7 +315,7 @@ public class TsFileProcessor {
    *
    * @param insertRowNode physical plan of insertion
    */
-  public void insert(InsertRowNode insertRowNode, long[] infoForMetrics)
+  public void insert(AbstractInsertRowNode insertRowNode, long[] infoForMetrics)
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
@@ -332,7 +334,7 @@ public class TsFileProcessor {
               insertRowNode.getDeviceID(),
               insertRowNode.getMeasurements(),
               insertRowNode.getDataTypes(),
-              insertRowNode.getValues(),
+              insertRowNode.getValuesForMemoryAccounting(),
               insertRowNode.getColumnCategories());
     } else {
       memIncrements =
@@ -340,7 +342,7 @@ public class TsFileProcessor {
               insertRowNode.getDeviceID(),
               insertRowNode.getMeasurements(),
               insertRowNode.getDataTypes(),
-              insertRowNode.getValues(),
+              insertRowNode.getValuesForMemoryAccounting(),
               insertRowNode.getColumnCategories());
     }
     // recordScheduleMemoryBlockCost
@@ -393,7 +395,7 @@ public class TsFileProcessor {
       if (insertRowNode.isAligned()) {
         pointInserted = workMemTable.insertAlignedRow(insertRowNode);
       } else {
-        pointInserted = workMemTable.insert(insertRowNode);
+        pointInserted = workMemTable.insert((InsertRowNode) insertRowNode);
       }
     } finally {
       reconcileAlignedTVListRamCost(alignedRamCostSnapshot, memIncrements[0]);
@@ -517,7 +519,7 @@ public class TsFileProcessor {
         if (insertRowNode.isAligned()) {
           pointInserted += workMemTable.insertAlignedRow(insertRowNode);
         } else {
-          pointInserted += workMemTable.insert(insertRowNode);
+          pointInserted += workMemTable.insert((InsertRowNode) insertRowNode);
         }
         // update start time of this memtable
         tsFileResource.updateStartTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
@@ -801,7 +803,7 @@ public class TsFileProcessor {
       IDeviceID deviceId,
       String[] measurements,
       TSDataType[] dataTypes,
-      Object[] values,
+      Object values,
       TsTableColumnCategory[] columnCategories)
       throws WriteProcessException {
     // Fixed-size TVList structures and materialized value primitive arrays.
@@ -829,8 +831,8 @@ public class TsFileProcessor {
         }
       }
       // TEXT data mem size
-      if (dataTypes[i].isBinary() && values[i] != null) {
-        textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+      if (dataTypes[i].isBinary() && values instanceof Object[] rowValues && rowValues[i] != null) {
+        textDataIncrement += MemUtils.getBinarySize((Binary) rowValues[i]);
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
@@ -849,7 +851,7 @@ public class TsFileProcessor {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
-      Object[] values = insertRowNode.getValues();
+      Object values = insertRowNode.getValuesForMemoryAccounting();
       String[] measurements = insertRowNode.getMeasurements();
       for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
@@ -883,8 +885,10 @@ public class TsFileProcessor {
           increasingMemTableInfo.get(deviceId).computeIfPresent(measurements[i], (k, v) -> v + 1);
         }
         // TEXT data mem size
-        if (dataTypes[i].isBinary() && values[i] != null) {
-          textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+        if (dataTypes[i].isBinary()
+            && values instanceof Object[] rowValues
+            && rowValues[i] != null) {
+          textDataIncrement += MemUtils.getBinarySize((Binary) rowValues[i]);
         }
       }
     }
@@ -897,7 +901,7 @@ public class TsFileProcessor {
       IDeviceID deviceId,
       String[] measurements,
       TSDataType[] dataTypes,
-      Object[] values,
+      Object values,
       TsTableColumnCategory[] columnCategories)
       throws WriteProcessException {
     // Fixed-size TVList structures and materialized value primitive arrays.
@@ -946,9 +950,10 @@ public class TsFileProcessor {
     }
     for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       if (isWritableFieldMeasurement(measurements, dataTypes, values, columnCategories, i)
-          && dataTypes[i].isBinary()) {
+          && dataTypes[i].isBinary()
+          && values instanceof Object[] rowValues) {
         // Binary values keep their variable-length content outside the fixed Binary[] array.
-        textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+        textDataIncrement += MemUtils.getBinarySize((Binary) rowValues[i]);
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
@@ -970,7 +975,7 @@ public class TsFileProcessor {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
-      Object[] values = insertRowNode.getValues();
+      Object values = insertRowNode.getValuesForMemoryAccounting();
       String[] measurements = insertRowNode.getMeasurements();
 
       IWritableMemChunk memChunk =
@@ -1062,9 +1067,11 @@ public class TsFileProcessor {
             measurements, dataTypes, values, insertRowNode.getColumnCategories(), i)) {
           continue;
         }
-        if (dataTypes[i].isBinary() && values[i] != null) {
+        if (dataTypes[i].isBinary()
+            && values instanceof Object[] rowValues
+            && rowValues[i] != null) {
           // Binary values keep their variable-length content outside the fixed Binary[] array.
-          textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+          textDataIncrement += MemUtils.getBinarySize((Binary) rowValues[i]);
         }
       }
     }
@@ -1357,7 +1364,7 @@ public class TsFileProcessor {
   private static TSDataType[] getWritableFieldDataTypes(
       String[] measurementIds,
       TSDataType[] dataTypes,
-      Object[] valuesOrColumns,
+      Object valuesOrColumns,
       TsTableColumnCategory[] columnCategories) {
     List<TSDataType> writableFieldDataTypes = new ArrayList<>();
     for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
@@ -1372,13 +1379,15 @@ public class TsFileProcessor {
   private static boolean isWritableFieldMeasurement(
       String[] measurementIds,
       TSDataType[] dataTypes,
-      Object[] valuesOrColumns,
+      Object valuesOrColumns,
       TsTableColumnCategory[] columnCategories,
       int index) {
     return isFieldMeasurement(measurementIds, dataTypes, columnCategories, index)
-        && valuesOrColumns != null
-        && index < valuesOrColumns.length
-        && valuesOrColumns[index] != null;
+        && (valuesOrColumns instanceof NumericRowValues row
+            ? index < row.size() && !row.isNull(index)
+            : valuesOrColumns instanceof Object[] columns
+                && index < columns.length
+                && columns[index] != null);
   }
 
   private static boolean isFieldMeasurement(

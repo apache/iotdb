@@ -186,6 +186,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertNumericRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
@@ -1318,6 +1319,11 @@ public class StatementAnalyzer {
 
       return createAndAssignScope(
           insert, scope, Field.newUnqualified(Insert.ROWS, Insert.ROWS_TYPE, Insert.ROWS_CATEGORY));
+    }
+
+    @Override
+    public Scope visitInsertNumericRow(InsertNumericRow node, Optional<Scope> context) {
+      return visitInsert(node, context);
     }
 
     @Override

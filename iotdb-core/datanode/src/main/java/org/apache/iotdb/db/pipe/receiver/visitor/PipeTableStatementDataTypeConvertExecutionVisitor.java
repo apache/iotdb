@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -219,6 +220,15 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
       final Pair<TSStatus, String> statusAndDatabaseName) {
     return tryExecute(
         new PipeConvertedInsertRowStatement(insertRowStatement), statusAndDatabaseName.getRight());
+  }
+
+  @Override
+  public Optional<TSStatus> visitInsertNumericRow(
+      final InsertNumericRowStatement insertNumericRowStatement,
+      final Pair<TSStatus, String> statusAndDatabaseName) {
+    return tryExecute(
+        new PipeConvertedInsertRowStatement(insertNumericRowStatement),
+        statusAndDatabaseName.getRight());
   }
 
   @Override

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
@@ -76,6 +77,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   private List<AlignedTVList> sortedList;
   private long sortedRowCount = 0;
   private final boolean ignoreAllNullRows;
+  // Allocate reusable scratch space only when the numeric row path is first used.
+  private int[] numericColumnMapping;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
@@ -237,6 +240,38 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     Object[] reorderedValue =
         checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null).left;
     putAlignedRow(insertTime, reorderedValue);
+    if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
+      handoverAlignedTvList();
+    }
+  }
+
+  /** Reorders primitive slots directly, including null placeholders for absent columns. */
+  public void writeAlignedNumericPoints(
+      long time, NumericRowValues row, List<IMeasurementSchema> incomingSchemas) {
+    int[] mapping = numericColumnMapping;
+    // Other write paths may have extended the schema since the last numeric row.
+    if (mapping == null || mapping.length < schemaList.size()) {
+      mapping = new int[schemaList.size()];
+    }
+    // Missing columns must not reuse source indices from the previous row.
+    Arrays.fill(mapping, -1);
+    for (int i = 0; i < incomingSchemas.size(); i++) {
+      IMeasurementSchema schema = incomingSchemas.get(i);
+      if (schema == null) {
+        continue;
+      }
+      Integer index = measurementIndexMap.get(schema.getMeasurementName());
+      if (index == null) {
+        index = list.getTsDataTypes().size();
+        measurementIndexMap.put(schema.getMeasurementName(), index);
+        schemaList.add(schema);
+        list.extendColumn(schema.getType());
+        mapping = Arrays.copyOf(mapping, mapping.length + 1);
+      }
+      mapping[index] = i;
+    }
+    numericColumnMapping = mapping;
+    list.putAlignedNumericValue(time, row, mapping);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }

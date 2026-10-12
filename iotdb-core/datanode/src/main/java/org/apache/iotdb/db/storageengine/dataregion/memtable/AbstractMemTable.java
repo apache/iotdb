@@ -26,15 +26,18 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
@@ -180,12 +183,13 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private IWritableMemChunkGroup createAlignedMemChunkGroupIfNotExistAndGet(
       IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
-    List<IMeasurementSchema> filteredSchemaList =
-        schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList());
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(
             deviceId,
             k -> {
+              // Existing devices need no filtered copy; new chunks own this mutable schema list.
+              List<IMeasurementSchema> filteredSchemaList =
+                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList());
               seriesNumber += filteredSchemaList.size();
               return new AlignedWritableMemChunkGroup(filteredSchemaList, k.isTableModel());
             });
@@ -241,10 +245,13 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public int insertAlignedRow(InsertRowNode insertRowNode) {
+  public int insertAlignedRow(AbstractInsertRowNode insertRowNode) {
+    if (insertRowNode instanceof RelationalInsertNumericRowNode numeric) {
+      return insertAlignedNumericRow(numeric);
+    }
 
     String[] measurements = insertRowNode.getMeasurements();
-    Object[] values = insertRowNode.getValues();
+    Object[] values = ((InsertRowNode) insertRowNode).getValues();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     Object[] writableValues = new Object[measurements == null ? 0 : measurements.length];
@@ -284,6 +291,56 @@ public abstract class AbstractMemTable implements IMemTable {
     totalValueCount += validValueCount;
     nullValueCount += nullPointsNumber;
     return pointsInserted;
+  }
+
+  private int insertAlignedNumericRow(RelationalInsertNumericRowNode row) {
+    int measurementCount = row.getMeasurements().length;
+    int valueCount = row.getValueCount();
+    TsTableColumnCategory[] categories = row.getColumnCategories();
+    List<IMeasurementSchema> schemas = new ArrayList<>(measurementCount);
+    int validValues = 0;
+    int nullPoints = 0;
+    long rowSize = Long.BYTES + Integer.BYTES;
+    for (int i = 0; i < measurementCount; i++) {
+      boolean valid = row.isValidMeasurement(i, true);
+      boolean hasValue = i < valueCount;
+      // Match numeric-row presence checks, counting valid NULL fields but not missing slots.
+      if (valid
+          && hasValue
+          && categories != null
+          && i < categories.length
+          && categories[i] != null) {
+        validValues++;
+      }
+      if (!valid || !hasValue || row.isNull(i)) {
+        if (valid && hasValue) {
+          nullPoints++;
+        }
+        schemas.add(null);
+      } else {
+        schemas.add(row.getMeasurementSchemas()[i]);
+        rowSize += row.getDataType(i).getDataTypeSize();
+      }
+    }
+    if (schemas.isEmpty()) {
+      return 0;
+    }
+    AlignedWritableMemChunkGroup group =
+        (AlignedWritableMemChunkGroup)
+            createAlignedMemChunkGroupIfNotExistAndGet(row.getDeviceID(), schemas);
+    group
+        .getAlignedMemChunk()
+        .writeAlignedNumericPoints(row.getTime(), row.getNumericValues(), schemas);
+    memSize += rowSize;
+    int inserted =
+        validValues
+            - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
+                ? 0
+                : nullPoints);
+    totalPointsNum += inserted;
+    totalValueCount += validValues;
+    nullValueCount += nullPoints;
+    return inserted;
   }
 
   @Override

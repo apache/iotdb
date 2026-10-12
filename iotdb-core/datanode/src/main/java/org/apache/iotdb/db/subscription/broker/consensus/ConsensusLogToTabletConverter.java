@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -226,8 +227,9 @@ public class ConsensusLogToTabletConverter {
         return convertInsertRowsOfOneDeviceNode((InsertRowsOfOneDeviceNode) insertNode);
       case INSERT_MULTI_TABLET:
         return convertInsertMultiTabletsNode((InsertMultiTabletsNode) insertNode);
+      case RELATIONAL_INSERT_NUMERIC_ROW:
       case RELATIONAL_INSERT_ROW:
-        return convertRelationalInsertRowNode((RelationalInsertRowNode) insertNode);
+        return convertRelationalInsertRowNode((AbstractInsertRowNode) insertNode);
       case RELATIONAL_INSERT_TABLET:
         return convertRelationalInsertTabletNode((RelationalInsertTabletNode) insertNode);
       case RELATIONAL_INSERT_ROWS:
@@ -471,8 +473,8 @@ public class ConsensusLogToTabletConverter {
 
   // ======================== Table Model Conversion ========================
 
-  private List<Tablet> convertRelationalInsertRowNode(final RelationalInsertRowNode node) {
-    final String tableName = node.getTableName();
+  private List<Tablet> convertRelationalInsertRowNode(final AbstractInsertRowNode node) {
+    final String tableName = node.getTargetPath().getFullPath();
 
     // Table-level pattern filtering
     if (tablePattern != null) {
@@ -484,13 +486,7 @@ public class ConsensusLogToTabletConverter {
       }
     }
 
-    final long time = node.getTime();
-    final String[] measurements = node.getMeasurements();
-    final TSDataType[] dataTypes = node.getDataTypes();
-    final Object[] values = node.getValues();
-    final Tablet tablet =
-        buildTableModelTabletFromRow(
-            tableName, time, measurements, dataTypes, values, node.getColumnCategories());
+    final Tablet tablet = buildTableModelTabletFromRow(node);
     if (Objects.isNull(tablet)) {
       return Collections.emptyList();
     }
@@ -503,7 +499,7 @@ public class ConsensusLogToTabletConverter {
   }
 
   private List<Tablet> convertRelationalInsertTabletNode(final RelationalInsertTabletNode node) {
-    final String tableName = node.getTableName();
+    final String tableName = node.getTargetPath().getFullPath();
 
     // Table-level pattern filtering
     if (tablePattern != null) {
@@ -582,14 +578,12 @@ public class ConsensusLogToTabletConverter {
     return tablets;
   }
 
-  private Tablet buildTableModelTabletFromRow(
-      final String tableName,
-      final long time,
-      final String[] measurements,
-      final TSDataType[] dataTypes,
-      final Object[] values,
-      final TsTableColumnCategory[] columnCategories) {
-    if (Objects.isNull(measurements) || Objects.isNull(dataTypes) || Objects.isNull(values)) {
+  private Tablet buildTableModelTabletFromRow(final AbstractInsertRowNode node) {
+    final String tableName = node.getTargetPath().getFullPath();
+    final String[] measurements = node.getMeasurements();
+    final TSDataType[] dataTypes = node.getDataTypes();
+    final TsTableColumnCategory[] columnCategories = node.getColumnCategories();
+    if (Objects.isNull(measurements) || Objects.isNull(dataTypes)) {
       return null;
     }
 
@@ -597,7 +591,9 @@ public class ConsensusLogToTabletConverter {
     final List<TSDataType> columnDataTypes = new ArrayList<>(measurements.length);
     final List<ColumnCategory> columnTypes = new ArrayList<>(measurements.length);
     final List<Integer> originalColumnIndexes = new ArrayList<>(measurements.length);
-    for (int i = 0; i < measurements.length && i < dataTypes.length && i < values.length; i++) {
+    for (int i = 0;
+        i < measurements.length && i < dataTypes.length && i < node.getValueCount();
+        i++) {
       if (Objects.isNull(measurements[i]) || Objects.isNull(dataTypes[i])) {
         continue;
       }
@@ -617,10 +613,11 @@ public class ConsensusLogToTabletConverter {
             columnDataTypes,
             columnTypes,
             1);
-    tablet.addTimestamp(0, time);
+    tablet.addTimestamp(0, node.getTime());
     for (int i = 0; i < originalColumnIndexes.size(); i++) {
       final int originalColumnIndex = originalColumnIndexes.get(i);
-      final Object value = values[originalColumnIndex];
+      // Convert one column at a time, keeping numeric rows in their primitive representation.
+      final Object value = node.getValue(originalColumnIndex);
       if (Objects.isNull(value)) {
         if (Objects.isNull(tablet.getBitMaps())) {
           tablet.initBitMaps();
@@ -718,7 +715,12 @@ public class ConsensusLogToTabletConverter {
       final int columnIndex,
       final TSDataType dataType,
       final Object value) {
-    Type.fromTsDataType(dataType).addValue(rowIndex, value, tablet.getValues()[columnIndex]);
+    // Row plans encode DATE as yyyyMMdd integers; Tablet stores DATE columns as LocalDate arrays.
+    final Object tabletValue =
+        dataType == TSDataType.DATE && value instanceof Integer date
+            ? DateUtils.parseIntToLocalDate(date)
+            : value;
+    Type.fromTsDataType(dataType).addValue(rowIndex, tabletValue, tablet.getValues()[columnIndex]);
     // Unmark the bitmap position to indicate this value is NOT null.
     // addTimestamp() triggers initBitMapsWithApiUsage() which marks all positions as null.
     final BitMap[] bitMaps = tablet.getBitMaps();

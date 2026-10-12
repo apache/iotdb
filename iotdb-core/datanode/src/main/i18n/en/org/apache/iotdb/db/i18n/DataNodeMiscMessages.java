@@ -1507,4 +1507,28 @@ public final class DataNodeMiscMessages {
       LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
           "mpp_data_exchange_max_payload_size_in_bytes (%d) is below the minimum allowed value %d, using %d";
 
+  public static final String EXCEPTION_INVALID_PREPARED_NUMERIC_ROW_METADATA_OR_PAYLOAD_AECCCEAA = "Invalid prepared numeric row metadata or payload.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_REQUEST_IS_NULL_5A9F9BA9 = "Prepared numeric row request is null.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATABASE_IS_NULL_F2A2E0AC = "Prepared numeric row database is null.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TABLE_NAME_IS_NULL_OR_EMPTY_F2D38BE5 = "Prepared numeric row table name is null or empty.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_MEASUREMENTS_ARE_NULL_830DE646 = "Prepared numeric row measurements are null.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATA_TYPES_ARE_NULL_7C15F477 = "Prepared numeric row data types are null.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_CATEGORIES_ARE_NULL_6F2EE1BE = "Prepared numeric row column categories are null.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_HAS_NO_COLUMNS_D4E40365 = "Prepared numeric row has no columns.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_METADATA_SIZE_MISMATCH_MEASUREMENTS_ARG_DATA_TYPES_ARG_CATEGORIES_ARG_23DAB34B = "Prepared numeric row column metadata size mismatch: measurements %d, data types %d, categories %d.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_NAME_IS_NULL_OR_EMPTY_AT_INDEX_ARG_DEBDCFF8 = "Prepared numeric row column name is null or empty at index %d.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_NAME_IS_DUPLICATED_AT_INDEX_ARG_ARG_73AAFECC = "Prepared numeric row column name is duplicated at index %d: %s.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATA_TYPE_IS_NULL_AT_INDEX_ARG_FB2A1FD6 = "Prepared numeric row data type is null at index %d.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATA_TYPE_ORDINAL_IS_INVALID_AT_INDEX_ARG_ARG_BB5059BB = "Prepared numeric row data type ordinal is invalid at index %d: %d.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_CATEGORY_IS_NULL_AT_INDEX_ARG_3ED8315E = "Prepared numeric row column category is null at index %d.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_IS_INVALID_AT_INDEX_ARG_CATEGORY_ARG_AND_TYPE_ARG_9DAEEA10 = "Prepared numeric row column is invalid at index %d: category %d and type %s.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_HAS_NO_FIELD_COLUMNS_A76209AE = "Prepared numeric row has no FIELD columns.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_BUFFER_IS_NULL_3FF27BF7 = "Prepared numeric row tag buffer is null.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_BUFFER_IS_NULL_A928F919 = "Prepared numeric row value buffer is null.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_BUFFER_SIZE_MISMATCH_EXPECTED_ARG_BYTES_BUT_GOT_ARG_B75D48C8 = "Prepared numeric row value buffer size mismatch: expected %d bytes but got %d.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_LENGTH_PREFIX_IS_INCOMPLETE_AT_INDEX_ARG_ARG_BYTES_REMAINING_6D342F3A = "Prepared numeric row tag length prefix is incomplete at index %d: %d bytes remaining.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_LENGTH_IS_INVALID_AT_INDEX_ARG_LENGTH_ARG_ARG_BYTES_REMAINING_DEDD1E8F = "Prepared numeric row tag length is invalid at index %d: length %d, %d bytes remaining.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_BUFFER_HAS_ARG_TRAILING_BYTES_042CF4D2 = "Prepared numeric row tag buffer has %d trailing bytes.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_PAYLOAD_DECODING_FAILED_ARG_F87689DD = "Prepared numeric row payload decoding failed: %s.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_DOES_NOT_BELONG_TO_THIS_SESSION_5CC5C50A = "Prepared numeric row is closed or does not belong to this session.";
 }

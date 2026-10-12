@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -96,8 +97,8 @@ public class TsFilePlanRedoer {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Optional<Long> lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
       long minTimeInNode;
-      if (node instanceof InsertRowNode) {
-        minTimeInNode = ((InsertRowNode) node).getTime();
+      if (node instanceof AbstractInsertRowNode row) {
+        minTimeInNode = row.getTime();
       } else {
         minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
       }
@@ -107,9 +108,9 @@ public class TsFilePlanRedoer {
     }
 
     int pointsInserted;
-    if (node instanceof InsertRowNode) {
+    if (node instanceof AbstractInsertRowNode row) {
       if (node.isAligned()) {
-        pointsInserted = recoveryMemTable.insertAlignedRow((InsertRowNode) node);
+        pointsInserted = recoveryMemTable.insertAlignedRow(row);
       } else {
         pointsInserted = recoveryMemTable.insert((InsertRowNode) node);
       }

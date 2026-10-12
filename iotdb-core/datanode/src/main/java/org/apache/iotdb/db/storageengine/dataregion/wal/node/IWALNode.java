@@ -21,9 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -38,7 +38,7 @@ import java.util.List;
 public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqReader, DataSet {
 
   /** Log InsertRowNode. */
-  WALFlushListener log(long memTableId, InsertRowNode insertRowNode);
+  WALFlushListener log(long memTableId, AbstractInsertRowNode insertRowNode);
 
   /** Log InsertRowsNode. */
   WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode);

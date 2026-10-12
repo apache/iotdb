@@ -29,9 +29,9 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -222,7 +222,7 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
+  public WALFlushListener log(long memTableId, AbstractInsertRowNode insertRowNode) {
     logger.debug(
         StorageEngineMessages.STORAGE_LOG_WAL_NODE_LOGS_INSERTROWNODE_THE_SEARCH_INDEX_IS_027450AC,
         identifier,

@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -217,6 +218,11 @@ public class AnalyzeUtils {
         }
       }
       return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
+    } else if (statement instanceof InsertNumericRowStatement row) {
+      return computeDataPartitionParams(
+          Collections.singletonMap(
+              row.getTableDeviceID(), Collections.singleton(row.getTimePartitionSlot())),
+          getDatabaseName(statement, context));
     } else if (statement instanceof InsertRowStatement) {
       final InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
       return computeDataPartitionParams(
