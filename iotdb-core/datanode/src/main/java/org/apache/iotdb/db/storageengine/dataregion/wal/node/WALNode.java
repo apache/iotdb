@@ -656,9 +656,8 @@ public class WALNode implements IWALNode {
 
     public boolean isContainsActiveOrPinnedMemTable(Long versionId) {
       Set<Long> memTableIdsOfCurrentWal = buffer.getMemTableIds(versionId);
-      // If this set is empty, there is a case where WalEntry has been logged but not persisted,
-      // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
-      // directly, so it is considered active
+      // A null result means that the WAL is still being written or its metadata could not be read.
+      // Keep the file in either case because its memTable ids are unknown.
       if (memTableIdsOfCurrentWal == null) {
         return true;
       }
@@ -766,6 +765,7 @@ public class WALNode implements IWALNode {
       AtomicLong currentEntryLocalSeq = new AtomicLong(-1);
       AtomicLong currentEntryPhysicalTime = new AtomicLong(0);
       AtomicLong currentEntryNodeId = new AtomicLong(-1);
+      AtomicBoolean currentEntryContainsUserData = new AtomicBoolean(false);
 
       long memorySize = 0;
 
@@ -779,10 +779,12 @@ public class WALNode implements IWALNode {
                   (localSeq >= 0)
                       ? new IndexedConsensusRequest(nextSearchIndex, localSeq, tmpNodes.get())
                       : new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get());
-              req.setPhysicalTime(currentEntryPhysicalTime.get())
+              req.setContainsUserData(currentEntryContainsUserData.get())
+                  .setPhysicalTime(currentEntryPhysicalTime.get())
                   .setNodeId((int) currentEntryNodeId.get());
               insertNodes.add(req);
               tmpNodes.set(new ArrayList<>());
+              currentEntryContainsUserData.set(false);
               nextSearchIndex++;
               if (notFirstFile.get()) {
                 hasCollectedSufficientData.set(true);
@@ -819,6 +821,8 @@ public class WALNode implements IWALNode {
                 currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
+                currentEntryContainsUserData.set(
+                    currentEntryContainsUserData.get() || containsUserData(type));
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -854,6 +858,8 @@ public class WALNode implements IWALNode {
                 currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
+                currentEntryContainsUserData.set(
+                    currentEntryContainsUserData.get() || containsUserData(type));
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -907,6 +913,13 @@ public class WALNode implements IWALNode {
         return true;
       }
       return false;
+    }
+
+    private boolean containsUserData(WALEntryType type) {
+      return type == WALEntryType.INSERT_ROW_NODE
+          || type == WALEntryType.INSERT_TABLET_NODE
+          || type == WALEntryType.INSERT_ROWS_NODE
+          || type == WALEntryType.OBJECT_FILE_NODE;
     }
 
     @Override
@@ -1144,6 +1157,11 @@ public class WALNode implements IWALNode {
     return logDirectory;
   }
 
+  public File[] getSortedWalFilesSnapshot() {
+    final File[] walFiles = getSortedWalFiles();
+    return walFiles == null ? null : Arrays.copyOf(walFiles, walFiles.length);
+  }
+
   @TestOnly
   File[] getCachedSortedWalFiles() {
     return sortedWalFilesCache == null
@@ -1153,7 +1171,7 @@ public class WALNode implements IWALNode {
 
   @TestOnly
   File[] getSortedWalFilesForTest() {
-    return getSortedWalFiles();
+    return getSortedWalFilesSnapshot();
   }
 
   /** Get the .wal file starts with the specified version id */

@@ -44,10 +44,12 @@
         <module>iotdb-client</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
+        <module>library-pipe</module>
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
         <module>external-service-impl</module>
+        <module>architecture-test</module>
     </modules>
     <properties>
         <airlift-units.version>1.7</airlift-units.version>
@@ -89,8 +91,8 @@
       This is the version of the thrift binary, that we release separately from here:
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
-        <iotdb-tools-thrift.version>0.23.0.0</iotdb-tools-thrift.version>
-        <jackson.version>2.18.9</jackson.version>
+        <iotdb-tools-thrift.version>0.25.0.0</iotdb-tools-thrift.version>
+        <jackson.version>2.18.11</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
         <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
@@ -104,23 +106,20 @@
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <logback.version>1.5.34</logback.version>
-        <lz4-java.version>1.11.1</lz4-java.version>
+        <lz4-java.version>1.11.4</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>1.1.6</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
         <netty.version>4.1.137.Final</netty.version>
         <openapi.generator.version>7.10.0</openapi.generator.version>
-        <osgi.version>7.0.0</osgi.version>
-        <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
         <ratis-thirdparty-misc.version>1.1.0</ratis-thirdparty-misc.version>
-        <ratis.version>3.3.0</ratis.version>
+        <ratis.version>3.3.1</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.2.18</reactor-netty.version>
         <reactor.version>3.7.19</reactor.version>
@@ -143,10 +142,10 @@
         <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
-        <thrift.version>0.24.0</thrift.version>
+        <thrift.version>0.25.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.4.1-260806-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.4.1-260915-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>
@@ -248,21 +247,6 @@
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-runtime</artifactId>
                 <version>${antlr4.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.osgi</groupId>
-                <artifactId>osgi.cmpn</artifactId>
-                <version>${osgi.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.osgi</groupId>
-                <artifactId>osgi.core</artifactId>
-                <version>${osgi.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.ops4j.pax.jdbc</groupId>
-                <artifactId>pax-jdbc-common</artifactId>
-                <version>${pax-jdbc-common.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.xerial.snappy</groupId>
@@ -371,26 +355,6 @@
                 <artifactId>units</artifactId>
                 <version>${airlift-units.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-stack-core</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-core</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-transport</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-client</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -402,11 +366,6 @@
                         <artifactId>javax.inject</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-server</artifactId>
-                <version>${milo.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.reflections</groupId>
@@ -716,7 +675,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.1.2</version>
                     <configuration>
-                        <argLine>${argLine} -Xmx1024m</argLine>
+                        <argLine>${argLine} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
                         <!-- Subscription UT is maintained and executed by the enterprise edition. -->
                         <excludes>
                             <exclude>**/subscription/**</exclude>
@@ -766,6 +725,13 @@
                             <!-- bundled third-party NOTICE / license texts for the C++ client package -->
                             <exclude>**/package-metadata/third_party/NOTICE</exclude>
                             <exclude>**/package-metadata/third_party/licenses/**</exclude>
+                            <!-- generated certificates and private keys used only by C++ TLS tests -->
+                            <exclude>**/client-cpp/test/fixtures/**</exclude>
+                            <exclude>test/fixtures/**/*.crt</exclude>
+                            <exclude>test/fixtures/**/*.key</exclude>
+                            <!-- bundled third-party NOTICE / license texts for the AINode package -->
+                            <exclude>**/ainode/src/assembly/resources/NOTICE-binary</exclude>
+                            <exclude>**/ainode/src/assembly/resources/licenses/**</exclude>
                             <!-- only for Travis CI with WinOS-->
                             <exclude>hadoopbin</exclude>
                             <exclude>windowssystem32</exclude>
@@ -1084,12 +1050,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.7.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.apache.maven.shared</groupId>
-                        <artifactId>maven-dependency-tree</artifactId>
-                        <version>3.2.1</version>
+                        <version>1.12.1</version>
                     </dependency>
                 </dependencies>
                 <executions>
@@ -1958,7 +1919,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->

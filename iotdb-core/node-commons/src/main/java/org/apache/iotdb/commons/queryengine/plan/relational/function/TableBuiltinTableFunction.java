@@ -27,34 +27,47 @@ import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.HighPassTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.LowPassTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.XCorrTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum TableBuiltinTableFunction {
-  TUMBLE("tumble"),
-  HOP("hop"),
-  CUMULATE("cumulate"),
-  SESSION("session"),
-  VARIATION("variation"),
-  CAPACITY("capacity"),
+  TUMBLE("tumble", true),
+  HOP("hop", true),
+  CUMULATE("cumulate", true),
+  SESSION("session", true),
+  VARIATION("variation", true),
+  CAPACITY("capacity", true),
   M4("m4"),
   FFT("fft"),
   FORECAST("forecast"),
   PATTERN_MATCH("pattern_match"),
-  CLASSIFY("classify");
+  CLASSIFY("classify"),
+  LOWPASS("lowpass"),
+  HIGHPASS("highpass"),
+  XCORR("xcorr");
 
   private final String functionName;
+  private final boolean preservesInputOrder;
 
   TableBuiltinTableFunction(String functionName) {
+    this(functionName, false);
+  }
+
+  TableBuiltinTableFunction(String functionName, boolean preservesInputOrder) {
     this.functionName = functionName;
+    this.preservesInputOrder = preservesInputOrder;
   }
 
   public String getFunctionName() {
@@ -66,6 +79,21 @@ public enum TableBuiltinTableFunction {
           Arrays.stream(TableBuiltinTableFunction.values())
               .map(TableBuiltinTableFunction::getFunctionName)
               .collect(Collectors.toList()));
+
+  private static final Set<String> INPUT_ORDER_PRESERVING_FUNCTIONS =
+      Arrays.stream(values())
+          .filter(function -> function.preservesInputOrder)
+          .map(TableBuiltinTableFunction::getFunctionName)
+          .collect(Collectors.toSet());
+
+  /**
+   * Whether a built-in emits pass-through rows with nondecreasing input indices. Generated columns
+   * have no ordering guarantee. SESSION and VARIATION drain disjoint input ranges; CAPACITY emits
+   * all copies of the current row before advancing, including when its windows overlap.
+   */
+  public static boolean preservesInputOrder(String functionName) {
+    return INPUT_ORDER_PRESERVING_FUNCTIONS.contains(functionName.toLowerCase(Locale.ROOT));
+  }
 
   public static Set<String> getBuiltInTableFunctionName() {
     return BUILT_IN_TABLE_FUNCTION_NAME;
@@ -99,6 +127,12 @@ public enum TableBuiltinTableFunction {
         return new ForecastTableFunction();
       case "classify":
         return new ClassifyTableFunction();
+      case "lowpass":
+        return new LowPassTableFunction();
+      case "highpass":
+        return new HighPassTableFunction();
+      case "xcorr":
+        return new XCorrTableFunction();
       default:
         throw new UnsupportedOperationException(
             String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));

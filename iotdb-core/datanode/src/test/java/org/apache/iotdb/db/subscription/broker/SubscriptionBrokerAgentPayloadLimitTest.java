@@ -78,6 +78,20 @@ public class SubscriptionBrokerAgentPayloadLimitTest {
     assertEquals(0L, secondEvent.getNackCount());
   }
 
+  @Test
+  public void testRequeueInFlightEventsAcrossBrokers() throws Exception {
+    final SubscriptionBrokerAgent agent = new SubscriptionBrokerAgent();
+    final ISubscriptionBroker firstBroker = mock(ISubscriptionBroker.class);
+    final ISubscriptionBroker secondBroker = mock(ISubscriptionBroker.class);
+    when(firstBroker.requeueInFlightEvents(CONSUMER_ID)).thenReturn(2);
+    when(secondBroker.requeueInFlightEvents(CONSUMER_ID)).thenReturn(3);
+    bindBrokers(agent, firstBroker, secondBroker);
+
+    assertEquals(5, agent.requeueInFlightEvents(createConsumerConfig()));
+    verify(firstBroker).requeueInFlightEvents(CONSUMER_ID);
+    verify(secondBroker).requeueInFlightEvents(CONSUMER_ID);
+  }
+
   private static SubscriptionEvent newEvent(final int commitId) {
     return new SubscriptionEvent(
         SubscriptionPollResponseType.TERMINATION.getType(),

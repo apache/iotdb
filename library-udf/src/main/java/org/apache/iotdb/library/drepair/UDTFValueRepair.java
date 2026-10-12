@@ -23,6 +23,7 @@ import org.apache.iotdb.library.drepair.util.LsGreedy;
 import org.apache.iotdb.library.drepair.util.Screen;
 import org.apache.iotdb.library.drepair.util.ValueRepair;
 import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -40,6 +41,7 @@ public class UDTFValueRepair implements UDTF {
   double maxSpeed;
   double center;
   double sigma;
+  private TypeServices.NumericWindowWriter windowWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -68,6 +70,9 @@ public class UDTFValueRepair implements UDTF {
     maxSpeed = parameters.getDoubleOrDefault("maxSpeed", Double.NaN);
     center = parameters.getDoubleOrDefault("center", 0);
     sigma = parameters.getDoubleOrDefault("sigma", Double.NaN);
+    windowWriter =
+        TypeServices.NUMERIC_WINDOW_WRITER_SERVICE.call(
+            TypeServices.toReadType(parameters.getDataType(0)));
   }
 
   @Override
@@ -95,36 +100,6 @@ public class UDTFValueRepair implements UDTF {
     vr.repair();
     double[] repaired = vr.getRepaired();
     long[] time = vr.getTime();
-    switch (rowWindow.getDataType(0)) {
-      case DOUBLE:
-        for (int i = 0; i < time.length; i++) {
-          collector.putDouble(time[i], repaired[i]);
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < time.length; i++) {
-          collector.putFloat(time[i], (float) repaired[i]);
-        }
-        break;
-      case INT32:
-        for (int i = 0; i < time.length; i++) {
-          collector.putInt(time[i], (int) Math.round(repaired[i]));
-        }
-        break;
-      case INT64:
-        for (int i = 0; i < time.length; i++) {
-          collector.putLong(time[i], Math.round(repaired[i]));
-        }
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-
-      default:
-        throw new Exception();
-    }
+    windowWriter.write(time, repaired, collector);
   }
 }

@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -125,14 +126,8 @@ public class IoTDBMigrateMultiRegionForIoTV1IT extends IoTDBRegionOperationRelia
                 try {
                   statement.execute(command);
                   return true;
-                } catch (Exception e) {
+                } catch (SQLException e) {
                   String errorMessage = e.getMessage();
-                  if (errorMessage != null
-                      && errorMessage.contains("successfully submitted")
-                      && errorMessage.contains("failed to submit")) {
-                    LOGGER.warn("Multi-region migrate partially succeeded: {}", errorMessage);
-                    return true;
-                  }
                   LOGGER.warn("Multi-region migrate failed, retrying: {}", errorMessage);
                   return false;
                 }

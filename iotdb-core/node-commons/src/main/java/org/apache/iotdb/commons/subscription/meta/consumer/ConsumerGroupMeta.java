@@ -149,22 +149,6 @@ public class ConsumerGroupMeta {
       return;
     }
     final ConsumerMeta existedConsumerMeta = consumerIdToConsumerMeta.values().iterator().next();
-    final boolean match =
-        Objects.equals(existedConsumerMeta.getUsername(), consumerMeta.getUsername())
-            && Objects.equals(existedConsumerMeta.getPassword(), consumerMeta.getPassword());
-    if (!match) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to create consumer %s because inconsistent username & password under the same consumer group, expected %s:%s, actual %s:%s",
-              consumerMeta.getConsumerId(),
-              existedConsumerMeta.getUsername(),
-              existedConsumerMeta.getPassword(),
-              consumerMeta.getUsername(),
-              consumerMeta.getPassword());
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
-
     final String expectedSqlDialect = existedConsumerMeta.getConfig().getSqlDialect();
     final String actualSqlDialect = consumerMeta.getConfig().getSqlDialect();
     final boolean isExpectedTableModel =
@@ -268,20 +252,7 @@ public class ConsumerGroupMeta {
   }
 
   public boolean allowSubscribeTopicForConsumer(final String topic, final String consumerId) {
-    if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
-      return false;
-    }
-    final Set<String> subscribedConsumerIdSet = topicNameToSubscribedConsumerIdSet.get(topic);
-    if (Objects.isNull(subscribedConsumerIdSet)) {
-      return true;
-    }
-    if (subscribedConsumerIdSet.isEmpty()) {
-      return true;
-    }
-    final String subscribedConsumerId = subscribedConsumerIdSet.iterator().next();
-    return Objects.equals(
-        Objects.requireNonNull(consumerIdToConsumerMeta.get(subscribedConsumerId)).getUsername(),
-        Objects.requireNonNull(consumerIdToConsumerMeta.get(consumerId)).getUsername());
+    return consumerIdToConsumerMeta.containsKey(consumerId);
   }
 
   public void addSubscription(final String consumerId, final Set<String> topics) {

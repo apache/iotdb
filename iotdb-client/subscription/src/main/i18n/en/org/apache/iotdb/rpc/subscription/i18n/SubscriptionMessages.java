@@ -53,6 +53,8 @@ public final class SubscriptionMessages {
 
   // --- SubscriptionExecutorServiceManager ---
   public static final String EXECUTOR_LAUNCHING = "Launching {} with core pool size {}...";
+  public static final String LOG_SUBSCRIPTION_HEARTBEAT_EXECUTOR_REACHED_ITS_THREAD_OR_QUEUE_LIMIT_SKIP_13157249 =
+      "Subscription heartbeat executor reached its thread or queue limit; skipping heartbeat tasks until the next interval (thread limit {}, queue capacity {}).";
   public static final String EXECUTOR_SHUTTING_DOWN = "Shutting down {}...";
   public static final String EXECUTOR_NOT_LAUNCHED_SUBMIT =
       "{} has not been launched, ignore submit task";
@@ -155,6 +157,8 @@ public final class SubscriptionMessages {
       + " provider unavailable";
   public static final String LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739 = "Exception occurred when {} closing and removing subscription provider {} because of {}";
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198 = "Cluster has no available subscription providers to connect with initial endpoints %s";
+  public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA =
+      "Cluster has no available subscription providers to connect with initial endpoints %s. Connection failures: %s";
   public static final String LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3 = "{} has been launched, set core pool size to {} will be ignored";
   public static final String LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F = "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.";
   public static final String LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9 =

@@ -539,6 +539,7 @@ public class IoTDBDatabaseIT {
               "pipes,INF,",
               "queries,INF,",
               "queries_costs_histogram,INF,",
+              "receivers,INF,",
               "regions,INF,",
               "services,INF,",
               "subscriptions,INF,",
@@ -617,6 +618,23 @@ public class IoTDBDatabaseIT {
                   "is_degraded,BOOLEAN,ATTRIBUTE,",
                   "recent_failures,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc receivers"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "receiver_node_type,STRING,TAG,",
+                  "receiver_node_id,INT32,TAG,",
+                  "protocol,STRING,TAG,",
+                  "sender_address,STRING,TAG,",
+                  "sender_ports,STRING,ATTRIBUTE,",
+                  "connection_count,INT32,ATTRIBUTE,",
+                  "pipe_count,INT32,ATTRIBUTE,",
+                  "pipe_ids,STRING,ATTRIBUTE,",
+                  "user_name,STRING,TAG,",
+                  "sender_cluster_id,STRING,TAG,",
+                  "last_handshake_time,TIMESTAMP,ATTRIBUTE,",
+                  "last_transfer_time,TIMESTAMP,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
@@ -680,6 +698,7 @@ public class IoTDBDatabaseIT {
                   "node_id,INT32,TAG,",
                   "node_type,STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,",
+                  "status_reason,STRING,ATTRIBUTE,",
                   "internal_address,STRING,ATTRIBUTE,",
                   "internal_port,INT32,ATTRIBUTE,",
                   "version,STRING,ATTRIBUTE,",
@@ -816,6 +835,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,topics,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,receivers,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,services,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,views,INF,USING,null,SYSTEM VIEW,false,",
@@ -834,7 +854,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("23,"));
+          Collections.singleton("24,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),

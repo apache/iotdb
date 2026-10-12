@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.utils.TypeServices.DefaultEncodingProvider;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -81,7 +83,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class IoTDBConfig {
+public class IoTDBConfig implements DefaultEncodingProvider {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
@@ -183,6 +185,9 @@ public class IoTDBConfig {
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
+
+  /** Maximum size of one WAL entry. A non-positive value follows walBufferSize. Unit: byte */
+  private int walEntrySizeLimitInByte = -1;
 
   /** Blocking queue capacity of each delete ahead log buffer */
   private int deletionAheadLogBufferQueueCapacity = 500;
@@ -949,6 +954,8 @@ public class IoTDBConfig {
   /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;
 
+  private int mppDataExchangeMaxPayloadSizeInBytes = 4 * 1024 * 1024;
+
   /** Max pool size of mpp data exchange. */
   private int mppDataExchangeMaxPoolSize = 10;
 
@@ -1012,6 +1019,18 @@ public class IoTDBConfig {
 
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
+
+  /** Thread pool size for scheduling query state checks and termination. */
+  private int coordinatorScheduledExecutorSize = 10;
+
+  /** Thread pool size for fragment instance state change notifications. */
+  private int fragmentInstanceNotificationThreadCount = 4;
+
+  /** Zero retains the cached pool used by general deployments. */
+  private int driverTaskSchedulerNotificationThreadCount = 0;
+
+  /** Zero selects max(20, twice the available processors). */
+  private int fragmentInstanceDispatchThreadCount = 0;
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
@@ -1190,6 +1209,13 @@ public class IoTDBConfig {
             + File.separator
             + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME
       };
+
+  /**
+   * Directories into which COPY ... TO may export when the client supplies a target path with a
+   * parent component. Empty (the default) rejects such paths; bare file names always land in the
+   * TierManager-managed copyto folders.
+   */
+  private String[] copyToAllowedExportDirs = new String[0];
 
   private String loadActiveListeningPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME
@@ -1419,6 +1445,9 @@ public class IoTDBConfig {
       loadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
     }
     loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
+    for (int i = 0; i < copyToAllowedExportDirs.length; i++) {
+      copyToAllowedExportDirs[i] = addDataHomeDir(copyToAllowedExportDirs[i]);
+    }
     loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
     loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
@@ -2126,6 +2155,14 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public int getWalEntrySizeLimitInByte() {
+    return walEntrySizeLimitInByte > 0 ? walEntrySizeLimitInByte : walBufferSize;
+  }
+
+  public void setWalEntrySizeLimitInByte(int walEntrySizeLimitInByte) {
+    this.walEntrySizeLimitInByte = walEntrySizeLimitInByte;
+  }
+
   public int getDeletionAheadLogBufferQueueCapacity() {
     return deletionAheadLogBufferQueueCapacity;
   }
@@ -2576,6 +2613,7 @@ public class IoTDBConfig {
     this.defaultDatabaseLevel = defaultDatabaseLevel;
   }
 
+  @Override
   public TSEncoding getDefaultBooleanEncoding() {
     return defaultBooleanEncoding;
   }
@@ -2588,6 +2626,7 @@ public class IoTDBConfig {
     this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt32Encoding() {
     return defaultInt32Encoding;
   }
@@ -2600,6 +2639,7 @@ public class IoTDBConfig {
     this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt64Encoding() {
     return defaultInt64Encoding;
   }
@@ -2612,6 +2652,7 @@ public class IoTDBConfig {
     this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultFloatEncoding() {
     return defaultFloatEncoding;
   }
@@ -2624,6 +2665,7 @@ public class IoTDBConfig {
     this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultDoubleEncoding() {
     return defaultDoubleEncoding;
   }
@@ -2636,6 +2678,7 @@ public class IoTDBConfig {
     this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultTextEncoding() {
     return defaultTextEncoding;
   }
@@ -3394,6 +3437,14 @@ public class IoTDBConfig {
     this.mppDataExchangeKeepAliveTimeInMs = mppDataExchangeKeepAliveTimeInMs;
   }
 
+  public int getMppDataExchangeMaxPayloadSizeInBytes() {
+    return mppDataExchangeMaxPayloadSizeInBytes;
+  }
+
+  public void setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes) {
+    this.mppDataExchangeMaxPayloadSizeInBytes = mppDataExchangeMaxPayloadSizeInBytes;
+  }
+
   public int getConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
   }
@@ -3562,7 +3613,57 @@ public class IoTDBConfig {
   }
 
   public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
+    if (coordinatorReadExecutorSize <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
     this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
+  }
+
+  public int getCoordinatorScheduledExecutorSize() {
+    return coordinatorScheduledExecutorSize;
+  }
+
+  public void setCoordinatorScheduledExecutorSize(int coordinatorScheduledExecutorSize) {
+    if (coordinatorScheduledExecutorSize <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.coordinatorScheduledExecutorSize = coordinatorScheduledExecutorSize;
+  }
+
+  public int getFragmentInstanceNotificationThreadCount() {
+    return fragmentInstanceNotificationThreadCount;
+  }
+
+  public void setFragmentInstanceNotificationThreadCount(
+      int fragmentInstanceNotificationThreadCount) {
+    if (fragmentInstanceNotificationThreadCount <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.fragmentInstanceNotificationThreadCount = fragmentInstanceNotificationThreadCount;
+  }
+
+  public int getDriverTaskSchedulerNotificationThreadCount() {
+    return driverTaskSchedulerNotificationThreadCount;
+  }
+
+  public void setDriverTaskSchedulerNotificationThreadCount(int threadCount) {
+    if (threadCount < 0) {
+      throw new IllegalArgumentException(
+          CommonMessages.EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B);
+    }
+    this.driverTaskSchedulerNotificationThreadCount = threadCount;
+  }
+
+  public int getFragmentInstanceDispatchThreadCount() {
+    return fragmentInstanceDispatchThreadCount;
+  }
+
+  public void setFragmentInstanceDispatchThreadCount(int threadCount) {
+    if (threadCount < 0) {
+      throw new IllegalArgumentException(
+          CommonMessages.EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B);
+    }
+    this.fragmentInstanceDispatchThreadCount = threadCount;
   }
 
   public TEndPoint getAddressAndPort() {
@@ -4335,6 +4436,24 @@ public class IoTDBConfig {
       }
     }
     this.loadActiveListeningDirs = normalizedDirs;
+  }
+
+  public String[] getCopyToAllowedExportDirs() {
+    return copyToAllowedExportDirs;
+  }
+
+  public void setCopyToAllowedExportDirs(final String[] copyToAllowedExportDirs) {
+    if (copyToAllowedExportDirs == null) {
+      this.copyToAllowedExportDirs = new String[0];
+      return;
+    }
+    this.copyToAllowedExportDirs =
+        Arrays.stream(copyToAllowedExportDirs)
+            .filter(Objects::nonNull)
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .map(IoTDBConfig::addDataHomeDir)
+            .toArray(String[]::new);
   }
 
   public boolean getLoadActiveListeningEnable() {

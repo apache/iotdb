@@ -50,7 +50,7 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
   private final Map<String, Rate> rateMap = new ConcurrentHashMap<>();
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> ids = ImmutableSet.copyOf(prefetchingQueueMap.keySet());
     for (final String id : ids) {
@@ -59,21 +59,16 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> ids = ImmutableSet.copyOf(prefetchingQueueMap.keySet());
-    for (final String id : ids) {
-      deregister(id);
-    }
-    if (!prefetchingQueueMap.isEmpty()) {
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the queues registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(prefetchingQueueMap.keySet()).forEach(this::removeMetrics);
   }
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(final SubscriptionPrefetchingQueue prefetchingQueue) {
+  public synchronized void register(final SubscriptionPrefetchingQueue prefetchingQueue) {
     final String id = prefetchingQueue.getPrefetchingQueueId();
     prefetchingQueueMap.putIfAbsent(id, prefetchingQueue);
     if (Objects.nonNull(metricService)) {
@@ -94,16 +89,14 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         queue,
         SubscriptionPrefetchingQueue::getSubscriptionUncommittedEventCount,
-        Tag.NAME.toString(),
-        queue.getPrefetchingQueueId());
+        getTags(queue));
     // current commit id
     metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CURRENT_COMMIT_ID.toString(),
         MetricLevel.IMPORTANT,
         queue,
         SubscriptionPrefetchingQueue::getCurrentCommitId,
-        Tag.NAME.toString(),
-        queue.getPrefetchingQueueId());
+        getTags(queue));
   }
 
   private void createRate(final String id) {
@@ -112,13 +105,10 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
     rateMap.put(
         id,
         metricService.getOrCreateRate(
-            Metric.SUBSCRIPTION_EVENT_TRANSFER.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            queue.getPrefetchingQueueId()));
+            Metric.SUBSCRIPTION_EVENT_TRANSFER.toString(), MetricLevel.IMPORTANT, getTags(queue)));
   }
 
-  public void deregister(final String id) {
+  public synchronized void deregister(final String id) {
     if (!prefetchingQueueMap.containsKey(id)) {
       LOGGER.warn(
           DataNodePipeMessages
@@ -143,24 +133,27 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT.toString(),
-        Tag.NAME.toString(),
-        queue.getPrefetchingQueueId());
+        getTags(queue));
     // current commit id
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.SUBSCRIPTION_CURRENT_COMMIT_ID.toString(),
-        Tag.NAME.toString(),
-        queue.getPrefetchingQueueId());
+        MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CURRENT_COMMIT_ID.toString(), getTags(queue));
   }
 
   private void removeRate(final String id) {
     final SubscriptionPrefetchingQueue queue = prefetchingQueueMap.get(id);
     // transfer event rate
     metricService.remove(
-        MetricType.RATE,
-        Metric.SUBSCRIPTION_EVENT_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        queue.getPrefetchingQueueId());
+        MetricType.RATE, Metric.SUBSCRIPTION_EVENT_TRANSFER.toString(), getTags(queue));
+    rateMap.remove(id);
+  }
+
+  // The consensus-based queues export these metrics with a region tag. A metric name must have the
+  // same tag keys everywhere, otherwise the queues registered later get no metrics at all, so give
+  // them the region tag too. These queues are not bound to a region, hence the empty value.
+  private static String[] getTags(final SubscriptionPrefetchingQueue queue) {
+    return new String[] {
+      Tag.NAME.toString(), queue.getPrefetchingQueueId(), Tag.REGION.toString(), "",
+    };
   }
 
   public void mark(final String id, final long size) {

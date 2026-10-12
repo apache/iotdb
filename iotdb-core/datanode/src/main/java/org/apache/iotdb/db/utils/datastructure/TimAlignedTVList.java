@@ -36,9 +36,10 @@ public class TimAlignedTVList extends AlignedTVList {
 
   @Override
   public synchronized int sort() {
-    policy.checkSortedTimestampsAndIndices();
     if (!sorted) {
+      policy.checkSortedTimestampsAndIndices();
       policy.sort(0, rowCount);
+      updateSegmentMovedMap();
     }
     policy.clearSortedValue();
     policy.clearSortedTime();

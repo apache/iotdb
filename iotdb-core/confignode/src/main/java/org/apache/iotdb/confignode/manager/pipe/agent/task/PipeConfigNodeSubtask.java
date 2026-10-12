@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionSinkMetrics;
@@ -228,6 +229,18 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     } finally {
       // Should be after connector.close()
       super.close();
+    }
+  }
+
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).registerReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).discardReceiverRuntimeSessions(pipeName, creationTime);
     }
   }
 

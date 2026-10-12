@@ -21,6 +21,23 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
+      "Load TsFile slice body is null or empty";
+  public static final String MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8 =
+      "Invalid Load TsFile slice metadata: sliceCount=%d, originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_METADATA_CHANGED_SLICECOUNT_ARG_EXPECTED_ARG_ORIGINBODYSIZE_ARG_EXPECTED_ARG_B16B3122 =
+      "Load TsFile slice metadata changed: sliceCount=%d (expected %d), originBodySize=%d (expected %d)";
+  public static final String MESSAGE_UNEXPECTED_LOAD_TSFILE_SLICE_INDEX_ARG_EXPECTED_ARG_SLICECOUNT_ARG_76260F62 =
+      "Unexpected Load TsFile slice index %d: expected %d, sliceCount=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_EXCEEDS_ORIGINBODYSIZE_ASSEMBLEDSIZE_ARG_SLICESIZE_ARG_ORIGINBODYSIZE_ARG_0198E0D0 =
+      "Load TsFile slice exceeds originBodySize: assembledSize=%d, sliceSize=%d, originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_COMPLETED_BEFORE_THE_LAST_SLICE_RECEIVED_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_0425EA2C =
+      "Load TsFile body completed before the last slice: received=%d, sliceCount=%d, originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_SIZE_MISMATCH_ASSEMBLEDSIZE_ARG_ORIGINBODYSIZE_ARG_5733FC4B =
+      "Load TsFile body size mismatch: assembledSize=%d, originBodySize=%d";
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_ASSEMBLER_FOR_UUID_ARG_DATAREGION_ARG_SLICEINDEX_ARG_FF6EA463 =
+      "Missing Load TsFile assembler for uuid %s, DataRegion %s, sliceIndex=%d";
+
     public static final String IS_NOT_SUPPORTED =
       " is not supported";
 
@@ -47,6 +64,8 @@ public final class StorageEngineMessages {
   public static final String REBOOT_ALL_TIMED_SERVICE_SUCCESSFULLY = "Reboot all timed service successfully";
   public static final String FAILED_TO_DELETE = "Failed to delete: {} -> {}";
   public static final String FAILED_TO_CHECK_OBJECT_FILES = "Failed to check Object Files: {}";
+  public static final String EXCEPTION_CANNOT_REPAIR_ARG_BECAUSE_TARGET_FILE_ALREADY_EXISTS_AND_TIMESTAMP_IS_LONG_MAX_VALUE_F29F630A =
+      "Cannot repair %s because the target file already exists and the file timestamp is Long.MAX_VALUE";
 
   // ======================== Buffer Cache ========================
 
@@ -62,7 +81,6 @@ public final class StorageEngineMessages {
 
   // ======================== Resource Control - Disk ========================
 
-  public static final String FAILED_TO_DEREGISTER_FILE_LOCK = "Failed to deregister file lock because {}";
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY = "All folders are full, change system mode to read-only.";
   public static final String FAILED_TO_PROCESS_FOLDER = "Failed to process folder '";
   public static final String FAIL_TO_GET_CANONICAL_PATH = "Fail to get canonical path of data dir {}";
@@ -330,6 +348,11 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CREATE_WAL_NODE_DISKS_FULL = "Fail to create wal node because all disks of wal folders are full.";
   public static final String FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES = "Failed to create WAL node after retries for identifier: ";
   public static final String FAIL_TO_CREATE_WAL_NODE = "Fail to create wal node";
+  public static final String OVER_SIZED_WAL_ENTRY = "The wal entry size %d exceeds the limit %d, which may be a result of file corruption or configuration change."
+      + "Please increase wal_entry_size_limit_in_byte or quarantine the file %s";
+  public static final String
+      EXCEPTION_THE_WAL_ENTRY_SIZE_ARG_EXCEEDS_WAL_ENTRY_SIZE_LIMIT_IN_BYTE_ARG_691BB408 =
+          "The WAL entry size %d exceeds wal_entry_size_limit_in_byte %d.";
 
   // ======================== Flush ========================
 
@@ -393,6 +416,8 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CLOSE_SNAPSHOT_LOGGER = "Failed to close snapshot logger";
   public static final String SNAPSHOTTING_COMPRESSION_RATIO = "Snapshotting compression ratio {}.";
   public static final String CATCH_IO_EXCEPTION_CREATING_SNAPSHOT = "Catch IOException when creating snapshot";
+  public static final String CANNOT_SNAPSHOT_UNCLOSED_TSFILE =
+      "Cannot create snapshot because TsFile {} is not closed";
   public static final String HARD_LINK_TARGET_DIR_NOT_EXIST = "Hard link target dir {} doesn't exist";
   public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "Hard link source file {} doesn't exist, this file will be ignored.";
   public static final String COPY_TARGET_DIR_NOT_EXIST = "Copy target dir {} doesn't exist";
@@ -1442,14 +1467,6 @@ public final class StorageEngineMessages {
       "number of read requests exceeded - wait %sms";
   public static final String STORAGE_EXCEPTION_READ_SIZE_LIMIT_EXCEEDED_WAIT_SMS_E19598BA =
       "read size limit exceeded - wait %sms";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_BECAUSE_THERE_IS_FILE_UNDER_1C59ACFC =
-      "Unable to create directory %s because there is file under the path, please check "
-          + "configuration and restart.";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_PLEASE_CHECK_CONFIGURATION_BA580B67 =
-      "Unable to create directory %s, please check configuration and restart.";
-  public static final String STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC =
-      "Conflict is detected in directory %s, which may be being used by another IoTDB "
-          + "(ProcessId=%s). Please check configuration and restart.";
   public static final String COMPACTION_INNER_SPACE = "inner";
   public static final String COMPACTION_CROSS_SPACE = "cross";
   public static final String DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT =
@@ -1478,8 +1495,10 @@ public final class StorageEngineMessages {
       "Current chunk %s cannot be aligned with time chunk: %s, all time chunk in first batch is %s";
   public static final String WAL_NODE_CLOSED_FMT = "wal node-%s has been closed";
   public static final String BROKEN_WAL_FILE_FMT = "Broken wal file %s, size %d";
-  public static final String TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE =
-      "{} TsFileReader is closed because of no reference.";
+  public static final String LOG_READER_FOR_CLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_C3B71A85 =
+      "Reader for closed TsFile {} is closed because its reference count reached zero.";
+  public static final String LOG_READER_FOR_UNCLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_088BDEF8 =
+      "Reader for unclosed TsFile {} is closed because its reference count reached zero.";
   public static final String CLOSED_TSFILE_READER_CLOSED =
       "{} closedTsFileReader is closed.";
   public static final String UNCLOSED_TSFILE_READER_CLOSED =

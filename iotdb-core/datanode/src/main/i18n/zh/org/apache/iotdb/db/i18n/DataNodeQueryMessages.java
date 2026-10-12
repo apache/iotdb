@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s 已处于 %s 状态";
+
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Thrift 最大帧大小 %d 无效，来源：%s";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "向节点派发 Load 命令失败，命令：%s，节点：%s，异常：%s";
+
   // --- Common ---
 
   public static final String NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH =
@@ -38,6 +46,19 @@ public final class DataNodeQueryMessages {
       "未知的数据类型：";
   public static final String COUNT_IF_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
       "目前不支持 COUNT_IF 与滑动窗口组合使用";
+  public static final String EXCEPTION_TIME_DURATION_IS_OUT_OF_RANGE_A56B1A29 =
+      "时间间隔超出范围。";
+  public static final String EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A =
+      "生成的时间列超出范围。";
+  public static final String
+      EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32 =
+          "时间谓词未选择任何时间范围：%s";
+  public static final String
+      EXCEPTION_RIGHT_CLOSED_GROUP_BY_TIME_WITH_LONG_MAX_VALUE_END_TIME_CANNOT_BE_REPRESENTED_AS_A_SINGLE_RIGHT_OPEN_TIME_FILTER_772F893F =
+          "右闭 GROUP BY TIME 的结束时间为 Long.MAX_VALUE，无法表示为单个右开时间过滤器。";
+  public static final String EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1 =
+      "日期表达式超出范围：%s";
+
   public static final String TIME_DURATION_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
       "目前不支持 TIME_DURATION 与滑动窗口组合使用";
   public static final String MODE_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
@@ -139,6 +160,8 @@ public final class DataNodeQueryMessages {
           + "原始错误：%s";
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "匹配的源列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "本次失败的内存申请超出可用内存，按已记录列的平均内存估算，至少超出相当于 %,d 列的容量。";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "查询分析拉取元数据时内存不足。结果集可能包含过多列。"
           + "失败前，IoTDB 已从 schema 拉取结果中反序列化 %,d 个时间序列列。"
@@ -179,6 +202,8 @@ public final class DataNodeQueryMessages {
       "目标文件已存在：";
   public static final String FAILED_TO_CREATE_FILE =
       "创建文件失败：";
+  public static final String COPY_TO_TARGET_PATH_NOT_ALLOWED =
+      "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
@@ -238,6 +263,10 @@ public final class DataNodeQueryMessages {
       "此处不应调用 getPageReader()";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "不支持的列类型：";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "不支持的列属性：";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "列属性值必须是字符串字面量。";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "关闭 CteDataReader 失败";
   public static final String UNKNOWN_TABLE =
@@ -497,6 +526,18 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP 不支持 REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime 过滤器不能存在于值过滤器中。";
+  public static final String EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC =
+      "\"%s\" 无法转换为 [%s]";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348 =
+      "不支持的数据类型 %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1 =
+      "MaxBy/MinBy 不支持的数据类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB =
+      "等值事件聚合不支持的数据类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388 =
+      "变化事件聚合不支持的数据类型：%s";
+  public static final String EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79 =
+      "TIMESTAMP 的 IN 列表字面量只能是 LongLiteral、DoubleLiteral 或 GenericLiteral，实际类型为 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL 可以下推";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
@@ -742,6 +783,12 @@ public final class DataNodeQueryMessages {
       "暂不支持 Show Index 语句。";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "UPDATE 只能指定属性列。";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "无法更新 %s 列 '%s'。UPDATE 只能指定 ATTRIBUTE 列。";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "无法在 UPDATE 值中引用 %s 列 '%s'。UPDATE 值只能引用 ATTRIBUTE 或 TAG 列。";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "暂不支持 Drop Function 语句。";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -802,6 +849,7 @@ public final class DataNodeQueryMessages {
       "重复的参数名：%s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持设置按月间隔。";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "参数 %s 不能主动填null值";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "过滤下推不支持 CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =
@@ -989,6 +1037,8 @@ public final class DataNodeQueryMessages {
       "意外的表达式：";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "获取子查询结果失败。";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00 =
+      "标量子查询结果的数据类型不受支持：%s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
@@ -1362,6 +1412,8 @@ public final class DataNodeQueryMessages {
       "获取 UDF 访问策略时发生错误";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils 不应被实例化。";
+  public static final String EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273 =
+      "状态窗口策略的数据类型无效。";
 
   // --- Execution / Exchange (additional) ---
 
@@ -1379,6 +1431,28 @@ public final class DataNodeQueryMessages {
       "{} 从 SinkHandle {} 的通道索引 {} 拉取 TsBlocks [{}] 到 [{}] 失败，";
   public static final String FAILED_TO_GET_DATA_BLOCK =
       "获取数据块 [{}, {}) 失败，尝试次数：{}";
+  public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
+      "数据块响应数量异常。";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "序列化 TsBlock 分片偏移量 %s 无效，块大小为 %s。";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "TsBlock 分片累计长度 %s 与 totalLength %s 不一致。";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "首个分片数据块响应必须包含 totalLength。";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "下一个 sequence ID %s 超过请求的结束 sequence ID %s。";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "已完成的数据块响应区间不能保留未完成的 TsBlock。";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock 分片不能为空。";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "下一分片偏移量 %s 必须大于当前偏移量 %s，并且等于分片累计长度 %s。";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "发送数据块确认事件 [{}, {}) 失败，尝试次数：{}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
@@ -4575,5 +4649,49 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
   public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
       "无权执行 %s，因为只有超级用户可以修改其自身。";
+  public static final String
+      LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5 =
+          "异步清理 DeviceEntry 数据集失败：queryId=%s，planNodeId=%s";
+  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
+      "清理 query %s 的 DeviceEntry spill 目录失败";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941 =
+          "清理过程中关闭 DeviceEntry spill writer 失败：%s";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319 =
+          "index scan 失败后关闭 DeviceEntry data set 失败：%s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
+          "DeviceEntry spill segment 不可用：%s。查询可能因超时或主动 kill 而终止。";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
+          "DeviceEntry segment count 和 entry count 不能为负数";
+  public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
+      "不支持打开消费型读取器";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZER_THRESHOLD_MUST_BE_POSITIVE_ARG_35CF53FD =
+          "DeviceEntry materializer 阈值必须为正数：%d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZATION_MEMORY_LIMIT_MUST_BE_POSITIVE_ARG_2EB63404 =
+          "DeviceEntry materialization 内存限制必须为正数：%d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_DATA_SET_PATH_ESCAPES_THE_QUERY_DIRECTORY_ARG_394A9840 =
+          "DeviceEntry data set 路径超出 query 目录：%s";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_ID_MUST_BE_NON_NEGATIVE_ARG_F7653A57 =
+      "DeviceEntry segment ID 不能为负数：%d";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_HAS_INCOMPLETE_RECORD_LENGTH_0A282C19 =
+      "DeviceEntry segment 的记录长度不完整";
+  public static final String
+      EXCEPTION_INVALID_DEVICEENTRY_RECORD_LENGTH_ARG_REMAINING_BYTES_ARG_F1C43B72 =
+          "DeviceEntry 记录长度 %d 非法，剩余字节数为 %d";
+  public static final String EXCEPTION_DEVICEENTRY_MATERIALIZER_HAS_ALREADY_FINISHED_5538544E =
+      "DeviceEntry materializer 已结束";
+  public static final String
+      EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
+          "没有可用于执行 DeviceEntry 内存限制的 materializer";
+  public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
+      "没有更多可用的 DeviceEntry 记录";
+  public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
+      "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
 
 }

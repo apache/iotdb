@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.service.metric;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.i18n.ServiceMessages;
@@ -74,7 +76,18 @@ public class MetricService extends AbstractMetricService implements MetricServic
           hasJmxReporter = true;
           break;
         case PROMETHEUS:
-          reporter = new PrometheusReporter(metricManager);
+          if (METRIC_CONFIG.isPrometheusReporterAsyncUpdate()) {
+            // Defer pool creation until start so duplicate reporters rejected below do not
+            // register an unused pool.
+            reporter =
+                new PrometheusReporter(
+                    metricManager,
+                    () ->
+                        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                            ThreadName.PROMETHEUS_REPORTER_SNAPSHOT_UPDATER.getName()));
+          } else {
+            reporter = new PrometheusReporter(metricManager);
+          }
           break;
         case IOTDB:
           reporter = new IoTDBSessionReporter(metricManager);
@@ -117,8 +130,17 @@ public class MetricService extends AbstractMetricService implements MetricServic
       for (IMetricSet metricSet : metricSets) {
         LOGGER.info(
             ServiceMessages.METRIC_SERVICE_REBIND_METRIC_SET, metricSet.getClass().getName());
-        metricSet.unbindFrom(this);
-        metricSet.bindTo(this);
+        // Every metric was dropped by the restart, so a failed metric set must not stop the others
+        // from being bound again
+        try {
+          metricSet.unbindFrom(this);
+          metricSet.bindTo(this);
+        } catch (Exception e) {
+          LOGGER.warn(
+              ServiceMessages.LOG_FAILED_TO_REBIND_METRIC_SET_ARG_2C440B71,
+              metricSet.getClass().getName(),
+              e);
+        }
       }
     }
     LOGGER.info(ServiceMessages.METRIC_SERVICE_RESTART_SUCCESSFULLY);

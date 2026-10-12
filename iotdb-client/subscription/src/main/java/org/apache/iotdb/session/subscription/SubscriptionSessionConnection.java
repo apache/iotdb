@@ -58,4 +58,12 @@ public class SubscriptionSessionConnection extends SessionConnection {
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) throws TException {
     return client.pipeSubscribe(req);
   }
+
+  public boolean setTimeout(final int timeoutInMs) {
+    return setTransportTimeout(timeoutInMs);
+  }
+
+  public void forceClose() {
+    forceCloseTransport();
+  }
 }

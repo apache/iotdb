@@ -33,6 +33,7 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.enums.EncryptionType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.tsfile.read.reader.page.LazyLoadPageData;
 import org.apache.tsfile.read.reader.page.PageReader;
@@ -252,26 +253,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       return 0;
     }
 
-    switch (dataType) {
-      case BOOLEAN:
-        return RamUsageEstimator.sizeOfBooleanArray(16) * segmentCount;
-      case INT32:
-      case DATE:
-        return RamUsageEstimator.sizeOfIntArray(16) * segmentCount;
-      case INT64:
-      case TIMESTAMP:
-        return RamUsageEstimator.sizeOfLongArray(16) * segmentCount;
-      case FLOAT:
-        return RamUsageEstimator.sizeOfFloatArray(16) * segmentCount;
-      case DOUBLE:
-        return RamUsageEstimator.sizeOfDoubleArray(16) * segmentCount;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return RamUsageEstimator.sizeOfObjectArray(16) * segmentCount;
-      default:
-        return 0;
-    }
+    return Type.fromTsDataType(dataType).estimateArraySize(16) * segmentCount;
   }
 
   private static long estimateVectorValueMemoryUsageInBytes(
@@ -291,24 +273,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
   }
 
   private static long estimateTsPrimitiveTypeValueMemoryUsageInBytes(final TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-      case DATE:
-      case FLOAT:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-      case DOUBLE:
-        return Long.BYTES;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-      default:
-        return 0;
-    }
+    return Type.fromTsDataType(dataType).estimateValueSize();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
