@@ -152,6 +152,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getFilterTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
+    // Short-circuit evaluation can reset cache reference counts when a shared expression is
+    // recomputed. Invalidate the whole DAG before feeding a new block, including intermediate
+    // expressions whose caches may still have unconsumed references from the previous block.
+    filterOutputTransformer.clearCache();
+    for (ColumnTransformer columnTransformer : commonTransformerList) {
+      columnTransformer.clearCache();
+    }
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
       leafColumnTransformer.initFromTsBlock(input);
@@ -263,6 +270,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getTransformedTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
+    // Clear all output DAGs before evaluating any output, preserving reuse within this block.
+    for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
+      columnTransformer.clearCache();
+    }
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {
       leafColumnTransformer.initFromTsBlock(input);

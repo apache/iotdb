@@ -235,6 +235,17 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
   }
 
   @Override
+  public void clearCache() {
+    super.clearCache();
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
+        whenThenTransformers) {
+      whenThenColumnTransformer.left.clearCache();
+      whenThenColumnTransformer.right.clearCache();
+    }
+    elseTransformer.clearCache();
+  }
+
+  @Override
   public void close() {
     super.close();
     for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :

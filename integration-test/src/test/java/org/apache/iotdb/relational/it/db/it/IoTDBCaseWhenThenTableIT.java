@@ -695,4 +695,32 @@ public class IoTDBCaseWhenThenTableIT {
     String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
+
+  @Test
+  public void testCaseWhenReusesAggregationAcrossBlocks() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_aggregation_cache (dev STRING TAG, c DOUBLE FIELD, q INT32 FIELD)",
+          "INSERT INTO case_aggregation_cache(time, dev, c, q) VALUES "
+              + "(0, 'd0', 1.0, 0), (0, 'd1', 1.0, 0), (3600000, 'd1', 1.0, 0)"
+        });
+
+    // The non-pushdown predicate and the different device/window shapes make the aggregation
+    // produce multiple blocks. CASE clears the shared aggregate before the next output uses it.
+    String suffix = " FROM case_aggregation_cache WHERE q % 2 < 1 GROUP BY dev, date_bin(1h, time)";
+    for (String projection :
+        new String[] {
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, CAST(sum(c) AS DOUBLE) AS total",
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, sum(c) + 0 AS total",
+          "CASE WHEN sum(c) > 0 THEN CAST(sum(c) AS DOUBLE) / CAST(sum(c) AS DOUBLE) END "
+              + "AS case_result, CAST(sum(c) AS DOUBLE) AS total"
+        }) {
+      tableResultSetEqualTest(
+          "SELECT " + projection + suffix,
+          new String[] {"case_result", "total"},
+          new String[] {"1.0,1.0,", "1.0,1.0,", "1.0,1.0,"},
+          DATABASE);
+    }
+  }
 }
