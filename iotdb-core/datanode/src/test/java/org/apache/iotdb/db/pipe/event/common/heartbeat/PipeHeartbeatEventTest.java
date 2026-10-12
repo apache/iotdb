@@ -56,11 +56,14 @@ public class PipeHeartbeatEventTest {
     assertTrue(boundBarrier.isCompletionBarrier());
     assertFalse(boundBarrier.needToCommit());
     assertTrue(boundBarrier.getOnCommittedHooks().isEmpty());
-    boundBarrier.bindCompletionSource(4L);
+    boundBarrier.bindSource(4L);
     assertTrue(boundBarrier.needToCommit());
     assertEquals(2L, boundBarrier.getAssignerEpoch());
     assertEquals(3L, boundBarrier.getDataGeneration());
-    assertEquals(4L, boundBarrier.getCompletionSourceId());
+    assertEquals(4L, boundBarrier.getSourceId());
+    assertEquals(1, boundBarrier.getOnCommittedHooks().size());
+    boundBarrier.bindSource(5L);
+    assertEquals(4L, boundBarrier.getSourceId());
     assertEquals(1, boundBarrier.getOnCommittedHooks().size());
 
     final PipeHeartbeatEvent periodicHeartbeat = new PipeHeartbeatEvent(1, false);
@@ -78,6 +81,12 @@ public class PipeHeartbeatEventTest {
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     assertFalse(boundPeriodicHeartbeat.needToCommit());
+    assertTrue(boundPeriodicHeartbeat.getOnCommittedHooks().isEmpty());
+    boundPeriodicHeartbeat.bindSource(6L);
+    assertEquals(6L, boundPeriodicHeartbeat.getSourceId());
+    assertTrue(boundPeriodicHeartbeat.isControlEvent());
+    assertFalse(boundPeriodicHeartbeat.shouldSkipProcessing());
+    assertTrue(boundBarrier.shouldSkipProcessing());
     assertTrue(boundPeriodicHeartbeat.getOnCommittedHooks().isEmpty());
   }
 }

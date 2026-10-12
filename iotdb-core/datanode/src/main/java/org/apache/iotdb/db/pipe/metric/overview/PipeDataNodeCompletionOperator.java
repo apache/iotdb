@@ -136,27 +136,25 @@ class PipeDataNodeCompletionOperator {
       final PipeTaskMeta pipeTaskMeta,
       final long assignerEpoch,
       final long generation,
-      final long completionSourceId,
+      final long sourceId,
       final CommitterKey committerKey) {
     membershipLock.readLock().lock();
     try {
       final DataRegionCompletionState state = dataRegionId2State.get(dataRegionId);
       if (state != null) {
-        state.markCompleted(
-            pipeTaskMeta, assignerEpoch, generation, completionSourceId, committerKey);
+        state.markCompleted(pipeTaskMeta, assignerEpoch, generation, sourceId, committerKey);
       }
     } finally {
       membershipLock.readLock().unlock();
     }
   }
 
-  void markInvalid(
-      final int dataRegionId, final PipeTaskMeta pipeTaskMeta, final long completionSourceId) {
+  void markInvalid(final int dataRegionId, final PipeTaskMeta pipeTaskMeta, final long sourceId) {
     membershipLock.readLock().lock();
     try {
       final DataRegionCompletionState state = dataRegionId2State.get(dataRegionId);
       if (state != null) {
-        state.markInvalid(pipeTaskMeta, completionSourceId);
+        state.markInvalid(pipeTaskMeta, sourceId);
       }
     } finally {
       membershipLock.readLock().unlock();
@@ -261,7 +259,7 @@ class PipeDataNodeCompletionOperator {
     private final PipeRealtimeDataRegionSource source;
     private final PipeDataRegionAssigner assigner;
     private final PipeTaskMeta pipeTaskMeta;
-    private final long completionSourceId;
+    private final long sourceId;
     private final long assignerEpoch;
     private final long initialPublicationFailureEpoch;
     private final Predicate<CommitterKey> isCurrentCommitterKey;
@@ -275,7 +273,7 @@ class PipeDataNodeCompletionOperator {
       this.source = source;
       this.assigner = assigner;
       pipeTaskMeta = source.getPipeTaskMeta();
-      completionSourceId = source.getCompletionSourceId();
+      sourceId = source.getSourceId();
       assignerEpoch = assigner.getAssignerEpoch();
       initialPublicationFailureEpoch = assigner.getPublicationFailureEpoch();
       this.isCurrentCommitterKey = isCurrentCommitterKey;
@@ -290,11 +288,11 @@ class PipeDataNodeCompletionOperator {
         final PipeTaskMeta pipeTaskMeta,
         final long assignerEpoch,
         final long generation,
-        final long completionSourceId,
+        final long sourceId,
         final CommitterKey committerKey) {
       if (this.pipeTaskMeta != pipeTaskMeta
           || this.assignerEpoch != assignerEpoch
-          || this.completionSourceId != completionSourceId
+          || this.sourceId != sourceId
           || committerKey == null) {
         return;
       }
@@ -311,8 +309,8 @@ class PipeDataNodeCompletionOperator {
       }
     }
 
-    private void markInvalid(final PipeTaskMeta pipeTaskMeta, final long completionSourceId) {
-      if (this.pipeTaskMeta == pipeTaskMeta && this.completionSourceId == completionSourceId) {
+    private void markInvalid(final PipeTaskMeta pipeTaskMeta, final long sourceId) {
+      if (this.pipeTaskMeta == pipeTaskMeta && this.sourceId == sourceId) {
         valid.set(false);
       }
     }
@@ -328,7 +326,7 @@ class PipeDataNodeCompletionOperator {
       if (expectedSource != source
           || !valid.get()
           || source.getPipeTaskMeta() != pipeTaskMeta
-          || source.getCompletionSourceId() != completionSourceId
+          || source.getSourceId() != sourceId
           || pipeTaskMeta == null
           || pipeTaskMeta.hasExceptionMessages()
           || source.isTsFileEpochDegraded()
@@ -356,7 +354,7 @@ class PipeDataNodeCompletionOperator {
           && expectedSource == source
           && valid.get()
           && source.getPipeTaskMeta() == pipeTaskMeta
-          && source.getCompletionSourceId() == completionSourceId
+          && source.getSourceId() == sourceId
           && pipeTaskMeta != null
           && !pipeTaskMeta.hasExceptionMessages()
           && pipeTaskMeta.getExceptionMessageVersion() == observation.exceptionMessageVersion

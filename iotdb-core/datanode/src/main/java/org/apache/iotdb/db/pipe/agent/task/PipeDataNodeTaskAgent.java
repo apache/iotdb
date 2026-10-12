@@ -45,7 +45,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -123,20 +122,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
-  private static final Set<String> COMPLETION_SUPPORTED_SOURCES =
-      Set.of(
-          BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName());
-  private static final Set<String> COMPLETION_SUPPORTED_SINKS =
-      Set.of(
-          BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
-          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName());
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -696,6 +681,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
   }
 
+  /**
+   * Returns current realtime DataRegion sources keyed by region ID. The left value is true only for
+   * a supported, running, healthy Pipe whose expected DataRegion tasks are all present and ready. A
+   * false value means completion is unproven; the map may be partial or empty and must not be
+   * interpreted as completed. Runtime state is sampled under the task read lock.
+   */
   public Pair<Boolean, Map<Integer, PipeRealtimeDataRegionSource>> getPipeCompletionSnapshot(
       final String pipeName, final long creationTime) {
     if (!tryReadLockWithTimeOutInMs(10)) {
@@ -709,35 +700,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
 
       final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-      final String sourceName =
-          staticMeta
-              .getSourceParameters()
-              .getStringOrDefault(
-                  Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
-                  BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
-      final String processorName =
-          staticMeta
-              .getProcessorParameters()
-              .getStringOrDefault(
-                  PipeProcessorConstant.PROCESSOR_KEY,
-                  BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName());
-      final PipeParameters sinkParameters = staticMeta.getSinkParameters();
-      final String sinkName = PipeSinkConstant.getConnectorOrSinkNameWithDefault(sinkParameters);
       boolean supported =
-          staticMeta.getPipeType() == PipeType.USER
-              && COMPLETION_SUPPORTED_SOURCES.stream()
-                  .anyMatch(name -> name.equalsIgnoreCase(sourceName))
-              && BuiltinPipePlugin.DO_NOTHING_PROCESSOR
-                  .getPipePluginName()
-                  .equalsIgnoreCase(processorName)
-              && COMPLETION_SUPPORTED_SINKS.stream()
-                  .anyMatch(name -> name.equalsIgnoreCase(sinkName))
-              && PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE.equalsIgnoreCase(
-                  sinkParameters.getStringOrDefault(
-                      Arrays.asList(
-                          PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_KEY,
-                          PipeSinkConstant.SINK_LOAD_TSFILE_STRATEGY_KEY),
-                      PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE))
+          staticMeta.supportsCompletionMark()
               && pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING
               && pipeMeta.getRuntimeMeta().getNodeId2PipeRuntimeExceptionMap().isEmpty()
               && pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()

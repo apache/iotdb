@@ -98,14 +98,14 @@ public class PipeDataNodeSinglePipeMetricsTest {
           realtimeSource.getPipeTaskMeta(),
           1,
           1,
-          realtimeSource.getCompletionSourceId(),
+          realtimeSource.getSourceId(),
           mock(CommitterKey.class));
-      metrics.markDataRegionInvalid(
+      metrics.markDataRegionCompletionInvalid(
           pipeName,
           creationTime,
           1,
           realtimeSource.getPipeTaskMeta(),
-          realtimeSource.getCompletionSourceId());
+          realtimeSource.getSourceId());
       metrics.deregister(realtimeSource, assigner);
       metrics.decreaseHeartbeatEventCount(pipeName, creationTime);
       assertFalse(metrics.remainingEventAndTimeOperatorMap.containsKey(pipeId));

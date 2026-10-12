@@ -75,15 +75,15 @@ public class PipeDataNodeCompletionOperatorTest {
     operator.register(source, assigner);
     assertEquals(0, operator.getCompletion());
 
-    operator.markCompleted(1, staleTaskMeta, 10L, 0, source.getCompletionSourceId(), committerKey);
+    operator.markCompleted(1, staleTaskMeta, 10L, 0, source.getSourceId(), committerKey);
     assertEquals(0, operator.getCompletion());
 
-    operator.markCompleted(1, taskMeta, 10L, 0, source.getCompletionSourceId(), committerKey);
+    operator.markCompleted(1, taskMeta, 10L, 0, source.getSourceId(), committerKey);
     assertEquals(1, operator.getCompletion());
 
     publishedGeneration.incrementAndGet();
     assertEquals(0, operator.getCompletion());
-    operator.markCompleted(1, taskMeta, 10L, 1, source.getCompletionSourceId(), committerKey);
+    operator.markCompleted(1, taskMeta, 10L, 1, source.getSourceId(), committerKey);
     assertEquals(1, operator.getCompletion());
 
     source.setDegraded(true);
@@ -101,15 +101,15 @@ public class PipeDataNodeCompletionOperatorTest {
 
     currentCommitter.set(nextCommitterKey);
     assertEquals(0, operator.getCompletion());
-    operator.markCompleted(1, taskMeta, 10L, 1, source.getCompletionSourceId(), nextCommitterKey);
+    operator.markCompleted(1, taskMeta, 10L, 1, source.getSourceId(), nextCommitterKey);
     assertEquals(1, operator.getCompletion());
 
     publicationFailureEpoch.incrementAndGet();
     assertEquals(0, operator.getCompletion());
 
-    operator.markInvalid(1, taskMeta, source.getCompletionSourceId());
+    operator.markInvalid(1, taskMeta, source.getSourceId());
     operator.markCompleted(
-        1, taskMeta, 10L, Long.MAX_VALUE, source.getCompletionSourceId(), nextCommitterKey);
+        1, taskMeta, 10L, Long.MAX_VALUE, source.getSourceId(), nextCommitterKey);
     assertEquals(0, operator.getCompletion());
 
     operator.deregister(source, assigner);
@@ -138,15 +138,13 @@ public class PipeDataNodeCompletionOperatorTest {
 
     operator.registerDataRegionSource(firstSource);
     operator.register(firstSource, firstAssigner);
-    operator.markCompleted(
-        1, firstTaskMeta, 11L, 0, firstSource.getCompletionSourceId(), firstCommitter);
+    operator.markCompleted(1, firstTaskMeta, 11L, 0, firstSource.getSourceId(), firstCommitter);
     expected.set(Collections.singletonMap(1, firstSource));
     assertEquals(1, operator.getCompletion());
 
     operator.registerDataRegionSource(secondSource);
     operator.register(secondSource, secondAssigner);
-    operator.markCompleted(
-        2, secondTaskMeta, 12L, 0, secondSource.getCompletionSourceId(), secondCommitter);
+    operator.markCompleted(2, secondTaskMeta, 12L, 0, secondSource.getSourceId(), secondCommitter);
     final Map<Integer, PipeRealtimeDataRegionSource> bothExpected = new HashMap<>();
     bothExpected.put(1, firstSource);
     bothExpected.put(2, secondSource);
@@ -190,22 +188,20 @@ public class PipeDataNodeCompletionOperatorTest {
     operator.registerDataRegionSource(newSource);
     operator.register(newSource, sharedAssigner);
 
-    operator.markCompleted(
-        1, sharedTaskMeta, 20L, 0, oldSource.getCompletionSourceId(), committerKey);
+    operator.markCompleted(1, sharedTaskMeta, 20L, 0, oldSource.getSourceId(), committerKey);
     assertEquals(0, operator.getCompletion());
 
-    operator.markCompleted(
-        1, sharedTaskMeta, 20L, 0, newSource.getCompletionSourceId(), committerKey);
+    operator.markCompleted(1, sharedTaskMeta, 20L, 0, newSource.getSourceId(), committerKey);
     assertEquals(1, operator.getCompletion());
 
-    operator.markInvalid(1, sharedTaskMeta, oldSource.getCompletionSourceId());
+    operator.markInvalid(1, sharedTaskMeta, oldSource.getSourceId());
     assertEquals(1, operator.getCompletion());
 
     operator.deregister(oldSource, sharedAssigner);
     operator.deregisterDataRegionSource(oldSource);
     assertEquals(1, operator.getCompletion());
 
-    operator.markInvalid(1, sharedTaskMeta, newSource.getCompletionSourceId());
+    operator.markInvalid(1, sharedTaskMeta, newSource.getSourceId());
     assertEquals(0, operator.getCompletion());
   }
 

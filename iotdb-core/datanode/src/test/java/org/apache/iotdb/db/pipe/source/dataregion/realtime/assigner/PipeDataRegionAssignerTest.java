@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
 
@@ -29,6 +30,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class PipeDataRegionAssignerTest {
+
+  @Test
+  public void testNonHeartbeatControlEventDoesNotAdvanceDataGeneration() {
+    try (final PipeDataRegionAssigner assigner = new PipeDataRegionAssigner(Integer.MIN_VALUE)) {
+      final CompletionToken token = assigner.invalidateCompletionAndGetToken();
+      final long generation = assigner.getPublishedDataGeneration();
+      assigner.publishToAssign(
+          PipeRealtimeEventFactory.createRealtimeEvent(new ProgressReportEvent(null, 0L, null)));
+      assertEquals(generation, assigner.getPublishedDataGeneration());
+      assertTrue(assigner.publishCompletionBarrier(token));
+    }
+  }
 
   @Test
   public void testNullDataEventMarksPublicationFailed() {

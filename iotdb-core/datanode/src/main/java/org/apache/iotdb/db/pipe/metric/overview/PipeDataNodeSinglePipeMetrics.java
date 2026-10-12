@@ -293,26 +293,26 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
       final PipeTaskMeta pipeTaskMeta,
       final long assignerEpoch,
       final long generation,
-      final long completionSourceId,
+      final long sourceId,
       final CommitterKey committerKey) {
     final PipeDataNodeCompletionOperator operator =
         completionOperatorMap.get(pipeName + "_" + creationTime);
     if (operator != null) {
       operator.markCompleted(
-          dataRegionId, pipeTaskMeta, assignerEpoch, generation, completionSourceId, committerKey);
+          dataRegionId, pipeTaskMeta, assignerEpoch, generation, sourceId, committerKey);
     }
   }
 
-  public void markDataRegionInvalid(
+  public void markDataRegionCompletionInvalid(
       final String pipeName,
       final long creationTime,
       final int dataRegionId,
       final PipeTaskMeta pipeTaskMeta,
-      final long completionSourceId) {
+      final long sourceId) {
     final PipeDataNodeCompletionOperator operator =
         completionOperatorMap.get(pipeName + "_" + creationTime);
     if (operator != null) {
-      operator.markInvalid(dataRegionId, pipeTaskMeta, completionSourceId);
+      operator.markInvalid(dataRegionId, pipeTaskMeta, sourceId);
     }
   }
 

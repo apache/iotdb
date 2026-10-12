@@ -100,13 +100,14 @@ import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivil
 public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeDataRegionSource.class);
-  private static final AtomicLong COMPLETION_SOURCE_ID_GENERATOR = new AtomicLong(0);
+  private static final AtomicLong SOURCE_ID_GENERATOR = new AtomicLong(0);
 
   protected String pipeName;
   protected long creationTime;
   protected int dataRegionId = -1;
   protected PipeTaskMeta pipeTaskMeta;
-  private final long completionSourceId = COMPLETION_SOURCE_ID_GENERATOR.incrementAndGet();
+  // A lifecycle identity for this source instance, also attached to its events for attribution.
+  private final long sourceId = SOURCE_ID_GENERATOR.incrementAndGet();
   private final AtomicLong completionStateVersion = new AtomicLong(0);
 
   protected boolean shouldExtractInsertion;
@@ -628,8 +629,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return dataRegionId;
   }
 
-  public final long getCompletionSourceId() {
-    return completionSourceId;
+  public final long getSourceId() {
+    return sourceId;
   }
 
   public final long getCompletionStateVersion() {
@@ -642,8 +643,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected final void markDataRegionCompletionInvalid() {
     PipeDataNodeSinglePipeMetrics.getInstance()
-        .markDataRegionInvalid(
-            pipeName, creationTime, dataRegionId, pipeTaskMeta, completionSourceId);
+        .markDataRegionCompletionInvalid(
+            pipeName, creationTime, dataRegionId, pipeTaskMeta, sourceId);
   }
 
   /** Whether this source is waiting for a TsFile to recover discarded tablet events. */

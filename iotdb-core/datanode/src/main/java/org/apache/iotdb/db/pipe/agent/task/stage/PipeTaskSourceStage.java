@@ -114,12 +114,15 @@ public class PipeTaskSourceStage extends PipeTaskStage {
     return pipeExtractor;
   }
 
-  public long getCompletionSourceId() {
+  public long getSourceId() {
     if (!(pipeExtractor instanceof IoTDBDataRegionSource)) {
       return Long.MIN_VALUE;
     }
+    // Full-FLUSH barriers are delivered by the realtime source. Use that same instance ID for
+    // collector failure reports so a report from a replaced source cannot invalidate its successor.
+    // Historical extraction is checked separately and must be exhausted before completion.
     final PipeRealtimeDataRegionSource realtimeSource =
         ((IoTDBDataRegionSource) pipeExtractor).getRealtimeSourceForCompletion();
-    return realtimeSource == null ? Long.MIN_VALUE : realtimeSource.getCompletionSourceId();
+    return realtimeSource == null ? Long.MIN_VALUE : realtimeSource.getSourceId();
   }
 }

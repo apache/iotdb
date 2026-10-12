@@ -2595,6 +2595,9 @@ public class DataRegion implements IDataRegionForQuery {
     int closedProcessorCount = 0;
     while (!targetsToClose.isEmpty()) {
       final List<Future<?>> currentFutures = new ArrayList<>();
+      // An ordinary flush is TsFileProcessor.asyncFlush(): it flushes memtables without closing
+      // the file. Await that flush outside the region lock, then retry the close for the full
+      // FLUSH.
       final Set<TsFileProcessor> targetsWaitingForOrdinaryFlush = new HashSet<>();
 
       writeLock("syncCloseAllWorkingAndClosingTsFileProcessors");

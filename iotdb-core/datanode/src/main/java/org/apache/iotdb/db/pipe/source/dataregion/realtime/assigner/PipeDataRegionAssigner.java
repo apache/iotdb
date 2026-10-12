@@ -69,10 +69,15 @@ public class PipeDataRegionAssigner implements Closeable {
   private final DisruptorQueue disruptor;
 
   private final int dataRegionId;
+  // Distinguishes this assigner from a replacement, whose generations start over at zero.
   private final long assignerEpoch = ASSIGNER_EPOCH_GENERATOR.incrementAndGet();
+  // Advances for every data mutation/publication attempt, including events ignored by listeners.
   private final AtomicLong publishedDataGeneration = new AtomicLong(0);
+  // Records delivery failures that a later barrier cannot prove have been recovered.
   private final AtomicLong publicationFailureEpoch = new AtomicLong(0);
+  // Invalidates a full-FLUSH token when an insert may create a processor outside its snapshot.
   private final AtomicLong completionInvalidationEpoch = new AtomicLong(0);
+  // Serializes generation/token changes with publication, so a barrier cannot overtake data.
   private final ReentrantLock publicationLock = new ReentrantLock();
 
   private Boolean isTableModel;
@@ -107,7 +112,7 @@ public class PipeDataRegionAssigner implements Closeable {
     publicationLock.lock();
     try {
       final EnrichedEvent innerEvent = event.getEvent();
-      final boolean isDataEvent = !(innerEvent instanceof PipeHeartbeatEvent);
+      final boolean isDataEvent = !innerEvent.isControlEvent();
       if (isDataEvent) {
         publishedDataGeneration.incrementAndGet();
       }
@@ -117,10 +122,20 @@ public class PipeDataRegionAssigner implements Closeable {
     }
   }
 
+  /**
+   * Publishes a TsFile-close or deletion event. Count the attempt before event creation so a failed
+   * supplier still prevents completion. A close callback belongs to the current flush and must not
+   * invalidate its token. Data events carry insert/tablet, TsFile, or deletion data; control events
+   * such as heartbeats and progress reports do not advance the data generation.
+   */
   public void publishDataEventToAssign(final Supplier<PipeRealtimeEvent> eventSupplier) {
     publishDataEventToAssign(eventSupplier, false);
   }
 
+  /**
+   * Publishes an insert and also invalidates the current full-FLUSH token: the insert may create a
+   * working processor outside that flush's captured set. Invalidation and publication share a lock.
+   */
   public void publishInsertDataEventToAssign(final Supplier<PipeRealtimeEvent> eventSupplier) {
     publishDataEventToAssign(eventSupplier, true);
   }
@@ -308,7 +323,7 @@ public class PipeDataRegionAssigner implements Closeable {
     try {
       assignToSourceInternal(event);
     } catch (final RuntimeException | Error e) {
-      if (!(event.getEvent() instanceof PipeHeartbeatEvent)) {
+      if (!event.getEvent().isControlEvent()) {
         markPublicationFailed();
       }
       throw e;
@@ -332,6 +347,7 @@ public class PipeDataRegionAssigner implements Closeable {
                     new ProgressReportEvent(
                         source.getPipeName(), source.getCreationTime(), source.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
+                reportEvent.bindSource(source.getSourceId());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   markPublicationFailed();
                   LOGGER.warn(
@@ -357,11 +373,7 @@ public class PipeDataRegionAssigner implements Closeable {
                       source.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
 
-              if (innerEvent instanceof PipeHeartbeatEvent
-                  && ((PipeHeartbeatEvent) innerEvent).isCompletionBarrier()) {
-                ((PipeHeartbeatEvent) innerEvent)
-                    .bindCompletionSource(source.getCompletionSourceId());
-              }
+              innerEvent.bindSource(source.getSourceId());
 
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
@@ -387,7 +399,7 @@ public class PipeDataRegionAssigner implements Closeable {
               }
 
               if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
-                if (!(event.getEvent() instanceof PipeHeartbeatEvent)) {
+                if (!event.getEvent().isControlEvent()) {
                   markPublicationFailed();
                 }
                 LOGGER.warn(
@@ -412,6 +424,7 @@ public class PipeDataRegionAssigner implements Closeable {
                     new ProgressReportEvent(
                         source.getPipeName(), source.getCreationTime(), source.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
+                reportEvent.bindSource(source.getSourceId());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   markPublicationFailed();
                   LOGGER.warn(

@@ -61,7 +61,7 @@ public class PipeEventCollector implements EventCollector {
 
   private final int regionId;
 
-  private final long completionSourceId;
+  private final long sourceId;
 
   private final boolean forceTabletFormat;
 
@@ -79,14 +79,14 @@ public class PipeEventCollector implements EventCollector {
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
       final int regionId,
-      final long completionSourceId,
+      final long sourceId,
       final boolean forceTabletFormat,
       final boolean skipParsing,
       final boolean isUsedInConsensusPipe) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
-    this.completionSourceId = completionSourceId;
+    this.sourceId = sourceId;
     this.forceTabletFormat = forceTabletFormat;
     this.skipParsing = skipParsing;
     this.isUsedForConsensusPipe = isUsedInConsensusPipe;
@@ -250,7 +250,10 @@ public class PipeEventCollector implements EventCollector {
   private void collectEvent(final Event event) {
     if (event instanceof EnrichedEvent) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+      enrichedEvent.bindSource(sourceId);
       if (!enrichedEvent.increaseReferenceCount(PipeEventCollector.class.getName())) {
+        // This is a delivery failure: the event's data is no longer safe to access. Unlike a
+        // deliberate pattern/privilege filter, it cannot be covered by a later completion barrier.
         markDataRegionCompletionInvalid(enrichedEvent);
         LOGGER.warn(
             DataNodePipeMessages.PIPEEVENTCOLLECTOR_THE_EVENT_IS_ALREADY_RELEASED_SKIPPING, event);
@@ -299,14 +302,10 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void markDataRegionCompletionInvalid(final EnrichedEvent event) {
-    if (!(event instanceof PipeHeartbeatEvent) && event.getPipeName() != null && regionId >= 0) {
+    if (!event.isControlEvent() && event.getPipeName() != null && regionId >= 0) {
       PipeDataNodeSinglePipeMetrics.getInstance()
-          .markDataRegionInvalid(
-              event.getPipeName(),
-              creationTime,
-              regionId,
-              event.getPipeTaskMeta(),
-              completionSourceId);
+          .markDataRegionCompletionInvalid(
+              event.getPipeName(), creationTime, regionId, event.getPipeTaskMeta(), sourceId);
     }
   }
 

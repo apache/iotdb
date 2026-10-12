@@ -173,7 +173,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
-        if (event instanceof TabletInsertionEvent) {
+        if (event.shouldSkipProcessing()) {
+          outputEventCollector.collect(event);
+        } else if (event instanceof TabletInsertionEvent) {
           if (event instanceof PipeInsertNodeTabletInsertionEvent
               && ((PipeInsertNodeTabletInsertionEvent) event).shouldParse4Privilege()) {
             final AtomicReference<Exception> ex = new AtomicReference<>();
@@ -228,21 +230,17 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               .markTsFileCollectInvocationCount(
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
-          // A completion barrier is an internal ordering event. It must not be swallowed or
-          // transformed by a user processor.
-          if (((PipeHeartbeatEvent) event).isCompletionBarrier()) {
-            outputEventCollector.collect(event);
-          } else {
-            pipeProcessor.process(event, outputEventCollector);
-          }
-          ((PipeHeartbeatEvent) event).onProcessed();
-          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+          pipeProcessor.process(event, outputEventCollector);
         } else {
           pipeProcessor.process(
               event instanceof UserDefinedEnrichedEvent
                   ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
                   : event,
               outputEventCollector);
+        }
+        if (event instanceof PipeHeartbeatEvent) {
+          ((PipeHeartbeatEvent) event).onProcessed();
+          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         }
       }
 

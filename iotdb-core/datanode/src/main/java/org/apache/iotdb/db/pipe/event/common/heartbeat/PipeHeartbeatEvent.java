@@ -45,7 +45,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final boolean completionBarrier;
   private long assignerEpoch = Long.MIN_VALUE;
   private long dataGeneration = Long.MIN_VALUE;
-  private long completionSourceId = Long.MIN_VALUE;
 
   private long timePublished;
   private long timeAssigned;
@@ -88,7 +87,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       final boolean completionBarrier,
       final long assignerEpoch,
       final long dataGeneration,
-      final long completionSourceId) {
+      final long sourceId) {
     super(
         pipeName,
         creationTime,
@@ -107,8 +106,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     this.completionBarrier = completionBarrier;
     this.assignerEpoch = assignerEpoch;
     this.dataGeneration = dataGeneration;
-    this.completionSourceId = completionSourceId;
-    if (completionBarrier && completionSourceId != Long.MIN_VALUE) {
+    this.sourceId = sourceId;
+    if (completionBarrier && sourceId != Long.MIN_VALUE) {
       addCompletionOnCommittedHook();
     }
   }
@@ -166,7 +165,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         completionBarrier,
         assignerEpoch,
         dataGeneration,
-        completionSourceId);
+        sourceId);
   }
 
   @Override
@@ -194,6 +193,16 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     return completionBarrier;
   }
 
+  @Override
+  public boolean isControlEvent() {
+    return true;
+  }
+
+  @Override
+  public boolean shouldSkipProcessing() {
+    return completionBarrier;
+  }
+
   public void bindCompletionBarrier(final long assignerEpoch, final long dataGeneration) {
     if (completionBarrier) {
       this.assignerEpoch = assignerEpoch;
@@ -201,12 +210,15 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     }
   }
 
-  public void bindCompletionSource(final long completionSourceId) {
-    if (completionBarrier
-        && pipeName != null
-        && this.completionSourceId == Long.MIN_VALUE
-        && completionSourceId != Long.MIN_VALUE) {
-      this.completionSourceId = completionSourceId;
+  @Override
+  public void bindSource(final long sourceId) {
+    final boolean shouldAddCompletionHook =
+        completionBarrier
+            && pipeName != null
+            && this.sourceId == Long.MIN_VALUE
+            && sourceId != Long.MIN_VALUE;
+    super.bindSource(sourceId);
+    if (shouldAddCompletionHook) {
       addCompletionOnCommittedHook();
     }
   }
@@ -222,7 +234,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
                     pipeTaskMeta,
                     assignerEpoch,
                     dataGeneration,
-                    completionSourceId,
+                    sourceId,
                     getCommitterKey()));
   }
 
@@ -232,10 +244,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   public long getDataGeneration() {
     return dataGeneration;
-  }
-
-  public long getCompletionSourceId() {
-    return completionSourceId;
   }
 
   /////////////////////////////// Delay Reporting ///////////////////////////////
@@ -305,7 +313,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   /** Only completion barriers need ordered commit. Periodic heartbeats remain best-effort. */
   @Override
   public boolean needToCommit() {
-    return completionBarrier && Objects.nonNull(pipeName) && completionSourceId != Long.MIN_VALUE;
+    return completionBarrier && Objects.nonNull(pipeName) && sourceId != Long.MIN_VALUE;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -362,8 +370,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + assignerEpoch
         + ", dataGeneration="
         + dataGeneration
-        + ", completionSourceId="
-        + completionSourceId
+        + ", sourceId="
+        + sourceId
         + ", startTime="
         + startTimeMessage
         + ", publishedToAssigned="
