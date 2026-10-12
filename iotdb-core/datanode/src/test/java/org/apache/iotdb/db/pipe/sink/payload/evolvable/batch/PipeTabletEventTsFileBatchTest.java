@@ -41,6 +41,7 @@ public class PipeTabletEventTsFileBatchTest {
 
     Assert.assertFalse(batch.onEvent(event));
     Assert.assertTrue(batch.isEmpty());
+    Assert.assertEquals(0, batch.totalBufferSize);
     Assert.assertTrue(event.isReleased());
     Assert.assertEquals(0, event.getReferenceCount());
 

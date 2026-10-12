@@ -678,51 +678,86 @@ series_slot_num=1000
 # Datatype: String
 series_partition_executor_class=org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor
 
-# The policy of extension SchemaRegionGroup for each Database.
+# The policy of extending SchemaRegionGroups for each Database.
 # These policies are currently supported:
-# 1. CUSTOM(Each Database will allocate schema_region_group_per_database RegionGroups as soon as created)
-# 2. AUTO(Each Database will automatically extend SchemaRegionGroups based on the data it has)
+# 1. CUSTOM: For known workloads that need manual resource allocation; creates the configured target
+#    number of SchemaRegionGroups per Database when schema partitions are first allocated.
+# 2. AUTO: For most routine workloads (roughly 80% as an approximate planning guideline); gradually
+#    meets the configured minimum and expands with slot occupancy up to the resource-based maximum,
+#    balancing parallelism and RegionGroup management overhead.
+# 3. PROACTIVE: Complements AUTO where it does not expand eagerly enough, such as very few devices with
+#    many measurements and a high load; creates groups earlier for more parallelism at the cost of
+#    additional RegionGroup management overhead.
+# AUTO and PROACTIVE use the same per-Database maximum calculation, including resource sharing across
+# Databases. PROACTIVE expands more eagerly within this limit; both have the same group count once
+# they reach the same maximum.
+# PROACTIVE targets one SchemaRegionGroup per distinct schema series slot, not per measurement,
+# and grows toward the configured minimum incrementally like AUTO, without exceeding the maximum.
+# If all SchemaRegionGroups are disabled, PROACTIVE may add one group above this target,
+# without exceeding the maximum, to allow partition allocation to continue.
+# Switching policies does not remove existing RegionGroups.
 # effectiveMode: hot_reload
 # Datatype: String
-schema_region_group_extension_policy=AUTO
+schema_region_group_extension_policy=PROACTIVE
 
 # When set schema_region_group_extension_policy=CUSTOM,
 # this parameter is the default number of SchemaRegionGroups for each Database.
-# When set schema_region_group_extension_policy=AUTO,
-# this parameter is the default minimal number of SchemaRegionGroups for each Database.
+# When set schema_region_group_extension_policy=AUTO or PROACTIVE,
+# this parameter is the default minimum number of SchemaRegionGroups and a lower bound for the per-Database maximum.
+# Both policies grow toward this minimum incrementally, adding at most the number of pending series slots
+# to satisfy the minimum. PROACTIVE also grows with the number of active series slots.
 # effectiveMode: hot_reload
 # Datatype: Integer
 default_schema_region_group_num_per_database=1
 
-# Only take effect when set schema_region_group_extension_policy=AUTO.
-# This parameter is the maximum number of SchemaRegions expected to be managed by each DataNode.
-# Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
-# this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
+# Only takes effect when schema_region_group_extension_policy=AUTO or PROACTIVE.
+# The expected number of SchemaRegions per DataNode, used to calculate the same per-Database maximum
+# for AUTO and PROACTIVE. This is not a hard limit on node or cluster totals: per-Database minimums,
+# rounding, and existing groups can raise the total above this resource estimate.
 # effectiveMode: hot_reload
 # Datatype: Integer
 schema_region_per_data_node=1
 
-# The policy of extension DataRegionGroup for each Database.
+# The policy of extending DataRegionGroups for each Database.
 # These policies are currently supported:
-# 1. CUSTOM(Each Database will allocate data_region_group_per_database DataRegionGroups as soon as created)
-# 2. AUTO(Each Database will automatically extend DataRegionGroups based on the data it has)
+# 1. CUSTOM: For known workloads that need manual resource allocation; creates the configured target
+#    number of DataRegionGroups per Database when data partitions are first allocated.
+# 2. AUTO: For most routine workloads (roughly 80% as an approximate planning guideline); gradually
+#    meets the configured minimum and expands with slot occupancy up to the resource-based maximum,
+#    balancing parallelism and RegionGroup management overhead.
+# 3. PROACTIVE: Complements AUTO where it does not expand eagerly enough, such as very few devices with
+#    many measurements and a high load; creates groups earlier for more parallelism at the cost of
+#    additional RegionGroup management overhead.
+# AUTO and PROACTIVE use the same per-Database maximum calculation, including resource sharing across
+# Databases. PROACTIVE expands more eagerly within this limit; both have the same group count once
+# they reach the same maximum.
+# PROACTIVE targets one DataRegionGroup per distinct data series slot, not per measurement,
+# and grows toward the configured minimum incrementally like AUTO, without exceeding the maximum.
+# New time partitions in an existing slot can also trigger this incremental growth toward the minimum.
+# If all DataRegionGroups are disabled, PROACTIVE may add one group above this target,
+# without exceeding the maximum, to allow partition allocation to continue.
+# PROACTIVE balances active slots in its allocation policy table so new time partitions can use new groups.
+# Existing time-partition assignments are retained.
+# Switching policies does not remove existing RegionGroups.
 # effectiveMode: hot_reload
 # Datatype: String
-data_region_group_extension_policy=AUTO
+data_region_group_extension_policy=PROACTIVE
 
 # When set data_region_group_extension_policy=CUSTOM,
 # this parameter is the default number of DataRegionGroups for each Database.
-# When set data_region_group_extension_policy=AUTO,
-# this parameter is the default minimal number of DataRegionGroups for each Database.
+# When set data_region_group_extension_policy=AUTO or PROACTIVE,
+# this parameter is the default minimum number of DataRegionGroups and a lower bound for the per-Database maximum.
+# Both policies grow toward this minimum incrementally, adding at most the number of pending series slots
+# to satisfy the minimum. PROACTIVE also grows with the number of active series slots.
 # effectiveMode: hot_reload
 # Datatype: Integer
 default_data_region_group_num_per_database=2
 
-# Only take effect when set data_region_group_extension_policy=AUTO.
-# This parameter is the maximum number of DataRegions expected to be managed by each DataNode.
-# Set to 0 means that each node automatically has the number of CPU cores / 2 regions
-# Notice: Since each Database requires at least two DataRegionGroups to manage its data,
-# this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
+# Only takes effect when data_region_group_extension_policy=AUTO or PROACTIVE.
+# The expected number of DataRegions per DataNode, used to calculate the same per-Database maximum
+# for AUTO and PROACTIVE. Set to 0 to use half the CPU core count as the expected number for each DataNode.
+# This is not a hard limit on node or cluster totals: per-Database minimums, rounding, and existing
+# groups can raise the total above this resource estimate.
 # effectiveMode: hot_reload
 # Datatype: Integer
 data_region_per_data_node=0
@@ -1171,6 +1206,13 @@ may_cache_nonexist_series=true
 # The parameter form is a:b:c:d:e:f:g:h:i, where a, b, c, d, e, f, g, h and i are integers. for example: 1:1:1:1:1:1:1:1:1 , 1:100:200:50:200:200:200:50:250
 # The legacy eight-part form is still accepted and defaults Subscription to 20% of query memory.
 # When subscription is disabled, its memory proportion is 0.
+# The ninth (Subscription) share controls consensus subscription materialization, independently of
+# subscription_cache_memory_usage_percentage. Each active queue protects half of its equal share;
+# the remaining idle capacity can be borrowed by another queue, but not revoked until ACK. Size
+# the budget for the largest materialized WAL entry * active queue count * at least 1.2; use a
+# larger multiplier for multiple buffered entries per queue. An entry exceeding the maximum a
+# queue can hold under these protected shares reports SUBSCRIPTION_OVERSIZED_ENTRY and does not
+# advance WAL progress. New queues may wait for existing borrowed allocations to drain via ACK.
 # effectiveMode: restart
 chunk_timeseriesmeta_free_memory_proportion=1:100:200:50:200:200:200:50:250
 
@@ -1193,6 +1235,13 @@ mpp_data_exchange_max_pool_size=10
 # effectiveMode: restart
 # Datatype: int
 mpp_data_exchange_keep_alive_time_in_ms=1000
+
+# The maximum payload size of one MPP data exchange RPC response.
+# <=0 use default value
+# The effective value is between 131072(128KB) and dn_thrift_max_frame_size minus 1024 bytes reserved for the RPC response envelope.
+# effectiveMode: hot_reload
+# Datatype: int, Unit: byte
+mpp_data_exchange_max_payload_size_in_bytes=4194304
 
 # The max execution time of a DriverTask
 # effectiveMode: restart
@@ -1745,6 +1794,12 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
+# Maximum size of one WAL entry
+# If it is non-positive, follow wal_buffer_size_in_byte.
+# effectiveMode: restart
+# Datatype: int
+wal_entry_size_limit_in_byte=-1
+
 # Whether to cache the sorted WAL file list in each WAL node.
 # Enabling this avoids scanning and sorting the WAL directory whenever the file list is accessed,
 # including when a consensus request reader updates its files to search.
@@ -2104,6 +2159,28 @@ pipe_all_sinks_rate_limit_bytes_per_second=-1
 ####################
 ### Subscription Consensus Configuration
 ####################
+
+# Maximum fraction of pipe non-floating memory used to cache serialized subscription poll responses.
+# Recommended starting value: 0.2, including large-field and large-batch workloads. This does not control
+# consensus subscription tablet materialization; size that budget using the ninth
+# chunk_timeseriesmeta_free_memory_proportion share instead. The cache may receive less than this
+# maximum under pipe memory pressure.
+# effectiveMode: restart
+# Datatype: double, range: [0, 1]
+subscription_cache_memory_usage_percentage=0.2
+
+# Maximum number of consensus-subscription prefetch workers. For large-field workloads, compare
+# 2 and 4 workers under load, checking CPU, heap and ACK latency; queues share the worker pool.
+# effectiveMode: restart
+# Datatype: int
+subscription_consensus_prefetch_executor_max_thread_num=2
+
+# Maximum materialized consensus-subscription batch size. This is a batching target, not a hard
+# limit on one WAL entry/tablet. For large-field workloads, choose a value at least as large as a
+# typical single tablet if batching is desired, and provide enough materialization memory per queue.
+# effectiveMode: restart
+# Datatype: long, Unit: byte
+subscription_consensus_batch_max_size_in_bytes=8388608
 
 # The interval at which an idle consensus-subscription queue advances its writer safe-time barrier by watermark.
 # effectiveMode: restart

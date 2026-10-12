@@ -144,6 +144,10 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     return tableDeviceNumber.getOrDefault(tableName, 0L);
   }
 
+  public Map<String, Long> getTable2DevicesNumMap() {
+    return tableDeviceNumber;
+  }
+
   @Override
   public int getSchemaRegionNumber() {
     return SchemaEngine.getInstance().getSchemaRegionNumber();

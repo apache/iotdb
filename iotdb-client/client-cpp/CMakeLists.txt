@@ -217,6 +217,7 @@ include(GNUInstallDirs)
 set(IOTDB_PUBLIC_HEADERS
         Export.h
         SessionConfig.h
+        SslConfig.h
         Session.h
         Common.h
         Optional.h
@@ -284,6 +285,17 @@ set(IOTDB_SESSION_CI_BUILD_ID "$ENV{GITHUB_RUN_ID}")
 if(NOT IOTDB_SESSION_CI_BUILD_ID)
     set(IOTDB_SESSION_CI_BUILD_ID "local")
 endif()
+if(WITH_SSL)
+    set(IOTDB_SESSION_OPENSSL_VERSION "${OPENSSL_VERSION}")
+    if(IOTDB_OPENSSL_FROM_SOURCE)
+        set(IOTDB_SESSION_OPENSSL_PROVIDER "pinned-source")
+    else()
+        set(IOTDB_SESSION_OPENSSL_PROVIDER "system")
+    endif()
+else()
+    set(IOTDB_SESSION_OPENSSL_VERSION "disabled")
+    set(IOTDB_SESSION_OPENSSL_PROVIDER "disabled")
+endif()
 file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
         "${IOTDB_SESSION_VERSION}\n")
 file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
@@ -296,6 +308,8 @@ file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "cmake.generator=${CMAKE_GENERATOR}\n"
         "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
         "with.ssl=${WITH_SSL}\n"
+        "openssl.version=${IOTDB_SESSION_OPENSSL_VERSION}\n"
+        "openssl.provider=${IOTDB_SESSION_OPENSSL_PROVIDER}\n"
         "iotdb.offline=${IOTDB_OFFLINE}\n"
         "iotdb.use.cxx11.abi=${IOTDB_USE_CXX11_ABI}\n"
         "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")

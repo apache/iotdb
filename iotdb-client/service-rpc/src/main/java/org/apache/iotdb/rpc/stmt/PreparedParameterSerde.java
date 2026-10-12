@@ -21,10 +21,13 @@ package org.apache.iotdb.rpc.stmt;
 
 import org.apache.iotdb.rpc.i18n.RpcMessages;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -145,27 +148,25 @@ public class PreparedParameterSerde {
   }
 
   private static Object deserializeValue(ByteBuffer buffer, TSDataType type) {
-    switch (type) {
-      case UNKNOWN:
-        return null;
-      case BOOLEAN:
-        return ReadWriteIOUtils.readBool(buffer);
-      case INT32:
-        return ReadWriteIOUtils.readInt(buffer);
-      case INT64:
-        return ReadWriteIOUtils.readLong(buffer);
-      case FLOAT:
-        return ReadWriteIOUtils.readFloat(buffer);
-      case DOUBLE:
-        return ReadWriteIOUtils.readDouble(buffer);
-      case TEXT:
-      case STRING:
-        return ReadWriteIOUtils.readString(buffer);
-      case BLOB:
-        return ReadWriteIOUtils.readBinary(buffer).getValues();
-      default:
-        throw new IllegalArgumentException(RpcMessages.UNSUPPORTED_TYPE + type);
+    if (type == TSDataType.UNKNOWN) {
+      return null;
     }
+    if (!type.isNumeric()
+        && type != TSDataType.BOOLEAN
+        && type != TSDataType.TEXT
+        && type != TSDataType.STRING
+        && type != TSDataType.BLOB) {
+      throw new IllegalArgumentException(RpcMessages.UNSUPPORTED_TYPE + type);
+    }
+
+    TsPrimitiveType value = Type.fromTsDataType(type).deserialize(buffer);
+    if (type == TSDataType.BLOB) {
+      return value.getBinary().getValues();
+    }
+    if (type == TSDataType.TEXT || type == TSDataType.STRING) {
+      return value.getBinary().getStringValue(TSFileConfig.STRING_CHARSET);
+    }
+    return value.getValue();
   }
 
   /** Convert byte array to hexadecimal string representation. */

@@ -628,11 +628,50 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public int getThriftMaxFrameSize() {
+    return IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+  }
+
+  @Override
   public TLoadResp sendTsFilePieceNode(final TTsFilePieceReq req) {
-    LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
+    if (!req.isSetSliceIndex() || req.sliceIndex == 0) {
+      LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
+    }
 
     final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+    final boolean isSliced =
+        req.isSetSliceIndex() || req.isSetSliceCount() || req.isSetOriginBodySize();
+    if (isSliced) {
+      if (!req.isSetSliceIndex() || !req.isSetSliceCount() || !req.isSetOriginBodySize()) {
+        final List<String> missingFields = new ArrayList<>(3);
+        if (!req.isSetSliceIndex()) {
+          missingFields.add("sliceIndex");
+        }
+        if (!req.isSetSliceCount()) {
+          missingFields.add("sliceCount");
+        }
+        if (!req.isSetOriginBodySize()) {
+          missingFields.add("originBodySize");
+        }
+        return createTLoadResp(
+            RpcUtils.getStatus(
+                TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR,
+                String.format(
+                    DataNodeMiscMessages.MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA,
+                    String.join(", ", missingFields))));
+      }
+      return createTLoadResp(
+          StorageEngine.getInstance()
+              .writeLoadTsFileNodeSlice(
+                  (DataRegionId) groupId,
+                  req.body,
+                  req.uuid,
+                  req.sliceIndex,
+                  req.sliceCount,
+                  req.originBodySize));
+    }
+
     final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(
@@ -2396,12 +2435,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(commonConfig.getNodeStatus().getStatus());
-    // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
-    // treat
-    // it as safely fenced when unreachable (older DataNodes that omit this are handled strictly).
-    if (commonConfig.getStatusReason() != null) {
-      resp.setStatusReason(commonConfig.getStatusReason());
+    // Read status and reason under the same monitor used by their setters.
+    synchronized (commonConfig) {
+      resp.setStatus(commonConfig.getNodeStatus().getStatus());
+      final String statusReason = commonConfig.getStatusReason();
+      if (statusReason != null) {
+        resp.setStatusReason(statusReason);
+      }
     }
     MetadataLeaseFencedException schemaUsageCollectionException = null;
     if (req.getSchemaRegionIds() != null) {
@@ -2581,12 +2621,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
-        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
-        commonConfig.setNodeStatus(NodeStatus.Running);
-        commonConfig.setStatusReason(null);
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+      } else {
+        synchronized (commonConfig) {
+          // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
+          if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+              && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
+            commonConfig.setNodeStatus(NodeStatus.Running);
+          }
+        }
       }
     }
   }
@@ -2761,7 +2804,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      commonConfig.setNodeStatus(NodeStatus.parse(status));
+      NodeStatus nodeStatus = NodeStatus.parse(status);
+      if (nodeStatus == NodeStatus.ReadOnly) {
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+      } else {
+        commonConfig.setNodeStatus(nodeStatus);
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
@@ -3750,31 +3798,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
             new ThreadPoolExecutor.CallerRunsPolicy());
 
-    for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
-      CompletableFuture<Void> regionFuture =
-          CompletableFuture.runAsync(
-              () -> {
-                TsFileManager tsFileManager = dataRegion.getTsFileManager();
-                String databaseName = dataRegion.getDatabaseName();
-                if (ignoreDatabase.contains(databaseName)) {
-                  return;
-                }
+    try {
+      for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
+        CompletableFuture<Void> regionFuture =
+            CompletableFuture.runAsync(
+                () -> {
+                  TsFileManager tsFileManager = dataRegion.getTsFileManager();
+                  String databaseName = dataRegion.getDatabaseName();
+                  if (ignoreDatabase.contains(databaseName)) {
+                    return;
+                  }
 
-                Set<Long> timePartitionIds = tsFileManager.getTimePartitions();
-                if (timePartitionIds.isEmpty()) {
-                  return;
-                }
-                final long earliestTimeSlotId = Collections.min(timePartitionIds);
-                earliestTimeslots.compute(
-                    databaseName,
-                    (k, v) -> v == null ? earliestTimeSlotId : Math.min(earliestTimeSlotId, v));
-              },
-              findEarliestTimeSlotExecutor);
-      futures.add(regionFuture);
+                  Set<Long> timePartitionIds = tsFileManager.getTimePartitions();
+                  if (timePartitionIds.isEmpty()) {
+                    return;
+                  }
+                  final long earliestTimeSlotId = Collections.min(timePartitionIds);
+                  earliestTimeslots.compute(
+                      databaseName,
+                      (k, v) -> v == null ? earliestTimeSlotId : Math.min(earliestTimeSlotId, v));
+                },
+                findEarliestTimeSlotExecutor);
+        futures.add(regionFuture);
+      }
+
+      // Wait for all tasks to complete
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    } finally {
+      findEarliestTimeSlotExecutor.shutdown();
     }
-
-    // Wait for all tasks to complete
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     LOGGER.info(DataNodeMiscMessages.PROCESS_DATA_DIR_COMPLETED);
   }
 

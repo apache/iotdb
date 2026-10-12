@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.sun.jna.Memory;
@@ -30,28 +31,23 @@ import com.sun.jna.WString;
 import com.sun.jna.platform.win32.COM.IUnknown;
 import com.sun.jna.platform.win32.COM.Unknown;
 import com.sun.jna.platform.win32.Guid;
-import com.sun.jna.platform.win32.OaIdl;
 import com.sun.jna.platform.win32.Ole32;
 import com.sun.jna.platform.win32.OleAuto;
 import com.sun.jna.platform.win32.Variant;
 import com.sun.jna.platform.win32.WTypes;
-import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.sql.Date;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -309,69 +305,18 @@ public class OpcDaServerHandle implements Closeable {
   }
 
   private short convertTsDataType2VariantType(final TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return Variant.VT_BOOL;
-      case INT32:
-        return Variant.VT_I4;
-      case INT64:
-        return Variant.VT_I8;
-      case DATE:
-      case TIMESTAMP:
-        return Variant.VT_DATE;
-      case FLOAT:
-        return Variant.VT_R4;
-      case DOUBLE:
-        return Variant.VT_R8;
-      case TEXT:
-      case STRING:
-      // Note that "Variant" does not support "VT_BLOB" data, and not all the DA server
-      // support this, thus we use "VT_BSTR" to substitute
-      case BLOB:
-      case OBJECT:
-        return Variant.VT_BSTR;
-      default:
-        throw new UnSupportedDataTypeException(
-            DataNodePipeMessages.UNSUPPORTED_DATATYPE + dataType);
-    }
+    return TypeServices.Pipe.OPC_DA_VARIANT_TYPE_SERVICE.call(Type.fromTsDataType(dataType));
   }
 
   private Variant.VARIANT getTabletObjectValue4Opc(
       final Object column, final int rowIndex, final TSDataType type) {
     final Variant.VARIANT value = new Variant.VARIANT();
-    switch (type) {
-      case BOOLEAN:
-        value.setValue(Variant.VT_BOOL, new OaIdl.VARIANT_BOOL(((boolean[]) column)[rowIndex]));
-        break;
-      case INT32:
-        value.setValue(Variant.VT_I4, new WinDef.LONG(((int[]) column)[rowIndex]));
-        break;
-      case DATE:
-        value.setValue(
-            Variant.VT_DATE, new OaIdl.DATE((Date.valueOf(((LocalDate[]) column)[rowIndex]))));
-        break;
-      case INT64:
-        value.setValue(Variant.VT_I8, new WinDef.LONGLONG(((long[]) column)[rowIndex]));
-        break;
-      case TIMESTAMP:
-        value.setValue(
-            Variant.VT_DATE, new OaIdl.DATE(new java.util.Date(((long[]) column)[rowIndex])));
-        break;
-      case FLOAT:
-        value.setValue(Variant.VT_R4, ((float[]) column)[rowIndex]);
-        break;
-      case DOUBLE:
-        value.setValue(Variant.VT_R8, ((double[]) column)[rowIndex]);
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        bstr = OleAuto.INSTANCE.SysAllocString(((Binary[]) column)[rowIndex].toString());
-        value.setValue(Variant.VT_BSTR, bstr);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(DataNodePipeMessages.UNSUPPORTED_DATATYPE + type);
+    final WTypes.BSTR allocatedBstr =
+        TypeServices.Pipe.OPC_DA_TABLET_VALUE_SETTER_SERVICE
+            .call(Type.fromTsDataType(type))
+            .set(value, column, rowIndex);
+    if (Objects.nonNull(allocatedBstr)) {
+      bstr = allocatedBstr;
     }
     return value;
   }

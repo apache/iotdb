@@ -229,6 +229,10 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
     super(configNodes, property, clientManager);
   }
 
+  public TEndPoint getConfigNode() {
+    return configNode;
+  }
+
   @Override
   protected final String getNodeTypeName() {
     return NODE_TYPE_NAME;
@@ -281,6 +285,7 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
           for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
             newConfigNodes.add(configNodeLocation.getInternalEndPoint());
           }
+          ConfigNodeInfo.getInstance().updateConfigNodeLocations(resp.getConfigNodeList());
           configNodes = newConfigNodes;
         }
       } catch (TException e) {

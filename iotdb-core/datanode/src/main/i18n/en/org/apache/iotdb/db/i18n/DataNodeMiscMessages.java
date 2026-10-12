@@ -21,6 +21,11 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "The requested query does not belong to the current session.";
+
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
+      "Missing Load TsFile slice metadata: %s";
 
     public static final String INVALID_PIPE_NAME =
       "Invalid pipeName";
@@ -603,7 +608,12 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "The input double value is Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "The BOOLEAN should be true/TRUE, false/FALSE or 0/1";
-  public static final String UNSUPPORTED_DATA_TYPE_FMT = "Unsupported data type:%s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3 =
+      "data type is not consistent, input %s, registered %s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858 =
+      "data type is not consistent, input %s, registered %s because %s";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "Unsupported data type:%s";
   public static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
       "AggregateFunction Name must not be null";
@@ -1071,8 +1081,7 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
       "DataNode exits. Jvm memory usage: {}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current "
-          + "DataNode as Running for a few seconds.";
+      "Failed to confirm the DataNode shutdown report with the ConfigNode leader.";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
       "Something wrong happened while calling consensus layer's triggerSnapshot API.";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =
@@ -1488,6 +1497,15 @@ public final class DataNodeMiscMessages {
   public static final String
       LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
           "table_query_device_entry_batch_size_in_bytes (%d) exceeds the maximum RPC payload (dn_thrift_max_frame_size %d minus 1024 bytes); using %d as the effective value";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2 =
+          "mpp_data_exchange_max_payload_size_in_bytes (%d) is not positive, using default value %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC =
+          "mpp_data_exchange_max_payload_size_in_bytes (%d) exceeds the maximum allowed value %d, using %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
+          "mpp_data_exchange_max_payload_size_in_bytes (%d) is below the minimum allowed value %d, using %d";
 
   public static final String EXCEPTION_INVALID_PREPARED_NUMERIC_ROW_METADATA_OR_PAYLOAD_AECCCEAA = "Invalid prepared numeric row metadata or payload.";
   public static final String EXCEPTION_PREPARED_NUMERIC_ROW_REQUEST_IS_NULL_5A9F9BA9 = "Prepared numeric row request is null.";

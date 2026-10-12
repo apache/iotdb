@@ -45,11 +45,22 @@ set(_test_targets
         session_c_relational_tests
         session_utils_tests)
 
+if(WITH_SSL)
+    list(APPEND _test_targets rpc_ssl_iotdb_tests)
+endif()
+
 add_executable(session_tests              main.cpp              cpp/sessionIT.cpp)
 add_executable(session_relational_tests   main_Relational.cpp   cpp/sessionRelationalIT.cpp)
 add_executable(session_c_tests            main_c.cpp            cpp/sessionCIT.cpp)
 add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRelationalIT.cpp)
 add_executable(session_utils_tests        main_utils.cpp        cpp/sessionUtilsTest.cpp)
+if(WITH_SSL)
+    add_executable(rpc_ssl_iotdb_tests main_rpc_ssl.cpp cpp/RpcSslIotdbE2eTest.cpp)
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/fixtures" _iotdb_test_fixtures_dir)
+    target_compile_definitions(rpc_ssl_iotdb_tests PRIVATE
+            CATCH_CONFIG_NO_POSIX_SIGNALS=1
+            IOTDB_TEST_FIXTURES_DIR="${_iotdb_test_fixtures_dir}")
+endif()
 
 foreach(_t IN LISTS _test_targets)
     target_include_directories(${_t} PRIVATE
@@ -89,10 +100,23 @@ if(MSVC)
     add_test(NAME sessionCIT             CONFIGURATIONS Release COMMAND session_c_tests)
     add_test(NAME sessionCRelationalIT   CONFIGURATIONS Release COMMAND session_c_relational_tests)
     add_test(NAME sessionUtilsTest       CONFIGURATIONS Release COMMAND session_utils_tests)
+    if(WITH_SSL)
+        add_test(NAME rpcTlsIotdbTest CONFIGURATIONS Release COMMAND rpc_ssl_iotdb_tests "[tls]")
+        add_test(NAME rpcMutualTlsIotdbTest CONFIGURATIONS Release
+                COMMAND rpc_ssl_iotdb_tests "[tls],[mtls]")
+    endif()
     foreach(_t IN LISTS _test_targets)
         add_custom_command(TARGET ${_t} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         $<TARGET_FILE:iotdb_session> $<TARGET_FILE_DIR:${_t}>)
+        if(WITH_SSL)
+            _iotdb_collect_openssl_windows_dlls(_iotdb_ssl_runtime_dlls)
+            foreach(_ssl_dll IN LISTS _iotdb_ssl_runtime_dlls)
+                add_custom_command(TARGET ${_t} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                "${_ssl_dll}" $<TARGET_FILE_DIR:${_t}>)
+            endforeach()
+        endif()
     endforeach()
 else()
     add_test(NAME sessionIT              COMMAND session_tests)
@@ -100,10 +124,20 @@ else()
     add_test(NAME sessionCIT             COMMAND session_c_tests)
     add_test(NAME sessionCRelationalIT   COMMAND session_c_relational_tests)
     add_test(NAME sessionUtilsTest       COMMAND session_utils_tests)
+    if(WITH_SSL)
+        add_test(NAME rpcTlsIotdbTest COMMAND rpc_ssl_iotdb_tests "[tls]")
+        add_test(NAME rpcMutualTlsIotdbTest COMMAND rpc_ssl_iotdb_tests "[tls],[mtls]")
+    endif()
 endif()
 
 # Run sequentially: parallel ctest overloads the single local IoTDB instance.
 # sessionUtilsTest is a pure unit test and can run anytime.
 set_tests_properties(
         sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT
-        PROPERTIES RUN_SERIAL TRUE)
+        PROPERTIES LABELS "plain" RUN_SERIAL TRUE)
+set_tests_properties(sessionUtilsTest PROPERTIES LABELS "plain")
+if(WITH_SSL)
+    set_tests_properties(rpcTlsIotdbTest PROPERTIES LABELS "tls-only" RUN_SERIAL TRUE)
+    set_tests_properties(rpcMutualTlsIotdbTest PROPERTIES
+            LABELS "mutual-auth" RUN_SERIAL TRUE ENVIRONMENT "IOTDB_CPP_SSL_MUTUAL_AUTH=1")
+endif()

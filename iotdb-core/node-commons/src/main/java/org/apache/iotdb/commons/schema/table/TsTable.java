@@ -65,6 +65,8 @@ public class TsTable {
   public static final String TIME_COLUMN_NAME = "time";
   public static final String COMMENT_KEY = "__comment";
   public static final String TTL_PROPERTY = "ttl";
+  // No column property key is supported yet.
+  public static final Set<String> COLUMN_ALLOWED_PROPERTIES = Collections.emptySet();
   public static final String NEED_LAST_CACHE_PROPERTY = "need_last_cache";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES =
       Collections.unmodifiableSet(

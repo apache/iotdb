@@ -140,6 +140,60 @@ public class PipeMemoryManagerResizeTest {
   }
 
   @Test
+  public void testTryResizeRejectsImmediatelyWithoutChangingAccounting() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeTabletMemoryBlock retainedTablet =
+        manager.forceAllocateForTabletWithRetry(TABLET_MEMORY_SIZE_IN_BYTES);
+    final PipeTabletMemoryBlock pendingTablet = manager.forceAllocateForTabletWithRetry(0);
+
+    try {
+      Assert.assertFalse(manager.tryResize(pendingTablet, 1));
+      Assert.assertEquals(0, pendingTablet.getMemoryUsageInBytes());
+      Assert.assertEquals(TABLET_MEMORY_SIZE_IN_BYTES, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(TABLET_MEMORY_SIZE_IN_BYTES, manager.getUsedMemorySizeInBytesOfTablets());
+
+      manager.release(retainedTablet);
+      Assert.assertTrue(manager.tryResize(pendingTablet, 1));
+      Assert.assertEquals(1, pendingTablet.getMemoryUsageInBytes());
+      Assert.assertEquals(1, manager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      manager.release(retainedTablet);
+      manager.release(pendingTablet);
+    }
+
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testTryResizeRejectsNegativeTargetWithoutChangingAccounting() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry(10);
+
+    try {
+      Assert.assertFalse(manager.tryResize(tablet, -1));
+      Assert.assertEquals(10, tablet.getMemoryUsageInBytes());
+      Assert.assertEquals(10, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(10, manager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      manager.release(tablet);
+    }
+
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
   public void testFloatingAndNonFloatingMemoryShareTheSamePool() {
     final AtomicLong floatingMemoryUsageInBytes = new AtomicLong(0);
     final PipeMemoryManager manager =

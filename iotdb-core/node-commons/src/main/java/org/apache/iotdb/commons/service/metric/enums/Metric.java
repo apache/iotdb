@@ -116,6 +116,9 @@ public enum Metric {
   LEADER_QUANTITY("leader_quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
+  // The per-table metrics have an extra table tag, so they cannot share the names above
+  SCHEMA_REGION_TABLE("schema_region_table"),
+  SCHEMA_ENGINE_TABLE("schema_engine_table"),
   // query engine related
   QUERY_PLAN_COST("query_plan_cost"),
   OPERATOR_EXECUTION_COST("operator_execution_cost"),
@@ -213,6 +216,8 @@ public enum Metric {
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   SUBSCRIPTION_CONSENSUS_LAG("subscription_consensus_lag"),
   SUBSCRIPTION_CONSENSUS_WAL_GAP("subscription_consensus_wal_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP("subscription_consensus_wal_file_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES("subscription_consensus_wal_file_gap_entries"),
   SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE("subscription_consensus_routing_epoch_change"),
   SUBSCRIPTION_CONSENSUS_WATERMARK("subscription_consensus_watermark"),
   SUBSCRIPTION_CONSENSUS_SEEK_GENERATION("subscription_consensus_seek_generation"),
@@ -229,6 +234,14 @@ public enum Metric {
   SUBSCRIPTION_CONSENSUS_LAST_POLL_TIME("subscription_consensus_last_poll_time"),
   SUBSCRIPTION_CONSENSUS_LAST_PROGRESS_TIME("subscription_consensus_last_progress_time"),
   SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS("subscription_consensus_progress_status"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_USED("subscription_consensus_memory_used"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA("subscription_consensus_memory_quota"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM("subscription_consensus_memory_maximum"),
+  SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS("subscription_consensus_admission_rejections"),
+  SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON(
+      "subscription_consensus_admission_rejections_by_reason"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS("subscription_consensus_memory_rejections"),
+  SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS("subscription_consensus_oversized_rejections"),
   // load related
   ACTIVE_LOADING_FILES_NUMBER("active_loading_files_number"),
   ACTIVE_LOADING_FILES_SIZE("active_loading_files_size"),

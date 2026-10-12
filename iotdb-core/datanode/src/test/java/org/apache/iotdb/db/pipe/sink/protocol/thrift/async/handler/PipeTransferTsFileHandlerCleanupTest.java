@@ -33,7 +33,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -48,6 +51,23 @@ public class PipeTransferTsFileHandlerCleanupTest {
 
     createHandler(file, event).close();
 
+    Assert.assertFalse(file.exists());
+  }
+
+  @Test
+  public void testCloseDeletesBatchFileWhenReaderCloseFails() throws Exception {
+    final File file = Files.createTempFile("pipe-transfer-close-failure", ".tsfile").toFile();
+    final EnrichedEvent event = Mockito.mock(EnrichedEvent.class);
+    final PipeTransferTsFileHandler handler = createHandler(file, event);
+    final RandomAccessFile reader = Mockito.mock(RandomAccessFile.class);
+    Mockito.doThrow(new IOException("close failed")).when(reader).close();
+    final Field readerField = PipeTransferTsFileHandler.class.getDeclaredField("reader");
+    readerField.setAccessible(true);
+    readerField.set(handler, reader);
+
+    handler.close();
+
+    Mockito.verify(reader, Mockito.atLeastOnce()).close();
     Assert.assertFalse(file.exists());
   }
 
@@ -73,6 +93,47 @@ public class PipeTransferTsFileHandlerCleanupTest {
       if (file.exists()) {
         Assert.assertTrue(file.delete());
       }
+    }
+  }
+
+  @Test
+  public void testModFileDisappearingBeforeOpenDowngradesToTsFileOnly() throws Exception {
+    final File tsFile = Files.createTempFile("pipe-transfer-source", ".tsfile").toFile();
+    final File modFile =
+        new DisappearingFile(
+            Files.createTempDirectory("pipe-transfer-missing-mod")
+                .resolve("source.tsfile.mods2")
+                .toString());
+    final PipeTsFileInsertionEvent event = Mockito.mock(PipeTsFileInsertionEvent.class);
+    final PipeTransferTsFileHandler handler =
+        new PipeTransferTsFileHandler(
+            Mockito.mock(IoTDBDataRegionAsyncSink.class),
+            Collections.emptyMap(),
+            Collections.singletonList(event),
+            new AtomicInteger(1),
+            new AtomicBoolean(false),
+            tsFile,
+            modFile,
+            true,
+            null);
+
+    try {
+      final Method openNextFile = PipeTransferTsFileHandler.class.getDeclaredMethod("openNextFile");
+      openNextFile.setAccessible(true);
+      Assert.assertTrue((Boolean) openNextFile.invoke(handler));
+
+      final Field currentFile = PipeTransferTsFileHandler.class.getDeclaredField("currentFile");
+      currentFile.setAccessible(true);
+      Assert.assertSame(tsFile, currentFile.get(handler));
+
+      final Field effectiveTransferMod =
+          PipeTransferTsFileHandler.class.getDeclaredField("effectiveTransferMod");
+      effectiveTransferMod.setAccessible(true);
+      Assert.assertFalse(effectiveTransferMod.getBoolean(handler));
+    } finally {
+      handler.close();
+      Assert.assertTrue(tsFile.delete());
+      Assert.assertTrue(modFile.getParentFile().delete());
     }
   }
 
@@ -111,7 +172,9 @@ public class PipeTransferTsFileHandlerCleanupTest {
       final ArgumentCaptor<Exception> exceptionCaptor = ArgumentCaptor.forClass(Exception.class);
       Mockito.verify(sink)
           .addFailureEventsToRetryQueue(
-              Mockito.eq(Collections.singletonList(event)), exceptionCaptor.capture());
+              Mockito.eq(Collections.singletonList(event)),
+              exceptionCaptor.capture(),
+              Mockito.eq(handler));
       Assert.assertEquals("receiver disk is full", exceptionCaptor.getValue().getMessage());
     } finally {
       if (file.exists()) {
@@ -138,5 +201,19 @@ public class PipeTransferTsFileHandlerCleanupTest {
         null,
         false,
         null);
+  }
+
+  private static final class DisappearingFile extends File {
+
+    private final AtomicInteger existenceCheckCount = new AtomicInteger();
+
+    private DisappearingFile(final String pathname) {
+      super(pathname);
+    }
+
+    @Override
+    public boolean exists() {
+      return existenceCheckCount.incrementAndGet() <= 2;
+    }
   }
 }

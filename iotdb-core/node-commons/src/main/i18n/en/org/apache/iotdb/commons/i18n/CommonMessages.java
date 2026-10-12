@@ -315,6 +315,9 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 =
           "disk_space_warning_threshold must be in [0, 1), but was ";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66 =
+          "subscription_cache_memory_usage_percentage must be in [0, 1], but was %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION =
       "the value of wpass should be in (0, 1)";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "No columns could be calculated.";
@@ -335,4 +338,7 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";
+  public static final String
+      EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
+          "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
 }
