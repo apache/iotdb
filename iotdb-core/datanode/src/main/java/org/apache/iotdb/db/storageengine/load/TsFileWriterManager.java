@@ -170,8 +170,17 @@ final class TsFileWriterManager {
       }
     }
 
+    // One fsync per staged file of the piece, not per chunk, and the progress records follow it:
+    // a record must never be on disk while the bytes it describes are still in a buffer.
     flush();
+    flushRecordedChunks();
     return createPieceRefs(taskDir, previousLengths);
+  }
+
+  private void flushRecordedChunks() throws IOException {
+    for (final LoadTsFileProgress progress : dataPartition2Progress.values()) {
+      progress.flushQueuedRecords();
+    }
   }
 
   /** Writes a chunk into the target staged file or skips if the byte range was already recorded. */
@@ -257,7 +266,7 @@ final class TsFileWriterManager {
                 writeResult.actualChunkEndOffset() - payloadSize,
                 payloadSize));
 
-        progress.recordChunk(
+        progress.queueChunk(
             chunkData.getDevice(),
             chunkData.isAligned(),
             writeResult.actualChunkGroupHeaderOffset(),

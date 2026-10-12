@@ -83,6 +83,9 @@ public class LoadTsFileProgress {
   private final Set<Long> recordedChunkOffsets = new HashSet<>();
   private final Map<Long, Long> chunkOffset2SearchIndex = new HashMap<>();
 
+  /** Records built by {@link #queueChunk} and not yet appended by {@link #flushQueuedRecords}. */
+  private final List<PendingChunkRecord> queuedChunkRecords = new ArrayList<>();
+
   private boolean recordsLoaded;
   private long maxPhysicalEnd = -1L;
   private long lastRecordedSearchIndex = -1L;
@@ -148,7 +151,12 @@ public class LoadTsFileProgress {
         searchIndex);
   }
 
-  public void recordChunk(
+  /**
+   * Builds the record of a chunk whose bytes are already written and queues it for {@link
+   * #flushQueuedRecords()}. Nothing is appended here: the caller stages the whole piece and forces
+   * its bytes first, so a record never reaches the file before the bytes it describes.
+   */
+  public void queueChunk(
       final IDeviceID device,
       final boolean aligned,
       final long chunkGroupHeaderOffset,
@@ -180,17 +188,57 @@ public class LoadTsFileProgress {
             actualPhysicalStart,
             dataEnd);
 
-    // Append to file first to ensure durability before updating in-memory state
-    try (final DataOutputStream output =
-        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(progressFile, true)))) {
-      writeChunkEntry(record, searchIndex, output);
-    }
-
+    queuedChunkRecords.add(new PendingChunkRecord(record, searchIndex));
+    // The in-memory state follows the queue, so hasChunkAt() also sees the chunks being staged;
+    // only the file is written later, see flushQueuedRecords().
     records.add(record);
     recordedChunkOffsets.add(chunkOffset);
     chunkOffset2SearchIndex.put(chunkOffset, searchIndex);
     maxPhysicalEnd = Math.max(maxPhysicalEnd, record.physicalEnd());
     lastRecordedSearchIndex = Math.max(lastRecordedSearchIndex, searchIndex);
+  }
+
+  /** Appends the queued records in one append, once the caller has forced the staged bytes. */
+  public void flushQueuedRecords() throws IOException {
+    if (queuedChunkRecords.isEmpty()) {
+      return;
+    }
+    ensureActivated();
+    int written = 0;
+    try (final DataOutputStream output =
+        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(progressFile, true)))) {
+      for (final PendingChunkRecord pending : queuedChunkRecords) {
+        writeChunkEntry(pending.record(), pending.searchIndex(), output);
+        written++;
+      }
+    } finally {
+      queuedChunkRecords.subList(0, written).clear();
+    }
+  }
+
+  /** Queues and appends the record of one chunk: for callers that do not stage a whole piece. */
+  public void recordChunk(
+      final IDeviceID device,
+      final boolean aligned,
+      final long chunkGroupHeaderOffset,
+      final long chunkOffset,
+      final boolean firstChunkOfGroup,
+      final Chunk chunk,
+      final long dataEnd,
+      final long actualPhysicalStart,
+      final long searchIndex)
+      throws IOException {
+    queueChunk(
+        device,
+        aligned,
+        chunkGroupHeaderOffset,
+        chunkOffset,
+        firstChunkOfGroup,
+        chunk,
+        dataEnd,
+        actualPhysicalStart,
+        searchIndex);
+    flushQueuedRecords();
   }
 
   public void recordTerminal(final LoadTsFileConsensusOp op, final long searchIndex)
@@ -213,10 +261,22 @@ public class LoadTsFileProgress {
   // -------------------------------------------------------------------------
 
   public boolean hasChunkAt(final long chunkOffset) throws IOException {
-    if (!recordsLoaded) {
-      readAllRecords();
-    }
+    ensureRecordsLoaded();
     return recordedChunkOffsets.contains(chunkOffset);
+  }
+
+  /**
+   * Seeds the in-memory state from the progress file, once. The flag is set before reading: a file
+   * that does not exist yet (the first piece of a task) has nothing to seed, and reading it again
+   * later would rebuild the state from the file alone and drop the records queued by {@link
+   * #queueChunk}.
+   */
+  private void ensureRecordsLoaded() throws IOException {
+    if (recordsLoaded) {
+      return;
+    }
+    recordsLoaded = true;
+    readAllRecords();
   }
 
   public long getTotalLength() {
@@ -358,6 +418,13 @@ public class LoadTsFileProgress {
     for (final ChunkRangeRecord record : loadedRecords) {
       recordedChunkOffsets.add(record.chunkOffset());
       maxPhysicalEnd = Math.max(maxPhysicalEnd, record.physicalEnd());
+    }
+    // The records queued for the piece being staged are not in the file yet: the state is what is
+    // staged, so they are kept.
+    for (final PendingChunkRecord pending : queuedChunkRecords) {
+      records.add(pending.record());
+      recordedChunkOffsets.add(pending.record().chunkOffset());
+      maxPhysicalEnd = Math.max(maxPhysicalEnd, pending.record().physicalEnd());
     }
     recordsLoaded = true;
     return loadedRecords;
@@ -724,6 +791,9 @@ public class LoadTsFileProgress {
   }
 
   public record TerminalRecord(LoadTsFileConsensusOp op, long searchIndex) {}
+
+  /** One chunk record waiting to be appended, with the search index it is stamped with. */
+  private record PendingChunkRecord(ChunkRangeRecord record, long searchIndex) {}
 
   /** Stream decorator tracking total read byte count without loading file into memory. */
   private static final class CountingInputStream extends FilterInputStream {

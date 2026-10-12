@@ -61,7 +61,8 @@ import static org.apache.tsfile.file.metadata.MetadataIndexConstructor.splitDevi
 
 /**
  * High-performance low-level chunk writer that writes precalculated physical chunks directly by
- * absolute offset, allowing sparse out-of-order writes and forcing durability per chunk.
+ * absolute offset, allowing sparse out-of-order writes. Durability is left to the caller, which
+ * syncs once per staged piece.
  */
 public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
@@ -135,13 +136,10 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
   }
 
   // -------------------------------------------------------------------------
-  // Chunk Writing, Hole Expansion & Per-Chunk Disk Sync
+  // Chunk Writing & Hole Expansion
   // -------------------------------------------------------------------------
 
-  /**
-   * Writes a chunk and its optional group header at predetermined absolute offsets, immediately
-   * flushing written bytes to the underlying storage medium.
-   */
+  /** Writes a chunk and its optional group header at predetermined absolute offsets. */
   public ChunkWriteResult writeChunk(
       final IDeviceID device,
       final boolean isAligned,
@@ -165,8 +163,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
     final long actualChunkEndOffset = out.getPosition();
     updateMaxPhysicalFileSize(actualChunkEndOffset);
 
-    // Force data contents onto the physical storage medium immediately per chunk
-    out.force();
+    // No fsync per chunk: the caller syncs once per staged piece, before it records what it staged.
 
     final ChunkMetadata metadata =
         new ChunkMetadata(
