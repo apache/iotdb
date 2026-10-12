@@ -20,7 +20,6 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.isession.ITableSession;
-import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -53,11 +52,6 @@ public class TableSession implements ITableSession {
   @Override
   public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
     session.insertRelationalTablet(tablet);
-  }
-
-  @Override
-  public void insert(NumericRow row) throws StatementExecutionException, IoTDBConnectionException {
-    session.insertRelationalRecord(row);
   }
 
   @Override

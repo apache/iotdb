@@ -22,18 +22,13 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.ITableSession;
-import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
-import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -46,7 +41,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -138,104 +132,6 @@ public class SessionTest {
             .version(Version.V_0_13)
             .timeOut(500l)
             .build();
-  }
-
-  @Test
-  public void testNumericTableRowRequest() throws Exception {
-    // A BOOLEAN/DOUBLE row must carry the table RPC flags and explicit FIELD categories.
-    ITableSession tableSession = new TableSession((Session) session);
-    List<String> names = Arrays.asList("enabled", "temperature");
-    List<TSDataType> types = Arrays.asList(TSDataType.BOOLEAN, TSDataType.DOUBLE);
-    tableSession.insert(
-        new NumericRow(
-            "readings",
-            123L,
-            names,
-            types,
-            Collections.nCopies(types.size(), ColumnCategory.FIELD),
-            new long[] {1L, Double.doubleToRawLongBits(-0.0)},
-            new String[0]));
-    ArgumentCaptor<TSInsertRecordReq> captor = ArgumentCaptor.forClass(TSInsertRecordReq.class);
-    Mockito.verify(sessionConnection).insertRecord(captor.capture());
-    TSInsertRecordReq request = captor.getValue();
-    Assert.assertTrue(request.isIsNumericRow());
-    Assert.assertTrue(request.isIsWriteToTable());
-    Assert.assertTrue(request.isIsAligned());
-    assertEquals("readings", request.getPrefixPath());
-    assertEquals(123L, request.getTimestamp());
-    assertEquals(names, request.getMeasurements());
-    assertEquals(
-        Collections.nCopies(2, (byte) ColumnCategory.FIELD.ordinal()),
-        request.getColumnCategoryies());
-  }
-
-  @Test
-  public void testNumericTableRowRejectsNonFieldColumnsBeforeRpc() throws Exception {
-    // Numeric TAG values are invalid and must fail locally without sending a request.
-    ITableSession tableSession = new TableSession((Session) session);
-    Assert.assertThrows(
-        IllegalArgumentException.class, () -> tableSession.insert((NumericRow) null));
-    Assert.assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            tableSession.insert(
-                new NumericRow(
-                    "readings",
-                    1L,
-                    Collections.singletonList("tag"),
-                    Collections.singletonList(TSDataType.INT64),
-                    Collections.singletonList(ColumnCategory.TAG),
-                    new long[] {1},
-                    new String[0])));
-    Mockito.verify(sessionConnection, Mockito.never()).insertRecord(any(TSInsertRecordReq.class));
-  }
-
-  @Test
-  public void testNumericTableRowWithTagsRequest() throws Exception {
-    // The NumericRow entry point must forward the TAG payload and metadata with numeric flags.
-    ITableSession tableSession = new TableSession((Session) session);
-    List<String> names = Arrays.asList("enabled", "tag", "value", "region");
-    List<TSDataType> types =
-        Arrays.asList(TSDataType.BOOLEAN, TSDataType.STRING, TSDataType.DOUBLE, TSDataType.STRING);
-    List<ColumnCategory> categories =
-        Arrays.asList(
-            ColumnCategory.FIELD, ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.TAG);
-    List<String> rpcNames = Arrays.asList("tag", "region", "enabled", "value");
-    List<TSDataType> rpcTypes =
-        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.BOOLEAN, TSDataType.DOUBLE);
-    List<ColumnCategory> rpcCategories =
-        Arrays.asList(
-            ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
-    tableSession.insert(
-        new NumericRow(
-            "readings",
-            123L,
-            names,
-            types,
-            categories,
-            new long[] {1, Double.doubleToRawLongBits(2.5)},
-            new String[] {"device", "cn"}));
-    ArgumentCaptor<TSInsertRecordReq> captor = ArgumentCaptor.forClass(TSInsertRecordReq.class);
-    Mockito.verify(sessionConnection).insertRecord(captor.capture());
-    TSInsertRecordReq request = captor.getValue();
-    Assert.assertTrue(request.isIsNumericRow());
-    Assert.assertTrue(request.isIsWriteToTable());
-    assertEquals(
-        Arrays.asList(
-            (byte) ColumnCategory.TAG.ordinal(),
-            (byte) ColumnCategory.TAG.ordinal(),
-            (byte) ColumnCategory.FIELD.ordinal(),
-            (byte) ColumnCategory.FIELD.ordinal()),
-        request.getColumnCategoryies());
-    assertEquals(rpcNames, request.getMeasurements());
-    assertEquals(
-        SessionUtils.getValueBuffer(
-            rpcTypes,
-            new long[] {1, Double.doubleToRawLongBits(2.5)},
-            rpcNames,
-            rpcCategories,
-            new String[] {"device", "cn"}),
-        request.bufferForValues());
   }
 
   @Test

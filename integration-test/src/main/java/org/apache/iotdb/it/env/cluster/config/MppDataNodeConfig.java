@@ -57,6 +57,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate) {
+    properties.setProperty("prometheus_reporter_async_update", String.valueOf(asyncUpdate));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
     properties.setProperty("metric_prometheus_reporter_username", username);
     return this;

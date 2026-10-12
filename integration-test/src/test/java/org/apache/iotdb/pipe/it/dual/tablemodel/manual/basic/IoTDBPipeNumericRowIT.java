@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.ITableSession;
-import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
@@ -127,7 +126,7 @@ public class IoTDBPipeNumericRowIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testRealtimeWithoutBatch() throws Exception {
-    // Unflushed NumericRow and prepared rows must arrive through individual InsertNode requests.
+    // Unflushed prepared rows must arrive through individual InsertNode requests.
     testRealtime(false);
   }
 
@@ -381,12 +380,7 @@ public class IoTDBPipeNumericRowIT extends AbstractPipeTableModelDualManualIT {
         if (row % 3 == 0) {
           nulls.mark(row % 7);
         }
-        if (row % 2 == 0) {
-          session.executePreparedInsertNumericRow(prepared, row, values, tags, nulls);
-        } else {
-          session.insert(
-              new NumericRow("readings", row, NAMES, TYPES, CATEGORIES, values, tags, nulls));
-        }
+        session.executePreparedInsertNumericRow(prepared, row, values, tags, nulls);
       }
     }
   }

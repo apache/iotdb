@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -42,9 +43,64 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class PreparedNumericRowBufferTest {
+  @Test
+  public void testAllNumericTypesPreserveRawBits() throws Exception {
+    Session session = mock(Session.class);
+    SessionConnection connection = mock(SessionConnection.class);
+    when(session.getDefaultSessionConnection()).thenReturn(connection);
+    when(connection.prepareNumericRow(any())).thenReturn(1L);
+    TableSession tableSession = new TableSession(session);
+    NumericRowPreparedStatement prepared =
+        tableSession.prepareInsertNumericRow(
+            "t",
+            List.of("b", "i", "l", "f", "d", "date", "ts"),
+            List.of(
+                TSDataType.BOOLEAN,
+                TSDataType.INT32,
+                TSDataType.INT64,
+                TSDataType.FLOAT,
+                TSDataType.DOUBLE,
+                TSDataType.DATE,
+                TSDataType.TIMESTAMP),
+            Collections.nCopies(7, ColumnCategory.FIELD));
+    doAnswer(
+            invocation -> {
+              ByteBuffer values = invocation.getArgument(2);
+              assertEquals(37, values.remaining());
+              assertEquals(1, values.get());
+              assertEquals(Integer.MIN_VALUE, values.getInt());
+              assertEquals(Long.MIN_VALUE, values.getLong());
+              assertEquals(0x7fc01234, values.getInt());
+              assertEquals(0x7ff8000000001234L, values.getLong());
+              assertEquals(20260910, values.getInt());
+              assertEquals(Long.MAX_VALUE, values.getLong());
+              assertFalse(values.hasRemaining());
+              return null;
+            })
+        .when(connection)
+        .executePreparedNumericRow(eq(1L), anyLong(), any(ByteBuffer.class), any(ByteBuffer.class));
+    // High bits of 32-bit fields are ignored; noncanonical NaNs must survive without normalization.
+    tableSession.executePreparedInsertNumericRow(
+        prepared,
+        42,
+        new long[] {
+          -1,
+          0x1234567880000000L,
+          Long.MIN_VALUE,
+          0x123456787fc01234L,
+          0x7ff8000000001234L,
+          0x1234567800000000L | 20260910,
+          Long.MAX_VALUE
+        },
+        new String[0]);
+    verify(connection)
+        .executePreparedNumericRow(eq(1L), eq(42L), any(ByteBuffer.class), any(ByteBuffer.class));
+  }
+
   // Reusing the statement after sparse/all-null rows must reset both payload and bitmap cursors.
   @Test
   public void testNullBitmapBufferReuse() throws Exception {

@@ -20,7 +20,6 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -112,28 +111,6 @@ public class PreparedNumericRowPoolTest {
     }
     wrapper.close();
     verify(pool, times(2)).putBack(session);
-  }
-
-  @Test
-  public void testClosedWrapperCannotInsertNumericRow() throws Exception {
-    wrapper.close();
-
-    IoTDBConnectionException error =
-        assertThrows(
-            IoTDBConnectionException.class,
-            () ->
-                wrapper.insert(
-                    new NumericRow(
-                        "t",
-                        1L,
-                        List.of("tag", "v"),
-                        List.of(TSDataType.STRING, TSDataType.INT64),
-                        List.of(ColumnCategory.TAG, ColumnCategory.FIELD),
-                        new long[] {42L},
-                        new String[] {"a"})));
-
-    assertEquals(SessionMessages.EXCEPTION_TABLE_SESSION_IS_CLOSED_77FE359B, error.getMessage());
-    verifyZeroInteractions(client);
   }
 
   @Test

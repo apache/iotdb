@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
-import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -42,9 +41,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -115,68 +112,6 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
 
   public int getValueCount() {
     return numericValues == null ? 0 : numericValues.size();
-  }
-
-  /** RPC cells carry typed primitive FIELD bits or a length-prefixed STRING TAG. */
-  public void fillValues(ByteBuffer buffer) throws QueryProcessException {
-    fillValues(buffer, null);
-  }
-
-  public void fillValues(ByteBuffer buffer, ByteBuffer nullBitmap) throws QueryProcessException {
-    dataTypes = new TSDataType[measurements.length];
-    for (int i = 0; i < dataTypes.length; i++) {
-      byte type = buffer.get();
-      if (type < 0 || type >= TSDataType.values().length) {
-        throw new QueryProcessException(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + type);
-      }
-      dataTypes[i] = TSDataType.values()[type];
-      if (columnCategories[i] == TsTableColumnCategory.TAG && dataTypes[i] != TSDataType.STRING) {
-        throw new IllegalArgumentException(
-            DataNodeQueryMessages
-                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
-      }
-      if (columnCategories[i] == TsTableColumnCategory.FIELD
-          && !NumericRowValues.supports(dataTypes[i])) {
-        if (dataTypes[i] == TSDataType.STRING) {
-          throw new IllegalArgumentException(
-              DataNodeQueryMessages
-                  .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
-        }
-        throw new UnSupportedDataTypeException(
-            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + dataTypes[i]);
-      }
-    }
-    int tagCount = countTagColumns(columnCategories);
-    NumericRowValues.validateNullBitmap(nullBitmap, measurements.length - tagCount);
-    numericValues = new NumericRowValues(tagCount, measurements.length - tagCount);
-    ColumnCategory[] categories = new ColumnCategory[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      categories[i] =
-          columnCategories[i] == TsTableColumnCategory.TAG
-              ? ColumnCategory.TAG
-              : ColumnCategory.FIELD;
-    }
-    numericValues.setColumnCategories(categories);
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (columnCategories[i] == TsTableColumnCategory.TAG) {
-        numericValues.read(i, dataTypes[i], buffer);
-      }
-    }
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (columnCategories[i] == TsTableColumnCategory.FIELD) {
-        if (NumericRowValues.isNullField(nullBitmap, i - tagCount)) {
-          numericValues.setNull(i);
-        } else {
-          numericValues.read(i, dataTypes[i], buffer);
-        }
-      }
-    }
-    if (buffer.hasRemaining()) {
-      throw new IllegalArgumentException(
-          String.format(
-              DataNodeQueryMessages.EXCEPTION_NUMERIC_ROW_PAYLOAD_HAS_ARG_TRAILING_BYTES_89E46A34,
-              buffer.remaining()));
-    }
   }
 
   @Override

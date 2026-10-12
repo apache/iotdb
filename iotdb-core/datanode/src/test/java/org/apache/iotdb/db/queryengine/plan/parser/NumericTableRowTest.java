@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReqV2;
+import org.apache.iotdb.db.protocol.session.PreparedNumericRowInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -53,8 +54,7 @@ import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletCon
 import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
@@ -62,7 +62,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
@@ -81,10 +80,9 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-/** Exercises one numeric row from the client codec through schema edits, WAL and memtable. */
+/** Exercises one numeric row from prepared binding through schema edits, WAL and memtable. */
 public class NumericTableRowTest {
   private static final List<String> NAMES = Arrays.asList("b", "i", "l", "f", "d", "date", "ts");
   private static final List<TSDataType> TYPES =
@@ -100,30 +98,32 @@ public class NumericTableRowTest {
     1, Integer.MIN_VALUE, Long.MIN_VALUE, 0x7fc01234, 0x7ff8000000001234L, 20260910, Long.MAX_VALUE
   };
 
-  private TSInsertRecordReq request() throws Exception {
-    return new TSInsertRecordReq()
-        .setPrefixPath("numeric_table")
-        .setTimestamp(42)
-        .setMeasurements(NAMES)
-        .setValues(
-            SessionUtils.getValueBuffer(
-                TYPES,
-                BITS,
-                NAMES,
-                Collections.nCopies(NAMES.size(), ColumnCategory.FIELD),
-                new String[0]))
-        .setIsAligned(true)
-        .setIsWriteToTable(true)
-        .setIsNumericRow(true)
-        .setColumnCategoryies(
-            Collections.nCopies(NAMES.size(), (byte) ColumnCategory.FIELD.ordinal()));
+  private InsertNumericRowStatement preparedRow() {
+    TSPrepareNumericRowReq req =
+        new TSPrepareNumericRowReq()
+            .setTableName("numeric_table")
+            .setMeasurements(NAMES)
+            .setDataTypes(TYPES.stream().map(TSDataType::ordinal).toList())
+            .setColumnCategories(
+                Collections.nCopies(NAMES.size(), (byte) ColumnCategory.FIELD.ordinal()));
+    ByteBuffer values = ByteBuffer.allocate(37);
+    values
+        .put((byte) BITS[0])
+        .putInt((int) BITS[1])
+        .putLong(BITS[2])
+        .putInt((int) BITS[3])
+        .putLong(BITS[4])
+        .putInt((int) BITS[5])
+        .putLong(BITS[6])
+        .flip();
+    return new PreparedNumericRowInfo("numeric_test", req)
+        .bind(42, ByteBuffer.allocate(0), values, null);
   }
 
   @Test
-  public void testRpcDecodeAndSchemaChangesRetainPrimitiveStorage() throws Exception {
+  public void testPreparedBindAndSchemaChangesRetainPrimitiveStorage() throws Exception {
     // Missing TAG insertion, column swaps and partial failure recovery must retain long[] values.
-    InsertNumericRowStatement statement =
-        (InsertNumericRowStatement) StatementGenerator.createStatement(request());
+    InsertNumericRowStatement statement = preparedRow();
     assertArrayEquals(BITS, statement.getNumericValues().getValues());
     assertObjectStorageAbsent(InsertNumericRowStatement.class, statement);
     assertTrue(statement.isWriteToTable());
@@ -150,18 +150,6 @@ public class NumericTableRowTest {
   }
 
   @Test
-  public void testRpcRejectsNumericTreeAndNonStringTagRequests() throws Exception {
-    // Raw RPC callers must use STRING TAGs and numeric FIELDs in the table model.
-    TSInsertRecordReq tree = request().setIsWriteToTable(false);
-    assertThrows(IllegalArgumentException.class, () -> StatementGenerator.createStatement(tree));
-    TSInsertRecordReq tag =
-        request()
-            .setColumnCategoryies(
-                Collections.nCopies(NAMES.size(), (byte) ColumnCategory.TAG.ordinal()));
-    assertThrows(IllegalArgumentException.class, () -> StatementGenerator.createStatement(tag));
-  }
-
-  @Test
   public void testStringTagsSurviveSchemaChanges() throws Exception {
     // The client places TAG metadata before FIELD metadata while retaining dense value arrays.
     List<String> names = Arrays.asList("tag2", "tag1", "b", "l");
@@ -170,24 +158,20 @@ public class NumericTableRowTest {
     List<ColumnCategory> categories =
         Arrays.asList(
             ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
-    TSInsertRecordReq req =
-        request()
+    TSPrepareNumericRowReq req =
+        new TSPrepareNumericRowReq()
+            .setTableName("numeric_table")
             .setMeasurements(names)
-            .setValues(
-                SessionUtils.getValueBuffer(
-                    types,
-                    new long[] {1, Long.MIN_VALUE},
-                    names,
-                    categories,
-                    new String[] {"设备😀", ""}))
-            .setColumnCategoryies(
-                Arrays.asList(
-                    (byte) ColumnCategory.TAG.ordinal(),
-                    (byte) ColumnCategory.TAG.ordinal(),
-                    (byte) ColumnCategory.FIELD.ordinal(),
-                    (byte) ColumnCategory.FIELD.ordinal()));
+            .setDataTypes(types.stream().map(TSDataType::ordinal).toList())
+            .setColumnCategories(categories.stream().map(c -> (byte) c.ordinal()).toList());
+    ByteBuffer tags = ByteBuffer.allocate(64);
+    ReadWriteIOUtils.write("设备😀", tags);
+    ReadWriteIOUtils.write("", tags);
+    tags.flip();
+    ByteBuffer values = ByteBuffer.allocate(9);
+    values.put((byte) 1).putLong(Long.MIN_VALUE).flip();
     InsertNumericRowStatement statement =
-        (InsertNumericRowStatement) StatementGenerator.createStatement(req);
+        new PreparedNumericRowInfo("numeric_test", req).bind(42, tags, values, null);
     assertEquals("设备😀", statement.getNumericValues().getTag(0));
     assertEquals("", statement.getNumericValues().getTag(1));
     assertArrayEquals(new long[] {1, Long.MIN_VALUE}, statement.getValues());
@@ -241,8 +225,7 @@ public class NumericTableRowTest {
   @Test
   public void testBulkTagExpansionKeepsValuesAndNulls() throws Exception {
     // A reversed schema mapping with two missing TAGs must preserve numeric bits and null slots.
-    InsertNumericRowStatement statement =
-        (InsertNumericRowStatement) StatementGenerator.createStatement(request());
+    InsertNumericRowStatement statement = preparedRow();
     statement.rebuildArraysAfterExpansion(
         new int[] {-1, -1, 6, 5, 4, 3, 2, 1, 0},
         new String[] {"tag1", "tag2", "ts", "date", "d", "f", "l", "i", "b"});
@@ -384,8 +367,7 @@ public class NumericTableRowTest {
 
   @Test
   public void testNumericRowRedirectUsesSingleEndpoint() throws Exception {
-    InsertNumericRowStatement statement =
-        (InsertNumericRowStatement) StatementGenerator.createStatement(request());
+    InsertNumericRowStatement statement = preparedRow();
     Analysis analysis = new Analysis(new InsertNumericRow(statement, null), Collections.emptyMap());
     TEndPoint local = new TEndPoint("127.0.0.1", 6667);
     TEndPoint leader = new TEndPoint("127.0.0.1", 6668);
@@ -490,35 +472,6 @@ public class NumericTableRowTest {
   }
 
   @Test
-  public void testRpcRejectsNonNumericTypes() throws Exception {
-    // Raw RPC callers cannot smuggle unsupported values into numeric FIELD storage.
-    for (TSDataType type :
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.BLOB,
-            TSDataType.OBJECT,
-            TSDataType.VECTOR,
-            TSDataType.UNKNOWN)) {
-      TSInsertRecordReq invalid =
-          request().setValues(ByteBuffer.wrap(new byte[] {type.serialize()}));
-      assertThrows(
-          UnSupportedDataTypeException.class, () -> StatementGenerator.createStatement(invalid));
-    }
-    // STRING has a valid wire representation for TAGs, but must still be rejected as a FIELD.
-    ByteBuffer stringValue = ByteBuffer.allocate(32);
-    ReadWriteIOUtils.write(TSDataType.STRING, stringValue);
-    ReadWriteIOUtils.write("invalid", stringValue);
-    stringValue.flip();
-    TSInsertRecordReq stringField =
-        request()
-            .setMeasurements(Collections.singletonList("s"))
-            .setColumnCategoryies(Collections.singletonList((byte) ColumnCategory.FIELD.ordinal()))
-            .setValues(stringValue);
-    assertThrows(
-        IllegalArgumentException.class, () -> StatementGenerator.createStatement(stringField));
-  }
-
-  @Test
   public void testTabletAdaptersDoNotMaterializeObjectRows() throws Exception {
     // Pipe and subscription must preserve values and null TAGs without boxing the entire row.
     RelationalInsertNumericRowNode node = Mockito.spy(nodeWithNullTag());
@@ -548,8 +501,7 @@ public class NumericTableRowTest {
   }
 
   private RelationalInsertNumericRowNode nodeWithNullTag() throws Exception {
-    InsertNumericRowStatement statement =
-        (InsertNumericRowStatement) StatementGenerator.createStatement(request());
+    InsertNumericRowStatement statement = preparedRow();
     statement.insertColumn(
         0,
         new ColumnSchema(

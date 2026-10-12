@@ -30,14 +30,12 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
-import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertNumericRow;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -289,25 +287,6 @@ public class PreparedNumericRowInfoTest {
     InsertNumericRowStatement prepared = info.bind(1, tagBuffer(1), values, bitmap);
     assertEquals(1, bitmap.position());
     assertEquals(0, values.position());
-    ByteBuffer payload = ByteBuffer.allocate(10 + 5 + values.remaining());
-    payload.put(TSDataType.STRING.serialize());
-    for (int i = 0; i < 9; i++) {
-      payload.put(TSDataType.DOUBLE.serialize());
-    }
-    payload.put(tagBuffer(1)).put(values.duplicate()).flip();
-    TSInsertRecordReq insertReq = new TSInsertRecordReq();
-    insertReq
-        .setPrefixPath("t")
-        .setTimestamp(1)
-        .setMeasurements(req.getMeasurements())
-        .setColumnCategoryies(req.getColumnCategories())
-        .setIsNumericRow(true)
-        .setIsWriteToTable(true)
-        .setValues(payload)
-        .setNullBitmap(bitmap);
-    InsertNumericRowStatement direct =
-        (InsertNumericRowStatement) StatementGenerator.createStatement(insertReq);
-    assertEquals(prepared.getNumericValues(), direct.getNumericValues());
     assertTrue(prepared.getNumericValues().isNull(1));
     assertTrue(prepared.getNumericValues().isNull(8));
     assertTrue(prepared.getNumericValues().isNull(9));
@@ -317,22 +296,39 @@ public class PreparedNumericRowInfoTest {
       assertThrows(
           IllegalArgumentException.class,
           () -> info.bind(1, tagBuffer(1), values, ByteBuffer.wrap(bad)));
-      insertReq.setValues(payload.duplicate().rewind()).setNullBitmap(bad);
-      assertThrows(
-          IllegalArgumentException.class, () -> StatementGenerator.createStatement(insertReq));
     }
     assertThrows(
         SemanticException.class,
         () -> info.bind(1, tagBuffer(1), ByteBuffer.allocate(9 * 8), bitmap));
     ByteBuffer allNulls = ByteBuffer.wrap(new byte[] {(byte) 255, 1});
-    insertReq.setValues(payload.duplicate().rewind()).setNullBitmap(allNulls);
-    assertThrows(
-        IllegalArgumentException.class, () -> StatementGenerator.createStatement(insertReq));
     InsertNumericRowStatement allNull =
         info.bind(1, tagBuffer(1), ByteBuffer.allocate(0), allNulls);
     for (int i = 1; i <= 9; i++) {
       assertTrue(allNull.getNumericValues().isNull(i));
     }
+  }
+
+  @Test
+  public void testUnsupportedColumnTypesRejectedDuringPrepare() {
+    for (TSDataType type :
+        new TSDataType[] {
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB,
+          TSDataType.OBJECT,
+          TSDataType.VECTOR,
+          TSDataType.UNKNOWN
+        }) {
+      TSPrepareNumericRowReq req = request("v");
+      req.getDataTypes().set(0, type.ordinal());
+      assertThrows(SemanticException.class, () -> new PreparedNumericRowInfo(DATABASE, req));
+    }
+    TSPrepareNumericRowReq req = request("tag", "v");
+    req.getDataTypes().set(0, TSDataType.INT64.ordinal());
+    assertThrows(SemanticException.class, () -> new PreparedNumericRowInfo(DATABASE, req));
+    req.getDataTypes().set(0, TSDataType.STRING.ordinal());
+    req.getColumnCategories().set(0, (byte) ColumnCategory.ATTRIBUTE.ordinal());
+    assertThrows(SemanticException.class, () -> new PreparedNumericRowInfo(DATABASE, req));
   }
 
   private static void install(TsTable table) {

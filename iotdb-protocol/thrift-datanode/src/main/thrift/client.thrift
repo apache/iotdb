@@ -248,11 +248,6 @@ struct TSInsertRecordReq {
   6: optional bool isAligned
   7: optional bool isWriteToTable
   8: optional list<byte> columnCategoryies
-  // Numeric table rows retain primitive storage throughout the server write path.
-  9: optional bool isNumericRow
-  // Numeric FIELDs only, in FIELD occurrence order: bit i (LSB first) means null.
-  // Exactly ceil(FIELD count / 8) bytes, unused high bits zero; null FIELD payloads are omitted.
-  10: optional binary nullBitmap
 }
 
 struct TSInsertStringRecordReq {
@@ -738,6 +733,7 @@ struct TSExecutePreparedNumericRowReq {
   4: required binary values
   // Length-prefixed UTF-8 TAGs; length -1 represents a null TAG.
   5: required binary tagValues
-  // Same FIELD-only bitmap and omitted-null-payload encoding as TSInsertRecordReq.
+  // FIELD-only bitmap: bit i (LSB first) marks FIELD i as null; null values omit payload bytes.
+  // Exactly ceil(FIELD count / 8) bytes, with unused high bits zero; absent means no nulls.
   6: optional binary nullBitmap
 }

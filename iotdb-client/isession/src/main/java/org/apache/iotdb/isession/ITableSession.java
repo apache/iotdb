@@ -52,17 +52,12 @@ public interface ITableSession extends AutoCloseable {
   void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
 
   /**
-   * Inserts one table-model {@link NumericRow} with numeric FIELDs and optional STRING TAGs.
+   * Prepares repeated single-row writes with STRING TAGs and BOOLEAN, INT32, INT64, FLOAT, DOUBLE,
+   * DATE or TIMESTAMP FIELDs. ATTRIBUTE columns and other FIELD types are unsupported. Column
+   * names, types and categories must have matching lengths and order.
    *
-   * <p>This API requires a server supporting numeric row requests. The row's metadata and value
-   * arrays must not be modified until this call returns.
-   *
-   * @param row the numeric row to insert
-   * @throws StatementExecutionException if an error occurs while executing the statement
-   * @throws IoTDBConnectionException if there is an issue with the IoTDB connection
+   * <p>The returned statement belongs to this session and is not thread-safe. Close it after use.
    */
-  void insert(NumericRow row) throws StatementExecutionException, IoTDBConnectionException;
-
   NumericRowPreparedStatement prepareInsertNumericRow(
       String tableName,
       List<String> columnNames,
@@ -71,10 +66,18 @@ public interface ITableSession extends AutoCloseable {
       throws StatementExecutionException, IoTDBConnectionException;
 
   /**
-   * Executes a prepared row, following write redirection recommendations for subsequent rows.
-   * Destination handles are prepared lazily and released when the statement is closed. An execution
-   * error reported by the server closes the statement; prepare it again before reuse. Transport
-   * failures are propagated without replaying a write whose outcome is unknown.
+   * Executes one row using FIELD and TAG arrays in their respective occurrence order in the
+   * prepared column list. TAGs may be null or empty.
+   *
+   * <p>BOOLEAN uses zero for false and nonzero for true. INT32 and DATE use the low 32 bits (DATE
+   * is yyyyMMdd); INT64 and TIMESTAMP use the long value. FLOAT uses {@link
+   * Float#floatToRawIntBits(float)} in the low 32 bits and DOUBLE uses {@link
+   * Double#doubleToRawLongBits(double)}. Do not modify input arrays during execution.
+   *
+   * <p>Follows write redirection recommendations for subsequent rows. Destination handles are
+   * prepared lazily and released when the statement is closed. An execution error reported by the
+   * server closes the statement; prepare it again before reuse. Transport failures are propagated
+   * without replaying a write whose outcome is unknown.
    */
   void executePreparedInsertNumericRow(
       NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)

@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
@@ -67,7 +66,6 @@ import org.apache.iotdb.session.util.ThreadUtils;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
-import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -2870,89 +2868,6 @@ public class Session implements ISession {
       try {
         getDefaultSessionConnection().insertTablet(request);
       } catch (RedirectException ignored) {
-      }
-    }
-  }
-
-  /** Inserts numeric FIELDs and STRING TAGs without constructing a boxed row. */
-  public void insertRelationalRecord(NumericRow row)
-      throws IoTDBConnectionException, StatementExecutionException {
-    if (row == null || row.getTableName() == null) {
-      throw new IllegalArgumentException(
-          SessionMessages
-              .EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233);
-    }
-    String tableName = row.getTableName();
-    long timestamp = row.getTimestamp();
-    List<String> measurements = row.getColumnNames();
-    List<TSDataType> types = row.getDataTypes();
-    List<ColumnCategory> columnCategories = row.getColumnCategories();
-    long[] values = row.getValues();
-    String[] tagValues = row.getTagValues();
-    if (measurements == null
-        || types == null
-        || columnCategories == null
-        || values == null
-        || tagValues == null
-        || measurements.size() != types.size()
-        || measurements.size() != columnCategories.size()) {
-      throw new IllegalArgumentException(
-          SessionMessages
-              .EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233);
-    }
-    // Keep wire metadata aligned with the compact payload: TAG columns precede FIELD columns.
-    List<String> rpcMeasurements = new ArrayList<>(measurements.size());
-    List<TSDataType> rpcTypes = new ArrayList<>(types.size());
-    List<ColumnCategory> rpcColumnCategories = new ArrayList<>(columnCategories.size());
-    for (int pass = 0; pass < 2; pass++) {
-      ColumnCategory category = pass == 0 ? ColumnCategory.TAG : ColumnCategory.FIELD;
-      for (int i = 0; i < columnCategories.size(); i++) {
-        if (columnCategories.get(i) == category) {
-          rpcMeasurements.add(measurements.get(i));
-          rpcTypes.add(types.get(i));
-          rpcColumnCategories.add(category);
-        }
-      }
-    }
-    if (rpcMeasurements.size() != measurements.size()) {
-      throw new IllegalArgumentException(
-          SessionMessages
-              .EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA);
-    }
-    ByteBuffer valueBuffer =
-        SessionUtils.getValueBuffer(
-            rpcTypes, values, rpcMeasurements, rpcColumnCategories, tagValues, row.getNullBitmap());
-    TSInsertRecordReq request = new TSInsertRecordReq();
-    request.setPrefixPath(tableName);
-    request.setTimestamp(timestamp);
-    request.setMeasurements(rpcMeasurements);
-    request.setValues(valueBuffer);
-    request.setIsWriteToTable(true);
-    request.setIsNumericRow(true);
-    if (row.getNullBitmap() != null) {
-      request.setNullBitmap(SessionUtils.encodeNumericRowNullBitmap(row.getNullBitmap(), null));
-    }
-    request.setIsAligned(true);
-    request.setColumnCategoryies(
-        rpcColumnCategories.stream()
-            .map(category -> (byte) category.ordinal())
-            .collect(Collectors.toList()));
-    String[] deviceSegments = new String[tagValues.length + 1];
-    deviceSegments[0] = tableName;
-    System.arraycopy(tagValues, 0, deviceSegments, 1, tagValues.length);
-    IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceSegments);
-    try {
-      getSessionConnection(deviceId).insertRecord(request);
-    } catch (RedirectException e) {
-      handleRedirection(deviceId, e.getEndPoint());
-    } catch (IoTDBConnectionException e) {
-      if (!enableRedirection || tableModelDeviceIdToEndpoint.remove(deviceId) == null) {
-        throw e;
-      }
-      try {
-        getDefaultSessionConnection().insertRecord(request);
-      } catch (RedirectException redirect) {
-        handleRedirection(deviceId, redirect.getEndPoint());
       }
     }
   }
