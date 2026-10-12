@@ -125,7 +125,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>Interfaces and Implementation for initialization、recover and clear
+ *   <li>Interfaces and Implementation for initialization, recover and clear
  *   <li>Interfaces and Implementation for schema region Info query and operation
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces for auto create device
@@ -166,7 +166,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
 
-  // region Interfaces and Implementation of initialization、snapshot、recover and clear
+  // region Interfaces and Implementation of initialization, snapshot, recover and clear
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
@@ -766,11 +766,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    try {
-      return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
-    } catch (final Exception e) {
-      return Collections.emptyMap();
-    }
+    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
   @Override
