@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeBatchMetricsSettable;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -63,7 +64,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LEADER_CACHE_ENABLE_KEY;
 
-public class PipeTransferBatchReqBuilder implements AutoCloseable {
+public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetricsSettable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
 
@@ -212,19 +213,11 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
    */
   public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>>
       getAllNonEmptyAndShouldEmitBatchesAndDetach() {
-    final List<Pair<TEndPoint, PipeTabletEventBatch>> batches =
-        new ArrayList<>(endPointToBatch.size() + 1);
-    if (!defaultBatch.isEmpty() && defaultBatch.shouldEmit()) {
-      batches.add(new Pair<>(null, defaultBatch));
-    }
+    return detachBatches(getAllNonEmptyAndShouldEmitBatches());
+  }
 
-    for (final Map.Entry<TEndPoint, PipeTabletEventPlainBatch> entry : endPointToBatch.entrySet()) {
-      final PipeTabletEventPlainBatch batch = entry.getValue();
-      if (!batch.isEmpty() && batch.shouldEmit()) {
-        batches.add(new Pair<>(entry.getKey(), batch));
-      }
-    }
-
+  private List<Pair<TEndPoint, PipeTabletEventBatch>> detachBatches(
+      final List<Pair<TEndPoint, PipeTabletEventBatch>> batches) {
     // Construct all replacement batches before changing the builder mappings. If construction of
     // one replacement fails (for example while creating a TsFile batch directory), the old
     // batches remain owned by this builder and can still be retried or closed by the caller.
@@ -329,24 +322,28 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     this.eventSizeHistogram.update(eventSize);
   }
 
+  @Override
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
     if (tabletBatchSizeHistogram != null) {
       this.tabletBatchSizeHistogram = tabletBatchSizeHistogram;
     }
   }
 
+  @Override
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     if (tsFileBatchSizeHistogram != null) {
       this.tsFileBatchSizeHistogram = tsFileBatchSizeHistogram;
     }
   }
 
+  @Override
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
     if (tabletBatchTimeIntervalHistogram != null) {
       this.tabletBatchTimeIntervalHistogram = tabletBatchTimeIntervalHistogram;
     }
   }
 
+  @Override
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
     if (tsFileBatchTimeIntervalHistogram != null) {
       this.tsFileBatchTimeIntervalHistogram = tsFileBatchTimeIntervalHistogram;
@@ -354,6 +351,11 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   public void setEventSizeHistogram(Histogram eventSizeHistogram) {
+    setBatchEventSizeHistogram(eventSizeHistogram);
+  }
+
+  @Override
+  public void setBatchEventSizeHistogram(Histogram eventSizeHistogram) {
     if (eventSizeHistogram != null) {
       this.eventSizeHistogram = eventSizeHistogram;
     }

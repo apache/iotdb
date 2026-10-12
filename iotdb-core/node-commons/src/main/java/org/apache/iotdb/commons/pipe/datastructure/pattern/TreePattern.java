@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.pipe.config.PipeSourceTreePatternUtils;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -181,16 +182,25 @@ public abstract class TreePattern {
     List<TreePattern> exclusionPatterns =
         parseExclusionPatternList(sourceParameters, isTreeModelDataAllowedToBeCaptured);
 
-    // 3. Optimize the lists: remove redundant patterns (e.g., if "root.**" exists, "root.db" is
+    return buildPatternWithExclusion(
+        isTreeModelDataAllowedToBeCaptured, sourceParameters, inclusionPatterns, exclusionPatterns);
+  }
+
+  private static TreePattern buildPatternWithExclusion(
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final PipeParameters sourceParameters,
+      List<TreePattern> inclusionPatterns,
+      List<TreePattern> exclusionPatterns) {
+    // Optimize the lists: remove redundant patterns (e.g., if "root.**" exists, "root.db" is
     // redundant)
     inclusionPatterns = optimizePatterns(inclusionPatterns);
     exclusionPatterns = optimizePatterns(exclusionPatterns);
 
-    // 4. Prune inclusion patterns: if an inclusion pattern is fully covered by an exclusion
+    // Prune inclusion patterns: if an inclusion pattern is fully covered by an exclusion
     // pattern, remove it
     inclusionPatterns = pruneInclusionPatterns(inclusionPatterns, exclusionPatterns);
 
-    // 5. Check if the resulting inclusion pattern is empty
+    // Check if the resulting inclusion pattern is empty
     if (inclusionPatterns.isEmpty()) {
       final String msg =
           String.format(
@@ -213,11 +223,11 @@ public abstract class TreePattern {
       throw new PipeException(msg);
     }
 
-    // 6. Prune exclusion patterns: if an exclusion pattern does not overlap with
+    // Prune exclusion patterns: if an exclusion pattern does not overlap with
     // ANY of the remaining inclusion patterns, it is useless and should be removed.
     exclusionPatterns = pruneIrrelevantExclusions(inclusionPatterns, exclusionPatterns);
 
-    // 7. Build final patterns
+    // Build final patterns
     final TreePattern finalInclusionPattern =
         buildUnionPattern(isTreeModelDataAllowedToBeCaptured, inclusionPatterns);
 
@@ -228,7 +238,7 @@ public abstract class TreePattern {
     final TreePattern finalExclusionPattern =
         buildUnionPattern(isTreeModelDataAllowedToBeCaptured, exclusionPatterns);
 
-    // 8. Combine inclusion and exclusion
+    // Combine inclusion and exclusion
     if (finalInclusionPattern instanceof IoTDBTreePatternOperations
         && finalExclusionPattern instanceof IoTDBTreePatternOperations) {
       return new WithExclusionIoTDBTreePattern(
@@ -689,31 +699,9 @@ public abstract class TreePattern {
       return Collections.singletonList(patternSupplier.apply(pattern));
     }
 
-    final List<TreePattern> patterns = new ArrayList<>();
-    final StringBuilder currentPattern = new StringBuilder();
-    boolean inBackticks = false;
-
-    for (final char c : pattern.toCharArray()) {
-      if (c == '`') {
-        inBackticks = !inBackticks;
-        currentPattern.append(c);
-      } else if (c == ',' && !inBackticks) {
-        final String singlePattern = currentPattern.toString().trim();
-        if (!singlePattern.isEmpty()) {
-          patterns.add(patternSupplier.apply(singlePattern));
-        }
-        currentPattern.setLength(0);
-      } else {
-        currentPattern.append(c);
-      }
-    }
-
-    final String lastPattern = currentPattern.toString().trim();
-    if (!lastPattern.isEmpty()) {
-      patterns.add(patternSupplier.apply(lastPattern));
-    }
-
-    return patterns;
+    return PipeSourceTreePatternUtils.splitPatternList(pattern).stream()
+        .map(patternSupplier)
+        .collect(Collectors.toList());
   }
 
   /**
