@@ -2146,7 +2146,10 @@ public class ProcedureManager {
         && System.currentTimeMillis() - startTimeForCurrentProcedure < procedureWaitRetryTimeout) {
       sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
     }
-    if (!procedure.isFinished()) {
+    // Conflict checks can fail before a procedure is assigned a persistent id. In that case the
+    // procedure remains at NO_PROC_ID but already carries the user-facing failure.
+    if (!procedure.isFinished()
+        && !(procedure.getProcId() == Procedure.NO_PROC_ID && procedure.isFailed())) {
       // The procedure is still executing
       status =
           RpcUtils.getStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT, PROCEDURE_TIMEOUT_MESSAGE);
