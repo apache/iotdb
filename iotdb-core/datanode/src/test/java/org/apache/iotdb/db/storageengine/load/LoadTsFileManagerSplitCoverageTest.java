@@ -51,6 +51,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -493,6 +494,15 @@ public class LoadTsFileManagerSplitCoverageTest {
       final byte[] forwarded = toByteArray(node.serialize());
       final byte[] logged = toByteArray(node.serialize(false));
       assertTrue(forwarded.length > logged.length);
+      // The size a node calculates for itself must be the bytes of the logged form: its envelope,
+      // the search index, the body, the plan node id and the child count.
+      assertEquals(
+          node.serializedSize()
+              + ReadWriteIOUtils.sizeToWrite(node.getPlanNodeId().getId())
+              + Integer.BYTES
+              + DISPATCH_ENVELOPE_BYTES
+              - Short.BYTES,
+          logged.length);
       assertTrue(contains(forwarded, payload));
       assertFalse("the WAL must not store the staged payload twice", contains(logged, payload));
 

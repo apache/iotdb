@@ -97,7 +97,13 @@ public interface ChunkData extends TsFileData {
       long offset,
       long length,
       int chunkIndexInGroup,
-      boolean firstChunkOfGroup) {}
+      boolean firstChunkOfGroup) {
+
+    /** The bytes {@code writeChunkLayout} writes for a layout, the six fields and nothing else. */
+    static int serializedSize() {
+      return 4 * Long.BYTES + Integer.BYTES + Byte.BYTES;
+    }
+  }
 
   ChunkLayout getChunkLayout();
 
@@ -131,6 +137,23 @@ public interface ChunkData extends TsFileData {
   // -------------------------------------------------------------------------
   // Payload Ser/De Helpers
   // -------------------------------------------------------------------------
+
+  /** The bytes {@link #serializeChunkPayload} writes, calculated without serializing them. */
+  static int serializedChunkPayloadSize(
+      final ByteBuffer data, final ChunkPayloadRef ref, final boolean includeContent) {
+    if (!includeContent && ref != null) {
+      return Byte.BYTES + SerializedSizes.utf8Size(ref.getFilePath()) + Long.BYTES + Long.BYTES;
+    }
+    return Byte.BYTES + Integer.BYTES + (int) inlinePayloadSize(data, ref);
+  }
+
+  /** The payload in memory, or the bytes the reference points at when it comes from the file. */
+  private static long inlinePayloadSize(final ByteBuffer data, final ChunkPayloadRef ref) {
+    if (data != null && data.hasRemaining()) {
+      return data.remaining();
+    }
+    return ref == null ? 0L : ref.getSize();
+  }
 
   /** Serializes payload as an external {@link ChunkPayloadRef} reference or raw inline bytes. */
   static void serializeChunkPayload(

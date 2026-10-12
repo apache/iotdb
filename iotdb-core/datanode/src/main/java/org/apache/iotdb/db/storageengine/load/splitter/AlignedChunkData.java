@@ -509,6 +509,29 @@ public class AlignedChunkData implements ChunkData {
     this.chunkPayloadRefs = chunkPayloadRefs;
   }
 
+  @Override
+  public int serializedSize(final boolean includeContent) {
+    int size = Integer.BYTES + Byte.BYTES; // type ordinal, isAligned
+    size += Long.BYTES + Byte.BYTES + device.serializedSize() + Long.BYTES;
+    size += Byte.BYTES + Integer.BYTES; // needDecodeChunk, chunkHeaderList
+    for (final ChunkHeader header : chunkHeaderList) {
+      size += header.getSerializedSize();
+    }
+    if (needDecodeChunk) {
+      size += Integer.BYTES * pageNumbers.size();
+    }
+    size += Byte.BYTES + (chunkLayout == null ? 0 : ChunkLayout.serializedSize());
+    size += Integer.BYTES; // entireChunks
+    for (int i = 0; i < entireChunks.size(); i++) {
+      final Chunk chunk = entireChunks.get(i);
+      size += chunk.getHeader().getSerializedSize();
+      size += chunk.getChunkStatistic().getSerializedSize();
+      size +=
+          ChunkData.serializedChunkPayloadSize(chunk.getData(), payloadRefAt(i), includeContent);
+    }
+    return size;
+  }
+
   private void serializeAttr(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(timePartitionSlot.getStartTime(), stream);
     ReadWriteIOUtils.write(device instanceof StringArrayDeviceID, stream);

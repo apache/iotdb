@@ -44,6 +44,12 @@ public interface TsFileData {
    */
   void serialize(DataOutputStream stream, boolean includeContent) throws IOException;
 
+  /**
+   * The bytes {@link #serialize(DataOutputStream, boolean)} writes, calculated without serializing
+   * anything, so that a size can be asked for without allocating a buffer to measure.
+   */
+  int serializedSize(boolean includeContent);
+
   static TsFileData deserialize(InputStream stream)
       throws IOException, PageException, IllegalPathException {
     final int typeOrdinal = ReadWriteIOUtils.readInt(stream);

@@ -533,6 +533,39 @@ public class ChunkDataDirectWriteTest {
     };
   }
 
+  /** The calculated size has to be the number of bytes serialization actually writes. */
+  @Test
+  public void testTheCalculatedSizeIsWhatSerializationWrites() throws Exception {
+    assertCalculatedSize(createNonAlignedChunkData(DEFAULT_DEVICE, "s1"));
+    assertCalculatedSize(createPopulatedNonAlignedChunkData(DEFAULT_DEVICE, "s2", 0, 4));
+    assertCalculatedSize(createAlignedTimeChunkData(DEFAULT_DEVICE));
+
+    // A record whose payload already lives in the staged file writes a reference to it instead
+    final NonAlignedChunkData staged =
+        createPopulatedNonAlignedChunkData(DEFAULT_DEVICE, "s3", 0, 4);
+    assertCalculatedSize(staged);
+    staged.setChunkPayloadRefs(
+        Collections.singletonList(new ChunkPayloadRef("staged.tsfile", 0L, 64L)));
+    assertCalculatedSize(staged);
+
+    // A record the offset calculator has placed carries its layout as well
+    final NonAlignedChunkData placed =
+        createPopulatedNonAlignedChunkData(DEFAULT_DEVICE, "s4", 0, 4);
+    new ChunkOffsetCalculator().assign(placed);
+    assertCalculatedSize(placed);
+  }
+
+  private static void assertCalculatedSize(final TsFileData data) throws Exception {
+    for (final boolean includeContent : new boolean[] {false, true}) {
+      final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      data.serialize(new DataOutputStream(bytes), includeContent);
+      assertEquals(
+          "the calculated size of a " + data.getType() + " must be the bytes it writes",
+          bytes.size(),
+          data.serializedSize(includeContent));
+    }
+  }
+
   private static Object generateSamplePrimitive(final TSDataType type, final int seed) {
     return TsPrimitiveType.getByType(type, generateSampleValue(type, seed));
   }

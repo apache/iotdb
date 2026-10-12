@@ -49,6 +49,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
@@ -298,6 +300,18 @@ public class LoadTsFileManagerDeletionTest {
       }
     }
     return false;
+  }
+
+  /** The calculated size of a deletion record has to be the bytes serialization writes. */
+  @Test
+  public void testTheCalculatedSizeOfADeletionIsWhatSerializationWrites() throws Exception {
+    for (final TsFileData data : deletionPiece(1L, 2L)) {
+      for (final boolean includeContent : new boolean[] {false, true}) {
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        data.serialize(new DataOutputStream(bytes), includeContent);
+        Assert.assertEquals(bytes.size(), data.serializedSize(includeContent));
+      }
+    }
   }
 
   /** The deletions staged for one measurement range, as a piece carries them. */

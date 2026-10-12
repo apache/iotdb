@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.load.splitter.SerializedSizes;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -47,7 +48,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -415,7 +415,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     serializeBody(stream, true);
   }
 
-  private void serializeBody(DataOutputStream stream) throws IOException {
+  void serializeBody(DataOutputStream stream) throws IOException {
     serializeBody(stream, false);
   }
 
@@ -696,34 +696,39 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
 
   @Override
   public int serializedSize() {
-    // Measured with a byte counter: exact, and no buffer as large as the body.
-    final SizeCountingOutputStream counter = new SizeCountingOutputStream();
-    try {
-      serializeBody(new DataOutputStream(counter));
-    } catch (IOException e) {
-      throw new IllegalStateException(e);
-    }
-    return Short.BYTES + Long.BYTES + Math.toIntExact(counter.getSize());
+    final long bodySize = Integer.BYTES + SerializedSizes.utf8Size(loadId) + phaseSerializedSize();
+    return Math.toIntExact(Short.BYTES + Long.BYTES + bodySize);
   }
 
-  /** An {@link OutputStream} that measures what is written to it and keeps none of it. */
-  private static final class SizeCountingOutputStream extends OutputStream {
+  /** The bytes the body of this command writes, calculated field by field, phase by phase. */
+  private long phaseSerializedSize() {
+    return switch (op) {
+      case PIECE -> pieceSerializedSize();
+      case PREPARE -> Integer.BYTES + Long.BYTES + Byte.BYTES + progressIndexesSerializedSize();
+      case COMMIT -> Byte.BYTES + progressIndexesSerializedSize();
+      case ABORT -> Byte.BYTES;
+    };
+  }
 
-    private long size;
-
-    @Override
-    public void write(final int b) {
-      size++;
+  private long pieceSerializedSize() {
+    long size =
+        SerializedSizes.utf8Size(tsFileId) + Long.BYTES + Long.BYTES + Long.BYTES + Integer.BYTES;
+    for (final PieceRef ref : pieceRefs) {
+      size += SerializedSizes.utf8Size(ref.getRelativePath()) + Long.BYTES + Long.BYTES;
     }
-
-    @Override
-    public void write(final byte[] b, final int off, final int len) {
-      size += len;
+    size += Integer.BYTES;
+    for (final TsFileData data : tsFileDataList) {
+      size += data.serializedSize(false);
     }
+    return size;
+  }
 
-    long getSize() {
-      return size;
+  private long progressIndexesSerializedSize() {
+    long size = Integer.BYTES;
+    for (final byte[] progressIndex : timePartition2ProgressIndex.values()) {
+      size += Long.BYTES + Integer.BYTES + progressIndex.length;
     }
+    return size;
   }
 
   public static LoadTsFileConsensusNode deserializeFromWAL(DataInputStream stream)

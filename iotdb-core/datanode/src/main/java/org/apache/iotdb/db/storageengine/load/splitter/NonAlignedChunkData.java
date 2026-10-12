@@ -308,6 +308,20 @@ public class NonAlignedChunkData implements ChunkData {
     }
   }
 
+  @Override
+  public int serializedSize(final boolean includeContent) {
+    int size = Integer.BYTES + Byte.BYTES; // type ordinal, isAligned
+    size += Long.BYTES + Byte.BYTES + device.serializedSize() + Long.BYTES + Byte.BYTES;
+    size += (chunk == null ? chunkHeader : chunk.getHeader()).getSerializedSize();
+    size += Byte.BYTES + (chunkLayout == null ? 0 : ChunkLayout.serializedSize());
+    if (chunk != null) {
+      size += chunk.getChunkStatistic().getSerializedSize();
+      size +=
+          ChunkData.serializedChunkPayloadSize(chunk.getData(), payloadRefAt(0), includeContent);
+    }
+    return size;
+  }
+
   private ChunkPayloadRef payloadRefAt(final int index) {
     return index < chunkPayloadRefs.size() ? chunkPayloadRefs.get(index) : null;
   }

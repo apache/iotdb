@@ -19,16 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileDataType;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class LoadTsFileConsensusNodeTest {
 
@@ -157,5 +167,86 @@ public class LoadTsFileConsensusNodeTest {
     Assert.assertEquals(8L, actual.getTotalBytes());
     Assert.assertEquals(7L, actual.getSearchIndex());
     Assert.assertEquals(new PlanNodeId("n8"), actual.getPlanNodeId());
+  }
+
+  /**
+   * The calculated size has to be the bytes the serializer writes, for every phase and for a PIECE
+   * that carries records and references.
+   */
+  @Test
+  public void testTheCalculatedSizeIsWhatTheSerializerWrites() throws Exception {
+    final Map<TTimePartitionSlot, byte[]> progressIndexes = new HashMap<>();
+    progressIndexes.put(new TTimePartitionSlot(10L), new byte[] {1, 2, 3});
+    progressIndexes.put(new TTimePartitionSlot(20L), new byte[] {4, 5});
+
+    final LoadTsFileConsensusNode piece =
+        LoadTsFileConsensusNode.piece(
+            new PlanNodeId("size-piece"),
+            "load-size",
+            "file-size.tsfile",
+            3L,
+            new ArrayList<>(Arrays.asList(new FixedSizeData(11), new FixedSizeData(0))));
+    final LoadTsFileConsensusNode pieceWithRefs =
+        LoadTsFileConsensusNode.pieceRefs(
+            new PlanNodeId("size-refs"),
+            "load-size",
+            "file-size.tsfile",
+            4L,
+            Arrays.asList(
+                new LoadTsFileConsensusNode.PieceRef("task/partition.tsfile", 0L, 4096L),
+                new LoadTsFileConsensusNode.PieceRef("task/other.tsfile", 4096L, 512L)),
+            99L,
+            5L);
+    final LoadTsFileConsensusNode prepare =
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("size-prepare"), "load-size", 7, 12345L, true, progressIndexes);
+    final LoadTsFileConsensusNode commit =
+        LoadTsFileConsensusNode.commit(
+            new PlanNodeId("size-commit"), "load-size", true, progressIndexes);
+    final LoadTsFileConsensusNode abort =
+        LoadTsFileConsensusNode.abort(new PlanNodeId("size-abort"), "load-size", false);
+
+    for (final LoadTsFileConsensusNode node :
+        Arrays.asList(piece, pieceWithRefs, prepare, commit, abort)) {
+      final ByteArrayOutputStream body = new ByteArrayOutputStream();
+      node.serializeBody(new DataOutputStream(body));
+      Assert.assertEquals(Short.BYTES + Long.BYTES + body.size(), node.serializedSize());
+    }
+  }
+
+  /** A record that writes a fixed number of bytes, so that a PIECE can be sized without chunks. */
+  private static final class FixedSizeData implements TsFileData {
+
+    private final int size;
+
+    private FixedSizeData(final int size) {
+      this.size = size;
+    }
+
+    @Override
+    public long getDataSize() {
+      return size;
+    }
+
+    @Override
+    public TsFileDataType getType() {
+      return TsFileDataType.CHUNK;
+    }
+
+    @Override
+    public void serialize(final DataOutputStream stream) throws IOException {
+      serialize(stream, true);
+    }
+
+    @Override
+    public void serialize(final DataOutputStream stream, final boolean includeContent)
+        throws IOException {
+      stream.write(new byte[size]);
+    }
+
+    @Override
+    public int serializedSize(final boolean includeContent) {
+      return size;
+    }
   }
 }
