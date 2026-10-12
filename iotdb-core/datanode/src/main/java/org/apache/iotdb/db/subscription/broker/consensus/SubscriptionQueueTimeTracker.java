@@ -57,6 +57,8 @@ class SubscriptionQueueTimeTracker {
     }
   }
 
+  // Multiple consumers may poll the queue concurrently under its read lock, so delivery interval
+  // updates must remain atomic even though prefetch rounds are serialized.
   synchronized void recordDelivery() {
     start();
     final long nowNs = nanoTime.getAsLong();
@@ -68,13 +70,15 @@ class SubscriptionQueueTimeTracker {
     delivered = true;
   }
 
-  synchronized void beginPrefetch() {
+  // The prefetch subtask serializes rounds, so this path does not need synchronization beyond the
+  // one-time initialization performed by start().
+  void beginPrefetch() {
     start();
     prefetchStartTimeNs = nanoTime.getAsLong();
     prefetchRunning = true;
   }
 
-  synchronized long endPrefetch() {
+  long endPrefetch() {
     final long nowNs = nanoTime.getAsLong();
     final long durationMs = elapsedMs(nowNs, prefetchStartTimeNs);
     maxPrefetchDurationMs = Math.max(maxPrefetchDurationMs, durationMs);
