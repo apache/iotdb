@@ -56,17 +56,19 @@ public class AlignedWritableMemChunkTest {
     integerBitmap.mark(2);
     BitMap textBitmap = new BitMap(3);
     textBitmap.mark(1);
+    BitMap existingBitmap = new BitMap(3);
+    existingBitmap.mark(1);
     chunk.writeAlignedTablet(
         new long[] {-1, 1, 2},
         new Object[] {
-          new int[] {0, 1, 2},
           new long[] {0, 10, 20},
+          new int[] {0, 1, 2},
           null,
           new Binary[] {binary, binary, binary},
           new int[] {0, 11, 12}
         },
-        new BitMap[] {null, null, null, textBitmap, integerBitmap},
-        Arrays.asList(integer, existing, null, text, integer),
+        new BitMap[] {existingBitmap, null, null, textBitmap, integerBitmap},
+        Arrays.asList(existing, integer, null, text, integer),
         1,
         3);
 
@@ -79,7 +81,7 @@ public class AlignedWritableMemChunkTest {
     Assert.assertTrue(list.isNullValue(0, 3));
     Assert.assertTrue(list.isNullValue(1, 1));
     Assert.assertTrue(list.isNullValue(2, 1));
-    Assert.assertEquals(10L, list.getLongByValueIndex(1, 0));
+    Assert.assertTrue(list.isNullValue(1, 0));
     Assert.assertEquals(20L, list.getLongByValueIndex(2, 0));
     Assert.assertEquals(11, list.getIntByValueIndex(1, 2));
     Assert.assertTrue(list.isNullValue(2, 2));
@@ -101,6 +103,41 @@ public class AlignedWritableMemChunkTest {
     }
     chunk.release();
     restored.release();
+  }
+
+  @Test
+  public void testTabletWithoutExtensionReordersExistingColumnsAndBitmaps() {
+    IMeasurementSchema first = new MeasurementSchema("first", TSDataType.INT64);
+    IMeasurementSchema second = new MeasurementSchema("second", TSDataType.INT32);
+    IMeasurementSchema omitted = new MeasurementSchema("omitted", TSDataType.BOOLEAN);
+    List<IMeasurementSchema> schemas = new ArrayList<>(Arrays.asList(first, second, omitted));
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
+    chunk.writeAlignedPoints(0, new Object[] {1L, 2, true}, schemas);
+    AlignedTVList list = chunk.getWorkingTVList();
+    List<TSDataType> dataTypes = list.getTsDataTypes();
+    BitMap firstBitmap = new BitMap(3);
+    firstBitmap.mark(1);
+    BitMap secondBitmap = new BitMap(3);
+    secondBitmap.mark(2);
+    chunk.writeAlignedTablet(
+        new long[] {-1, 1, 2},
+        new Object[] {new int[] {0, 3, 4}, null, new long[] {0, 5, 6}, new int[] {0, 7, 8}},
+        new BitMap[] {null, null, firstBitmap, secondBitmap},
+        Arrays.asList(second, null, first, second),
+        1,
+        3);
+
+    Assert.assertEquals(Arrays.asList(first, second, omitted), chunk.getSchemaList());
+    Assert.assertSame(dataTypes, list.getTsDataTypes());
+    Assert.assertEquals(3, dataTypes.size());
+    Assert.assertEquals(3, list.rowCount());
+    Assert.assertTrue(list.isNullValue(1, 0));
+    Assert.assertEquals(6L, list.getLongByValueIndex(2, 0));
+    Assert.assertEquals(7, list.getIntByValueIndex(1, 1));
+    Assert.assertTrue(list.isNullValue(2, 1));
+    Assert.assertTrue(list.isNullValue(1, 2));
+    Assert.assertTrue(list.isNullValue(2, 2));
+    chunk.release();
   }
 
   @Test
