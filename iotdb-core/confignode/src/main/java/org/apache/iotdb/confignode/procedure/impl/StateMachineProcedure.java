@@ -235,11 +235,15 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       states.removeLast();
     }
 
+    boolean completed = false;
     try {
       updateTimestamp();
       rollbackState(env, getCurrentState());
+      completed = true;
     } finally {
-      states.removeLast();
+      if ((completed || getRollbackRetryTimeout() < 0) && !states.isEmpty()) {
+        states.removeLast();
+      }
       updateTimestamp();
     }
   }
