@@ -493,15 +493,19 @@ public class DataToolRegressionTest extends AbstractDataTool {
 
   @Test
   public void testSingleFileRelativeSourceArchival() throws Exception {
-    Path source = directory.resolve("one.tsfile");
-    Files.writeString(source, "source");
-    Path archive = Files.createDirectories(directory.resolve("success"));
-    successDir = archive.toString();
-    successOperation = ImportTsFileOperation.CP;
-    ImportTsFileScanTool.setSourceFullPath(
-        Path.of("").toAbsolutePath().relativize(source).toString());
-    new ImportDataTree().processingFile(source.toString(), true);
-    assertEquals("source", Files.readString(archive.resolve("one.tsfile")));
+    Path workingDirectory = Path.of("").toAbsolutePath();
+    Path source = Files.createTempFile(workingDirectory, "one", ".tsfile");
+    try {
+      Files.writeString(source, "source");
+      Path archive = Files.createDirectories(directory.resolve("success"));
+      successDir = archive.toString();
+      successOperation = ImportTsFileOperation.CP;
+      ImportTsFileScanTool.setSourceFullPath(source.getFileName().toString());
+      new ImportDataTree().processingFile(source.toString(), true);
+      assertEquals("source", Files.readString(archive.resolve(source.getFileName())));
+    } finally {
+      Files.deleteIfExists(source);
+    }
   }
 
   private String read(String name) throws IOException {
