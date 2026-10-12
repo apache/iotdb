@@ -36,10 +36,8 @@ import java.util.Arrays;
 /**
  * Points at the payload bytes of one chunk inside the staged TsFile of a LOAD task.
  *
- * <p>A piece is written to the WAL with the metadata of every chunk it carries (device, time
- * partition, chunk header, statistics and layout), while the payload of a chunk is only referenced
- * here: those bytes exist once, in the staged TsFile. Whoever forwards the piece reads them back
- * with {@link #readPayload()}, so the receiver gets the same piece the leader received.
+ * <p>The staged file keeps the only copy of a task's payloads: whoever forwards the piece reads
+ * them back with {@link #readPayload()}.
  */
 public class ChunkPayloadRef {
 

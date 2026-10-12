@@ -80,6 +80,8 @@ public class LoadTsFileCleaner {
     if (!sweepJobRegistered.compareAndSet(false, true)) {
       return;
     }
+    // PipeDataNodeAgent.runtime() is the DataNode-wide periodical-job registry, and the only
+    // node-level one that takes a per-job interval.
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             SWEEP_JOB_ID,

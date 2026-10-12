@@ -266,7 +266,7 @@ public class LoadTsFileManagerTest {
 
     try {
       manager.prepare(prepareNode("empty-load"), Collections.emptyMap());
-      fail("prepare must not succeed when the load has no staged data");
+      fail("PREPARE must not succeed when the load has no staged data");
     } catch (final LoadFileException e) {
       assertTrue(e.getMessage().contains("empty-load"));
     } finally {
@@ -616,8 +616,7 @@ public class LoadTsFileManagerTest {
     assertTrue(staged.isFile());
 
     assertTrue(
-        manager.deleteAll(
-            LoadTsFileConsensusNode.abort(new PlanNodeId("abort"), loadId, "file-1", false)));
+        manager.deleteAll(LoadTsFileConsensusNode.abort(new PlanNodeId("abort"), loadId, false)));
 
     assertFalse(staged.exists());
     assertFalse(staged.getParentFile().exists());
@@ -642,7 +641,7 @@ public class LoadTsFileManagerTest {
       assertTrue(staged.isFile());
 
       final LoadTsFileConsensusNode abort =
-          LoadTsFileConsensusNode.abort(new PlanNodeId("abort"), loadId, "file-1", false);
+          LoadTsFileConsensusNode.abort(new PlanNodeId("abort"), loadId, false);
       abort.setSearchIndex(10L);
       assertTrue(manager.deleteAll(abort));
 
@@ -859,12 +858,7 @@ public class LoadTsFileManagerTest {
 
   private static LoadTsFileConsensusNode commitNode(final String loadId) {
     return LoadTsFileConsensusNode.commit(
-        new PlanNodeId("load-commit-" + loadId),
-        loadId,
-        "file-1",
-        false,
-        false,
-        Collections.emptyMap());
+        new PlanNodeId("load-commit-" + loadId), loadId, false, Collections.emptyMap());
   }
 
   private static byte[] toByteArray(final ByteBuffer buffer) {
@@ -875,21 +869,13 @@ public class LoadTsFileManagerTest {
 
   /** The ABORT command of a task, which is what discards the staged files of a task. */
   private static LoadTsFileConsensusNode abortNode(final String loadId) {
-    return LoadTsFileConsensusNode.abort(
-        new PlanNodeId("load-abort-" + loadId), loadId, null, false);
+    return LoadTsFileConsensusNode.abort(new PlanNodeId("load-abort-" + loadId), loadId, false);
   }
 
   /** The PREPARE command of a task, which is what seals the staged files. */
   private static LoadTsFileConsensusNode prepareNode(final String loadId) {
     return LoadTsFileConsensusNode.prepare(
-        new PlanNodeId("load-prepare-" + loadId),
-        loadId,
-        null,
-        0,
-        0L,
-        0L,
-        false,
-        Collections.emptyMap());
+        new PlanNodeId("load-prepare-" + loadId), loadId, 0, 0L, false, Collections.emptyMap());
   }
 
   private static NonAlignedChunkData laidOutChunk() {

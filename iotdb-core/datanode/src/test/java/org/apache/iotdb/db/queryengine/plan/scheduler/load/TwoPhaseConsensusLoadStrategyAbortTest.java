@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
@@ -143,14 +142,12 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     field.set(target, value);
   }
 
-  private static boolean prepareAndCommit(
-      final TwoPhaseConsensusLoadStrategy strategy, final LoadSingleTsFileNode node)
+  private static boolean prepareAndCommit(final TwoPhaseConsensusLoadStrategy strategy)
       throws Exception {
     final Method method =
-        TwoPhaseConsensusLoadStrategy.class.getDeclaredMethod(
-            "prepareAndCommitAllRegions", LoadSingleTsFileNode.class);
+        TwoPhaseConsensusLoadStrategy.class.getDeclaredMethod("prepareAndCommitAllRegions");
     method.setAccessible(true);
-    return (boolean) method.invoke(strategy, node);
+    return (boolean) method.invoke(strategy);
   }
 
   /** The route map a transaction holds, built from the replica sets of its regions. */
@@ -308,7 +305,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             loadIds(),
             pieceCounts());
 
-    assertTrue(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertTrue(prepareAndCommit(strategy));
     // Both regions vote first: no region commits before every region was prepared.
     assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@2"), submitted);
   }
@@ -328,7 +325,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             loadIds(),
             pieceCounts());
 
-    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertFalse(prepareAndCommit(strategy));
     assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "ABORT@1", "ABORT@2"), submitted);
   }
 
@@ -342,7 +339,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             loadIds(),
             pieceCounts());
 
-    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertFalse(prepareAndCommit(strategy));
     assertEquals(Arrays.asList("PREPARE@1", "ABORT@1", "ABORT@2"), submitted);
   }
 
@@ -363,7 +360,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             loadIds(),
             pieceCounts());
 
-    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertFalse(prepareAndCommit(strategy));
     // The unresolved commit of region 1 is resolved before the next region is committed, so the
     // task of that region is left in exactly one of its two terminal states.
     assertEquals(
@@ -385,7 +382,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             loadIds(),
             pieceCounts());
 
-    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertFalse(prepareAndCommit(strategy));
     assertEquals(
         Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@2", "ABORT@2"), submitted);
   }
@@ -412,7 +409,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     final TwoPhaseConsensusLoadStrategy strategy =
         strategy(submitter, twoRegionsInOrder(), loadIds(), pieceCounts());
 
-    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertFalse(prepareAndCommit(strategy));
     // One failed attempt per region: the route is looked up again, comes back empty, and the
     // command is not repeated on a route the partition table does not know any more.
     assertEquals(Arrays.asList("PREPARE@1", "ABORT@1", "ABORT@2"), submitted);
@@ -433,7 +430,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             loadIds(),
             pieceCounts());
 
-    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertFalse(prepareAndCommit(strategy));
     assertEquals(
         Arrays.asList(
             "PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@1", "COMMIT@1", "ABORT@1", "COMMIT@2"),
@@ -464,7 +461,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     final TwoPhaseConsensusLoadStrategy strategy =
         strategy(submitter, twoRegionsInOrder(), loadIds(), pieceCounts());
 
-    assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
+    assertFalse(prepareAndCommit(strategy));
     assertEquals(
         Arrays.asList(
             "PREPARE@1", "ABORT@1", "ABORT@1", "ABORT@1", "ABORT@2", "ABORT@2", "ABORT@2"),

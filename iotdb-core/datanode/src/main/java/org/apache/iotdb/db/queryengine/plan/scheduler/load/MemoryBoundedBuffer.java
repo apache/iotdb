@@ -24,19 +24,16 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBl
 
 /**
  * LOAD memory budget: memory-pool accounting for the pieces of one source TsFile. It keeps two
- * views in sync:
+ * views in sync - its own {@code dataSize} and the shared {@link LoadTsFileDataCacheMemoryBlock} -
+ * so the cluster-wide LOAD cache is aware of this file's footprint.
  *
- * <ul>
- *   <li>its own {@code dataSize} - the bytes currently buffered into pieces, and
- *   <li>the shared {@link LoadTsFileDataCacheMemoryBlock} - so the cluster-wide LOAD data cache is
- *       aware of this file's footprint.
- * </ul>
+ * <p>The budget is {@code thriftMaxFrameSize >> 2}; {@link #isMemoryEnough()} is the signal the
+ * pipeline polls after every chunk, and when it turns false {@link PieceDispatcher} evicts the
+ * largest buffered piece first. {@link #add(long)} / {@link #release(long)} keep both views
+ * consistent, and {@link #clear()} returns any leftover accounting to the shared block.
  *
- * The budget is {@code thriftMaxFrameSize >> 2}; {@link #isMemoryEnough()} is the signal the
- * pipeline polls after every chunk. When it turns false, {@link PieceDispatcher} evicts the largest
- * buffered piece first. {@link #add(long)} / {@link #release(long)} keep both views consistent on
- * every buffered/dispatched piece, and {@link #clear()} is the last-chance cleanup that returns any
- * leftover accounting to the shared block.
+ * <p>Not a sub-block of the shared block: the manager hands out the block itself, and the shared
+ * limit answers a different question than the per-file budget that keeps pieces sliceable.
  */
 class MemoryBoundedBuffer {
 

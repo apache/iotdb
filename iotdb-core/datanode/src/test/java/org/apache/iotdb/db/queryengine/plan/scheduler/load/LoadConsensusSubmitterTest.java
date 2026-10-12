@@ -131,8 +131,8 @@ public class LoadConsensusSubmitterTest {
     stubLeader(99);
 
     final LoadTsFileConsensusNode node =
-        LoadTsFileConsensusNode.begin(
-            new PlanNodeId("load-begin"), "load-id", "file-1", false, null, 0);
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("load-prepare"), "load-id", 0, 0L, false, Collections.emptyMap());
     final TSStatusCode status =
         TSStatusCode.representOf(newSubmitter().submit(replicaSet, node).getCode());
 
@@ -192,8 +192,8 @@ public class LoadConsensusSubmitterTest {
         .thenReturn(Collections.singletonList(freshRoute));
 
     final LoadTsFileConsensusNode node =
-        LoadTsFileConsensusNode.begin(
-            new PlanNodeId("load-begin"), "load-id", "file-1", false, null, 0);
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("load-prepare"), "load-id", 0, 0L, false, Collections.emptyMap());
     newSubmitter().submit(pinnedRoute, node);
 
     // The command was prepared for the pinned route, and the refreshed one was not consulted.

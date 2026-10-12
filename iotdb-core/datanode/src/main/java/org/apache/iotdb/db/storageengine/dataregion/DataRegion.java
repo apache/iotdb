@@ -568,11 +568,18 @@ public class DataRegion implements IDataRegionForQuery {
     return Optional.ofNullable(loadTsFileManager);
   }
 
+  /**
+   * Drops the LOAD manager and stops its writers. The clear is inside the monitor that publishes
+   * it, so a concurrently created manager cannot be dropped without being stopped.
+   */
   public void stopLoadTsFileManager() {
-    final LoadTsFileManager manager = loadTsFileManager;
+    final LoadTsFileManager manager;
+    synchronized (this) {
+      manager = loadTsFileManager;
+      loadTsFileManager = null;
+    }
     if (manager != null) {
       manager.stop();
-      loadTsFileManager = null;
     }
   }
 

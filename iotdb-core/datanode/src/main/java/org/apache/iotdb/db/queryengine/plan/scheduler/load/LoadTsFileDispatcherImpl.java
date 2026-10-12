@@ -181,11 +181,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
   public void dispatchLocally(final FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    if (isGeneratedByPipe) {
-      LOGGER.debug(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
-    } else {
-      LOGGER.info(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
-    }
+    // One task per source TsFile: debug level, or a bulk load would emit one line per file.
+    LOGGER.debug(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
 
     final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
@@ -212,6 +209,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
     try {
       PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
       resource.setGeneratedByPipe(isGeneratedByPipe);
+      // The marks are in memory only and the DataRegion adopts the .resource file: rewrite it here.
       resource.serialize();
 
       // Not final: the variable is assigned in the try block and again in the catch clause

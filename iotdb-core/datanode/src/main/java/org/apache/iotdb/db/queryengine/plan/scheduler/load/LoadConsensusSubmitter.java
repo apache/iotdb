@@ -79,7 +79,9 @@ public class LoadConsensusSubmitter {
   // Route Resolution
   // -------------------------------------------------------------------------
 
-  /** Re-resolves target region replica route with exponential backoff on stale topology. */
+  /**
+   * Re-resolves the route of a region, dropping the partition cache first: it holds the stale one.
+   */
   public TRegionReplicaSet resolveRoute(final TConsensusGroupId regionId, final int maxAttempts) {
     if (regionId == null || maxAttempts <= 0) {
       return null;
@@ -141,11 +143,6 @@ public class LoadConsensusSubmitter {
 
     final String consensusProtocol =
         IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
-    LOGGER.info(
-        StorageEngineMessages.LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042,
-        regionId,
-        consensusProtocol);
-
     final TDataNodeLocation writePeer = resolveWritePeer(replicaSet, regionId, consensusProtocol);
     if (writePeer == null || writePeer.getInternalEndPoint() == null) {
       return RpcUtils.getStatus(

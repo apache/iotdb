@@ -46,8 +46,6 @@ public final class StorageEngineMessages {
   // ======================== StorageEngine ========================
 
   public static final String FAIL_TO_RECOVER_WAL = "Fail to recover wal.";
-  public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
-      "Write LOAD consensus node to region {} via protocol {}";
   public static final String EXCEPTION_REPLICASET_CANNOT_BE_NULL_A7340AC3 =
       "replicaSet cannot be null";
   public static final String EXCEPTION_NODE_CANNOT_BE_NULL_BC7D5BB9 = "node cannot be null";
@@ -79,8 +77,8 @@ public final class StorageEngineMessages {
       "Failed to enumerate the LOAD snapshot directory %s: %s";
   public static final String MESSAGE_THE_DIRECTORY_IS_UNREADABLE_OR_MISSING_54036A44 =
       "the directory is unreadable or missing";
-  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_509E36FD =
-      "The LOAD snapshot progress file %s cannot be read back: %s";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_770B7481 =
+      "The LOAD snapshot progress file {} cannot be read back: {}";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
@@ -154,10 +152,10 @@ public final class StorageEngineMessages {
       "Failed to serialize LOAD progress index for time partition %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B =
       "Staged file %s of load %s is incomplete and cannot be committed.";
-  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C =
-      "Snapshotted %d in-progress LOAD task(s) with %d staged file(s) for region %s into %s.";
-  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_90ABC1BF =
-      "Restored %d in-progress LOAD task(s) with %d staged file(s) from snapshot %s.";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_194E4132 =
+      "Snapshotted {} in-progress LOAD task(s) with {} staged file(s) for region {} into {}.";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_DA59CF0F =
+      "Restored {} in-progress LOAD task(s) with {} staged file(s) from snapshot {}.";
   public static final String EXCEPTION_LOAD_CONSENSUS_SNAPSHOT_RESTORE_FAILED_F8C29C64 =
       "Failed to restore LOAD snapshot from %s: %s";
   public static final String EXCEPTION_LOAD_TSFILE_ALIGNED_VALUE_CHUNK_TIME_CHUNK_EEB00760 =
@@ -615,8 +613,8 @@ public final class StorageEngineMessages {
   public static final String LOAD_TSFILE_DIR_CREATED = "Load TsFile dir {} is created.";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "Close TsFileIOWriter {} error.";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "Close ModificationFile {} error.";
-  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =
-      "Preparing LOAD TsFile {}: sealing staged resources.";
+  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_ARG_PIECES_OF_ARG_BYTES_OF_STAGED_RESOURCES_5F00E102 =
+      "Preparing LOAD TsFile {}: {} pieces, {} bytes of staged resources.";
   public static final String LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335 =
       "Committing LOAD TsFile {}: loading prepared resources into DataRegion.";
   public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_ARG_C36E832B =
@@ -669,6 +667,9 @@ public final class StorageEngineMessages {
   public static final String UTILITY_CLASS = "Utility class";
   public static final String TSFILE_DATA_BYTE_ARRAY_SIZE_MISMATCH = "TsFileData byte array read error, size mismatch.";
   public static final String UNKNOWN_TSFILE_DATA_TYPE = "Unknown TsFileData type: ";
+  public static final String
+      EXCEPTION_UNKNOWN_TSFILEDATA_TYPE_ORDINAL_ARG_WHEN_DESERIALIZING_A_LOAD_PIECE_27A777D2 =
+          "Unknown TsFileData type ordinal %d when deserializing a LOAD piece";
   public static final String FILE_MAGIC_STRING_INCORRECT = "the file's MAGIC STRING is incorrect, file path: {}";
   public static final String FILE_VERSION_TOO_OLD = "the file's Version Number is too old, file path: {}";
   public static final String FILE_NOT_CLOSED_CORRECTLY = "the file is not closed correctly, file path: {}";

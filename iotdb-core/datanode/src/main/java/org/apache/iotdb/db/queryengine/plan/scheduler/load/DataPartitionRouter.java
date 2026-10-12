@@ -69,7 +69,7 @@ class DataPartitionRouter {
 
     final int totalChunks = chunkDataList.size();
     final int[] chunkPartitionIndexes = new int[totalChunks];
-    final List<Pair<IDeviceID, TTimePartitionSlot>> distinctSlotList = new ArrayList<>();
+    final List<SlotKey> distinctSlotList = new ArrayList<>();
     final Map<SlotKey, Integer> slotToIndexMap = new HashMap<>(totalChunks);
 
     // 1. Deduplicate (device, time-partition) pairs and record mapping index per chunk
@@ -96,7 +96,7 @@ class DataPartitionRouter {
       if (existingIndex == null) {
         final int newIndex = distinctSlotList.size();
         slotToIndexMap.put(slotKey, newIndex);
-        distinctSlotList.add(new Pair<>(device, slot));
+        distinctSlotList.add(slotKey);
         chunkPartitionIndexes[i] = newIndex;
       } else {
         chunkPartitionIndexes[i] = existingIndex;
@@ -105,7 +105,7 @@ class DataPartitionRouter {
 
     // 2. Fetch data partition replica sets in batch
     final List<TRegionReplicaSet> replicaSets =
-        partitionFetcher.queryDataPartition(distinctSlotList, userName);
+        partitionFetcher.queryDataPartition(toQuerySlots(distinctSlotList), userName);
 
     if (replicaSets == null || replicaSets.size() != distinctSlotList.size()) {
       throw new IllegalStateException(
@@ -122,13 +122,13 @@ class DataPartitionRouter {
       final int partitionIndex = chunkPartitionIndexes[i];
       final TRegionReplicaSet replicaSet = replicaSets.get(partitionIndex);
       if (replicaSet == null) {
-        final Pair<IDeviceID, TTimePartitionSlot> slotPair = distinctSlotList.get(partitionIndex);
+        final SlotKey slotKey = distinctSlotList.get(partitionIndex);
         throw new IllegalStateException(
             String.format(
                 DataNodeQueryMessages
                     .EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2,
-                slotPair.left,
-                slotPair.right));
+                slotKey.device(),
+                slotKey.slot()));
       }
       routedReplicaSets.add(replicaSet);
     }
@@ -140,6 +140,17 @@ class DataPartitionRouter {
   // Internal Model
   // -------------------------------------------------------------------------
 
-  /** Compact composite key for slot deduplication within a single route pass. */
+  /** Converts the distinct slots to the pair form the partition fetcher takes. */
+  private static List<Pair<IDeviceID, TTimePartitionSlot>> toQuerySlots(
+      final List<SlotKey> distinctSlots) {
+    final List<Pair<IDeviceID, TTimePartitionSlot>> querySlots =
+        new ArrayList<>(distinctSlots.size());
+    for (final SlotKey slot : distinctSlots) {
+      querySlots.add(new Pair<>(slot.device(), slot.slot()));
+    }
+    return querySlots;
+  }
+
+  /** Composite key for slot deduplication; the only slot representation this class holds. */
   private record SlotKey(IDeviceID device, TTimePartitionSlot slot) {}
 }

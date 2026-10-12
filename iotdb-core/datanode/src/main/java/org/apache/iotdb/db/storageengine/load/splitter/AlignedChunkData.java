@@ -73,10 +73,7 @@ public class AlignedChunkData implements ChunkData {
   /** Final storage for complete Chunks; written directly when decoding is not required. */
   protected final List<Chunk> entireChunks = new ArrayList<>();
 
-  /**
-   * Payload references of {@link #entireChunks} in the same order; present instead of the payload
-   * itself on a piece that was read back from the WAL, see {@link ChunkPayloadRef}.
-   */
+  /** Where the payloads of {@link #entireChunks} live in the staged TsFile. */
   protected List<ChunkPayloadRef> chunkPayloadRefs = new ArrayList<>();
 
   protected long dataSize;

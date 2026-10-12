@@ -82,7 +82,7 @@ public interface ChunkData extends TsFileData {
     return Collections.emptyList();
   }
 
-  /** Gets staged file payload references corresponding to {@link #getChunks()}. */
+  /** Where the payloads of {@link #getChunks()} live in the staged TsFile. */
   List<ChunkPayloadRef> getChunkPayloadRefs();
 
   void setChunkPayloadRefs(List<ChunkPayloadRef> chunkPayloadRefs);

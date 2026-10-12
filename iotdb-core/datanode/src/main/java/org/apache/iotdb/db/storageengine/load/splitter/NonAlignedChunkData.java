@@ -57,7 +57,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.VALUE_COLUMN_MASK
 
 public class NonAlignedChunkData implements ChunkData {
 
-  /** Payload references of {@link #getChunks()}, see {@link ChunkPayloadRef}. */
+  /** Where the payloads of the chunks live in the staged TsFile. */
   private List<ChunkPayloadRef> chunkPayloadRefs = new ArrayList<>();
 
   private final TTimePartitionSlot timePartitionSlot;
@@ -228,13 +228,17 @@ public class NonAlignedChunkData implements ChunkData {
       if (page.needDecode) {
         final long partitionStart = timePartitionSlot.getStartTime();
         final long partitionEnd = getTimePartitionEnd(partitionStart);
+        // Resolved once per page; the service has no bulk entry point, so the loop stays here.
+        final TypeServices.ObjectValueChunkWriter valueChunkWriter =
+            TypeServices.StorageEngine.OBJECT_VALUE_CHUNK_WRITER_SERVICE.call(
+                Type.fromTsDataType(chunkHeader.getDataType()));
         boolean hasPoint = false;
         for (int j = 0; j < page.timeBatch.length; j++) {
           final long time = page.timeBatch[j];
           if (time < partitionStart || time > partitionEnd) {
             continue;
           }
-          writePointToChunkWriter(chunkWriter, time, page.valueBatch[j]);
+          valueChunkWriter.write(chunkWriter, time, page.valueBatch[j]);
           hasPoint = true;
         }
         if (hasPoint) {
@@ -272,13 +276,6 @@ public class NonAlignedChunkData implements ChunkData {
     // Delegate to the overflow-safe helper: a naive "start + interval - 1" wraps around for the
     // last representable partition and collapses to the start itself when interval == 1.
     return TimePartitionUtils.getTimePartitionEndTime(partitionStart);
-  }
-
-  private void writePointToChunkWriter(
-      ChunkWriterImpl chunkWriter, final long time, final Object value) {
-    TypeServices.StorageEngine.OBJECT_VALUE_CHUNK_WRITER_SERVICE
-        .call(Type.fromTsDataType(chunkHeader.getDataType()))
-        .write(chunkWriter, time, value);
   }
 
   // ----------------------- Serialization / Deserialization -----------------------
@@ -330,7 +327,8 @@ public class NonAlignedChunkData implements ChunkData {
     ReadWriteIOUtils.write(device instanceof StringArrayDeviceID, stream);
     device.serialize(stream);
     ReadWriteIOUtils.write(dataSize, stream);
-    // Data has been standardized, so needDecodeChunk is always false on the wire
+    // Part of the wire format, read back at this position; always false because serialize() encodes
+    // the pages with endChunk() before this attribute.
     ReadWriteIOUtils.write(false, stream);
     // The pages may have been split and re-encoded, in which case the chunk header rebuilt from the
     // actual encoded bytes is the one describing the payload that follows.

@@ -47,75 +47,80 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Consensus-backed LOAD request carrying Begin / Piece / Seal / Commit phases. Submitted once to
- * the DataRegion write peer (or Ratis leader); replicas apply via the consensus state machine.
- */
+/** One command of a consensus-backed LOAD transaction, see {@link LoadTsFileConsensusOp}. */
 public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue {
 
-  private LoadTsFileConsensusOp op;
-  private String loadId;
-  private String tsFileId;
-  private boolean isTableModel;
-  private String database;
-  private int expectedPieceCount = -1;
-  private long pieceIndex = -1;
+  private final LoadTsFileConsensusOp op;
+
+  /** The staged directory every phase applies to: the identity of the transaction. */
+  private final String loadId;
+
+  /** The source TsFile of a PIECE, kept for diagnostics. */
+  private final String tsFileId;
+
+  /** The position of a PIECE in the sequence of pieces of one staged file. */
+  private final long pieceIndex;
+
+  /** The staged files of this piece, and - once staged - the range of every payload in them. */
   private List<PieceRef> pieceRefs = new ArrayList<>();
-  private long dataSize;
-  private long checksum;
-  private int pieceCount = -1;
-  private long totalBytes;
-  private boolean isGeneratedByPipe;
-  private boolean deleteAfterLoad;
+
+  /** The chunks and deletions of this piece, with payloads unless it only references them. */
   private List<TsFileData> tsFileDataList = new ArrayList<>();
+
+  /** The payload bytes this piece carries, used to account for it while it is buffered. */
+  private long dataSize;
+
+  /** The checksum the coordinator computed for this piece; part of the identity of the piece. */
+  private long checksum;
+
+  /** How many pieces the coordinator sent to the region, as accounted per region. */
+  private int pieceCount = -1;
+
+  /** How many payload bytes those pieces carried, as accounted per region. */
+  private long totalBytes;
+
+  /** The progress index to adopt per time partition this transaction wrote. */
   private Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex = new HashMap<>();
+
+  /** Whether the staged file was produced by a pipe, which selects the import path of the data. */
+  private boolean isGeneratedByPipe;
+
   private TRegionReplicaSet regionReplicaSet;
   private ProgressIndex progressIndex;
   private boolean isGeneratedByRemoteConsensusLeader;
 
-  /** Endpoint ("ip:port") of the follower that issued a PULL, used to push the piece back. */
-  private String pullSourceEndPoint;
-
-  public LoadTsFileConsensusNode(PlanNodeId id) {
+  private LoadTsFileConsensusNode(
+      final PlanNodeId id,
+      final LoadTsFileConsensusOp op,
+      final String loadId,
+      final String tsFileId,
+      final long pieceIndex) {
     super(id);
+    this.op = op;
+    this.loadId = loadId;
+    this.tsFileId = tsFileId;
+    this.pieceIndex = pieceIndex;
   }
 
-  public static LoadTsFileConsensusNode begin(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      boolean isTableModel,
-      String database,
-      int expectedPieceCount) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.BEGIN;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
-    node.isTableModel = isTableModel;
-    node.database = database == null ? "" : database;
-    node.expectedPieceCount = expectedPieceCount;
-    return node;
-  }
-
+  /** The PIECE the coordinator sends: the chunks of the piece, payloads included. */
   public static LoadTsFileConsensusNode piece(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      long pieceIndex,
-      List<TsFileData> tsFileDataList) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.PIECE;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
-    node.pieceIndex = pieceIndex;
+      final PlanNodeId id,
+      final String loadId,
+      final String tsFileId,
+      final long pieceIndex,
+      final List<TsFileData> tsFileDataList) {
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.PIECE, loadId, tsFileId, pieceIndex);
     node.tsFileDataList =
         tsFileDataList == null ? new ArrayList<>() : new ArrayList<>(tsFileDataList);
     node.dataSize = node.tsFileDataList.stream().mapToLong(TsFileData::getDataSize).sum();
@@ -123,14 +128,14 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
   }
 
   public static LoadTsFileConsensusNode pieceRef(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      long pieceIndex,
-      String relativePath,
-      long offset,
-      long size,
-      long checksum) {
+      final PlanNodeId id,
+      final String loadId,
+      final String tsFileId,
+      final long pieceIndex,
+      final String relativePath,
+      final long offset,
+      final long size,
+      final long checksum) {
     return pieceRefs(
         id,
         loadId,
@@ -142,30 +147,28 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
   }
 
   public static LoadTsFileConsensusNode pieceRefs(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      long pieceIndex,
-      List<PieceRef> refs,
-      long checksum,
-      long dataSize) {
+      final PlanNodeId id,
+      final String loadId,
+      final String tsFileId,
+      final long pieceIndex,
+      final List<PieceRef> refs,
+      final long checksum,
+      final long dataSize) {
     return pieceRefs(id, loadId, tsFileId, pieceIndex, refs, checksum, dataSize, null);
   }
 
+  /** The PIECE the write node re-logs once staged: references instead of payload bytes. */
   public static LoadTsFileConsensusNode pieceRefs(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      long pieceIndex,
-      List<PieceRef> refs,
-      long checksum,
-      long dataSize,
-      List<TsFileData> deletions) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.PIECE;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
-    node.pieceIndex = pieceIndex;
+      final PlanNodeId id,
+      final String loadId,
+      final String tsFileId,
+      final long pieceIndex,
+      final List<PieceRef> refs,
+      final long checksum,
+      final long dataSize,
+      final List<TsFileData> deletions) {
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.PIECE, loadId, tsFileId, pieceIndex);
     node.pieceRefs = refs == null ? new ArrayList<>() : new ArrayList<>(refs);
     node.dataSize = dataSize;
     node.checksum = checksum;
@@ -175,116 +178,81 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     return node;
   }
 
-  /**
-   * Marker-only PIECE: carries the piece metadata (index, checksum, byte size) but neither chunk
-   * data nor piece refs. This is what the write node logs to the WAL after applying a chunk-data
-   * piece. The write node keeps the actual chunk bytes in its retained-piece store; a follower
-   * applies them only when this marker arrives, and a missing piece fails directly, so the WAL
-   * stays at dozens of bytes per piece instead of the full LOAD bytes.
-   */
+  /** A PIECE with metadata but nothing to apply; only tests build it. */
   public static LoadTsFileConsensusNode pieceMarker(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      long pieceIndex,
-      long checksum,
-      long dataSize) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.PIECE;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
-    node.pieceIndex = pieceIndex;
+      final PlanNodeId id,
+      final String loadId,
+      final String tsFileId,
+      final long pieceIndex,
+      final long checksum,
+      final long dataSize) {
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.PIECE, loadId, tsFileId, pieceIndex);
     node.checksum = checksum;
     node.dataSize = dataSize;
     return node;
   }
 
-  /** Legacy PULL request; no longer supported and kept only for compatibility with older nodes. */
-  public static LoadTsFileConsensusNode pull(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      long pieceIndex,
-      long checksum,
-      String pullSourceEndPoint) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.PULL;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
-    node.pieceIndex = pieceIndex;
-    node.checksum = checksum;
-    node.pullSourceEndPoint = pullSourceEndPoint;
-    return node;
-  }
-
   public static LoadTsFileConsensusNode pieceRef(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      long pieceIndex,
-      String relativePath,
-      long offset,
-      long size,
-      long checksum,
-      long dataSize) {
+      final PlanNodeId id,
+      final String loadId,
+      final String tsFileId,
+      final long pieceIndex,
+      final String relativePath,
+      final long offset,
+      final long size,
+      final long checksum,
+      final long dataSize) {
     final LoadTsFileConsensusNode node =
         pieceRef(id, loadId, tsFileId, pieceIndex, relativePath, offset, size, checksum);
     node.dataSize = dataSize;
     return node;
   }
 
+  /** PREPARE: writes out the staged resources with the progress indexes, imports nothing. */
   public static LoadTsFileConsensusNode prepare(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      int pieceCount,
-      long totalBytes,
-      long checksum,
-      boolean isGeneratedByPipe,
-      Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.PREPARE;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
+      final PlanNodeId id,
+      final String loadId,
+      final int pieceCount,
+      final long totalBytes,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.PREPARE, loadId, null, -1L);
     node.pieceCount = pieceCount;
     node.totalBytes = totalBytes;
-    node.checksum = checksum;
     node.isGeneratedByPipe = isGeneratedByPipe;
-    node.timePartition2ProgressIndex =
-        timePartition2ProgressIndex == null
-            ? new HashMap<>()
-            : new HashMap<>(timePartition2ProgressIndex);
+    node.timePartition2ProgressIndex = copyProgressIndexes(timePartition2ProgressIndex);
     return node;
   }
 
-  public static LoadTsFileConsensusNode abort(
-      PlanNodeId id, String loadId, String tsFileId, boolean isGeneratedByPipe) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.ABORT;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
-    node.isGeneratedByPipe = isGeneratedByPipe;
-    return node;
-  }
-
+  /** COMMIT: imports the staged data. Deleting the source TsFile is the coordinator's business. */
   public static LoadTsFileConsensusNode commit(
-      PlanNodeId id,
-      String loadId,
-      String tsFileId,
-      boolean isGeneratedByPipe,
-      boolean deleteAfterLoad,
-      Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
-    node.op = LoadTsFileConsensusOp.COMMIT;
-    node.loadId = loadId;
-    node.tsFileId = tsFileId;
+      final PlanNodeId id,
+      final String loadId,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.COMMIT, loadId, null, -1L);
     node.isGeneratedByPipe = isGeneratedByPipe;
-    node.deleteAfterLoad = deleteAfterLoad;
-    node.timePartition2ProgressIndex =
-        timePartition2ProgressIndex == null
-            ? new HashMap<>()
-            : new HashMap<>(timePartition2ProgressIndex);
+    node.timePartition2ProgressIndex = copyProgressIndexes(timePartition2ProgressIndex);
     return node;
+  }
+
+  /** ABORT: discards the staged data. Idempotent, so it settles a COMMIT answer that was lost. */
+  public static LoadTsFileConsensusNode abort(
+      final PlanNodeId id, final String loadId, final boolean isGeneratedByPipe) {
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.ABORT, loadId, null, -1L);
+    node.isGeneratedByPipe = isGeneratedByPipe;
+    return node;
+  }
+
+  private static Map<TTimePartitionSlot, byte[]> copyProgressIndexes(
+      final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
+    return timePartition2ProgressIndex == null
+        ? new HashMap<>()
+        : new HashMap<>(timePartition2ProgressIndex);
   }
 
   public LoadTsFileConsensusOp getOp() {
@@ -297,18 +265,6 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
 
   public String getTsFileId() {
     return tsFileId;
-  }
-
-  public boolean isTableModel() {
-    return isTableModel;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public int getExpectedPieceCount() {
-    return expectedPieceCount;
   }
 
   public long getPieceIndex() {
@@ -359,10 +315,6 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     return isGeneratedByPipe;
   }
 
-  public boolean isDeleteAfterLoad() {
-    return deleteAfterLoad;
-  }
-
   public List<TsFileData> getTsFileDataList() {
     return tsFileDataList;
   }
@@ -370,14 +322,6 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
   /** Whether this PIECE carries actual chunk/deletion data (write-node path) or is a marker. */
   public boolean hasChunkData() {
     return !tsFileDataList.isEmpty();
-  }
-
-  public String getPullSourceEndPoint() {
-    return pullSourceEndPoint;
-  }
-
-  public void setPullSourceEndPoint(String pullSourceEndPoint) {
-    this.pullSourceEndPoint = pullSourceEndPoint;
   }
 
   public Map<TTimePartitionSlot, byte[]> getTimePartition2ProgressIndex() {
@@ -475,41 +419,71 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     serializeBody(stream, false);
   }
 
+  /** Writes the phase code, then only the fields of that phase; inlines payloads when asked. */
   private void serializeBody(DataOutputStream stream, boolean includeContent) throws IOException {
-    ReadWriteIOUtils.write(op.ordinal(), stream);
+    ReadWriteIOUtils.write(op.getCode(), stream);
     ReadWriteIOUtils.write(loadId, stream);
+    switch (op) {
+      case PIECE:
+        serializePieceBody(stream, includeContent);
+        return;
+      case PREPARE:
+        serializePrepareBody(stream);
+        return;
+      case COMMIT:
+        serializeCommitBody(stream);
+        return;
+      case ABORT:
+        serializeAbortBody(stream);
+        return;
+    }
+  }
+
+  private void serializePieceBody(final DataOutputStream stream, final boolean includeContent)
+      throws IOException {
     ReadWriteIOUtils.write(tsFileId, stream);
-    ReadWriteIOUtils.write(isTableModel, stream);
-    ReadWriteIOUtils.write(database == null ? "" : database, stream);
-    ReadWriteIOUtils.write(expectedPieceCount, stream);
     ReadWriteIOUtils.write(pieceIndex, stream);
-    ReadWriteIOUtils.write(dataSize, stream);
     ReadWriteIOUtils.write(checksum, stream);
-    ReadWriteIOUtils.write(pieceCount, stream);
-    ReadWriteIOUtils.write(totalBytes, stream);
-    ReadWriteIOUtils.write(isGeneratedByPipe, stream);
-    ReadWriteIOUtils.write(deleteAfterLoad, stream);
+    ReadWriteIOUtils.write(dataSize, stream);
     ReadWriteIOUtils.write(pieceRefs.size(), stream);
-    for (PieceRef ref : pieceRefs) {
+    for (final PieceRef ref : pieceRefs) {
       ReadWriteIOUtils.write(ref.relativePath, stream);
       ReadWriteIOUtils.write(ref.offset, stream);
       ReadWriteIOUtils.write(ref.size, stream);
     }
     ReadWriteIOUtils.write(tsFileDataList.size(), stream);
-    for (TsFileData data : tsFileDataList) {
+    for (final TsFileData data : tsFileDataList) {
       data.serialize(stream, includeContent);
     }
+  }
+
+  private void serializePrepareBody(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(pieceCount, stream);
+    ReadWriteIOUtils.write(totalBytes, stream);
+    ReadWriteIOUtils.write(isGeneratedByPipe, stream);
+    writeProgressIndexes(stream);
+  }
+
+  private void serializeCommitBody(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(isGeneratedByPipe, stream);
+    writeProgressIndexes(stream);
+  }
+
+  private void serializeAbortBody(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(isGeneratedByPipe, stream);
+  }
+
+  private void writeProgressIndexes(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(timePartition2ProgressIndex.size(), stream);
+    // Sorted: a HashMap's iteration order is not reproducible and a retry must log the same bytes.
     final List<Map.Entry<TTimePartitionSlot, byte[]>> sortedProgressIndexes =
         new ArrayList<>(timePartition2ProgressIndex.entrySet());
-    sortedProgressIndexes.sort(
-        java.util.Comparator.comparingLong(entry -> entry.getKey().getStartTime()));
-    for (Map.Entry<TTimePartitionSlot, byte[]> entry : sortedProgressIndexes) {
+    sortedProgressIndexes.sort(Comparator.comparingLong(entry -> entry.getKey().getStartTime()));
+    for (final Map.Entry<TTimePartitionSlot, byte[]> entry : sortedProgressIndexes) {
       ReadWriteIOUtils.write(entry.getKey().getStartTime(), stream);
       ReadWriteIOUtils.write(entry.getValue().length, stream);
       stream.write(entry.getValue());
     }
-    ReadWriteIOUtils.write(pullSourceEndPoint == null ? "" : pullSourceEndPoint, stream);
   }
 
   public static LoadTsFileConsensusNode deserialize(ByteBuffer buffer) {
@@ -519,6 +493,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       final LoadTsFileConsensusNode node = deserializeBody(stream);
       final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
       node.setPlanNodeId(planNodeId);
+      // A serialized plan node ends with its child count; a LOAD command never has one, so it is 0.
       ReadWriteIOUtils.readInt(buffer);
       return node;
     } catch (IOException | PageException | IllegalPathException e) {
@@ -526,52 +501,95 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     }
   }
 
-  private static LoadTsFileConsensusNode deserializeBody(InputStream stream)
+  private static LoadTsFileConsensusNode deserializeBody(final InputStream stream)
       throws IOException, PageException, IllegalPathException {
-    final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(new PlanNodeId(""));
-    node.op = LoadTsFileConsensusOp.fromOrdinal(ReadWriteIOUtils.readInt(stream));
-    node.loadId = ReadWriteIOUtils.readString(stream);
-    node.tsFileId = ReadWriteIOUtils.readString(stream);
-    node.isTableModel = ReadWriteIOUtils.readBool(stream);
-    node.database = ReadWriteIOUtils.readString(stream);
-    node.expectedPieceCount = ReadWriteIOUtils.readInt(stream);
-    node.pieceIndex = ReadWriteIOUtils.readLong(stream);
-    node.dataSize = ReadWriteIOUtils.readLong(stream);
-    node.checksum = ReadWriteIOUtils.readLong(stream);
-    node.pieceCount = ReadWriteIOUtils.readInt(stream);
-    node.totalBytes = ReadWriteIOUtils.readLong(stream);
-    node.isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
-    node.deleteAfterLoad = ReadWriteIOUtils.readBool(stream);
-    final int refCount = ReadWriteIOUtils.readInt(stream);
-    if (refCount < 0) {
-      throw new IOException();
-    }
-    node.pieceRefs = new ArrayList<>(refCount);
+    final LoadTsFileConsensusOp op =
+        LoadTsFileConsensusOp.fromCode(ReadWriteIOUtils.readInt(stream));
+    final String loadId = ReadWriteIOUtils.readString(stream);
+    return switch (op) {
+      case PIECE -> deserializePieceBody(stream, loadId);
+      case PREPARE -> deserializePrepareBody(stream, loadId);
+      case COMMIT -> deserializeCommitBody(stream, loadId);
+      case ABORT -> deserializeAbortBody(stream, loadId);
+    };
+  }
+
+  private static LoadTsFileConsensusNode deserializePieceBody(
+      final InputStream stream, final String loadId)
+      throws IOException, PageException, IllegalPathException {
+    final String tsFileId = ReadWriteIOUtils.readString(stream);
+    final long pieceIndex = ReadWriteIOUtils.readLong(stream);
+    final long checksum = ReadWriteIOUtils.readLong(stream);
+    final long dataSize = ReadWriteIOUtils.readLong(stream);
+    final int refCount = readCount(stream, "piece reference");
+    final List<PieceRef> pieceRefs = new ArrayList<>(refCount);
     for (int i = 0; i < refCount; i++) {
       final String refPath = ReadWriteIOUtils.readString(stream);
       final long refOffset = ReadWriteIOUtils.readLong(stream);
       final long refSize = ReadWriteIOUtils.readLong(stream);
-      node.pieceRefs.add(new PieceRef(refPath, refOffset, refSize));
+      pieceRefs.add(new PieceRef(refPath, refOffset, refSize));
     }
-    final int dataCount = ReadWriteIOUtils.readInt(stream);
-    if (dataCount < 0) {
-      throw new IOException();
-    }
-    node.tsFileDataList = new ArrayList<>(dataCount);
+    final int dataCount = readCount(stream, "staged data");
+    final List<TsFileData> tsFileDataList = new ArrayList<>(dataCount);
     for (int i = 0; i < dataCount; i++) {
-      node.tsFileDataList.add(TsFileData.deserialize(stream));
+      tsFileDataList.add(TsFileData.deserialize(stream));
     }
-    final int progressCount = ReadWriteIOUtils.readInt(stream);
-    if (progressCount < 0) {
-      throw new IOException();
-    }
-    node.timePartition2ProgressIndex = new HashMap<>(progressCount);
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(
+            new PlanNodeId(""), LoadTsFileConsensusOp.PIECE, loadId, tsFileId, pieceIndex);
+    node.checksum = checksum;
+    node.dataSize = dataSize;
+    node.pieceRefs = pieceRefs;
+    node.tsFileDataList = tsFileDataList;
+    return node;
+  }
+
+  private static LoadTsFileConsensusNode deserializePrepareBody(
+      final InputStream stream, final String loadId) throws IOException {
+    final int pieceCount = ReadWriteIOUtils.readInt(stream);
+    final long totalBytes = ReadWriteIOUtils.readLong(stream);
+    final boolean isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
+    final Map<TTimePartitionSlot, byte[]> progressIndexes = readProgressIndexes(stream);
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(
+            new PlanNodeId(""), LoadTsFileConsensusOp.PREPARE, loadId, null, -1L);
+    node.pieceCount = pieceCount;
+    node.totalBytes = totalBytes;
+    node.isGeneratedByPipe = isGeneratedByPipe;
+    node.timePartition2ProgressIndex = progressIndexes;
+    return node;
+  }
+
+  private static LoadTsFileConsensusNode deserializeCommitBody(
+      final InputStream stream, final String loadId) throws IOException {
+    final boolean isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
+    final Map<TTimePartitionSlot, byte[]> progressIndexes = readProgressIndexes(stream);
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(
+            new PlanNodeId(""), LoadTsFileConsensusOp.COMMIT, loadId, null, -1L);
+    node.isGeneratedByPipe = isGeneratedByPipe;
+    node.timePartition2ProgressIndex = progressIndexes;
+    return node;
+  }
+
+  private static LoadTsFileConsensusNode deserializeAbortBody(
+      final InputStream stream, final String loadId) throws IOException {
+    final boolean isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
+    final LoadTsFileConsensusNode node =
+        new LoadTsFileConsensusNode(
+            new PlanNodeId(""), LoadTsFileConsensusOp.ABORT, loadId, null, -1L);
+    node.isGeneratedByPipe = isGeneratedByPipe;
+    return node;
+  }
+
+  private static Map<TTimePartitionSlot, byte[]> readProgressIndexes(final InputStream stream)
+      throws IOException {
+    final int progressCount = readCount(stream, "progress index");
+    final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex =
+        new HashMap<>(progressCount);
     for (int i = 0; i < progressCount; i++) {
       final long startTime = ReadWriteIOUtils.readLong(stream);
-      final int len = ReadWriteIOUtils.readInt(stream);
-      if (len < 0) {
-        throw new IOException();
-      }
+      final int len = readCount(stream, "progress index payload length");
       final byte[] bytes = new byte[len];
       int offset = 0;
       while (offset < len) {
@@ -580,15 +598,30 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
           throw new IOException(
               String.format(
                   DataNodeQueryMessages
-                      .EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_EC07D9BE,
-                  "progressIndex"));
+                      .EXCEPTION_LOAD_CONSENSUS_ENTRY_ENDED_WHILE_READING_ARG_ARG_OF_ARG_BYTES_WERE_AVAILABLE_D927147B,
+                  "progress index payload",
+                  offset,
+                  len));
         }
         offset += read;
       }
-      node.timePartition2ProgressIndex.put(new TTimePartitionSlot(startTime), bytes);
+      timePartition2ProgressIndex.put(new TTimePartitionSlot(startTime), bytes);
     }
-    node.pullSourceEndPoint = ReadWriteIOUtils.readString(stream);
-    return node;
+    return timePartition2ProgressIndex;
+  }
+
+  /** Reads a length-prefixed element count, rejecting one that cannot describe a body. */
+  private static int readCount(final InputStream stream, final String what) throws IOException {
+    final int count = ReadWriteIOUtils.readInt(stream);
+    if (count < 0) {
+      throw new IOException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_LOAD_CONSENSUS_ENTRY_DECLARES_A_NEGATIVE_ARG_COUNT_ARG_2DEADCCC,
+              what,
+              count));
+    }
+    return count;
   }
 
   @Override
@@ -624,7 +657,8 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
    *     this node while it is being dispatched.
    */
   public ByteBuffer serialize(final boolean includeContent) {
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(initialSerializationCapacity(includeContent));
         DataOutputStream stream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(WALEntryType.LOAD_TSFILE_CONSENSUS_NODE.getCode(), stream);
       ReadWriteIOUtils.write(-1L, stream);
@@ -635,6 +669,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       ReadWriteIOUtils.write(getEncodedSearchIndex(), stream);
       serializeBody(stream, includeContent);
       getPlanNodeId().serialize(stream);
+      // A serialized plan node ends with its child count; a LOAD command never has one, so it is 0.
       ReadWriteIOUtils.write(0, stream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
@@ -642,15 +677,53 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     }
   }
 
+  /** Small default start for a buffer whose final size is not known upfront. */
+  private static final int DEFAULT_SERIALIZATION_BUFFER_SIZE = 64;
+
+  /** Room for everything a PIECE writes next to its payloads. */
+  private static final int PIECE_METADATA_SIZE = 4 * 1024;
+
+  /** Sizes the buffer from {@link #dataSize} upfront instead of growing it. */
+  private int initialSerializationCapacity(final boolean includeContent) {
+    if (!includeContent) {
+      return DEFAULT_SERIALIZATION_BUFFER_SIZE;
+    }
+    // Clamped so that the cast cannot overflow even for a piece close to 2 GiB of payloads.
+    return (int)
+        Math.min(
+            Integer.MAX_VALUE - Long.BYTES,
+            Math.max(DEFAULT_SERIALIZATION_BUFFER_SIZE, dataSize + PIECE_METADATA_SIZE));
+  }
+
   @Override
   public int serializedSize() {
+    // Measured with a byte counter: exact, and no buffer as large as the body.
+    final SizeCountingOutputStream counter = new SizeCountingOutputStream();
     try {
-      final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      final DataOutputStream stream = new DataOutputStream(baos);
-      serializeBody(stream);
-      return Short.BYTES + Long.BYTES + baos.size();
+      serializeBody(new DataOutputStream(counter));
     } catch (IOException e) {
       throw new IllegalStateException(e);
+    }
+    return Short.BYTES + Long.BYTES + Math.toIntExact(counter.getSize());
+  }
+
+  /** An {@link OutputStream} that measures what is written to it and keeps none of it. */
+  private static final class SizeCountingOutputStream extends OutputStream {
+
+    private long size;
+
+    @Override
+    public void write(final int b) {
+      size++;
+    }
+
+    @Override
+    public void write(final byte[] b, final int off, final int len) {
+      size += len;
+    }
+
+    long getSize() {
+      return size;
     }
   }
 
@@ -672,8 +745,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       final LoadTsFileConsensusNode node =
           deserializeBody(new LoadTsFilePieceNode.ByteBufferInputStream(buffer));
       node.setSearchIndexFromWAL(encodedSearchIndex);
-      // The forwarded form keeps the plan node id and the closing int of a plan node attribute
-      // buffer after the body
+      // A serialized plan node ends with its child count; a LOAD command never has one, so it is 0.
       node.setPlanNodeId(PlanNodeId.deserialize(buffer));
       ReadWriteIOUtils.readInt(buffer);
       return node;

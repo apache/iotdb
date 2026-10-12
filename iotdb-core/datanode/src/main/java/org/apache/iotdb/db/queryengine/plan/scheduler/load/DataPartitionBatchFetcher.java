@@ -73,6 +73,8 @@ class DataPartitionBatchFetcher {
   /**
    * Queries or creates data partition replica sets for the supplied (device, time-partition) slots.
    * Guarantees 1:1 order-matching between input slots and returned replica sets.
+   *
+   * <p>Positional: {@code result.get(i)} belongs to {@code slotList.get(i)}, so repeats stay.
    */
   List<TRegionReplicaSet> queryDataPartition(
       final List<Pair<IDeviceID, TTimePartitionSlot>> slotList, final String userName) {
@@ -113,6 +115,7 @@ class DataPartitionBatchFetcher {
                   slot.left,
                   slot.right));
         }
+        // Kept per slot, not per region: the caller indexes this list by slot position.
         replicaSets.add(replicaSet);
       }
     }

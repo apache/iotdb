@@ -691,9 +691,9 @@ final class TsFileWriterManager {
 
     for (final LoadTsFileProgress.ChunkRangeRecord record : records) {
       final ChunkHeader chunkHeader =
-          LoadTsFileProgress.deserializeChunkHeader(record.chunkType(), record.chunkHeaderBytes());
+          LoadTsFileProgress.deserializeChunkHeader(record.chunkType(), record.chunkHeaderBody());
       final Statistics<?> statistics =
-          LoadTsFileProgress.deserializeStatistics(record.dataType(), record.statisticsBytes());
+          LoadTsFileProgress.deserializeStatistics(record.dataType(), record.statisticsBody());
 
       final ChunkMetadata chunkMetadata =
           new ChunkMetadata(

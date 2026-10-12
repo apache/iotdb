@@ -120,7 +120,7 @@ public final class LoadTsFileSnapshot {
 
       LOGGER.info(
           String.format(
-              StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C,
+              StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_194E4132,
               taskDirs.size(),
               countFiles(loadSnapshotDir),
               dataRegion.getDatabaseName()
@@ -203,7 +203,7 @@ public final class LoadTsFileSnapshot {
               .orElse(-1L);
     } catch (final IOException e) {
       LOGGER.warn(
-          StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_509E36FD,
+          StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_770B7481,
           snapshotStagedFile.getAbsolutePath(),
           e.getMessage());
       return -1L;
@@ -283,7 +283,7 @@ public final class LoadTsFileSnapshot {
     if (taskCount > 0) {
       LOGGER.info(
           String.format(
-              StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_90ABC1BF,
+              StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_DA59CF0F,
               taskCount,
               fileCount,
               snapshotDir.getAbsolutePath()));

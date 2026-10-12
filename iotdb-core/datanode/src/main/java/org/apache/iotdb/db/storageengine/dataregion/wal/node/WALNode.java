@@ -847,14 +847,21 @@ public class WALNode implements IWALNode {
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
-                if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                if (type == WALEntryType.OBJECT_FILE_NODE) {
                   final WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // The WAL only stores the piece references. For downstream V1 sync, forward a
-                  // request that reads the referenced payloads back when it is sent, so that the
-                  // replication queues keep only the piece metadata instead of a copy of every
-                  // chunk.
+                  // The entry carries no content, only where it lives: serialize() reads it back.
+                  final ObjectNode objectNode = (ObjectNode) walEntry.getValue();
+                  tmpNodes.get().add(new IoTConsensusRequest(objectNode.serialize()));
+                  memorySize += objectNode.getMemorySize();
+                } else if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                  final WALEntry walEntry =
+                      WALEntry.deserialize(
+                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // A lagging IoT consensus V1 follower is fed with this. The entry holds only the
+                  // payload
+                  // references, so the request reads the payloads back when it is sent.
                   final LoadPieceConsensusRequest loadRequest =
                       new LoadPieceConsensusRequest((LoadTsFileConsensusNode) walEntry.getValue());
                   tmpNodes.get().add(loadRequest);
@@ -883,14 +890,21 @@ public class WALNode implements IWALNode {
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
-                if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                if (type == WALEntryType.OBJECT_FILE_NODE) {
                   final WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // The WAL only stores the piece references. For downstream V1 sync, forward a
-                  // request that reads the referenced payloads back when it is sent, so that the
-                  // replication queues keep only the piece metadata instead of a copy of every
-                  // chunk.
+                  // The entry carries no content, only where it lives: serialize() reads it back.
+                  final ObjectNode objectNode = (ObjectNode) walEntry.getValue();
+                  tmpNodes.get().add(new IoTConsensusRequest(objectNode.serialize()));
+                  memorySize += objectNode.getMemorySize();
+                } else if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                  final WALEntry walEntry =
+                      WALEntry.deserialize(
+                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // A lagging IoT consensus V1 follower is fed with this. The entry holds only the
+                  // payload
+                  // references, so the request reads the payloads back when it is sent.
                   final LoadPieceConsensusRequest loadRequest =
                       new LoadPieceConsensusRequest((LoadTsFileConsensusNode) walEntry.getValue());
                   tmpNodes.get().add(loadRequest);

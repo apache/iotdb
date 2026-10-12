@@ -407,21 +407,13 @@ public class LoadTsFileManagerDeletionTest {
   }
 
   private static LoadTsFileConsensusNode abortNode(final String loadId) {
-    return LoadTsFileConsensusNode.abort(
-        new PlanNodeId("load-abort-" + loadId), loadId, null, false);
+    return LoadTsFileConsensusNode.abort(new PlanNodeId("load-abort-" + loadId), loadId, false);
   }
 
   /** The PREPARE command of a task, which is what seals the staged files. */
   private static LoadTsFileConsensusNode prepareNode(final String loadId) {
     return LoadTsFileConsensusNode.prepare(
-        new PlanNodeId("load-prepare-" + loadId),
-        loadId,
-        null,
-        0,
-        0L,
-        0L,
-        false,
-        Collections.emptyMap());
+        new PlanNodeId("load-prepare-" + loadId), loadId, 0, 0L, false, Collections.emptyMap());
   }
 
   private static void deleteRecursively(final File file) {

@@ -19,33 +19,42 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 /**
- * Consensus LOAD request phases, sequenced by the scheduler/client.
+ * The consensus commands of one LOAD transaction: {@link #PIECE} stages a piece, {@link #PREPARE}
+ * seals the staged data once every piece arrived, {@link #COMMIT} imports it into the region and
+ * {@link #ABORT} discards it. There is no "begin" phase - the first PIECE creates the staging
+ * directory of its region.
  *
- * <p>{@link #BEGIN} opens a load, {@link #PIECE} stages one data piece, {@link #PREPARE} seals the
- * data of a load, {@link #COMMIT} imports the staged data, {@link #ABORT} discards it, and {@link
- * #PULL} asks the current write node to re-deliver the serialized bytes of one already-applied
- * piece; this legacy request is no longer supported and is kept only for compatibility with older
- * nodes. Phase enforcement and idempotency are the client's responsibility; the server applies each
- * request against the staged data directory identified by the load id without keeping per-load
- * transaction state in memory.
+ * <p>The codes go on the wire, into the WAL and the progress records, so they are never renumbered.
  */
 public enum LoadTsFileConsensusOp {
-  BEGIN,
-  PIECE,
-  PREPARE,
-  COMMIT,
-  ABORT,
-  PULL;
+  PIECE(1),
+  PREPARE(2),
+  COMMIT(3),
+  ABORT(4);
 
-  public static LoadTsFileConsensusOp fromOrdinal(int ordinal) {
-    final LoadTsFileConsensusOp[] values = values();
-    if (ordinal < 0 || ordinal >= values.length) {
-      throw new IllegalArgumentException(
-          org.apache.iotdb.db.i18n.DataNodeQueryMessages
-                  .EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2
-              + ordinal);
+  private static final LoadTsFileConsensusOp[] VALUES = values();
+
+  private final int code;
+
+  LoadTsFileConsensusOp(final int code) {
+    this.code = code;
+  }
+
+  public int getCode() {
+    return code;
+  }
+
+  public static LoadTsFileConsensusOp fromCode(final int code) {
+    for (final LoadTsFileConsensusOp op : VALUES) {
+      if (op.code == code) {
+        return op;
+      }
     }
-    return values[ordinal];
+    throw new IllegalArgumentException(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_CODE_ARG_B62D2997, code));
   }
 }

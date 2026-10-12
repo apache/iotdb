@@ -136,7 +136,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *     |                     phase1: TsFileSplitConsumer
  *     |                       DataPartitionRouter -> MemoryBoundedBuffer
  *     |                       -> PieceDispatcher
- *     |                     phase2: BEGIN -> PIECE* -> PREPARE -> COMMIT
+ *     |                     phase2: PIECE* -> PREPARE -> COMMIT
  *     |                       or ABORT, via per-region state +
  *     |                       LoadConsensusSubmitter
  *     |
@@ -170,7 +170,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *      v
  * TwoPhaseConsensusLoadStrategy.dispatchConsensusPiece
  *      |
- *      +-- first piece of a region: BEGIN(loadId) then PIECE(0)
+ *      +-- first piece of a region: PIECE(0) creates the staging directory
  *      +-- later pieces:            PIECE(1), PIECE(2), ...
  *      |
  *      v
@@ -246,12 +246,12 @@ import java.util.concurrent.ConcurrentHashMap;
  *   </tr>
  *   <tr>
  *     <td>Per-region maps in {@link TwoPhaseConsensusLoadStrategy}</td>
- *     <td>LOAD per-region two-phase state: one context per region with load id, piece count, total
- *         bytes and BEGIN state</td>
+ *     <td>LOAD per-region two-phase state: one context per region with load id, resolved route,
+ *         piece count and total bytes</td>
  *   </tr>
  *   <tr>
  *     <td>{@link LoadConsensusSubmitter}</td>
- *     <td>LOAD consensus transport for BEGIN/PIECE/PREPARE/COMMIT/ABORT: resolves the partition's
+ *     <td>LOAD consensus transport for PIECE/PREPARE/COMMIT/ABORT: resolves the partition's
  *         write node and submits via local consensus write or internal RPC, like the normal write
  *         path</td>
  *   </tr>
@@ -313,11 +313,19 @@ public class LoadTsFileScheduler implements IScheduler {
       final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
       final IPartitionFetcher partitionFetcher,
       final boolean isGeneratedByPipe) {
-    Objects.requireNonNull(distributedQueryPlan, "distributedQueryPlan cannot be null");
-    this.queryContext = Objects.requireNonNull(queryContext, "queryContext cannot be null");
-    this.stateMachine = Objects.requireNonNull(stateMachine, "stateMachine cannot be null");
-    Objects.requireNonNull(clientManager, "clientManager cannot be null");
-    Objects.requireNonNull(partitionFetcher, "partitionFetcher cannot be null");
+    Objects.requireNonNull(
+        distributedQueryPlan,
+        DataNodeQueryMessages.EXCEPTION_DISTRIBUTEDQUERYPLAN_CANNOT_BE_NULL_A54D99CB);
+    this.queryContext =
+        Objects.requireNonNull(
+            queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22);
+    this.stateMachine =
+        Objects.requireNonNull(
+            stateMachine, DataNodeQueryMessages.EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790);
+    Objects.requireNonNull(
+        clientManager, DataNodeQueryMessages.EXCEPTION_CLIENTMANAGER_CANNOT_BE_NULL_FAF70317);
+    Objects.requireNonNull(
+        partitionFetcher, DataNodeQueryMessages.EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8);
 
     this.tsFileNodeList = new ArrayList<>();
     this.failedTsFileNodeIndexes = new ArrayList<>();
@@ -450,6 +458,7 @@ public class LoadTsFileScheduler implements IScheduler {
    */
   private TsFileLoadStrategy resolveStrategy(final LoadSingleTsFileNode node, final String userName)
       throws Exception {
+    // Reused by the load: same cached fetcher, same database scope.
     final boolean needDecode =
         node.needDecodeTsFile(slotList -> partitionFetcher.queryDataPartition(slotList, userName));
 
@@ -494,7 +503,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
     LOGGER.info(
         DataNodeQueryMessages
-            .LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9,
+            .LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_3A9E4F5B,
         pendingDeletionFiles.size());
 
     for (final LoadSingleTsFileNode node : pendingDeletionFiles.values()) {
@@ -502,7 +511,7 @@ public class LoadTsFileScheduler implements IScheduler {
         node.clean();
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to clean up source TsFile after loading: {}",
+            DataNodeQueryMessages.LOG_FAILED_TO_CLEAN_UP_SOURCE_TSFILE_AFTER_LOADING_ARG_78E1FEEE,
             node.getTsFileResource().getTsFilePath(),
             e);
       }
@@ -518,19 +527,25 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       deletePendingDeletionFiles();
     } catch (final Throwable t) {
-      LOGGER.warn("Exception encountered during deferred source file deletion", t);
+      LOGGER.warn(
+          DataNodeQueryMessages
+              .LOG_EXCEPTION_ENCOUNTERED_DURING_DEFERRED_SOURCE_FILE_DELETION_D4AE0D0B,
+          t);
     }
 
     try {
       dispatcher.close();
     } catch (final Throwable t) {
-      LOGGER.warn("Exception encountered closing dispatcher", t);
+      LOGGER.warn(DataNodeQueryMessages.LOG_EXCEPTION_ENCOUNTERED_CLOSING_DISPATCHER_02FE15C1, t);
     }
 
     try {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     } catch (final Throwable t) {
-      LOGGER.warn("Exception encountered releasing data cache memory block", t);
+      LOGGER.warn(
+          DataNodeQueryMessages
+              .LOG_EXCEPTION_ENCOUNTERED_RELEASING_DATA_CACHE_MEMORY_BLOCK_3CD1873D,
+          t);
     }
   }
 

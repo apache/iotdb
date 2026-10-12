@@ -55,6 +55,8 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2 =
           "device %s 在分区 %s 上解析到 null 副本集";
+  public static final String EXCEPTION_DISTRIBUTEDQUERYPLAN_CANNOT_BE_NULL_A54D99CB =
+      "distributedQueryPlan 不能为 null";
   public static final String EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22 =
       "queryContext 不能为 null";
   public static final String EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4 =
@@ -3292,8 +3294,19 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移，将转换为 insertion 以避免数据丢失。";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "成功加载 TsFile {}，加载进度 [{}/{}]";
-  public static final String LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9 =
-      "LOAD 批次结束，删除 %d 个源 TsFile";
+  public static final String
+      LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_3A9E4F5B =
+          "LOAD 批次结束，加载完成后删除 {} 个源 TsFile";
+  public static final String LOG_FAILED_TO_CLEAN_UP_SOURCE_TSFILE_AFTER_LOADING_ARG_78E1FEEE =
+      "加载后清理源 TsFile 失败：{}";
+  public static final String
+      LOG_EXCEPTION_ENCOUNTERED_DURING_DEFERRED_SOURCE_FILE_DELETION_D4AE0D0B =
+          "延迟删除源 TsFile 时发生异常";
+  public static final String LOG_EXCEPTION_ENCOUNTERED_CLOSING_DISPATCHER_02FE15C1 =
+      "关闭 dispatcher 时发生异常";
+  public static final String
+      LOG_EXCEPTION_ENCOUNTERED_RELEASING_DATA_CACHE_MEMORY_BLOCK_3CD1873D =
+          "释放数据缓存内存块时发生异常";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
 
       "无法加载 TsFile {}，加载进度 [{}/{}]。";
@@ -4692,13 +4705,16 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "'percentile' 函数的第二个参数 percentage 必须是 double 字面量";
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "测点 %s%s%s 的数据类型不匹配，TsFile 中类型：%s，IoTDB 中类型：%s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "释放外部 TsFile 查询资源失败";
-  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2 = "未知的 LoadTsFileConsensusOp 序号：";
-  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_EC07D9BE =
-      "未知的 LoadTsFileConsensusOp 序号：%s";
-  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_B7269F99 =
-      "无法重新查询 region %s 的路由：LOAD 任务 %s 的 %s 不会在失败的路由上重试。";
-  public static final String LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_935B3C4F =
-      "LOAD 任务 %s 在 region %s 的提交结果无法确定：%s";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_CODE_ARG_B62D2997 =
+      "未知的 LoadTsFileConsensusOp 编码：%s";
+  public static final String EXCEPTION_LOAD_CONSENSUS_ENTRY_DECLARES_A_NEGATIVE_ARG_COUNT_ARG_2DEADCCC =
+      "LOAD 共识条目声明的 %s 数量为负数：%d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_ENTRY_ENDED_WHILE_READING_ARG_ARG_OF_ARG_BYTES_WERE_AVAILABLE_D927147B =
+      "读取 %s 时 LOAD 共识条目已结束：仅有 %d/%d 字节可用。";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_02FFB468 =
+      "无法重新查询 region {} 的路由：LOAD 任务 {} 的 {} 不会在失败的路由上重试。";
+  public static final String LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_89B6F261 =
+      "LOAD 任务 {} 在 region {} 的提交结果无法确定：{}";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "在 IoTDBLocal 查询开始前，外层查询已超时";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "关闭索引 {} 处的 UDF 结果集失败";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "未找到内部查询执行";

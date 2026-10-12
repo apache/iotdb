@@ -292,8 +292,8 @@ public class LoadTsFileManager {
   }
 
   /**
-   * The staging directories of the loads this region is currently building (BEGIN/PIECE/PREPARE
-   * stage). A snapshot must include their contents so a recovering replica can inherit the partial
+   * The staging directories of the loads this region is currently building (the PIECE and PREPARE
+   * phases). A snapshot must include their contents so a recovering replica can inherit the partial
    * physical state and the {@link LoadTsFileProgress} bitmaps of those loads.
    */
   public List<File> getActiveTaskDirs() {
@@ -355,8 +355,11 @@ public class LoadTsFileManager {
               node.getLoadId()));
     }
     LOGGER.info(
-        StorageEngineMessages.LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866,
-        node.getLoadId());
+        StorageEngineMessages
+            .LOG_PREPARING_LOAD_TSFILE_ARG_ARG_PIECES_OF_ARG_BYTES_OF_STAGED_RESOURCES_5F00E102,
+        node.getLoadId(),
+        node.getPieceCount(),
+        node.getTotalBytes());
     uuid2WriterManager
         .get(node.getLoadId())
         .prepare(node.isGeneratedByPipe(), timePartitionProgressIndexMap);

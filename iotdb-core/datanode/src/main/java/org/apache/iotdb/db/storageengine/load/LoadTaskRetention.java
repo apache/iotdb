@@ -40,6 +40,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Retains staged directories of finished LOAD tasks until WAL watermarks confirm that follower
  * replicas have synchronized the required chunks, preventing premature deletion.
+ *
+ * <p>Recorded twice: the progress files hold the command the task ended with, and {@code
+ * terminal.marker} survives their deletion and tells a restart to delete the directory.
  */
 final class LoadTaskRetention {
 
@@ -68,7 +71,7 @@ final class LoadTaskRetention {
         && safelyDeletedSearchIndex < searchIndex;
   }
 
-  /** Marks a directory as finished to ensure crash recovery will delete rather than resume it. */
+  /** Marks a directory as finished so crash recovery deletes instead of resuming it. */
   void markTerminal(
       final File taskDir, final LoadTsFileConsensusOp terminalOp, final long searchIndex) {
     if (taskDir == null || !taskDir.isDirectory()) {
@@ -97,6 +100,7 @@ final class LoadTaskRetention {
       }
     }
 
+    // The record that survives the deletion of the progress files, and what a restart reads.
     try {
       final File marker = new File(taskDir, TERMINAL_MARKER_FILE_NAME);
       Files.write(marker.toPath(), Long.toString(searchIndex).getBytes(StandardCharsets.UTF_8));
@@ -185,6 +189,7 @@ final class LoadTaskRetention {
         .register(loadId, dataRegion, retained.dir(), retained.reachedSearchIndex(), op);
   }
 
+  /** Reads the command a finished task ended with; COMMIT when no record is left. */
   private LoadTsFileConsensusOp resolveTerminalOpFromProgressFiles(final File taskDir) {
     final File[] files = taskDir.listFiles();
     if (files != null) {

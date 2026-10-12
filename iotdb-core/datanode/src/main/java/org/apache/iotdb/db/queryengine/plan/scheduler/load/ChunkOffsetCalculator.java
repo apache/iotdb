@@ -93,6 +93,7 @@ public final class ChunkOffsetCalculator {
     Objects.requireNonNull(
         chunkData, DataNodeQueryMessages.EXCEPTION_CHUNKDATA_CANNOT_BE_NULL_7D931C4D);
     final ChunkLayout allocated = allocate(chunkData.getDevice(), chunkData.isAligned(), chunk);
+    // Only the six persisted fields are projected here.
     final ChunkData.ChunkLayout layout =
         new ChunkData.ChunkLayout(
             allocated.chunkGroupIndex(),
@@ -146,6 +147,7 @@ public final class ChunkOffsetCalculator {
   // -------------------------------------------------------------------------
 
   private int computeChunkGroupHeaderSize(final IDeviceID device) {
+    // Normalized to what the staged writer serializes: 12 vs 13 bytes for "root.sg.d1".
     final IDeviceID normalizedDevice =
         device instanceof StringArrayDeviceID ? device : new StringArrayDeviceID(device.toString());
     try {

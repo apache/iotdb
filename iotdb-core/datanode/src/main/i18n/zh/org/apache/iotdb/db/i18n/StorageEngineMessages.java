@@ -46,8 +46,6 @@ public final class StorageEngineMessages {
   // ======================== StorageEngine ========================
 
   public static final String FAIL_TO_RECOVER_WAL = "WAL 恢复失败。";
-  public static final String LOG_LOAD_CONSENSUS_WRITE_TO_REGION_ARG_VIA_PROTOCOL_ARG_EBB55042 =
-      "通过协议 {} 向 Region {} 写入 LOAD 共识节点";
   public static final String EXCEPTION_REPLICASET_CANNOT_BE_NULL_A7340AC3 =
       "replicaSet 不能为 null";
   public static final String EXCEPTION_NODE_CANNOT_BE_NULL_BC7D5BB9 = "node 不能为 null";
@@ -67,7 +65,7 @@ public final class StorageEngineMessages {
   public static final String LOG_FAILED_TO_EXECUTE_CONSENSUS_NODE_LOCALLY_ON_REGION_ARG_3B675D32 =
       "在 Region {} 上本地执行共识节点失败";
   public static final String LOG_FAILED_TO_DISPATCH_LOAD_COMMAND_TO_REMOTE_ENDPOINT_ARG_142A712A =
-      "向远端 %s 下发 LOAD 命令失败";
+      "向远端 {} 下发 LOAD 命令失败";
   public static final String LOG_LOAD_CONSENSUS_ROUTE_OF_REGION_ARG_IS_STALE_WRITE_NODE_ARG_IS_NOT_IN_REPLICA_SET_ARG_E7F1DDD2 =
       "LOAD 共识路由已过期：region {} 的写节点 {} 不在副本集 {} 中。";
   public static final String LOG_FAILED_TO_LOOK_THE_ROUTE_OF_REGION_ARG_UP_AGAIN_ATTEMPT_ARG_OF_ARG_ARG_4A94EC21 =
@@ -78,8 +76,8 @@ public final class StorageEngineMessages {
       "枚举 LOAD 快照目录 %s 失败：%s";
   public static final String MESSAGE_THE_DIRECTORY_IS_UNREADABLE_OR_MISSING_54036A44 =
       "该目录不可读或不存在";
-  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_509E36FD =
-      "LOAD 快照进度文件 %s 无法读取：%s";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_770B7481 =
+      "LOAD 快照进度文件 {} 无法读取：{}";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD 共识分片校验和不一致，loadId: %s，pieceIndex: %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
@@ -150,10 +148,10 @@ public final class StorageEngineMessages {
       "时间分区 %d 的 LOAD 进度索引序列化失败";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B =
       "load %s 的暂存文件 %s 不完整，无法提交（COMMIT）。";
-  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_09A7DD4C =
-      "已将 %d 个进行中的 LOAD 任务（共 %d 个暂存文件）纳入 region %s 的快照 %s。";
-  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_90ABC1BF =
-      "已恢复 %d 个进行中的 LOAD 任务（共 %d 个暂存文件），来自快照 %s。";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_TAKEN_194E4132 =
+      "已将 {} 个进行中的 LOAD 任务（共 {} 个暂存文件）纳入 region {} 的快照 {}。";
+  public static final String LOG_LOAD_CONSENSUS_SNAPSHOT_RESTORED_DA59CF0F =
+      "已恢复 {} 个进行中的 LOAD 任务（共 {} 个暂存文件），来自快照 {}。";
   public static final String EXCEPTION_LOAD_CONSENSUS_SNAPSHOT_RESTORE_FAILED_F8C29C64 =
       "从 %s 恢复 LOAD 快照失败：%s";
   public static final String EXCEPTION_LOAD_TSFILE_ALIGNED_VALUE_CHUNK_TIME_CHUNK_EEB00760 =
@@ -610,8 +608,8 @@ public final class StorageEngineMessages {
   public static final String LOAD_TSFILE_DIR_CREATED = "已创建加载 TsFile 目录 {}。";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "关闭 TsFileIOWriter {} 出错。";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "关闭修改文件 {} 出错。";
-  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =
-      "正在准备 LOAD TsFile {}：封存暂存资源。";
+  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_ARG_PIECES_OF_ARG_BYTES_OF_STAGED_RESOURCES_5F00E102 =
+      "正在准备 LOAD TsFile {}：{} 个分片、{} 字节暂存资源。";
   public static final String LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335 =
       "正在提交 LOAD TsFile {}：将已准备资源加载到 DataRegion。";
   public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_ARG_C36E832B =
@@ -664,6 +662,9 @@ public final class StorageEngineMessages {
   public static final String UTILITY_CLASS = "工具类";
   public static final String TSFILE_DATA_BYTE_ARRAY_SIZE_MISMATCH = "TsFileData 字节数组读取错误，大小不匹配。";
   public static final String UNKNOWN_TSFILE_DATA_TYPE = "未知的 TsFileData 类型: ";
+  public static final String
+      EXCEPTION_UNKNOWN_TSFILEDATA_TYPE_ORDINAL_ARG_WHEN_DESERIALIZING_A_LOAD_PIECE_27A777D2 =
+          "反序列化 LOAD 分片时遇到未知的 TsFileData 类型序号 %d";
   public static final String FILE_MAGIC_STRING_INCORRECT = "文件的 MAGIC STRING 不正确，文件路径: {}";
   public static final String FILE_VERSION_TOO_OLD = "文件的版本号过旧，文件路径: {}";
   public static final String FILE_NOT_CLOSED_CORRECTLY = "文件未正确关闭，文件路径: {}";

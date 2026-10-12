@@ -29,18 +29,13 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 
 /**
- * The replication request of one LOAD piece. While it waits in the replication queues it keeps the
- * piece metadata and the references of its chunk payloads, and it reads those payloads back from
- * the staged TsFile only when the bytes are actually needed for sending.
+ * The replication request of one LOAD piece: while it waits in the replication queues it keeps the
+ * piece metadata and the references of its chunk payloads, and reads those payloads back from the
+ * staged TsFile only when the bytes are needed for sending.
  *
- * <p>The WAL keeps the same reference form, so a replica forwarding a piece to a follower does not
- * keep a second copy of every chunk in memory while the entry waits to be replicated. The staged
- * file is guaranteed to be readable for as long as the piece may still be forwarded, because the
- * staged directory of a task is released only after the consensus watermark has passed its COMMIT
- * or ABORT command.
- *
- * <p>It stays an {@link IoTConsensusRequest} so that every consumer of a forwarded entry keeps
- * treating it exactly as before.
+ * <p>The staged TsFile holds the only copy of a payload, so it may be released only once the
+ * <em>replicated</em> watermark has passed the task's COMMIT or ABORT (see LoadTaskRetention), and
+ * it is kept when the coordinator dies before sending one, so a retried LOAD can resume it.
  */
 public class LoadPieceConsensusRequest extends IoTConsensusRequest {
 

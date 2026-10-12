@@ -39,9 +39,8 @@ public interface TsFileData {
   /**
    * Serializes this data.
    *
-   * @param includeContent whether chunk payloads must be inlined. When false, a chunk that was
-   *     already written into the staged TsFile carries a {@link ChunkPayloadRef} instead of its
-   *     bytes, so that the WAL does not store the same payload twice.
+   * @param includeContent whether to inline chunk payloads; false keeps a {@link ChunkPayloadRef}
+   *     for a chunk already written into the staged TsFile, so no payload is stored twice
    */
   void serialize(DataOutputStream stream, boolean includeContent) throws IOException;
 
@@ -49,7 +48,11 @@ public interface TsFileData {
       throws IOException, PageException, IllegalPathException {
     final int typeOrdinal = ReadWriteIOUtils.readInt(stream);
     if (typeOrdinal < 0 || typeOrdinal >= TsFileDataType.values().length) {
-      throw new IOException();
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_UNKNOWN_TSFILEDATA_TYPE_ORDINAL_ARG_WHEN_DESERIALIZING_A_LOAD_PIECE_27A777D2,
+              typeOrdinal));
     }
     final TsFileDataType type = TsFileDataType.values()[typeOrdinal];
     switch (type) {

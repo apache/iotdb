@@ -39,6 +39,8 @@ public final class LoadPointCountMetrics {
       final String databaseName,
       final long writePointCount,
       final boolean isGeneratedByIoTConsensusV2Leader) {
+    // Same internal series as the flushed points, and the shared flushPointsCache keeps two
+    // reports of it apart.
     MemTableFlushTask.recordFlushPointsMetricInternal(
         writePointCount, databaseName, dataRegion.getDataRegionIdString());
     MetricService.getInstance()
