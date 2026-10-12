@@ -60,6 +60,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   private final String treeModelDatabaseName;
 
   private final EnrichedEvent sourceEvent;
+  private final AtomicBoolean generatedEventRegisteredWithSource = new AtomicBoolean(false);
+  private final AtomicBoolean generatedEventOutcomeReported = new AtomicBoolean(false);
   private boolean needToReport;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
@@ -98,11 +100,18 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    if (needToReport) {
+    if (needToReport || sourceEvent instanceof PipeTsFileInsertionEvent) {
       addOnCommittedHook(
           () -> {
-            if (shouldReportOnCommit) {
+            // The last generated tablet still owns the progress-index cleanup. Other generated
+            // tablets only contribute to the transfer completion of their source TsFile.
+            if (shouldReportOnCommit && needToReport) {
               eliminateProgressIndex();
+            }
+            if (sourceEvent instanceof PipeTsFileInsertionEvent
+                && generatedEventOutcomeReported.compareAndSet(false, true)) {
+              ((PipeTsFileInsertionEvent) sourceEvent)
+                  .markGeneratedTabletInsertionEventAsTransferred();
             }
           });
     }
@@ -259,6 +268,22 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     return true;
   }
 
+  /** Marks this generated tablet as accepted by the processor output collector. */
+  public void markAsGeneratedEventRegisteredWithSource() {
+    generatedEventRegisteredWithSource.set(true);
+  }
+
+  @Override
+  public boolean clearReferenceCount(final String holderMessage) {
+    final boolean cleared = super.clearReferenceCount(holderMessage);
+    if (generatedEventRegisteredWithSource.get()
+        && generatedEventOutcomeReported.compareAndSet(false, true)
+        && sourceEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) sourceEvent).markGeneratedTabletInsertionEventAsDiscarded();
+    }
+    return cleared;
+  }
+
   protected void eliminateProgressIndex() {
     if (sourceEvent instanceof PipeTsFileInsertionEvent) {
       ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
@@ -334,7 +359,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public void markAsNeedToReport() {
-    if (!needToReport) {
+    if (!needToReport && !(sourceEvent instanceof PipeTsFileInsertionEvent)) {
       addOnCommittedHook(
           () -> {
             if (shouldReportOnCommit) {
