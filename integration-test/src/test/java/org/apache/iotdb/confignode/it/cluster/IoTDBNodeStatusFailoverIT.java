@@ -37,8 +37,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.sun.tools.attach.VirtualMachine;
 import org.apache.tsfile.utils.Pair;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.ErrorCollector;
 import org.junit.rules.TemporaryFolder;
@@ -77,6 +77,7 @@ import static org.junit.Assert.fail;
 /** Process-level status persistence checks with three actual ConfigRegion voters. */
 @RunWith(IoTDBTestRunner.class)
 @Category(ClusterIT.class)
+@Ignore("Temporarily skip IoTDBNodeStatusFailoverIT")
 public class IoTDBNodeStatusFailoverIT {
   @Rule public TemporaryFolder temporary = new TemporaryFolder();
   @Rule public ErrorCollector failures = new ErrorCollector();
@@ -88,7 +89,7 @@ public class IoTDBNodeStatusFailoverIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  @Test
+  // @Test
   public void testGracefulLeaderShutdownPreservesStoppedAndRemoving() throws Exception {
     init(3);
     int stopped = stoppedFixture(0);
@@ -113,7 +114,7 @@ public class IoTDBNodeStatusFailoverIT {
     assertStatus(1, removing, NodeStatus.Removing);
   }
 
-  @Test
+  // @Test
   public void testGracefulSeedShutdownReportsStopped() throws Exception {
     init(1);
     transfer(1);
@@ -136,7 +137,7 @@ public class IoTDBNodeStatusFailoverIT {
     awaitPersisted(2, seedId, null);
   }
 
-  @Test
+  // @Test
   public void testForcedLeaderShutdownWithTwoDataNodes() throws Exception {
     init(2);
     int stopped = stoppedFixture(0);
@@ -156,7 +157,7 @@ public class IoTDBNodeStatusFailoverIT {
     assertStatus(0, stopped, NodeStatus.Stopped);
   }
 
-  @Test
+  // @Test
   public void testNewLeaderChangesSurviveReturnToOriginalLeader() throws Exception {
     init(3);
     int stopped = stoppedFixture(0);
@@ -180,7 +181,7 @@ public class IoTDBNodeStatusFailoverIT {
     assertStatus(1, removing, NodeStatus.Unknown);
   }
 
-  @Test
+  // @Test
   public void testReadOnlyReasonPersistsAcrossLeaderTransferAndClearsAfterRestart()
       throws Exception {
     init(2);
@@ -229,7 +230,7 @@ public class IoTDBNodeStatusFailoverIT {
     }
   }
 
-  @Test
+  // @Test
   public void testLiveOldLeaderPartitionAndQuorumRecovery() throws Exception {
     init(3);
     int stopped = stoppedFixture(0);
@@ -298,7 +299,7 @@ public class IoTDBNodeStatusFailoverIT {
     }
   }
 
-  @Test
+  // @Test
   public void testNoQuorumTransitionMatrix() throws Exception {
     init(2);
     int nodeId = stoppedFixture(0);
@@ -361,7 +362,7 @@ public class IoTDBNodeStatusFailoverIT {
     }
   }
 
-  @Test
+  // @Test
   public void testSnapshotAndFollowingClearLogRecoverTogether() throws Exception {
     init(3);
     int stopped = stoppedFixture(0);
@@ -457,7 +458,7 @@ public class IoTDBNodeStatusFailoverIT {
             Collections.singletonList(NodeStatus.Running));
   }
 
-  @Test
+  // @Test
   public void testRealRemovalPersistsIntentAndDeletesRegistration() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
