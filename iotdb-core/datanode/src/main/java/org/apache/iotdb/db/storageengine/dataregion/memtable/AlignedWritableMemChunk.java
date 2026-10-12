@@ -271,24 +271,22 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
    */
   private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
       List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
-    List<TSDataType> newDataTypes = new ArrayList<>();
-    for (IMeasurementSchema measurementSchema : schemaListInInsertPlan) {
-      if (measurementSchema != null
-          && !measurementIndexMap.containsKey(measurementSchema.getMeasurementName())) {
-        measurementIndexMap.put(measurementSchema.getMeasurementName(), schemaList.size());
-        schemaList.add(measurementSchema);
-        newDataTypes.add(measurementSchema.getType());
-      }
-    }
-    // Extend once and allocate the final-width reordered arrays, rather than copying them for
-    // every missing measurement while the DataRegion write lock is held.
-    list.extendColumns(newDataTypes);
     Object[] reorderedColumnValues = new Object[schemaList.size()];
     BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
       IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
       if (measurementSchema != null) {
-        int index = measurementIndexMap.get(measurementSchema.getMeasurementName());
+        Integer index = measurementIndexMap.get(measurementSchema.getMeasurementName());
+        if (index == null) {
+          // Keep writes without new measurements on a single-pass path. Only the first missing
+          // measurement triggers a batch extension and one resize of the reordered arrays.
+          extendColumnsInInsertPlan(schemaListInInsertPlan, i);
+          reorderedColumnValues = Arrays.copyOf(reorderedColumnValues, schemaList.size());
+          if (reorderedBitMaps != null) {
+            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, schemaList.size());
+          }
+          index = measurementIndexMap.get(measurementSchema.getMeasurementName());
+        }
         reorderedColumnValues[index] = columnValues[i];
         if (bitMaps != null) {
           reorderedBitMaps[index] = bitMaps[i];
@@ -296,6 +294,21 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
     }
     return new Pair<>(reorderedColumnValues, reorderedBitMaps);
+  }
+
+  private void extendColumnsInInsertPlan(
+      List<IMeasurementSchema> schemaListInInsertPlan, int startIndex) {
+    List<TSDataType> newDataTypes = new ArrayList<>();
+    for (int i = startIndex; i < schemaListInInsertPlan.size(); i++) {
+      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
+      if (measurementSchema != null
+          && !measurementIndexMap.containsKey(measurementSchema.getMeasurementName())) {
+        measurementIndexMap.put(measurementSchema.getMeasurementName(), schemaList.size());
+        schemaList.add(measurementSchema);
+        newDataTypes.add(measurementSchema.getType());
+      }
+    }
+    list.extendColumns(newDataTypes);
   }
 
   public long[] getAnySatisfiedTimestamp(
