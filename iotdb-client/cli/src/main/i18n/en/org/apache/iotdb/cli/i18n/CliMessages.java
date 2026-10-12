@@ -77,6 +77,13 @@ public final class CliMessages {
           "Invalid args: Required values for option table not provided.";
 
   private CliMessages() {}
+  public static final String EXCEPTION_FAILED_TO_INSERT_CSV_BATCH_ARG_159E0269 =
+      "Failed to insert CSV batch: %s";
+  public static final String MESSAGE_ARG_UNEXPECTED_ERROR_OCCURRED_ARG_E7255EE6 =
+      "[%s] - Unexpected error occurred: %s";
+  public static final String
+      EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768 =
+          "SQL/TsFile export requires a query from a single table in database %s.";
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------

@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.CaseInsensitiveStream;
+import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
+import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
+import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -28,6 +33,13 @@ import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
+import org.antlr.v4.runtime.BailErrorStrategy;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.external.commons.collections4.CollectionUtils;
@@ -51,6 +63,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -85,6 +98,7 @@ public class ExportDataTable extends AbstractExportData {
       System.exit(1);
     }
     sessionDataSet = tableSession.executeQueryStatement("show tables", timeout);
+    tables.clear();
     while (sessionDataSet.hasNext()) {
       tables.add(sessionDataSet.next().getField(0).getStringValue());
     }
@@ -103,9 +117,11 @@ public class ExportDataTable extends AbstractExportData {
   }
 
   @Override
-  public void exportBySql(String sql, int index) {
+  public boolean exportBySql(String sql, int index) {
     List<String> exportSql = new ArrayList<>();
-    if (StringUtils.isNotBlank(sql)) {
+    boolean customQuery = StringUtils.isNotBlank(sql);
+    boolean success = true;
+    if (customQuery) {
       if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)
           || Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
         legalCheck(sql);
@@ -114,7 +130,7 @@ public class ExportDataTable extends AbstractExportData {
     } else {
       StringBuilder sqlBuilder;
       for (String table : tables) {
-        sqlBuilder = new StringBuilder("select * from ").append(table);
+        sqlBuilder = new StringBuilder("select * from ").append(quoteIdentifier(table));
         if (StringUtils.isNotBlank(startTime) || StringUtils.isNotBlank(endTime)) {
           sqlBuilder.append(" where ");
           if (StringUtils.isNotBlank(startTime)) {
@@ -131,31 +147,108 @@ public class ExportDataTable extends AbstractExportData {
       }
     }
     for (int i = 0; i < exportSql.size(); i++) {
-      String path = targetDirectory + targetFile + i;
-      String table = tables.get(i);
-      try (SessionDataSet sessionDataSet =
-          tableSession.executeQueryStatement(exportSql.get(i), timeout)) {
-        if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
-          exportToSqlFile(sessionDataSet, table, path);
-        } else if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
-          long start = System.currentTimeMillis();
-          boolean isComplete = exportToTsFile(sessionDataSet, path + ".tsfile", table);
-          if (isComplete) {
-            long end = System.currentTimeMillis();
-            ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+      String path = targetDirectory + targetFile + (customQuery ? index : i);
+      try {
+        String queryTable =
+            customQuery
+                ? (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)
+                        || Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)
+                    ? getQueryTable(sql)
+                    : null)
+                : tables.get(i);
+        try (SessionDataSet sessionDataSet =
+            tableSession.executeQueryStatement(exportSql.get(i), timeout)) {
+          if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
+            exportToSqlFile(sessionDataSet, queryTable, path);
+          } else if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
+            long start = System.currentTimeMillis();
+            boolean isComplete = exportToTsFile(sessionDataSet, path + ".tsfile", queryTable);
+            if (isComplete) {
+              long end = System.currentTimeMillis();
+              ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+            }
+          } else {
+            exportToCsvFile(sessionDataSet, path);
           }
-        } else {
-          exportToCsvFile(sessionDataSet, path);
+          sessionDataSet.closeOperationHandle();
+          ioTPrinter.println(Constants.EXPORT_COMPLETELY);
         }
-        sessionDataSet.closeOperationHandle();
-        ioTPrinter.println(Constants.EXPORT_COMPLETELY);
       } catch (StatementExecutionException
           | IoTDBConnectionException
           | IOException
           | WriteProcessException e) {
         ioTPrinter.println("Cannot dump result because: " + e.getMessage());
+        success = false;
       }
     }
+    return success;
+  }
+
+  private static String getQueryTable(String sql) throws StatementExecutionException {
+    String message =
+        String.format(
+            CliMessages
+                .EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768,
+            database);
+    RelationalSqlLexer lexer =
+        new RelationalSqlLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
+    RelationalSqlParser parser = new RelationalSqlParser(new CommonTokenStream(lexer));
+    lexer.removeErrorListeners();
+    lexer.addErrorListener(
+        new BaseErrorListener() {
+          @Override
+          public void syntaxError(
+              Recognizer<?, ?> recognizer,
+              Object offendingSymbol,
+              int line,
+              int charPositionInLine,
+              String error,
+              RecognitionException cause) {
+            throw new ParseCancellationException(message);
+          }
+        });
+    parser.removeErrorListeners();
+    parser.setErrorHandler(new BailErrorStrategy());
+    List<RelationalSqlParser.QualifiedNameContext> sources = new ArrayList<>();
+    try {
+      new RelationalSqlBaseVisitor<Void>() {
+        @Override
+        public Void visitTableName(RelationalSqlParser.TableNameContext context) {
+          sources.add(context.qualifiedName());
+          return null;
+        }
+      }.visit(parser.singleStatement());
+    } catch (ParseCancellationException e) {
+      throw new StatementExecutionException(message);
+    }
+    // Multiple source relations do not have an unambiguous destination table.
+    if (sources.size() != 1) {
+      throw new StatementExecutionException(message);
+    }
+    List<RelationalSqlParser.IdentifierContext> names = sources.get(0).identifier();
+    if (names.size() > 2
+        || (names.size() == 2 && !identifierValue(names.get(0)).equalsIgnoreCase(database))) {
+      throw new StatementExecutionException(message);
+    }
+    String name = identifierValue(names.get(names.size() - 1));
+    if (!tables.contains(name)) {
+      throw new StatementExecutionException(message);
+    }
+    return name;
+  }
+
+  private static String identifierValue(RelationalSqlParser.IdentifierContext context) {
+    String value = context.getText();
+    if (value.startsWith("\"")) {
+      value = value.substring(1, value.length() - 1).replace("\"\"", "\"");
+    } else if (value.startsWith("`")) {
+      value = value.substring(1, value.length() - 1).replace("``", "`");
+    }
+    return value.toLowerCase(Locale.ROOT);
+  }
+
+  private static String quoteIdentifier(String name) {
+    return "\"" + name.replace("\"", "\"\"") + "\"";
   }
 
   private void exportToSqlFile(SessionDataSet sessionDataSet, String table, String filePath)
@@ -164,7 +257,14 @@ public class ExportDataTable extends AbstractExportData {
     lastPrintTime = 0;
     StringBuilder sqlBuilder;
     List<String> headers = sessionDataSet.getColumnNames();
-    String prevSql = "insert into " + table + "(" + StringUtils.join(headers, ",") + ") values(";
+    String prevSql =
+        "insert into "
+            + quoteIdentifier(table)
+            + "("
+            + headers.stream()
+                .map(ExportDataTable::quoteIdentifier)
+                .collect(Collectors.joining(","))
+            + ") values(";
     SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
     List<String> columnTypeList = iterator.getColumnTypeList();
     int totalColumns = columnTypeList.size();
@@ -185,11 +285,7 @@ public class ExportDataTable extends AbstractExportData {
             }
             String columnType = columnTypeList.get(curColumnIndex);
             String columnValue = iterator.getString(curColumnIndex + 1);
-            if (columnType.equals("TEXT") || columnType.equals("STRING")) {
-              sqlBuilder.append("'").append(columnValue).append("'");
-            } else {
-              sqlBuilder.append(columnValue);
-            }
+            sqlBuilder.append(formatSqlValue(columnValue, columnType));
           }
           sqlBuilder.append(");\n");
           writer.write(sqlBuilder.toString());
@@ -254,7 +350,7 @@ public class ExportDataTable extends AbstractExportData {
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     processedRows = 0;
     lastPrintTime = 0;
-    List<String> headers = sessionDataSet.getColumnNames();
+    List<String> headers = getCsvHeaders(sessionDataSet, false);
     int fileIndex = 0;
     SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
     List<String> columnTypeList = iterator.getColumnTypeList();
@@ -363,7 +459,8 @@ public class ExportDataTable extends AbstractExportData {
       List<String> columnNames, Map<String, Integer> deviceColumnIndices, String table)
       throws IoTDBConnectionException, StatementExecutionException {
     List<ColumnSchema> columnSchemas = new ArrayList<>();
-    SessionDataSet sessionDataSet = tableSession.executeQueryStatement("describe " + table);
+    SessionDataSet sessionDataSet =
+        tableSession.executeQueryStatement("describe " + quoteIdentifier(table));
     while (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
       final String columnName = rowRecord.getField(0).getStringValue();
