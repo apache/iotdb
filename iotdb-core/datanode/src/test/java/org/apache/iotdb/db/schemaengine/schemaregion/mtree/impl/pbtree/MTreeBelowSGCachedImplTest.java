@@ -178,6 +178,17 @@ public class MTreeBelowSGCachedImplTest {
         new SchemaRegionCachedMetric(regionStatistics, "root.sg"));
   }
 
+  @Test
+  public void testPathLookupAfterClear() throws Exception {
+    mtree = newMTree();
+    mtree.clear();
+    final MTreeBelowSGCachedImpl clearedMTree = mtree;
+    mtree = null;
+
+    Assert.assertFalse(clearedMTree.checkDeviceNodeExists(new PartialPath("root.sg.d")));
+    assertPathNotExist(clearedMTree, new PartialPath("root.sg.d"));
+  }
+
   private void createBooleanTimeSeries(final String path) throws MetadataException {
     mtree.createTimeSeries(
         new MeasurementPath(path),
@@ -207,8 +218,13 @@ public class MTreeBelowSGCachedImplTest {
   }
 
   private void assertPathNotExist(final PartialPath path) throws MetadataException {
+    assertPathNotExist(mtree, path);
+  }
+
+  private void assertPathNotExist(final MTreeBelowSGCachedImpl targetMTree, final PartialPath path)
+      throws MetadataException {
     try {
-      mtree.getNodeByPath(path);
+      targetMTree.getNodeByPath(path);
       Assert.fail("Expected path not exist: " + path.getFullPath());
     } catch (final PathNotExistException ignored) {
       // expected

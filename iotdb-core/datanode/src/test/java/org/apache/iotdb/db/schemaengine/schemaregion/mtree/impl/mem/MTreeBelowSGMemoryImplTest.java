@@ -43,12 +43,26 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MTreeBelowSGMemoryImplTest {
+
+  @Test
+  public void testPathAndTableDeviceChecksAfterClear() throws Exception {
+    final MTreeBelowSGMemoryImpl mtree = newMTree();
+    mtree.clear();
+
+    Assert.assertFalse(mtree.checkDeviceNodeExists(new PartialPath("root.sg.d")));
+    assertPathNotExist(mtree, new PartialPath("root.sg.d"));
+    Assert.assertEquals(
+        2,
+        mtree.getTableDeviceNotExistNum(
+            "table", Arrays.asList(new Object[] {"a"}, new Object[] {"b"})));
+  }
 
   @Test
   public void testDeviceDescendantFlagIsMaintainedAcrossCreateDeleteAndRebuild() throws Exception {

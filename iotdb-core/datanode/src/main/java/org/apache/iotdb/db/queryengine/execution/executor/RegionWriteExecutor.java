@@ -176,6 +176,12 @@ public class RegionWriteExecutor {
         return RegionExecutionResult.create(
             false, errorMsg, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
       }
+      // SchemaEngine clears regions before DataNodeRegionManager removes their validation locks.
+      // Failures from an in-flight schema write during that window must remain retryable.
+      if (groupId instanceof SchemaRegionId && schemaEngine.isClearing()) {
+        return RegionExecutionResult.create(
+            false, e.getMessage(), RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
+      }
       LOGGER.warn(e.getMessage(), e);
       return RegionExecutionResult.create(
           false,
@@ -842,9 +848,9 @@ public class RegionWriteExecutor {
     }
 
     /**
-     * Check the quota before creating time series.
+     * Check region availability, data types and quota before creating time series.
      *
-     * @return null if the quota is not exceeded, otherwise return the execution result.
+     * @return null if all checks pass, otherwise return the execution result.
      */
     private RegionExecutionResult checkQuotaAndTypeBeforeCreatingTimeSeries(
         final ISchemaRegion schemaRegion,
@@ -852,6 +858,11 @@ public class RegionWriteExecutor {
         final int size,
         final List<String> measurements,
         final List<TSDataType> dataTypes) {
+      // Shutdown may clear SchemaEngine while the region's validation lock still exists.
+      // Reject the request as retryable before dereferencing the missing region.
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
+      }
       for (int i = 0; i < measurements.size(); ++i) {
         if (dataTypes.get(i) == TSDataType.OBJECT) {
           final String errorStr =
@@ -933,6 +944,9 @@ public class RegionWriteExecutor {
         AlterTimeSeriesNode node, WritePlanNodeExecutionContext context, boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
+      }
       try {
         MeasurementPath measurementPath = schemaRegion.fetchMeasurementPath(node.getPath());
         if (node.isAlterView() && !measurementPath.getMeasurementSchema().isLogicalView()) {
@@ -957,6 +971,9 @@ public class RegionWriteExecutor {
                 new PipeEnrichedWritePlanNode(node), context)
             : PlanVisitor.super.visitAlterTimeSeries(node, context);
       } catch (MetadataException e) {
+        if (schemaEngine.isClearing()) {
+          return createSchemaRegionUnavailableResult();
+        }
         return RegionExecutionResult.create(
             true, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
@@ -1123,6 +1140,9 @@ public class RegionWriteExecutor {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        if (schemaRegion == null) {
+          return createSchemaRegionUnavailableResult();
+        }
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           // step 1. make sure all target paths do NOT exist.
@@ -1180,6 +1200,9 @@ public class RegionWriteExecutor {
         final boolean receivedFromPipe) {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
+      }
       try {
         schemaRegion.checkSchemaQuota(node.getTableName(), node.getDeviceIdList());
       } catch (final SchemaQuotaExceededException e) {
@@ -1190,6 +1213,15 @@ public class RegionWriteExecutor {
           ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
               new PipeEnrichedWritePlanNode(node), context)
           : PlanVisitor.super.visitCreateOrUpdateTableDevice(node, context);
+    }
+
+    private RegionExecutionResult createSchemaRegionUnavailableResult() {
+      // A validation lock can outlive its region during shutdown, so all local schema checks
+      // must report a missing region as retryable even when the lock is still registered.
+      final String message =
+          DataNodeQueryMessages.MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A;
+      return RegionExecutionResult.create(
+          false, message, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP, message));
     }
 
     @Override
