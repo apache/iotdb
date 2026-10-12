@@ -87,6 +87,26 @@ public class ConsensusSubscriptionCommitStateTest {
   }
 
   @Test
+  public void testReverseAckWithLargeBacklogAdvancesToLatestProgress() {
+    final WriterId writerId = new WriterId("1_2", 7);
+    final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
+        new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
+            "1_2", new SubscriptionConsensusProgress());
+    final int backlogSize = 2048;
+
+    for (int localSeq = 0; localSeq < backlogSize; localSeq++) {
+      state.recordMapping(writerId, new WriterProgress(1_000L + localSeq, localSeq));
+    }
+    for (int localSeq = backlogSize - 1; localSeq >= 0; localSeq--) {
+      assertTrue(state.commit(writerId, new WriterProgress(1_000L + localSeq, localSeq)));
+    }
+
+    assertEquals(
+        new WriterProgress(1_000L + backlogSize - 1, backlogSize - 1L),
+        state.getCommittedRegionProgress().getWriterPositions().get(writerId));
+  }
+
+  @Test
   public void testSerializeDeserializeWriterProgress() throws Exception {
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
