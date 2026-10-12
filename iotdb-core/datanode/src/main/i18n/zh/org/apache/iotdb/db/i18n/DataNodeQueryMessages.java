@@ -263,6 +263,10 @@ public final class DataNodeQueryMessages {
       "此处不应调用 getPageReader()";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "不支持的列类型：";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "不支持的列属性：";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "列属性值必须是字符串字面量。";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "关闭 CteDataReader 失败";
   public static final String UNKNOWN_TABLE =
@@ -779,6 +783,12 @@ public final class DataNodeQueryMessages {
       "暂不支持 Show Index 语句。";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "UPDATE 只能指定属性列。";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "无法更新 %s 列 '%s'。UPDATE 只能指定 ATTRIBUTE 列。";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "无法在 UPDATE 值中引用 %s 列 '%s'。UPDATE 值只能引用 ATTRIBUTE 或 TAG 列。";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "暂不支持 Drop Function 语句。";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =

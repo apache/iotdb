@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -68,6 +69,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFAULT_SEARCH_INDEX;
+import static org.apache.iotdb.rpc.TSStatusCode.WAL_ENTRY_TOO_LARGE;
 
 /**
  * This buffer guarantees the concurrent safety and uses double buffers mechanism to accelerate
@@ -246,6 +248,23 @@ public class WALBuffer extends AbstractWALBuffer {
           identifier);
       walEntry.getWalFlushListener().fail(new WALNodeClosedException(identifier));
       return;
+    }
+    if (!walEntry.isSignal() && walEntry.getType() != WALEntryType.MEMORY_TABLE_CHECKPOINT) {
+      final int serializedSize = walEntry.serializedSize();
+      final int entrySizeLimit = config.getWalEntrySizeLimitInByte();
+      if (serializedSize > entrySizeLimit) {
+        walEntry
+            .getWalFlushListener()
+            .fail(
+                new IoTDBRuntimeException(
+                    String.format(
+                        StorageEngineMessages
+                            .EXCEPTION_THE_WAL_ENTRY_SIZE_ARG_EXCEEDS_WAL_ENTRY_SIZE_LIMIT_IN_BYTE_ARG_691BB408,
+                        serializedSize,
+                        entrySizeLimit),
+                    WAL_ENTRY_TOO_LARGE.getStatusCode()));
+        return;
+      }
     }
     // just add this WALEntry to queue
     try {
@@ -594,7 +613,7 @@ public class WALBuffer extends AbstractWALBuffer {
         failListeners(syncFailure);
         // SET SYSTEM TO RUNNING does not repair a failed batch or an unknown record boundary.
         if (CommonDescriptor.getInstance().getConfig().isRunning()) {
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(syncFailure);
         }
         if (forceFlag && retryAfterFailedBatch) {
           syncFailure = null;
@@ -624,7 +643,7 @@ public class WALBuffer extends AbstractWALBuffer {
         }
         failListeners(e);
         DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         switchSyncingBufferToIdle();
         return;
       }
@@ -657,7 +676,7 @@ public class WALBuffer extends AbstractWALBuffer {
         syncFailure = e instanceof Exception exception ? exception : new IOException(e);
         retryAfterFailedBatch = false;
         failListeners(syncFailure);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         return;
       } finally {
         switchSyncingBufferToIdle();
@@ -691,7 +710,7 @@ public class WALBuffer extends AbstractWALBuffer {
             retryAfterFailedBatch = false;
           }
           DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -708,7 +727,7 @@ public class WALBuffer extends AbstractWALBuffer {
           failListeners(e);
           syncFailure = e;
           retryAfterFailedBatch = false;
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         }
       }
 

@@ -135,9 +135,6 @@ public final class JdbcMessages {
   // IoTDBDataSource
   public static final String GET_CONNECTION_ERROR = "get connection error:";
 
-  // IoTDBDataSourceFactory
-  public static final String REMAINING_PROPERTIES = "Remaining properties {}";
-
   // IoTDBJDBCResultSet
   public static final String CLOSE_SERVER_SIDE_ERROR =
       "Error occurs for close operation in server side because ";

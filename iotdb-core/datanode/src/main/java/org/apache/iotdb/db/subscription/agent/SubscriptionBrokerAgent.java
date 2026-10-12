@@ -228,6 +228,14 @@ public class SubscriptionBrokerAgent {
     return false;
   }
 
+  public int requeueInFlightEvents(final ConsumerConfig consumerConfig) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final String consumerId = consumerConfig.getConsumerId();
+    return getBrokers(consumerGroupId).stream()
+        .mapToInt(broker -> broker.requeueInFlightEvents(consumerId))
+        .sum();
+  }
+
   public int refreshInFlightEventLeases(
       final ConsumerConfig consumerConfig,
       final List<SubscriptionCommitContext> processorBufferedCommitContexts) {

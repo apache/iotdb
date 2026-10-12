@@ -30,6 +30,8 @@ public enum ConfigPhysicalPlanType {
   UpdateVersionInfo((short) 2),
   UpdateClusterId((short) 3),
 
+  UpdateNodeStatus((short) 4),
+
   /** DataNode. */
   RegisterDataNode((short) 100),
   GetDataNodeConfiguration((short) 101),
@@ -233,7 +235,7 @@ public enum ConfigPhysicalPlanType {
   AlterColumnDataType((short) 878),
   PreAlterColumnDataType((short) 879),
   RollbackPreDeleteTable((short) 880),
-  RollbackPreAlterColumnDataType((short) 881),
+  SetTableColumnProperties((short) 881),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -338,6 +340,12 @@ public enum ConfigPhysicalPlanType {
   RenameUser((short) 2104),
   RRenameUser((short) 2105),
   AccountUnlock((short) 2106),
+  EnableUserTotp((short) 2107),
+  ResetUserTotp((short) 2108),
+  DisableUserTotp((short) 2109),
+  REnableUserTotp((short) 2110),
+  RResetUserTotp((short) 2111),
+  RDisableUserTotp((short) 2112),
 
   EnableSeparationOfAdminPowers((short) 2200),
 

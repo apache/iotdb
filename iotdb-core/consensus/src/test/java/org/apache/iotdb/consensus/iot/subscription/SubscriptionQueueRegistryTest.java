@@ -77,7 +77,7 @@ public class SubscriptionQueueRegistryTest {
     assertFalse(registry.offer(request));
     assertTrue(request.getSerializedRequests().isEmpty());
     assertEquals(Collections.singletonList(policy), registry.getRetentionPolicies());
-    assertEquals(Collections.singletonList(7L), registry.getCommittedRetainedMinVersionIds());
+    assertEquals(Collections.singletonList(7L), registry.getRetainedMinVersionIds());
   }
 
   @Test
@@ -102,7 +102,7 @@ public class SubscriptionQueueRegistryTest {
     assertTrue(registry.hasQueues());
     assertTrue(registry.offer(newRequest()));
     assertEquals(1, secondQueue.size());
-    assertEquals(Collections.singletonList(9L), registry.getCommittedRetainedMinVersionIds());
+    assertEquals(Collections.singletonList(9L), registry.getRetainedMinVersionIds());
   }
 
   private static IndexedConsensusRequest newRequest() {

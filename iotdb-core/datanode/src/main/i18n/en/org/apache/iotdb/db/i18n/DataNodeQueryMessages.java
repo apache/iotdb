@@ -278,6 +278,10 @@ public final class DataNodeQueryMessages {
       "getPageReader() shouldn't be called here";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "Unsupported column type: ";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "Unsupported column property: ";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "The column property value must be a string literal.";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "Fail to close CteDataReader";
   public static final String UNKNOWN_TABLE =
@@ -799,6 +803,12 @@ public final class DataNodeQueryMessages {
       "Show Index statement is not supported yet.";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "Update can only specify attribute columns.";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "Cannot update %s column '%s'. UPDATE can only specify ATTRIBUTE columns.";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =

@@ -166,6 +166,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
   private boolean isClearing = false;
+  private boolean ratisLogAppenderBufferReserved = false;
 
   private final String storageGroupDirPath;
   private final String schemaRegionDirPath;
@@ -208,7 +209,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       return;
     }
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ratisLogAppenderBufferReserved
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
@@ -217,6 +221,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
                 + DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_LIMIT
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
+      ratisLogAppenderBufferReserved = true;
     }
 
     initDir();
@@ -507,9 +512,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     SchemaRegionUtils.deleteSchemaRegionFolder(
         schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ratisLogAppenderBufferReserved) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+      ratisLogAppenderBufferReserved = false;
     }
   }
 
@@ -520,28 +526,34 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       return false;
     }
     logger.info(DataNodeSchemaMessages.START_CREATE_SNAPSHOT, schemaRegionId);
-    boolean isSuccess = true;
+    boolean isSuccess;
+    boolean currentResult;
     long startTime = System.currentTimeMillis();
 
     long mtreeSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && mtree.createSnapshot(snapshotDir);
+    isSuccess = mtree.createSnapshot(snapshotDir);
     logger.info(
-        DataNodeSchemaMessages.MTREE_SNAPSHOT_CREATION_COST,
+        DataNodeSchemaMessages.MTREE_SNAPSHOT_CREATION_COST_WITH_STATUS,
         schemaRegionId,
-        System.currentTimeMillis() - mtreeSnapshotStartTime);
+        System.currentTimeMillis() - mtreeSnapshotStartTime,
+        isSuccess);
 
     long tagSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
+    currentResult = tagManager.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
     logger.info(
-        DataNodeSchemaMessages.TAG_SNAPSHOT_CREATION_COST,
+        DataNodeSchemaMessages.TAG_SNAPSHOT_CREATION_COST_WITH_STATUS,
         schemaRegionId,
-        System.currentTimeMillis() - tagSnapshotStartTime);
+        System.currentTimeMillis() - tagSnapshotStartTime,
+        currentResult);
 
     logger.info(
         DataNodeSchemaMessages.SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - startTime);
-    logger.info(DataNodeSchemaMessages.SUCCESSFULLY_CREATE_SNAPSHOT, schemaRegionId);
+    if (isSuccess) {
+      logger.info(DataNodeSchemaMessages.SUCCESSFULLY_CREATE_SNAPSHOT, schemaRegionId);
+    }
 
     return isSuccess;
   }
