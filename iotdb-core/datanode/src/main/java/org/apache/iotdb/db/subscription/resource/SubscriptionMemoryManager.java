@@ -24,9 +24,14 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * DataNode-wide memory manager for materialized subscription data.
@@ -39,7 +44,11 @@ import java.util.Map;
  */
 public class SubscriptionMemoryManager {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionMemoryManager.class);
+
   private static final String MEMORY_BLOCK_NAME = "Subscription";
+
+  private static final long OVERCOMMIT_WARNING_INTERVAL_NS = TimeUnit.SECONDS.toNanos(30);
 
   private final IMemoryBlock memoryBlock;
   private static final int PROTECTED_SHARE_DIVISOR = 2;
@@ -48,6 +57,10 @@ public class SubscriptionMemoryManager {
 
   // Kept for callers of the original manager-level API. It is deliberately not a fair-share owner.
   private long legacyUsedMemoryInBytes;
+
+  private volatile long oversizedEntryCount = 0L;
+
+  private long lastOvercommitWarningTimeNs;
 
   SubscriptionMemoryManager() {
     memoryBlock =
@@ -71,7 +84,17 @@ public class SubscriptionMemoryManager {
     return handle;
   }
 
-  /** Reserves memory through the compatibility owner. New queues should use a handle. */
+  /**
+   * Reserves memory through the compatibility owner. Consensus queues use a handle, which rejects
+   * oversized entries instead of overcommitting the node budget.
+   *
+   * <p>A single entry larger than the whole budget is allowed only while the budget is otherwise
+   * empty. This avoids permanently blocking progress while keeping the overrun bounded by one
+   * entry.
+   *
+   * <p>This is a soft limit for such entries. Other queues can be blocked until the oversized entry
+   * is released; the exception is exposed through metrics and a rate-limited warning.
+   */
   public synchronized boolean tryAllocate(final long sizeInBytes) {
     return tryAllocateLegacy(sizeInBytes).isAccepted();
   }
@@ -93,6 +116,18 @@ public class SubscriptionMemoryManager {
     if (total > 0L && used == 0L && sizeInBytes > total) {
       memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
       legacyUsedMemoryInBytes += sizeInBytes;
+      oversizedEntryCount++;
+      final long nowNs = System.nanoTime();
+      if (oversizedEntryCount == 1L
+          || nowNs - lastOvercommitWarningTimeNs >= OVERCOMMIT_WARNING_INTERVAL_NS) {
+        lastOvercommitWarningTimeNs = nowNs;
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_SUBSCRIPTION_MEMORY_OVERCOMMIT_ENTRYBYTES_ARG_BUDGETBYTES_ARG_OVERCOMMITBYTES_ARG_OTHER_QUEUES_MAY_BE_BLOCKED_UNTIL_RELEASE_DF9B914E,
+            sizeInBytes,
+            memoryBlock.getTotalMemorySizeInBytes(),
+            getOvercommitSizeInBytes());
+      }
       return AllocationResult.accepted(total, total - sizeInBytes);
     }
     return AllocationResult.rejected(
@@ -124,6 +159,14 @@ public class SubscriptionMemoryManager {
 
   public synchronized long getFreeMemorySizeInBytes() {
     return memoryBlock.getFreeMemoryInBytes();
+  }
+
+  public synchronized long getOvercommitSizeInBytes() {
+    return Math.max(0L, getUsedMemorySizeInBytes() - getTotalMemorySizeInBytes());
+  }
+
+  public long getOversizedEntryCount() {
+    return oversizedEntryCount;
   }
 
   private synchronized AllocationResult tryAllocate(

@@ -24,7 +24,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -32,6 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -44,6 +50,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -54,6 +61,44 @@ import java.util.List;
 public class ConsensusLogToTabletConverterTest {
 
   private static final String DATABASE_NAME = "db";
+
+  @Test
+  public void testRepeatedWalDeserializationPreservesAllFragments() {
+    final List<IConsensusRequest> fragments = new ArrayList<>();
+    for (int row = 1; row <= 2; row++) {
+      final RelationalInsertRowNode node = StatementTestUtils.genInsertRowNode(row);
+      node.setSearchIndex(4L);
+      node.setLastFragment(row == 2);
+      final WALInfoEntry walEntry = new WALInfoEntry(1L, node);
+      final ByteBuffer buffer = ByteBuffer.allocate(walEntry.serializedSize());
+      walEntry.serialize(new WALByteBufferForTest(buffer));
+      buffer.flip();
+      fragments.add(new IoTConsensusRequest(buffer));
+    }
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(4L, 4L, fragments).setPhysicalTime(1000L).setNodeId(7);
+    final ConsensusLogToTabletConverter converter = createConverter("id1", "m1");
+
+    for (int attempt = 0; attempt < 3; attempt++) {
+      final InsertNode node = ConsensusLogToTabletConverter.deserializeToInsertNode(request);
+      Assert.assertNotNull(node);
+      Assert.assertEquals(4L, node.getSearchIndex());
+      Assert.assertEquals(4L, node.getSyncIndex());
+      Assert.assertEquals(1000L, node.getPhysicalTime());
+      Assert.assertEquals(7, node.getNodeId());
+      final List<Tablet> tablets = converter.convert(node);
+      Assert.assertEquals(2, tablets.size());
+      for (int row = 1; row <= 2; row++) {
+        final Tablet tablet = tablets.get(row - 1);
+        Assert.assertEquals(1, tablet.getRowSize());
+        Assert.assertEquals("id:" + row, toUtf8(((Binary[]) tablet.getValues()[0])[0]));
+        Assert.assertEquals((double) row, ((double[]) tablet.getValues()[1])[0], 0.0);
+        final ByteBuffer buffer = fragments.get(row - 1).serializeToByteBuffer();
+        Assert.assertEquals(0, buffer.position());
+        Assert.assertEquals(buffer.capacity(), buffer.limit());
+      }
+    }
+  }
 
   @Test
   public void testDataModelIsDerivedFromImmutableConversionPattern() {

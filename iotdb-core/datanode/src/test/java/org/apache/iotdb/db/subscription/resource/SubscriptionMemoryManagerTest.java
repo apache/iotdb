@@ -35,6 +35,8 @@ public class SubscriptionMemoryManagerTest {
     assertFalse(memoryManager.tryAllocate(5L));
     assertEquals(6L, memoryManager.getUsedMemorySizeInBytes());
     assertEquals(4L, memoryManager.getFreeMemorySizeInBytes());
+    assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
+    assertEquals(0L, memoryManager.getOversizedEntryCount());
 
     memoryManager.release(6L);
     assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
@@ -48,10 +50,19 @@ public class SubscriptionMemoryManagerTest {
     assertTrue(memoryManager.tryAllocate(11L));
     assertFalse(memoryManager.tryAllocate(1L));
     assertEquals(11L, memoryManager.getUsedMemorySizeInBytes());
+    assertEquals(1L, memoryManager.getOvercommitSizeInBytes());
+    assertEquals(1L, memoryManager.getOversizedEntryCount());
 
     memoryManager.release(11L);
     assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+    assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
     assertTrue(memoryManager.tryAllocate(10L));
+    assertFalse(memoryManager.tryAllocate(11L));
+    assertEquals(1L, memoryManager.getOversizedEntryCount());
+    memoryManager.release(10L);
+    assertTrue(memoryManager.tryAllocate(12L));
+    assertEquals(2L, memoryManager.getOvercommitSizeInBytes());
+    assertEquals(2L, memoryManager.getOversizedEntryCount());
   }
 
   @Test
@@ -60,6 +71,7 @@ public class SubscriptionMemoryManagerTest {
 
     assertFalse(memoryManager.tryAllocate(1L));
     assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+    assertEquals(0L, memoryManager.getOversizedEntryCount());
   }
 
   @Test
@@ -133,6 +145,8 @@ public class SubscriptionMemoryManagerTest {
           SubscriptionMemoryManager.AllocationRejectionReason.OVERSIZED_ENTRY,
           queue.tryAllocate(11L).getRejectionReason());
       assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+      assertEquals(0L, memoryManager.getOvercommitSizeInBytes());
+      assertEquals(0L, memoryManager.getOversizedEntryCount());
       assertTrue(queue.tryAllocate(10L).isAccepted());
     }
     assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());

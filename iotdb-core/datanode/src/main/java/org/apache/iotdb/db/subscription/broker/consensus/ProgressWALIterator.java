@@ -49,6 +49,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -203,6 +204,23 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         return false;
       }
     }
+  }
+
+  /**
+   * Returns whether a usable request is already buffered, without reading or advancing WAL. A false
+   * result does not imply that the iterator is exhausted.
+   */
+  boolean hasBufferedNext() {
+    return nextReady != null && !shouldSkip(nextReady);
+  }
+
+  /**
+   * Keeps a request returned by {@link #next()} available for a retry without reopening the WAL.
+   * The caller uses this when materialization is temporarily blocked and replay progress has not
+   * advanced yet.
+   */
+  void retry(final IndexedConsensusRequest request) {
+    nextReady = Objects.requireNonNull(request);
   }
 
   /**
