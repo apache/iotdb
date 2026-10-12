@@ -430,6 +430,15 @@ public interface IConfigTaskExecutor {
       final boolean ifExists,
       final boolean isView);
 
+  SettableFuture<ConfigTaskResult> alterTableSetColumnProperties(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists);
+
   SettableFuture<ConfigTaskResult> alterTableCommentTable(
       final String database,
       final String tableName,

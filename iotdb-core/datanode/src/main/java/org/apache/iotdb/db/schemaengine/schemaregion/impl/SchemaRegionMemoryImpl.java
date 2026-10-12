@@ -205,6 +205,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
+  private boolean ratisLogAppenderBufferReserved = false;
 
   private final String databaseDirPath;
   private final String schemaRegionDirPath;
@@ -260,7 +261,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return;
     }
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ratisLogAppenderBufferReserved
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
@@ -269,6 +273,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 + DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_LIMIT
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
+      ratisLogAppenderBufferReserved = true;
     }
 
     initDir();
@@ -497,9 +502,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(
         schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ratisLogAppenderBufferReserved) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+      ratisLogAppenderBufferReserved = false;
     }
   }
 

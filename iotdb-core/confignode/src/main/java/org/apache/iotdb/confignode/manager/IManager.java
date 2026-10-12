@@ -345,9 +345,13 @@ public interface IManager {
   /**
    * Report that the specified DataNode will be shutdown.
    *
-   * <p>The ConfigNode-leader will mark it as {@link NodeStatus#Unknown}
+   * <p>The ConfigNode-leader requests {@link NodeStatus#Stopped}, retaining an existing {@link
+   * NodeStatus#Removing}. Success confirms that the resulting status is persisted and can be
+   * restored by a new leader. If the report is not received, heartbeat timeout produces {@link
+   * NodeStatus#Unknown} only when there is no Stopped or Removing status to retain, including one
+   * restored from persistence. A failed write may still update the current leader's memory.
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the resulting status is persisted
    */
   TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
 
@@ -538,10 +542,14 @@ public interface IManager {
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
 
   /**
-   * Report that the specified ConfigNode will be shutdown. The ConfigNode-leader will mark it as
-   * Unknown.
+   * Report that the specified ConfigNode will be shutdown. The leader requests {@link
+   * NodeStatus#Stopped}, retaining an existing {@link NodeStatus#Removing}. Success confirms that
+   * the resulting status is persisted and can be restored by a new leader. If the report is not
+   * received, heartbeat timeout produces {@link NodeStatus#Unknown} only when there is no Stopped
+   * or Removing status to retain, including one restored from persistence. A failed write may still
+   * update the current leader's memory.
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the resulting status is persisted
    */
   TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation);
 

@@ -278,6 +278,10 @@ public final class DataNodeQueryMessages {
       "getPageReader() shouldn't be called here";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "Unsupported column type: ";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "Unsupported column property: ";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "The column property value must be a string literal.";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "Fail to close CteDataReader";
   public static final String UNKNOWN_TABLE =

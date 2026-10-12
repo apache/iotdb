@@ -28,7 +28,9 @@ public enum CNSnapshotFileType {
   ROLE((byte) 2),
   USER_ROLE((byte) 3),
   SCHEMA((byte) 4),
-  TTL((byte) 5);
+  TTL((byte) 5),
+  LBAC_COMPONENT((byte) 6),
+  LBAC_POLICY((byte) 7);
 
   private static final Map<Byte, CNSnapshotFileType> TYPE_SNAPSHOT_MAP = new HashMap<>();
 

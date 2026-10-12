@@ -21,41 +21,60 @@ package org.apache.iotdb.confignode.consensus.request.write.table;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
-public class RollbackPreAlterColumnDataTypePlan extends AbstractTableColumnPlan {
-  private TSDataType newType;
+public class SetTableColumnPropertiesPlan extends AbstractTablePlan {
 
-  public RollbackPreAlterColumnDataTypePlan() {
-    super(ConfigPhysicalPlanType.RollbackPreAlterColumnDataType);
+  private String columnName;
+  private Map<String, String> properties;
+  private boolean isRollback;
+
+  public SetTableColumnPropertiesPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
-  public RollbackPreAlterColumnDataTypePlan(
+  public SetTableColumnPropertiesPlan(
       final String database,
       final String tableName,
       final String columnName,
-      final TSDataType newType) {
-    super(ConfigPhysicalPlanType.RollbackPreAlterColumnDataType, database, tableName, columnName);
-    this.newType = newType;
+      final Map<String, String> properties,
+      final boolean isRollback) {
+    super(ConfigPhysicalPlanType.SetTableColumnProperties, database, tableName);
+    this.columnName = columnName;
+    this.properties = properties;
+    this.isRollback = isRollback;
+  }
+
+  public String getColumnName() {
+    return columnName;
+  }
+
+  public Map<String, String> getProperties() {
+    return properties;
+  }
+
+  public boolean isRollback() {
+    return isRollback;
   }
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     super.serializeImpl(stream);
-    stream.write(newType.serialize());
+    ReadWriteIOUtils.write(columnName, stream);
+    ReadWriteIOUtils.write(properties, stream);
+    ReadWriteIOUtils.write(isRollback, stream);
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     super.deserializeImpl(buffer);
-    newType = TSDataType.deserializeFrom(buffer);
-  }
-
-  public TSDataType getNewType() {
-    return newType;
+    this.columnName = ReadWriteIOUtils.readString(buffer);
+    this.properties = ReadWriteIOUtils.readMap(buffer);
+    this.isRollback = ReadWriteIOUtils.readBool(buffer);
   }
 }

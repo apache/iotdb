@@ -17,24 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.table;
+package org.apache.iotdb.commons.lbac;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.i18n.CommonMessages;
-import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class ColumnInAlterException extends MetadataException {
+@SuppressWarnings("java:S100")
+public class LBACRuntimeException extends IoTDBRuntimeException {
 
-  public ColumnInAlterException(
-      final String database, final String tableName, final String columnName) {
-    super(
-        String.format(
-            CommonMessages
-                .EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55,
-            columnName,
-            PathUtils.unQualifyDatabaseName(database),
-            tableName),
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+  private static final long serialVersionUID = 1L;
+
+  public LBACRuntimeException(final String message, final TSStatusCode statusCode) {
+    super(message, statusCode.getStatusCode());
   }
 }

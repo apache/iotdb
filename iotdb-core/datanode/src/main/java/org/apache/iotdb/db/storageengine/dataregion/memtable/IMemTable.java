@@ -123,6 +123,16 @@ public interface IMemTable extends WALEntryValue {
   int insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException;
 
+  default int insertAlignedTablet(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs)
+      throws WriteProcessException {
+    return insertAlignedTablet(insertTabletNode, start, end, results);
+  }
+
   ReadOnlyMemChunk query(
       QueryContext context,
       IFullPath fullPath,

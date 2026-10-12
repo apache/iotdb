@@ -89,6 +89,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.information.AdditionalInformationSchemaProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.information.AdditionalInformationSchemaProviderRegistry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -173,8 +175,17 @@ public class InformationSchemaContentSupplierFactory {
       final List<TSDataType> dataTypes,
       final UserEntity userEntity,
       final InformationSchemaTableScanNode node) {
-    String tableName = node.getQualifiedObjectName().getObjectName();
+    final String tableName = node.getQualifiedObjectName().getObjectName();
     try {
+      // Try additional providers first
+      for (final AdditionalInformationSchemaProvider provider :
+          AdditionalInformationSchemaProviderRegistry.getProviders()) {
+        final IInformationSchemaContentSupplier supplier =
+            provider.getContentSupplier(tableName, context, dataTypes, userEntity, node);
+        if (supplier != null) {
+          return supplier;
+        }
+      }
       switch (tableName) {
         case InformationSchema.QUERIES:
           return new QueriesSupplier(dataTypes, userEntity);
@@ -384,14 +395,14 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
-  private static class TableSupplier extends TsBlockSupplier {
+  public static class TableSupplier extends TsBlockSupplier {
     private final Iterator<Map.Entry<String, List<TTableInfo>>> dbIterator;
     private Iterator<TTableInfo> tableInfoIterator = null;
-    private TTableInfo currentTable;
-    private String dbName;
+    protected TTableInfo currentTable;
+    protected String dbName;
     private final UserEntity userEntity;
 
-    private TableSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+    protected TableSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
       this.userEntity = userEntity;
@@ -475,7 +486,7 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
-  private static class ColumnSupplier extends TsBlockSupplier {
+  public static class ColumnSupplier extends TsBlockSupplier {
     private final Iterator<Map.Entry<String, Map<String, TableColumnDetailInfo>>> dbIterator;
     private Iterator<Map.Entry<String, TableColumnDetailInfo>> tableInfoIterator;
     private Iterator<TsTableColumnSchema> columnSchemaIterator;
@@ -483,9 +494,10 @@ public class InformationSchemaContentSupplierFactory {
     private String tableName;
     private Set<String> preDeletedColumns;
     private Map<String, Byte> preAlteredColumns;
+    protected TsTableColumnSchema schema;
     private final UserEntity userEntity;
 
-    private ColumnSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+    protected ColumnSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
         throws Exception {
       super(dataTypes);
       this.userEntity = userEntity;
@@ -522,7 +534,6 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      final TsTableColumnSchema schema = columnSchemaIterator.next();
       columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
       columnBuilders[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeBinary(
@@ -546,10 +557,14 @@ public class InformationSchemaContentSupplierFactory {
         columnBuilders[6].appendNull();
       }
       resultBuilder.declarePosition();
+      schema = null;
     }
 
     @Override
     public boolean hasNext() {
+      if (Objects.nonNull(schema)) {
+        return true;
+      }
       while (Objects.isNull(columnSchemaIterator) || !columnSchemaIterator.hasNext()) {
         while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
           if (!dbIterator.hasNext()) {
@@ -576,6 +591,7 @@ public class InformationSchemaContentSupplierFactory {
           }
         }
       }
+      schema = columnSchemaIterator.next();
       return true;
     }
   }
@@ -1205,6 +1221,7 @@ public class InformationSchemaContentSupplierFactory {
             location.getConfigNodeId(),
             NODE_TYPE_CONFIG_NODE,
             showClusterResp.getNodeStatus().get(location.getConfigNodeId()),
+            getNodeStatusReason(location.getConfigNodeId()),
             location.getInternalEndPoint().getIp(),
             location.getInternalEndPoint().getPort(),
             showClusterResp.getNodeVersionInfo().get(location.getConfigNodeId()));
@@ -1216,6 +1233,7 @@ public class InformationSchemaContentSupplierFactory {
             location.getDataNodeId(),
             NODE_TYPE_DATA_NODE,
             showClusterResp.getNodeStatus().get(location.getDataNodeId()),
+            getNodeStatusReason(location.getDataNodeId()),
             location.getInternalEndPoint().getIp(),
             location.getInternalEndPoint().getPort(),
             showClusterResp.getNodeVersionInfo().get(location.getDataNodeId()));
@@ -1227,16 +1245,26 @@ public class InformationSchemaContentSupplierFactory {
             location.getAiNodeId(),
             NODE_TYPE_AI_NODE,
             showClusterResp.getNodeStatus().get(location.getAiNodeId()),
+            getNodeStatusReason(location.getAiNodeId()),
             location.getInternalEndPoint().getIp(),
             location.getInternalEndPoint().getPort(),
             showClusterResp.getNodeVersionInfo().get(location.getAiNodeId()));
       }
     }
 
+    private String getNodeStatusReason(int nodeId) {
+      // The optional field is absent when the ConfigNode is an old version.
+      if (!showClusterResp.isSetNodeStatusReason()) {
+        return null;
+      }
+      return showClusterResp.getNodeStatusReason().get(nodeId);
+    }
+
     private void buildNodeTsBlock(
         int nodeId,
         String nodeType,
         String nodeStatus,
+        String nodeStatusReason,
         String internalAddress,
         int internalPort,
         TNodeVersionInfo versionInfo) {
@@ -1247,23 +1275,28 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[2].writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
       }
-
-      if (internalAddress == null) {
+      if (nodeStatusReason == null) {
         columnBuilders[3].appendNull();
       } else {
-        columnBuilders[3].writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+        columnBuilders[3].writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
       }
-      columnBuilders[4].writeInt(internalPort);
-      if (versionInfo == null || versionInfo.getVersion() == null) {
-        columnBuilders[5].appendNull();
+
+      if (internalAddress == null) {
+        columnBuilders[4].appendNull();
       } else {
-        columnBuilders[5].writeBinary(
-            new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+        columnBuilders[4].writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
       }
-      if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      columnBuilders[5].writeInt(internalPort);
+      if (versionInfo == null || versionInfo.getVersion() == null) {
         columnBuilders[6].appendNull();
       } else {
         columnBuilders[6].writeBinary(
+            new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+      }
+      if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+        columnBuilders[7].appendNull();
+      } else {
+        columnBuilders[7].writeBinary(
             new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
       }
       resultBuilder.declarePosition();
@@ -1660,13 +1693,13 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
-  private abstract static class TsBlockSupplier implements IInformationSchemaContentSupplier {
+  public abstract static class TsBlockSupplier implements IInformationSchemaContentSupplier {
 
     protected final TsBlockBuilder resultBuilder;
     protected final ColumnBuilder[] columnBuilders;
     protected final AccessControl accessControl = AuthorityChecker.getAccessControl();
 
-    private TsBlockSupplier(final List<TSDataType> dataTypes) {
+    protected TsBlockSupplier(final List<TSDataType> dataTypes) {
       this.resultBuilder = new TsBlockBuilder(dataTypes);
       this.columnBuilders = resultBuilder.getValueColumnBuilders();
     }

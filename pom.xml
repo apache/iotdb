@@ -90,8 +90,8 @@
       This is the version of the thrift binary, that we release separately from here:
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
-        <iotdb-tools-thrift.version>0.23.0.0</iotdb-tools-thrift.version>
-        <jackson.version>2.18.9</jackson.version>
+        <iotdb-tools-thrift.version>0.25.0.0</iotdb-tools-thrift.version>
+        <jackson.version>2.18.11</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
         <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
@@ -105,7 +105,7 @@
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <logback.version>1.5.34</logback.version>
-        <lz4-java.version>1.11.1</lz4-java.version>
+        <lz4-java.version>1.11.4</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -141,7 +141,7 @@
         <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
-        <thrift.version>0.24.0</thrift.version>
+        <thrift.version>0.25.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
         <tsfile.version>2.4.1-260915-SNAPSHOT</tsfile.version>
@@ -1049,12 +1049,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.7.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.apache.maven.shared</groupId>
-                        <artifactId>maven-dependency-tree</artifactId>
-                        <version>3.2.1</version>
+                        <version>1.12.1</version>
                     </dependency>
                 </dependencies>
                 <executions>

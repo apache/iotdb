@@ -54,6 +54,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -86,6 +87,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.apache.iotdb.db.storageengine.dataregion.DataRegionTest.buildInsertRowNodeByTSRecord;
@@ -142,6 +144,58 @@ public class TsFileProcessorTest {
     }
     config.setTargetChunkPointNum(defaultTargetChunkPointNum);
     config.setTargetChunkSize(defaultTargetChunkSize);
+  }
+
+  @Test
+  public void testRegisterToTsFileCachesTableSchemaByVersion() throws IOException {
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+
+    final AtomicInteger supplierCalls = new AtomicInteger();
+    final AtomicInteger secondTableSupplierCalls = new AtomicInteger();
+    final TableSchema firstSchema = new TableSchema("table1");
+    final TableSchema updatedSchema = new TableSchema("table1");
+    final TableSchema secondTableSchema = new TableSchema("table2");
+
+    processor.registerToTsFile(
+        "table1",
+        1,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+    processor.registerToTsFile(
+        "table1",
+        1,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+
+    Assert.assertEquals(1, supplierCalls.get());
+    Assert.assertSame(
+        firstSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table1"));
+
+    processor.registerToTsFile(
+        "table2",
+        1,
+        tableName -> {
+          secondTableSupplierCalls.incrementAndGet();
+          return secondTableSchema;
+        });
+
+    Assert.assertEquals(1, secondTableSupplierCalls.get());
+    Assert.assertSame(
+        secondTableSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table2"));
+
+    processor.registerToTsFile(
+        "table1",
+        2,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+
+    Assert.assertEquals(2, supplierCalls.get());
+    Assert.assertSame(
+        updatedSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table1"));
   }
 
   @Test
@@ -760,6 +814,25 @@ public class TsFileProcessorTest {
     Assert.assertNotNull(
         TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, relationalNode, rangeList));
     Assert.assertEquals(1, relationalSplitCalls[0]);
+  }
+
+  @Test
+  public void alignedTabletReusesDeviceRangesAcrossWriteStages()
+      throws IOException, WriteProcessException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".device-range-reuse");
+    final AtomicInteger splitCalls = new AtomicInteger();
+    final int rowCount = 4;
+    final List<int[]> rangeList =
+        Arrays.asList(new int[] {0, rowCount / 2}, new int[] {rowCount / 2, rowCount});
+
+    processor.insertTablet(
+        genCountingAlignedTablet(new String[] {"s0"}, rowCount, 0, splitCalls),
+        rangeList,
+        new TSStatus[rowCount],
+        true,
+        new long[5]);
+
+    Assert.assertEquals(rangeList.size(), splitCalls.get());
   }
 
   @Test
@@ -1594,6 +1667,43 @@ public class TsFileProcessorTest {
         null,
         columns,
         rowCount);
+  }
+
+  private InsertTabletNode genCountingAlignedTablet(
+      String[] measurements, int rowCount, long startTime, AtomicInteger splitCalls)
+      throws IllegalPathException {
+    TSDataType[] dataTypes = new TSDataType[measurements.length];
+    MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
+    Object[] columns = new Object[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      dataTypes[i] = TSDataType.INT32;
+      schemas[i] = new MeasurementSchema(measurements[i], TSDataType.INT32, encoding);
+      columns[i] = new int[rowCount];
+    }
+    long[] times = new long[rowCount];
+    for (int row = 0; row < rowCount; row++) {
+      times[row] = startTime + row;
+      for (Object column : columns) {
+        ((int[]) column)[row] = row;
+      }
+    }
+    return new InsertTabletNode(
+        new QueryId("test_write").genPlanNodeId(),
+        new PartialPath(deviceId),
+        true,
+        measurements,
+        dataTypes,
+        schemas,
+        times,
+        null,
+        columns,
+        rowCount) {
+      @Override
+      public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+        splitCalls.incrementAndGet();
+        return super.splitByDevice(start, end);
+      }
+    };
   }
 
   private InsertTabletNode genInsertTableNode(long startTime, boolean isAligned)

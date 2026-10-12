@@ -1157,6 +1157,11 @@ public class WALNode implements IWALNode {
     return logDirectory;
   }
 
+  public File[] getSortedWalFilesSnapshot() {
+    final File[] walFiles = getSortedWalFiles();
+    return walFiles == null ? null : Arrays.copyOf(walFiles, walFiles.length);
+  }
+
   @TestOnly
   File[] getCachedSortedWalFiles() {
     return sortedWalFilesCache == null
@@ -1166,7 +1171,7 @@ public class WALNode implements IWALNode {
 
   @TestOnly
   File[] getSortedWalFilesForTest() {
-    return getSortedWalFiles();
+    return getSortedWalFilesSnapshot();
   }
 
   /** Get the .wal file starts with the specified version id */

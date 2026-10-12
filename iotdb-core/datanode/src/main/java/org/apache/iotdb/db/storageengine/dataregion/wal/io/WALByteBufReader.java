@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
@@ -31,13 +32,13 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer.ONE_THIRD_WAL_BUFFER_SIZE;
-
 /**
  * This reader returns {@link WALEntry} as {@link ByteBuffer}, the usage of WALByteBufReader is like
  * {@link Iterator}.
  */
 public class WALByteBufReader implements Closeable {
+  private static final int READ_CHUNK_SIZE = 1024 * 1024;
+
   private WALMetaData metaData;
   private WALInputStream walInputStream;
   private DataInputStream logStream;
@@ -86,12 +87,14 @@ public class WALByteBufReader implements Closeable {
   public ByteBuffer next() throws IOException {
     currentEntryIndex++;
     int size = sizeIterator.next();
-    if (size > ONE_THIRD_WAL_BUFFER_SIZE) {
+    final int entrySizeLimit =
+        IoTDBDescriptor.getInstance().getConfig().getWalEntrySizeLimitInByte();
+    if (size > entrySizeLimit) {
       throw new IOException(
           String.format(
               StorageEngineMessages.OVER_SIZED_WAL_ENTRY,
               size,
-              ONE_THIRD_WAL_BUFFER_SIZE,
+              entrySizeLimit,
               walInputStream.logFile));
     }
     // TODO: Reuse this buffer
@@ -101,7 +104,11 @@ public class WALByteBufReader implements Closeable {
      logStream.readFully, since this function does not change
      the position of the buffer.
     */
-    logStream.readFully(buffer.array(), 0, size);
+    for (int offset = 0; offset < size; ) {
+      final int chunkSize = Math.min(READ_CHUNK_SIZE, size - offset);
+      logStream.readFully(buffer.array(), offset, chunkSize);
+      offset += chunkSize;
+    }
     return buffer;
   }
 

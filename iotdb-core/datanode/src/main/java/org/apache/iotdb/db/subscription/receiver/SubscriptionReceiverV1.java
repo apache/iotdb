@@ -233,6 +233,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   @Override
+  public void releaseInFlightEvents() {
+    synchronized (this) {
+      final ConsumerConfig consumerConfig = sharedConsumerConfig;
+      if (Objects.nonNull(consumerConfig) && !consumerInvalidated) {
+        releaseInFlightEvents(consumerConfig);
+      }
+    }
+  }
+
+  @Override
   public void handleExit() {
     synchronized (this) {
       final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
@@ -246,6 +256,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           // progress to continue consuming. When another connection has already taken ownership,
           // the receiver is invalidated and even this best-effort cleanup must be skipped.
           if (!consumerInvalidated) {
+            releaseInFlightEvents(consumerConfig);
             // When handling exit, unsubscribe from topics that have already been completed as much
             // as possible to release some resources (such as the underlying pipe) in a timely
             // manner.
@@ -491,6 +502,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
     return SubscriptionAgent.broker()
         .refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
+  }
+
+  protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+    return SubscriptionAgent.broker().requeueInFlightEvents(consumerConfig);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {

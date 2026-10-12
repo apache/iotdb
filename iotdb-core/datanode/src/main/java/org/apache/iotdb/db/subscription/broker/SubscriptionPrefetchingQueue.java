@@ -265,31 +265,35 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public SubscriptionEvent pollV2(final String consumerId, final PollTimer timer) {
-    acquireReadLock();
-    try {
-      return isClosed() ? null : pollInternalV2(consumerId, timer);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  private SubscriptionEvent pollInternalV2(final String consumerId, final PollTimer timer) {
     states.markPollRequest();
 
-    // do-while ensures at least one poll
-    do {
-      SubscriptionEvent event;
+    boolean firstPoll = true;
+    while (firstPoll || timer.notExpired()) {
+      firstPoll = false;
+
+      // Keep the read lock only for the queue and in-flight event transition. Waiting for more
+      // data happens below, outside the lock, so cleanup can acquire the write lock promptly.
+      acquireReadLock();
       try {
-        if (prefetchingQueue.isEmpty()) {
-          // TODO: concurrent polling of multiple prefetching queues
-          Thread.sleep(100);
-          onEvent();
+        if (isClosed()) {
+          return null;
         }
 
-        event = pollPrefetchedEvent(consumerId);
+        final SubscriptionEvent event = pollInternalV2(consumerId);
         if (Objects.nonNull(event)) {
           return event;
         }
+      } finally {
+        releaseReadLock();
+      }
+
+      timer.update();
+      if (timer.isExpired()) {
+        break;
+      }
+
+      try {
+        Thread.sleep(Math.min(100L, timer.remainingMs()));
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn(
@@ -297,9 +301,52 @@ public abstract class SubscriptionPrefetchingQueue {
                 .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_INTERRUPTED_WHILE_F8923826,
             this,
             e);
+        break;
       }
       timer.update();
-    } while (!timer.isExpired());
+    }
+
+    return null;
+  }
+
+  private SubscriptionEvent pollInternalV2(final String consumerId) {
+    if (prefetchingQueue.isEmpty()) {
+      onEvent();
+    }
+
+    final long size = prefetchingQueue.size();
+    long count = 0;
+
+    SubscriptionEvent event;
+    while (count++ < size && Objects.nonNull(event = prefetchingQueue.poll())) {
+      if (event.isCommitted()) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_COMMITTED_8684FF17,
+            this,
+            event);
+        // no need to update inFlightEvents
+        continue;
+      }
+
+      if (!event.pollable()) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_NON_POLLABLE_644D5D6B,
+            this,
+            event);
+        nackAndRequeue(event);
+        continue;
+      }
+
+      // This operation should be performed before updating inFlightEvents to prevent multiple
+      // consumers from consuming the same event.
+      event.recordLastPolledTimestamp(); // now non-pollable
+
+      inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
+      event.recordLastPolledConsumerId(consumerId);
+      return event;
+    }
 
     return null;
   }
@@ -332,8 +379,7 @@ public abstract class SubscriptionPrefetchingQueue {
                 .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_NON_POLLABLE_644D5D6B,
             this,
             event);
-        event.nack(); // now pollable
-        // no need to update inFlightEvents and prefetchingQueue
+        nackAndRequeue(event);
         continue;
       }
 
@@ -347,6 +393,12 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     return null;
+  }
+
+  private void nackAndRequeue(final SubscriptionEvent event) {
+    event.nack(); // now pollable
+    // The event has already been removed from this queue, so put it back after resetting its state.
+    prefetchingQueue.offer(event);
   }
 
   /////////////////////////////// prefetch ///////////////////////////////
@@ -848,6 +900,17 @@ public abstract class SubscriptionPrefetchingQueue {
     } finally {
       releaseReadLock();
     }
+  }
+
+  public int requeueInFlightEvents(final String consumerId) {
+    int requeuedCount = 0;
+    for (final Pair<String, SubscriptionCommitContext> key :
+        ImmutableSet.copyOf(inFlightEvents.keySet())) {
+      if (Objects.equals(consumerId, key.left) && requeue(consumerId, key.right)) {
+        requeuedCount++;
+      }
+    }
+    return requeuedCount;
   }
 
   /**
