@@ -260,6 +260,13 @@ public final class CommonMessages {
           "LTTB 不支持重复的时间戳，但时间戳 %s 在同一分区中出现了多次。";
   public static final String EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE =
       "不支持的 LTTB 值类型：%s";
+  public static final String EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE =
+      "LTTB 计数窗口边界超出 INT64 的取值范围。";
+  public static final String EXCEPTION_LTTB_WINDOW_BOUNDARIES_EXCEED_THE_TIMESTAMP_RANGE_7C0FC7E2 =
+      "LTTB 窗口边界超出 TIMESTAMP 的取值范围。";
+  public static final String
+      EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00 =
+          "LTTB 缓冲区超过每个处理器 %d 字节的内存上限。";
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";
