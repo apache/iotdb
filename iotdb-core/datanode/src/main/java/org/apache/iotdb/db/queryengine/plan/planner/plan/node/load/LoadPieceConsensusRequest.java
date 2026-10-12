@@ -64,8 +64,9 @@ public class LoadPieceConsensusRequest extends IoTConsensusRequest {
   public ByteBuffer serializeToByteBuffer() {
     try {
       // Read the referenced payloads back from the staged TsFile and build the self-contained piece
-      // the follower applies.
-      return node.serialize();
+      // the follower applies. This request already knows the size it will have, so the buffer of
+      // the piece is allocated once.
+      return node.serialize(true, getSerializedSize());
     } catch (final ChunkPayloadUnavailableException e) {
       // The staged file may already be gone, for example after COMMIT released it. Degrade to the
       // reference-only form instead of failing: the follower then rejects the piece in its PREPARE
@@ -76,7 +77,7 @@ public class LoadPieceConsensusRequest extends IoTConsensusRequest {
           node.getLoadId(),
           node.getPieceIndex(),
           e);
-      return node.serialize(false);
+      return node.serialize(false, retainedMemorySize);
     }
   }
 
@@ -88,7 +89,9 @@ public class LoadPieceConsensusRequest extends IoTConsensusRequest {
   /**
    * Returns the size {@link #serializeToByteBuffer()} produces, estimated without touching the
    * staged file. The WAL reader uses it to keep bounding how much it collects before handing the
-   * entries over, exactly as it did when the bytes were materialized eagerly.
+   * entries over, exactly as it did when the bytes were materialized eagerly, and the piece buffer
+   * is sized from it. Counting the references kept and the payloads as well, it is never smaller
+   * than the piece, so that buffer is allocated once.
    */
   public long getSerializedSize() {
     return retainedMemorySize + node.getDataSize();

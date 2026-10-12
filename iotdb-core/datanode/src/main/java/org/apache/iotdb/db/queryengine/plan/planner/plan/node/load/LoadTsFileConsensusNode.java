@@ -657,8 +657,22 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
    *     this node while it is being dispatched.
    */
   public ByteBuffer serialize(final boolean includeContent) {
-    try (PublicBAOS byteArrayOutputStream =
-            new PublicBAOS(initialSerializationCapacity(includeContent));
+    return serialize(includeContent, DEFAULT_SERIALIZATION_BUFFER_SIZE);
+  }
+
+  /**
+   * Same, for a caller that already knows how large the result will be: a piece of a large TsFile
+   * is megabytes, and growing the buffer to that size copies it over and over.
+   *
+   * @param expectedSize the size the result is expected to have, only used to size the buffer
+   */
+  public ByteBuffer serialize(final boolean includeContent, final long expectedSize) {
+    final int initialCapacity =
+        (int)
+            Math.min(
+                Integer.MAX_VALUE - Long.BYTES,
+                Math.max(DEFAULT_SERIALIZATION_BUFFER_SIZE, expectedSize));
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS(initialCapacity);
         DataOutputStream stream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(WALEntryType.LOAD_TSFILE_CONSENSUS_NODE.getCode(), stream);
       ReadWriteIOUtils.write(-1L, stream);
@@ -679,21 +693,6 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
 
   /** Small default start for a buffer whose final size is not known upfront. */
   private static final int DEFAULT_SERIALIZATION_BUFFER_SIZE = 64;
-
-  /** Room for everything a PIECE writes next to its payloads. */
-  private static final int PIECE_METADATA_SIZE = 4 * 1024;
-
-  /** Sizes the buffer from {@link #dataSize} upfront instead of growing it. */
-  private int initialSerializationCapacity(final boolean includeContent) {
-    if (!includeContent) {
-      return DEFAULT_SERIALIZATION_BUFFER_SIZE;
-    }
-    // Clamped so that the cast cannot overflow even for a piece close to 2 GiB of payloads.
-    return (int)
-        Math.min(
-            Integer.MAX_VALUE - Long.BYTES,
-            Math.max(DEFAULT_SERIALIZATION_BUFFER_SIZE, dataSize + PIECE_METADATA_SIZE));
-  }
 
   @Override
   public int serializedSize() {

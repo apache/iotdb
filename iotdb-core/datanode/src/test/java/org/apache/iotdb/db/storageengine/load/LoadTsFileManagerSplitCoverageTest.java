@@ -538,6 +538,9 @@ public class LoadTsFileManagerSplitCoverageTest {
           "sending must expand to the very same piece the leader received",
           forwarded,
           toByteArray(request.serializeToByteBuffer()));
+      assertTrue(
+          "the size a request reports must cover the piece, so its buffer is allocated once",
+          request.getSerializedSize() >= forwarded.length);
 
       // Without the staged payload the piece must be refused rather than imported empty
       final File staged = new File(tempDir, restored.getPieceRefs().get(0).getRelativePath());
