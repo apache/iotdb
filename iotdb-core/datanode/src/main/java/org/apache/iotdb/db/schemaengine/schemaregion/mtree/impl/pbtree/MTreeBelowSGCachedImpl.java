@@ -1074,6 +1074,9 @@ public class MTreeBelowSGCachedImpl {
     ICachedMNode cur = databaseMNode;
     ICachedMNode next;
     try {
+      if (cur == null) {
+        throw new PathNotExistException(path.getFullPath(), true);
+      }
       for (int i = levelOfDB + 1; i < nodes.length; i++) {
         next = store.getChild(cur, nodes[i]);
         if (next == null) {
@@ -1090,7 +1093,9 @@ public class MTreeBelowSGCachedImpl {
       pinMNode(cur);
       return cur;
     } finally {
-      unPinPath(cur);
+      if (cur != null) {
+        unPinPath(cur);
+      }
     }
   }
 
