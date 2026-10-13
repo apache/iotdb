@@ -569,6 +569,9 @@ public class CommonConfig {
   /** Max number of rows for cte materialization */
   private int maxRowsInCteBuffer = 1000;
 
+  /** The per-processor memory budget of the LTTB table function */
+  private long lttbBufferSize = 64 * 1024 * 1024L;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -3324,5 +3327,13 @@ public class CommonConfig {
 
   public int getMaxRowsInCteBuffer() {
     return maxRowsInCteBuffer;
+  }
+
+  public void setLttbBufferSize(long lttbBufferSize) {
+    this.lttbBufferSize = lttbBufferSize;
+  }
+
+  public long getLttbBufferSize() {
+    return lttbBufferSize;
   }
 }

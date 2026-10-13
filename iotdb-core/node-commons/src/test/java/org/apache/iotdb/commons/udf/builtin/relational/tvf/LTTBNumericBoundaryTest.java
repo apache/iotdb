@@ -143,7 +143,7 @@ public class LTTBNumericBoundaryTest {
             () ->
                 sample("COUNT_WINDOW", Long.MAX_VALUE, 1, 0, times(2), new Long[][] {{1L}, {2L}}));
     assertEquals(
-        CommonMessages.EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE,
+        CommonMessages.EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE_5BC980CA,
         failure.getMessage());
   }
 

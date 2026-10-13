@@ -38,6 +38,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class LTTBTableFunctionTest {
@@ -121,6 +122,45 @@ public class LTTBTableFunctionTest {
     // three eligible points with N => 3: every point must be returned, not discarded
     assertArrayEquals(
         new int[] {0, 1, 2}, LTTBTableFunction.selectTargetCount(times, values, 3, 3));
+  }
+
+  /**
+   * With {@code N < M} the algorithm computes triangle areas, so a non-finite participant reaches
+   * the area comparison. NaN and the infinities cannot form a finite area and {@link
+   * java.math.BigDecimal} cannot represent them, so such candidates must be skipped (earliest wins)
+   * instead of aborting the query with an unchecked {@code NumberFormatException}.
+   */
+  @Test
+  public void testTargetCountSkipsNonFiniteCandidatesWhenSampling() {
+    long[] times = {0, 1, 2, 3, 4, 5};
+    double[] values = {1.0, Double.NaN, Double.POSITIVE_INFINITY, 2.0, 3.0, 4.0};
+
+    int[] selected = LTTBTableFunction.selectTargetCount(times, values, 6, 3);
+
+    // The first and last eligible points are always preserved.
+    assertEquals(0, selected[0]);
+    assertEquals(5, selected[selected.length - 1]);
+    assertEquals(3, selected.length);
+    for (int index : selected) {
+      assertTrue("selected index out of range: " + index, index >= 0 && index < 6);
+    }
+  }
+
+  /** A bucket whose candidates are all non-finite keeps its earliest point, deterministically. */
+  @Test
+  public void testTargetCountKeepsEarliestPointWhenAllCandidatesAreNonFinite() {
+    long[] times = {0, 1, 2, 3, 4, 5};
+    double[] values = {
+      Double.NaN,
+      Double.NaN,
+      Double.POSITIVE_INFINITY,
+      Double.NaN,
+      Double.NEGATIVE_INFINITY,
+      Double.NaN
+    };
+
+    assertArrayEquals(
+        new int[] {0, 1, 5}, LTTBTableFunction.selectTargetCount(times, values, 6, 3));
   }
 
   @Test

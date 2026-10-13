@@ -56,7 +56,7 @@ public class LTTBWindowMemoryTest {
               processor.process(record(i, 1.0), Collections.emptyList(), null);
             }
           },
-          LTTBTableFunction.MAX_BUFFER_BYTES);
+          LTTBTableFunction.DEFAULT_MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();
     }
@@ -70,7 +70,7 @@ public class LTTBWindowMemoryTest {
       // must be charged even when the input column contains no eligible points.
       assertMemoryLimit(
           () -> processor.process(record(0, (Number) null), Collections.emptyList(), null),
-          LTTBTableFunction.MAX_BUFFER_BYTES);
+          LTTBTableFunction.DEFAULT_MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();
     }
@@ -87,7 +87,7 @@ public class LTTBWindowMemoryTest {
               processor.process(record(i, 1.0, Long.MAX_VALUE), Collections.emptyList(), null);
             }
           },
-          LTTBTableFunction.MAX_BUFFER_BYTES);
+          LTTBTableFunction.DEFAULT_MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();
     }

@@ -137,7 +137,7 @@ public class LTTBRegressionTest {
           String.format(
               CommonMessages
                   .EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00,
-              LTTBTableFunction.MAX_BUFFER_BYTES),
+              LTTBTableFunction.DEFAULT_MAX_BUFFER_BYTES),
           expected.getMessage());
     } finally {
       processor.beforeDestroy();

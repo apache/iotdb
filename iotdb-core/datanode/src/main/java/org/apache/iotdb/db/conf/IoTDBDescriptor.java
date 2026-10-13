@@ -1100,6 +1100,13 @@ public class IoTDBDescriptor {
       commonConfig.setCteBufferSize(cteBufferSizeInBytes);
     }
 
+    // The per-processor buffer budget of the LTTB table function. Like sort_buffer_size_in_bytes
+    // this is charged to the estimated memory of every fragment that runs the function, so the
+    // non-positive default resolves to a value derived from the operator memory of this node
+    // instead of one that would reject the query outright on a small-memory node.
+    loadFixedSizeLimitForQuery(
+        properties, "lttb_buffer_size_in_bytes", commonConfig::setLttbBufferSize);
+
     // max number of rows for cte materialization
     int maxRowsInCteBuffer =
         Integer.parseInt(
@@ -2392,6 +2399,12 @@ public class IoTDBDescriptor {
       if (cteBufferSizeInBytes > 0) {
         commonConfig.setCteBufferSize(cteBufferSizeInBytes);
       }
+      // The per-processor buffer budget of the LTTB table function. Like sort_buffer_size_in_bytes
+      // this is charged to the estimated memory of every fragment that runs the function, so the
+      // non-positive default resolves to a value derived from the operator memory of this node
+      // instead of one that would reject the query outright on a small-memory node.
+      loadFixedSizeLimitForQuery(
+          properties, "lttb_buffer_size_in_bytes", commonConfig::setLttbBufferSize);
       // max number of rows for cte materialization
       int maxRowsInCteBuffer =
           Integer.parseInt(
@@ -2439,6 +2452,8 @@ public class IoTDBDescriptor {
   private void overlayEffectiveConfigurationValues() {
     ConfigurationFileUtils.updateAppliedProperties(
         "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "lttb_buffer_size_in_bytes", Long.toString(commonConfig.getLttbBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
         "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer()));
     ConfigurationFileUtils.updateAppliedProperties(

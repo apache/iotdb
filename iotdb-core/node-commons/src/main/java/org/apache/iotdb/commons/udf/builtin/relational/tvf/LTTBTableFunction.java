@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -108,8 +109,13 @@ public class LTTBTableFunction implements TableFunction {
   /** Hard cap on eligible points buffered per participant column in one partition or window. */
   public static final int MAX_BUFFERED_POINTS = 1 << 22;
 
-  /** Shared budget for point buffers and selection state across all columns of one processor. */
-  static final long MAX_BUFFER_BYTES = 64L * 1024 * 1024;
+  /**
+   * Shared budget for point buffers and selection state across all columns of one processor. It is
+   * the default of {@code lttb_buffer_size_in_bytes}; operators can tune the live value with that
+   * hot-reloadable configuration parameter for workloads with large partitions or many overlapping
+   * windows.
+   */
+  public static final long DEFAULT_MAX_BUFFER_BYTES = 64L * 1024 * 1024;
 
   public static final String MODE_PROPERTY = "__LTTB_MODE";
   public static final String PARTITION_TYPES_PROPERTY = "__LTTB_PARTITION_TYPES";
@@ -127,6 +133,18 @@ public class LTTBTableFunction implements TableFunction {
     TARGET_COUNT,
     TIME_WINDOW,
     COUNT_WINDOW
+  }
+
+  /**
+   * The live per-processor buffer budget, read from the hot-reloadable {@code
+   * lttb_buffer_size_in_bytes} configuration parameter. Values that are not positive fall back to
+   * {@link #DEFAULT_MAX_BUFFER_BYTES} so a misconfigured node still bounds memory instead of
+   * buffering without limit. Processors read this once at construction, so a reload applies to
+   * queries that start afterwards.
+   */
+  public static long maxBufferBytes() {
+    long configured = CommonDescriptor.getInstance().getConfig().getLttbBufferSize();
+    return configured > 0 ? configured : DEFAULT_MAX_BUFFER_BYTES;
   }
 
   @Override
@@ -316,6 +334,16 @@ public class LTTBTableFunction implements TableFunction {
             throw new IllegalStateException(String.valueOf(mode));
         }
       }
+
+      /**
+       * Every LTTB processor buffers the points of the partition (or of the windows it keeps open)
+       * until it can select the output points, so the whole per-processor budget is reportable as
+       * memory the operator holds while the partition is processed.
+       */
+      @Override
+      public long getEstimatedMaxBufferedBytes() {
+        return maxBufferBytes();
+      }
     };
   }
 
@@ -426,12 +454,36 @@ public class LTTBTableFunction implements TableFunction {
   }
 
   /**
-   * Returns the index in {@code [start, end)} maximizing the triangle area; earliest wins ties.
-   * {@code nextTime} and {@code nextValue} are relative to the anchor. Integral differences are
-   * computed before converting to double so large epochs and INT64 baselines retain small changes.
-   * Returns {@link #NOT_SELECTED} if intermediate arithmetic overflows, so the caller can compare
-   * the entire bucket using its original points and exact arithmetic.
+   * Area of the triangle formed by the candidate {@code index}, the anchor and the lookahead point,
+   * or {@code -1} when no finite area exists. Areas are non-negative, so {@code -1} unambiguously
+   * marks a candidate that cannot be scored.
+   *
+   * <p>A {@code NaN} or infinite participant value yields a non-finite (undefined) area rather than
+   * an overflow: no arithmetic can make it finite. Such a candidate never beats a finite one, so a
+   * bucket whose candidates are all non-finite keeps its earliest point.
    */
+  private static double boundedArea(
+      long[] times,
+      double[] values,
+      long[] integralValues,
+      int index,
+      long anchorTime,
+      double anchorValue,
+      long integralAnchor,
+      double nextTime,
+      double nextValue) {
+    double area =
+        Math.abs(
+            nextTime * relativeValue(values, integralValues, index, anchorValue, integralAnchor)
+                - differenceAsDouble(times[index], anchorTime) * nextValue);
+    return Double.isFinite(area) ? area : -1;
+  }
+
+  /** Whether the participant value at {@code index} is representable as an exact decimal. */
+  private static boolean hasExactValue(double[] values, long[] integralValues, int index) {
+    return integralValues != null || Double.isFinite(values[index]);
+  }
+
   private static int argMaxArea(
       long[] times,
       double[] values,
@@ -443,15 +495,34 @@ public class LTTBTableFunction implements TableFunction {
       long integralAnchor,
       double nextTime,
       double nextValue) {
+    // The exact fallback rebuilds the lookahead sum from the original points, so a non-finite
+    // average over representable points is still recoverable; only the anchor origin has to be
+    // representable, because it is converted to BigDecimal directly. A non-finite anchor value can
+    // only arise from non-finite input, which no arithmetic can repair.
+    boolean exactIsPossible = Double.isFinite(anchorValue);
     int pick = start;
     double maxArea = -1;
     for (int i = start; i < end; i++) {
       double area =
-          Math.abs(
-              nextTime * relativeValue(values, integralValues, i, anchorValue, integralAnchor)
-                  - differenceAsDouble(times[i], anchorTime) * nextValue);
-      if (!Double.isFinite(area)) {
-        return NOT_SELECTED;
+          boundedArea(
+              times,
+              values,
+              integralValues,
+              i,
+              anchorTime,
+              anchorValue,
+              integralAnchor,
+              nextTime,
+              nextValue);
+      if (area < 0) {
+        if (!hasExactValue(values, integralValues, i)) {
+          // Non-finite participant: boundedArea scored it as the smallest area.
+          continue;
+        }
+        if (exactIsPossible) {
+          // Overflow on representable input: let the caller compare the whole bucket exactly.
+          return NOT_SELECTED;
+        }
       }
       if (area > maxArea) {
         maxArea = area;
@@ -462,10 +533,15 @@ public class LTTBTableFunction implements TableFunction {
   }
 
   /**
-   * Overflow fallback for finite input values. Recomputes every candidate so an overflowing area
-   * cannot tie with or hide a larger one. Multiplying all areas by the lookahead point count lets
-   * us use sums instead of dividing by that count, keeping the comparison exact even for recurring
-   * averages. The normal path does not allocate decimal values.
+   * Overflow fallback for input values representable as exact decimals. Recomputes every candidate
+   * so an overflowing area cannot tie with or hide a larger one. Multiplying all areas by the
+   * lookahead point count lets us use sums instead of dividing by that count, keeping the
+   * comparison exact even for recurring averages. The normal path does not allocate decimal values.
+   *
+   * <p>A {@code NaN} or infinite participant cannot be represented by {@link BigDecimal}, so such a
+   * candidate is skipped and ties resolve to the earliest point. The caller only reaches this
+   * method when the anchor and the lookahead point are finite, so the {@link BigDecimal}
+   * conversions of those two origins and of the lookahead values are always well defined.
    */
   private static int argMaxAreaExactly(
       long[] times,
@@ -487,12 +563,18 @@ public class LTTBTableFunction implements TableFunction {
     BigDecimal sumTime = BigDecimal.ZERO;
     BigDecimal sumValue = BigDecimal.ZERO;
     for (int i = nextStart; i < nextEnd; i++) {
+      if (!hasExactValue(nextValues, nextIntegralValues, i)) {
+        continue;
+      }
       sumTime = sumTime.add(BigDecimal.valueOf(nextTimes[i]).subtract(timeOrigin));
       sumValue = sumValue.add(exactValue(nextValues, nextIntegralValues, i).subtract(valueOrigin));
     }
     int pick = start;
     BigDecimal maxArea = null;
     for (int i = start; i < end; i++) {
+      if (!hasExactValue(values, integralValues, i)) {
+        continue;
+      }
       BigDecimal time = BigDecimal.valueOf(times[i]).subtract(timeOrigin);
       BigDecimal value = exactValue(values, integralValues, i).subtract(valueOrigin);
       BigDecimal area = sumTime.multiply(value).subtract(time.multiply(sumValue)).abs();
@@ -840,7 +922,7 @@ public class LTTBTableFunction implements TableFunction {
   private static final class TargetCountLTTBDataProcessor extends AbstractLTTBDataProcessor {
     private final long n;
     private final PointBuffer[] buffers;
-    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(MAX_BUFFER_BYTES);
+    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(maxBufferBytes());
     private boolean hasRows;
 
     private TargetCountLTTBDataProcessor(
@@ -978,7 +1060,7 @@ public class LTTBTableFunction implements TableFunction {
     protected final Deque<W> activeWindows = new ArrayDeque<>();
     private final Deque<W> pendingWindows = new ArrayDeque<>();
     private final WindowState[] lastNonemptyWindows;
-    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(MAX_BUFFER_BYTES);
+    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(maxBufferBytes());
     private final long windowMetadataBytes;
     private final boolean[] hasAnchor;
     private final long[] anchorTimes;
@@ -1271,7 +1353,8 @@ public class LTTBTableFunction implements TableFunction {
           windowEnd = Math.addExact(nextWindowStart, size);
         } catch (ArithmeticException e) {
           throw new SemanticException(
-              CommonMessages.EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE);
+              CommonMessages
+                  .EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE_5BC980CA);
         }
         activeWindows.addLast(
             new CountWindowState(newWindowBuffers(), windowEnd, nextWindowIndex++));
