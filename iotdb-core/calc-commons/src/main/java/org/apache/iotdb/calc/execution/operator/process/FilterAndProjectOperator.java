@@ -47,11 +47,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.OptionalInt;
-import java.util.Set;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -69,6 +66,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
 
   private final List<ColumnTransformer> projectOutputTransformerList;
+
+  private final ColumnTransformer[] filterCacheTransformers;
+
+  private final ColumnTransformer[] projectCacheTransformers;
 
   private final TsBlockBuilder filterTsBlockBuilder;
 
@@ -103,6 +104,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.hasNonMappableUDF = hasNonMappableUDF;
     this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
     this.hasFilter = hasFilter;
+    List<ColumnTransformer> filterRoots = new ArrayList<>(commonTransformerList);
+    if (filterOutputTransformer != null) {
+      filterRoots.add(filterOutputTransformer);
+    }
+    this.filterCacheTransformers = ColumnTransformer.collectTransformers(filterRoots);
+    this.projectCacheTransformers =
+        ColumnTransformer.collectTransformers(projectOutputTransformerList);
   }
 
   public FilterAndProjectOperator(
@@ -114,6 +122,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.projectLeafColumnTransformerList =
         filterAndProjectOperator.projectLeafColumnTransformerList;
     this.projectOutputTransformerList = filterAndProjectOperator.projectOutputTransformerList;
+    this.filterCacheTransformers = filterAndProjectOperator.filterCacheTransformers;
+    this.projectCacheTransformers = filterAndProjectOperator.projectCacheTransformers;
     this.hasNonMappableUDF = filterAndProjectOperator.hasNonMappableUDF;
     this.hasFilter = filterAndProjectOperator.hasFilter;
     this.filterTsBlockBuilder = filterAndProjectOperator.filterTsBlockBuilder;
@@ -158,10 +168,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // Short-circuit evaluation can reset cache reference counts when a shared expression is
     // recomputed. Invalidate the whole DAG before feeding a new block, including intermediate
     // expressions whose caches may still have unconsumed references from the previous block.
-    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-    filterOutputTransformer.clearCacheForNewInput(visited);
-    for (ColumnTransformer columnTransformer : commonTransformerList) {
-      columnTransformer.clearCacheForNewInput(visited);
+    for (ColumnTransformer columnTransformer : filterCacheTransformers) {
+      columnTransformer.clearCacheForNewInput();
     }
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
@@ -274,10 +282,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getTransformedTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
-    // Clear all output DAGs before evaluating any output, visiting shared subexpressions only once.
-    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-    for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
-      columnTransformer.clearCacheForNewInput(visited);
+    // The flat array was deduplicated at construction; clear each node before evaluating any
+    // output.
+    for (ColumnTransformer columnTransformer : projectCacheTransformers) {
+      columnTransformer.clearCacheForNewInput();
     }
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {
@@ -455,6 +463,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.shallowSizeOf(filterCacheTransformers)
+        + RamUsageEstimator.shallowSizeOf(projectCacheTransformers)
         + filterTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

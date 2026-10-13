@@ -41,6 +41,7 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
   protected DeviceUpdater(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
+      final List<ColumnTransformer> commonTransformerList,
       final List<TsTableColumnSchema> columnSchemaList,
       final BiFunction<Integer, String, Binary> attributeProvider,
       final String database,
@@ -48,6 +49,7 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        commonTransformerList,
         columnSchemaList,
         database,
         table);

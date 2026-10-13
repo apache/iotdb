@@ -31,6 +31,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMN
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -54,6 +55,7 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        Collections.emptyList(),
         columnSchemaList,
         attributeProvider,
         database,

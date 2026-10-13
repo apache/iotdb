@@ -40,11 +40,8 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -54,6 +51,7 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<ColumnTransformer> commonTransformerList;
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
+  private final ColumnTransformer[] projectCacheTransformers;
   private final TriConsumer<String[], Integer, Object[]> attributeUpdater;
   private final TsBlockBuilder filterTsBlockBuilder;
   private final List<Integer> attributePointers = new ArrayList<>();
@@ -78,6 +76,7 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        commonTransformerList,
         columnSchemaList,
         attributeProvider,
         database,
@@ -85,6 +84,8 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     this.commonTransformerList = commonTransformerList;
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformerList = projectOutputTransformerList;
+    this.projectCacheTransformers =
+        ColumnTransformer.collectTransformers(projectOutputTransformerList);
     this.attributeUpdater = attributeUpdater;
     this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
     this.attributeNames = attributeNames;
@@ -100,8 +101,9 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   protected void update() throws MetadataException {
     final TsBlock block = getFilterTsBlock();
 
-    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-    projectOutputTransformerList.forEach(transformer -> transformer.clearCacheForNewInput(visited));
+    for (ColumnTransformer transformer : projectCacheTransformers) {
+      transformer.clearCacheForNewInput();
+    }
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
 
@@ -165,12 +167,6 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     filterTsBlockBuilder.declarePositions(rowCount);
 
     return filterTsBlockBuilder.build(new TimeColumn(rowCount, new long[rowCount]));
-  }
-
-  @Override
-  protected void clearFilterCacheForNewInput(Set<ColumnTransformer> visited) {
-    super.clearFilterCacheForNewInput(visited);
-    commonTransformerList.forEach(transformer -> transformer.clearCacheForNewInput(visited));
   }
 
   @Override

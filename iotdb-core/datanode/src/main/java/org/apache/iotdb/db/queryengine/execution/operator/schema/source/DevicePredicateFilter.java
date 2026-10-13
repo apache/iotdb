@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -44,6 +45,7 @@ public class DevicePredicateFilter extends DevicePredicateHandler
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        Collections.emptyList(),
         columnSchemaList,
         database,
         table);

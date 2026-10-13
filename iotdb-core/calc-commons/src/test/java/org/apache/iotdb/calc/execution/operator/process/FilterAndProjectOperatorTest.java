@@ -226,7 +226,23 @@ public class FilterAndProjectOperatorTest {
   }
 
   @Test
-  public void testProjectionClearsSharedDagOnlyOncePerBlock() throws Exception {
+  public void testCopiedOperatorReusesCollectedTransformers() throws Exception {
+    Graph graph = new Graph();
+    CountingIdentityColumnTransformer input = new CountingIdentityColumnTransformer();
+    graph.leaves.add(input);
+    try (FilterAndProjectOperator original = project(graph, new TsBlock[0], graph.add(input, 1));
+        FilterAndProjectOperator copy =
+            new FilterAndProjectOperator(
+                original, new TsBlockSourceOperator(new TsBlock[] {block(1), block(2)}))) {
+      assertEquals(1, input.childTraversalCount);
+      assertBlock(copy.next(), new Double[] {2.0});
+      assertBlock(copy.next(), new Double[] {3.0});
+      assertEquals(1, input.childTraversalCount);
+    }
+  }
+
+  @Test
+  public void testProjectionCollectsSharedDagOnlyOnce() throws Exception {
     Graph graph = new Graph();
     CountingIdentityColumnTransformer input = new CountingIdentityColumnTransformer();
     graph.leaves.add(input);
@@ -238,15 +254,16 @@ public class FilterAndProjectOperatorTest {
     }
     try (Operator operator =
         project(graph, new TsBlock[] {block(1), block(2)}, shared, graph.add(shared, 1))) {
+      assertEquals(1, input.childTraversalCount);
       assertBlock(operator.next(), new Double[] {4096.0}, new Double[] {4097.0});
-      assertEquals(1, input.cacheClearCount);
+      assertEquals(1, input.childTraversalCount);
       assertBlock(operator.next(), new Double[] {8192.0}, new Double[] {8193.0});
-      assertEquals(2, input.cacheClearCount);
+      assertEquals(1, input.childTraversalCount);
     }
   }
 
   @Test
-  public void testFilterAndCommonExpressionsShareCacheClearingTraversal() throws Exception {
+  public void testFilterAndCommonExpressionsCollectSharedDagOnlyOnce() throws Exception {
     Graph filter = new Graph();
     CountingIdentityColumnTransformer input = new CountingIdentityColumnTransformer();
     filter.leaves.add(input);
@@ -262,10 +279,11 @@ public class FilterAndProjectOperatorTest {
             projection,
             projection.input(0),
             projection.input(1))) {
+      assertEquals(1, input.childTraversalCount);
       assertBlock(operator.next(), new Double[] {1.0}, new Double[] {2.0});
-      assertEquals(1, input.cacheClearCount);
+      assertEquals(1, input.childTraversalCount);
       assertBlock(operator.next(), new Double[] {3.0}, new Double[] {4.0});
-      assertEquals(2, input.cacheClearCount);
+      assertEquals(1, input.childTraversalCount);
     }
   }
 
@@ -437,7 +455,7 @@ public class FilterAndProjectOperatorTest {
 
   private static class CountingIdentityColumnTransformer extends IdentityColumnTransformer {
     private int evaluationCount;
-    private int cacheClearCount;
+    private int childTraversalCount;
 
     private CountingIdentityColumnTransformer() {
       super(DOUBLE, 0);
@@ -451,7 +469,7 @@ public class FilterAndProjectOperatorTest {
 
     @Override
     protected void forEachChild(Consumer<ColumnTransformer> action) {
-      cacheClearCount++;
+      childTraversalCount++;
     }
   }
 

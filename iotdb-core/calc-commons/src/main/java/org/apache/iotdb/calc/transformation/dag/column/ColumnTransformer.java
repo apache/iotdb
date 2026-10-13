@@ -25,6 +25,10 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -129,18 +133,34 @@ public abstract class ColumnTransformer {
   }
 
   /**
-   * Clears cached columns throughout this DAG before initializing a new input block. Unlike {@link
-   * #clearCache()}, this also visits CASE descendants. Only call this before evaluating any
-   * expressions for the new block, when no sibling expression can still need a cached column. All
-   * roots in the same evaluation phase must share an identity-based visited set so shared
-   * subexpressions are cleared only once.
+   * Clears only this node's cached column before initializing a new input block. Call this on every
+   * node collected by {@link #collectTransformers(Iterable)} before evaluating any expressions for
+   * the new block, when no sibling expression can still need a cached column.
    */
-  public final void clearCacheForNewInput(Set<ColumnTransformer> visited) {
-    if (!visited.add(this)) {
-      return;
-    }
+  public final void clearCacheForNewInput() {
     this.columnCache.clear();
-    forEachChild(child -> child.clearCacheForNewInput(visited));
+  }
+
+  /**
+   * Collects all nodes reachable from the evaluation phase's roots, including CASE descendants,
+   * deduplicating by identity. Collect once after constructing the DAG and retain the flat array so
+   * new-input cache clearing needs no graph traversal or visited-set allocation.
+   */
+  public static ColumnTransformer[] collectTransformers(Iterable<ColumnTransformer> roots) {
+    List<ColumnTransformer> transformers = new ArrayList<>();
+    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (ColumnTransformer root : roots) {
+      root.collectTransformers(transformers, visited);
+    }
+    return transformers.toArray(new ColumnTransformer[0]);
+  }
+
+  private void collectTransformers(
+      List<ColumnTransformer> transformers, Set<ColumnTransformer> visited) {
+    if (visited.add(this)) {
+      transformers.add(this);
+      forEachChild(child -> child.collectTransformers(transformers, visited));
+    }
   }
 
   protected boolean shouldClearChildrenCache() {
