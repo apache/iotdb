@@ -2531,7 +2531,7 @@ public class Session implements ISession {
       List<List<TSDataType>> typesList,
       List<List<String>> measurementsList)
       throws IoTDBConnectionException {
-    List<ByteBuffer> buffersList = new ArrayList<>();
+    List<ByteBuffer> buffersList = new ArrayList<>(valuesList.size());
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer =
           SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i), measurementsList.get(i));
@@ -2870,8 +2870,8 @@ public class Session implements ISession {
       sortTablet(tablet);
     }
     request.addToPrefixPaths(tablet.deviceId);
-    List<String> measurements = new ArrayList<>();
-    List<Integer> dataTypes = new ArrayList<>();
+    List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
+    List<Integer> dataTypes = new ArrayList<>(tablet.getSchemas().size());
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       if (measurementSchema.getMeasurementId() == null) {
@@ -3530,9 +3530,9 @@ public class Session implements ISession {
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> flatMeasurements = new ArrayList<>();
-    List<TSDataType> flatDataTypes = new ArrayList<>();
-    List<TSEncoding> flatEncodings = new ArrayList<>();
+    List<String> flatMeasurements = new ArrayList<>(measurements.size());
+    List<TSDataType> flatDataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> flatEncodings = new ArrayList<>(measurements.size());
     for (int idx = 0; idx < measurements.size(); idx++) {
       flatMeasurements.add(measurements.get(idx).get(0));
       flatDataTypes.add(dataTypes.get(idx).get(0));

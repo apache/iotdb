@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.path;
 
+import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -256,7 +257,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     int typeOrValueSize = ReadWriteIOUtils.readInt(buffer);
     if (typeOrValueSize >= 0) {
       // measurement node in PatternTreeMap
-      Set<V> valueSet = new HashSet<>();
+      Set<V> valueSet = Sets.newHashSetWithExpectedSize(typeOrValueSize);
       for (int i = 0; i < typeOrValueSize; i++) {
         valueSet.add(serializer.read(buffer));
       }

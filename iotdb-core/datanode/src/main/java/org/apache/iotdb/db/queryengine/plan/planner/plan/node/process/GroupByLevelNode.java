@@ -162,7 +162,8 @@ public class GroupByLevelNode extends MultiChildProcessNode {
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors = new ArrayList<>();
+    List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors =
+        new ArrayList<>(descriptorSize);
     while (descriptorSize > 0) {
       groupByLevelDescriptors.add(CrossSeriesAggregationDescriptor.deserialize(byteBuffer));
       descriptorSize--;

@@ -20,12 +20,13 @@ package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
+import com.google.common.collect.Sets;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -163,13 +164,13 @@ public class User extends Role {
     super.setName(SerializeUtils.deserializeString(buffer));
     password = SerializeUtils.deserializeString(buffer);
     int systemPriSize = buffer.getInt();
-    Set<Integer> sysPri = new HashSet<>();
+    Set<Integer> sysPri = Sets.newHashSetWithExpectedSize(systemPriSize);
     for (int i = 0; i < systemPriSize; i++) {
       sysPri.add(buffer.getInt());
     }
     super.setSysPrivilegeSet(sysPri);
     int sysPriGrantOptSize = buffer.getInt();
-    Set<Integer> grantOpt = new HashSet<>();
+    Set<Integer> grantOpt = Sets.newHashSetWithExpectedSize(sysPriGrantOptSize);
     for (int i = 0; i < sysPriGrantOptSize; i++) {
       grantOpt.add(buffer.getInt());
     }

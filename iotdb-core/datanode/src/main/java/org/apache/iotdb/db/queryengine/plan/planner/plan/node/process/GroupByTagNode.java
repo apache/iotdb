@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAg
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,7 +37,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -251,11 +251,12 @@ public class GroupByTagNode extends MultiChildProcessNode {
     // Tag values to aggregation descriptors.
     int numOfEntries = ReadWriteIOUtils.readInt(byteBuffer);
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
-        new HashMap<>();
+        Maps.newHashMapWithExpectedSize(numOfEntries);
     while (numOfEntries > 0) {
       List<String> tagValues = ReadWriteIOUtils.readStringList(byteBuffer);
-      List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
       int numOfAggregationDescriptors = ReadWriteIOUtils.readInt(byteBuffer);
+      List<CrossSeriesAggregationDescriptor> aggregationDescriptors =
+          new ArrayList<>(numOfAggregationDescriptors);
       while (numOfAggregationDescriptors > 0) {
         byte isNotNull = ReadWriteIOUtils.readByte(byteBuffer);
         if (isNotNull == 1) {

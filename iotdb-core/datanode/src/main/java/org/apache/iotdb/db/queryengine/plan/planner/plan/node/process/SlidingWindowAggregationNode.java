@@ -170,7 +170,7 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
 
   public static SlidingWindowAggregationNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>(descriptorSize);
     while (descriptorSize > 0) {
       aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
       descriptorSize--;
