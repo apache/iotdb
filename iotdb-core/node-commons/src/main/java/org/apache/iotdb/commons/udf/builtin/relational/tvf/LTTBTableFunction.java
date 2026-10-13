@@ -70,12 +70,25 @@ import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentC
  *       window_index = 0}.
  *   <li><b>Window/bucket mode</b> ({@code SIZE}, optional {@code SLIDE}/{@code ORIGIN}): windows
  *       are built exactly like M4 (time windows for duration literals, count windows for integers).
- *       Each window is one LTTB bucket that selects at most one point per participant column: the
- *       anchor is the previously selected point of that column, the candidates are the eligible
- *       points in the window, and the third vertex is the average point of the next window that
- *       carries data for that column (or the window's own last eligible point for the final
- *       window).
+ *       {@code SIZE} defines a bucket, not the input range of a separate standard LTTB invocation.
+ *       One anchor chain is maintained per partition and participant column: for the current bucket
+ *       {@code A} is the point selected by the preceding bucket of that column ({@code B} in turn
+ *       becomes the anchor of the following bucket), {@code B} ranges over the current bucket's
+ *       eligible points, and {@code C} is the average point of the next bucket that carries data
+ *       for that column (or the bucket's own last eligible point when there is none). Overlapping
+ *       buckets ({@code SLIDE < SIZE}) do not restart the chain, and the state is independent
+ *       between partitions and between participant columns.
  * </ul>
+ *
+ * <p>Bucket mode emits one row per window that carries input, and at most one selected point per
+ * participant column in a row; a column with no eligible point in a window emits {@code NULL} in
+ * its place, and a window in which every participant column is {@code NULL} still emits a single
+ * all-{@code NULL} row (padding by output position). Bucket mode does <em>not</em> preserve the
+ * first and last eligible points: an endpoint used as {@code A} or as {@code C} is a triangle
+ * vertex, not a selected point, so it appears in the output only when it also wins its bucket. A
+ * bucket holding just one or two eligible points therefore still contributes a single row per
+ * column: with two points the areas are equal and the tie resolves to the earlier one. First/last
+ * preservation and the return-all-points case apply to target-count mode only.
  *
  * <p>{@code NULL} participant values are ignored per column; every non-null value, including {@code
  * NaN} and the infinities, participates in the selection and is reproduced in the output. Ties in
