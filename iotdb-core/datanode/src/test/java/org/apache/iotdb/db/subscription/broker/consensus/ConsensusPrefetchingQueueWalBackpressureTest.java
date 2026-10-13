@@ -70,6 +70,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ConsensusPrefetchingQueueWalBackpressureTest {
@@ -78,6 +80,118 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
   private static final int REQUEST_COUNT = 3;
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testYieldedGapScanKeepsIteratorAndDeliversEachRequestOnce() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final int originalBatchMaxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
+    final int originalBatchMaxTabletCount = config.getSubscriptionConsensusBatchMaxTabletCount();
+    final int originalBatchMaxDelay = config.getSubscriptionConsensusBatchMaxDelayInMs();
+    final File systemDir = temporaryFolder.newFolder("system-yielded-wal-gap");
+    final File walDirectory = temporaryFolder.newFolder("yielded-wal-gap");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      config.setSubscriptionConsensusBatchMaxWalEntries(2);
+      config.setSubscriptionConsensusBatchMaxTabletCount(1);
+      config.setSubscriptionConsensusBatchMaxDelayInMs(0);
+      final File dataWal =
+          new File(
+              walDirectory,
+              WALFileUtils.getLogFileName(0L, 0L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+      final File liveWal =
+          new File(
+              walDirectory,
+              WALFileUtils.getLogFileName(1L, 3L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        // The replay cursor is 2, but its WAL file has a fragmented prefix for local index 1.
+        for (int fragment = 0; fragment < 9; fragment++) {
+          writeWalEntry(writer, 1L);
+        }
+        writeWalEntry(writer, 2L);
+        writeWalEntry(writer, 3L);
+      }
+      try (WALWriter ignored = new WALWriter(liveWal, WALFileVersion.V3)) {
+        // Keep a sealed successor so the fragmented prefix can be read.
+      }
+
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(walDirectory);
+      when(walNode.getCurrentSearchIndex()).thenReturn(3L);
+      when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
+      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final List<Long> conversions = new ArrayList<>();
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenAnswer(
+              invocation -> {
+                conversions.add(((InsertNode) invocation.getArgument(0)).getSearchIndex());
+                return Collections.singletonList(createTablet());
+              });
+      when(converter.getDatabaseName()).thenReturn("db");
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              2L,
+              2L,
+              true);
+      final SubscriptionMemoryManager memoryManager =
+          new SubscriptionMemoryManager(createTablet().ramBytesUsed() * 8L);
+      queue.setSubscriptionMemoryManager(memoryManager);
+      assertNull(queue.poll("consumer"));
+      assertTrue(pendingEntries(queue).offer(createRequest(3L)));
+
+      assertEquals(PrefetchRoundResult.Type.RESCHEDULE_NOW, queue.drivePrefetchOnce().getType());
+      final ProgressWALIterator iterator = subscriptionWalIterator(queue);
+      assertTrue(iterator.hasYieldedScan());
+      assertTrue(conversions.isEmpty());
+      assertEquals(2L, queue.getCurrentReadSearchIndex());
+      verify(walNode, never()).rollWALFile();
+
+      // Repeated realtime jumps must continue the yielded scan rather than reset it to index 2.
+      for (int round = 0; round < 20 && queue.getCurrentReadSearchIndex() < 4L; round++) {
+        if (queue.getCurrentReadSearchIndex() < 3L) {
+          assertTrue(pendingEntries(queue).offer(createRequest(3L)));
+        }
+        queue.drivePrefetchOnce();
+        assertSame(iterator, subscriptionWalIterator(queue));
+      }
+      assertEquals(4L, queue.getCurrentReadSearchIndex());
+      assertEquals(Arrays.asList(2L, 3L), conversions);
+      for (long expected = 2L; expected <= 3L; expected++) {
+        final SubscriptionEvent event = queue.poll("consumer");
+        assertNotNull(event);
+        assertEquals(expected, event.getCommitContext().getWriterProgress().getLocalSeq());
+        assertTrue(queue.ack("consumer", event.getCommitContext()));
+      }
+      queue.drivePrefetchOnce();
+      assertNull(queue.poll("consumer"));
+      assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+      verify(walNode, never()).rollWALFile();
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      config.setSubscriptionConsensusBatchMaxWalEntries(originalBatchMaxWalEntries);
+      config.setSubscriptionConsensusBatchMaxTabletCount(originalBatchMaxTabletCount);
+      config.setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
 
   @Test
   public void testAckRecoversDrainedSuffixFromWalWithoutReoffer() throws Exception {
