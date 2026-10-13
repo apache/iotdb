@@ -61,6 +61,7 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   public void reset() {
     pos = 0;
+    buf.markUnused();
   }
 
   @Override

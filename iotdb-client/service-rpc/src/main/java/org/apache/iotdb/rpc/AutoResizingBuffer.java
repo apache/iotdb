@@ -21,6 +21,7 @@ package org.apache.iotdb.rpc;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Helper class that wraps a byte[] so that it can expand and be reused. Users should call
@@ -28,9 +29,10 @@ import java.util.Arrays;
  * needed.
  *
  * <p>Resizing policies: Expanding: If the required size > current capacity * 1.5, expand to the
- * required size, otherwise expand to current capacity * 1.5. Shrinking: If initial size < the
- * required size < current capacity * 0.6, and such small requests last for more than 5 times,
- * shrink to the middle of the required size and current capacity.
+ * required size, otherwise expand to current capacity * 1.5. Shrinking: If the required size
+ * (bounded below by the initial capacity) is less than current capacity * 0.6, and such small
+ * requests last for more than 5 times, shrink to the middle of the required size and current
+ * capacity. Unused buffers can also shrink back to their initial capacity under memory pressure.
  */
 class AutoResizingBuffer implements AutoCloseable {
 
@@ -41,6 +43,8 @@ class AutoResizingBuffer implements AutoCloseable {
   private int accountedCapacity;
   private boolean closed;
   private AutoResizingBufferMemoryManager.MemoryAccount memoryAccount;
+  private final ReentrantLock lock = new ReentrantLock();
+  private boolean unused = true;
 
   public AutoResizingBuffer(int initialCapacity) throws IOException {
     this.initialCapacity = initialCapacity;
@@ -53,26 +57,66 @@ class AutoResizingBuffer implements AutoCloseable {
       throw e;
     }
     this.accountedCapacity = initialCapacity;
+    AutoResizingBufferMemoryManager.registerBuffer(this);
   }
 
   public void resizeIfNecessary(int size) throws IOException {
-    reserveCurrentCapacityIfReleased();
-    final int currentCapacity = this.array.length;
-    final double loadFactor = 0.6;
-    if (currentCapacity < size) {
-      // Increase by a factor of 1.5x
-      int growCapacity = currentCapacity + (currentCapacity >> 1);
-      int newCapacity = Math.max(growCapacity, size);
-      resize(newCapacity);
-      bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
-    } else if (size > initialCapacity
-        && currentCapacity * loadFactor > size
-        && bufTooLargeCounter-- <= 0
-        && System.currentTimeMillis() - lastShrinkTime > RpcUtils.MIN_SHRINK_INTERVAL) {
-      // do not resize if it is reading the request size and do not shrink too often
-      resize(size + (currentCapacity - size) / 2);
+    lock.lock();
+    try {
+      unused = false;
+      reserveCurrentCapacityIfReleased();
+      final int currentCapacity = this.array.length;
+      final int requiredCapacity = Math.max(initialCapacity, size);
+      final double loadFactor = 0.6;
+      if (currentCapacity < requiredCapacity) {
+        // Increase by a factor of 1.5x
+        int growCapacity = currentCapacity + (currentCapacity >> 1);
+        int newCapacity = Math.max(growCapacity, requiredCapacity);
+        resize(newCapacity);
+        bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+      } else if (currentCapacity * loadFactor > requiredCapacity
+          && bufTooLargeCounter-- <= 0
+          && System.currentTimeMillis() - lastShrinkTime > RpcUtils.MIN_SHRINK_INTERVAL) {
+        // Avoid repeatedly copying buffers when frame sizes fluctuate.
+        resize(requiredCapacity + (currentCapacity - requiredCapacity) / 2);
+        bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+        lastShrinkTime = System.currentTimeMillis();
+      }
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /** The transport must only call this after consuming or sending the entire frame. */
+  public void markUnused() {
+    lock.lock();
+    try {
+      unused = true;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  boolean tryReleaseUnusedMemory(AutoResizingBufferMemoryControl memoryControl) {
+    // Allocation can already hold another buffer's lock. Never wait for an active buffer.
+    if (!lock.tryLock()) {
+      return false;
+    }
+    try {
+      if (closed
+          || !unused
+          || array.length <= initialCapacity
+          || !memoryAccount.usesMemoryControl(memoryControl)) {
+        return false;
+      }
+      array = new byte[initialCapacity];
+      memoryAccount.release(accountedCapacity - initialCapacity);
+      accountedCapacity = initialCapacity;
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
       lastShrinkTime = System.currentTimeMillis();
+      return true;
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -82,10 +126,16 @@ class AutoResizingBuffer implements AutoCloseable {
 
   @Override
   public void close() {
-    if (!closed) {
-      memoryAccount.release(accountedCapacity);
-      accountedCapacity = 0;
-      closed = true;
+    lock.lock();
+    try {
+      if (!closed) {
+        memoryAccount.release(accountedCapacity);
+        accountedCapacity = 0;
+        closed = true;
+        AutoResizingBufferMemoryManager.unregisterBuffer(this);
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -117,6 +167,7 @@ class AutoResizingBuffer implements AutoCloseable {
       memoryAccount = newMemoryAccount;
       accountedCapacity = array.length;
       closed = false;
+      AutoResizingBufferMemoryManager.registerBuffer(this);
     }
   }
 }

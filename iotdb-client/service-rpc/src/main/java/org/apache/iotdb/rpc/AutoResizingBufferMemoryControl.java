@@ -25,4 +25,14 @@ public interface AutoResizingBufferMemoryControl {
   boolean allocate(long sizeInBytes);
 
   void release(long sizeInBytes);
+
+  /** Returns the pool capacity, or -1 if the control does not expose it. */
+  default long getTotalMemorySizeInBytes() {
+    return -1;
+  }
+
+  /** Returns the pool usage, or -1 if the control does not expose it. */
+  default long getUsedMemoryInBytes() {
+    return -1;
+  }
 }

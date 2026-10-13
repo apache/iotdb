@@ -59,8 +59,8 @@ public final class RpcMessages {
   // AutoResizingBuffer
   public static final String AUTO_RESIZING_BUFFER_ALLOCATE_INTERRUPTED =
       "AutoResizingBuffer was interrupted while allocating %d bytes";
-  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_FAILED =
-      "AutoResizingBuffer failed to allocate %d bytes after %d retries";
+  public static final String EXCEPTION_AUTORESIZINGBUFFER_FAILED_TO_ALLOCATE_ARG_BYTES_AFTER_ARG_RETRIES_POOL_TOTAL_ARG_BYTES_USED_ARG_BYTES_AVAILABLE_ARG_BYTES_8244057A =
+      "AutoResizingBuffer failed to allocate %d bytes after %d retries (pool total=%d bytes, used=%d bytes, available=%d bytes)";
 
   // IoTDBRpcDataSet / IoTDBJDBCDataSet
   public static final String CLOSE_OPERATION_SERVER_ERROR =
