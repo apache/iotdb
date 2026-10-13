@@ -140,6 +140,11 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     }
   }
 
+  @VisibleForTesting
+  void setSleepingTimeInMilliSecond(final long sleepingTimeInMilliSecond) {
+    this.sleepingTimeInMilliSecond = sleepingTimeInMilliSecond;
+  }
+
   private void adjustSleepingTimeIfNecessary() {
     if (totalRoundInAdjustmentInterval % SLEEP_INTERVAL_ADJUSTMENT_ROUND_INTERVAL == 0) {
       final double workingRatioInAdjustmentInterval =

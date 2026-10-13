@@ -31,7 +31,6 @@ import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.InOrder;
-import org.powermock.reflect.Whitebox;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -124,7 +123,7 @@ public class PipeProcessorSubtaskWorkerTest {
         // Consume the scheduling notification before all workers become idle on admission.
         worker.sleepIfNecessary(true);
         // Make a missed wake-up observable without relying on a tight performance assertion.
-        Whitebox.setInternalState(worker, "sleepingTimeInMilliSecond", 60000L);
+        worker.setSleepingTimeInMilliSecond(60000L);
         futures.add(
             executor.submit(
                 () -> {
@@ -174,7 +173,7 @@ public class PipeProcessorSubtaskWorkerTest {
   @Test(timeout = 10000)
   public void testNotificationBeforeIdleWaitIsNotLost() throws Exception {
     final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
-    Whitebox.setInternalState(worker, "sleepingTimeInMilliSecond", 60000L);
+    worker.setSleepingTimeInMilliSecond(60000L);
     final PipeProcessorSubtask subtask = createRunnableSubtask("waitingPipe");
     final AtomicReference<Runnable> wakeUpCallback = new AtomicReference<>();
     doAnswer(
