@@ -18,7 +18,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.BytesUtils;
 
@@ -52,8 +51,8 @@ public final class ChunkOffsetCalculator {
   // Offset Allocation & Layout Assignment
   // -------------------------------------------------------------------------
 
-  /** Allocates physical file offset and group layout for a single chunk. */
-  public ChunkLayout allocate(final IDeviceID device, final boolean aligned, final Chunk chunk) {
+  /** Allocates the physical offset and layout of a single chunk. */
+  public ChunkData.ChunkLayout allocate(final IDeviceID device, final Chunk chunk) {
     Objects.requireNonNull(device, DataNodeQueryMessages.EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6);
     Objects.requireNonNull(chunk, DataNodeQueryMessages.EXCEPTION_CHUNK_CANNOT_BE_NULL_280ECF98);
 
@@ -71,17 +70,14 @@ public final class ChunkOffsetCalculator {
         computeChunkHeaderSize(chunk.getHeader()) + (long) chunk.getData().remaining();
     final boolean firstChunkOfGroup = (nextChunkIndex == 0);
 
-    final ChunkLayout layout =
-        new ChunkLayout(
-            device,
-            aligned,
+    final ChunkData.ChunkLayout layout =
+        new ChunkData.ChunkLayout(
             chunkGroupIndex,
             chunkGroupHeaderOffset,
-            firstChunkOfGroup,
-            chunk,
             chunkOffset,
             chunkLength,
-            nextChunkIndex);
+            nextChunkIndex,
+            firstChunkOfGroup);
 
     nextOffset += chunkLength;
     nextChunkIndex++;
@@ -92,16 +88,7 @@ public final class ChunkOffsetCalculator {
   public ChunkData.ChunkLayout assign(final ChunkData chunkData, final Chunk chunk) {
     Objects.requireNonNull(
         chunkData, DataNodeQueryMessages.EXCEPTION_CHUNKDATA_CANNOT_BE_NULL_7D931C4D);
-    final ChunkLayout allocated = allocate(chunkData.getDevice(), chunkData.isAligned(), chunk);
-    // Only the six persisted fields are projected here.
-    final ChunkData.ChunkLayout layout =
-        new ChunkData.ChunkLayout(
-            allocated.chunkGroupIndex(),
-            allocated.chunkGroupHeaderOffset(),
-            allocated.offset(),
-            allocated.length(),
-            allocated.chunkIndexInGroup(),
-            allocated.firstChunkOfGroup());
+    final ChunkData.ChunkLayout layout = allocate(chunkData.getDevice(), chunk);
     chunkData.setChunkLayout(layout);
     return layout;
   }
@@ -117,16 +104,15 @@ public final class ChunkOffsetCalculator {
     }
 
     final IDeviceID device = chunkData.getDevice();
-    final boolean aligned = chunkData.isAligned();
 
     // Allocate first chunk to establish baseline layout metrics
-    final ChunkLayout firstLayout = allocate(device, aligned, chunks.get(0));
+    final ChunkData.ChunkLayout firstLayout = allocate(device, chunks.get(0));
     long totalLength = firstLayout.length();
 
     // Allocate subsequent chunks continuously within the same group
     final int size = chunks.size();
     for (int i = 1; i < size; i++) {
-      totalLength += allocate(device, aligned, chunks.get(i)).length();
+      totalLength += allocate(device, chunks.get(i)).length();
     }
 
     final ChunkData.ChunkLayout aggregatedLayout =
@@ -147,12 +133,9 @@ public final class ChunkOffsetCalculator {
   // -------------------------------------------------------------------------
 
   private int computeChunkGroupHeaderSize(final IDeviceID device) {
-    // Normalized to what the staged writer serializes: 12 vs 13 bytes for "root.sg.d1".
-    final IDeviceID normalizedDevice =
-        device instanceof StringArrayDeviceID ? device : new StringArrayDeviceID(device.toString());
     try {
       countingStream.reset();
-      return new ChunkGroupHeader(normalizedDevice).serializeTo(countingStream);
+      return new ChunkGroupHeader(device).serializeTo(countingStream);
     } catch (final IOException e) {
       throw new IllegalStateException(
           DataNodeQueryMessages.EXCEPTION_FAILED_TO_COMPUTE_CHUNK_GROUP_HEADER_SIZE_E6B40B2C, e);
