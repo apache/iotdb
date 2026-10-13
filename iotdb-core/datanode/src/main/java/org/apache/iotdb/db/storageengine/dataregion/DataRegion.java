@@ -556,18 +556,21 @@ public class DataRegion implements IDataRegionForQuery {
       synchronized (this) {
         manager = loadTsFileManager;
         if (manager == null) {
-          if (deleted) {
-            // A deleted region takes no LOAD work: the command fails and its leader retries it.
-            throw new IllegalStateException(
-                String.format(
-                    StorageEngineMessages
-                        .STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_ITS_LOAD_MANAGER_CANNOT_BE_CREATED_B6A4649E,
-                    databaseName + "-" + dataRegionIdString));
-          }
           manager = new LoadTsFileManager(this);
           loadTsFileManager = manager;
         }
       }
+    }
+    if (deleted) {
+      // The region went away: it takes no LOAD work, and the manager is stopped for good. A manager
+      // created in this window stops itself here, the one stopLoadTsFileManager saw was stopped by
+      // it.
+      manager.stop();
+      throw new IllegalStateException(
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_IT_TAKES_NO_LOAD_WORK_6E05108F,
+              databaseName + "-" + dataRegionIdString));
     }
     return manager;
   }
@@ -576,16 +579,9 @@ public class DataRegion implements IDataRegionForQuery {
     return Optional.ofNullable(loadTsFileManager);
   }
 
-  /**
-   * Drops the LOAD manager and stops its writers. The clear is inside the monitor that publishes
-   * it, so a concurrently created manager cannot be dropped without being stopped.
-   */
+  /** Stops the LOAD manager of this region for good. The manager stays published. */
   public void stopLoadTsFileManager() {
-    final LoadTsFileManager manager;
-    synchronized (this) {
-      manager = loadTsFileManager;
-      loadTsFileManager = null;
-    }
+    final LoadTsFileManager manager = loadTsFileManager;
     if (manager != null) {
       manager.stop();
     }

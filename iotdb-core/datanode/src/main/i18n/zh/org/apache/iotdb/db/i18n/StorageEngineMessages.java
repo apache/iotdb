@@ -796,8 +796,8 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_WON_T_LOAD_TSFILE_BECAUSE_REGION_IS_DELETED_0E72E8D0 =
       "不会加载 TsFile {}，原因：Region 已删除";
   public static final String
-      STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_ITS_LOAD_MANAGER_CANNOT_BE_CREATED_B6A4649E =
-          "region %s 已删除，无法为其创建 LOAD manager";
+      STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_IT_TAKES_NO_LOAD_WORK_6E05108F =
+          "region %s 已删除，不再接受 LOAD 工作";
   public static final String
       STORAGE_EXCEPTION_THE_LOAD_MANAGER_OF_REGION_ARG_HAS_BEEN_STOPPED_67D2DBDE =
           "region %s 的 LOAD manager 已停止";

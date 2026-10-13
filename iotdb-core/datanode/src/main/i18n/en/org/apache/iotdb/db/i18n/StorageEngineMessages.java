@@ -807,8 +807,8 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_WON_T_LOAD_TSFILE_BECAUSE_REGION_IS_DELETED_0E72E8D0 =
       "Won't load TsFile {}, because region is deleted";
   public static final String
-      STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_ITS_LOAD_MANAGER_CANNOT_BE_CREATED_B6A4649E =
-          "Region %s is deleted, so its LOAD manager cannot be created";
+      STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_IT_TAKES_NO_LOAD_WORK_6E05108F =
+          "Region %s is deleted, so it takes no LOAD work";
   public static final String
       STORAGE_EXCEPTION_THE_LOAD_MANAGER_OF_REGION_ARG_HAS_BEEN_STOPPED_67D2DBDE =
           "The LOAD manager of region %s has been stopped";

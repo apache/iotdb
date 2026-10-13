@@ -2077,7 +2077,8 @@ public class DataRegionTest {
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
 
     Assert.assertTrue(manager.isStopped());
-    Assert.assertFalse(dataRegion.getLoadTsFileManagerIfPresent().isPresent());
+    // The region keeps the one manager it published, stopped.
+    Assert.assertSame(manager, dataRegion.getLoadTsFileManagerIfPresent().orElse(null));
     try {
       dataRegion.getLoadTsFileManager();
       Assert.fail("A deleted region has to refuse to publish a LOAD manager");
