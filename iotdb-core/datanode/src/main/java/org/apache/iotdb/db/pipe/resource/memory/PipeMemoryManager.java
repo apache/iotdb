@@ -1185,23 +1185,11 @@ public class PipeMemoryManager {
     switch (type) {
       case TABLET:
         returnedMemoryBlock =
-            new PipeTabletMemoryBlock(
-                this,
-                name,
-                0,
-                normalizedCategory,
-                PipeMemoryBlock.snapshotAssigner(assigner),
-                normalizedParent);
+            new PipeTabletMemoryBlock(this, name, 0, normalizedCategory, null, normalizedParent);
         break;
       case TS_FILE:
         returnedMemoryBlock =
-            new PipeTsFileMemoryBlock(
-                this,
-                name,
-                0,
-                normalizedCategory,
-                PipeMemoryBlock.snapshotAssigner(assigner),
-                normalizedParent);
+            new PipeTsFileMemoryBlock(this, name, 0, normalizedCategory, null, normalizedParent);
         break;
       case BATCH:
       case WAL:
@@ -1212,22 +1200,17 @@ public class PipeMemoryManager {
                 0,
                 new ThresholdAllocationStrategy(),
                 normalizedCategory,
-                PipeMemoryBlock.snapshotAssigner(assigner),
+                null,
                 normalizedParent,
                 sizeInBytes == Long.MAX_VALUE ? -1 : Math.max(0, sizeInBytes));
         break;
       default:
         returnedMemoryBlock =
-            new PipeMemoryBlock(
-                this,
-                name,
-                0,
-                normalizedCategory,
-                PipeMemoryBlock.snapshotAssigner(assigner),
-                normalizedParent);
+            new PipeMemoryBlock(this, name, 0, normalizedCategory, null, normalizedParent);
         break;
     }
 
+    returnedMemoryBlock.setAssigner(assigner);
     memoryBlocks.add(returnedMemoryBlock);
 
     // Zero-sized blocks do not participate in memory accounting until they are resized. For a
@@ -1526,20 +1509,24 @@ public class PipeMemoryManager {
   public synchronized List<PipeMemoryBlockInfo> getPipeMemoryBlockInfoList() {
     final List<PipeMemoryBlockInfo> memoryBlockInfoList = new ArrayList<>();
     memoryBlocks.forEach(
-        block ->
-            memoryBlockInfoList.add(
-                new PipeMemoryBlockInfo(
-                    block.getBlockId(),
-                    block.getName(),
-                    block.getCategory().name(),
-                    block.getMemoryUsageInBytes(),
-                    block.getPeakMemorySizeInBytes(),
-                    block.getMaxMemorySizeInBytes(),
-                    block.getAllocationTimeInMillis(),
-                    block.getAssigner(),
-                    block.getParentBlockId(),
-                    block.getHierarchyLevel(),
-                    block.getAccountedMemoryUsageInBytes())));
+        block -> {
+          final PipeMemoryBlock.PipeOwner owner = block.getPipeOwner();
+          memoryBlockInfoList.add(
+              new PipeMemoryBlockInfo(
+                  block.getBlockId(),
+                  block.getName(),
+                  block.getCategory().name(),
+                  owner == null ? null : owner.getPipeName(),
+                  owner == null ? null : owner.getPipeModel(),
+                  block.getMemoryUsageInBytes(),
+                  block.getPeakMemorySizeInBytes(),
+                  block.getMaxMemorySizeInBytes(),
+                  block.getAllocationTimeInMillis(),
+                  block.getAssigner(),
+                  block.getParentBlockId(),
+                  block.getHierarchyLevel(),
+                  block.getAccountedMemoryUsageInBytes()));
+        });
     final long floatingMemoryUsageInBytes = getUsedFloatingMemorySizeInBytes();
     floatingMemoryMaxUsageInBytes =
         Math.max(floatingMemoryMaxUsageInBytes, floatingMemoryUsageInBytes);
@@ -1548,6 +1535,8 @@ public class PipeMemoryManager {
             0,
             FLOATING_MEMORY_BLOCK_NAME,
             PipeMemoryBlockCategory.FLOATING.name(),
+            null,
+            null,
             floatingMemoryUsageInBytes,
             floatingMemoryMaxUsageInBytes,
             -1,
@@ -1568,6 +1557,8 @@ public class PipeMemoryManager {
     private final long blockId;
     private final String name;
     private final String category;
+    private final String pipeName;
+    private final String pipeModel;
     private final long memoryUsageInBytes;
     private final long peakMemorySizeInBytes;
     private final long maxMemorySizeInBytes;
@@ -1581,6 +1572,8 @@ public class PipeMemoryManager {
         final long blockId,
         final String name,
         final String category,
+        final String pipeName,
+        final String pipeModel,
         final long memoryUsageInBytes,
         final long peakMemorySizeInBytes,
         final long maxMemorySizeInBytes,
@@ -1592,6 +1585,8 @@ public class PipeMemoryManager {
       this.blockId = blockId;
       this.name = name;
       this.category = category;
+      this.pipeName = pipeName;
+      this.pipeModel = pipeModel;
       this.memoryUsageInBytes = memoryUsageInBytes;
       this.peakMemorySizeInBytes = peakMemorySizeInBytes;
       this.maxMemorySizeInBytes = maxMemorySizeInBytes;
@@ -1607,6 +1602,8 @@ public class PipeMemoryManager {
           0,
           name,
           PipeMemoryBlockCategory.OTHER.name(),
+          null,
+          null,
           memoryUsageInBytes,
           memoryUsageInBytes,
           -1,
@@ -1627,6 +1624,14 @@ public class PipeMemoryManager {
 
     public String getCategory() {
       return category;
+    }
+
+    public String getPipeName() {
+      return pipeName;
+    }
+
+    public String getPipeModel() {
+      return pipeModel;
     }
 
     public long getMemoryUsageInBytes() {

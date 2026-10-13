@@ -310,6 +310,8 @@ public class ColumnHeaderConstant {
   public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
   public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
   public static final String NAME_TABLE_MODEL = "name";
+  public static final String PIPE_NAME_TABLE_MODEL = "pipe_name";
+  public static final String PIPE_MODEL_TABLE_MODEL = "pipe_model";
   public static final String BLOCK_ID_TABLE_MODEL = "block_id";
   public static final String CATEGORY_TABLE_MODEL = "category";
   public static final String MEMORY_USAGE_IN_BYTES_TABLE_MODEL = "memory_usage_in_bytes";

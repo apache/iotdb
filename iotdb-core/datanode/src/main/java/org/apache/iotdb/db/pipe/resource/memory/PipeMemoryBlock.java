@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.slf4j.Logger;
@@ -61,6 +62,7 @@ public class PipeMemoryBlock implements AutoCloseable {
   private final int hierarchyLevel;
   private final long allocationTime;
   private final AtomicReference<String> assigner = new AtomicReference<>();
+  private volatile PipeOwner pipeOwner;
 
   private final AtomicLong memoryUsageInBytes = new AtomicLong(0);
   private final long maxMemorySizeInBytes;
@@ -176,7 +178,50 @@ public class PipeMemoryBlock implements AutoCloseable {
    */
   public PipeMemoryBlock setAssigner(final Object assignerObject) {
     assigner.set(snapshotAssigner(assignerObject));
+    if (assignerObject instanceof EnrichedEvent) {
+      final EnrichedEvent event = (EnrichedEvent) assignerObject;
+      setPipeOwner(event.getPipeName(), event.getCreationTime());
+    }
     return this;
+  }
+
+  /** Retains only the pipe identity, without keeping its event or task alive. */
+  public PipeMemoryBlock setPipeOwner(final String pipeName, final long creationTime) {
+    pipeOwner = pipeName == null ? null : new PipeOwner(pipeName, creationTime);
+    return this;
+  }
+
+  PipeOwner getPipeOwner() {
+    final PipeOwner owner = pipeOwner;
+    return owner != null || parent == null ? owner : parent.getPipeOwner();
+  }
+
+  static final class PipeOwner {
+    private final String pipeName;
+    private final long creationTime;
+    private volatile String pipeModel;
+
+    private PipeOwner(final String pipeName, final long creationTime) {
+      this.pipeName = pipeName;
+      this.creationTime = creationTime;
+      getPipeModel();
+    }
+
+    String getPipeName() {
+      return pipeName;
+    }
+
+    String getPipeModel() {
+      // Task resources can be allocated before their metadata is registered. Resolve again on
+      // the first diagnostic query and keep the model even if the pipe is subsequently dropped.
+      if (pipeModel == null) {
+        final String model = PipeDataNodeAgent.task().getPipeModel(pipeName, creationTime);
+        if (model != null) {
+          pipeModel = model;
+        }
+      }
+      return pipeModel;
+    }
   }
 
   public boolean isRootBlock() {

@@ -24,7 +24,15 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -32,9 +40,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class PipeMemoryManagerResizeTest {
 
@@ -452,6 +464,75 @@ public class PipeMemoryManagerResizeTest {
       Assert.assertTrue(block.getAssigner().contains(event.getClass().getSimpleName()));
     } finally {
       block.close();
+    }
+  }
+
+  @Test
+  public void testPipeOwnershipAndInheritance() throws Exception {
+    final Field keeperField = PipeTaskAgent.class.getDeclaredField("pipeMetaKeeper");
+    keeperField.setAccessible(true);
+    final PipeMetaKeeper keeper = (PipeMetaKeeper) keeperField.get(PipeDataNodeAgent.task());
+    final String pipeName = "memory_ownership_test";
+    final PipeStaticMeta treeMeta =
+        new PipeStaticMeta(pipeName, 1, new HashMap<>(), new HashMap<>(), new HashMap<>());
+    final PipeStaticMeta tableMeta =
+        new PipeStaticMeta(
+            pipeName,
+            2,
+            new HashMap<>(Map.of(SystemConstant.SQL_DIALECT_KEY, "table")),
+            new HashMap<>(),
+            new HashMap<>());
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryOwnershipTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeMemoryBlock treeBlock =
+        manager.forceAllocate("treeCache", 0).setPipeOwner(pipeName, 1);
+    final PipeMemoryBlock tableBlock = manager.forceAllocate("tableEvent", 0);
+    final PipeMemoryBlock child =
+        manager.forceAllocate("parser", 10, PipeMemoryBlockCategory.PARSER, "parser", tableBlock);
+    final PipeMemoryBlock unowned = manager.forceAllocate("sharedCache", 0);
+    try {
+      // Resources may be allocated before the task metadata is registered.
+      keeper.addPipeMeta(
+          PipeMeta.deserialize4TaskAgent(
+              new PipeMeta(treeMeta, new PipeRuntimeMeta()).serialize()));
+      keeper.addPipeMeta(
+          PipeMeta.deserialize4TaskAgent(
+              new PipeMeta(tableMeta, new PipeRuntimeMeta()).serialize()));
+      final EnrichedEvent event = new PipeHeartbeatEvent(pipeName, 2, null, 1, 0, false);
+      tableBlock.setAssigner(event);
+      Assert.assertEquals("table", tableBlock.getPipeOwner().getPipeModel());
+
+      final Map<String, PipeMemoryManager.PipeMemoryBlockInfo> infos =
+          manager.getPipeMemoryBlockInfoList().stream()
+              .collect(
+                  Collectors.toMap(PipeMemoryManager.PipeMemoryBlockInfo::getName, info -> info));
+      Assert.assertEquals(pipeName, infos.get("treeCache").getPipeName());
+      Assert.assertEquals("tree", infos.get("treeCache").getPipeModel());
+      Assert.assertEquals(pipeName, infos.get("tableEvent").getPipeName());
+      Assert.assertEquals("table", infos.get("tableEvent").getPipeModel());
+      Assert.assertEquals(pipeName, infos.get("parser").getPipeName());
+      Assert.assertEquals("table", infos.get("parser").getPipeModel());
+      Assert.assertNull(infos.get("sharedCache").getPipeName());
+      Assert.assertNull(infos.get("sharedCache").getPipeModel());
+      Assert.assertNull(infos.get(PipeMemoryManager.FLOATING_MEMORY_BLOCK_NAME).getPipeName());
+      Assert.assertNull(infos.get(PipeMemoryManager.FLOATING_MEMORY_BLOCK_NAME).getPipeModel());
+
+      keeper.removePipeMeta(treeMeta);
+      keeper.removePipeMeta(tableMeta);
+      Assert.assertEquals("tree", treeBlock.getPipeOwner().getPipeModel());
+      Assert.assertEquals("table", child.getPipeOwner().getPipeModel());
+    } finally {
+      keeper.removePipeMeta(treeMeta);
+      keeper.removePipeMeta(tableMeta);
+      treeBlock.close();
+      tableBlock.close();
+      child.close();
+      unowned.close();
     }
   }
 }

@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,5 +38,26 @@ public class ShowPipeMemoryTest {
 
     Assert.assertTrue(statement instanceof ShowStatement);
     Assert.assertEquals("pipe_memory", ((ShowStatement) statement).getTableName());
+  }
+
+  @Test
+  public void testTreeModelUsesSameRelationalStatement() {
+    final org.apache.iotdb.db.queryengine.plan.statement.Statement treeStatement =
+        StatementGenerator.createStatement("show pipe memory;", ZoneId.systemDefault());
+    Assert.assertTrue(treeStatement instanceof ShowPipeMemoryStatement);
+    Assert.assertTrue(treeStatement.isQuery());
+    Assert.assertEquals(StatementType.SHOW_PIPE_MEMORY, treeStatement.getType());
+    Assert.assertEquals(
+        new SqlParser().createStatement("SHOW PIPE MEMORY", ZoneId.systemDefault(), null),
+        treeStatement.toRelationalStatement(null));
+  }
+
+  @Test
+  public void testMemoryRemainsUsableAsTreeIdentifier() {
+    Assert.assertNotNull(
+        StatementGenerator.createStatement(
+            "select memory from root.memory", ZoneId.systemDefault()));
+    Assert.assertNotNull(
+        StatementGenerator.createStatement("show pipe memory_pipe", ZoneId.systemDefault()));
   }
 }

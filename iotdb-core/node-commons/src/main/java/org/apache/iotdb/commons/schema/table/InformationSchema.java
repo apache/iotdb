@@ -251,6 +251,10 @@ public class InformationSchema {
     pipeMemoryTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.CATEGORY_TABLE_MODEL, TSDataType.STRING));
     pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_NAME_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_MODEL_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
     pipeMemoryTable.addColumnSchema(

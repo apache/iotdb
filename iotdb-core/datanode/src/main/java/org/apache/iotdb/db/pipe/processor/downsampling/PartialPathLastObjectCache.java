@@ -39,6 +39,10 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
   private final Cache<String, T> partialPath2ObjectCache;
 
+  public void setPipeOwner(final String pipeName, final long creationTime) {
+    allocatedMemoryBlock.setPipeOwner(pipeName, creationTime);
+  }
+
   protected PartialPathLastObjectCache(final long memoryLimitInBytes) {
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()

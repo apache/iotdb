@@ -752,24 +752,34 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[0].writeLong(memoryBlockInfo.getBlockId());
       columnBuilders[1].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getName()));
       columnBuilders[2].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getCategory()));
-      columnBuilders[3].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
-      columnBuilders[4].writeLong(memoryBlockInfo.getPeakMemorySizeInBytes());
-      columnBuilders[5].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
-      columnBuilders[6].writeLong(
+      if (memoryBlockInfo.getPipeName() == null) {
+        columnBuilders[3].appendNull();
+      } else {
+        columnBuilders[3].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getPipeName()));
+      }
+      if (memoryBlockInfo.getPipeModel() == null) {
+        columnBuilders[4].appendNull();
+      } else {
+        columnBuilders[4].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getPipeModel()));
+      }
+      columnBuilders[5].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
+      columnBuilders[6].writeLong(memoryBlockInfo.getPeakMemorySizeInBytes());
+      columnBuilders[7].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
+      columnBuilders[8].writeLong(
           TimestampPrecisionUtils.convertToCurrPrecision(
               memoryBlockInfo.getAllocationTime(), TimeUnit.MILLISECONDS));
       if (memoryBlockInfo.getAssigner() == null) {
-        columnBuilders[7].appendNull();
+        columnBuilders[9].appendNull();
       } else {
-        columnBuilders[7].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getAssigner()));
+        columnBuilders[9].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getAssigner()));
       }
       if (memoryBlockInfo.getParentBlockId() == null) {
-        columnBuilders[8].appendNull();
+        columnBuilders[10].appendNull();
       } else {
-        columnBuilders[8].writeLong(memoryBlockInfo.getParentBlockId());
+        columnBuilders[10].writeLong(memoryBlockInfo.getParentBlockId());
       }
-      columnBuilders[9].writeInt(memoryBlockInfo.getHierarchyLevel());
-      columnBuilders[10].writeLong(memoryBlockInfo.getAccountedMemoryUsageInBytes());
+      columnBuilders[11].writeInt(memoryBlockInfo.getHierarchyLevel());
+      columnBuilders[12].writeLong(memoryBlockInfo.getAccountedMemoryUsageInBytes());
       resultBuilder.declarePosition();
     }
 
