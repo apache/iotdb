@@ -46,6 +46,7 @@ public class UDAFSpread implements UDTF {
   float floatMax = -Float.MAX_VALUE;
   double doubleMin = Double.MAX_VALUE;
   double doubleMax = -Double.MAX_VALUE;
+  boolean hasValue;
   private SpreadTransformer transformer;
   private SpreadTerminator terminator;
 
@@ -80,6 +81,15 @@ public class UDAFSpread implements UDTF {
       throws Exception {
     Type dataType = parameters.getDataType(0);
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    intMin = Integer.MAX_VALUE;
+    intMax = Integer.MIN_VALUE;
+    longMin = Long.MAX_VALUE;
+    longMax = Long.MIN_VALUE;
+    floatMin = Float.MAX_VALUE;
+    floatMax = -Float.MAX_VALUE;
+    doubleMin = Double.MAX_VALUE;
+    doubleMax = -Double.MAX_VALUE;
+    hasValue = false;
     org.apache.tsfile.read.common.type.Type type = TypeServices.toReadType(dataType);
     transformer =
         TypeServices.numericService(
@@ -101,11 +111,17 @@ public class UDAFSpread implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     transformer.transform(this, row);
   }
 
   @Override
   public void terminate(PointCollector pc) throws Exception {
+    if (!hasValue) {
+      return;
+    }
     terminator.terminate(this, pc);
   }
 
@@ -113,12 +129,14 @@ public class UDAFSpread implements UDTF {
     int v = row.getInt(0);
     intMin = Math.min(intMin, v);
     intMax = Math.max(intMax, v);
+    hasValue = true;
   }
 
   private void transformLong(Row row) throws IOException {
     long v = row.getLong(0);
     longMin = Math.min(longMin, v);
     longMax = Math.max(longMax, v);
+    hasValue = true;
   }
 
   private void transformFloat(Row row) throws IOException {
@@ -126,6 +144,7 @@ public class UDAFSpread implements UDTF {
     if (Float.isFinite(v)) {
       floatMin = Math.min(floatMin, v);
       floatMax = Math.max(floatMax, v);
+      hasValue = true;
     }
   }
 
@@ -134,6 +153,7 @@ public class UDAFSpread implements UDTF {
     if (Double.isFinite(v)) {
       doubleMin = Math.min(doubleMin, v);
       doubleMax = Math.max(doubleMax, v);
+      hasValue = true;
     }
   }
 

@@ -40,7 +40,17 @@ public class UDTFRange implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validateRequiredAttribute("lower_bound")
+        .validateRequiredAttribute("upper_bound")
+        .validate(
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter \"lower_bound\" and \"upper_bound\" should be finite, and \"lower_bound\" should be smaller than \"upper_bound\".",
+            validator.getParameters().getDouble("lower_bound"),
+            validator.getParameters().getDouble("upper_bound"));
   }
 
   @Override
@@ -59,8 +69,11 @@ public class UDTFRange implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = rowReader.read(row);
-    if (value > upperBound || value < lowerBound) {
+    if (Double.isFinite(value) && (value > upperBound || value < lowerBound)) {
       rowWriter.write(row, collector);
     }
   }

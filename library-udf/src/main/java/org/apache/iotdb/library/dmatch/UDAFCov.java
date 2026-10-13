@@ -72,11 +72,11 @@ public class UDAFCov implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (count > 0) { // calculate Cov only when there is more than 1 point
+    if (count > 0) {
       double cov = (sumXY - sumX * sumY / count) / count;
-      collector.putDouble(0, cov);
-    } else {
-      collector.putDouble(0, Double.NaN);
+      if (Double.isFinite(cov)) {
+        collector.putDouble(0, cov);
+      }
     }
   }
 }

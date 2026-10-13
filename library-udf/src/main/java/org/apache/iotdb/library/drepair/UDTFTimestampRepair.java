@@ -35,6 +35,10 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used for timestamp repair. */
 public class UDTFTimestampRepair implements UDTF {
+  private static final String METHOD_MEDIAN = "Median";
+  private static final String METHOD_MODE = "Mode";
+  private static final String METHOD_CLUSTER = "Cluster";
+
   String intervalMethod;
   long interval;
   long intervalMode;
@@ -44,7 +48,11 @@ public class UDTFTimestampRepair implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
+        .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
+        .validate(
+            method -> isValidMethod((String) method),
+            "Method should be Median, Mode, or Cluster.",
+            validator.getParameters().getStringOrDefault("method", METHOD_MEDIAN));
 
     String intervalString = validator.getParameters().getStringOrDefault("interval", null);
     if (intervalString != null) {
@@ -63,6 +71,12 @@ public class UDTFTimestampRepair implements UDTF {
     }
   }
 
+  private static boolean isValidMethod(String method) {
+    return METHOD_MEDIAN.equalsIgnoreCase(method)
+        || METHOD_MODE.equalsIgnoreCase(method)
+        || METHOD_CLUSTER.equalsIgnoreCase(method);
+  }
+
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
@@ -73,7 +87,7 @@ public class UDTFTimestampRepair implements UDTF {
         TypeServices.NUMERIC_CAST_WINDOW_WRITER_SERVICE.call(
             TypeServices.toReadType(parameters.getDataType(0)));
 
-    intervalMethod = parameters.getStringOrDefault("method", "Median");
+    intervalMethod = parameters.getStringOrDefault("method", METHOD_MEDIAN);
     String intervalString = parameters.getStringOrDefault("interval", null);
 
     if (intervalString != null) {
@@ -88,11 +102,11 @@ public class UDTFTimestampRepair implements UDTF {
 
     if (interval > 0) {
       intervalMode = interval;
-    } else if ("Median".equalsIgnoreCase(intervalMethod)) {
+    } else if (METHOD_MEDIAN.equalsIgnoreCase(intervalMethod)) {
       intervalMode = -1L;
-    } else if ("Mode".equalsIgnoreCase(intervalMethod)) {
+    } else if (METHOD_MODE.equalsIgnoreCase(intervalMethod)) {
       intervalMode = -2L;
-    } else if ("Cluster".equalsIgnoreCase(intervalMethod)) {
+    } else if (METHOD_CLUSTER.equalsIgnoreCase(intervalMethod)) {
       intervalMode = -3L;
     } else {
       throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD_WITH_DOT);
@@ -105,6 +119,26 @@ public class UDTFTimestampRepair implements UDTF {
     ts.dpRepair();
     long[] timestamp = ts.getRepaired();
     double[] value = ts.getRepairedValue();
-    windowWriter.write(timestamp, value, collector);
+    writeFinite(timestamp, value, collector);
+  }
+
+  private void writeFinite(long[] timestamp, double[] value, PointCollector collector)
+      throws Exception {
+    int count = 0;
+    for (double v : value) {
+      if (Double.isFinite(v)) {
+        count++;
+      }
+    }
+    long[] validTimestamp = new long[count];
+    double[] validValue = new double[count];
+    int index = 0;
+    for (int i = 0; i < value.length; i++) {
+      if (Double.isFinite(value[i])) {
+        validTimestamp[index] = timestamp[i];
+        validValue[index++] = value[i];
+      }
+    }
+    windowWriter.write(validTimestamp, validValue, collector);
   }
 }

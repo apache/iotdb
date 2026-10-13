@@ -33,6 +33,9 @@ public class CircularQueue<E> {
   private E[] data;
 
   public CircularQueue(int capacity) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException("Capacity should be larger than 0.");
+    }
     head = tail = size = 0;
     data = (E[]) new Object[capacity];
     minLen = Math.max(INITCAP, capacity);

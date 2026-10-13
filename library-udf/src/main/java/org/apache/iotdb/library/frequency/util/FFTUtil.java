@@ -71,7 +71,7 @@ public class FFTUtil {
         ans = a[i * 2 + 1];
         break;
       case "abs":
-        ans = Math.sqrt(a[i * 2] * a[i * 2] + a[2 * i + 1] * a[2 * i + 1]);
+        ans = Math.hypot(a[i * 2], a[2 * i + 1]);
         break;
       case "angle":
         ans = Math.atan2(a[2 * i + 1], a[2 * i]);
@@ -79,7 +79,9 @@ public class FFTUtil {
       default:
         throw new UDFException(LibraryUdfMessages.ITS_IMPOSSIBLE);
     }
-    collector.putDouble(i, ans);
+    if (Double.isFinite(ans)) {
+      collector.putDouble(i, ans);
+    }
   }
 
   public void outputUncompressed(PointCollector collector, double[] a) throws Exception {

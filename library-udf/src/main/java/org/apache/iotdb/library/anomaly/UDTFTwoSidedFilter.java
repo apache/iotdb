@@ -43,7 +43,15 @@ public class UDTFTwoSidedFilter implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validate(
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            "Parameter len should be finite and larger than 0.",
+            validator.getParameters().getDoubleOrDefault("len", 5))
+        .validate(
+            x -> Double.isFinite((double) x) && (double) x >= 0,
+            "Parameter threshold should be finite and non-negative.",
+            validator.getParameters().getDoubleOrDefault("threshold", 0.4));
   }
 
   @Override
