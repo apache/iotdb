@@ -115,7 +115,13 @@ public abstract class ColumnTransformer {
     // do nothing
   }
 
-  public final void clearCache() {
+  /**
+   * Clears caches during evaluation. Subclasses should define child edges via {@link
+   * #forEachChild(Consumer)} instead of overriding this method.
+   *
+   * <p>This legacy entry point remains non-final for compatibility with existing test doubles.
+   */
+  public void clearCache() {
     this.columnCache.clear();
     if (shouldClearChildrenCache()) {
       forEachChild(ColumnTransformer::clearCache);
