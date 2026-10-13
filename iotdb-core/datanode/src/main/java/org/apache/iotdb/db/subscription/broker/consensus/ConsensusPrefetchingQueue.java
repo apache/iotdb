@@ -3108,6 +3108,7 @@ public class ConsensusPrefetchingQueue {
     final WriterProgress commitWriterProgress = extractCommitWriterProgress(commitContext);
     final AtomicBoolean found = new AtomicBoolean(false);
     final AtomicBoolean acked = new AtomicBoolean(false);
+    final SubscriptionEvent[] eventToCommit = new SubscriptionEvent[1];
     inFlightEvents.compute(
         new InFlightEventKey(consumerId, commitContext),
         (key, ev) -> {
@@ -3128,25 +3129,26 @@ public class ConsensusPrefetchingQueue {
             return null;
           }
 
-          final boolean committed =
-              commitAndRefreshWalRetention(commitWriterId, commitWriterProgress);
-          if (!committed) {
-            if (!silent) {
-              LOGGER.warn(
-                  DataNodePipeMessages
-                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
-                  this,
-                  commitContext);
-            }
-            return ev;
-          }
-
-          ev.ack();
-          ev.recordCommittedTimestamp();
-          acked.set(true);
-          cleanUpEvent(ev, false);
-          return null;
+          eventToCommit[0] = ev;
+          return ev;
         });
+    final SubscriptionEvent event = eventToCommit[0];
+    if (event != null) {
+      final boolean committed = commitAndRefreshWalRetention(commitWriterId, commitWriterProgress);
+      if (committed
+          && inFlightEvents.remove(new InFlightEventKey(consumerId, commitContext), event)) {
+        event.ack();
+        event.recordCommittedTimestamp();
+        acked.set(true);
+        cleanUpEvent(event, false);
+      } else if (!committed && !silent) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
+            this,
+            commitContext);
+      }
+    }
     return !found.get()
         ? InFlightAckResult.MISSING
         : acked.get() ? InFlightAckResult.ACKED : InFlightAckResult.REJECTED;
