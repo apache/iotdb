@@ -175,7 +175,8 @@ public class LoadTsFileCleaner {
             continue;
           }
 
-          final LoadTsFileProgress.TerminalRecord terminal = readTerminal(taskDir);
+          final LoadTsFileProgress.TerminalRecord terminal =
+              LoadTsFileProgress.readTerminalOfTaskDir(taskDir);
           // A task that never reached COMMIT or ABORT belongs to a coordinator that died before it
           // sent one: nothing else would ever revisit its staged data.
           if (terminal == null) {
@@ -341,26 +342,6 @@ public class LoadTsFileCleaner {
 
     return safelyDeletedSearchIndex == ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
         || safelyDeletedSearchIndex >= searchIndex;
-  }
-
-  private static LoadTsFileProgress.TerminalRecord readTerminal(final File taskDir) {
-    final File[] files = taskDir.listFiles();
-    if (files == null) {
-      return null;
-    }
-
-    for (final File file : files) {
-      if (!file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
-        continue;
-      }
-      try {
-        return LoadTsFileProgress.readTerminal(file);
-      } catch (final IOException e) {
-        LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, file.getPath(), e);
-        return null;
-      }
-    }
-    return null;
   }
 
   // -------------------------------------------------------------------------

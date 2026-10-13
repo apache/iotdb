@@ -218,8 +218,9 @@ public class LoadTsFileManager {
 
   /**
    * Picks up the staged directories a previous run left behind: a directory whose task already
-   * reached COMMIT or ABORT carries a terminal marker and is queued for release, while any other
-   * directory belongs to a task that is still in progress and is resumed from its progress files.
+   * reached COMMIT or ABORT carries that record in the tail of its progress files and is queued for
+   * release, while any other directory belongs to a task that is still in progress and is resumed
+   * from its progress files.
    */
   private void recover() {
     // A restart may leave staged directories that already reached COMMIT or ABORT behind, so the
@@ -491,12 +492,12 @@ public class LoadTsFileManager {
    *
    * <p>A task that still has to be expanded for a replica keeps its staged bytes — for COMMIT they
    * are the copy the import was made from, for ABORT they are the files that were never imported —
-   * and gets a terminal marker next to them. They are released only once the safe-deletion
-   * watermark of the WAL reports that every replica got past the COMMIT or ABORT command, because
-   * until then a replica that catches up by reading this node's WAL still reads those bytes back to
-   * build the request it receives. When no replica can need them any more the staged files are
-   * deleted right away. The marker makes a restart delete the directory instead of resuming a
-   * finished task.
+   * and records that terminal in the tail of their progress files. They are released only once the
+   * safe-deletion watermark of the WAL reports that every replica got past the COMMIT or ABORT
+   * command, because until then a replica that catches up by reading this node's WAL still reads
+   * those bytes back to build the request it receives. When no replica can need them any more the
+   * staged files are deleted right away. The record makes a restart delete the directory instead of
+   * resuming a finished task.
    *
    * @param mustRetainStagedFiles the retention decision taken before the task was imported, so that
    *     the decision and the import cannot disagree
@@ -504,7 +505,8 @@ public class LoadTsFileManager {
   private void finishConsensusTask(
       final LoadTsFileConsensusNode node,
       final boolean mustRetainStagedFiles,
-      final LoadTsFileConsensusOp terminalOp) {
+      final LoadTsFileConsensusOp terminalOp)
+      throws IOException {
     final TsFileWriterManager writerManager = uuid2WriterManager.remove(node.getLoadId());
     if (Objects.isNull(writerManager)) {
       // The command was applied before, or this replica never staged anything for that task.
@@ -516,11 +518,11 @@ public class LoadTsFileManager {
       return;
     }
     // The tail of every progress file records the command the task finished with and its consensus
-    // index, before the progress files are dropped, so that a crash in between still makes the
-    // restart delete the directory instead of resuming the finished task. A task that was aborted
-    // is garbage as soon as that command was applied, while a committed one is kept until every
-    // replica got past it and the staged files are known to be complete.
-    retention.markTerminal(taskDir, terminalOp, node.getSearchIndex());
+    // index, so that a crash before the directory is released still makes the restart delete it
+    // instead of resuming the finished task. A task that was aborted is garbage as soon as that
+    // command was applied, while a committed one is kept until every replica got past it and the
+    // staged files are known to be complete.
+    writerManager.recordTerminal(terminalOp, node.getSearchIndex());
     writerManager.close(true);
     retention.retain(node.getLoadId(), taskDir, terminalOp, node.getSearchIndex());
   }

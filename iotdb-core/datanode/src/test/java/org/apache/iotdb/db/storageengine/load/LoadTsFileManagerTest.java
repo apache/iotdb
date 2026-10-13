@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -64,7 +65,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -83,6 +83,7 @@ import java.util.function.LongConsumer;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -650,13 +651,12 @@ public class LoadTsFileManagerTest {
       abort.setSearchIndex(10L);
       assertTrue(manager.deleteAll(abort));
 
-      // The staged bytes survive for a lagging follower, and the progress files are gone so that a
-      // restart does not resume the finished task.
+      // The staged bytes and their progress files survive for a lagging follower: the terminal
+      // record in the progress file tells a restart not to resume the finished task.
       assertTrue(staged.isFile());
-      assertTrue(new File(staged.getParentFile(), "terminal.marker").isFile());
-      for (final File file : staged.getParentFile().listFiles()) {
-        assertFalse(file.getName().endsWith(".progress"));
-      }
+      final File progress = LoadTsFileProgress.progressFileFor(staged);
+      assertTrue(progress.isFile());
+      assertNotNull(LoadTsFileProgress.readTerminal(progress));
 
       // Once every follower got past the command, the directory is released.
       walNode.setSafelyDeletedSearchIndex(10L);
@@ -669,14 +669,14 @@ public class LoadTsFileManagerTest {
 
   @Test
   public void testStagedDirectoryOfFinishedTaskIsDeletedOnRecovery() throws Exception {
-    // A finished task keeps its staged directory with a terminal marker; a restart must delete it
-    // instead of resuming it.
+    // A finished task keeps its staged directory with the terminal record in the tail of its
+    // progress file; a restart must delete it instead of resuming it.
     final File regionDir = new File(tempDir, "root.load_manager_test-0");
     final File taskDir = new File(regionDir, "finished-load");
     assertTrue(taskDir.mkdirs());
-    Files.write(new File(taskDir, "123.tsfile").toPath(), new byte[] {1, 2, 3});
-    Files.write(
-        new File(taskDir, "terminal.marker").toPath(), "7".getBytes(StandardCharsets.UTF_8));
+    final File stagedFile = new File(taskDir, "123.tsfile");
+    Files.write(stagedFile.toPath(), new byte[] {1, 2, 3});
+    new LoadTsFileProgress(stagedFile).recordTerminal(LoadTsFileConsensusOp.ABORT, 7L);
 
     final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
 
@@ -685,9 +685,9 @@ public class LoadTsFileManagerTest {
   }
 
   @Test
-  public void testStagedDirectoryWithoutMarkerIsKeptOnRecovery() throws Exception {
-    // A directory without a terminal marker may belong to an in-progress task, so recovery must
-    // leave it on disk.
+  public void testStagedDirectoryWithoutTerminalRecordIsKeptOnRecovery() throws Exception {
+    // A directory whose progress files hold no terminal record may belong to an in-progress task,
+    // so recovery must leave it on disk.
     final File regionDir = new File(tempDir, "root.load_manager_test-0");
     final File taskDir = new File(regionDir, "in-progress-load");
     assertTrue(taskDir.mkdirs());

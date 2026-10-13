@@ -133,8 +133,6 @@ public final class StorageEngineMessages {
       "Failed to persist the task meta of LOAD task {} to {}: {}";
   public static final String LOG_RECLAIMED_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_WHICH_RECEIVED_NO_COMMAND_FOR_ARG_MS_E2348276 =
       "Reclaimed the staged directory {} of LOAD task {}, which received no command for {} ms";
-  public static final String LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433 =
-      "Failed to write the terminal marker of LOAD task {} to {}: {}";
   public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_ARG_FROM_STAGED_FILE_ARG_3AF462A6 =
       "Cannot resume LOAD task {} from staged file {}: its durable task meta is missing or corrupt; the next command will re-create it.";
   public static final String

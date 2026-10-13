@@ -466,6 +466,34 @@ public class LoadTsFileProgress {
     return terminal;
   }
 
+  /**
+   * Reads the command the task of a staged directory ended with, or null when none of its progress
+   * files holds one. A progress file that cannot be read is skipped: the others still tell.
+   */
+  public static TerminalRecord readTerminalOfTaskDir(final File taskDir) {
+    final File[] files = taskDir.listFiles();
+    if (files == null) {
+      return null;
+    }
+    for (final File file : files) {
+      if (!file.getName().endsWith(PROGRESS_SUFFIX)) {
+        continue;
+      }
+      try {
+        final TerminalRecord terminal = readTerminal(file);
+        if (terminal != null) {
+          return terminal;
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
+            file.getName(),
+            e);
+      }
+    }
+    return null;
+  }
+
   /** Locates the offset of an incomplete trailing append entry, or -1 when the file is intact. */
   private long findTornTailOffset() throws IOException {
     try (final CountingInputStream countingIn =

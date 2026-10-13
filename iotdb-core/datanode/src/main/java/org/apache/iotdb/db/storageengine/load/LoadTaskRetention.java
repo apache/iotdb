@@ -29,9 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,14 +38,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Retains staged directories of finished LOAD tasks until WAL watermarks confirm that follower
  * replicas have synchronized the required chunks, preventing premature deletion.
  *
- * <p>Recorded twice: the progress files hold the command the task ended with, and {@code
- * terminal.marker} survives their deletion and tells a restart to delete the directory.
+ * <p>A retained directory keeps the staged files and their progress files, whose tail holds the
+ * command the task ended with: a restart reads that record to queue the directory for release
+ * instead of resuming the task.
  */
 final class LoadTaskRetention {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTaskRetention.class);
-
-  private static final String TERMINAL_MARKER_FILE_NAME = "terminal.marker";
 
   private final DataRegion dataRegion;
   private final Map<String, RetainedTaskDir> loadId2RetainedTaskDir = new ConcurrentHashMap<>();
@@ -69,48 +65,6 @@ final class LoadTaskRetention {
     final long safelyDeletedSearchIndex = currentSafelyDeletedSearchIndex();
     return safelyDeletedSearchIndex != ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
         && safelyDeletedSearchIndex < searchIndex;
-  }
-
-  /** Marks a directory as finished so crash recovery deletes instead of resuming it. */
-  void markTerminal(
-      final File taskDir, final LoadTsFileConsensusOp terminalOp, final long searchIndex) {
-    if (taskDir == null || !taskDir.isDirectory()) {
-      return;
-    }
-
-    final File[] files = taskDir.listFiles();
-    if (files != null) {
-      for (final File file : files) {
-        final String name = file.getName();
-        final int progressSuffixAt = name.lastIndexOf(LoadTsFileProgress.PROGRESS_SUFFIX);
-        if (progressSuffixAt < 0) {
-          continue;
-        }
-        try {
-          final File stagedFile =
-              new File(file.getParentFile(), name.substring(0, progressSuffixAt));
-          new LoadTsFileProgress(stagedFile).recordTerminal(terminalOp, searchIndex);
-        } catch (final IOException e) {
-          LOGGER.warn(
-              StorageEngineMessages.LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433,
-              taskDir.getName(),
-              taskDir.getAbsolutePath(),
-              e);
-        }
-      }
-    }
-
-    // The record that survives the deletion of the progress files, and what a restart reads.
-    try {
-      final File marker = new File(taskDir, TERMINAL_MARKER_FILE_NAME);
-      Files.write(marker.toPath(), Long.toString(searchIndex).getBytes(StandardCharsets.UTF_8));
-    } catch (final IOException e) {
-      LOGGER.warn(
-          StorageEngineMessages.LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433,
-          taskDir.getName(),
-          taskDir.getAbsolutePath(),
-          e);
-    }
   }
 
   /** Takes ownership of a staged directory, postponing deletion until WAL watermarks allow it. */
@@ -135,13 +89,19 @@ final class LoadTaskRetention {
     release();
   }
 
-  /** Restores a retained task from a terminal marker after node restart. */
+  /**
+   * Rebuilds the in-memory bookkeeping of a task at startup, once per staged directory: the map
+   * dies with the process but the directory does not, so its terminal record is what tells this
+   * restart to release the directory instead of resuming a finished task.
+   */
   boolean recoverTerminalTask(final String loadId, final File taskDir) {
-    final RetainedTaskDir retained = readTerminalMarker(taskDir);
-    if (retained == null) {
+    final LoadTsFileProgress.TerminalRecord terminal =
+        LoadTsFileProgress.readTerminalOfTaskDir(taskDir);
+    if (terminal == null) {
       return false;
     }
-    loadId2RetainedTaskDir.put(loadId, retained);
+    loadId2RetainedTaskDir.put(
+        loadId, new RetainedTaskDir(taskDir, terminal.searchIndex(), terminal.op()));
     ensureWalListenerRegistered();
     return true;
   }
@@ -181,33 +141,13 @@ final class LoadTaskRetention {
   }
 
   private void dispatchToCleaner(final String loadId, final RetainedTaskDir retained) {
-    LoadTsFileConsensusOp op = retained.terminalOp();
-    if (op == null) {
-      op = resolveTerminalOpFromProgressFiles(retained.dir());
-    }
     LoadTsFileCleaner.getInstance()
-        .register(loadId, dataRegion, retained.dir(), retained.reachedSearchIndex(), op);
-  }
-
-  /** Reads the command a finished task ended with; COMMIT when no record is left. */
-  private LoadTsFileConsensusOp resolveTerminalOpFromProgressFiles(final File taskDir) {
-    final File[] files = taskDir.listFiles();
-    if (files != null) {
-      for (final File file : files) {
-        if (!file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
-          continue;
-        }
-        try {
-          final LoadTsFileProgress.TerminalRecord terminal = LoadTsFileProgress.readTerminal(file);
-          if (terminal != null) {
-            return terminal.op();
-          }
-        } catch (final IOException e) {
-          LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, file.getPath(), e);
-        }
-      }
-    }
-    return LoadTsFileConsensusOp.COMMIT;
+        .register(
+            loadId,
+            dataRegion,
+            retained.dir(),
+            retained.reachedSearchIndex(),
+            retained.terminalOp());
   }
 
   private void ensureWalListenerRegistered() {
@@ -223,25 +163,6 @@ final class LoadTaskRetention {
         .getWALNode()
         .map(IWALNode::getSafelyDeletedSearchIndex)
         .orElse(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
-  }
-
-  private RetainedTaskDir readTerminalMarker(final File taskDir) {
-    final File marker = new File(taskDir, TERMINAL_MARKER_FILE_NAME);
-    if (!marker.isFile()) {
-      return null;
-    }
-    long reachedSearchIndex = ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
-    try {
-      final String content =
-          new String(Files.readAllBytes(marker.toPath()), StandardCharsets.UTF_8).trim();
-      reachedSearchIndex = Long.parseLong(content);
-    } catch (final IOException | NumberFormatException e) {
-      LOGGER.warn(
-          StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
-          taskDir.getName(),
-          e);
-    }
-    return new RetainedTaskDir(taskDir, reachedSearchIndex, null);
   }
 
   // -------------------------------------------------------------------------

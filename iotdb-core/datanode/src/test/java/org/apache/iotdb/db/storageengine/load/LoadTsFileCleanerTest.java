@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
@@ -182,6 +183,44 @@ public class LoadTsFileCleanerTest {
     } finally {
       manager.stop();
       config.setLoadCleanupTaskIdleTimeoutSeconds(900L);
+    }
+  }
+
+  @Test
+  public void testAFinishedCommittedTaskIsReleasedOnceItsStagedFilesAreComplete() throws Exception {
+    final String loadId = "finished-task";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+      manager.writePiece(emptyPiece(loadId));
+      final File taskDir = manager.getActiveTaskDirs().get(0);
+      stageOneChunk(taskDir, 5L);
+      final File stagedFile = new File(taskDir, "root.sg-0-0.tsfile");
+      final LoadTsFileProgress progress = new LoadTsFileProgress(stagedFile);
+      progress.readAllRecords();
+      Assert.assertFalse(
+          "the staged file does not cover its records yet", progress.isReady(stagedFile.length()));
+
+      LoadTsFileCleaner.getInstance()
+          .register(loadId, dataRegion, taskDir, 7L, LoadTsFileConsensusOp.COMMIT);
+
+      walWatermark.set(5L);
+      LoadTsFileCleaner.getInstance().sweep();
+      Assert.assertTrue(
+          "a committed task is kept until every replica got past its command", taskDir.exists());
+
+      walWatermark.set(7L);
+      LoadTsFileCleaner.getInstance().sweep();
+      Assert.assertTrue(
+          "a committed task whose staged file is incomplete is still kept", taskDir.exists());
+
+      Files.write(stagedFile.toPath(), new byte[(int) progress.getTotalLength()]);
+      LoadTsFileCleaner.getInstance().sweep();
+      Assert.assertFalse(
+          "once its staged files are complete and the watermark passed, it is reclaimed",
+          taskDir.exists());
+    } finally {
+      manager.stop();
     }
   }
 

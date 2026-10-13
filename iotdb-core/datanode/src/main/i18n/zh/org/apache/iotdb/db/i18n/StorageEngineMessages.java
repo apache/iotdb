@@ -131,8 +131,6 @@ public final class StorageEngineMessages {
       "持久化 LOAD 任务 {} 的任务元数据到 {} 失败：{}";
   public static final String LOG_RECLAIMED_THE_STAGED_DIRECTORY_ARG_OF_LOAD_TASK_ARG_WHICH_RECEIVED_NO_COMMAND_FOR_ARG_MS_E2348276 =
       "已回收 LOAD 任务 {} 的暂存目录 {}：该任务已 {} 毫秒未收到任何命令";
-  public static final String LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433 =
-      "写入 LOAD 任务 {} 的终止标记到 {} 失败：{}";
   public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_ARG_FROM_STAGED_FILE_ARG_3AF462A6 =
       "无法从磁盘恢复 LOAD 任务 {}（staged 文件 {}）：其持久化任务元数据缺失或损坏，下一条命令将重新创建该任务。";
   public static final String

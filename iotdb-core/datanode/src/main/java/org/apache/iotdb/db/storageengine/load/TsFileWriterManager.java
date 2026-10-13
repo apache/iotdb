@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
@@ -193,6 +194,18 @@ final class TsFileWriterManager {
   private void flushRecordedChunks() throws IOException {
     for (final LoadTsFileProgress progress : dataPartition2Progress.values()) {
       progress.flushQueuedRecords();
+    }
+  }
+
+  /**
+   * Records the command this task ended with, and the consensus index it reached, in the progress
+   * file of every staged file: that tail is what a restart reads to release the directory instead
+   * of resuming the finished task.
+   */
+  void recordTerminal(final LoadTsFileConsensusOp terminalOp, final long searchIndex)
+      throws IOException {
+    for (final LoadTsFileProgress progress : dataPartition2Progress.values()) {
+      progress.recordTerminal(terminalOp, searchIndex);
     }
   }
 
@@ -782,6 +795,11 @@ final class TsFileWriterManager {
     }
 
     for (final LoadTsFileProgress progress : dataPartition2Progress.values()) {
+      if (retainStagedFiles) {
+        // The progress file goes with the staged file it describes: it carries the terminal record
+        // that tells a restart the task is finished.
+        continue;
+      }
       try {
         deleteIfExistsWithRetry(progress.getProgressFile().toPath());
       } catch (final IOException e) {
