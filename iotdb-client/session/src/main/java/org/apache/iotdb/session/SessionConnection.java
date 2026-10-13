@@ -969,7 +969,8 @@ public class SessionConnection {
     return new RetryResult<>(status, lastTException, i);
   }
 
-  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc) {
+  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc)
+      throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         status -> status.isSetNeedRetry() && status.isNeedRetry(),
@@ -977,7 +978,7 @@ public class SessionConnection {
   }
 
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Function<T, TSStatus> statusGetter) {
+      TFunction<T> rpc, Function<T, TSStatus> statusGetter) throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         t -> {
@@ -989,9 +990,15 @@ public class SessionConnection {
                 == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
-  /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
+  /**
+   * reconnect if the remote datanode is unreachable retry if the status is set to needRetry
+   *
+   * @throws IoTDBConnectionException if no attempt produced a result, i.e. the last attempt failed
+   *     with a TException. The TException is the cause.
+   */
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
+      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect)
+      throws IoTDBConnectionException {
     TException lastTException = null;
     T result = null;
     int retryAttempt;
@@ -1039,6 +1046,10 @@ public class SessionConnection {
       }
     }
 
+    if (result == null) {
+      // all attempts failed with a TException, callers must not see a null result
+      throw new IoTDBConnectionException(lastTException);
+    }
     return new RetryResult<>(result, lastTException, retryAttempt);
   }
 
