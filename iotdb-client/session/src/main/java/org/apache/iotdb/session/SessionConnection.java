@@ -1352,7 +1352,7 @@ public class SessionConnection {
     if (endPointList == null) {
       return MSG_RECONNECTION_FAIL;
     }
-    List<String> urls = new ArrayList<>();
+    List<String> urls = new ArrayList<>(endPointList.size());
     for (TEndPoint end : endPointList) {
       urls.add(UrlUtils.convertTEndPointIpv4AndIpv6Url(end));
     }

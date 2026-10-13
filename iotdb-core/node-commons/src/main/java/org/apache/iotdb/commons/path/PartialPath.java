@@ -973,7 +973,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {
-    List<String> ret = new ArrayList<>();
+    List<String> ret = new ArrayList<>(pathList.size());
     for (PartialPath path : pathList) {
       ret.add(path.getFullPath());
     }

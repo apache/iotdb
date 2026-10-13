@@ -470,7 +470,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
         TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
             Type.fromTsDataType(memChunk.schema.getType()));
     int sortedListSize = stream.readInt();
-    memChunk.sortedList = new ArrayList<>();
+    memChunk.sortedList = new ArrayList<>(sortedListSize);
     for (int i = 0; i < sortedListSize; i++) {
       TVList tvList = TVList.deserialize(stream);
       memChunk.sortedList.add(tvList);

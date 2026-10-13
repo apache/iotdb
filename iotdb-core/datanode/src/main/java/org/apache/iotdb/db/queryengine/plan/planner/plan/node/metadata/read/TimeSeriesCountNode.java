@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import jakarta.validation.constraints.NotNull;
@@ -39,7 +40,6 @@ import jakarta.validation.constraints.NotNull;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -158,7 +158,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     boolean includeAuditDatabase = ReadWriteIOUtils.readBool(buffer);
 
     int templateNum = ReadWriteIOUtils.readInt(buffer);
-    Map<Integer, Template> templateMap = new HashMap<>();
+    Map<Integer, Template> templateMap = Maps.newHashMapWithExpectedSize(templateNum);
     Template template;
     for (int i = 0; i < templateNum; i++) {
       template = new Template();
