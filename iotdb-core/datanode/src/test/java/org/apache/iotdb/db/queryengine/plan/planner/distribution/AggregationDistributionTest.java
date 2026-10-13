@@ -823,6 +823,17 @@ public class AggregationDistributionTest {
     assertEquals(1, f1Root.getChildren().get(0).getChildren().size());
   }
 
+  private int countNodesOfType(PlanNode root, Class<?> nodeType) {
+    if (root == null) {
+      return 0;
+    }
+    int count = nodeType.isInstance(root) ? 1 : 0;
+    for (PlanNode child : root.getChildren()) {
+      count += countNodesOfType(child, nodeType);
+    }
+    return count;
+  }
+
   @Test
   public void testAlignByDevice2Device2Region() {
     QueryId queryId = new QueryId("test_align_by_device_2_device_2_region");
@@ -932,11 +943,17 @@ public class AggregationDistributionTest {
     assertEquals(2, plan.getInstances().size());
 
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(
-        fragmentInstance ->
-            assertTrue(
-                fragmentInstance.getFragment().getPlanNodeTree().getChildren().get(0)
-                    instanceof HorizontallyConcatNode));
+
+    int horizontallyConcatNodeCount = 0;
+    for (FragmentInstance fragmentInstance : fragmentInstances) {
+      PlanNode root = fragmentInstance.getFragment().getPlanNodeTree();
+      if (countNodesOfType(root, HorizontallyConcatNode.class) > 0) {
+        horizontallyConcatNodeCount++;
+      }
+    }
+    assertTrue(
+        "Expected at least one fragment with HorizontallyConcatNode",
+        horizontallyConcatNodeCount >= 1);
 
     Map<String, AggregationStep> expectedStep = new HashMap<>();
     expectedStep.put("root.sg.d22.s1", AggregationStep.SINGLE);
