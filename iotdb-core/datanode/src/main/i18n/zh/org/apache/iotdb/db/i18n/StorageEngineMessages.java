@@ -1480,6 +1480,8 @@ public final class StorageEngineMessages {
       "初始限制内存大小 %d 小于最小内存大小 %d";
   public static final String STORAGE_EXCEPTION_SETTOTALMEMORYSIZEINBYTES_IS_NOT_SUPPORTED_FOR_LOADTSFILEDATACACHEMEMORYBLOCK_DFAB2A2A =
       "LoadTsFileDataCacheMemoryBlock 不支持 setTotalMemorySizeInBytes";
+  public static final String STORAGE_EXCEPTION_SETTOTALMEMORYSIZEINBYTES_IS_NOT_SUPPORTED_FOR_LOADTSFILESUBMEMORYBLOCK_58ABABBB =
+      "LoadTsFileSubMemoryBlock 不支持 setTotalMemorySizeInBytes";
   public static final String STORAGE_EXCEPTION_FORCEALLOCATE_FAILED_TO_ALLOCATE_MEMORY_FROM_QUERY_ENGINE_F91D5959 =
       "forceAllocate：重试 %s 次后仍无法从查询引擎分配内存，查询总内存 %s 字节，Load 当前可用内存 %s 字节，当前 Load 已使用内存大小 %s 字节，Load 请求的内存大小 %s 字节";
   public static final String STORAGE_EXCEPTION_LOAD_INVALID_MEMORY_SIZE_D_BYTES_MUST_BE_POSITIVE_D6586ED3 =

@@ -20,56 +20,45 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAbstractMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 
 /**
- * LOAD memory budget: memory-pool accounting for the pieces of one source TsFile. It keeps two
- * views in sync - its own {@code dataSize} and the shared {@link LoadTsFileDataCacheMemoryBlock} -
- * so the cluster-wide LOAD cache is aware of this file's footprint.
+ * LOAD memory budget: the memory budget of the pieces of one source TsFile. It is a sub-block of
+ * the shared {@link LoadTsFileDataCacheMemoryBlock} the manager handed out, so every byte accounted
+ * here is accounted on the shared block too, and {@link #clear()} is the last-chance cleanup that
+ * gives the leftover accounting back to it.
  *
- * <p>The budget is {@code thriftMaxFrameSize >> 2}; {@link #isMemoryEnough()} is the signal the
- * pipeline polls after every chunk, and when it turns false {@link PieceDispatcher} evicts the
- * largest buffered piece first. {@link #add(long)} / {@link #release(long)} keep both views
- * consistent, and {@link #clear()} returns any leftover accounting to the shared block.
- *
- * <p>Not a sub-block of the shared block: the manager hands out the block itself, and the shared
- * limit answers a different question than the per-file budget that keeps pieces sliceable.
+ * <p>The cap is {@code thriftMaxFrameSize >> 2}: a piece has to stay transmittable in one frame,
+ * whatever the shared block has left. {@link #isMemoryEnough()} is the signal the pipeline polls
+ * after every chunk, and when it turns false {@link PieceDispatcher} evicts the largest buffered
+ * piece first.
  */
 class MemoryBoundedBuffer {
 
   private static final long MAX_MEMORY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
 
-  private final LoadTsFileDataCacheMemoryBlock block;
-  private long dataSize = 0;
+  private final LoadTsFileAbstractMemoryBlock subBlock;
 
-  MemoryBoundedBuffer(LoadTsFileDataCacheMemoryBlock block) {
-    this.block = block;
+  MemoryBoundedBuffer(final LoadTsFileDataCacheMemoryBlock block) {
+    this.subBlock = block.createSubBlock(MAX_MEMORY_SIZE);
   }
 
   boolean isMemoryEnough() {
-    return dataSize <= MAX_MEMORY_SIZE && block.hasEnoughMemory();
+    return subBlock.hasEnoughMemory();
   }
 
-  void add(long memorySize) {
-    dataSize += memorySize;
-    block.addMemoryUsage(memorySize);
+  void add(final long memorySize) {
+    subBlock.addMemoryUsage(memorySize);
   }
 
-  void release(long memorySize) {
-    dataSize -= memorySize;
-    block.reduceMemoryUsage(memorySize);
-  }
-
-  long getDataSize() {
-    return dataSize;
+  void release(final long memorySize) {
+    subBlock.reduceMemoryUsage(memorySize);
   }
 
   /** Returns all buffered accounting to the shared memory block; safe to call multiple times. */
   void clear() {
-    if (dataSize > 0) {
-      block.reduceMemoryUsage(dataSize);
-      dataSize = 0;
-    }
+    subBlock.close();
   }
 }

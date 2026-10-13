@@ -231,8 +231,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *   </tr>
  *   <tr>
  *     <td>{@link MemoryBoundedBuffer}</td>
- *     <td>LOAD memory budget: pure memory-pool accounting; emits the "over budget" signal that
- *         triggers eviction</td>
+ *     <td>LOAD memory budget: a sub-block of the shared data cache block, per source TsFile; emits
+ *         the "over budget" signal that triggers eviction</td>
  *   </tr>
  *   <tr>
  *     <td>{@link PieceDispatcher}</td>

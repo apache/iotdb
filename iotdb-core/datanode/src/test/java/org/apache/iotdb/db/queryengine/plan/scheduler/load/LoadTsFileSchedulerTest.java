@@ -187,16 +187,16 @@ public class LoadTsFileSchedulerTest {
         memoryBlockConstructor.newInstance(1024 * 1024L);
 
     // Simulate data buffered before split or routing aborts. clear() is the last chance to return
-    // this accounting to the shared LOAD memory block.
+    // this accounting to the shared LOAD memory block, and it stays safe to call again.
     final long cachedMemorySize = 128L;
     final MemoryBoundedBuffer memoryBoundedBuffer = new MemoryBoundedBuffer(memoryBlock);
     memoryBoundedBuffer.add(cachedMemorySize);
+    memoryBoundedBuffer.clear();
     memoryBoundedBuffer.clear();
 
     final Method getMemoryUsageMethod =
         LoadTsFileDataCacheMemoryBlock.class.getDeclaredMethod("getMemoryUsageInBytes");
     getMemoryUsageMethod.setAccessible(true);
     Assert.assertEquals(0L, getMemoryUsageMethod.invoke(memoryBlock));
-    Assert.assertEquals(0L, memoryBoundedBuffer.getDataSize());
   }
 }

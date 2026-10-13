@@ -1550,6 +1550,8 @@ public final class StorageEngineMessages {
       "The initial limited memory size %d is less than the minimum memory size %d";
   public static final String STORAGE_EXCEPTION_SETTOTALMEMORYSIZEINBYTES_IS_NOT_SUPPORTED_FOR_LOADTSFILEDATACACHEMEMORYBLOCK_DFAB2A2A =
       "setTotalMemorySizeInBytes is not supported for LoadTsFileDataCacheMemoryBlock";
+  public static final String STORAGE_EXCEPTION_SETTOTALMEMORYSIZEINBYTES_IS_NOT_SUPPORTED_FOR_LOADTSFILESUBMEMORYBLOCK_58ABABBB =
+      "setTotalMemorySizeInBytes is not supported for LoadTsFileSubMemoryBlock";
   public static final String STORAGE_EXCEPTION_FORCEALLOCATE_FAILED_TO_ALLOCATE_MEMORY_FROM_QUERY_ENGINE_F91D5959 =
       "forceAllocate: failed to allocate memory from query engine after %s retries, total query "
           + "memory %s bytes, current available memory for load %s bytes, current load used memory size "
