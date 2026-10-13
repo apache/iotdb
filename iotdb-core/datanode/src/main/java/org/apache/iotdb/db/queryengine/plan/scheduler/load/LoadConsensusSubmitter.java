@@ -79,9 +79,7 @@ public class LoadConsensusSubmitter {
   // Route Resolution
   // -------------------------------------------------------------------------
 
-  /**
-   * Re-resolves the route of a region, dropping the partition cache first: it holds the stale one.
-   */
+  /** Re-resolves the route of a region, dropping the cached route of that region first. */
   public TRegionReplicaSet resolveRoute(final TConsensusGroupId regionId, final int maxAttempts) {
     if (regionId == null || maxAttempts <= 0) {
       return null;
@@ -90,7 +88,7 @@ public class LoadConsensusSubmitter {
     final ClusterPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        partitionFetcher.invalidAllCache();
+        partitionFetcher.invalidReplicaSetCache(regionId);
         final List<TRegionReplicaSet> replicaSets =
             partitionFetcher.getRegionReplicaSet(Collections.singletonList(regionId));
         if (replicaSets != null && !replicaSets.isEmpty()) {

@@ -140,7 +140,7 @@ public class LoadConsensusSubmitterTest {
   }
 
   /**
-   * A route that is looked up again drops what this DataNode has cached first: a lookup answers
+   * A route that is looked up again drops the cached route of that region first: a lookup answers
    * with the route the cache holds, and the route that has to be resolved again is the one that may
    * have changed.
    */
@@ -154,7 +154,7 @@ public class LoadConsensusSubmitterTest {
         .thenReturn(Collections.singletonList(freshRoute));
 
     assertEquals(freshRoute, newSubmitter().resolveRoute(regionId(), 3));
-    Mockito.verify(partitionFetcher).invalidAllCache();
+    Mockito.verify(partitionFetcher).invalidReplicaSetCache(regionId());
   }
 
   /** A route that cannot be resolved is reported as no route, so no caller adopts an empty one. */
