@@ -50,8 +50,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -127,7 +127,7 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
             for (CompactionOverlapType compactionOverlapType : compactionOverlapTypes) {
               List<TsFileResource> toMergeResources = new ArrayList<>();
               for (int i = 0; i < toMergeFileNum; i++) {
-                Set<String> fullPath = new HashSet<>();
+                Set<String> fullPath = new LinkedHashSet<>();
                 if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
                   fullPath.add(fullPaths[0]);
                   fullPath.add(fullPaths[1]);
@@ -309,7 +309,7 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
                 toMergeResources.add(tsFileResource);
                 // has mods files before compaction
                 if (compactionBeforeHasMod) {
-                  Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+                  Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new LinkedHashMap<>();
                   if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
                     toDeleteTimeseriesAndTime.put(
                         fullPaths[i], new Pair<>(i * 600L + 250L, i * 600L + 300L));
@@ -352,7 +352,7 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
               Map<String, List<TimeValuePair>> sourceData =
                   CompactionCheckerUtils.readFiles(toMergeResources);
               if (compactionHasMod) {
-                Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+                Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new LinkedHashMap<>();
                 toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(250L, 300L));
                 CompactionFileGeneratorUtils.generateMods(
                     toDeleteTimeseriesAndTime, toMergeResources.get(0), true);
@@ -379,7 +379,7 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
-              Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
+              Map<String, List<List<Long>>> chunkPagePointsNumMerged = new LinkedHashMap<>();
               if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
                 if (toMergeFileNum == 2) {
                   if (compactionBeforeHasMod) {
