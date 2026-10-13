@@ -112,6 +112,11 @@ public interface BaseEnv {
     return getConnection(version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
+  default Connection getConnection(DataNodeWrapper dataNodeWrapper) throws SQLException {
+    return getConnection(
+        dataNodeWrapper, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
   Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException;
 
