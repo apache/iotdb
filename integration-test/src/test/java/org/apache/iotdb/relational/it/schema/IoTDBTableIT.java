@@ -1250,7 +1250,8 @@ public class IoTDBTableIT {
           Collections.emptySet());
       try (final ResultSet resultSet =
           statement.executeQuery(
-              "select procedure_id, state, progress, error_message "
+              "select procedure_id, state, progress, error_message, "
+                  + "written_mod_file_count, remaining_mod_file_count "
                   + "from information_schema.drop_table_procedures "
                   + "where database = 'async_drop_db' and table_name = 'drop_target'")) {
         assertTrue(resultSet.next());
@@ -1258,6 +1259,10 @@ public class IoTDBTableIT {
         assertEquals("SUCCESS", resultSet.getString(2));
         assertEquals("SUCCESS", resultSet.getString(3));
         Assert.assertNull(resultSet.getString(4));
+        assertEquals(0, resultSet.getLong(5));
+        assertFalse(resultSet.wasNull());
+        assertEquals(0, resultSet.getLong(6));
+        assertFalse(resultSet.wasNull());
         assertFalse(resultSet.next());
       }
     }

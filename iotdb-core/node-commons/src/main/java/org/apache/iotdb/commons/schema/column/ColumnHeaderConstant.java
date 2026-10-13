@@ -308,6 +308,8 @@ public class ColumnHeaderConstant {
   public static final String PROCEDURE_ID_TABLE_MODEL = "procedure_id";
   public static final String PROGRESS_TABLE_MODEL = "progress";
   public static final String ERROR_MESSAGE_TABLE_MODEL = "error_message";
+  public static final String WRITTEN_MOD_FILE_COUNT_TABLE_MODEL = "written_mod_file_count";
+  public static final String REMAINING_MOD_FILE_COUNT_TABLE_MODEL = "remaining_mod_file_count";
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";

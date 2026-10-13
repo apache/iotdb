@@ -70,6 +70,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
@@ -81,6 +83,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -116,12 +119,15 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -2234,7 +2240,11 @@ public class DataRegionTest {
             new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
     dataRegion.deleteByTable(
         new RelationalDeleteDataNode(
-            new PlanNodeId("table-delete"), deletionEntry, dataRegion.getDatabaseName()));
+            DropTableModProgress.planNodeId(42), deletionEntry, dataRegion.getDatabaseName()));
+
+    Assert.assertEquals(
+        new TDropTableModProgress(1).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(42));
 
     assertTrue(sourceTsFile.getTsFile().exists());
     assertTrue(sourceTsFile.isCompacting());
@@ -2248,6 +2258,148 @@ public class DataRegionTest {
     } finally {
       targetTsFile.removeModFile();
     }
+  }
+
+  @Test
+  public void testDropTableModProgressWhileClosingSharedFile() throws Exception {
+    checkDropTableModProgressWhileClosingFile(true);
+  }
+
+  @Test
+  public void testDropTableModProgressWhileClosingFile() throws Exception {
+    checkDropTableModProgressWhileClosingFile(false);
+  }
+
+  private void checkDropTableModProgressWhileClosingFile(final boolean shareModFile)
+      throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    dataRegion.insertTablet(genInsertTabletNode(10, 100));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final List<TsFileResource> resources = dataRegion.getTsFileManager().getTsFileList(true);
+    Assert.assertEquals(2, resources.size());
+    final CountDownLatch closeStarted = new CountDownLatch(1);
+    final CountDownLatch allowClose = new CountDownLatch(1);
+    final AtomicInteger writeCount = new AtomicInteger();
+    final ModificationFile modFile =
+        new ModificationFile(resources.get(0).getModFileForWrite().getFile(), true) {
+          @Override
+          public int hashCode() {
+            // Separate HashSet buckets ensure the stream can split these two writes.
+            return 0;
+          }
+
+          @Override
+          public void write(final ModEntry entry) throws IOException {
+            writeCount.incrementAndGet();
+            super.write(entry);
+          }
+
+          @Override
+          public void close() throws IOException {
+            closeStarted.countDown();
+            try {
+              assertTrue(allowClose.await(10, TimeUnit.SECONDS));
+            } catch (final InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new IOException(e);
+            }
+            super.close();
+          }
+        };
+    for (final TsFileResource resource : resources) {
+      assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+      assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTING));
+      if (shareModFile || resource == resources.get(0)) {
+        resource.setExclusiveModFile(modFile);
+      } else {
+        resource.setExclusiveModFile(
+            new ModificationFile(resource.getModFileForWrite().getFile(), true) {
+              @Override
+              public int hashCode() {
+                return 15;
+              }
+            });
+      }
+    }
+
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<?> deletion =
+          executor.submit(
+              () -> {
+                dataRegion.deleteByTable(dropTableNode(43));
+                return null;
+              });
+      assertTrue(closeStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(deletion.isDone());
+      // A successful write is still pending until close returns. With independent mod files,
+      // the other file finishes while this one is blocked. Shared mod files are counted once.
+      await()
+          .atMost(10, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  Assert.assertEquals(
+                      new TDropTableModProgress(shareModFile ? 0 : 1).setRemainingModFileCount(1),
+                      dataRegion.getDropTableModProgress(43)));
+      allowClose.countDown();
+      deletion.get(10, TimeUnit.SECONDS);
+      Assert.assertEquals(
+          new TDropTableModProgress(shareModFile ? 1 : 2).setRemainingModFileCount(0),
+          dataRegion.getDropTableModProgress(43));
+      Assert.assertEquals(1, writeCount.get());
+    } finally {
+      allowClose.countDown();
+      executor.shutdown();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testDropTableModProgressDoesNotCountFailedClose() throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTING));
+    final ModificationFile modFile = Mockito.spy(resource.getModFileForWrite());
+    resource.setExclusiveModFile(modFile);
+    Mockito.doThrow(new IOException()).when(modFile).close();
+    try {
+      Assert.assertThrows(IOException.class, () -> dataRegion.deleteByTable(dropTableNode(44)));
+      Assert.assertEquals(
+          new TDropTableModProgress(0).setRemainingModFileCount(1),
+          dataRegion.getDropTableModProgress(44));
+    } finally {
+      Mockito.doCallRealMethod().when(modFile).close();
+      modFile.close();
+    }
+  }
+
+  @Test
+  public void testDropTableModProgressWithoutModFiles() throws Exception {
+    dataRegion.deleteByTable(dropTableNode(45));
+    Assert.assertEquals(
+        new TDropTableModProgress(0).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(45));
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    dataRegion.deleteByTable(dropTableNode(46));
+    Assert.assertFalse(resource.getTsFile().exists());
+    Assert.assertEquals(
+        new TDropTableModProgress(0).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(46));
+    Assert.assertNull(dataRegion.getDropTableModProgress(45));
+  }
+
+  private RelationalDeleteDataNode dropTableNode(final long procedureId) {
+    return new RelationalDeleteDataNode(
+        DropTableModProgress.planNodeId(procedureId),
+        new TableDeletionEntry(
+            new DeletionPredicate(StatementTestUtils.tableName()),
+            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+        dataRegion.getDatabaseName());
   }
 
   @Test
