@@ -325,6 +325,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // and the worker will be submitted to the executor
   }
 
+  void setWorkerWakeUpCallback(final Runnable wakeUpCallback) {
+    executionGuard.setWorkerWakeUpCallback(wakeUpCallback);
+  }
+
   @Override
   protected void onAllowSubmittingSelf() {
     executionGuard.start();
