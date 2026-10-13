@@ -545,7 +545,7 @@ public class AuthUtils {
 
   public static List<PartialPath> deserializePartialPathList(ByteBuffer buffer) {
     int size = buffer.getInt();
-    List<PartialPath> paths = new ArrayList<>();
+    List<PartialPath> paths = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       paths.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
     }

@@ -429,9 +429,9 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
     final int measurementSize =
         insertTabletNode.getMeasurements() == null ? 0 : insertTabletNode.getMeasurements().length;
+    List<IMeasurementSchema> schemaList = new ArrayList<>(measurementSize);
     final Object[] writableColumns = new Object[measurementSize];
     final BitMap[] writableBitMaps =
         insertTabletNode.getBitMaps() == null ? null : new BitMap[measurementSize];
@@ -475,9 +475,9 @@ public abstract class AbstractMemTable implements IMemTable {
       int end,
       TSStatus[] results,
       List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs) {
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
     final int measurementSize =
         insertTabletNode.getMeasurements() == null ? 0 : insertTabletNode.getMeasurements().length;
+    List<IMeasurementSchema> schemaList = new ArrayList<>(measurementSize);
     final Object[] writableColumns = new Object[measurementSize];
     final BitMap[] writableBitMaps =
         insertTabletNode.getBitMaps() == null ? null : new BitMap[measurementSize];

@@ -1235,7 +1235,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       schemaList.add(schema);
     }
     int sortedListSize = stream.readInt();
-    List<AlignedTVList> sortedList = new ArrayList<>();
+    List<AlignedTVList> sortedList = new ArrayList<>(sortedListSize);
     for (int i = 0; i < sortedListSize; i++) {
       AlignedTVList tvList = AlignedTVList.deserialize(stream);
       sortedList.add(tvList);
