@@ -806,6 +806,12 @@ public final class StorageEngineMessages {
       "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.";
   public static final String STORAGE_LOG_WON_T_LOAD_TSFILE_BECAUSE_REGION_IS_DELETED_0E72E8D0 =
       "Won't load TsFile {}, because region is deleted";
+  public static final String
+      STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_ITS_LOAD_MANAGER_CANNOT_BE_CREATED_B6A4649E =
+          "Region %s is deleted, so its LOAD manager cannot be created";
+  public static final String
+      STORAGE_EXCEPTION_THE_LOAD_MANAGER_OF_REGION_ARG_HAS_BEEN_STOPPED_67D2DBDE =
+          "The LOAD manager of region %s has been stopped";
   public static final String STORAGE_LOG_TSFILE_MUST_BE_RENAMED_TO_FOR_LOADING_INTO_THE_UNSEQUENCE_70321619 =
       "TsFile {} must be renamed to {} for loading into the unsequence list.";
   public static final String STORAGE_LOG_LOAD_TSFILE_IN_UNSEQUENCE_LIST_MOVE_FILE_FROM_TO_21E11AEB =

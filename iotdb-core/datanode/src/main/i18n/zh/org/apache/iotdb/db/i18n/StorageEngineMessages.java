@@ -795,6 +795,12 @@ public final class StorageEngineMessages {
       "[TTL] {}-{} 共选择 {} 个全量过期文件和 {} 个部分过期文件。";
   public static final String STORAGE_LOG_WON_T_LOAD_TSFILE_BECAUSE_REGION_IS_DELETED_0E72E8D0 =
       "不会加载 TsFile {}，原因：Region 已删除";
+  public static final String
+      STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_ITS_LOAD_MANAGER_CANNOT_BE_CREATED_B6A4649E =
+          "region %s 已删除，无法为其创建 LOAD manager";
+  public static final String
+      STORAGE_EXCEPTION_THE_LOAD_MANAGER_OF_REGION_ARG_HAS_BEEN_STOPPED_67D2DBDE =
+          "region %s 的 LOAD manager 已停止";
   public static final String STORAGE_LOG_TSFILE_MUST_BE_RENAMED_TO_FOR_LOADING_INTO_THE_UNSEQUENCE_70321619 =
       "TsFile {} 必须重命名为 {} 才能加载到乱序列表。";
   public static final String STORAGE_LOG_LOAD_TSFILE_IN_UNSEQUENCE_LIST_MOVE_FILE_FROM_TO_21E11AEB =

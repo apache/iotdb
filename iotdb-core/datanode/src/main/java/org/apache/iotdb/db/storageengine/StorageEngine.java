@@ -849,7 +849,6 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
       LOGGER.info(StorageEngineMessages.REMOVING_DATA_REGION, regionId);
-      region.stopLoadTsFileManager();
       region.markDeleted();
       try {
         region.abortCompaction();
@@ -971,7 +970,6 @@ public class StorageEngine implements IService {
       DataRegionId regionId, Supplier<DataRegion> newRegionSupplier) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
-      oldRegion.stopLoadTsFileManager();
       oldRegion.markDeleted();
       oldRegion.abortCompaction();
       oldRegion.syncCloseAllWorkingTsFileProcessors();
@@ -998,7 +996,6 @@ public class StorageEngine implements IService {
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
-      oldRegion.stopLoadTsFileManager();
       oldRegion.markDeleted();
       oldRegion.abortCompaction();
       oldRegion.syncCloseAllWorkingTsFileProcessors();

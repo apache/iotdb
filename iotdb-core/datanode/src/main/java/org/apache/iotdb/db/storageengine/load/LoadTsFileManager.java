@@ -58,6 +58,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -121,6 +123,12 @@ public class LoadTsFileManager {
 
   private final DataRegion dataRegion;
 
+  /** Pieces read, stop() and closing a writer write. Fair, so a stop is not starved. */
+  private final ReentrantReadWriteLock writersLock = new ReentrantReadWriteLock(true);
+
+  /** Set under the write side, read as the fast path of a piece. */
+  private volatile boolean stopped = false;
+
   public LoadTsFileManager(final DataRegion dataRegion) {
     this.dataRegion = Objects.requireNonNull(dataRegion);
     this.retention = new LoadTaskRetention(dataRegion);
@@ -128,8 +136,22 @@ public class LoadTsFileManager {
   }
 
   public void stop() {
-    new HashSet<>(uuid2WriterManager.keySet()).forEach(this::forceCloseWriterManager);
-    uuid2PieceNodeAssembler.clear();
+    final Lock writeLock = writersLock.writeLock();
+    writeLock.lock();
+    try {
+      if (stopped) {
+        return;
+      }
+      stopped = true;
+      new HashSet<>(uuid2WriterManager.keySet()).forEach(this::forceCloseWriterManager);
+      uuid2PieceNodeAssembler.clear();
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  public boolean isStopped() {
+    return stopped;
   }
 
   /**
@@ -249,10 +271,24 @@ public class LoadTsFileManager {
 
   public List<LoadTsFileConsensusNode.PieceRef> writePiece(
       final String uuid, final List<TsFileData> tsFileDataList) throws IOException, PageException {
-    return getOrCreateWriterManager(uuid).writePiece(tsFileDataList);
+    if (stopped) {
+      throw newStoppedIOException();
+    }
+    final Lock readLock = writersLock.readLock();
+    readLock.lock();
+    try {
+      // One piece per staged file: a region applies the commands of a load in order.
+      return getOrCreateWriterManager(uuid).writePiece(tsFileDataList);
+    } finally {
+      readLock.unlock();
+    }
   }
 
   private TsFileWriterManager getOrCreateWriterManager(final String uuid) throws IOException {
+    // The caller holds the read side, so no stop can be sweeping the writers here.
+    if (stopped) {
+      throw newStoppedIOException();
+    }
     final AtomicReference<Exception> exception = new AtomicReference<>();
     final TsFileWriterManager writerManager =
         uuid2WriterManager.computeIfAbsent(
@@ -282,6 +318,14 @@ public class LoadTsFileManager {
     return writerManager;
   }
 
+  private IOException newStoppedIOException() {
+    return new IOException(
+        String.format(
+            StorageEngineMessages
+                .STORAGE_EXCEPTION_THE_LOAD_MANAGER_OF_REGION_ARG_HAS_BEEN_STOPPED_67D2DBDE,
+            dataRegion.getDatabaseName() + "-" + dataRegion.getDataRegionIdString()));
+  }
+
   private File getDataRegionLoadDir(final File baseDir) {
     return LoadStagingDirs.regionLoadDir(
         baseDir, dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
@@ -292,9 +336,19 @@ public class LoadTsFileManager {
     // Every chunk entry records the consensus index of the piece that brought it, so the progress
     // of
     // a staged file can be read back command by command.
-    final List<LoadTsFileConsensusNode.PieceRef> refs =
-        getOrCreateWriterManager(node.getLoadId())
-            .writePiece(node.getTsFileDataList(), node.getSearchIndex());
+    final List<LoadTsFileConsensusNode.PieceRef> refs;
+    if (stopped) {
+      throw newStoppedIOException();
+    }
+    final Lock readLock = writersLock.readLock();
+    readLock.lock();
+    try {
+      refs =
+          getOrCreateWriterManager(node.getLoadId())
+              .writePiece(node.getTsFileDataList(), node.getSearchIndex());
+    } finally {
+      readLock.unlock();
+    }
     if (node.getPieceRefs().isEmpty()) {
       // The chunks of this piece have just been written into the staged file, which recorded where
       // the payload of each of them landed. The WAL entry keeps everything the leader received -
@@ -490,9 +544,15 @@ public class LoadTsFileManager {
   }
 
   private void forceCloseWriterManager(String uuid) {
-    final TsFileWriterManager writerManager = uuid2WriterManager.remove(uuid);
-    if (Objects.nonNull(writerManager)) {
-      writerManager.close();
+    final Lock writeLock = writersLock.writeLock();
+    writeLock.lock();
+    try {
+      final TsFileWriterManager writerManager = uuid2WriterManager.remove(uuid);
+      if (writerManager != null) {
+        writerManager.close();
+      }
+    } finally {
+      writeLock.unlock();
     }
   }
 

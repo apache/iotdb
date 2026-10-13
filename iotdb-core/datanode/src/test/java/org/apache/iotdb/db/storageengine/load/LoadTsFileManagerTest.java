@@ -72,13 +72,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.LongConsumer;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -876,6 +881,77 @@ public class LoadTsFileManagerTest {
   private static LoadTsFileConsensusNode prepareNode(final String loadId) {
     return LoadTsFileConsensusNode.prepare(
         new PlanNodeId("load-prepare-" + loadId), loadId, 0, 0L, false, Collections.emptyMap());
+  }
+
+  @Test
+  public void testStopIsTerminalForWrites() throws Exception {
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+
+    manager.stop();
+    manager.stop();
+
+    assertTrue(manager.isStopped());
+    try {
+      manager.writePiece("test-uuid", Collections.emptyList());
+      fail("A stopped LOAD manager has to refuse new pieces");
+    } catch (final IOException e) {
+      assertTrue(e.getMessage().contains("has been stopped"));
+    }
+  }
+
+  /** A stop waits for the piece in flight, and still closes the writer that piece created. */
+  @Test
+  public void testStopWaitsForThePieceInFlight() throws Exception {
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final Lock readLock = readLockOf(manager);
+
+    final CountDownLatch pieceInFlight = new CountDownLatch(1);
+    final CountDownLatch pieceDone = new CountDownLatch(1);
+    final Thread piece =
+        new Thread(
+            () -> {
+              readLock.lock();
+              try {
+                manager.writePiece("test-uuid", Collections.singletonList(laidOutChunk()));
+                pieceInFlight.countDown();
+                pieceDone.await();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              } catch (final Exception e) {
+                throw new IllegalStateException(e);
+              } finally {
+                readLock.unlock();
+              }
+            });
+    piece.start();
+    assertTrue(pieceInFlight.await(10, TimeUnit.SECONDS));
+
+    final Thread stopper = new Thread(manager::stop);
+    stopper.start();
+    stopper.join(200L);
+    assertTrue(stopper.isAlive());
+
+    pieceDone.countDown();
+    piece.join(10_000L);
+    stopper.join(10_000L);
+
+    assertFalse(stopper.isAlive());
+    assertTrue(manager.isStopped());
+    assertNull(writerOf(manager, "test-uuid"));
+  }
+
+  private static Lock readLockOf(final LoadTsFileManager manager) throws Exception {
+    final Field field = LoadTsFileManager.class.getDeclaredField("writersLock");
+    field.setAccessible(true);
+    return ((ReentrantReadWriteLock) field.get(manager)).readLock();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static TsFileWriterManager writerOf(final LoadTsFileManager manager, final String uuid)
+      throws Exception {
+    final Field field = LoadTsFileManager.class.getDeclaredField("uuid2WriterManager");
+    field.setAccessible(true);
+    return ((Map<String, TsFileWriterManager>) field.get(manager)).get(uuid);
   }
 
   private static NonAlignedChunkData laidOutChunk() {

@@ -556,6 +556,14 @@ public class DataRegion implements IDataRegionForQuery {
       synchronized (this) {
         manager = loadTsFileManager;
         if (manager == null) {
+          if (deleted) {
+            // A deleted region takes no LOAD work: the command fails and its leader retries it.
+            throw new IllegalStateException(
+                String.format(
+                    StorageEngineMessages
+                        .STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_ITS_LOAD_MANAGER_CANNOT_BE_CREATED_B6A4649E,
+                    databaseName + "-" + dataRegionIdString));
+          }
           manager = new LoadTsFileManager(this);
           loadTsFileManager = manager;
         }
@@ -5332,6 +5340,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      stopLoadTsFileManager();
       shutdownUpgradeModFileThreadPool();
       releaseDirectBufferMemory();
       MetricService.getInstance().removeMetricSet(metrics);
