@@ -44,6 +44,7 @@ import org.junit.Test;
 import java.io.File;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -58,11 +59,15 @@ public class WALManagerTest {
       };
   private String[] prevWalDirs;
   private String prevConsensus;
+  private long prevThrottleThreshold;
+  private int prevMaxWaitingTimeWhenInsertBlocked;
 
   @Before
   public void setUp() throws Exception {
     prevConsensus = config.getDataRegionConsensusProtocolClass();
     prevWalDirs = commonConfig.getWalDirs();
+    prevThrottleThreshold = config.getThrottleThreshold();
+    prevMaxWaitingTimeWhenInsertBlocked = config.getMaxWaitingTimeWhenInsertBlocked();
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     commonConfig.setWalDirs(walDirs);
     EnvironmentUtils.envSetUp();
@@ -76,6 +81,8 @@ public class WALManagerTest {
     }
     config.setDataRegionConsensusProtocolClass(prevConsensus);
     commonConfig.setWalDirs(prevWalDirs);
+    config.setThrottleThreshold(prevThrottleThreshold);
+    config.setMaxWaitingTimeWhenInsertBlocked(prevMaxWaitingTimeWhenInsertBlocked);
   }
 
   @Test
@@ -116,6 +123,58 @@ public class WALManagerTest {
         assertEquals(1, WALFileUtils.listAllWALFiles(nodeDir).length);
       }
     }
+  }
+
+  @Test
+  public void testLongTermWriteBlockedByWalThrottle() {
+    WALManager walManager = WALManager.getInstance();
+    walManager.addTotalDiskUsage(walManager.getThrottleThreshold());
+
+    assertFalse(walManager.isLongTermWriteBlocked());
+
+    config.setMaxWaitingTimeWhenInsertBlocked(0);
+    assertTrue(walManager.isLongTermWriteBlocked());
+
+    walManager.clear();
+    assertFalse(walManager.isLongTermWriteBlocked());
+  }
+
+  @Test
+  public void testNonPositiveWalThrottleThresholdIsIgnored() {
+    WALManager walManager = WALManager.getInstance();
+    config.setThrottleThreshold(0);
+    walManager.addTotalDiskUsage(1);
+
+    assertEquals(Long.MAX_VALUE, walManager.getThrottleThreshold());
+    assertFalse(walManager.shouldThrottle());
+    assertFalse(walManager.isLongTermWriteBlocked());
+
+    walManager.clear();
+    config.setThrottleThreshold(-1);
+    walManager.addTotalDiskUsage(1);
+    assertEquals(Long.MAX_VALUE, walManager.getThrottleThreshold());
+    assertFalse(walManager.shouldThrottle());
+
+    walManager.clear();
+    config.setThrottleThreshold(1);
+    assertEquals(1, walManager.getThrottleThreshold());
+    walManager.addTotalDiskUsage(1);
+    assertTrue(walManager.shouldThrottle());
+    walManager.clear();
+  }
+
+  @Test
+  public void testLongTermWriteBlockedByWalBufferQueue() {
+    WALManager walManager = WALManager.getInstance();
+    walManager.markWalBufferQueueBlocked();
+
+    assertFalse(walManager.isLongTermWriteBlocked());
+
+    config.setMaxWaitingTimeWhenInsertBlocked(0);
+    assertTrue(walManager.isLongTermWriteBlocked());
+
+    walManager.markWalBufferQueueAvailable();
+    assertFalse(walManager.isLongTermWriteBlocked());
   }
 
   private InsertRowNode getInsertRowNode() throws IllegalPathException {
