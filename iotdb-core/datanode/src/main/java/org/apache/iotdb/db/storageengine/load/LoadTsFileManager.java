@@ -95,6 +95,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -167,6 +168,57 @@ public class LoadTsFileManager {
       final CleanupTask cleanupTask = new CleanupTask(uuid, getCleanupTaskDelayInMs());
       uuid2CleanupTask.put(uuid, cleanupTask);
       cleanupTaskQueue.add(cleanupTask);
+    }
+  }
+
+  private CleanupTask beginLoadTask(final String uuid) {
+    synchronized (uuid2CleanupTask) {
+      createCleanupTaskIfAbsent(uuid);
+      final CleanupTask cleanupTask = uuid2CleanupTask.get(uuid);
+      if (cleanupTask.isCleanupRequested || cleanupTask.isCanceled) {
+        return null;
+      }
+
+      cleanupTask.runningTaskCount++;
+      cleanupTask.isLoadTaskRunning = true;
+      rescheduleCleanupTask(cleanupTask);
+      return cleanupTask;
+    }
+  }
+
+  private void finishLoadTask(final CleanupTask cleanupTask) {
+    finishLoadTask(cleanupTask, false);
+  }
+
+  private void finishLoadTask(final CleanupTask cleanupTask, final boolean cleanupAfter) {
+    synchronized (uuid2CleanupTask) {
+      if (uuid2CleanupTask.get(cleanupTask.uuid) != cleanupTask) {
+        return;
+      }
+
+      cleanupTask.isCleanupRequested |= cleanupAfter;
+      cleanupTask.runningTaskCount--;
+      cleanupTask.isLoadTaskRunning = cleanupTask.runningTaskCount > 0;
+
+      if (!cleanupTask.isLoadTaskRunning && cleanupTask.isCleanupRequested) {
+        clean(cleanupTask.uuid);
+      } else {
+        rescheduleCleanupTask(cleanupTask);
+      }
+    }
+  }
+
+  public <T> T executeLoadTask(
+      final String uuid, final Supplier<T> operation, final T rejectedResult) {
+    final CleanupTask cleanupTask = beginLoadTask(uuid);
+    if (cleanupTask == null) {
+      return rejectedResult;
+    }
+
+    try {
+      return operation.get();
+    } finally {
+      finishLoadTask(cleanupTask);
     }
   }
 
@@ -260,10 +312,10 @@ public class LoadTsFileManager {
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
       throws IOException, PageException {
-    createCleanupTaskIfAbsent(uuid);
-
-    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
-    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
+    final CleanupTask cleanupTask = beginLoadTask(uuid);
+    if (cleanupTask == null) {
+      throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, uuid));
+    }
     try {
       final AtomicReference<Exception> exception = new AtomicReference<>();
       final TsFileWriterManager writerManager =
@@ -304,7 +356,7 @@ public class LoadTsFileManager {
         }
       }
     } finally {
-      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
+      finishLoadTask(cleanupTask);
     }
   }
 
@@ -315,10 +367,11 @@ public class LoadTsFileManager {
       final int sliceIndex,
       final int sliceCount,
       final int originBodySize) {
-    createCleanupTaskIfAbsent(uuid);
-
-    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
-    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
+    final CleanupTask cleanupTask = beginLoadTask(uuid);
+    if (cleanupTask == null) {
+      return LoadTsFilePieceNodeAssembler.Result.invalid(
+          String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, uuid));
+    }
     try {
       final Map<DataRegionId, LoadTsFilePieceNodeAssembler> regionId2Assembler =
           uuid2PieceNodeAssembler.computeIfAbsent(uuid, key -> new ConcurrentHashMap<>());
@@ -350,7 +403,7 @@ public class LoadTsFileManager {
         return result;
       }
     } finally {
-      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
+      finishLoadTask(cleanupTask);
     }
   }
 
@@ -393,32 +446,42 @@ public class LoadTsFileManager {
       boolean isGeneratedByPipe,
       Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
-    if (!uuid2WriterManager.containsKey(uuid) || uuid2PieceNodeAssembler.containsKey(uuid)) {
+    final CleanupTask cleanupTask = beginLoadTask(uuid);
+    if (cleanupTask == null) {
       return false;
     }
 
-    createCleanupTaskIfAbsent(uuid);
-
-    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
-    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
+    boolean loaded = false;
     try {
+      if (!uuid2WriterManager.containsKey(uuid) || uuid2PieceNodeAssembler.containsKey(uuid)) {
+        return false;
+      }
       uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, timePartitionProgressIndexMap);
+      loaded = true;
+      return true;
     } finally {
-      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
+      finishLoadTask(cleanupTask, loaded);
     }
-
-    clean(uuid);
-    return true;
   }
 
   public boolean deleteAll(String uuid) {
-    if (!uuid2WriterManager.containsKey(uuid)
-        && !uuid2PieceNodeAssembler.containsKey(uuid)
-        && !uuid2CleanupTask.containsKey(uuid)) {
-      return false;
+    synchronized (uuid2CleanupTask) {
+      if (!uuid2WriterManager.containsKey(uuid)
+          && !uuid2PieceNodeAssembler.containsKey(uuid)
+          && !uuid2CleanupTask.containsKey(uuid)) {
+        return false;
+      }
+
+      final CleanupTask cleanupTask = uuid2CleanupTask.get(uuid);
+      if (cleanupTask != null && cleanupTask.isLoadTaskRunning) {
+        cleanupTask.isCleanupRequested = true;
+        rescheduleCleanupTask(cleanupTask);
+        return true;
+      }
+
+      clean(uuid);
+      return true;
     }
-    clean(uuid);
-    return true;
   }
 
   private void clean(String uuid) {
@@ -875,22 +938,14 @@ public class LoadTsFileManager {
     private long scheduledTime;
 
     private volatile boolean isLoadTaskRunning = false;
+    private int runningTaskCount;
+    private boolean isCleanupRequested;
     private volatile boolean isCanceled = false;
 
     private CleanupTask(String uuid, long delayInMs) {
       this.uuid = uuid;
       this.delayInMs = delayInMs;
       resetScheduledTime();
-    }
-
-    public void markLoadTaskRunning() {
-      isLoadTaskRunning = true;
-      rescheduleCleanupTask(this);
-    }
-
-    public void markLoadTaskNotRunning() {
-      isLoadTaskRunning = false;
-      rescheduleCleanupTask(this);
     }
 
     public void resetScheduledTime() {

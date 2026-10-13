@@ -151,6 +151,18 @@ public class LoadTsFilePieceNodeAssemblerTest {
   }
 
   @Test
+  public void testLargeDeclaredBodySizeDoesNotPreallocateTheWholeBody() {
+    final LoadTsFilePieceNodeAssembler assembler =
+        new LoadTsFilePieceNodeAssembler(2, Integer.MAX_VALUE);
+
+    final LoadTsFilePieceNodeAssembler.Result result =
+        assembler.append(ByteBuffer.wrap(new byte[] {1}), 0, 2, Integer.MAX_VALUE);
+
+    Assert.assertTrue(result.isValid());
+    Assert.assertFalse(result.isComplete());
+  }
+
+  @Test
   public void testRejectBodySizeViolationsWithReason() {
     final LoadTsFilePieceNodeAssembler.Result overflow =
         new LoadTsFilePieceNodeAssembler(2, 2).append(ByteBuffer.allocate(3), 0, 2, 2);
