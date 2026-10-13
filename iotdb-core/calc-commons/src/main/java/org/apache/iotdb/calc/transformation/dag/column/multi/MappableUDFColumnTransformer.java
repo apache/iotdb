@@ -26,6 +26,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Set;
+
 public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   private final ColumnTransformer[] inputColumnTransformers;
@@ -102,10 +104,9 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void clearCacheForNewInput() {
-    super.clearCacheForNewInput();
+  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
     for (ColumnTransformer columnTransformer : inputColumnTransformers) {
-      columnTransformer.clearCacheForNewInput();
+      columnTransformer.clearCacheForNewInput(visited);
     }
   }
 }

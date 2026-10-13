@@ -47,8 +47,11 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.Set;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -155,9 +158,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // Short-circuit evaluation can reset cache reference counts when a shared expression is
     // recomputed. Invalidate the whole DAG before feeding a new block, including intermediate
     // expressions whose caches may still have unconsumed references from the previous block.
-    filterOutputTransformer.clearCacheForNewInput();
+    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    filterOutputTransformer.clearCacheForNewInput(visited);
     for (ColumnTransformer columnTransformer : commonTransformerList) {
-      columnTransformer.clearCacheForNewInput();
+      columnTransformer.clearCacheForNewInput(visited);
     }
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
@@ -270,9 +274,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getTransformedTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
-    // Clear all output DAGs before evaluating any output, preserving reuse within this block.
+    // Clear all output DAGs before evaluating any output, visiting shared subexpressions only once.
+    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
     for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
-      columnTransformer.clearCacheForNewInput();
+      columnTransformer.clearCacheForNewInput(visited);
     }
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {

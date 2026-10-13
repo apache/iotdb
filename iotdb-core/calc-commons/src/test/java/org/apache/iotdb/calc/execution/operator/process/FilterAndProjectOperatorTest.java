@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -221,6 +222,50 @@ public class FilterAndProjectOperatorTest {
   }
 
   @Test
+  public void testProjectionClearsSharedDagOnlyOncePerBlock() throws Exception {
+    Graph graph = new Graph();
+    CountingIdentityColumnTransformer input = new CountingIdentityColumnTransformer();
+    graph.leaves.add(input);
+    ColumnTransformer shared = input;
+    // Each level references the same child twice. A traversal without deduplication would visit
+    // the input 4096 times per root, although this DAG contains only 13 distinct transformers.
+    for (int i = 0; i < 12; i++) {
+      shared = graph.add(shared, shared);
+    }
+    try (Operator operator =
+        project(graph, new TsBlock[] {block(1), block(2)}, shared, graph.add(shared, 1))) {
+      assertBlock(operator.next(), new Double[] {4096.0}, new Double[] {4097.0});
+      assertEquals(1, input.cacheClearCount);
+      assertBlock(operator.next(), new Double[] {8192.0}, new Double[] {8193.0});
+      assertEquals(2, input.cacheClearCount);
+    }
+  }
+
+  @Test
+  public void testFilterAndCommonExpressionsShareCacheClearingTraversal() throws Exception {
+    Graph filter = new Graph();
+    CountingIdentityColumnTransformer input = new CountingIdentityColumnTransformer();
+    filter.leaves.add(input);
+    ColumnTransformer shared = filter.add(input, 1);
+    ColumnTransformer predicate = filter.greaterThan(shared, 0);
+    Graph projection = new Graph();
+    try (Operator operator =
+        operator(
+            new TsBlock[] {block(1), block(-2, 3)},
+            filter,
+            predicate,
+            Collections.singletonList(shared),
+            projection,
+            projection.input(0),
+            projection.input(1))) {
+      assertBlock(operator.next(), new Double[] {1.0}, new Double[] {2.0});
+      assertEquals(1, input.cacheClearCount);
+      assertBlock(operator.next(), new Double[] {3.0}, new Double[] {4.0});
+      assertEquals(2, input.cacheClearCount);
+    }
+  }
+
+  @Test
   public void testReusingCasePreservesPendingSiblingColumn() throws Exception {
     Graph graph = new Graph();
     ColumnTransformer input = graph.input(0);
@@ -357,6 +402,7 @@ public class FilterAndProjectOperatorTest {
 
   private static class CountingIdentityColumnTransformer extends IdentityColumnTransformer {
     private int evaluationCount;
+    private int cacheClearCount;
 
     private CountingIdentityColumnTransformer() {
       super(DOUBLE, 0);
@@ -366,6 +412,11 @@ public class FilterAndProjectOperatorTest {
     protected void evaluate() {
       evaluationCount++;
       super.evaluate();
+    }
+
+    @Override
+    protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
+      cacheClearCount++;
     }
   }
 

@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Set;
+
 public abstract class BinaryColumnTransformer extends ColumnTransformer {
 
   protected final ColumnTransformer leftTransformer;
@@ -97,10 +99,9 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void clearCacheForNewInput() {
-    super.clearCacheForNewInput();
-    leftTransformer.clearCacheForNewInput();
-    rightTransformer.clearCacheForNewInput();
+  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
+    leftTransformer.clearCacheForNewInput(visited);
+    rightTransformer.clearCacheForNewInput(visited);
   }
 
   @Override

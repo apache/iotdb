@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
+import java.util.Set;
+
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 
 public abstract class ColumnTransformer {
@@ -119,9 +121,19 @@ public abstract class ColumnTransformer {
   /**
    * Clears cached columns throughout this DAG before initializing a new input block. Unlike {@link
    * #clearCache()}, this also visits CASE descendants. Only call this before evaluating any
-   * expressions for the new block, when no sibling expression can still need a cached column.
+   * expressions for the new block, when no sibling expression can still need a cached column. All
+   * roots in the same evaluation phase must share an identity-based visited set so shared
+   * subexpressions are cleared only once.
    */
-  public void clearCacheForNewInput() {
+  public final void clearCacheForNewInput(Set<ColumnTransformer> visited) {
+    if (!visited.add(this)) {
+      return;
+    }
     this.columnCache.clear();
+    clearChildrenCacheForNewInput(visited);
+  }
+
+  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
+    // Leaf transformers have no children.
   }
 }

@@ -30,6 +30,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransformer {
 
@@ -235,14 +236,13 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
   }
 
   @Override
-  public void clearCacheForNewInput() {
-    super.clearCacheForNewInput();
+  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
     for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
         whenThenTransformers) {
-      whenThenColumnTransformer.left.clearCacheForNewInput();
-      whenThenColumnTransformer.right.clearCacheForNewInput();
+      whenThenColumnTransformer.left.clearCacheForNewInput(visited);
+      whenThenColumnTransformer.right.clearCacheForNewInput(visited);
     }
-    elseTransformer.clearCacheForNewInput();
+    elseTransformer.clearCacheForNewInput(visited);
   }
 
   @Override

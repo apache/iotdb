@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Set;
+
 public abstract class TernaryColumnTransformer extends ColumnTransformer {
 
   protected ColumnTransformer firstColumnTransformer;
@@ -112,11 +114,10 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void clearCacheForNewInput() {
-    super.clearCacheForNewInput();
-    firstColumnTransformer.clearCacheForNewInput();
-    secondColumnTransformer.clearCacheForNewInput();
-    thirdColumnTransformer.clearCacheForNewInput();
+  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
+    firstColumnTransformer.clearCacheForNewInput(visited);
+    secondColumnTransformer.clearCacheForNewInput(visited);
+    thirdColumnTransformer.clearCacheForNewInput(visited);
   }
 
   @Override
