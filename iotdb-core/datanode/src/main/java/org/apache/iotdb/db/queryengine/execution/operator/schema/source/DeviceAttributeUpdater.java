@@ -40,8 +40,11 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -97,6 +100,8 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   protected void update() throws MetadataException {
     final TsBlock block = getFilterTsBlock();
 
+    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    projectOutputTransformerList.forEach(transformer -> transformer.clearCacheForNewInput(visited));
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
 
@@ -145,9 +150,13 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     final List<Column> filterResultColumns =
         new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
 
-    // Get result of calculated common sub expressions
+    // CASE evaluation can clear a common expression after the filter used it. Recompute it before
+    // materializing the column for projection within this same batch.
     commonTransformerList.forEach(
-        columnTransformer -> filterResultColumns.add(columnTransformer.getColumn()));
+        columnTransformer -> {
+          columnTransformer.tryEvaluate();
+          filterResultColumns.add(columnTransformer.getColumn());
+        });
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
 
     final int rowCount =
@@ -156,6 +165,12 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     filterTsBlockBuilder.declarePositions(rowCount);
 
     return filterTsBlockBuilder.build(new TimeColumn(rowCount, new long[rowCount]));
+  }
+
+  @Override
+  protected void clearFilterCacheForNewInput(Set<ColumnTransformer> visited) {
+    super.clearFilterCacheForNewInput(visited);
+    commonTransformerList.forEach(transformer -> transformer.clearCacheForNewInput(visited));
   }
 
   @Override

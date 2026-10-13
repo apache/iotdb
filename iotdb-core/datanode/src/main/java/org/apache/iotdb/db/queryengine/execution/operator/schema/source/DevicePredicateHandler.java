@@ -35,8 +35,11 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.satisfy;
@@ -106,6 +109,8 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
       return;
     }
 
+    // A CASE can leave shared expressions cached after the previous batch was consumed.
+    clearFilterCacheForNewInput(Collections.newSetFromMap(new IdentityHashMap<>()));
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     filterLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(curBlock));
@@ -118,6 +123,10 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
       }
     }
     curFilterColumn = filterColumn;
+  }
+
+  protected void clearFilterCacheForNewInput(Set<ColumnTransformer> visited) {
+    filterOutputTransformer.clearCacheForNewInput(visited);
   }
 
   protected boolean withoutFilter() {

@@ -26,6 +26,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 
@@ -114,8 +115,11 @@ public abstract class ColumnTransformer {
     // do nothing
   }
 
-  public void clearCache() {
+  public final void clearCache() {
     this.columnCache.clear();
+    if (shouldClearChildrenCache()) {
+      forEachChild(ColumnTransformer::clearCache);
+    }
   }
 
   /**
@@ -130,10 +134,13 @@ public abstract class ColumnTransformer {
       return;
     }
     this.columnCache.clear();
-    clearChildrenCacheForNewInput(visited);
+    forEachChild(child -> child.clearCacheForNewInput(visited));
   }
 
-  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
-    // Leaf transformers have no children.
+  protected boolean shouldClearChildrenCache() {
+    return true;
   }
+
+  /** Defines the child edges used by both evaluation-time and new-input cache clearing. */
+  protected abstract void forEachChild(Consumer<ColumnTransformer> action);
 }

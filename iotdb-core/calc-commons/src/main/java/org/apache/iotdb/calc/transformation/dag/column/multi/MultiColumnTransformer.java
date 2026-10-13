@@ -27,7 +27,7 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public abstract class MultiColumnTransformer extends ColumnTransformer {
@@ -91,18 +91,8 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void clearCache() {
-    super.clearCache();
-    for (ColumnTransformer columnTransformer : columnTransformerList) {
-      columnTransformer.clearCache();
-    }
-  }
-
-  @Override
-  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
-    for (ColumnTransformer columnTransformer : columnTransformerList) {
-      columnTransformer.clearCacheForNewInput(visited);
-    }
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    columnTransformerList.forEach(action);
   }
 
   @Override

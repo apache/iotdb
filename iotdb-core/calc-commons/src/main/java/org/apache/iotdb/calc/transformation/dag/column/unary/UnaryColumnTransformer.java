@@ -25,7 +25,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
-import java.util.Set;
+import java.util.function.Consumer;
 
 public abstract class UnaryColumnTransformer extends ColumnTransformer {
   protected ColumnTransformer childColumnTransformer;
@@ -70,14 +70,8 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
       Column column, ColumnBuilder columnBuilder, boolean[] selection);
 
   @Override
-  public void clearCache() {
-    super.clearCache();
-    childColumnTransformer.clearCache();
-  }
-
-  @Override
-  protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
-    childColumnTransformer.clearCacheForNewInput(visited);
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    action.accept(childColumnTransformer);
   }
 
   @Override

@@ -31,9 +31,12 @@ import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransf
 import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.NullColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
@@ -41,13 +44,14 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
+import java.util.function.Consumer;
 
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -266,6 +270,37 @@ public class FilterAndProjectOperatorTest {
   }
 
   @Test
+  public void testMappableUdfClearsCaseDescendantsAcrossBlocks() throws Exception {
+    Graph graph = new Graph();
+    ColumnTransformer input = graph.input(0);
+    ColumnTransformer caseWhen =
+        graph.caseWhen(graph.greaterThan(input, 0), graph.constant(1), graph.constant(0));
+    ColumnTransformer udf =
+        new MappableUDFColumnTransformer(
+            DOUBLE,
+            new ColumnTransformer[] {reference(caseWhen), reference(input)},
+            new UDTFExecutor("test", ZoneId.of("UTC")) {
+              @Override
+              public void execute(Column[] columns, ColumnBuilder builder) {
+                for (int i = 0; i < columns[0].getPositionCount(); i++) {
+                  builder.writeDouble(columns[0].getDouble(i) + columns[1].getDouble(i));
+                }
+              }
+
+              @Override
+              public void beforeDestroy() {
+                // No UDF resources are allocated by this test executor.
+              }
+            });
+    try (Operator operator =
+        project(graph, new TsBlock[] {block(1), block(-2, 3), block(4)}, udf)) {
+      assertBlock(operator.next(), new Double[] {2.0});
+      assertBlock(operator.next(), new Double[] {-2.0, 4.0});
+      assertBlock(operator.next(), new Double[] {5.0});
+    }
+  }
+
+  @Test
   public void testReusingCasePreservesPendingSiblingColumn() throws Exception {
     Graph graph = new Graph();
     ColumnTransformer input = graph.input(0);
@@ -415,7 +450,7 @@ public class FilterAndProjectOperatorTest {
     }
 
     @Override
-    protected void clearChildrenCacheForNewInput(Set<ColumnTransformer> visited) {
+    protected void forEachChild(Consumer<ColumnTransformer> action) {
       cacheClearCount++;
     }
   }

@@ -183,8 +183,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     if (!hasNonMappableUDF) {
       // get result of calculated common sub expressions
       for (ColumnTransformer columnTransformer : commonTransformerList) {
-        // CASE WHEN clause would clear all its cache
-        // evaluate again to acquire cache
+        // CASE evaluation can clear a common expression after the filter used it. Recompute it
+        // before materializing the column for projection within this same input block.
         columnTransformer.tryEvaluate();
         resultColumns.add(columnTransformer.getColumn());
       }
