@@ -53,8 +53,7 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
   public TsFileSplitConsumer(
       final LoadSingleTsFileNode singleTsFileNode,
       final LoadTsFileDataCacheMemoryBlock block,
-      final DataPartitionBatchFetcher partitionFetcher,
-      final String userName,
+      final DataPartitionResolver partitionResolver,
       final Consumer<TTimePartitionSlot> progressIndexCallback,
       final PieceDispatcher.DispatchCallback dispatchCallback) {
     this.singleTsFileNode =
@@ -63,11 +62,12 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
             DataNodeQueryMessages.EXCEPTION_SINGLETSFILENODE_CANNOT_BE_NULL_4EA6CF51);
     Objects.requireNonNull(block, DataNodeQueryMessages.EXCEPTION_BLOCK_CANNOT_BE_NULL_7E31451D);
     Objects.requireNonNull(
-        partitionFetcher, DataNodeQueryMessages.EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8);
+        partitionResolver,
+        DataNodeQueryMessages.EXCEPTION_PARTITIONRESOLVER_CANNOT_BE_NULL_AD01EEB2);
     Objects.requireNonNull(
         dispatchCallback, DataNodeQueryMessages.EXCEPTION_DISPATCHCALLBACK_CANNOT_BE_NULL_C7A1AC6A);
 
-    this.router = new DataPartitionRouter(partitionFetcher, userName);
+    this.router = new DataPartitionRouter(partitionResolver);
     this.memoryBuffer = new MemoryBoundedBuffer(block);
     this.dispatcher = new PieceDispatcher(singleTsFileNode, memoryBuffer, dispatchCallback);
     this.progressIndexCallback = progressIndexCallback;

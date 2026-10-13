@@ -123,10 +123,9 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     final TwoPhaseConsensusLoadStrategy strategy =
         new TwoPhaseConsensusLoadStrategy(
             mock(LoadTsFileDispatcherImpl.class),
-            mock(DataPartitionBatchFetcher.class),
+            new DataPartitionResolver(mock(DataPartitionBatchFetcher.class), "root"),
             mock(LoadTsFileDataCacheMemoryBlock.class),
             submitter,
-            "root",
             false);
     setField(strategy, "regionRoutes", routesOf(replicaSets));
     setField(strategy, "regionLoadIds", loadIds);

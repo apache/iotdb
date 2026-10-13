@@ -43,6 +43,8 @@ public final class DataNodeQueryMessages {
           "Missing data region replica set for device %s at partition %s";
   public static final String EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8 =
       "partitionFetcher cannot be null";
+  public static final String EXCEPTION_PARTITIONRESOLVER_CANNOT_BE_NULL_AD01EEB2 =
+      "partitionResolver cannot be null";
   public static final String EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B =
       "ChunkData at index %d cannot be null";
   public static final String EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC =

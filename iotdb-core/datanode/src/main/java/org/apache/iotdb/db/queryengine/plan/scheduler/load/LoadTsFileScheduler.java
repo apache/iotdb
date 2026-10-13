@@ -458,20 +458,16 @@ public class LoadTsFileScheduler implements IScheduler {
    */
   private TsFileLoadStrategy resolveStrategy(final LoadSingleTsFileNode node, final String userName)
       throws Exception {
-    // Reused by the load: same cached fetcher, same database scope.
-    final boolean needDecode =
-        node.needDecodeTsFile(slotList -> partitionFetcher.queryDataPartition(slotList, userName));
+    // The judgement resolves the partitions of the devices anyway, so the routing reuses them.
+    final DataPartitionResolver partitionResolver =
+        new DataPartitionResolver(partitionFetcher, userName);
+    final boolean needDecode = node.needDecodeTsFile(partitionResolver::resolve);
 
     if (!needDecode) {
       return new LocalLoadStrategy(queryContext, fragmentId, dispatcher);
     } else {
       return new TwoPhaseConsensusLoadStrategy(
-          dispatcher,
-          partitionFetcher,
-          memoryBlock,
-          consensusSubmitter,
-          userName,
-          isGeneratedByPipe);
+          dispatcher, partitionResolver, memoryBlock, consensusSubmitter, isGeneratedByPipe);
     }
   }
 

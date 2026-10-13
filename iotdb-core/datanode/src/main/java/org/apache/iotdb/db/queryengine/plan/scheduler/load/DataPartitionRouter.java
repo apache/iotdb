@@ -36,20 +36,18 @@ import java.util.Objects;
 
 /**
  * Routes unordered chunk data to designated data region replica sets. Deduplicates (device,
- * time-partition) slots, queries partitions in batch, and reconstructs the mapped target replica
- * set for every chunk in original input order.
+ * time-partition) slots, resolves their partitions, and reconstructs the mapped target replica set
+ * for every chunk in original input order.
  */
 class DataPartitionRouter {
 
-  private final DataPartitionBatchFetcher partitionFetcher;
-  private final String userName;
+  private final DataPartitionResolver partitionResolver;
 
-  DataPartitionRouter(final DataPartitionBatchFetcher partitionFetcher, final String userName) {
-    this.partitionFetcher =
+  DataPartitionRouter(final DataPartitionResolver partitionResolver) {
+    this.partitionResolver =
         Objects.requireNonNull(
-            partitionFetcher,
-            DataNodeQueryMessages.EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8);
-    this.userName = userName;
+            partitionResolver,
+            DataNodeQueryMessages.EXCEPTION_PARTITIONRESOLVER_CANNOT_BE_NULL_AD01EEB2);
   }
 
   // -------------------------------------------------------------------------
@@ -103,18 +101,9 @@ class DataPartitionRouter {
       }
     }
 
-    // 2. Fetch data partition replica sets in batch
+    // 2. Resolve the replica sets of the distinct slots, reusing the ones the judgement resolved.
     final List<TRegionReplicaSet> replicaSets =
-        partitionFetcher.queryDataPartition(toQuerySlots(distinctSlotList), userName);
-
-    if (replicaSets == null || replicaSets.size() != distinctSlotList.size()) {
-      throw new IllegalStateException(
-          String.format(
-              DataNodeQueryMessages
-                  .EXCEPTION_PARTITION_FETCHER_RETURNED_MISMATCHED_REPLICA_SET_SIZE_EXPECTED_ARG_ACTUAL_ARG_B7A988CD,
-              distinctSlotList.size(),
-              replicaSets == null ? 0 : replicaSets.size()));
-    }
+        partitionResolver.resolve(toQuerySlots(distinctSlotList));
 
     // 3. Map resolved replica sets back to original input order
     final List<TRegionReplicaSet> routedReplicaSets = new ArrayList<>(totalChunks);
@@ -140,15 +129,14 @@ class DataPartitionRouter {
   // Internal Model
   // -------------------------------------------------------------------------
 
-  /** Converts the distinct slots to the pair form the partition fetcher takes. */
+  /** The distinct slots in the pair form the resolver takes. */
   private static List<Pair<IDeviceID, TTimePartitionSlot>> toQuerySlots(
       final List<SlotKey> distinctSlots) {
-    final List<Pair<IDeviceID, TTimePartitionSlot>> querySlots =
-        new ArrayList<>(distinctSlots.size());
+    final List<Pair<IDeviceID, TTimePartitionSlot>> slots = new ArrayList<>(distinctSlots.size());
     for (final SlotKey slot : distinctSlots) {
-      querySlots.add(new Pair<>(slot.device(), slot.slot()));
+      slots.add(new Pair<>(slot.device(), slot.slot()));
     }
-    return querySlots;
+    return slots;
   }
 
   /** Composite key for slot deduplication; the only slot representation this class holds. */

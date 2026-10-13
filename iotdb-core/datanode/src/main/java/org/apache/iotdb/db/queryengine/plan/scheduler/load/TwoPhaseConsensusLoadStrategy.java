@@ -86,10 +86,12 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private static final long LOAD_CONSENSUS_SUBMIT_RETRY_BACKOFF_MS = 100L;
 
   private final LoadTsFileDispatcherImpl dispatcher;
-  private final DataPartitionBatchFetcher partitionFetcher;
+
+  /** Resolves the data partitions of the file, reusing the ones the judgement already resolved. */
+  private final DataPartitionResolver partitionResolver;
+
   private final LoadTsFileDataCacheMemoryBlock block;
   private final LoadConsensusSubmitter consensusSubmitter;
-  private final String userName;
   private final boolean isGeneratedByPipe;
 
   /** The source file being loaded, kept for the phase-two commands. */
@@ -122,16 +124,14 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
   public TwoPhaseConsensusLoadStrategy(
       LoadTsFileDispatcherImpl dispatcher,
-      DataPartitionBatchFetcher partitionFetcher,
+      DataPartitionResolver partitionResolver,
       LoadTsFileDataCacheMemoryBlock block,
       LoadConsensusSubmitter consensusSubmitter,
-      String userName,
       boolean isGeneratedByPipe) {
     this.dispatcher = dispatcher;
-    this.partitionFetcher = partitionFetcher;
+    this.partitionResolver = partitionResolver;
     this.block = block;
     this.consensusSubmitter = consensusSubmitter;
-    this.userName = userName;
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
@@ -171,8 +171,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         new TsFileSplitConsumer(
             node,
             block,
-            partitionFetcher,
-            userName,
+            partitionResolver,
             this::computeTimePartitionSlotToProgressIndexIfAbsent,
             this::dispatchOnePieceNode);
     try {

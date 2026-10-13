@@ -43,6 +43,8 @@ public final class DataNodeQueryMessages {
           "device %s 在分区 %s 上缺少 data region 副本集";
   public static final String EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8 =
       "partitionFetcher 不能为 null";
+  public static final String EXCEPTION_PARTITIONRESOLVER_CANNOT_BE_NULL_AD01EEB2 =
+      "partitionResolver 不能为 null";
   public static final String EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B =
       "索引 %d 处的 ChunkData 不能为 null";
   public static final String EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC =
