@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
 import org.eclipse.milo.opcua.stack.core.Stack;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
