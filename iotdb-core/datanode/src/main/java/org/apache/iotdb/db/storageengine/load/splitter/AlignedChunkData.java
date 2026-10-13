@@ -475,7 +475,7 @@ public class AlignedChunkData implements ChunkData {
       throws IOException {
     ReadWriteIOUtils.write(getType().ordinal(), stream);
 
-    // Always false now since we ensure all outputs are encoded Chunk objects
+    // The marker the reader uses to route this chunk back to the aligned layout.
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     writeChunkLayout(stream);

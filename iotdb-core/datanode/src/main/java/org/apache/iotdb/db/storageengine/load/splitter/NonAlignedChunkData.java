@@ -311,7 +311,7 @@ public class NonAlignedChunkData implements ChunkData {
   @Override
   public int serializedSize(final boolean includeContent) {
     int size = Integer.BYTES + Byte.BYTES; // type ordinal, isAligned
-    size += Long.BYTES + Byte.BYTES + device.serializedSize() + Long.BYTES + Byte.BYTES;
+    size += Long.BYTES + Byte.BYTES + device.serializedSize() + Long.BYTES;
     size += (chunk == null ? chunkHeader : chunk.getHeader()).getSerializedSize();
     size += Byte.BYTES + (chunkLayout == null ? 0 : ChunkLayout.serializedSize());
     if (chunk != null) {
@@ -341,9 +341,6 @@ public class NonAlignedChunkData implements ChunkData {
     ReadWriteIOUtils.write(device instanceof StringArrayDeviceID, stream);
     device.serialize(stream);
     ReadWriteIOUtils.write(dataSize, stream);
-    // Part of the wire format, read back at this position; always false because serialize() encodes
-    // the pages with endChunk() before this attribute.
-    ReadWriteIOUtils.write(false, stream);
     // The pages may have been split and re-encoded, in which case the chunk header rebuilt from the
     // actual encoded bytes is the one describing the payload that follows.
     (chunk == null ? chunkHeader : chunk.getHeader()).serializeTo(stream);
@@ -371,9 +368,6 @@ public class NonAlignedChunkData implements ChunkData {
             ? StringArrayDeviceID.deserialize(stream)
             : PlainDeviceID.deserialize(stream).convertToStringArrayDeviceId();
     final long dataSize = ReadWriteIOUtils.readLong(stream);
-
-    // Ignore needDecodeChunk flag from stream since it's now always standardized to false
-    ReadWriteIOUtils.readBool(stream);
 
     final byte chunkType = ReadWriteIOUtils.readByte(stream);
     final ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
