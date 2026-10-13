@@ -32,6 +32,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryManager;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -77,7 +79,13 @@ public interface IMemTable extends WALEntryValue {
    */
   long memSize();
 
-  /** only used when mem control enabled */
+  void setWriteMemoryManager(WriteMemoryManager manager);
+
+  WriteMemoryBlock getArrayMemoryBlock();
+
+  WriteMemoryBlock getBinaryMemoryBlock();
+
+  /** Adds array/TVList structural memory; Binary payload has a separate block. */
   void addTVListRamCost(long cost);
 
   /** only used when mem control enabled */

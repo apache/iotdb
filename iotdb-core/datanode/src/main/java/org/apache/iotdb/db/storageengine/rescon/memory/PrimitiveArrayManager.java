@@ -31,6 +31,7 @@ import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +66,8 @@ public class PrimitiveArrayManager {
   private static final IMemoryBlock POOLED_ARRAYS_MEMORY_BLOCK =
       MEMORY_CONFIG
           .getBufferedArraysMemoryManager()
-          .exactAllocate("BufferedArrays", MemoryBlockType.DYNAMIC);
+          .exactAllocateReadOnly(
+              "BufferedArrays", MemoryBlockType.DYNAMIC, () -> getPooledArrayMemoryInBytes(0));
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
@@ -73,6 +75,9 @@ public class PrimitiveArrayManager {
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];
+
+  // Each entry is guarded by the corresponding queue's monitor.
+  private static final long[] POOLED_ARRAY_BYTES = new long[TSDataType.values().length];
 
   /** TSDataType#serialize() -> max size of ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final int[] LIMITS = new int[TSDataType.values().length];
@@ -119,7 +124,14 @@ public class PrimitiveArrayManager {
     limitUpdateThreshold = (long) ((TSDataType.values().length - 2) * limit);
 
     for (int i = 0; i < POOLED_ARRAYS.length; ++i) {
-      POOLED_ARRAYS[i] = new ArrayDeque<>((int) limit);
+      if (POOLED_ARRAYS[i] == null) {
+        POOLED_ARRAYS[i] = new ArrayDeque<>((int) limit);
+      } else {
+        synchronized (POOLED_ARRAYS[i]) {
+          POOLED_ARRAYS[i].clear();
+          POOLED_ARRAY_BYTES[i] = 0;
+        }
+      }
     }
 
     for (AtomicLong allocationRequestCount : ALLOCATION_REQUEST_COUNTS) {
@@ -159,6 +171,9 @@ public class PrimitiveArrayManager {
     Object array;
     synchronized (POOLED_ARRAYS[order]) {
       array = POOLED_ARRAYS[order].poll();
+      if (array != null) {
+        POOLED_ARRAY_BYTES[order] -= arraySize(array);
+      }
     }
     StorageEngineMemoryMetrics.getInstance().incPamAllocation();
     if (array == null) {
@@ -268,10 +283,43 @@ public class PrimitiveArrayManager {
       ArrayDeque<Object> arrays = POOLED_ARRAYS[order];
       if (arrays.size() < LIMITS[order]) {
         arrays.add(array);
+        POOLED_ARRAY_BYTES[order] += arraySize(array);
       } else {
         StorageEngineMemoryMetrics.getInstance().incPamReleaseFailure();
       }
     }
+  }
+
+  public static IMemoryBlock getMemoryBlock() {
+    return POOLED_ARRAYS_MEMORY_BLOCK;
+  }
+
+  private static long getPooledArrayMemoryInBytes(int order) {
+    if (order == POOLED_ARRAYS.length) {
+      return 0;
+    }
+    // Hold every queue lock in ascending order for a linearizable total. Borrow/return paths
+    // hold only one queue lock and never call this method or the memory manager.
+    synchronized (POOLED_ARRAYS[order]) {
+      return POOLED_ARRAY_BYTES[order] + getPooledArrayMemoryInBytes(order + 1);
+    }
+  }
+
+  private static long arraySize(Object array) {
+    // Use typed array lengths on this hot path instead of reflective shallowSizeOf(Object).
+    if (array instanceof long[]) {
+      return RamUsageEstimator.sizeOf((long[]) array);
+    } else if (array instanceof int[]) {
+      return RamUsageEstimator.sizeOf((int[]) array);
+    } else if (array instanceof boolean[]) {
+      return RamUsageEstimator.sizeOf((boolean[]) array);
+    } else if (array instanceof float[]) {
+      return RamUsageEstimator.sizeOf((float[]) array);
+    } else if (array instanceof double[]) {
+      return RamUsageEstimator.sizeOf((double[]) array);
+    }
+    // Binary[] entries have been cleared; only the shallow reference array belongs to the pool.
+    return RamUsageEstimator.shallowSizeOf((Binary[]) array);
   }
 
   public static void close() {
