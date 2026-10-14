@@ -118,6 +118,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-format-17
           sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
           ./mvnw -B -P with-odbc -pl iotdb-client/odbc spotless:check
       - name: Build disposable test server
         run: ./mvnw -B clean package -pl distribution -am -DskipTests
