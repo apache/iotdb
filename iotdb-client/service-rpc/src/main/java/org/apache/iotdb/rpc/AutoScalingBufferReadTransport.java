@@ -44,18 +44,11 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
     inTrans.readAll(buf.array(), 0, length);
     pos = 0;
     limit = length;
-    if (length == 0) {
-      buf.markUnused();
-    }
   }
 
   @Override
   public final int read(byte[] target, int off, int len) {
     int amtToRead = Math.min(len, getBytesRemainingInBuffer());
-    if (amtToRead == 0) {
-      // A fully consumed buffer may have been reclaimed since the previous frame.
-      return 0;
-    }
     System.arraycopy(buf.array(), pos, target, off, amtToRead);
     consumeBuffer(amtToRead);
     return amtToRead;
@@ -69,9 +62,6 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
   @Override
   public final void consumeBuffer(int len) {
     pos += len;
-    if (pos == limit) {
-      buf.markUnused();
-    }
   }
 
   @Override

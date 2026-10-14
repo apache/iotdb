@@ -99,6 +99,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       throw new TTransportException(e);
     }
 
+    writeBuffer.reset();
     if (thriftDefaultBufferSize < length) {
       try {
         writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
@@ -106,8 +107,6 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
         throw new TTransportException(e);
       }
     }
-    writeBuffer.reset();
-    writeCompressBuffer.reset();
     underlying.flush();
   }
 

@@ -64,16 +64,6 @@ public class MemoryConfig {
           public void release(long sizeInBytes) {
             memoryBlock.release(sizeInBytes);
           }
-
-          @Override
-          public long getTotalMemorySizeInBytes() {
-            return memoryBlock.getTotalMemorySizeInBytes();
-          }
-
-          @Override
-          public long getUsedMemoryInBytes() {
-            return memoryBlock.getUsedMemoryInBytes();
-          }
         });
   }
 

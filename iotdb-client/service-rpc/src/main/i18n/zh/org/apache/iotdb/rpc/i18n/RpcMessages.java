@@ -53,8 +53,8 @@ public final class RpcMessages {
   // AutoResizingBuffer
   public static final String AUTO_RESIZING_BUFFER_ALLOCATE_INTERRUPTED =
       "AutoResizingBuffer 分配 %d 字节内存时被中断";
-  public static final String EXCEPTION_AUTORESIZINGBUFFER_FAILED_TO_ALLOCATE_ARG_BYTES_AFTER_ARG_RETRIES_POOL_TOTAL_ARG_BYTES_USED_ARG_BYTES_AVAILABLE_ARG_BYTES_8244057A =
-      "AutoResizingBuffer 无法分配 %d 字节内存，重试 %d 次后仍失败（池总容量=%d 字节，已用=%d 字节，可用=%d 字节）";
+  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_FAILED =
+      "AutoResizingBuffer 在 %d 次重试后仍无法分配 %d 字节内存";
 
   // IoTDBRpcDataSet / IoTDBJDBCDataSet
   public static final String CLOSE_OPERATION_SERVER_ERROR = "服务端关闭操作失败，原因：";

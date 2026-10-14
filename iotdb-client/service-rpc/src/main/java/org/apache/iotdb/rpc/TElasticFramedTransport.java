@@ -139,13 +139,7 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void open() throws TTransportException {
-    try {
-      underlying.open();
-    } catch (TTransportException e) {
-      // A failed client constructor may never expose this transport to its caller for cleanup.
-      close();
-      throw e;
-    }
+    underlying.open();
   }
 
   @Override
@@ -322,6 +316,7 @@ public class TElasticFramedTransport extends TTransport {
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);
+    writeBuffer.reset();
     if (length > thriftDefaultBufferSize) {
       try {
         writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
@@ -329,7 +324,6 @@ public class TElasticFramedTransport extends TTransport {
         throw new TTransportException(e);
       }
     }
-    writeBuffer.reset();
     underlying.flush();
   }
 
