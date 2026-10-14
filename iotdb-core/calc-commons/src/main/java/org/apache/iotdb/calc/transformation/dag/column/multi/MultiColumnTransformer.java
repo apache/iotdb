@@ -45,7 +45,7 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
     List<Column> childrenColumns = new ArrayList<>(columnTransformerList.size());
     for (ColumnTransformer child : columnTransformerList) {
       child.tryEvaluate();
-      // A later child can clear shared caches; retain each column before evaluating its sibling.
+      // Retain each input column before evaluating the next sibling.
       childrenColumns.add(child.getColumn());
     }
 
@@ -57,12 +57,11 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
+  protected Column evaluateSelection(boolean[] selection) {
     List<Column> childrenColumns = new ArrayList<>();
 
     for (ColumnTransformer child : columnTransformerList) {
-      child.evaluateWithSelection(selection);
-      childrenColumns.add(child.getColumn());
+      childrenColumns.add(child.getColumnWithSelection(selection));
     }
 
     // getColumn() can release the first child's cache; read the retained column's size instead.
@@ -70,11 +69,7 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
 
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     doTransform(childrenColumns, builder, positionCount, selection);
-    initializeColumnCache(builder.build());
-
-    for (ColumnTransformer child : columnTransformerList) {
-      child.clearCache();
-    }
+    return builder.build();
   }
 
   protected abstract void doTransform(

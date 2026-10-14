@@ -36,7 +36,7 @@ public class TimeColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
+  protected Column evaluateSelection(boolean[] selection) {
     ColumnBuilder builder = TIMESTAMP.createColumnBuilder(selection.length);
     Column timeColumn = input.getTimeColumn();
     for (int i = 0; i < selection.length; i++) {
@@ -46,6 +46,6 @@ public class TimeColumnTransformer extends LeafColumnTransformer {
         builder.write(timeColumn, i);
       }
     }
-    initializeColumnCache(builder.build());
+    return builder.build();
   }
 }

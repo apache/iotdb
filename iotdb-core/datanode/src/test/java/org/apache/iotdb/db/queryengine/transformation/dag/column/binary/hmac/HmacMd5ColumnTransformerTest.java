@@ -72,6 +72,7 @@ public class HmacMd5ColumnTransformerTest {
   private ColumnTransformer mockColumnTransformer(Column column) {
     ColumnTransformer mockTransformer = Mockito.mock(ColumnTransformer.class);
     Mockito.when(mockTransformer.getColumn()).thenReturn(column);
+    Mockito.when(mockTransformer.getColumnWithSelection(Mockito.any())).thenReturn(column);
     // Ensure that tryEvaluate (or other evaluation methods) don't throw exceptions
     Mockito.doNothing().when(mockTransformer).tryEvaluate();
     Mockito.doNothing().when(mockTransformer).clearCache();

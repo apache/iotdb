@@ -51,7 +51,6 @@ import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZoneId;
@@ -201,15 +200,14 @@ public class FilterAndProjectOperatorTest {
               projection.input(1))) {
         assertBlock(operator.next(), new Double[] {4.0});
         assertEquals(1, common.fullEvaluationCount);
-        assertEquals(withCase ? 1 : 0, common.selectedEvaluationCount);
+        assertEquals(0, common.selectedEvaluationCount);
         assertBlock(operator.next(), new Double[] {5.0});
         assertEquals(2, common.fullEvaluationCount);
-        assertEquals(withCase ? 2 : 0, common.selectedEvaluationCount);
+        assertEquals(0, common.selectedEvaluationCount);
       }
     }
   }
 
-  @Ignore("Known incorrect DIFF state advancement: https://github.com/apache/iotdb/issues/18863")
   @Test
   public void testStatefulDiffIsNotReevaluatedAfterCaseFilter() throws Exception {
     Graph filter = new Graph();
@@ -381,6 +379,35 @@ public class FilterAndProjectOperatorTest {
   }
 
   @Test
+  public void testSelectedMappableUdfSkipsRejectedRowsWithFullCachedInput() throws Exception {
+    Graph graph = new Graph();
+    ColumnTransformer input = graph.input(0);
+    ColumnTransformer udf =
+        new MappableUDFColumnTransformer(
+            DOUBLE,
+            new ColumnTransformer[] {reference(input)},
+            new UDTFExecutor("test", ZoneId.of("UTC")) {
+              @Override
+              public void execute(Column[] columns, ColumnBuilder builder) {
+                for (int i = 0; i < columns[0].getPositionCount(); i++) {
+                  double value = columns[0].getDouble(i);
+                  org.junit.Assert.assertTrue(value > 0);
+                  builder.writeDouble(value + 1);
+                }
+              }
+
+              @Override
+              public void beforeDestroy() {}
+            });
+    ColumnTransformer output = graph.caseWhen(graph.greaterThan(input, 0), udf, graph.constant(0));
+    try (Operator operator =
+        project(graph, new TsBlock[] {block(-2, 3), block(-4)}, input, output)) {
+      assertBlock(operator.next(), new Double[] {-2.0, 3.0}, new Double[] {0.0, 4.0});
+      assertBlock(operator.next(), new Double[] {-4.0}, new Double[] {0.0});
+    }
+  }
+
+  @Test
   public void testProjectionClearsCachedDescendantsOfNestedCase() throws Exception {
     Graph graph = new Graph();
     ColumnTransformer shared = graph.add(graph.input(0), 0);
@@ -407,6 +434,68 @@ public class FilterAndProjectOperatorTest {
         project(graph, new TsBlock[] {block(-2, 3), block(-4, 5)}, caseWhen, shared)) {
       assertBlock(operator.next(), new Double[] {0.0, 4.0}, new Double[] {-1.0, 4.0});
       assertBlock(operator.next(), new Double[] {0.0, 6.0}, new Double[] {-3.0, 6.0});
+    }
+  }
+
+  @Test
+  public void testTwoCasesUseIndependentMasksForSharedExpression() throws Exception {
+    Graph graph = new Graph();
+    ColumnTransformer input = graph.input(0);
+    ColumnTransformer shared = graph.add(input, 1);
+    ColumnTransformer positive =
+        graph.caseWhen(graph.greaterThan(input, 0), shared, graph.constant(100));
+    ColumnTransformer negative =
+        graph.caseWhen(graph.greaterThan(input, 0), graph.constant(200), shared);
+    try (Operator operator =
+        project(graph, new TsBlock[] {block(-2, 3), block(4, -5)}, positive, negative, shared)) {
+      assertBlock(
+          operator.next(),
+          new Double[] {100.0, 4.0},
+          new Double[] {-1.0, 200.0},
+          new Double[] {-1.0, 4.0});
+      assertBlock(
+          operator.next(),
+          new Double[] {5.0, 100.0},
+          new Double[] {200.0, -4.0},
+          new Double[] {5.0, -4.0});
+    }
+  }
+
+  @Test
+  public void testTwoCasesAndFullOutputShareStatefulDiff() throws Exception {
+    for (boolean reverseOutputs : new boolean[] {false, true}) {
+      Graph graph = new Graph();
+      ColumnTransformer input = graph.input(0);
+      ColumnTransformer diff = new DiffFunctionColumnTransformer(DOUBLE, reference(input), true);
+      ColumnTransformer positive =
+          graph.caseWhen(graph.greaterThan(input, 5), diff, graph.constant(100));
+      ColumnTransformer negative =
+          graph.caseWhen(graph.greaterThan(input, 5), graph.constant(200), diff);
+      ColumnTransformer[] outputs =
+          reverseOutputs
+              ? new ColumnTransformer[] {diff, positive, negative}
+              : new ColumnTransformer[] {positive, negative, diff};
+      try (Operator operator =
+          project(graph, new TsBlock[] {block(1, 3, 6), block(10, 11)}, outputs)) {
+        Double[] firstDiff = {null, 2.0, 3.0};
+        Double[] firstPositive = {100.0, 100.0, 3.0};
+        Double[] firstNegative = {null, 2.0, 200.0};
+        if (reverseOutputs) {
+          assertBlock(operator.next(), firstDiff, firstPositive, firstNegative);
+          assertBlock(
+              operator.next(),
+              new Double[] {4.0, 1.0},
+              new Double[] {4.0, 1.0},
+              new Double[] {200.0, 200.0});
+        } else {
+          assertBlock(operator.next(), firstPositive, firstNegative, firstDiff);
+          assertBlock(
+              operator.next(),
+              new Double[] {4.0, 1.0},
+              new Double[] {200.0, 200.0},
+              new Double[] {4.0, 1.0});
+        }
+      }
     }
   }
 
@@ -697,9 +786,9 @@ public class FilterAndProjectOperatorTest {
     }
 
     @Override
-    public void evaluateWithSelection(boolean[] selection) {
+    protected Column evaluateSelection(boolean[] selection) {
       selectedEvaluationCount++;
-      super.evaluateWithSelection(selection);
+      return super.evaluateSelection(selection);
     }
   }
 

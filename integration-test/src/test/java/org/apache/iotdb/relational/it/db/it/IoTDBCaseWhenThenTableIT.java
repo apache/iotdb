@@ -72,6 +72,7 @@ public class IoTDBCaseWhenThenTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockLineNumber(1);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(SQLs);
     List<String> moreSQLs = new ArrayList<>();
@@ -809,6 +810,45 @@ public class IoTDBCaseWhenThenTableIT {
             + ") > 0 THEN 2.0 ELSE 3.0 END AS b FROM case_sibling_cache ORDER BY time",
         new String[] {"a", "b"},
         new String[] {"0.0,0.0,", "0.0,3.0,", "1.0,4.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testSharedDiffAcrossCaseFilterAndProjection() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_shared_diff (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES "
+              + "(1, 'd0', 1.0), (2, 'd0', 3.0), (3, 'd0', 6.0)",
+          "FLUSH",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES (4, 'd0', 10.0), (5, 'd0', 11.0)",
+          "FLUSH"
+        });
+    tableResultSetEqualTest(
+        "SELECT time, diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN 1.0 ELSE 0.0 END > 0.0",
+        new String[] {"time", "d"},
+        new String[] {
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.004Z,4.0,"
+        },
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN true ELSE true END",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "3.0,", "4.0,", "1.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 5 THEN diff(x) ELSE 100.0 END AS a, "
+            + "CASE WHEN x > 5 THEN 200.0 ELSE diff(x) END AS b, diff(x) AS d "
+            + "FROM case_shared_diff",
+        new String[] {"a", "b", "d"},
+        new String[] {
+          "100.0,null,null,", "100.0,2.0,2.0,", "3.0,200.0,3.0,", "4.0,200.0,4.0,", "1.0,200.0,1.0,"
+        },
         DATABASE);
   }
 }

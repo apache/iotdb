@@ -47,33 +47,54 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     Column[] columns = new Column[inputColumnTransformers.length];
     for (int i = 0; i < inputColumnTransformers.length; i++) {
       inputColumnTransformers[i].tryEvaluate();
-      // A later child can clear shared caches; retain each column before evaluating its sibling.
+      // Retain each input column before evaluating the next sibling.
       columns[i] = inputColumnTransformers[i].getColumn();
     }
-    doTransform(columns);
+    initializeColumnCache(doTransform(columns));
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
+  protected Column evaluateSelection(boolean[] selection) {
+    int[] positions = new int[selection.length];
+    int selectedCount = 0;
+    for (int i = 0; i < selection.length; i++) {
+      if (selection[i]) {
+        positions[selectedCount++] = i;
+      }
+    }
     Column[] columns = new Column[inputColumnTransformers.length];
     for (int i = 0; i < inputColumnTransformers.length; i++) {
-      inputColumnTransformers[i].evaluateWithSelection(selection);
-      columns[i] = inputColumnTransformers[i].getColumn();
+      columns[i] =
+          inputColumnTransformers[i]
+              .getColumnWithSelection(selection)
+              .getPositions(positions, 0, selectedCount);
     }
-    doTransform(columns);
-    // clear cache
-    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
-      inputColumnTransformer.clearCache();
+    ColumnBuilder builder = returnType.createColumnBuilder(selection.length);
+    // A mappable UDF only sees selected rows, even when its inputs reuse full cached columns.
+    Column result = selectedCount == 0 ? null : doTransform(columns);
+    int resultIndex = 0;
+    for (boolean selected : selection) {
+      if (selected) {
+        if (result.isNull(resultIndex)) {
+          builder.appendNull();
+        } else {
+          builder.write(result, resultIndex);
+        }
+        resultIndex++;
+      } else {
+        builder.appendNull();
+      }
     }
+    return builder.build();
   }
 
-  private void doTransform(Column[] columns) {
+  private Column doTransform(Column[] columns) {
     // construct input TsBlock with columns
     int positionCount = columns[0].getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     // executor UDF and cache result
     executor.execute(columns, builder);
-    initializeColumnCache(builder.build());
+    return builder.build();
   }
 
   @Override

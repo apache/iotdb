@@ -46,13 +46,11 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
-    childColumnTransformer.evaluateWithSelection(selection);
-    Column column = childColumnTransformer.getColumn();
+  protected Column evaluateSelection(boolean[] selection) {
+    Column column = childColumnTransformer.getColumnWithSelection(selection);
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(column.getPositionCount());
     doTransform(column, columnBuilder, selection);
-    initializeColumnCache(columnBuilder.build());
-    childColumnTransformer.clearCache();
+    return columnBuilder.build();
   }
 
   public ColumnTransformer getChildColumnTransformer() {

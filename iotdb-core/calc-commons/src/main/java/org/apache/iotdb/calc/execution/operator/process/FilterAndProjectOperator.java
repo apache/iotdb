@@ -165,9 +165,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getFilterTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
-    // Short-circuit evaluation can reset cache reference counts when a shared expression is
-    // recomputed. Invalidate the whole DAG before feeding a new block, including intermediate
-    // expressions whose caches may still have unconsumed references from the previous block.
+    // A selected consumer does not consume full-cache references. Release all results from the
+    // preceding input, including stateful transformers' per-input results, before feeding this
+    // block.
     for (ColumnTransformer columnTransformer : filterCacheTransformers) {
       columnTransformer.clearCacheForNewInput();
     }
@@ -217,20 +217,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
   }
 
-  /**
-   * Materializes common expressions for projection after filtering. CASE may have invalidated their
-   * caches, so any recomputation must preserve the filter mask and skip rejected input rows.
-   *
-   * <p>This mutates both the destination list and transformer cache state: uncached expressions are
-   * evaluated with selection, which can replace or clear descendant caches, and each appended
-   * column is consumed through {@link ColumnTransformer#getColumn()}, decrementing its cache
-   * reference count and possibly releasing the cached reference. Existing cached columns are
-   * reused; this method does not reset the DAG for a new input block.
-   *
-   * <p>Appended columns retain the original input row indexes. The caller must use the same filter
-   * to construct the compacted output block.
-   */
-  public static void appendCommonExpressionColumns(
+  // Selected results belong to this materialization, not the shared full-column caches.
+  private static void appendCommonExpressionColumns(
       List<Column> resultColumns,
       List<ColumnTransformer> commonTransformers,
       Column filterColumn,
@@ -243,8 +231,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
       selection[i] = satisfy(filterColumn, i);
     }
     for (ColumnTransformer transformer : commonTransformers) {
-      transformer.tryEvaluateWithSelection(selection);
-      resultColumns.add(transformer.getColumn());
+      resultColumns.add(transformer.getColumnWithSelection(selection));
     }
   }
 

@@ -32,21 +32,19 @@ public class LogicOrColumnTransformer extends LogicBinaryColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
+  protected Column evaluateSelection(boolean[] selection) {
     boolean[] selectionCopy = selection.clone();
 
-    leftTransformer.evaluateWithSelection(selectionCopy);
-    int positionCount = leftTransformer.getColumnCachePositionCount();
-    Column leftColumn = leftTransformer.getColumn();
+    Column leftColumn = leftTransformer.getColumnWithSelection(selectionCopy);
 
+    int positionCount = leftColumn.getPositionCount();
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && leftColumn.getBoolean(i)) {
         selectionCopy[i] = false;
       }
     }
 
-    rightTransformer.evaluateWithSelection(selectionCopy);
-    Column rightColumn = rightTransformer.getColumn();
+    Column rightColumn = rightTransformer.getColumnWithSelection(selectionCopy);
 
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
 
@@ -78,9 +76,7 @@ public class LogicOrColumnTransformer extends LogicBinaryColumnTransformer {
       }
     }
 
-    initializeColumnCache(builder.build());
-    this.leftTransformer.clearCache();
-    this.rightTransformer.clearCache();
+    return builder.build();
   }
 
   @Override

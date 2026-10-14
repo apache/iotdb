@@ -45,7 +45,6 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.appendCommonExpressionColumns;
 import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
 public class DeviceAttributeUpdater extends DeviceUpdater {
@@ -153,8 +152,15 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     final List<Column> filterResultColumns =
         new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
 
-    appendCommonExpressionColumns(
-        filterResultColumns, commonTransformerList, curFilterColumn, deviceSchemaBatch.size());
+    if (!commonTransformerList.isEmpty()) {
+      boolean[] selection = new boolean[deviceSchemaBatch.size()];
+      for (int i = 0; i < selection.length; i++) {
+        selection[i] = !curFilterColumn.isNull(i) && curFilterColumn.getBoolean(i);
+      }
+      for (ColumnTransformer transformer : commonTransformerList) {
+        filterResultColumns.add(transformer.getColumnWithSelection(selection));
+      }
+    }
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
 
     final int rowCount =

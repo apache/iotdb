@@ -47,7 +47,7 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
     // attention: get positionCount before calling getColumn
     int positionCount = leftTransformer.getColumnCachePositionCount();
     Column leftColumn = leftTransformer.getColumn();
-    // A later child can clear shared caches; retain each column before evaluating its sibling.
+    // Retain each input column before evaluating the next sibling.
     rightTransformer.tryEvaluate();
     Column rightColumn = rightTransformer.getColumn();
 
@@ -57,21 +57,14 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
-    leftTransformer.evaluateWithSelection(selection);
-    // attention: get positionCount before calling getColumn
-    int positionCount = leftTransformer.getColumnCachePositionCount();
-    Column leftColumn = leftTransformer.getColumn();
-    // When the rightTransformer has the same constant as the leftTransformer, the leftTransformer's
-    // cache will be cleared, so need to getColumn before evaluate rightTransformer.
-    rightTransformer.evaluateWithSelection(selection);
-    Column rightColumn = rightTransformer.getColumn();
+  protected Column evaluateSelection(boolean[] selection) {
+    Column leftColumn = leftTransformer.getColumnWithSelection(selection);
+    Column rightColumn = rightTransformer.getColumnWithSelection(selection);
 
+    int positionCount = leftColumn.getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     doTransform(leftColumn, rightColumn, builder, positionCount, selection);
-    initializeColumnCache(builder.build());
-    this.leftTransformer.clearCache();
-    this.rightTransformer.clearCache();
+    return builder.build();
   }
 
   protected abstract void doTransform(

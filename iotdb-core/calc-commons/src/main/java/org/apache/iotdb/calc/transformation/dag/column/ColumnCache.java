@@ -62,4 +62,8 @@ public class ColumnCache {
   public boolean hasCached() {
     return column != null;
   }
+
+  public Column peekColumn() {
+    return column;
+  }
 }

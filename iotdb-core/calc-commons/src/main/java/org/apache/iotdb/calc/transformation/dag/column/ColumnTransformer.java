@@ -40,6 +40,9 @@ public abstract class ColumnTransformer {
 
   protected final ColumnCache columnCache;
 
+  // Compatibility with the evaluateWithSelection()/getColumn() API. Never used as a full cache.
+  private ColumnCache selectedColumnCache;
+
   protected int referenceCount;
 
   protected ColumnTransformer(Type returnType) {
@@ -49,20 +52,39 @@ public abstract class ColumnTransformer {
   }
 
   public void tryEvaluate() {
+    selectedColumnCache = null;
     if (!columnCache.hasCached()) {
       evaluate();
     }
   }
 
-  /** Reuses the cached column, or evaluates with the selection if it was invalidated. */
+  /**
+   * @deprecated Use {@link #getColumnWithSelection(boolean[])} to retain the result directly.
+   */
+  @Deprecated
   public void tryEvaluateWithSelection(boolean[] selection) {
+    selectedColumnCache = null;
     if (!columnCache.hasCached()) {
       evaluateWithSelection(selection);
     }
   }
 
   public Column getColumn() {
+    if (selectedColumnCache != null) {
+      return selectedColumnCache.getColumn();
+    }
     return columnCache.getColumn();
+  }
+
+  /**
+   * Returns a column whose selected rows are evaluated, without consuming or replacing the shared
+   * full-column cache. Unselected rows are unspecified. Callers must retain the returned column and
+   * only read selected rows. Partial results belong to the caller, so different CASE branches can
+   * use different masks without invalidating one another's columns.
+   */
+  public Column getColumnWithSelection(boolean[] selection) {
+    Column fullColumn = columnCache.peekColumn();
+    return fullColumn != null ? fullColumn : evaluateSelection(selection);
   }
 
   public void addReferenceCount() {
@@ -70,10 +92,14 @@ public abstract class ColumnTransformer {
   }
 
   public void initializeColumnCache(Column column) {
+    selectedColumnCache = null;
     columnCache.cacheColumn(column, referenceCount);
   }
 
   public int getColumnCachePositionCount() {
+    if (selectedColumnCache != null) {
+      return selectedColumnCache.getPositionCount();
+    }
     return columnCache.getPositionCount();
   }
 
@@ -118,25 +144,35 @@ public abstract class ColumnTransformer {
   /** Responsible for the calculation. */
   protected abstract void evaluate();
 
-  public abstract void evaluateWithSelection(boolean[] selection);
+  /**
+   * @deprecated Use {@link #getColumnWithSelection(boolean[])} to retain the result directly.
+   */
+  @Deprecated
+  public void evaluateWithSelection(boolean[] selection) {
+    Column result = getColumnWithSelection(selection);
+    selectedColumnCache = new ColumnCache();
+    selectedColumnCache.cacheColumn(result, referenceCount);
+  }
+
+  protected abstract Column evaluateSelection(boolean[] selection);
 
   protected abstract void checkType();
 
   public void close() {
-    // do nothing
+    columnCache.clear();
+    selectedColumnCache = null;
   }
 
   /**
-   * Clears caches during evaluation. Subclasses should define child edges via {@link
+   * Clears cached results in this subgraph. Subclasses should define child edges via {@link
    * #forEachChild(Consumer)} instead of overriding this method.
    *
    * <p>Kept non-final so existing Mockito-based tests can stub it.
    */
   public void clearCache() {
+    selectedColumnCache = null;
     this.columnCache.clear();
-    if (shouldClearChildrenCache()) {
-      forEachChild(ColumnTransformer::clearCache);
-    }
+    forEachChild(ColumnTransformer::clearCache);
   }
 
   /**
@@ -145,7 +181,14 @@ public abstract class ColumnTransformer {
    * the new block, when no sibling expression can still need a cached column.
    */
   public final void clearCacheForNewInput() {
+    selectedColumnCache = null;
     this.columnCache.clear();
+    resetForNewInput();
+  }
+
+  /** Releases input-specific state while preserving state carried between blocks, such as DIFF. */
+  protected void resetForNewInput() {
+    // Stateless transformers only need their shared cache cleared.
   }
 
   /**
@@ -170,10 +213,6 @@ public abstract class ColumnTransformer {
     }
   }
 
-  protected boolean shouldClearChildrenCache() {
-    return true;
-  }
-
-  /** Defines the child edges used by both evaluation-time and new-input cache clearing. */
+  /** Defines the child edges used for cache clearing and input lifecycle management. */
   protected abstract void forEachChild(Consumer<ColumnTransformer> action);
 }
