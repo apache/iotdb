@@ -50,18 +50,21 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 /**
  * Tracks persistently placed physical chunk ranges for a staged TsFile during distributed LOAD.
  * Guarantees idempotency, crash-recovery, and hole-detection before file sealing.
+ *
+ * <p>An instance queues the records of the piece being staged in memory and appends them to its
+ * file once per piece: every stream it opens is closed in the method that opened it, so no file
+ * handle outlives the call, and a failure while writing cannot leak one.
  */
 public class LoadTsFileProgress {
 
@@ -81,10 +84,17 @@ public class LoadTsFileProgress {
 
   private final List<ChunkRangeRecord> records = new ArrayList<>();
   private final Set<Long> recordedChunkOffsets = new HashSet<>();
-  private final Map<Long, Long> chunkOffset2SearchIndex = new HashMap<>();
 
-  /** Records built by {@link #queueChunk} and not yet appended by {@link #flushQueuedRecords}. */
-  private final List<PendingChunkRecord> queuedChunkRecords = new ArrayList<>();
+  /**
+   * Records built by {@link #queueChunk} and not yet appended by {@link #flushQueuedRecords}. The
+   * search index travels in the record itself, so nothing else has to be kept in step with it.
+   */
+  private final List<ChunkRangeRecord> queuedChunkRecords = new ArrayList<>();
+
+  /** Buffer and stream reused to build one entry; written by one thread at a time. */
+  private final PublicBAOS entryBuffer = new PublicBAOS();
+
+  private final DataOutputStream entryPayloadStream = new DataOutputStream(entryBuffer);
 
   private boolean recordsLoaded;
   private long maxPhysicalEnd = -1L;
@@ -167,10 +177,10 @@ public class LoadTsFileProgress {
       final long actualPhysicalStart,
       final long searchIndex)
       throws IOException {
-    ensureActivated();
-
-    final ByteBuffer chunkHeaderBody = serializeChunkHeader(chunk);
-    final ByteBuffer statisticsBody = serializeStatistics(chunk);
+    // Nothing is written here: the append in flushQueuedRecords() activates the file, so queueing a
+    // chunk costs no file access at all.
+    final byte[] chunkHeaderBody = serializeChunkHeader(chunk);
+    final byte[] statisticsBody = serializeStatistics(chunk);
     final IDeviceID normalizedDevice =
         device instanceof StringArrayDeviceID ? device : new StringArrayDeviceID(device.toString());
 
@@ -186,14 +196,14 @@ public class LoadTsFileProgress {
             chunkHeaderBody,
             statisticsBody,
             actualPhysicalStart,
-            dataEnd);
+            dataEnd,
+            searchIndex);
 
-    queuedChunkRecords.add(new PendingChunkRecord(record, searchIndex));
+    queuedChunkRecords.add(record);
     // The in-memory state follows the queue, so hasChunkAt() also sees the chunks being staged;
     // only the file is written later, see flushQueuedRecords().
     records.add(record);
     recordedChunkOffsets.add(chunkOffset);
-    chunkOffset2SearchIndex.put(chunkOffset, searchIndex);
     maxPhysicalEnd = Math.max(maxPhysicalEnd, record.physicalEnd());
     lastRecordedSearchIndex = Math.max(lastRecordedSearchIndex, searchIndex);
   }
@@ -205,12 +215,16 @@ public class LoadTsFileProgress {
     }
     ensureActivated();
     int written = 0;
-    try (final DataOutputStream output =
-        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(progressFile, true)))) {
-      for (final PendingChunkRecord pending : queuedChunkRecords) {
-        writeChunkEntry(pending.record(), pending.searchIndex(), output);
+    try (final FileOutputStream fos = new FileOutputStream(progressFile, true);
+        final DataOutputStream output = new DataOutputStream(new BufferedOutputStream(fos))) {
+      for (final ChunkRangeRecord pending : queuedChunkRecords) {
+        writeChunkEntry(pending, output);
         written++;
       }
+      output.flush();
+      // The caller forced the bytes of the piece first, so a record never reaches the disk before
+      // the bytes it describes.
+      fos.getFD().sync();
     } finally {
       queuedChunkRecords.subList(0, written).clear();
     }
@@ -244,8 +258,8 @@ public class LoadTsFileProgress {
   public void recordTerminal(final LoadTsFileConsensusOp op, final long searchIndex)
       throws IOException {
     ensureActivated();
-    try (final DataOutputStream out =
-        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(progressFile, true)))) {
+    try (final FileOutputStream fos = new FileOutputStream(progressFile, true);
+        final DataOutputStream out = new DataOutputStream(new BufferedOutputStream(fos))) {
       // Entry layout: [Total Length (4B)] [Version (1B)] [Op (4B)] [SearchIndex (8B)]
       final int payloadSize = 1 + Integer.BYTES + Long.BYTES;
       ReadWriteIOUtils.write(payloadSize, out);
@@ -253,6 +267,9 @@ public class LoadTsFileProgress {
       // The code of the command, not the ordinal: codes are never renumbered.
       ReadWriteIOUtils.write(op.getCode(), out);
       ReadWriteIOUtils.write(searchIndex, out);
+      out.flush();
+      // The record a restart reads to release this directory has to be durable.
+      fos.getFD().sync();
     }
   }
 
@@ -281,10 +298,6 @@ public class LoadTsFileProgress {
 
   public long getTotalLength() {
     return maxPhysicalEnd;
-  }
-
-  public long getChunkSearchIndex(final long chunkOffset) {
-    return chunkOffset2SearchIndex.getOrDefault(chunkOffset, -1L);
   }
 
   public long getLastRecordedSearchIndex() {
@@ -372,8 +385,9 @@ public class LoadTsFileProgress {
     }
 
     final List<ChunkRangeRecord> loadedRecords = new ArrayList<>();
-    try (final DataInputStream in =
-        new DataInputStream(new BufferedInputStream(new FileInputStream(progressFile)))) {
+    try (final CountingInputStream countingIn =
+            new CountingInputStream(new BufferedInputStream(new FileInputStream(progressFile)));
+        final DataInputStream in = new DataInputStream(countingIn)) {
       final String magic = ReadWriteIOUtils.readString(in);
       if (!MAGIC.equals(magic)) {
         throw new IOException(
@@ -392,21 +406,17 @@ public class LoadTsFileProgress {
                   entryLength));
         }
 
+        final long entryBodyStart = countingIn.getBytesRead();
         final byte version = in.readByte();
         if (version == ENTRY_VERSION_CHUNK) {
           final ChunkRangeRecord record = ChunkRangeRecord.deserializePayload(in);
           loadedRecords.add(record);
-          final long entrySearchIndex = ReadWriteIOUtils.readLong(in);
-          chunkOffset2SearchIndex.put(record.chunkOffset(), entrySearchIndex);
-          lastRecordedSearchIndex = Math.max(lastRecordedSearchIndex, entrySearchIndex);
-        } else if (version == ENTRY_VERSION_TERMINAL) {
-          in.skipBytes(entryLength - 1);
-        } else {
-          throw new IOException(
-              String.format(
-                  StorageEngineMessages.EXCEPTION_INVALID_LOAD_PROGRESS_FILE_ARG_15643A3E,
-                  progressFile));
+          lastRecordedSearchIndex = Math.max(lastRecordedSearchIndex, record.searchIndex());
         }
+        // Step over whatever is left of the entry: a version this build does not know, or a known
+        // one that gained a field, is skipped instead of being misread as the next entry.
+        skipEntryRemainder(
+            in, countingIn.getBytesRead() - entryBodyStart, entryLength, progressFile);
       }
     }
 
@@ -421,10 +431,10 @@ public class LoadTsFileProgress {
     }
     // The records queued for the piece being staged are not in the file yet: the state is what is
     // staged, so they are kept.
-    for (final PendingChunkRecord pending : queuedChunkRecords) {
-      records.add(pending.record());
-      recordedChunkOffsets.add(pending.record().chunkOffset());
-      maxPhysicalEnd = Math.max(maxPhysicalEnd, pending.record().physicalEnd());
+    for (final ChunkRangeRecord pending : queuedChunkRecords) {
+      records.add(pending);
+      recordedChunkOffsets.add(pending.chunkOffset());
+      maxPhysicalEnd = Math.max(maxPhysicalEnd, pending.physicalEnd());
     }
     recordsLoaded = true;
     return loadedRecords;
@@ -458,8 +468,9 @@ public class LoadTsFileProgress {
           final int opCode = ReadWriteIOUtils.readInt(in);
           final long searchIndex = ReadWriteIOUtils.readLong(in);
           terminal = new TerminalRecord(LoadTsFileConsensusOp.fromCode(opCode), searchIndex);
+          skipEntryRemainder(in, 1L + Integer.BYTES + Long.BYTES, entryLength, progressFile);
         } else {
-          in.skipBytes(entryLength - 1);
+          skipEntryRemainder(in, 1L, entryLength, progressFile);
         }
       }
     }
@@ -538,6 +549,33 @@ public class LoadTsFileProgress {
     }
   }
 
+  /**
+   * Steps over the bytes of an entry this build did not read: {@code consumed} covers the version
+   * and every field that was parsed, and the rest of the declared entry length is skipped.
+   */
+  private static void skipEntryRemainder(
+      final DataInputStream in, final long consumed, final int entryLength, final File progressFile)
+      throws IOException {
+    final long remaining = entryLength - consumed;
+    if (remaining < 0) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.EXCEPTION_INVALID_PROGRESS_ENTRY_LENGTH_ARG_E9A96035,
+              entryLength));
+    }
+    long skipped = 0;
+    while (skipped < remaining) {
+      final long step = in.skip(remaining - skipped);
+      if (step <= 0) {
+        throw new IOException(
+            String.format(
+                StorageEngineMessages.EXCEPTION_INVALID_LOAD_PROGRESS_FILE_ARG_15643A3E,
+                progressFile));
+      }
+      skipped += step;
+    }
+  }
+
   private static void skipUuid(final DataInputStream in) throws IOException {
     final int uuidLength = ReadWriteIOUtils.readInt(in);
     if (uuidLength > 0) {
@@ -550,7 +588,7 @@ public class LoadTsFileProgress {
   // -------------------------------------------------------------------------
 
   /** Serializes the chunk header body, that is the header without its leading chunk-type byte. */
-  private static ByteBuffer serializeChunkHeader(final Chunk chunk) throws IOException {
+  private static byte[] serializeChunkHeader(final Chunk chunk) throws IOException {
     try (final PublicBAOS out = new PublicBAOS()) {
       chunk.getHeader().serializeTo(out);
       // Drop the leading chunk-type byte: deserializeFrom takes it separately.
@@ -564,29 +602,25 @@ public class LoadTsFileProgress {
                 out.size(),
                 bodySize));
       }
-      return ByteBuffer.wrap(out.getBuf(), out.size() - bodySize, bodySize);
+      return Arrays.copyOfRange(out.getBuf(), out.size() - bodySize, out.size());
     }
   }
 
-  private static ByteBuffer serializeStatistics(final Chunk chunk) throws IOException {
+  private static byte[] serializeStatistics(final Chunk chunk) throws IOException {
     try (final PublicBAOS out = new PublicBAOS()) {
       chunk.getChunkStatistic().serialize(out);
-      return ByteBuffer.wrap(out.getBuf(), 0, out.size());
+      return Arrays.copyOf(out.getBuf(), out.size());
     }
   }
 
-  private static void writeChunkEntry(
-      final ChunkRangeRecord record, final long searchIndex, final DataOutputStream out)
+  private void writeChunkEntry(final ChunkRangeRecord record, final DataOutputStream out)
       throws IOException {
-    final PublicBAOS payloadOut = new PublicBAOS();
-    try (final DataOutputStream payloadStream = new DataOutputStream(payloadOut)) {
-      record.serializePayload(payloadStream);
-      ReadWriteIOUtils.write(searchIndex, payloadStream);
-    }
-    ReadWriteIOUtils.write(payloadOut.size() + 1, out); // +1 for version byte
+    entryBuffer.reset();
+    record.serializePayload(entryPayloadStream);
+    ReadWriteIOUtils.write(entryBuffer.size() + 1, out); // +1 for the version byte
     out.writeByte(ENTRY_VERSION_CHUNK);
-    // The bytes of the payload are written straight out of the buffer they were built in.
-    out.write(payloadOut.getBuf(), 0, payloadOut.size());
+    // The bytes of the payload are written straight out of the reused buffer.
+    out.write(entryBuffer.getBuf(), 0, entryBuffer.size());
   }
 
   /** Deserializes a chunk header; the input is read through a duplicate, never consumed. */
@@ -641,16 +675,16 @@ public class LoadTsFileProgress {
     private final byte chunkType;
 
     /** Chunk header body, see {@link #serializeChunkHeader(Chunk)}; must not be modified. */
-    private final ByteBuffer chunkHeaderBody;
+    private final byte[] chunkHeaderBody;
 
     /** Statistics of the chunk, with the ownership rule of {@link #chunkHeaderBody}. */
-    private final ByteBuffer statisticsBody;
+    private final byte[] statisticsBody;
 
     private final long physicalStart;
     private final long physicalEnd;
 
-    /** Cached size of {@link #chunkHeaderBody}; negative means not computed yet. */
-    private transient int cachedChunkHeaderSize = -1;
+    /** The command that brought this chunk: kept here, not in a map keyed by the offset. */
+    private final long searchIndex;
 
     public ChunkRangeRecord(
         final IDeviceID device,
@@ -660,10 +694,11 @@ public class LoadTsFileProgress {
         final boolean firstChunkOfGroup,
         final TSDataType dataType,
         final byte chunkType,
-        final ByteBuffer chunkHeaderBody,
-        final ByteBuffer statisticsBody,
+        final byte[] chunkHeaderBody,
+        final byte[] statisticsBody,
         final long physicalStart,
-        final long physicalEnd) {
+        final long physicalEnd,
+        final long searchIndex) {
       this.device =
           Objects.requireNonNull(
               device, DataNodeQueryMessages.EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6);
@@ -677,6 +712,7 @@ public class LoadTsFileProgress {
       this.statisticsBody = statisticsBody;
       this.physicalStart = physicalStart;
       this.physicalEnd = physicalEnd;
+      this.searchIndex = searchIndex;
     }
 
     public String device() {
@@ -711,14 +747,14 @@ public class LoadTsFileProgress {
       return chunkType;
     }
 
-    /** {@link #chunkHeaderBody}, as a view so that reading it cannot consume the stored buffer. */
+    /** {@link #chunkHeaderBody}, as a view so that reading it cannot consume the stored bytes. */
     public ByteBuffer chunkHeaderBody() {
-      return chunkHeaderBody.duplicate();
+      return ByteBuffer.wrap(chunkHeaderBody);
     }
 
     /** {@link #statisticsBody}, as a view for the reason given at {@link #chunkHeaderBody()}. */
     public ByteBuffer statisticsBody() {
-      return statisticsBody.duplicate();
+      return ByteBuffer.wrap(statisticsBody);
     }
 
     public long physicalStart() {
@@ -729,26 +765,14 @@ public class LoadTsFileProgress {
       return physicalEnd;
     }
 
+    /** The bytes of the chunk the record covers, read off the header body it stored. */
     public long dataLength() {
-      return physicalEnd - chunkOffset - chunkHeaderSize();
+      // One leading byte is the chunk type, which the stored body does not repeat.
+      return physicalEnd - chunkOffset - chunkHeaderBody.length - 1L;
     }
 
-    /** Size of the header body, cached on the first {@link #dataLength()} call. */
-    private int chunkHeaderSize() {
-      int size = cachedChunkHeaderSize;
-      if (size < 0) {
-        size = deserializeHeaderSizeSafe();
-        cachedChunkHeaderSize = size;
-      }
-      return size;
-    }
-
-    private int deserializeHeaderSizeSafe() {
-      try {
-        return deserializeChunkHeader(chunkType, chunkHeaderBody).getSerializedSize() - 1;
-      } catch (final IOException e) {
-        throw new IllegalStateException(e);
-      }
+    public long searchIndex() {
+      return searchIndex;
     }
 
     public void serializePayload(final DataOutputStream output) throws IOException {
@@ -763,20 +787,14 @@ public class LoadTsFileProgress {
       writeBody(statisticsBody, output);
       ReadWriteIOUtils.write(physicalStart, output);
       ReadWriteIOUtils.write(physicalEnd, output);
+      ReadWriteIOUtils.write(searchIndex, output);
     }
 
     /** Writes the length of {@code body} and its bytes, on the format of {@link #readByteArray}. */
-    private static void writeBody(final ByteBuffer body, final DataOutputStream output)
+    private static void writeBody(final byte[] body, final DataOutputStream output)
         throws IOException {
-      final ByteBuffer view = body.duplicate();
-      ReadWriteIOUtils.write(view.remaining(), output);
-      if (view.hasArray()) {
-        output.write(view.array(), view.arrayOffset() + view.position(), view.remaining());
-      } else {
-        final byte[] bytes = new byte[view.remaining()];
-        view.get(bytes);
-        output.write(bytes);
-      }
+      ReadWriteIOUtils.write(body.length, output);
+      output.write(body);
     }
 
     public static ChunkRangeRecord deserializePayload(final DataInputStream input)
@@ -788,10 +806,11 @@ public class LoadTsFileProgress {
       final boolean firstChunkOfGroup = ReadWriteIOUtils.readBool(input);
       final TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readInt(input)];
       final byte chunkType = input.readByte();
-      final ByteBuffer chunkHeaderBody = readByteArray(input);
-      final ByteBuffer statisticsBody = readByteArray(input);
+      final byte[] chunkHeaderBody = readByteArray(input);
+      final byte[] statisticsBody = readByteArray(input);
       final long physicalStart = ReadWriteIOUtils.readLong(input);
       final long physicalEnd = ReadWriteIOUtils.readLong(input);
+      final long searchIndex = ReadWriteIOUtils.readLong(input);
       return new ChunkRangeRecord(
           device,
           aligned,
@@ -803,10 +822,11 @@ public class LoadTsFileProgress {
           chunkHeaderBody,
           statisticsBody,
           physicalStart,
-          physicalEnd);
+          physicalEnd,
+          searchIndex);
     }
 
-    private static ByteBuffer readByteArray(final DataInputStream input) throws IOException {
+    private static byte[] readByteArray(final DataInputStream input) throws IOException {
       final int length = ReadWriteIOUtils.readInt(input);
       if (length < 0) {
         throw new IOException(
@@ -814,14 +834,11 @@ public class LoadTsFileProgress {
       }
       final byte[] bytes = new byte[length];
       input.readFully(bytes);
-      return ByteBuffer.wrap(bytes);
+      return bytes;
     }
   }
 
   public record TerminalRecord(LoadTsFileConsensusOp op, long searchIndex) {}
-
-  /** One chunk record waiting to be appended, with the search index it is stamped with. */
-  private record PendingChunkRecord(ChunkRangeRecord record, long searchIndex) {}
 
   /** Stream decorator tracking total read byte count without loading file into memory. */
   private static final class CountingInputStream extends FilterInputStream {

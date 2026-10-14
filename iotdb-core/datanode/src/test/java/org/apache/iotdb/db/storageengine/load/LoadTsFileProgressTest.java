@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -26,11 +28,16 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 public class LoadTsFileProgressTest {
@@ -74,6 +81,87 @@ public class LoadTsFileProgressTest {
 
     Files.deleteIfExists(tsFile.toPath());
     Files.deleteIfExists(LoadTsFileProgress.progressFileFor(tsFile).toPath());
+  }
+
+  @Test
+  public void testAnEntryOfAnUnknownVersionIsSteppedOver() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-unknown", ".tsfile").toFile();
+    try {
+      final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
+      progress.recordChunk(
+          new StringArrayDeviceID("root", "sg", "d1"),
+          false,
+          7L,
+          30L,
+          true,
+          createChunk(),
+          40L,
+          1L);
+
+      // An entry a later version may introduce: this build has to step over it and keep reading.
+      final byte[] body = {1, 2, 3, 4};
+      try (final DataOutputStream out =
+          new DataOutputStream(new FileOutputStream(progress.getProgressFile(), true))) {
+        ReadWriteIOUtils.write(body.length + 1, out);
+        out.writeByte(99);
+        out.write(body);
+      }
+      new LoadTsFileProgress(tsFile).recordTerminal(LoadTsFileConsensusOp.COMMIT, 5L);
+
+      Assert.assertEquals(1, new LoadTsFileProgress(tsFile).readAllRecords().size());
+      final LoadTsFileProgress.TerminalRecord terminal =
+          LoadTsFileProgress.readTerminal(progress.getProgressFile());
+      Assert.assertNotNull("the scan must reach the terminal after the unknown entry", terminal);
+      Assert.assertEquals(5L, terminal.searchIndex());
+    } finally {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(LoadTsFileProgress.progressFileFor(tsFile).toPath());
+    }
+  }
+
+  @Test
+  public void testATrailingFieldOfAChunkEntryIsSteppedOver() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-field", ".tsfile").toFile();
+    try {
+      final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
+      progress.recordChunk(
+          new StringArrayDeviceID("root", "sg", "d1"),
+          false,
+          7L,
+          30L,
+          true,
+          createChunk(),
+          40L,
+          1L);
+
+      // Grow the entry the way a later version would when it gains a field: same fields, a longer
+      // declared length, and the extra bytes inside the entry.
+      final byte[] extra = {7, 7, 7};
+      final int entryStart =
+          4
+              + "LTPROG1".length()
+              + Integer.BYTES
+              + tsFile.getParentFile().getName().getBytes(StandardCharsets.UTF_8).length;
+      final File progressFile = progress.getProgressFile();
+      try (final RandomAccessFile file = new RandomAccessFile(progressFile, "rw")) {
+        file.seek(entryStart);
+        final int declaredLength = file.readInt();
+        file.seek(entryStart);
+        file.writeInt(declaredLength + extra.length);
+        file.seek(file.length());
+        file.write(extra);
+      }
+      new LoadTsFileProgress(tsFile).recordTerminal(LoadTsFileConsensusOp.COMMIT, 6L);
+
+      Assert.assertEquals(1, new LoadTsFileProgress(tsFile).readAllRecords().size());
+      final LoadTsFileProgress.TerminalRecord terminal =
+          LoadTsFileProgress.readTerminal(progressFile);
+      Assert.assertNotNull("the reader must step over the extra field", terminal);
+      Assert.assertEquals(6L, terminal.searchIndex());
+    } finally {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(LoadTsFileProgress.progressFileFor(tsFile).toPath());
+    }
   }
 
   private static Chunk createChunk() {

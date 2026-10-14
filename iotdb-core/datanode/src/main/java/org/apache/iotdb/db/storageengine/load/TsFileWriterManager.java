@@ -408,6 +408,9 @@ final class TsFileWriterManager {
   private void flush() throws IOException {
     for (final TsFilePrecalculatedChunkWriter writer : dataPartition2Writer.values()) {
       writer.getOutput().flush();
+      // Forced before the progress records are appended: their fsync only tells the truth if the
+      // bytes they describe are already on the disk.
+      writer.getOutput().force();
     }
   }
 
