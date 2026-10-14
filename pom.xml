@@ -728,7 +728,7 @@
                             <!-- generated certificates and private keys used only by C++ TLS tests -->
                             <exclude>**/client-cpp/test/fixtures/**</exclude>
                             <!-- Bundled license texts for the ODBC binary package. -->
-                            <exclude>iotdb-client/odbc/licenses/**</exclude>
+                            <exclude>**/odbc/licenses/**</exclude>
                             <exclude>test/fixtures/**/*.crt</exclude>
                             <exclude>test/fixtures/**/*.key</exclude>
                             <!-- bundled third-party NOTICE / license texts for the AINode package -->
