@@ -320,7 +320,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                       measurement,
                       meta.getStatistics().getStartTime(),
                       meta.getStatistics().getEndTime(),
-                      currentModifications);
+                      currentModifications,
+                      false);
                 } catch (IOException e) {
                   LOGGER.warn(
                       DataNodePipeMessages.FAILED_TO_READ_METADATA_FOR_DEVICEID_MEASUREMENT,
