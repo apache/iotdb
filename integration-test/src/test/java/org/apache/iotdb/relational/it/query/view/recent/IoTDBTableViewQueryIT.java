@@ -340,7 +340,7 @@ public class IoTDBTableViewQueryIT {
           true);
       // empty result
       compareQueryResults(
-          session, "select * from view3 limit 1", "select * from table1 limit 0", true);
+          session, "select * from view3 limit 1", "select * from table1 where battery = 'b'", true);
 
       // not exists
       compareQueryResults(
