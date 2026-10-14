@@ -26,6 +26,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
@@ -36,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
@@ -107,5 +111,55 @@ public class ParallelizeGroupingTest {
     } finally {
       resource.closeByQueryExecution();
     }
+  }
+
+  @Test
+  public void testUnionDoesNotInheritFirstBranchGrouping() {
+    Symbol key = new Symbol("key");
+    OrderingScheme ordering =
+        new OrderingScheme(ImmutableList.of(key), ImmutableMap.of(key, ASC_NULLS_LAST));
+    PlanNode left =
+        new SortNode(
+            new PlanNodeId("leftSort"),
+            new ValuesNode(new PlanNodeId("left"), ImmutableList.of(key), ImmutableList.of()),
+            ordering,
+            false,
+            false);
+    PlanNode right =
+        new SortNode(
+            new PlanNodeId("rightSort"),
+            new ValuesNode(new PlanNodeId("right"), ImmutableList.of(key), ImmutableList.of()),
+            ordering,
+            false,
+            false);
+    UnionNode union =
+        new UnionNode(
+            new PlanNodeId("union"),
+            ImmutableList.of(left, right),
+            ImmutableListMultimap.of(key, key, key, key),
+            ImmutableList.of(key));
+    assertTrue(
+        optimizeGroup(new GroupNode(new PlanNodeId("group"), union, ordering, 1))
+            instanceof SortNode);
+    // An explicit sort above the fan-in restores the grouping property.
+    SortNode restored = new SortNode(new PlanNodeId("restored"), union, ordering, false, false);
+    assertTrue(
+        optimizeGroup(new GroupNode(new PlanNodeId("group2"), restored, ordering, 1))
+            instanceof GroupNode);
+  }
+
+  private PlanNode optimizeGroup(GroupNode group) {
+    return new ParallelizeGrouping()
+        .optimize(
+            group,
+            new PlanOptimizer.Context(
+                SESSION_INFO,
+                new Analysis(null, Collections.emptyMap()),
+                TEST_MATADATA,
+                new MPPQueryContext(new QueryId("group_union")),
+                new SymbolAllocator(),
+                new QueryId("group_union"),
+                WarningCollector.NOOP,
+                PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
   }
 }

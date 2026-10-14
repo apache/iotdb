@@ -133,7 +133,7 @@ public class LocalExecutionPlanner {
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
+    context.setExchangeMemoryLimits();
 
     return context.getPipelineDriverFactories();
   }
@@ -166,7 +166,7 @@ public class LocalExecutionPlanner {
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
+    context.setExchangeMemoryLimits();
 
     return context.getPipelineDriverFactories();
   }

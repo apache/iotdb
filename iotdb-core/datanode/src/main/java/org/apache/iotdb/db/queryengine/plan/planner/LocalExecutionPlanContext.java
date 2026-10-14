@@ -32,8 +32,10 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.PipelineSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -47,8 +49,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
@@ -70,7 +70,6 @@ import static java.util.Objects.requireNonNull;
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
   // Save operators in this pipeline, a new one will be created when creating another pipeline
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
@@ -83,6 +82,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private List<PipelineDriverFactory> pipelineDriverFactories;
   private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
+  private final long inputMaxBytes;
+  private final long outputMaxBytes;
 
   private List<TSDataType> cachedDataTypes;
 
@@ -110,6 +111,10 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
       TypeProvider typeProvider,
       FragmentInstanceContext instanceContext,
       DataNodeQueryContext dataNodeQueryContext) {
+    long fragmentExchangeMaxBytes =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    this.inputMaxBytes = MemorySide.INPUT.getMaxBytes(fragmentExchangeMaxBytes);
+    this.outputMaxBytes = MemorySide.OUTPUT.getMaxBytes(fragmentExchangeMaxBytes);
     this.typeProvider = typeProvider;
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.nextOperatorId = new AtomicInteger(0);
@@ -121,6 +126,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
 
   // For creating subContext, differ from parent context mainly in driver context
   public LocalExecutionPlanContext(LocalExecutionPlanContext parentContext) {
+    this.inputMaxBytes = parentContext.inputMaxBytes;
+    this.outputMaxBytes = parentContext.outputMaxBytes;
     this.nextOperatorId = parentContext.nextOperatorId;
     this.typeProvider = parentContext.typeProvider;
     this.allSensorsMap = parentContext.allSensorsMap;
@@ -142,6 +149,10 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
       final TypeProvider typeProvider,
       final FragmentInstanceContext instanceContext,
       final ISchemaRegion schemaRegion) {
+    long fragmentExchangeMaxBytes =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    this.inputMaxBytes = MemorySide.INPUT.getMaxBytes(fragmentExchangeMaxBytes);
+    this.outputMaxBytes = MemorySide.OUTPUT.getMaxBytes(fragmentExchangeMaxBytes);
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = typeProvider;
     this.nextOperatorId = new AtomicInteger(0);
@@ -247,10 +258,12 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.exchangeSumNum = exchangeSumNum;
   }
 
-  public long getMaxBytesOneHandleCanReserve() {
-    long maxBytesPerFI =
-        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
-    return exchangeSumNum == 0 ? maxBytesPerFI : maxBytesPerFI / exchangeSumNum;
+  public long getInputMaxBytes() {
+    return inputMaxBytes;
+  }
+
+  public long getOutputMaxBytes() {
+    return outputMaxBytes;
   }
 
   public void addExchangeSumNum(int addValue) {
@@ -261,16 +274,16 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.exchangeOperatorList.add(exchangeOperator);
   }
 
-  public void setMaxBytesOneHandleCanReserve() {
-    long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
-    LOGGER.debug(
-        DataNodeQueryMessages
-            .MAXBYTESONEHANDLECANRESERVE_FOR_EXCHANGEOPERATOR_IS_ARG_EXCHANGESUMNUM_IS_ARG,
-        maxBytesOneHandleCanReserve,
-        exchangeSumNum);
+  public void setExchangeMemoryLimits() {
     exchangeOperatorList.forEach(
-        exchangeOperator ->
-            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
+        exchangeOperator -> {
+          exchangeOperator
+              .getSourceHandle()
+              .setMaxBytesCanReserve(
+                  exchangeOperator.getSourceHandle() instanceof PipelineSourceHandle
+                      ? outputMaxBytes
+                      : inputMaxBytes);
+        });
   }
 
   public Set<String> getAllSensors(IDeviceID deviceId, String sensorId) {
@@ -303,6 +316,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     checkArgument(
         driverContext.getSink() == null,
         DataNodeQueryMessages.EXCEPTION_THERE_MUST_BE_AT_MOST_ONE_SINKNODE_A965AFE7);
+    sink.setMaxBytesCanReserve(outputMaxBytes);
     driverContext.setSink(sink);
   }
 

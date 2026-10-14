@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -117,7 +118,8 @@ public class SourceHandle implements ISourceHandle {
 
   /** max bytes this SourceHandle can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+      MemorySide.INPUT.getMaxBytes(
+          IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance());
 
   /**
    * this is set to true after calling isBlocked() at least once which indicates that this
@@ -223,7 +225,10 @@ public class SourceHandle implements ISourceHandle {
     localMemoryManager
         .getQueryPool()
         .registerPlanNodeIdToQueryMemoryMap(
-            localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+            localFragmentInstanceId.queryId,
+            fullFragmentInstanceId,
+            localPlanNodeId,
+            MemorySide.INPUT);
   }
 
   @Override

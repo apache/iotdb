@@ -69,3 +69,31 @@ SortElimination 在各汇集分支独立优化，并阻止跨无序汇集删除�
 覆盖 100/1000 child、A 阻塞 B 就绪、listener 复用、注册竞争、输出背压、空块、结束、异常取消、关闭和映射；
 覆盖文档 SQL 对应的聚合、Group/Window、StreamSort、Union 与 Fill 计划及实际结果。
 运行 Spotless、英文/中文全 reactor test-compile、针对性单测，以及本分支新增或修改的 IT。
+
+## 实现验证记录（2026-10-14）
+
+第一版实现已完成。单元测试 86 项通过；IoTDBCollectFanInIT 的 6 项测试在单节点和三 DataNode 集群中分别通过。
+集成验证包含普通与 DISTINCT 聚合、Union 分阶段聚合、嵌套窗口、Fill、排序/TopK、Join 依赖、树模型以及树表视图。
+
+构建先执行以下干净构建，生成当前分支的节点包并安装本地依赖：
+
+```sh
+mvn -o clean install -DskipTests -pl integration-test,iotdb-core/confignode,iotdb-client/cli -am -P with-integration-tests
+```
+
+全 reactor 中文编译与英文编译/回归均通过；英文 test 阶段包含完整 test-compile：
+
+```sh
+mvn -o test-compile -DskipTests -P with-zh-locale
+mvn -o test -Dtest=CollectOperatorTest,MemoryPoolTest,LocalExecutionPlanContextBudgetTest,CollectInputPropertyTest,SharedTsBlockQueueTest,SourceHandleTest,SinkChannelTest,LocalSourceHandleTest,LocalSinkChannelTest,MPPDataExchangeManagerTest,ParallelizeGroupingTest,TableFunctionSortTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+两个集成环境均只运行本分支新增的测试类：
+
+```sh
+mvn -o verify -DskipUTs -Dit.test=IoTDBCollectFanInIT -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -P TableSimpleIT -P with-integration-tests
+mvn -o verify -DskipUTs -Dit.test=IoTDBCollectFanInIT -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -P TableClusterIT -P with-integration-tests
+```
+
+使用离线模式是为了避免远端 SNAPSHOT ZIP 下载停滞；节点执行的是当前分支重新打包的代码。
+Spotless、Checkstyle、新增文件许可证及中英文消息键名/占位符一致性检查通过。
