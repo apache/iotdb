@@ -59,11 +59,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -193,6 +195,8 @@ public class InformationSchemaContentSupplierFactory {
           return new DatabaseSupplier(dataTypes, userEntity);
         case InformationSchema.TABLES:
           return new TableSupplier(dataTypes, userEntity);
+        case InformationSchema.DROP_TABLE_PROCEDURES:
+          return new DropTableProceduresSupplier(dataTypes, userEntity);
         case InformationSchema.COLUMNS:
           return new ColumnSupplier(dataTypes, userEntity);
         case InformationSchema.REGIONS:
@@ -483,6 +487,70 @@ public class InformationSchemaContentSupplierFactory {
         tableInfoIterator = entry.getValue().iterator();
       }
       return true;
+    }
+  }
+
+  private static class DropTableProceduresSupplier extends TsBlockSupplier {
+    private final Iterator<TDropTableProcedureInfo> procedures;
+    private final UserEntity userEntity;
+    private TDropTableProcedureInfo currentProcedure;
+
+    private DropTableProceduresSupplier(
+        final List<TSDataType> dataTypes, final UserEntity userEntity) throws Exception {
+      super(dataTypes);
+      this.userEntity = userEntity;
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        final TShowDropTableProceduresResp response = client.showDropTableProcedures();
+        if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBRuntimeException(response.getStatus());
+        }
+        final List<TDropTableProcedureInfo> result = response.getDropTableProcedureInfoList();
+        procedures =
+            (result == null ? Collections.<TDropTableProcedureInfo>emptyList() : result).iterator();
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      columnBuilders[0].writeBinary(
+          new Binary(currentProcedure.getDatabase(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(currentProcedure.getTableName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeLong(currentProcedure.getProcedureId());
+      columnBuilders[3].writeBinary(
+          new Binary(currentProcedure.getState(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeBinary(
+          new Binary(currentProcedure.getProgress(), TSFileConfig.STRING_CHARSET));
+      if (currentProcedure.isSetErrorMessage()) {
+        columnBuilders[5].writeBinary(
+            new Binary(currentProcedure.getErrorMessage(), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[5].appendNull();
+      }
+      resultBuilder.declarePosition();
+      currentProcedure = null;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (currentProcedure != null) {
+        return true;
+      }
+      while (procedures.hasNext()) {
+        final TDropTableProcedureInfo procedure = procedures.next();
+        if (canShowDB(accessControl, userEntity.getUsername(), procedure.getDatabase(), userEntity)
+            && canShowTable(
+                accessControl,
+                userEntity.getUsername(),
+                procedure.getDatabase(),
+                procedure.getTableName(),
+                userEntity)) {
+          currentProcedure = procedure;
+          return true;
+        }
+      }
+      return false;
     }
   }
 

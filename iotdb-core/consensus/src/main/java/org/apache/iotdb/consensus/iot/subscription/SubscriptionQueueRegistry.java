@@ -128,7 +128,8 @@ public class SubscriptionQueueRegistry {
   }
 
   public synchronized Collection<SubscriptionWalRetentionPolicy> getRetentionPolicies() {
-    final Collection<SubscriptionWalRetentionPolicy> retentionPolicies = new ArrayList<>();
+    final Collection<SubscriptionWalRetentionPolicy> retentionPolicies =
+        new ArrayList<>(queues.size());
     for (final SubscriptionQueueRegistration registration : queues.values()) {
       retentionPolicies.add(registration.retentionPolicy);
     }
@@ -151,7 +152,7 @@ public class SubscriptionQueueRegistry {
       }
     }
 
-    final Collection<Long> retainedMinVersionIds = new ArrayList<>();
+    final Collection<Long> retainedMinVersionIds = new ArrayList<>(suppliers.size());
     for (final LongSupplier supplier : suppliers) {
       retainedMinVersionIds.add(supplier.getAsLong());
     }

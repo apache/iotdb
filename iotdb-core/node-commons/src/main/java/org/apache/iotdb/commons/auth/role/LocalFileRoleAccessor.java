@@ -160,7 +160,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       throws IOException, IllegalPathException {
     role.setSysPrivilegesWithMask(dataInputStream.readInt());
     int num = ReadWriteIOUtils.readInt(dataInputStream);
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+    List<PathPrivilege> pathPrivilegeList = new ArrayList<>(num);
     for (int i = 0; i < num; i++) {
       pathPrivilegeList.add(
           IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
+import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
+import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -38,12 +40,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /** Subscription metrics must survive a metric service restart, which drops all metrics. */
@@ -97,6 +102,52 @@ public class SubscriptionMetricsRestartTest {
   }
 
   @Test
+  public void testSubscriptionMemoryMetrics() throws Exception {
+    final SubscriptionMetrics metrics = SubscriptionMetrics.getInstance();
+    // Subscription can be disabled in the default test configuration. Give the shared allocator
+    // an explicit test budget and restore its original block after removing the metrics.
+    final long budget = 10L;
+    final SubscriptionMemoryManager memoryManager = SubscriptionDataNodeResourceManager.memory();
+    final long originalOversizedEntryCount = memoryManager.getOversizedEntryCount();
+    final Field blockField = SubscriptionMemoryManager.class.getDeclaredField("memoryBlock");
+    blockField.setAccessible(true);
+    final Object originalBlock = blockField.get(memoryManager);
+    try {
+      blockField.set(memoryManager, blockField.get(new SubscriptionMemoryManager(budget)));
+      bind(metrics);
+      assertTrue(memoryManager.tryAllocate(budget + 1L));
+      try {
+        service.restartService();
+        assertEquals(
+            budget, ((AutoGauge) get(Metric.SUBSCRIPTION_MEMORY_LIMIT_BYTES)).getValue(), 0);
+        assertEquals(
+            budget + 1L, ((AutoGauge) get(Metric.SUBSCRIPTION_MEMORY_USED_BYTES)).getValue(), 0);
+        assertEquals(
+            1, ((AutoGauge) get(Metric.SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES)).getValue(), 0);
+        assertEquals(
+            originalOversizedEntryCount + 1L,
+            ((AutoGauge) get(Metric.SUBSCRIPTION_MEMORY_OVERSIZED_ENTRY_COUNT)).getValue(),
+            0);
+        assertFalse(memoryManager.tryAllocate(1L));
+      } finally {
+        memoryManager.release(budget + 1L);
+      }
+      assertEquals(0, ((AutoGauge) get(Metric.SUBSCRIPTION_MEMORY_USED_BYTES)).getValue(), 0);
+      assertEquals(0, ((AutoGauge) get(Metric.SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES)).getValue(), 0);
+      service.removeMetricSet(metrics);
+      boundMetricSets.remove(metrics);
+      assertEquals(0, count(Metric.SUBSCRIPTION_MEMORY_USED_BYTES));
+      assertEquals(0, count(Metric.SUBSCRIPTION_MEMORY_LIMIT_BYTES));
+      assertEquals(0, count(Metric.SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES));
+      assertEquals(0, count(Metric.SUBSCRIPTION_MEMORY_OVERSIZED_ENTRY_COUNT));
+    } finally {
+      service.removeMetricSet(metrics);
+      boundMetricSets.remove(metrics);
+      blockField.set(memoryManager, originalBlock);
+    }
+  }
+
+  @Test
   public void testConsensusPrefetchingQueueMetrics() {
     final ConsensusSubscriptionPrefetchingQueueMetrics metrics =
         ConsensusSubscriptionPrefetchingQueueMetrics.getInstance();
@@ -105,16 +156,52 @@ public class SubscriptionMetricsRestartTest {
     when(queue.getPrefetchingQueueId()).thenReturn(QUEUE_ID);
     when(queue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
     when(queue.getLag()).thenReturn(7L);
+    when(queue.getLastDeliveryIntervalMs()).thenReturn(60_001L);
+    when(queue.getMaxDeliveryIntervalMs()).thenReturn(65_000L);
+    when(queue.getDeliveryIdleTimeMs()).thenReturn(60_000L);
+    when(queue.getPrefetchDurationMs()).thenReturn(65_000L);
+    when(queue.getMaxPrefetchDurationMs()).thenReturn(69_000L);
+    when(queue.getPrefetchIdleTimeMs()).thenReturn(67_000L);
     metrics.register(queue);
     try {
       service.restartService();
       assertEquals(7, ((AutoGauge) get(Metric.SUBSCRIPTION_CONSENSUS_LAG)).getValue(), 0);
+      assertEquals(
+          60_001,
+          ((AutoGauge) get(Metric.SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS)).getValue(),
+          0);
+      assertEquals(
+          65_000,
+          ((AutoGauge) get(Metric.SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS)).getValue(),
+          0);
+      assertEquals(
+          60_000,
+          ((AutoGauge) get(Metric.SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS)).getValue(),
+          0);
+      assertEquals(
+          65_000,
+          ((AutoGauge) get(Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS)).getValue(),
+          0);
+      assertEquals(
+          69_000,
+          ((AutoGauge) get(Metric.SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS)).getValue(),
+          0);
+      assertEquals(
+          67_000,
+          ((AutoGauge) get(Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS)).getValue(),
+          0);
       metrics.mark(QUEUE_ID, new DataRegionId(1).toString(), 5);
       assertEquals(5, ((Rate) get(Metric.SUBSCRIPTION_EVENT_TRANSFER)).getCount());
     } finally {
       metrics.deregister(queue);
     }
     assertEquals(0, count(Metric.SUBSCRIPTION_CONSENSUS_LAG));
+    assertEquals(0, count(Metric.SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS));
+    assertEquals(0, count(Metric.SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS));
+    assertEquals(0, count(Metric.SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS));
+    assertEquals(0, count(Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS));
+    assertEquals(0, count(Metric.SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS));
+    assertEquals(0, count(Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS));
     assertEquals(0, count(Metric.SUBSCRIPTION_EVENT_TRANSFER));
   }
 
