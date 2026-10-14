@@ -205,7 +205,7 @@ public class ConsensusPrefetchingQueue {
    */
   private volatile long memoryBlockedEntryBytes = -1L;
 
-  /** Rejects the real-time fast path while this queue cannot safely materialize more data. */
+  /** Rejects the real-time fast path during lifecycle transitions or a blocked writer backlog. */
   private final AtomicBoolean realtimeAdmissionBlocked = new AtomicBoolean(false);
 
   private static final int MAX_PREFETCHING_QUEUE_SIZE =
@@ -533,8 +533,10 @@ public class ConsensusPrefetchingQueue {
       requestMemoryManager.free(request);
     }
 
-    private void release(final List<IndexedConsensusRequest> requests) {
-      requests.forEach(this::release);
+    private synchronized void consume(final IndexedConsensusRequest request) {
+      if (super.removeFirstOccurrence(request)) {
+        release(request);
+      }
     }
 
     private long getRetainedRequestBytes() {
@@ -711,9 +713,27 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void requestPrefetchForRealtimeEntry() {
-    if (prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+    if (!hasReachedPrefetchLimit()) {
       requestPrefetch();
     }
+  }
+
+  private boolean hasReachedPrefetchLimit() {
+    // Reserve half of the active queue's fair share for speculative read-ahead. Retained bytes
+    // include in-flight events, so polling without ACK cannot bypass the memory target. Allow an
+    // empty delivery queue to make progress even when a single entry exceeds the target; the
+    // shared memory manager still enforces the hard allocation limit.
+    return prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE
+        || (!prefetchingQueue.isEmpty()
+            && retainedTabletBytes.get()
+                >= Math.max(1L, subscriptionMemoryHandle.getMemoryQuotaInBytes() / 2L));
+  }
+
+  private boolean hasReachedPrefetchLimit(final DeliveryBatchState batchState) {
+    // The current batch becomes one more event when flushed. Stop conversion before that event
+    // fills the delivery queue so the unprocessed pending suffix stays queued.
+    return hasReachedPrefetchLimit()
+        || (!batchState.isEmpty() && prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE - 1);
   }
 
   private SubscriptionQueueRejectionReason getRealtimeAdmissionRejectionReason() {
@@ -723,13 +743,8 @@ public class ConsensusPrefetchingQueue {
     if (realtimeAdmissionBlocked.get()) {
       return realtimeAdmissionBlockReason;
     }
-    // Allow an empty queue to probe an entry even with a zero quota so materialization can report
-    // an explicit oversized-entry error. Pending requests have separate consensus memory
-    // accounting.
-    if (subscriptionMemoryHandle.getUsedMemorySizeInBytes() > 0L
-        && subscriptionMemoryHandle.getFreeMemorySizeInBytes() <= 0L) {
-      return toQueueRejectionReason(subscriptionMemoryHandle.inspectRejection(1L));
-    }
+    // Pending requests have their own bounded queue and consensus memory accounting. Subscription
+    // memory pressure must stop materialization without forcing admitted realtime data into WAL.
     return SubscriptionQueueRejectionReason.NONE;
   }
 
@@ -877,7 +892,7 @@ public class ConsensusPrefetchingQueue {
         return null;
       }
       final SubscriptionEvent event = pollInternal(consumerId);
-      if (Objects.nonNull(event) && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      if (Objects.nonNull(event) && !hasReachedPrefetchLimit()) {
         requestPrefetch();
       } else if (Objects.isNull(event) && shouldRecoverPrefetchBindingAfterEmptyPoll()) {
         requestPrefetch();
@@ -1661,48 +1676,31 @@ public class ConsensusPrefetchingQueue {
         resetRoundStateForSeek(seekGeneration.get());
         return PrefetchRoundResult.rescheduleNow();
       }
-      if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE
-          || !realtimeEntriesByWriter.isEmpty()) {
-        if (!realtimeEntriesByWriter.isEmpty()) {
-          blockRealtimeAdmission(SubscriptionQueueRejectionReason.WRITER_BACKLOG);
-        }
+      if (!realtimeEntriesByWriter.isEmpty()) {
+        blockRealtimeAdmission(SubscriptionQueueRejectionReason.WRITER_BACKLOG);
+        return computeIdleRoundResult();
+      }
+      unblockRealtimeAdmission();
+      if (hasReachedPrefetchLimit()) {
         return computeIdleRoundResult();
       }
       if (shouldWaitForSubscriptionMemory()) {
-        blockRealtimeAdmission(memoryBlockReason);
         if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
           resetRoundStateForSeek(seekGeneration.get());
           return PrefetchRoundResult.rescheduleNow();
         }
         return PrefetchRoundResult.rescheduleAfter(MEMORY_RETRY_SLEEP_MS);
       }
-      unblockRealtimeAdmission();
-
-      final List<IndexedConsensusRequest> batch = drainPendingEntries(maxWalEntries);
+      final List<IndexedConsensusRequest> batch = snapshotPendingEntries(maxWalEntries);
       if (!batch.isEmpty()) {
-        LOGGER.debug(
-            DataNodePipeMessages
-                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_DRAINED_ENTRIES_FROM_PENDINGENTRIES_2D4E0BE7,
-            this,
-            batch.size(),
-            batch.get(0).getSearchIndex(),
-            batch.get(batch.size() - 1).getSearchIndex(),
-            nextExpectedSearchIndex.get(),
-            prefetchingQueue.size());
-
-        final MaterializationResult batchResult;
-        try {
-          batchResult =
-              accumulateFromPending(
-                  batch,
-                  lingerBatch,
-                  observedSeekGeneration,
-                  maxWalEntries,
-                  maxTablets,
-                  maxBatchBytes);
-        } finally {
-          pendingEntries.release(batch);
-        }
+        final MaterializationResult batchResult =
+            accumulateFromPending(
+                batch,
+                lingerBatch,
+                observedSeekGeneration,
+                maxWalEntries,
+                maxTablets,
+                maxBatchBytes);
         if (batchResult != MaterializationResult.SUCCESS) {
           if (batchResult == MaterializationResult.WAL_GAP) {
             if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
@@ -1713,8 +1711,7 @@ public class ConsensusPrefetchingQueue {
           }
           if (batchResult == MaterializationResult.MEMORY_BLOCKED) {
             // Publish already reserved Tablets immediately so ACK can release their memory. The
-            // blocked request and the drained suffix are recovered from WAL on a later round.
-            blockRealtimeAdmission(memoryBlockReason);
+            // blocked request and the unprocessed suffix remain in the bounded pending queue.
             if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
               resetRoundStateForSeek(seekGeneration.get());
               return PrefetchRoundResult.rescheduleNow();
@@ -1729,7 +1726,6 @@ public class ConsensusPrefetchingQueue {
       if (batch.isEmpty() && lingerBatch.isEmpty()) {
         final MaterializationResult walResult = tryCatchUpFromWAL(observedSeekGeneration);
         if (walResult == MaterializationResult.MEMORY_BLOCKED) {
-          blockRealtimeAdmission(memoryBlockReason);
           return PrefetchRoundResult.rescheduleAfter(MEMORY_RETRY_SLEEP_MS);
         }
         if (walResult == MaterializationResult.STALE) {
@@ -1742,6 +1738,15 @@ public class ConsensusPrefetchingQueue {
           lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes)) {
         resetRoundStateForSeek(seekGeneration.get());
         return PrefetchRoundResult.rescheduleNow();
+      }
+
+      // Publish reserved Tablets when read-ahead pauses. Leaving this batch lingering at the
+      // delivery limit would keep rescheduling pending work that cannot yet be materialized.
+      if (!lingerBatch.isEmpty() && hasReachedPrefetchLimit(lingerBatch)) {
+        if (!flushBatch(lingerBatch, observedSeekGeneration)) {
+          resetRoundStateForSeek(seekGeneration.get());
+          return PrefetchRoundResult.rescheduleNow();
+        }
       }
 
       if (!lingerBatch.isEmpty() && lingerBatch.firstTabletTimeMs > 0L) {
@@ -1823,11 +1828,15 @@ public class ConsensusPrefetchingQueue {
     observedSeekGeneration = newSeekGeneration;
   }
 
-  private List<IndexedConsensusRequest> drainPendingEntries(final int maxWalEntries) {
+  private List<IndexedConsensusRequest> snapshotPendingEntries(final int maxWalEntries) {
+    // The queue read lock excludes lifecycle clears. Concurrent producers may only append, so
+    // retain each request and its consensus memory reservation until it is actually consumed.
     final List<IndexedConsensusRequest> batch = new ArrayList<>();
-    IndexedConsensusRequest next;
-    while (batch.size() < maxWalEntries && Objects.nonNull(next = pendingEntries.poll())) {
-      batch.add(next);
+    for (final IndexedConsensusRequest request : pendingEntries) {
+      if (batch.size() >= maxWalEntries) {
+        break;
+      }
+      batch.add(request);
     }
     return batch;
   }
@@ -1836,7 +1845,7 @@ public class ConsensusPrefetchingQueue {
     if (isClosed || !prefetchInitialized || !isActive) {
       return PrefetchRoundResult.dormant();
     }
-    if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+    if (hasReachedPrefetchLimit()) {
       return PrefetchRoundResult.dormant();
     }
     if (hasImmediatePrefetchableWork()) {
@@ -1959,7 +1968,10 @@ public class ConsensusPrefetchingQueue {
    * Accumulates tablets from pending entries into the linger buffer. When pending replay outruns
    * the local WAL reader, this method backfills the local-index gap from WAL before continuing.
    *
-   * @return the materialization result for the drained pending batch
+   * <p>Requests are removed only after materialization or deduplication. Memory pressure, delivery
+   * capacity, and temporary WAL gaps leave the unprocessed suffix available for realtime delivery.
+   *
+   * @return the materialization result for the pending batch
    */
   private MaterializationResult accumulateFromPending(
       final List<IndexedConsensusRequest> batch,
@@ -1975,6 +1987,9 @@ public class ConsensusPrefetchingQueue {
 
     try {
       for (int index = 0; index < batch.size(); index++) {
+        if (hasReachedPrefetchLimit(lingerBatch)) {
+          break;
+        }
         final IndexedConsensusRequest request = batch.get(index);
         final long searchIndex = request.getSearchIndex();
 
@@ -2000,21 +2015,27 @@ public class ConsensusPrefetchingQueue {
           if (gapFillResult != MaterializationResult.SUCCESS) {
             return gapFillResult;
           }
+          if (hasReachedPrefetchLimit(lingerBatch)) {
+            break;
+          }
         }
 
         if (isBeforeLocalCursor(request)) {
           skippedCount++;
+          pendingEntries.consume(request);
           continue;
         }
 
         if (shouldSkipForRecoveryProgress(request)) {
           skippedCount++;
           advanceLocalCursorIfPresent(request);
+          pendingEntries.consume(request);
           continue;
         }
         if (shouldSkipForMaterializedProgress(request)) {
           skippedCount++;
           advanceLocalCursorIfPresent(request);
+          pendingEntries.consume(request);
           continue;
         }
 
@@ -2027,7 +2048,8 @@ public class ConsensusPrefetchingQueue {
         markMaterializedProgress(request);
         processedCount++;
         advanceLocalCursorIfPresent(request);
-        if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+        pendingEntries.consume(request);
+        if (hasReachedPrefetchLimit(lingerBatch)) {
           break;
         }
       }
@@ -2061,10 +2083,9 @@ public class ConsensusPrefetchingQueue {
    * Fills a gap in the pending queue by reading entries from WAL so the internal local replay
    * cursor stays contiguous even when pending delivery jumps ahead of the WAL iterator.
    *
-   * <p>Temporary WAL visibility lag is treated as a normal back-pressure condition: once a drained
-   * pending batch encounters an unresolved local-index gap, the queue backs off and lets the
-   * affected suffix fall back to the WAL path on later rounds. This keeps replay contiguous without
-   * requeueing the drained batch back into the bounded pending queue.
+   * <p>Temporary WAL visibility lag is treated as a normal back-pressure condition: an unresolved
+   * local-index gap pauses materialization while the affected suffix remains in the bounded pending
+   * queue. Later rounds backfill the gap before resuming pending delivery.
    *
    * @return the materialization result for the WAL gap
    */
@@ -2190,8 +2211,8 @@ public class ConsensusPrefetchingQueue {
 
     int entriesRead = 0;
     while (entriesRead < maxWalEntries
-        && subscriptionWALIterator.hasNext()
-        && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+        && !hasReachedPrefetchLimit(batchState)
+        && subscriptionWALIterator.hasNext()) {
       reportUnreadableWalReplayIfNecessary();
       try {
         final IndexedConsensusRequest walEntry = subscriptionWALIterator.next();
