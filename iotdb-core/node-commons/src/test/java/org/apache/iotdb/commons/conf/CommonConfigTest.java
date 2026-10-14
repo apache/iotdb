@@ -62,6 +62,23 @@ public class CommonConfigTest {
   }
 
   @Test
+  public void testDiskRecoveryDoesNotUndoLaterStatusChange() {
+    for (NodeStatus status : NodeStatus.values()) {
+      if (status == NodeStatus.ReadOnly) {
+        continue;
+      }
+      CommonConfig config = new CommonConfig();
+      config.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+      config.setNodeStatus(status);
+
+      config.recoverFromDiskFull();
+
+      Assert.assertEquals(status, config.getNodeStatus());
+      Assert.assertNull(config.getStatusReason());
+    }
+  }
+
+  @Test
   public void testSetReadOnlyWithReasonPriority() {
     CommonConfig config = new CommonConfig();
 

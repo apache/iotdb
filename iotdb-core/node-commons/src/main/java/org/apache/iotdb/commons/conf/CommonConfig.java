@@ -868,24 +868,27 @@ public class CommonConfig {
     } else if (status == NodeStatus.ReadOnly) {
       newReason = NodeStatus.transitionReadOnlyReason(statusReason, newReason);
     }
-    if (status == newStatus) {
-      this.statusReason = newReason;
-      return;
-    }
+    updateNodeStatus(newStatus, newReason);
+  }
 
-    logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
+  /** Applies the chosen state; the caller holds this monitor and checks transition rules. */
+  private void updateNodeStatus(NodeStatus newStatus, String newReason) {
+    if (status != newStatus) {
+      logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
+      if (newStatus == NodeStatus.ReadOnly) {
+        logger.warn(ConfigMessages.STATUS_CHANGE_TO_READ_ONLY);
+      } else if (newStatus == NodeStatus.Removing) {
+        logger.info(ConfigMessages.STATUS_CHANGE_TO_REMOVING);
+      }
+    }
     this.status = newStatus;
     this.statusReason = newReason;
+  }
 
-    switch (newStatus) {
-      case ReadOnly:
-        logger.warn(ConfigMessages.STATUS_CHANGE_TO_READ_ONLY);
-        break;
-      case Removing:
-        logger.info(ConfigMessages.STATUS_CHANGE_TO_REMOVING);
-        break;
-      default:
-        break;
+  /** Clears DiskFull after disk space recovers, unless shutdown has started. */
+  public synchronized void recoverFromDiskFull() {
+    if (!isStopping && status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason)) {
+      updateNodeStatus(NodeStatus.Running, null);
     }
   }
 
@@ -901,7 +904,7 @@ public class CommonConfig {
     return isStopping;
   }
 
-  public void setStopping(boolean stopping) {
+  public synchronized void setStopping(boolean stopping) {
     isStopping = stopping;
   }
 

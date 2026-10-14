@@ -40,6 +40,7 @@ public class DataNodeInternalRPCServiceImplDiskTest {
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private final IoTDBConfig dataNodeConfig = IoTDBDescriptor.getInstance().getConfig();
+  private boolean originalStopping;
   private NodeStatus originalStatus;
   private String originalStatusReason;
   private double originalDiskSpaceWarningThreshold;
@@ -47,6 +48,8 @@ public class DataNodeInternalRPCServiceImplDiskTest {
 
   @Before
   public void setUp() {
+    originalStopping = commonConfig.isStopping();
+    commonConfig.setStopping(false);
     originalStatus = commonConfig.getNodeStatus();
     originalStatusReason = commonConfig.getStatusReason();
     originalDiskSpaceWarningThreshold = commonConfig.getDiskSpaceWarningThreshold();
@@ -66,6 +69,7 @@ public class DataNodeInternalRPCServiceImplDiskTest {
     commonConfig.setNodeStatusWithReason(originalStatus, originalStatusReason);
     commonConfig.setDiskSpaceWarningThreshold(originalDiskSpaceWarningThreshold);
     dataNodeConfig.setDataNodeId(originalDataNodeId);
+    commonConfig.setStopping(originalStopping);
   }
 
   @Test
@@ -135,5 +139,20 @@ public class DataNodeInternalRPCServiceImplDiskTest {
     service.sampleDiskLoad(new TLoadSample());
     Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
     Assert.assertEquals(NodeStatus.STOPPING, commonConfig.getStatusReason());
+  }
+
+  @Test
+  public void testStoppingFlagPreventsDiskRecovery() {
+    SystemMetrics systemMetrics = mock(SystemMetrics.class);
+    when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(20L);
+    when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(100L);
+    DataNodeInternalRPCServiceImpl service =
+        new DataNodeInternalRPCServiceImpl(mock(DataNodeContext.class), systemMetrics);
+    commonConfig.setStopping(true);
+
+    service.sampleDiskLoad(new TLoadSample());
+
+    Assert.assertTrue(commonConfig.isReadOnly());
+    Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
   }
 }
