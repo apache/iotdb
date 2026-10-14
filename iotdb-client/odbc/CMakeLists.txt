@@ -61,6 +61,7 @@ set(DRIVER_VERSION "${ODBC_PACKAGE_VERSION}")
 set(DEBUG_LOG_OUTPUT_PATH "apache_iotdb_odbc.log")
 configure_file(src/DriverConfig.h.in generated/DriverConfig.h @ONLY)
 set(ODBC_SOURCES
+    src/Catalog.cpp
     src/ConnectionHandle.cpp
     src/CopyField.cpp
     src/DiagnosticManager.cpp
@@ -73,6 +74,7 @@ set(ODBC_SOURCES
     src/ODBCSessionResultSet.cpp
     src/StatementHandle.cpp
     src/StatementUtils.cpp
+    src/Unicode.cpp
     src/driver.cpp
     src/rest_api_client.cpp
     src/session_api_client.cpp)

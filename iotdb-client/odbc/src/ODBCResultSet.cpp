@@ -31,11 +31,12 @@
 
 const std::unordered_map<std::string, TSDataType::TSDataType>
     ODBCResultSet::columnTypeToTSDataTypeMap = {
-        {"BOOLEAN", TSDataType::BOOLEAN}, {"INT32", TSDataType::INT32},
-        {"INT64", TSDataType::INT64},     {"FLOAT", TSDataType::FLOAT},
-        {"DOUBLE", TSDataType::DOUBLE},   {"STRING", TSDataType::STRING},
-        {"TEXT", TSDataType::TEXT},       {"DATE", TSDataType::DATE},
-        {"BLOB", TSDataType::BLOB},       {"TIMESTAMP", TSDataType::TIMESTAMP},
+        {"BOOLEAN", TSDataType::BOOLEAN},     {"INT16", TSDataType::INT32},
+        {"INT32", TSDataType::INT32},         {"INT64", TSDataType::INT64},
+        {"FLOAT", TSDataType::FLOAT},         {"DOUBLE", TSDataType::DOUBLE},
+        {"STRING", TSDataType::STRING},       {"TEXT", TSDataType::TEXT},
+        {"DATE", TSDataType::DATE},           {"BLOB", TSDataType::BLOB},
+        {"TIMESTAMP", TSDataType::TIMESTAMP},
 };
 
 ODBCResultSet::ODBCResultSet(StatementHandle* stmtHandle)

@@ -313,6 +313,11 @@ SQLRETURN IoTDB_ExecDirect_Rest(StatementHandle* stmt, const std::string& statem
       switch (responseCode) {
       case 200: {
         logMessage(cnct, "IoTDB_ExecDirect_Rest: Request completed successfully", LOG_LEVEL_INFO);
+        stmt->isQuery = isQuery;
+        if (!isQuery) {
+          stmt->ClearResultSet();
+          return SQL_SUCCESS;
+        }
         stmt->AllocateRestResultSet();
         stmt->resultSetPtr->loadData(jsonResponse);
         if (stmt->isStream && stmt->resultSetPtr->getNumRows() == 0) {
@@ -335,10 +340,12 @@ SQLRETURN IoTDB_ExecDirect_Rest(StatementHandle* stmt, const std::string& statem
       case 411:
         logMessage(cnct, "IoTDB_ExecDirect_Rest: Data requires streaming transmission",
                    LOG_LEVEL_INFO);
+        stmt->isQuery = true;
+        stmt->AllocateRestResultSet();
         stmt->resultSetPtr->loadData(jsonResponse);
         stmt->isStream = true;
         stmt->streamCurRow = 0;
-        streamNextBatch(stmt);
+        return streamNextBatch(stmt);
         logMessage(cnct, "IoTDB_ExecDirect_Rest: Exiting with streaming setup", LOG_LEVEL_TRACE);
         return SQL_SUCCESS;
 

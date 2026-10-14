@@ -164,6 +164,18 @@ SQLRETURN CopyFieldToTargetVariable(StatementHandle* stmt, const ODBCField& valu
   }
 
   SQLLEN remaining = totalBytes - offset;
+  if (totalBytes == 0 && offset == 0) {
+    if (strLen_or_IndPtr)
+      *strLen_or_IndPtr = 0;
+    if (targetValuePtr) {
+      if (targetType == SQL_C_CHAR && bufferLength > 0)
+        *static_cast<SQLCHAR*>(targetValuePtr) = 0;
+      if (targetType == SQL_C_WCHAR && bufferLength >= static_cast<SQLLEN>(sizeof(SQLWCHAR)))
+        *static_cast<SQLWCHAR*>(targetValuePtr) = 0;
+      offset = 1;
+    }
+    return SQL_SUCCESS;
+  }
   if (remaining <= 0) {
     if (strLen_or_IndPtr) {
       *strLen_or_IndPtr = 0;

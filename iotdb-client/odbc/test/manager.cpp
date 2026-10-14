@@ -88,6 +88,14 @@ static std::string utf8Environment(const char* name) {
 #endif
 }
 
+static std::basic_string<SQLWCHAR> sqlWide(const std::string& input) {
+  auto utf16 =
+      std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>().from_bytes(input);
+  std::basic_string<SQLWCHAR> result(utf16.size(), 0);
+  std::copy(utf16.begin(), utf16.end(), result.begin());
+  return result;
+}
+
 // Without IOTDB_ODBC_CONNECTION, reject a TLS/REST mismatch without network I/O.
 // With it, connect to a real server and execute IOTDB_ODBC_QUERY or SHOW VERSION.
 int runTest(int argc, char** argv) {
@@ -119,8 +127,9 @@ int runTest(int argc, char** argv) {
                      (options ? options : "RESTFUL=1;SSL=1;SSLCA=missing.pem");
 #endif
   stage("driver-connect");
-  SQLRETURN rc = SQLDriverConnect(dbc, nullptr, reinterpret_cast<SQLCHAR*>(&conn[0]), SQL_NTS,
-                                  nullptr, 0, nullptr, SQL_DRIVER_NOPROMPT);
+  auto wideConnection = sqlWide(conn);
+  SQLRETURN rc = SQLDriverConnectW(dbc, nullptr, &wideConnection[0], SQL_NTS, nullptr, 0, nullptr,
+                                   SQL_DRIVER_NOPROMPT);
   stage("driver-connect-returned");
   bool expectedFailure = !options || std::getenv("IOTDB_ODBC_EXPECT_FAILURE");
   bool ok = false;
@@ -128,10 +137,12 @@ int runTest(int argc, char** argv) {
     SQLCHAR state[6]{}, message[1024]{};
     SQLINTEGER native{};
     SQLSMALLINT length{};
-    SQLGetDiagRec(SQL_HANDLE_DBC, dbc, 1, state, &native, message, sizeof(message), &length);
+    SQLRETURN diagnosticResult =
+        SQLGetDiagRec(SQL_HANDLE_DBC, dbc, 1, state, &native, message, sizeof(message), &length);
     ok = rc == SQL_ERROR && std::string(reinterpret_cast<char*>(state)) == "08001";
     if (!ok)
-      std::cerr << state << ": " << message << '\n';
+      std::cerr << "connect=" << rc << ", diagnostic=" << diagnosticResult << ", " << state << ": "
+                << message << '\n';
   } else if (SQL_SUCCEEDED(rc)) {
     SQLHSTMT stmt = nullptr;
     stage("allocate-statement");
@@ -139,10 +150,11 @@ int runTest(int argc, char** argv) {
     std::string queryText = utf8Environment("IOTDB_ODBC_QUERY");
     const char* query = queryText.empty() ? nullptr : queryText.c_str();
     std::string sql = query ? query : "SHOW VERSION";
+    auto wideSql = sqlWide(sql);
     std::string parameterText = utf8Environment("IOTDB_ODBC_PARAMETER_INTS");
     stage("execute");
     if (parameterText.empty()) {
-      rc = SQLExecDirect(stmt, reinterpret_cast<SQLCHAR*>(&sql[0]), SQL_NTS);
+      rc = SQLExecDirectW(stmt, &wideSql[0], SQL_NTS);
     } else {
       std::vector<SQLINTEGER> parameters;
       std::stringstream values(parameterText);
@@ -156,7 +168,7 @@ int runTest(int argc, char** argv) {
                      0);
       SQLSetStmtAttr(stmt, SQL_ATTR_PARAM_STATUS_PTR, statuses.data(), 0);
       SQLSetStmtAttr(stmt, SQL_ATTR_PARAMS_PROCESSED_PTR, &processed, 0);
-      rc = SQLPrepare(stmt, reinterpret_cast<SQLCHAR*>(&sql[0]), SQL_NTS);
+      rc = SQLPrepareW(stmt, &wideSql[0], SQL_NTS);
       if (SQL_SUCCEEDED(rc))
         rc = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 10, 0,
                               parameters.data(), sizeof(SQLINTEGER), lengths.data());

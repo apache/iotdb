@@ -29,7 +29,7 @@ SQLSMALLINT streamNextBatch(StatementHandle* stmt) {
   logMessage(cnct, "streamNextBatch: Entering", LOG_LEVEL_TRACE);
 
   // Only SELECT statements can be streamed
-  if (stmt->isQuery == false) {
+  if (stmt->isQuery == false || (stmt->resultSetPtr->isMetaData && !stmt->isStream)) {
     logMessage(cnct,
                "streamNextBatch: Statement is not a SELECT query, cannot stream, comes to an end. "
                "returning SQL_NO_DATA",
@@ -47,7 +47,13 @@ SQLSMALLINT streamNextBatch(StatementHandle* stmt) {
   }
 
   if (!cnct->useRestful) {
-    bool ret = static_cast<ODBCSessionResultSet*>(stmt->resultSetPtr.get())->loadDataNextBatch();
+    bool ret;
+    try {
+      ret = static_cast<ODBCSessionResultSet*>(stmt->resultSetPtr.get())->loadDataNextBatch();
+    } catch (const std::exception& error) {
+      stmt->addDiagnostic("HY000", error.what());
+      return SQL_ERROR;
+    }
     stmt->streamCurRow += stmt->resultSetPtr->getNumRows();
     if (!ret) {
       logMessage(cnct, "streamNextBatch: Failed to load next batch of data", LOG_LEVEL_ERROR);
@@ -55,6 +61,10 @@ SQLSMALLINT streamNextBatch(StatementHandle* stmt) {
     }
     return SQL_SUCCESS;
   }
+
+  // REST responses that did not request pagination already contain all rows.
+  if (!stmt->isStream)
+    return SQL_NO_DATA;
 
   std::stringstream newStatementTextss;
   if (stmt->resultSetPtr->getNumRows() > 0) {

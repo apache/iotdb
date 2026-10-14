@@ -155,16 +155,19 @@ if(NOT EXISTS "${_ossl_stamp}")
         file(TO_NATIVE_PATH "${_ossl_perl}" _ossl_perl_native)
         set(_ossl_build_script "${_ossl_root}/build-openssl.cmd")
         string(REPLACE ";" " " _ossl_windows_options "${_ossl_options}")
+        # file(WRITE) translates LF to CRLF on Windows; explicit CRLF produces
+        # CRCRLF and cmd.exe can skip commands. Also catch negative process exit
+        # codes (for example a missing Perl runtime DLL), not only positive ones.
         file(WRITE "${_ossl_build_script}"
-                "@echo on\r\n"
-                "call \"${_vcvars}\"\r\n"
-                "if errorlevel 1 exit /b %errorlevel%\r\n"
-                "cd /d \"${_ossl_src_native}\"\r\n"
-                "\"${_ossl_perl_native}\" Configure VC-WIN64A --prefix=\"${_ossl_inst_native}\" --openssldir=\"${_ossl_inst_native}\\ssl\" ${_ossl_windows_options} no-asm\r\n"
-                "if errorlevel 1 exit /b %errorlevel%\r\n"
-                "nmake\r\n"
-                "if errorlevel 1 exit /b %errorlevel%\r\n"
-                "nmake install_sw\r\n")
+                "@echo on\n"
+                "call \"${_vcvars}\"\n"
+                "if not \"%errorlevel%\"==\"0\" exit /b %errorlevel%\n"
+                "cd /d \"${_ossl_src_native}\"\n"
+                "\"${_ossl_perl_native}\" Configure VC-WIN64A --prefix=\"${_ossl_inst_native}\" --openssldir=\"${_ossl_inst_native}\\ssl\" ${_ossl_windows_options} no-asm\n"
+                "if not \"%errorlevel%\"==\"0\" exit /b %errorlevel%\n"
+                "nmake\n"
+                "if not \"%errorlevel%\"==\"0\" exit /b %errorlevel%\n"
+                "nmake install_sw\n")
         execute_process(COMMAND cmd /d /c "${_ossl_build_script}" RESULT_VARIABLE _rc)
         if(NOT _rc EQUAL 0)
             message(FATAL_ERROR "[OpenSSL] Windows source build failed (rc=${_rc})")

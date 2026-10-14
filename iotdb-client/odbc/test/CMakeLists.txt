@@ -43,5 +43,8 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME odbc_parameters COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/parameters.py" $<TARGET_FILE:apache_iotdb_odbc>)
     set_tests_properties(odbc_parameters PROPERTIES TIMEOUT 30)
+    add_test(NAME odbc_compatibility COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/compatibility.py" $<TARGET_FILE:apache_iotdb_odbc>)
+    set_tests_properties(odbc_compatibility PROPERTIES TIMEOUT 30)
 endif()
 install(TARGETS odbc_manager RUNTIME DESTINATION test COMPONENT Tests)

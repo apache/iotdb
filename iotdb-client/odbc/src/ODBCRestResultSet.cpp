@@ -60,190 +60,83 @@ void ODBCRestResultSet::loadData(const nlohmann::json& jsonData) {
   logMessage(cnct, "ODBCRestResultSet::loadData: Exiting", LOG_LEVEL_DEBUG);
 }
 
-// Parse JSON response for tree model
-void ODBCRestResultSet::parseJsonResponseTree(const nlohmann::json& jsonResponse) {
-  logMessage(stmt->getConnection(), "ODBCRestResultSet::parseJsonResponseTree: Starting",
-             LOG_LEVEL_TRACE);
-  ConnectionHandle* cnct = stmt->getConnection();
-
-  isMetaData = jsonResponse["expressions"].is_null();
-  if (isMetaData) {
-    logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTree: Processing metadata response",
-               LOG_LEVEL_TRACE);
-    // Metadata response - tree model: values[columnIndex][rowIndex]
-    // Parse column names
-    if (jsonResponse.contains("column_names")) {
-      for (const auto& colName : jsonResponse["column_names"]) {
-        columnNames.push_back(colName.get<std::string>());
-      }
-    }
-
-    logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTree: Parsing data values",
-               LOG_LEVEL_TRACE);
-    // Parse data values
-    if (jsonResponse.contains("values") && jsonResponse["values"].is_array()) {
-      const auto& values = jsonResponse["values"];
-      if (!values.empty() && values[0].is_array()) {
-        // For metadata, values[columnIndex] contains data for each column
-        numRows = values[0].size();
-        numColumns = columnNames.size();
-
-        for (size_t row = 0; row < numRows; ++row) {
-          std::vector<ODBCField> rowData;
-          for (size_t col = 0; col < numColumns; ++col) {
-            ODBCField field;
-            if (col < values.size() && row < values[col].size()) {
-              const auto& cell = values[col][row];
-              // Create ODBCField based on JSON value type
-              if (cell.is_null()) {
-                field = ODBCField(Field(TSDataType::UNKNOWN));
-              } else if (cell.is_string()) {
-                field.setValue(cell.get<std::string>());
-              } else if (cell.is_number_integer()) {
-                field.setValue(static_cast<int64_t>(cell.get<long long>()));
-              } else if (cell.is_number_float()) {
-                field.setValue(cell.get<double>());
-              } else if (cell.is_boolean()) {
-                field.setValue(cell.get<bool>());
-              } else {
-                // For other types, store as string
-                field.setValue(cell.dump());
-              }
-            } else {
-              // Null/empty field
-              field = ODBCField(Field(TSDataType::UNKNOWN));
-            }
-            rowData.push_back(field);
-          }
-          data.push_back(rowData);
-        }
-      }
-    }
-  } else {
-    logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTree: Processing timeseries response",
-               LOG_LEVEL_TRACE);
-    // Timeseries data response - tree model: values[columnIndex][rowIndex], timestamps[rowIndex]
-    // Parse column names (expressions)
-    if (jsonResponse.contains("expressions")) {
-      for (const auto& expr : jsonResponse["expressions"]) {
-        columnNames.push_back(expr.get<std::string>());
-      }
-    }
-
-    // For timeseries, add timestamp column at the beginning
-    columnNames.insert(columnNames.begin(), "timestamp");
-    columnTypes.insert(columnTypes.begin(), "TIMESTAMP");
-
-    // Parse timestamps and values
-    if (jsonResponse.contains("timestamps") && jsonResponse.contains("values")) {
-      const auto& timestamps = jsonResponse["timestamps"];
-      const auto& values = jsonResponse["values"];
-
-      numRows = timestamps.size();
-      numColumns = columnNames.size(); // includes timestamp column
-
-      for (size_t row = 0; row < numRows; ++row) {
-        std::vector<ODBCField> rowData;
-
-        // Add timestamp
-        ODBCField timestampField;
-        timestampField.setValue(timestamps[row].get<int64_t>());
-        rowData.push_back(timestampField);
-
-        // Add values for each expression
-        for (size_t col = 0; col < columnNames.size() - 1;
-             ++col) { // -1 because timestamp is already added
-          ODBCField field;
-          if (col < values.size() && row < values[col].size()) {
-            const auto& cell = values[col][row];
-            if (cell.is_null()) {
-              field = ODBCField(Field(TSDataType::UNKNOWN));
-            } else if (cell.is_string()) {
-              field.setValue(cell.get<std::string>());
-            } else if (cell.is_number_integer()) {
-              field.setValue(static_cast<int64_t>(cell.get<long long>()));
-            } else if (cell.is_number_float()) {
-              field.setValue(cell.get<double>());
-            } else if (cell.is_boolean()) {
-              field.setValue(cell.get<bool>());
-            } else {
-              // For other types, store as string
-              field.setValue(cell.dump());
-            }
-          } else {
-            field = ODBCField(Field(TSDataType::UNKNOWN));
-          }
-          rowData.push_back(field);
-        }
-
-        data.push_back(rowData);
-      }
-    }
+namespace {
+ODBCField jsonField(const nlohmann::json& value, const std::string& type) {
+  if (value.is_null())
+    return ODBCField::null();
+  if (type == "DATE") {
+    if (value.is_number_integer())
+      return ODBCField(parseIntToDate(value.get<int32_t>()));
+    const auto text = value.get<std::string>();
+    if (text.size() != 10 || text[4] != '-' || text[7] != '-')
+      throw std::runtime_error("Invalid REST DATE value");
+    return ODBCField(IoTDBDate(std::stoi(text.substr(0, 4)), std::stoi(text.substr(5, 2)),
+                               std::stoi(text.substr(8, 2))));
   }
+  if (type == "INT32")
+    return ODBCField(value.get<int32_t>());
+  if (type == "FLOAT")
+    return ODBCField(value.get<float>());
+  ODBCField field;
+  if (value.is_string())
+    field = ODBCField(value.get<std::string>());
+  else if (value.is_boolean())
+    field = ODBCField(value.get<bool>());
+  else if (value.is_number_integer())
+    field = ODBCField(value.get<int64_t>());
+  else if (value.is_number_float())
+    field = ODBCField(value.get<double>());
+  else
+    throw std::runtime_error("Unsupported REST result value");
+  if (type == "BLOB")
+    field.setDataType(TSDataType::BLOB);
+  else if (type == "TIMESTAMP")
+    field.setDataType(TSDataType::TIMESTAMP);
+  else if (type == "TEXT")
+    field.setDataType(TSDataType::TEXT);
+  return field;
+}
+} // namespace
 
-  logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTree: Exiting", LOG_LEVEL_DEBUG);
+void ODBCRestResultSet::parseJsonResponseTree(const nlohmann::json& response) {
+  isMetaData = !response.contains("expressions") || response["expressions"].is_null() ||
+               response["expressions"].empty();
+  const char* names = isMetaData ? "column_names" : "expressions";
+  if (response.contains(names) && response[names].is_array())
+    columnNames = response[names].get<std::vector<std::string>>();
+  if (response.contains("data_types") && response["data_types"].is_array())
+    columnTypes = response["data_types"].get<std::vector<std::string>>();
+  if (!isMetaData) {
+    columnNames.insert(columnNames.begin(), "Time");
+    columnTypes.insert(columnTypes.begin(), "TIMESTAMP");
+  }
+  numColumns = static_cast<int>(columnNames.size());
+  const auto& values = response.at("values");
+  numRows = isMetaData ? (values.empty() ? 0 : static_cast<int>(values.at(0).size()))
+                       : static_cast<int>(response.at("timestamps").size());
+  for (int row = 0; row < numRows; ++row) {
+    std::vector<ODBCField> fields;
+    for (int col = 0; col < numColumns; ++col) {
+      const auto& value = !isMetaData && col == 0 ? response.at("timestamps").at(row)
+                                                  : values.at(col - (isMetaData ? 0 : 1)).at(row);
+      fields.push_back(jsonField(value, col < columnTypes.size() ? columnTypes[col] : ""));
+    }
+    data.push_back(std::move(fields));
+  }
 }
 
-// Parse JSON response for table model
-void ODBCRestResultSet::parseJsonResponseTable(const nlohmann::json& jsonResponse) {
-  logMessage(stmt->getConnection(), "ODBCRestResultSet::parseJsonResponseTable: Starting",
-             LOG_LEVEL_TRACE);
-  ConnectionHandle* cnct = stmt->getConnection();
-
-  isMetaData = true; // Table model is always treated as metadata-like
-
-  // Parse column names
-  if (jsonResponse.contains("column_names")) {
-    logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTable: Parsing column names",
-               LOG_LEVEL_TRACE);
-    for (const auto& colName : jsonResponse["column_names"]) {
-      columnNames.push_back(colName.get<std::string>());
-    }
+void ODBCRestResultSet::parseJsonResponseTable(const nlohmann::json& response) {
+  isMetaData = false;
+  if (response.contains("column_names") && response["column_names"].is_array())
+    columnNames = response["column_names"].get<std::vector<std::string>>();
+  if (response.contains("data_types") && response["data_types"].is_array())
+    columnTypes = response["data_types"].get<std::vector<std::string>>();
+  numColumns = static_cast<int>(columnNames.size());
+  for (const auto& row : response.at("values")) {
+    std::vector<ODBCField> fields;
+    for (size_t col = 0; col < row.size(); ++col)
+      fields.push_back(jsonField(row[col], col < columnTypes.size() ? columnTypes[col] : ""));
+    data.push_back(std::move(fields));
   }
-
-  // Parse column types
-  if (jsonResponse.contains("data_types")) {
-    logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTable: Parsing column types",
-               LOG_LEVEL_TRACE);
-    for (const auto& colType : jsonResponse["data_types"]) {
-      columnTypes.push_back(colType.get<std::string>());
-    }
-  }
-
-  // Parse data values - table model: values[rowIndex][columnIndex]
-  if (jsonResponse.contains("values") && jsonResponse["values"].is_array()) {
-    logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTable: Parsing data values",
-               LOG_LEVEL_TRACE);
-    const auto& values = jsonResponse["values"];
-    numRows = values.size();
-
-    for (const auto& row : values) {
-      std::vector<ODBCField> rowData;
-      if (row.is_array()) {
-        for (const auto& cell : row) {
-          ODBCField field;
-          if (cell.is_null()) {
-            field = ODBCField(Field(TSDataType::UNKNOWN));
-          } else if (cell.is_string()) {
-            field.setValue(cell.get<std::string>());
-          } else if (cell.is_number_integer()) {
-            field.setValue(static_cast<int64_t>(cell.get<long long>()));
-          } else if (cell.is_number_float()) {
-            field.setValue(cell.get<double>());
-          } else if (cell.is_boolean()) {
-            field.setValue(cell.get<bool>());
-          } else {
-            // For other types, store as string
-            field.setValue(cell.dump());
-          }
-          rowData.push_back(field);
-        }
-      }
-      data.push_back(rowData);
-    }
-
-    numColumns = columnNames.size();
-  }
-
-  logMessage(cnct, "ODBCRestResultSet::parseJsonResponseTable: Exiting", LOG_LEVEL_TRACE);
+  numRows = static_cast<int>(data.size());
 }

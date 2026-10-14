@@ -104,3 +104,76 @@ jobs:
             pkg=$(find /package -mindepth 1 -maxdepth 1 -type d)
             "$pkg/test/odbc_manager" "$pkg/lib/libapache_iotdb_odbc.so"
           '
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+          cache: maven
+      - name: Check ODBC source formatting
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-17
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
+          ./mvnw -B -P with-odbc -pl iotdb-client/odbc spotless:check
+      - name: Build disposable test server
+        run: ./mvnw -B clean package -pl distribution -am -DskipTests
+      - uses: actions/upload-artifact@v7
+        with:
+          name: odbc-test-server
+          path: distribution/target/apache-iotdb-*-all-bin.zip
+          if-no-files-found: error
+  server-runtime:
+    needs: [linux, windows, server]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: odbc-linux-x86_64-glibc2.28
+          - os: windows-2022
+            artifact: odbc-windows-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.artifact }}
+          path: artifacts/driver
+      - uses: actions/download-artifact@v8
+        with:
+          name: odbc-test-server
+          path: artifacts/server
+      - name: Install runtime ODBC manager
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y unixodbc lsof
+      - name: Extract packages
+        shell: pwsh
+        run: |
+          Expand-Archive (Get-ChildItem artifacts/driver/*.zip).FullName package/driver
+          Expand-Archive (Get-ChildItem artifacts/server/*.zip).FullName package/server
+      - name: Test real server and application consumers
+        shell: pwsh
+        env:
+          IOTDB_TEST_PASSWORD: root
+        run: |
+          $package = (Get-ChildItem package/driver -Directory).FullName
+          $server = (Get-ChildItem package/server -Directory).FullName
+          if ($IsWindows) {
+            python iotdb-client/odbc/test/run_e2e.py "$package/test/odbc_manager.exe" "$package/bin/apache_iotdb_odbc.dll" $server --windows-consumers
+          } else {
+            chmod +x "$package/test/odbc_manager"
+            Get-ChildItem "$server/sbin/*.sh" | ForEach-Object { chmod +x $_.FullName }
+            python iotdb-client/odbc/test/run_e2e.py "$package/test/odbc_manager" "$package/lib/libapache_iotdb_odbc.so" $server
+          }
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

@@ -82,3 +82,23 @@ EXPORTS
     ;sqlext.h functions
     SQLDriverConnect
     SQLMoreResults
+    SQLExecDirectW
+    SQLPrepareW
+    SQLDriverConnectW
+    SQLConnectW
+    SQLTablesW
+    SQLColumnsW
+    SQLDescribeColW
+    SQLColAttributeW
+    SQLGetInfoW
+    SQLGetDiagRecW
+    SQLGetTypeInfoW
+    SQLGetStmtAttrW
+    SQLSetStmtAttrW
+    SQLGetDiagFieldW
+    SQLGetConnectAttrW
+    SQLSetConnectAttrW
+    SQLNativeSqlW
+    SQLGetDescFieldW
+    SQLGetDescRecW
+    SQLSetDescFieldW

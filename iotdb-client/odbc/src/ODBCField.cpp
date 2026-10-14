@@ -1030,6 +1030,13 @@ bool ODBCField::canConvert(TSDataType::TSDataType tsDataType, SQLSMALLINT cDataT
       }();
 
   SQLSMALLINT effectiveCType = cDataType;
+  // The deprecated unsuffixed numeric C types are still used by MSDASQL.
+  if (effectiveCType == SQL_C_LONG)
+    effectiveCType = SQL_C_SLONG;
+  else if (effectiveCType == SQL_C_SHORT)
+    effectiveCType = SQL_C_SSHORT;
+  else if (effectiveCType == SQL_C_TINYINT)
+    effectiveCType = SQL_C_STINYINT;
   if (effectiveCType == SQL_C_DEFAULT) {
     effectiveCType = resolveDefaultCType(tsDataType);
   }
@@ -1056,7 +1063,7 @@ SQLSMALLINT ODBCField::resolveDefaultCType(TSDataType::TSDataType tsDataType) {
     return SQL_C_DOUBLE;
   case TSDataType::TEXT:
   case TSDataType::STRING:
-    return SQL_C_CHAR;
+    return SQL_C_WCHAR;
   case TSDataType::BLOB:
     return SQL_C_BINARY;
   case TSDataType::DATE:

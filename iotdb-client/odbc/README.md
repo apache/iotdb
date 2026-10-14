@@ -141,3 +141,40 @@ negative connection tests. For plain/TLS/mTLS server phases, run
 The runner requires Java 17+, `keytool`, Python 3 and (on Linux) `lsof` or `netstat`.
 Set `IOTDB_TEST_PASSWORD` to the test server password. It copies the supplied
 distribution, refuses occupied test ports and removes the temporary copy afterward.
+
+The package workflow also builds an IoTDB server and tests the **extracted release
+packages** in plain, TLS and mutual-TLS modes on Linux and Windows. Certificate
+rejection tests cover missing trust material, wrong trust, missing/mismatched
+client credentials and a trusted server certificate with the wrong identity.
+`--windows-consumers` adds real `System.Data.Odbc` and MSDASQL/ADO tests, including
+tree/table catalog browsing, parameterized inserts, Unicode, long text, NULL,
+empty strings, DATE, BOOLEAN and Session batch boundaries. It creates temporary
+user DSNs and disposable databases, then removes them. CTest additionally runs
+public-ABI regressions against a local HTTP fixture for catalog schemas,
+enumeration, patterns, Unicode lengths and REST type conversion.
+
+## Excel and other Unicode applications
+
+Use **64-bit Microsoft Excel** with the Windows x64 package and a 64-bit user or
+system DSN. In Excel choose **Data > Get Data > From Other Sources > From ODBC**,
+select the DSN and select a table in Navigator. For an explicit query use the
+advanced SQL option, for example `SELECT time,device,val,txt,day FROM samples` in
+the DSN's table-model database. SQL must follow IoTDB's dialect; optional ODBC SQL
+escapes and transactions are not implemented. Refresh uses a forward-only,
+read-only cursor.
+
+The driver exports Unicode `W` entry points and describes STRING/TEXT as
+`SQL_WVARCHAR`/`SQL_WLONGVARCHAR`. Unicode applications therefore pass UTF-16 SQL
+and retrieve UTF-16 data without the system ANSI code page corrupting Chinese or
+other characters. Native applications should use `SQLDriverConnectW`,
+`SQLExecDirectW` and `SQLPrepareW` through the Driver Manager. The driver's narrow
+entry points accept UTF-8 directly; an ANSI application going through Windows'
+Driver Manager is subject to its ANSI code-page conversion. TIMESTAMP query
+columns retain epoch-integer semantics; DATE columns use `SQL_TYPE_DATE`.
+
+The Windows application tests exercise .NET and Office's MSDASQL/ADO data path.
+GitHub-hosted runners do not include Excel; those tests are not an Excel or Power
+Query UI test. Validate Navigator, loading into a worksheet and refresh on the
+target Excel installation before claiming that particular Office version has
+been tested. WPS registering `Excel.Application` does not establish Microsoft
+Excel compatibility.

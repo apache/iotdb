@@ -489,10 +489,10 @@ SQLRETURN getColName(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
 void colTypeMapping(ConnectionHandle* cnct, std::string iotdbDataType,
                     const SQLUSMALLINT columnNumber, SQLSMALLINT* numericAttribute) {
   static const std::unordered_map<std::string, SQLSMALLINT> typeMap = {
-      {"INT16", SQL_SMALLINT},   {"BOOLEAN", SQL_BIT},    {"INT32", SQL_INTEGER},
-      {"INT64", SQL_BIGINT},     {"FLOAT", SQL_REAL},     {"DOUBLE", SQL_DOUBLE},
-      {"TEXT", SQL_LONGVARCHAR}, {"STRING", SQL_VARCHAR}, {"BLOB", SQL_LONGVARBINARY},
-      {"TIMESTAMP", SQL_BIGINT}, {"DATE", SQL_DATE}};
+      {"INT16", SQL_SMALLINT},    {"BOOLEAN", SQL_BIT},     {"INT32", SQL_INTEGER},
+      {"INT64", SQL_BIGINT},      {"FLOAT", SQL_REAL},      {"DOUBLE", SQL_DOUBLE},
+      {"TEXT", SQL_WLONGVARCHAR}, {"STRING", SQL_WVARCHAR}, {"BLOB", SQL_LONGVARBINARY},
+      {"TIMESTAMP", SQL_BIGINT},  {"DATE", SQL_TYPE_DATE}};
 
   auto it = typeMap.find(iotdbDataType);
   if (it != typeMap.end()) {
@@ -589,13 +589,13 @@ SQLRETURN getColType(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
         *numericAttribute = SQL_DOUBLE;
         break;
       case TSDataType::TEXT:
-        *numericAttribute = SQL_LONGVARCHAR;
+        *numericAttribute = SQL_WLONGVARCHAR;
         break;
       case TSDataType::STRING:
-        *numericAttribute = SQL_VARCHAR;
+        *numericAttribute = SQL_WVARCHAR;
         break;
       case TSDataType::DATE:
-        *numericAttribute = SQL_VARCHAR;
+        *numericAttribute = SQL_WVARCHAR;
         break;
       case TSDataType::BLOB:
         *numericAttribute = SQL_LONGVARBINARY;
@@ -636,6 +636,9 @@ SQLRETURN getColumnSize(SQLSMALLINT odbcType, SQLULEN* columnSize) {
 
   switch (odbcType) {
   case SQL_CHAR:
+  case SQL_WCHAR:
+  case SQL_WVARCHAR:
+  case SQL_WLONGVARCHAR:
   case SQL_VARCHAR:
   case SQL_LONGVARCHAR:
     *columnSize = 2147483647; // IoTDB places no length limit on strings
@@ -668,9 +671,11 @@ SQLRETURN getColumnSize(SQLSMALLINT odbcType, SQLULEN* columnSize) {
     *columnSize = 2147483647;
     break;
 
+  case SQL_TYPE_DATE:
   case SQL_DATE:
     *columnSize = 10; // yyyy-mm-dd
     break;
+  case SQL_TYPE_TIMESTAMP:
   case SQL_TIMESTAMP:
     *columnSize = 23; // yyyy-mm-dd hh:mm:ss.nnn
     break;
@@ -727,28 +732,7 @@ SQLRETURN getNullable(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
   logMessage(cnct, "getNullable: Checking nullability for column " + std::to_string(columnNumber),
              LOG_LEVEL_DEBUG);
 
-  // The first column (non-metadata timestamp) must be NOT NULL; all others may be NULL
-  if ((!stmt->resultSetPtr->getIsMetaData() && columnNumber == 1) ||
-      (stmt->getConnection()->isTableModel &&
-       stmt->resultSetPtr->getColumnType(columnNumber - 1) == "TIMESTAMP")) {
-    *nullable = SQL_NO_NULLS;
-    logMessage(cnct,
-               "getNullable: Column " + std::to_string(columnNumber) +
-                   " is non-nullable (TIMESTAMP)",
-               LOG_LEVEL_DEBUG);
-
-    // NOTE: For table models, the REST API does not expose the category of each column
-    // to determine whether it is a TIME column; we therefore rely on the data type
-    // being TIMESTAMP. However, a table may contain multiple TIMESTAMP columns,
-    // only one of which is the true TIME column. Until the REST API is updated,
-    // this limitation is hard to resolve cleanly.
-    // One potential workaround is to use "DESC <TABLE_NAME>" to retrieve each
-    // column's category directly.
-  } else {
-    *nullable = SQL_NULLABLE;
-    logMessage(cnct, "getNullable: Column " + std::to_string(columnNumber) + " is nullable",
-               LOG_LEVEL_DEBUG);
-  }
+  *nullable = SQL_NULLABLE_UNKNOWN;
 
   logMessage(cnct, "getNullable: Exiting successfully", LOG_LEVEL_TRACE);
   return SQL_SUCCESS;
@@ -926,10 +910,16 @@ SQLRETURN getPrecision(SQLSMALLINT odbcType, SQLULEN* precision) {
     *precision = 52; // IEEE 754 double precision has 52 bits of binary precision
     break;
 
+  case SQL_WCHAR:
+  case SQL_WVARCHAR:
+
+  case SQL_WLONGVARCHAR:
   case SQL_VARCHAR:
   case SQL_LONGVARCHAR:
   case SQL_LONGVARBINARY:
+  case SQL_TYPE_TIMESTAMP:
   case SQL_TIMESTAMP:
+  case SQL_TYPE_DATE:
   case SQL_DATE:
     *precision = 0;
     break;
@@ -957,10 +947,15 @@ SQLRETURN getPrecRadix(SQLSMALLINT odbcType, SQLULEN* radix) {
   case SQL_BIGINT: // INT64
     *radix = 10;   // 64-bit integer maximum 19 digits (9,223,372,036,854,775,807)
     break;
+  case SQL_WCHAR:
+  case SQL_WVARCHAR:
+  case SQL_WLONGVARCHAR:
   case SQL_VARCHAR:
   case SQL_LONGVARCHAR:
   case SQL_LONGVARBINARY:
+  case SQL_TYPE_TIMESTAMP:
   case SQL_TIMESTAMP:
+  case SQL_TYPE_DATE:
   case SQL_DATE:
     *radix = 0;
     break;
@@ -999,7 +994,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
     return SQL_INVALID_HANDLE;
   }
 
-  if (stmt->resultSetPtr == nullptr || stmt->resultSetPtr->isEmpty()) {
+  if (stmt->resultSetPtr == nullptr) {
     logMessage(cnct, "SQLColAttribute: Missing result set", LOG_LEVEL_ERROR);
     stmt->addDiagnostic("HY000", "No query result available");
     return SQL_ERROR;
@@ -1047,14 +1042,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
   case SQL_DESC_COUNT:
     logMessage(cnct, "SQLColAttribute: Processing SQL_DESC_COUNT", LOG_LEVEL_DEBUG);
     {
-      int columnCount = 0;
-      if ((!stmt->getConnection()->isTableModel) && (!stmt->resultSetPtr->getIsMetaData())) {
-        // Tree model with time series
-        columnCount = stmt->resultSetPtr->getNumColumns() + 1; // +1 for timestamp column
-      } else {
-        // Table model or metadata
-        columnCount = stmt->resultSetPtr->getNumColumns();
-      }
+      int columnCount = stmt->resultSetPtr->getNumColumns();
 
       if (numericAttribute) {
         *numericAttribute = static_cast<SQLLEN>(columnCount);
@@ -1107,6 +1095,9 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
       SQLLEN displaySize = 0;
       switch (columnType) {
       case SQL_CHAR:
+      case SQL_WCHAR:
+      case SQL_WVARCHAR:
+      case SQL_WLONGVARCHAR:
       case SQL_VARCHAR:
       case SQL_LONGVARCHAR:
         // For string types, use the actual length if available, otherwise default
@@ -1189,7 +1180,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
                LOG_LEVEL_DEBUG);
 
     // Default: Column is signed unless explicitly determined otherwise
-    SQLLEN isUnsigned = SQL_DESC_UNSIGNED;
+    SQLLEN isUnsigned = SQL_FALSE;
 
     columnType = SQL_UNKNOWN_TYPE;
     sqlreturn = getColType(stmt, columnNumber, &columnType);
@@ -1289,6 +1280,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
     }
     break;
 
+  case SQL_COLUMN_PRECISION:
   case SQL_DESC_PRECISION: // Precision
   {
     logMessage(cnct,
@@ -1313,6 +1305,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
     break;
   }
 
+  case SQL_COLUMN_SCALE:
   case SQL_DESC_SCALE: // Scale
     logMessage(cnct,
                "SQLColAttribute: Processing SQL_DESC_SCALE for column " +
@@ -1345,6 +1338,22 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
     }
     break;
 
+  case SQL_DESC_UPDATABLE:
+    if (numericAttribute)
+      *numericAttribute = SQL_ATTR_READONLY;
+    break;
+  case SQL_DESC_AUTO_UNIQUE_VALUE:
+    if (numericAttribute)
+      *numericAttribute = SQL_FALSE;
+    break;
+  case SQL_DESC_CASE_SENSITIVE:
+    if (numericAttribute)
+      *numericAttribute = SQL_TRUE;
+    break;
+  case SQL_DESC_SEARCHABLE:
+    if (numericAttribute)
+      *numericAttribute = SQL_PRED_SEARCHABLE;
+    break;
   case SQL_DESC_TYPE_NAME:
     logMessage(cnct,
                "SQLColAttribute: Processing SQL_DESC_TYPE_NAME for column " +
@@ -1428,480 +1437,6 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
 
   logMessage(cnct, "SQLColAttribute: Exiting successfully", LOG_LEVEL_TRACE);
   return SQL_SUCCESS;
-}
-
-SQLRETURN SQL_API SQLColumns(SQLHSTMT statementHandle, SQLCHAR* catalogName,
-                             SQLSMALLINT nameLength1, SQLCHAR* schemaName, SQLSMALLINT nameLength2,
-                             SQLCHAR* tableName, SQLSMALLINT nameLength3, SQLCHAR* columnName,
-                             SQLSMALLINT nameLength4) {
-  /*
-    Currently only supports table model.
-    In tree model case, this function is incomplete: it will treat the four strings as NULL directly.
-    */
-  if (statementHandle == nullptr) {
-    logMessage("Invalid statementHandle. returning.\n");
-    return SQL_INVALID_HANDLE;
-  }
-  StatementHandle* stmt = static_cast<StatementHandle*>(statementHandle);
-  ConnectionHandle* cnct = stmt->getConnection();
-  logMessage(cnct, "Entering SQLColumns", LOG_LEVEL_TRACE);
-
-  if (isLogLevelEnabled(cnct, LOG_LEVEL_TRACE)) {
-    std::stringstream logStream;
-    logStream << "Parameters: "
-              << "statementHandle = " << statementHandle
-              << ", catalogName = " << (catalogName ? (const char*)catalogName : "nullptr")
-              << ", nameLength1 = " << nameLength1
-              << ", schemaName = " << (schemaName ? (const char*)schemaName : "nullptr")
-              << ", nameLength2 = " << nameLength2
-              << ", tableName = " << (tableName ? (const char*)tableName : "nullptr")
-              << ", nameLength3 = " << nameLength3
-              << ", columnName = " << (columnName ? (const char*)columnName : "nullptr")
-              << ", nameLength4 = " << nameLength4;
-    logMessage(cnct, logStream.str(), LOG_LEVEL_TRACE);
-  }
-
-  if (catalogName == nullptr)
-    nameLength1 = 0;
-  if (schemaName == nullptr)
-    nameLength2 = 0;
-  if (tableName == nullptr)
-    nameLength3 = 0;
-  if (columnName == nullptr)
-    nameLength4 = 0;
-
-  if ((catalogName && nameLength1 < 0 && nameLength1 != SQL_NTS)) {
-    logMessage(cnct, "Invalid nameLength1 (" + std::to_string(nameLength1) + ") for catalogName.",
-               LOG_LEVEL_ERROR);
-    stmt->addDiagnostic("HY090", "Invalid string or buffer length");
-    return SQL_ERROR;
-  }
-  if ((schemaName && nameLength2 < 0 && nameLength2 != SQL_NTS)) {
-    logMessage(cnct, "Invalid nameLength2 (" + std::to_string(nameLength2) + ") for schemaName.",
-               LOG_LEVEL_ERROR);
-    stmt->addDiagnostic("HY090", "Invalid string or buffer length");
-    return SQL_ERROR;
-  }
-  if ((tableName && nameLength3 < 0 && nameLength3 != SQL_NTS)) {
-    logMessage(cnct, "Invalid nameLength3 (" + std::to_string(nameLength3) + ") for tableName.",
-               LOG_LEVEL_ERROR);
-    stmt->addDiagnostic("HY090", "Invalid string or buffer length");
-    return SQL_ERROR;
-  }
-  if ((columnName && nameLength4 < 0 && nameLength4 != SQL_NTS)) {
-    logMessage(cnct, "Invalid nameLength4 (" + std::to_string(nameLength4) + ") for columnName.",
-               LOG_LEVEL_ERROR);
-    stmt->addDiagnostic("HY090", "Invalid string or buffer length");
-    return SQL_ERROR;
-  }
-
-  if (catalogName && nameLength1 == SQL_NTS)
-    nameLength1 = (SQLSMALLINT)strlen((const char*)catalogName);
-  if (schemaName && nameLength2 == SQL_NTS)
-    nameLength2 = (SQLSMALLINT)strlen((const char*)schemaName);
-  if (tableName && nameLength3 == SQL_NTS)
-    nameLength3 = (SQLSMALLINT)strlen((const char*)tableName);
-  if (columnName && nameLength4 == SQL_NTS)
-    nameLength4 = (SQLSMALLINT)strlen((const char*)columnName);
-
-  if (cnct->isTableModel) {
-
-    std::string sqlCommand =
-        "SELECT "
-        "database AS TABLE_CAT, "
-        "'' AS TABLE_SCHEM, "
-        "table_name AS TABLE_NAME, "
-        "column_name AS COLUMN_NAME, "
-        "CASE "
-        "WHEN datatype = 'BOOLEAN' THEN 16 "
-        "WHEN datatype = 'INT32' THEN 4 "
-        "WHEN datatype = 'INT64' THEN -5 "
-        "WHEN datatype = 'FLOAT' THEN 7 "
-        "WHEN datatype = 'DOUBLE' THEN 8 "
-        "WHEN datatype = 'TEXT' THEN -1 "
-        "WHEN datatype = 'STRING' THEN 12 "
-        "WHEN datatype = 'BLOB' THEN -4 "
-        "WHEN datatype = 'TIMESTAMP' THEN -5 "
-        "WHEN datatype = 'DATE' THEN 91 "
-        "ELSE 0 "
-        "END AS DATA_TYPE, "
-        "datatype AS TYPE_NAME, "
-        "CASE "
-        "WHEN datatype = 'BOOLEAN' THEN 1 "
-        "WHEN datatype = 'INT32' THEN 10 "
-        "WHEN datatype = 'INT64' THEN 19 "
-        "WHEN datatype = 'FLOAT' THEN 24 "
-        "WHEN datatype = 'DOUBLE' THEN 53 "
-        "WHEN datatype = 'TEXT' THEN 0 "
-        "WHEN datatype = 'STRING' THEN 0 "
-        "WHEN datatype = 'BLOB' THEN 0 "
-        "WHEN datatype = 'TIMESTAMP' THEN 23 "
-        "WHEN datatype = 'DATE' THEN 10 "
-        "ELSE 0 "
-        "END AS COLUMN_SIZE, "
-        "CASE "
-        "WHEN datatype = 'BOOLEAN' THEN 1 "
-        "WHEN datatype = 'INT32' THEN 4 "
-        "WHEN datatype = 'INT64' THEN 8 "
-        "WHEN datatype = 'FLOAT' THEN 4 "
-        "WHEN datatype = 'DOUBLE' THEN 8 "
-        "WHEN datatype = 'TEXT' THEN 0 "
-        "WHEN datatype = 'STRING' THEN 0 "
-        "WHEN datatype = 'BLOB' THEN 0 "
-        "WHEN datatype = 'TIMESTAMP' THEN 16 "
-        "WHEN datatype = 'DATE' THEN 6 "
-        "ELSE 0 "
-        "END AS BUFFER_LENGTH, "
-        "CASE WHEN datatype = 'TIMESTAMP' THEN 3 ELSE 0 END AS DECIMAL_DIGITS, "
-        "CASE "
-        "WHEN datatype IN ('FLOAT', 'DOUBLE') THEN 2 "
-        "WHEN datatype IN ('INT32', 'INT64') THEN 10 "
-        "END AS NUM_PREC_RADIX, "
-        "CASE "
-        "WHEN category = 'TIME' THEN 0 "
-        "ELSE 1 "
-        "END AS NULLABLE, "
-        "comment AS REMARKS, "
-        "CASE WHEN 1=0 THEN 0 END AS COLUMN_DEF, "
-        "CASE "
-        "WHEN datatype = 'BOOLEAN' THEN -7 "
-        "WHEN datatype = 'INT32' THEN 4 "
-        "WHEN datatype = 'INT64' THEN -5 "
-        "WHEN datatype = 'FLOAT' THEN 7 "
-        "WHEN datatype = 'DOUBLE' THEN 8 "
-        "WHEN datatype = 'TEXT' THEN -1 "
-        "WHEN datatype = 'STRING' THEN 12 "
-        "WHEN datatype = 'BLOB' THEN -4 "
-        "WHEN datatype = 'TIMESTAMP' THEN 9 "
-        "WHEN datatype = 'DATE' THEN 9 "
-        "ELSE 0 "
-        "END AS SQL_DATA_TYPE, "
-        "CASE "
-        "WHEN datatype = 'DATE' THEN 1 "
-        "WHEN datatype = 'TIMESTAMP' THEN 3 "
-        "END AS SQL_DATETIME_SUB, "
-        "CASE "
-        "WHEN datatype IN ('TEXT', 'STRING', 'BLOB') THEN 0 "
-        "END AS CHAR_OCTET_LENGTH, "
-        "0 AS ORDINAL_POSITION, "
-        "CASE WHEN category = 'TIME' THEN 'NO' ELSE 'YES' END AS IS_NULLABLE "
-        "FROM information_schema.columns WHERE ";
-
-    bool shouldAddAnd = false;
-    if (nameLength1 > 0) {
-      sqlCommand += std::string("database LIKE '") +
-                    std::string(reinterpret_cast<const char*>(catalogName), nameLength1) +
-                    std::string("' ");
-      shouldAddAnd = true;
-    }
-    if (nameLength3 > 0) {
-      if (shouldAddAnd) {
-        sqlCommand += std::string("AND ");
-      }
-      sqlCommand += std::string("table_name LIKE '") +
-                    std::string(reinterpret_cast<const char*>(tableName), nameLength3) +
-                    std::string("' ");
-      shouldAddAnd = true;
-    }
-    if (nameLength4 > 0) {
-      if (shouldAddAnd) {
-        sqlCommand += std::string("AND ");
-      }
-      sqlCommand += std::string("column_name LIKE '") +
-                    std::string(reinterpret_cast<const char*>(columnName), nameLength4) +
-                    std::string("' ");
-      shouldAddAnd = true;
-    }
-
-    SQLRETURN ret = IoTDB_ExecDirect(stmt, sqlCommand);
-    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-      logMessage(cnct, "SQLColumns: Query completed unsuccessfully.  Exiting.\n", LOG_LEVEL_ERROR);
-      return ret;
-    }
-
-    if (stmt->resultSetPtr == nullptr || stmt->resultSetPtr->isEmpty()) {
-      logMessage(cnct, "SQLColumns: Missing query response. Exiting.\n", LOG_LEVEL_ERROR);
-      return SQL_ERROR;
-    }
-
-    // Get only the actually used column indices
-    int decimalDigitsIdx = stmt->resultSetPtr->findColumnIndex("DECIMAL_DIGITS");
-    int typeNameIdx = stmt->resultSetPtr->findColumnIndex("TYPE_NAME");
-    int ordinalPositionIdx = stmt->resultSetPtr->findColumnIndex("ORDINAL_POSITION");
-
-    // Check if required columns are found
-    if (decimalDigitsIdx == -1 || typeNameIdx == -1 || ordinalPositionIdx == -1) {
-      logMessage(cnct, "SQLColumns: Required columns not found in result set. Exiting.\n",
-                 LOG_LEVEL_ERROR);
-      return SQL_ERROR;
-    }
-
-    // Process each row of data
-    int numRows = stmt->resultSetPtr->getNumRows();
-    for (int rowIdx = 0; rowIdx < numRows; ++rowIdx) {
-      // ORDINAL_POSITION: Set incremental position
-      stmt->resultSetPtr->setValue(rowIdx, ordinalPositionIdx, ODBCField(rowIdx + 1));
-
-      // DECIMAL_DIGITS: Adjust based on data type
-      std::string typeName = stmt->resultSetPtr->getValue(rowIdx, typeNameIdx).toString();
-      if (typeName == "TIMESTAMP") {
-        stmt->resultSetPtr->setValue(rowIdx, decimalDigitsIdx,
-                                     ODBCField(3)); // Timestamp decimal digits (microseconds)
-      } else {
-        stmt->resultSetPtr->setValue(rowIdx, decimalDigitsIdx,
-                                     ODBCField::null()); // Set other types to null
-      }
-    }
-
-    logMessage(cnct, "Query completed successfully. Exiting SQLColumns.\n", LOG_LEVEL_TRACE);
-    return ret;
-  } else {
-    logMessage(cnct, "SQLColumns: Handling tree model", LOG_LEVEL_TRACE);
-    std::string catalogStr =
-        catalogName ? std::string(reinterpret_cast<const char*>(catalogName), nameLength1) : "";
-    std::string tableStr =
-        tableName ? std::string(reinterpret_cast<const char*>(tableName), nameLength3) : "";
-    std::string columnStr =
-        columnName ? std::string(reinterpret_cast<const char*>(columnName), nameLength4) : "";
-
-    std::string sqlCommand = "SHOW TIMESERIES ";
-    bool catalogEmpty = catalogStr.empty() || catalogStr == "%" || catalogStr == SQL_ALL_CATALOGS;
-    bool tableEmpty = tableStr.empty() || tableStr == "%";
-    bool columnEmpty = columnStr.empty() || columnStr == "%";
-
-    if (!catalogEmpty && tableEmpty && columnEmpty) {
-      sqlCommand += catalogStr + ".**";
-    } else if (!catalogEmpty && !tableEmpty && columnEmpty) {
-      sqlCommand += catalogStr + "." + tableStr + ".**";
-    } else if (!catalogEmpty && !tableEmpty && !columnEmpty) {
-      sqlCommand += catalogStr + "." + tableStr + "." + columnStr;
-    } else {
-      // do nothing
-    }
-
-    logMessage(cnct, "SQLColumns: Executing metadata query", LOG_LEVEL_DEBUG);
-    SQLRETURN ret = SQLExecDirect(statementHandle, (SQLCHAR*)sqlCommand.data(), SQL_NTS);
-    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-      logMessage(cnct, "SQLColumns: Query completed unsuccessfully", LOG_LEVEL_ERROR);
-      return ret;
-    }
-
-    // Transform SHOW TIMESERIES result to SQLColumns format (same as information_schema.columns)
-    if (stmt->resultSetPtr && !stmt->resultSetPtr->isEmpty()) {
-      int idxTimeseries = stmt->resultSetPtr->findColumnIndex("Timeseries");
-      int idxDatabase = stmt->resultSetPtr->findColumnIndex("Database");
-      int idxDataType = stmt->resultSetPtr->findColumnIndex("DataType");
-      if (idxTimeseries >= 0 && idxDatabase >= 0 && idxDataType >= 0) {
-        const int numRows = stmt->resultSetPtr->getNumRows();
-        std::vector<std::string> savedTimeseries(static_cast<size_t>(numRows));
-        std::vector<std::string> savedDatabase(static_cast<size_t>(numRows));
-        std::vector<std::string> savedDataType(static_cast<size_t>(numRows));
-        for (int r = 0; r < numRows; ++r) {
-          savedTimeseries[r] = stmt->resultSetPtr->getValue(r, idxTimeseries).toString();
-          savedDatabase[r] = stmt->resultSetPtr->getValue(r, idxDatabase).toString();
-          savedDataType[r] = stmt->resultSetPtr->getValue(r, idxDataType).toString();
-        }
-
-        static const std::vector<std::string> sqlColNames = {
-            "TABLE_CAT",        "TABLE_SCHEM",    "TABLE_NAME",       "COLUMN_NAME",
-            "DATA_TYPE",        "TYPE_NAME",      "COLUMN_SIZE",      "BUFFER_LENGTH",
-            "DECIMAL_DIGITS",   "NUM_PREC_RADIX", "NULLABLE",         "REMARKS",
-            "COLUMN_DEF",       "SQL_DATA_TYPE",  "SQL_DATETIME_SUB", "CHAR_OCTET_LENGTH",
-            "ORDINAL_POSITION", "IS_NULLABLE"};
-        static const std::vector<std::string> sqlColTypes = {
-            "STRING", "STRING", "STRING", "STRING", "INT32", "STRING", "INT32", "INT32", "INT32",
-            "INT32",  "INT32",  "STRING", "INT32",  "INT32", "INT32",  "INT32", "INT32", "STRING"};
-
-        stmt->resultSetPtr->columnNames = sqlColNames;
-        stmt->resultSetPtr->columnTypes = sqlColTypes;
-        stmt->resultSetPtr->numColumns = 18;
-        stmt->resultSetPtr->numRows = numRows;
-
-        // Parse first row's TABLE_CAT/TABLE_NAME for the Time row (when numRows > 0)
-        std::string firstTableCat;
-        std::string firstTableName;
-        if (numRows > 0) {
-          const std::string& ts0 = savedTimeseries[0];
-          const std::string& db0 = savedDatabase[0];
-          firstTableCat = db0;
-          std::string tableNamePart;
-          if (!db0.empty() && ts0.size() > db0.size() && ts0.compare(0, db0.size(), db0) == 0 &&
-              ts0[db0.size()] == '.') {
-            tableNamePart = ts0.substr(db0.size() + 1);
-          } else {
-            tableNamePart = ts0;
-          }
-          size_t lastDot = tableNamePart.rfind('.');
-          firstTableName = (lastDot != std::string::npos) ? tableNamePart.substr(0, lastDot) : "";
-        }
-
-        auto dataTypeToOdbc = [](const std::string& dt) -> std::pair<int, int> {
-          if (dt == "BOOLEAN")
-            return {16, -7};
-          if (dt == "INT32")
-            return {4, 4};
-          if (dt == "INT64")
-            return {-5, -5};
-          if (dt == "FLOAT")
-            return {7, 7};
-          if (dt == "DOUBLE")
-            return {8, 8};
-          if (dt == "TEXT")
-            return {-1, -1};
-          if (dt == "STRING")
-            return {12, 12};
-          if (dt == "BLOB")
-            return {-4, -4};
-          if (dt == "TIMESTAMP")
-            return {-5, 9};
-          if (dt == "DATE")
-            return {91, 9};
-          return {0, 0};
-        };
-        auto columnSize = [](const std::string& dt) -> int {
-          if (dt == "BOOLEAN")
-            return 1;
-          if (dt == "INT32")
-            return 10;
-          if (dt == "INT64")
-            return 19;
-          if (dt == "FLOAT")
-            return 24;
-          if (dt == "DOUBLE")
-            return 53;
-          if (dt == "TEXT" || dt == "STRING" || dt == "BLOB")
-            return 0;
-          if (dt == "TIMESTAMP")
-            return 23;
-          if (dt == "DATE")
-            return 10;
-          return 0;
-        };
-        auto bufferLength = [](const std::string& dt) -> int {
-          if (dt == "BOOLEAN")
-            return 1;
-          if (dt == "INT32")
-            return 4;
-          if (dt == "INT64")
-            return 8;
-          if (dt == "FLOAT")
-            return 4;
-          if (dt == "DOUBLE")
-            return 8;
-          if (dt == "TEXT" || dt == "STRING" || dt == "BLOB")
-            return 0;
-          if (dt == "TIMESTAMP")
-            return 16;
-          if (dt == "DATE")
-            return 6;
-          return 0;
-        };
-
-        for (int rowIdx = 0; rowIdx < numRows; ++rowIdx) {
-          const std::string& timeseries = savedTimeseries[rowIdx];
-          const std::string& database = savedDatabase[rowIdx];
-          const std::string& dataType = savedDataType[rowIdx];
-
-          std::string tableNamePart;
-          std::string columnNamePart;
-          if (!database.empty() && timeseries.size() > database.size() &&
-              timeseries.compare(0, database.size(), database) == 0 &&
-              timeseries[database.size()] == '.') {
-            tableNamePart = timeseries.substr(database.size() + 1);
-          } else {
-            tableNamePart = timeseries;
-          }
-          size_t lastDot = tableNamePart.rfind('.');
-          if (lastDot != std::string::npos) {
-            columnNamePart = tableNamePart.substr(lastDot + 1);
-            tableNamePart = tableNamePart.substr(0, lastDot);
-          } else {
-            columnNamePart = tableNamePart;
-            tableNamePart = "";
-          }
-
-          auto odbcTypes = dataTypeToOdbc(dataType);
-          int colSize = columnSize(dataType);
-          int bufLen = bufferLength(dataType);
-
-          std::vector<ODBCField> row;
-          row.push_back(ODBCField(database));        // TABLE_CAT
-          row.push_back(ODBCField(std::string(""))); // TABLE_SCHEM
-          row.push_back(ODBCField(tableNamePart));   // TABLE_NAME
-          row.push_back(ODBCField(columnNamePart));  // COLUMN_NAME
-          row.push_back(ODBCField(odbcTypes.first)); // DATA_TYPE
-          row.push_back(ODBCField(dataType));        // TYPE_NAME
-          row.push_back(ODBCField(colSize));         // COLUMN_SIZE
-          row.push_back(ODBCField(bufLen));          // BUFFER_LENGTH
-          if (dataType == "TIMESTAMP") {
-            row.push_back(ODBCField(3)); // DECIMAL_DIGITS
-          } else {
-            row.push_back(ODBCField::null()); // DECIMAL_DIGITS
-          }
-          if (dataType == "FLOAT" || dataType == "DOUBLE") {
-            row.push_back(ODBCField(2)); // NUM_PREC_RADIX
-          } else if (dataType == "INT32" || dataType == "INT64") {
-            row.push_back(ODBCField(10)); // NUM_PREC_RADIX
-          } else {
-            row.push_back(ODBCField::null()); // NUM_PREC_RADIX
-          }
-          row.push_back(ODBCField(1));                // NULLABLE
-          row.push_back(ODBCField(std::string("")));  // REMARKS
-          row.push_back(ODBCField::null());           // COLUMN_DEF
-          row.push_back(ODBCField(odbcTypes.second)); // SQL_DATA_TYPE
-          if (dataType == "DATE") {
-            row.push_back(ODBCField(1)); // SQL_DATETIME_SUB
-          } else if (dataType == "TIMESTAMP") {
-            row.push_back(ODBCField(3)); // SQL_DATETIME_SUB
-          } else {
-            row.push_back(ODBCField::null()); // SQL_DATETIME_SUB
-          }
-          if (dataType == "TEXT" || dataType == "STRING" || dataType == "BLOB") {
-            row.push_back(ODBCField(0)); // CHAR_OCTET_LENGTH
-          } else {
-            row.push_back(ODBCField::null()); // CHAR_OCTET_LENGTH
-          }
-          row.push_back(ODBCField(rowIdx + 1));         // ORDINAL_POSITION
-          row.push_back(ODBCField(std::string("YES"))); // IS_NULLABLE
-
-          stmt->resultSetPtr->data[rowIdx] = std::move(row);
-        }
-
-        // Prepend one row for the Time column (INT64)
-        std::vector<ODBCField> timeRow;
-        timeRow.push_back(ODBCField(firstTableCat));        // TABLE_CAT
-        timeRow.push_back(ODBCField(std::string("")));      // TABLE_SCHEM
-        timeRow.push_back(ODBCField(firstTableName));       // TABLE_NAME
-        timeRow.push_back(ODBCField(std::string("Time")));  // COLUMN_NAME
-        timeRow.push_back(ODBCField(-5));                   // DATA_TYPE (INT64)
-        timeRow.push_back(ODBCField(std::string("INT64"))); // TYPE_NAME
-        timeRow.push_back(ODBCField(19));                   // COLUMN_SIZE
-        timeRow.push_back(ODBCField(8));                    // BUFFER_LENGTH
-        timeRow.push_back(ODBCField::null());               // DECIMAL_DIGITS
-        timeRow.push_back(ODBCField(10));                   // NUM_PREC_RADIX
-        timeRow.push_back(ODBCField(1));                    // NULLABLE
-        timeRow.push_back(ODBCField(std::string("")));      // REMARKS
-        timeRow.push_back(ODBCField::null());               // COLUMN_DEF
-        timeRow.push_back(ODBCField(-5));                   // SQL_DATA_TYPE
-        timeRow.push_back(ODBCField::null());               // SQL_DATETIME_SUB
-        timeRow.push_back(ODBCField::null());               // CHAR_OCTET_LENGTH
-        timeRow.push_back(ODBCField(1));                    // ORDINAL_POSITION
-        timeRow.push_back(ODBCField(std::string("YES")));   // IS_NULLABLE
-
-        stmt->resultSetPtr->data.insert(stmt->resultSetPtr->data.begin(), std::move(timeRow));
-        stmt->resultSetPtr->numRows = numRows + 1;
-        for (int i = 1; i <= numRows; ++i) {
-          stmt->resultSetPtr->setValue(i, 16, ODBCField(i + 1)); // ORDINAL_POSITION
-        }
-      }
-    }
-
-    stmt->resultSetPtr->outputTable();
-
-    logMessage(cnct, "SQLColumns: Query completed successfully", LOG_LEVEL_INFO);
-    logMessage(cnct, "SQLColumns: Exiting", LOG_LEVEL_TRACE);
-    return SQL_SUCCESS;
-  }
 }
 
 SQLRETURN SQL_API SQLConnect(SQLHDBC connectionHandle, SQLCHAR* serverName, SQLSMALLINT nameLength1,
@@ -2085,7 +1620,7 @@ SQLRETURN SQL_API SQLDescribeCol(SQLHSTMT statementHandle, SQLUSMALLINT columnNu
     return SQL_INVALID_HANDLE;
   }
 
-  if (stmt->resultSetPtr == nullptr || stmt->resultSetPtr->isEmpty()) {
+  if (stmt->resultSetPtr == nullptr) {
     logMessage(cnct, "SQLDescribeCol: Missing result set", LOG_LEVEL_ERROR);
     stmt->addDiagnostic("HY000", "No query result available");
     return SQL_ERROR;
@@ -2463,7 +1998,8 @@ SQLRETURN IoTDB_ExecDirect(StatementHandle* const stmt, const std::string& state
   logMessage(cnct, "IoTDB_ExecDirect: Entering", LOG_LEVEL_TRACE);
 
   std::string sqlForServer = statementText;
-  StripLeadingTimeColumnFromSelect(sqlForServer);
+  if (!cnct->isTableModel)
+    StripLeadingTimeColumnFromSelect(sqlForServer);
   if (saveStatementText) {
     stmt->statementText = sqlForServer;
     logMessage(cnct, "IoTDB_ExecDirect: Saved statement text", LOG_LEVEL_DEBUG);
@@ -2532,7 +2068,7 @@ static void PopulateImplementationRowDescriptor(StatementHandle* stmt) {
     } else if (type == "BLOB") {
       record.type = record.conciseType = SQL_LONGVARBINARY;
     } else {
-      record.type = record.conciseType = SQL_VARCHAR;
+      record.type = record.conciseType = SQL_WVARCHAR;
     }
     record.nullable = SQL_NULLABLE_UNKNOWN;
   }
@@ -4209,7 +3745,7 @@ std::string getServerVersion(SQLHDBC connectionHandle) {
     return "Unknown";
   }
 
-  if (stmt->resultSetPtr == nullptr || stmt->resultSetPtr->isEmpty()) {
+  if (stmt->resultSetPtr == nullptr) {
     logMessage(cnct, "getServerVersion: No result set available", LOG_LEVEL_ERROR);
     return "Unknown";
   }
@@ -4616,7 +4152,7 @@ SQLRETURN SQL_API SQLGetInfo(SQLHDBC connectionHandle, SQLUSMALLINT infoType,
     A character string that specifies the escape character supported by the driver, which allows using pattern matching metacharacters underscore (_) and percent (%) as literal characters in search patterns.
     This escape character only applies to catalog function parameters that support search strings. If this string is empty, the driver does not support search pattern escape characters.
     */
-    SQLGetInfoSetString(cnct, "SQL_SEARCH_PATTERN_ESCAPE", "", infoValuePtr, bufferLength,
+    SQLGetInfoSetString(cnct, "SQL_SEARCH_PATTERN_ESCAPE", "\\", infoValuePtr, bufferLength,
                         stringLengthPtr);
     break;
 
@@ -5280,6 +4816,17 @@ SQLRETURN SQL_API SQLGetTypeInfo(SQLHSTMT statementHandle, SQLSMALLINT dataType)
       {"TIMESTAMP", 93, 23, null, null, null, 1, 0, 2, 1, 1, 0, "TIMESTAMP", 3, 3, 9, 3, null,
        null}};
 
+  // Unicode consumers such as MSDASQL select SQL_C_WCHAR from these SQL types.
+  const size_t originalTypes = typeData.size();
+  for (size_t i = 0; i < originalTypes; ++i) {
+    SQLSMALLINT type = 0;
+    typeData[i][1].toSShort(&type);
+    if (type == SQL_VARCHAR || type == SQL_LONGVARCHAR) {
+      auto wide = typeData[i];
+      wide[1] = wide[15] = ODBCField(type == SQL_VARCHAR ? SQL_WVARCHAR : SQL_WLONGVARCHAR);
+      typeData.push_back(std::move(wide));
+    }
+  }
   // Filter data if specific dataType is requested
   if (dataType != SQL_ALL_TYPES) {
     std::vector<std::vector<ODBCField>> filteredData;
@@ -5609,21 +5156,17 @@ SQLRETURN SQL_API SQLSetConnectAttr(const SQLHDBC connectionHandle, const SQLINT
       cnct->addDiagnostic("HY090", "String data, right truncation");
       return SQL_ERROR;
     }
-    bool isNameValid = true;
-    for (size_t i = 0; i < databaseName.length(); i++) {
-      char c = databaseName[i];
-      if (!(isalnum(c) || c == '.')) {
-        isNameValid = false;
-        break;
-      }
-    }
-    if (!isNameValid) {
-      logMessage(cnct, "SQLSetConnectAttr: Invalid character in catalog name: " + databaseName,
-                 LOG_LEVEL_ERROR);
-      cnct->addDiagnostic("HY000", "Invalid catalog name format");
+    if (databaseName.empty() || databaseName.find('\0') != std::string::npos) {
+      cnct->addDiagnostic("HY024", "Invalid catalog name");
       return SQL_ERROR;
     }
-    cnct->database = std::string(databaseName);
+    std::string quotedDatabase = "\"";
+    for (char character : databaseName) {
+      if (character == '"')
+        quotedDatabase += '"';
+      quotedDatabase += character;
+    }
+    quotedDatabase += '"';
     if (cnct->isTableModel) {
       logMessage(cnct, "SQLSetConnectAttr: Setting current database: USE " + cnct->database,
                  LOG_LEVEL_DEBUG);
@@ -5632,14 +5175,19 @@ SQLRETURN SQL_API SQLSetConnectAttr(const SQLHDBC connectionHandle, const SQLINT
       if (!SQL_SUCCEEDED(sqlreturn))
         return sqlreturn;
       StatementHandle* stmt = static_cast<StatementHandle*>(statementHandle);
-      sqlreturn = IoTDB_ExecDirect(stmt, ("USE " + cnct->database).c_str());
+      sqlreturn = IoTDB_ExecDirect(stmt, "USE " + quotedDatabase);
       if (sqlreturn != SQL_SUCCESS && sqlreturn != SQL_SUCCESS_WITH_INFO) {
         logMessage(cnct, "SQLSetConnectAttr: Setting current catalog failed!", LOG_LEVEL_ERROR);
+        std::string state, message;
+        int native = 0;
+        if (stmt->getDiagnostic(1, state, message, native))
+          cnct->addDiagnostic(state, message, native);
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         return sqlreturn;
       }
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
+    cnct->database = databaseName;
     logMessage(cnct, "SQLSetConnectAttr: Set current catalog (= database) to " + cnct->database,
                LOG_LEVEL_DEBUG);
     break;
@@ -6399,262 +5947,6 @@ SQLRETURN SQL_API SQLStatistics(SQLHSTMT statementHandle, SQLCHAR* catalogName,
 when name is nullptr, return ""
 dont deal with the % case here
  */
-static std::string convertStringForSQLTables(SQLCHAR* name, SQLSMALLINT length) {
-  std::string result;
-  if (name == nullptr) {
-    return result;
-  }
-
-  size_t len;
-  if (length == SQL_NTS) {
-    len = strlen(reinterpret_cast<char*>(name));
-  } else if (length > 0) {
-    len = static_cast<size_t>(length);
-  } else {
-    len = 0;
-  }
-
-  if (len > 0) {
-    result.assign(reinterpret_cast<char*>(name), len);
-    size_t pos = result.find('\0');
-    if (pos != std::string::npos) {
-      result = result.substr(0, pos);
-    }
-  }
-
-  return result;
-}
-
-SQLRETURN SQL_API SQLTables(SQLHSTMT statementHandle, SQLCHAR* catalogName, SQLSMALLINT nameLength1,
-                            SQLCHAR* schemaName, SQLSMALLINT nameLength2, SQLCHAR* tableName,
-                            SQLSMALLINT nameLength3, SQLCHAR* tableType, SQLSMALLINT nameLength4) {
-  /*
-    Currently only supports table model.
-    In tree model, the function is incomplete: it will treat all four strings as NULL.
-    */
-
-  const auto stmt = static_cast<StatementHandle*>(statementHandle);
-  ConnectionHandle* cnct = stmt ? stmt->getConnection() : nullptr;
-  logMessage(cnct, "SQLTables: Entering", LOG_LEVEL_TRACE);
-  if (isLogLevelEnabled(cnct, LOG_LEVEL_TRACE)) {
-    std::stringstream logStream;
-    logStream << "SQLTables parameters: "
-              << "statementHandle = " << statementHandle
-              << ", catalogName = " << (catalogName ? (const char*)catalogName : "nullptr")
-              << ", nameLength1 = " << nameLength1
-              << ", schemaName = " << (schemaName ? (const char*)schemaName : "nullptr")
-              << ", nameLength2 = " << nameLength2
-              << ", tableName = " << (tableName ? (const char*)tableName : "nullptr")
-              << ", nameLength3 = " << nameLength3
-              << ", tableType = " << (tableType ? (const char*)tableType : "nullptr")
-              << ", nameLength4 = " << nameLength4;
-
-    logMessage(cnct, logStream.str(), LOG_LEVEL_TRACE);
-  }
-
-  std::string catalogStr = convertStringForSQLTables(catalogName, nameLength1);
-  std::string schemaStr = convertStringForSQLTables(schemaName, nameLength2);
-  std::string tableStr = convertStringForSQLTables(tableName, nameLength3);
-  std::string tableTypeStr = convertStringForSQLTables(tableType, nameLength4);
-
-  if (statementHandle == nullptr) {
-    logMessage(cnct, "SQLTables: Invalid statement handle", LOG_LEVEL_ERROR);
-    return SQL_INVALID_HANDLE;
-  }
-
-  if ((catalogName && nameLength1 < 0 && nameLength1 != SQL_NTS) ||
-      (schemaName && nameLength2 < 0 && nameLength2 != SQL_NTS) ||
-      (tableName && nameLength3 < 0 && nameLength3 != SQL_NTS) ||
-      (tableType && nameLength4 < 0 && nameLength4 != SQL_NTS)) {
-    logMessage(cnct, "SQLTables: Invalid name length", LOG_LEVEL_ERROR);
-    stmt->addDiagnostic("HY090", "Invalid string or buffer length");
-    return SQL_ERROR;
-  }
-
-  if ((catalogStr.empty() || catalogStr == "%" || catalogStr == SQL_ALL_CATALOGS) &&
-      !cnct->database.empty()) {
-    // This part is to adapt to Excel actions.
-    // Not sure if this fits the ODBC standard
-    // because it's not specified in the document.
-
-    // 2026.1.1: this seems to conflict to PowerBI's behavior. temporarily disabled.
-    logMessage(cnct,
-               "SQLTables: catalogStr is empty and not set to cnct->database:" + cnct->database,
-               LOG_LEVEL_TRACE);
-  }
-
-  if (schemaName != nullptr && nameLength2 > 0) {
-    logMessage(cnct, "SQLTables: Schemas are not supported", LOG_LEVEL_WARN);
-    stmt->addDiagnostic("HYC00", "Schemas are not supported. Use CatalogName parameter instead");
-    return SQL_ERROR;
-  }
-
-  // handling special cases
-
-  // Helper function to check if string equals a special constant
-  auto checkSpecialCase = [](const SQLCHAR* str, SQLSMALLINT length, const char* constant) -> bool {
-    if (!str)
-      return false;
-    size_t constLen = std::strlen(constant);
-    return (size_t)length == constLen && std::memcmp(str, constant, constLen) == 0;
-  };
-
-  // SQL_ALL_CATALOGS: CatalogName is SQL_ALL_CATALOGS and SchemaName and TableName are empty strings
-  // Based on PowerBI testing, when SchemaName and TableName are passed as empty strings, it matches this special case, while passing nullptr wants to get all tables. So removed the nullptr condition.
-  if (checkSpecialCase(catalogName, nameLength1, SQL_ALL_CATALOGS) &&
-      (checkSpecialCase(schemaName, nameLength2, "")) &&
-      (checkSpecialCase(tableName, nameLength3, ""))) {
-    logMessage(cnct, "SQLTables: Handling SQL_ALL_CATALOGS case", LOG_LEVEL_INFO);
-    const char* sqlCommand = "SHOW DATABASES";
-    SQLRETURN ret = SQLExecDirect(statementHandle, (SQLCHAR*)sqlCommand, SQL_NTS);
-    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-      logMessage(cnct, "SQLTables: Query for SQL_ALL_CATALOGS failed", LOG_LEVEL_ERROR);
-      return ret;
-    }
-    // Modify the response to SQLTables formats using ODBCResultSet
-    stmt->resultSetPtr->setColumnName(0, "TABLE_CAT");
-    stmt->resultSetPtr->setColumnName(1, "TABLE_SCHEM");
-    stmt->resultSetPtr->setColumnName(2, "TABLE_NAME");
-    stmt->resultSetPtr->setColumnName(3, "TABLE_TYPE");
-    stmt->resultSetPtr->setColumnName(4, "REMARKS");
-
-    // Set data types for columns 2-4 to TEXT
-    stmt->resultSetPtr->setColumnType(2, "TEXT");
-    stmt->resultSetPtr->setColumnType(3, "TEXT");
-    stmt->resultSetPtr->setColumnType(4, "TEXT");
-
-    // Remove rows where first column is "information_schema"
-    size_t removedCount =
-        stmt->resultSetPtr->removeRowsIf([](const std::vector<ODBCField>& row) -> bool {
-          return !row.empty() && row[0].toString() == "information_schema";
-        });
-
-    // Set columns 1-4 to null/empty for remaining rows
-    int numRows = stmt->resultSetPtr->getNumRows();
-    for (int rowIdx = 0; rowIdx < numRows; ++rowIdx) {
-      // Check if row has exactly 5 columns
-      if (stmt->resultSetPtr->getNumColumns() != 5) {
-        logMessage(cnct, "SQLTables: Result set format wrong - expected 5 columns!",
-                   LOG_LEVEL_ERROR);
-        stmt->addDiagnostic("HY000", "SQLTables: Invalid result set format - expected 5 columns");
-        return SQL_ERROR;
-      }
-      // Set columns 1-4 to empty (null equivalent)
-      for (int colIdx = 1; colIdx < 5; ++colIdx) {
-        stmt->resultSetPtr->setValue(rowIdx, colIdx, "");
-      }
-    }
-
-    // output the final resultSet
-    logMessage(cnct, "SQLTables: Outputting final result set for SQL_ALL_CATALOGS",
-               LOG_LEVEL_DEBUG);
-    stmt->resultSetPtr->outputTable();
-
-    logMessage(cnct,
-               "SQLTables: Processed result set, removed " + std::to_string(removedCount) +
-                   " information_schema rows",
-               LOG_LEVEL_DEBUG);
-    logMessage(cnct, "SQLTables: SQL_ALL_CATALOGS query completed successfully", LOG_LEVEL_INFO);
-    return SQL_SUCCESS;
-  }
-
-  if (cnct->isTableModel) {
-    logMessage(cnct, "SQLTables: Handling table model", LOG_LEVEL_TRACE);
-    std::string sqlCommand = "SELECT database AS TABLE_CAT, '' AS TABLE_SCHEM, table_name AS "
-                             "TABLE_NAME, 'TABLE' AS TABLE_TYPE, comment AS REMARKS FROM "
-                             "information_schema.tables WHERE database != 'information_schema'";
-    // Apply catalog filter condition
-    if (!catalogStr.empty() && catalogStr != "%" && catalogStr != SQL_ALL_CATALOGS) {
-      // Escape special characters (% and _), avoid accidental matches in LIKE statements
-      sqlCommand += " AND database LIKE '" + catalogStr + "'";
-    }
-    // Apply table filter condition
-    if (!tableStr.empty() && tableStr != "%") {
-      // Escape special characters (% and _), avoid accidental matches in LIKE statements
-      sqlCommand += " AND table_name LIKE '" + tableStr + "'";
-    }
-
-    logMessage(cnct, "SQLTables: Executing metadata query", LOG_LEVEL_DEBUG);
-    SQLRETURN ret = SQLExecDirect(statementHandle, (SQLCHAR*)sqlCommand.data(), SQL_NTS);
-    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-      logMessage(cnct, "SQLTables: Query completed unsuccessfully", LOG_LEVEL_ERROR);
-      return ret;
-    }
-
-    logMessage(cnct, "SQLTables: Query completed successfully", LOG_LEVEL_INFO);
-    logMessage(cnct, "SQLTables: Exiting", LOG_LEVEL_TRACE);
-    return SQL_SUCCESS;
-  } else {
-    logMessage(cnct, "SQLTables: Handling tree model", LOG_LEVEL_TRACE);
-    std::string sqlCommand = "SHOW DEVICES ";
-    bool catalogEmpty = catalogStr.empty() || catalogStr == "%" || catalogStr == SQL_ALL_CATALOGS;
-    bool tableEmpty = tableStr.empty() || tableStr == "%";
-    if (catalogEmpty && tableEmpty) {
-      // do nothing
-    } else if (catalogEmpty && !tableEmpty) {
-      sqlCommand += tableStr;
-    } else if (!catalogEmpty && tableEmpty) {
-      sqlCommand += catalogStr + ".**";
-    } else {
-      sqlCommand += tableStr;
-    }
-    sqlCommand += " WITH DATABASE";
-
-    logMessage(cnct, "SQLTables: Executing metadata query", LOG_LEVEL_DEBUG);
-    SQLRETURN ret = SQLExecDirect(statementHandle, (SQLCHAR*)sqlCommand.data(), SQL_NTS);
-    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
-      logMessage(cnct, "SQLTables: Query completed unsuccessfully", LOG_LEVEL_ERROR);
-      return ret;
-    }
-
-    // Transform SHOW DEVICES result (Device, Database, IsAligned, Template, TTL(ms)) to SQLTables format
-    if (stmt->resultSetPtr && stmt->resultSetPtr->getNumColumns() >= 5) {
-      stmt->resultSetPtr->setColumnName(0, "TABLE_CAT");
-      stmt->resultSetPtr->setColumnName(1, "TABLE_SCHEM");
-      stmt->resultSetPtr->setColumnName(2, "TABLE_NAME");
-      stmt->resultSetPtr->setColumnName(3, "TABLE_TYPE");
-      stmt->resultSetPtr->setColumnName(4, "REMARKS");
-
-      for (int colIdx = 0; colIdx < 5; ++colIdx) {
-        stmt->resultSetPtr->setColumnType(colIdx, "STRING");
-      }
-
-      int idxDevice = stmt->resultSetPtr->findColumnIndex("Device");
-      int idxDatabase = stmt->resultSetPtr->findColumnIndex("Database");
-      if (idxDevice < 0)
-        idxDevice = 0;
-      if (idxDatabase < 0)
-        idxDatabase = 1;
-
-      int numRows = stmt->resultSetPtr->getNumRows();
-      for (int rowIdx = 0; rowIdx < numRows; ++rowIdx) {
-        std::string deviceStr = stmt->resultSetPtr->getValue(rowIdx, idxDevice).toString();
-        std::string databaseStr = stmt->resultSetPtr->getValue(rowIdx, idxDatabase).toString();
-        // TABLE_NAME: strip database prefix (e.g. "root.full.fulldevice" -> "fulldevice" when databaseStr is "root.full")
-        logMessage(cnct,
-                   "SQLTables: TABLE_NAME: deviceStr: " + deviceStr +
-                       ", databaseStr: " + databaseStr,
-                   LOG_LEVEL_TRACE);
-        if (!databaseStr.empty() && deviceStr.size() > databaseStr.size() &&
-            deviceStr.compare(0, databaseStr.size(), databaseStr) == 0 &&
-            deviceStr[databaseStr.size()] == '.') {
-          logMessage(cnct, "SQLTables: Stripping database prefix", LOG_LEVEL_TRACE);
-          deviceStr = deviceStr.substr(databaseStr.size() + 1);
-        }
-        stmt->resultSetPtr->setValue(rowIdx, 0, ODBCField(databaseStr));          // TABLE_CAT
-        stmt->resultSetPtr->setValue(rowIdx, 1, ODBCField(std::string("")));      // TABLE_SCHEM
-        stmt->resultSetPtr->setValue(rowIdx, 2, ODBCField(deviceStr));            // TABLE_NAME
-        stmt->resultSetPtr->setValue(rowIdx, 3, ODBCField(std::string("TABLE"))); // TABLE_TYPE
-        stmt->resultSetPtr->setValue(rowIdx, 4, ODBCField(std::string("")));      // REMARKS
-      }
-    }
-
-    logMessage(cnct, "SQLTables: Query completed successfully", LOG_LEVEL_INFO);
-    logMessage(cnct, "SQLTables: Exiting", LOG_LEVEL_TRACE);
-    return SQL_SUCCESS;
-  }
-}
-
 SQLRETURN SQL_API SQLTransact(SQLHENV environmentHandle, SQLHDBC connectionHandle,
                               SQLUSMALLINT completionType) {
   if (!environmentHandle && !connectionHandle) {

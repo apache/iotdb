@@ -55,6 +55,7 @@ void ODBCSessionResultSet::loadData(std::unique_ptr<SessionDataSet> _sessionData
 
   // Clear existing data
   clear();
+  TSDataTypeColumnTypes.clear();
 
   // Store the SessionDataSet for batch processing
   sessionDataSet = std::move(_sessionDataSet);
@@ -110,6 +111,9 @@ bool ODBCSessionResultSet::loadDataMetaData() {
   // 1) If it ends with '`', keep content between the last two '`' (inclusive)
   // 2) Otherwise, strip prefix up to the last '.'
   for (size_t i = 0; i < columnNames.size(); ++i) {
+    // Relational aliases are already final names and may contain dots.
+    if (stmt->getConnection()->isTableModel)
+      continue;
     if (!columnNames[i].empty() && columnNames[i].back() == '`') {
       size_t secondLastBacktick = columnNames[i].rfind('`', columnNames[i].size() - 2);
       if (secondLastBacktick != std::string::npos) {
@@ -128,7 +132,7 @@ bool ODBCSessionResultSet::loadDataMetaData() {
       logMessage(stmt->getConnection(),
                  "ODBCSessionResultSet::loadSessionData: Unknown column type: " + columnType,
                  LOG_LEVEL_ERROR);
-      continue;
+      throw std::runtime_error("Unsupported Session result type: " + columnType);
     }
     TSDataTypeColumnTypes.push_back(columnTypeToTSDataTypeMap.at(columnType));
   }
@@ -167,6 +171,7 @@ bool ODBCSessionResultSet::loadDataInternal() {
                    "data set (closeOperationHandle())",
                    LOG_LEVEL_DEBUG);
         sessionDataSet->closeOperationHandle();
+        sessionDataSet.reset();
         break;
       }
       std::vector<ODBCField> rowData(numColumns);
@@ -369,12 +374,12 @@ bool ODBCSessionResultSet::loadDataInternal() {
     logMessage(stmt->getConnection(),
                std::string("ODBCSessionResultSet::loadDataInternal: Exception: ") + e.what(),
                LOG_LEVEL_ERROR);
-    return false;
+    throw;
   } catch (...) {
     logMessage(stmt->getConnection(),
                "ODBCSessionResultSet::loadDataInternal: Unknown exception occurred",
                LOG_LEVEL_ERROR);
-    return false;
+    throw std::runtime_error("Unable to read Session result batch");
   }
 
   numRows = data.size();
