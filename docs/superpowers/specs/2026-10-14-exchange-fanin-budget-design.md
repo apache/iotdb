@@ -72,7 +72,7 @@ SortElimination 在各汇集分支独立优化，并阻止跨无序汇集删除�
 
 ## 实现验证记录（2026-10-14）
 
-第一版实现已完成。单元测试 86 项通过；IoTDBCollectFanInIT 的 6 项测试在单节点和三 DataNode 集群中分别通过。
+上述约定范围的实现已完成。单元测试 86 项通过；IoTDBCollectFanInIT 的 6 项测试在单节点和三 DataNode 集群中分别通过。
 集成验证包含普通与 DISTINCT 聚合、Union 分阶段聚合、嵌套窗口、Fill、排序/TopK、Join 依赖、树模型以及树表视图。
 
 构建先执行以下干净构建，生成当前分支的节点包并安装本地依赖：
@@ -97,3 +97,23 @@ mvn -o verify -DskipUTs -Dit.test=IoTDBCollectFanInIT -DfailIfNoTests=false -Dfa
 
 使用离线模式是为了避免远端 SNAPSHOT ZIP 下载停滞；节点执行的是当前分支重新打包的代码。
 Spotless、Checkstyle、新增文件许可证及中英文消息键名/占位符一致性检查通过。
+
+## 自查与补测（2026-10-14）
+
+自查复现了 MemoryPool 的等待申请漏唤醒：一次申请额度不足后，旧申请先释放全部额度，
+新申请才进入等待队列；释放线程看不到新申请，导致空闲额度下仍无限等待。
+回归测试用 latch 固定这一时序，在修复前稳定失败。
+修复在申请入队后再次检查额度，并与 free/tryCancel 共用该 future 的锁，避免重复计费。
+
+新增 8 项单元测试：等待申请发布竞态、取消不占用共享额度、16 路阻塞申请反复获得额度后账目归零；
+空 Collect、全部阻塞时异常唤醒、并发就绪后每路恰好消费一次；
+Collect 后 TopK 不误用有序输入，以及有效分支保留流式聚合。
+增强关闭异常测试，检查其他输入仍被关闭且后续异常被保留。
+新增一项集成测试，验证全局窗口后按字段倒序的 TopK 跨设备结果及完整窗口计数。
+
+补测后的 118 项定向单测通过（14 个测试类，零失败、零跳过）；全 reactor 中英文编译通过。
+在前述英文回归命令中加入 `OrderingPropertyPropagationTest,TopKRuntimeFilterDistributedPlanTest`，
+同时验证有效排序优化与 TopK runtime filter 不受影响。
+重新执行 `mvn -o install -DskipTests -pl integration-test,iotdb-core/confignode,iotdb-client/cli -am -P with-integration-tests`
+后运行前述两条 verify 命令；IoTDBCollectFanInIT 的 7 项测试在单节点和三 DataNode 集群中分别全部通过。
+Spotless、Checkstyle、许可证与 `git diff --check` 检查通过。

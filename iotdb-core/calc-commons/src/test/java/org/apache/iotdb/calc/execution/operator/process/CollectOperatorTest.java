@@ -36,9 +36,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -233,6 +240,7 @@ public class CollectOperatorTest {
     Child a = new Child(block(1));
     Child b = new Child(block(2));
     a.closeFailure = new IOException("close failure");
+    b.closeFailure = new IOException("second close failure");
     CollectOperator collect = collect(a, b);
     ListenableFuture<?> pending = collect.isBlocked();
     try {
@@ -240,6 +248,8 @@ public class CollectOperatorTest {
       fail("must propagate close failure");
     } catch (IOException e) {
       assertSame(a.closeFailure, e);
+      assertEquals(1, e.getSuppressed().length);
+      assertSame(b.closeFailure, e.getSuppressed()[0]);
     }
     pending.get(5, TimeUnit.SECONDS);
     assertEquals(1, a.closes);
@@ -297,6 +307,98 @@ public class CollectOperatorTest {
     assertEquals(0, collect.calculateMaxPeekMemory());
     assertEquals(0, collect.calculateMaxReturnSize());
     assertEquals(0, collect.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void testEmptyCollectIsAlreadyFinished() throws Exception {
+    CollectOperator collect = collect();
+    assertFalse(collect.hasNext());
+    assertTrue(collect.isFinished());
+    assertTrue(collect.isBlocked().isDone());
+    assertNull(collect.next());
+    assertEquals(0, collect.calculateMaxPeekMemory());
+    assertEquals(0, collect.calculateMaxReturnSize());
+    collect.close();
+    collect.close();
+  }
+
+  @Test
+  public void testFailureWakesAllPendingChildren() throws Exception {
+    Child a = new Child(block(1));
+    Child b = new Child(block(2));
+    CollectOperator collect = collect(a, b);
+    ListenableFuture<?> pending = collect.isBlocked();
+    assertFalse(pending.isDone());
+    IOException expected = new IOException("blocked child failure");
+    b.wait.delegate.setException(expected);
+    try {
+      pending.get(5, TimeUnit.SECONDS);
+      fail("child failure must wake the driver");
+    } catch (ExecutionException e) {
+      assertSame(expected, e.getCause());
+    }
+    try {
+      collect.next();
+      fail("child failure must propagate without advancing other children");
+    } catch (IOException e) {
+      assertSame(expected, e);
+    } finally {
+      collect.close();
+    }
+    assertEquals(0, a.advances);
+    assertEquals(0, b.advances);
+    assertEquals(1, a.closes);
+    assertEquals(1, b.closes);
+  }
+
+  @Test
+  public void testConcurrentCompletionsConsumeEveryChildExactlyOnce() throws Exception {
+    int count = 16;
+    List<Child> children = new ArrayList<>();
+    for (int i = 0; i < count; i++) children.add(new Child(block(i)));
+    CollectOperator collect = new CollectOperator(new TestContext(), new ArrayList<>(children));
+    ListenableFuture<?> pending = collect.isBlocked();
+    assertFalse(pending.isDone());
+    ExecutorService executor = Executors.newFixedThreadPool(count);
+    CountDownLatch start = new CountDownLatch(1);
+    List<Future<?>> completions = new ArrayList<>();
+    try {
+      for (Child child : children) {
+        completions.add(
+            executor.submit(
+                () -> {
+                  start.await();
+                  child.ready();
+                  return null;
+                }));
+      }
+      start.countDown();
+      pending.get(5, TimeUnit.SECONDS);
+      for (Future<?> completion : completions) completion.get(5, TimeUnit.SECONDS);
+      Set<Integer> consumed = new HashSet<>();
+      for (int round = 0; round < 2 * count && collect.hasNext(); round++) {
+        assertTrue(collect.isBlocked().isDone());
+        TsBlock result = collect.next();
+        if (result != null) {
+          int childId = result.getColumn(0).getInt(0);
+          assertTrue("child emitted more than once", consumed.add(childId));
+          children.get(childId).hasNext = false;
+          children.get(childId).finished = true;
+        }
+      }
+      assertEquals(count, consumed.size());
+      assertTrue(collect.isFinished());
+      assertNull(collect.next());
+      for (Child child : children) {
+        assertEquals(1, child.advances);
+        assertEquals(1, child.closes);
+      }
+    } finally {
+      start.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      collect.close();
+    }
   }
 
   private static final class CountingFuture
