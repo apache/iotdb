@@ -4051,4 +4051,6 @@ public final class DataNodeQueryMessages {
       "Dispatch LOAD piece: loadId={}, regionId={}, pieceIndex={}, tsFile={}, dataSize={}, replicaSet={}";
   public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
       "Dispatch LOAD piece success: loadId={}, regionId={}, pieceIndex={}, dataSize={}";
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
 }

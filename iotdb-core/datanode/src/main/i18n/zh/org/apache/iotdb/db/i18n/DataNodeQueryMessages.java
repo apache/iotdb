@@ -4806,4 +4806,6 @@ public final class DataNodeQueryMessages {
       "下发 LOAD piece：loadId={}，regionId={}，pieceIndex={}，tsFile={}，dataSize={}，replicaSet={}";
   public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
       "下发 LOAD piece 成功：loadId={}，regionId={}，pieceIndex={}，dataSize={}";
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "PlanNode %s 已注册到内存侧 %s，不能注册到 %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "查询 %s、Fragment %s、PlanNode %s 尚未注册内存账目";
 }
