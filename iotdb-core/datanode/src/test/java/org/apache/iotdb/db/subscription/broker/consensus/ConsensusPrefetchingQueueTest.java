@@ -1758,7 +1758,8 @@ public class ConsensusPrefetchingQueueTest {
                   createRequest(5L))
               .iterator();
       final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
-      when(iterator.hasNext()).thenAnswer(ignored -> walEntries.hasNext());
+      when(iterator.hasNext(any(ProgressWALIterator.ScanBudget.class)))
+          .thenAnswer(ignored -> walEntries.hasNext());
       when(iterator.next()).thenAnswer(ignored -> walEntries.next());
 
       queue =
@@ -1916,7 +1917,8 @@ public class ConsensusPrefetchingQueueTest {
                           createRequest(5L))
                       .iterator();
               final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
-              when(iterator.hasNext()).thenAnswer(ignored -> walEntries.hasNext());
+              when(iterator.hasNext(any(ProgressWALIterator.ScanBudget.class)))
+                  .thenAnswer(ignored -> walEntries.hasNext());
               when(iterator.next()).thenAnswer(ignored -> walEntries.next());
               return iterator;
             }
@@ -2264,14 +2266,21 @@ public class ConsensusPrefetchingQueueTest {
               true);
 
       final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
-      when(iterator.hasNext()).thenReturn(false);
+      when(iterator.hasNext(any(ProgressWALIterator.ScanBudget.class))).thenReturn(false);
       setSubscriptionWalIterator(queue, iterator);
 
       final Method tryCatchUpFromWAL =
-          ConsensusPrefetchingQueue.class.getDeclaredMethod("tryCatchUpFromWAL", long.class);
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "tryCatchUpFromWAL", long.class, ProgressWALIterator.ScanBudget.class);
       tryCatchUpFromWAL.setAccessible(true);
-      tryCatchUpFromWAL.invoke(queue, queue.getCurrentSeekGeneration());
-      tryCatchUpFromWAL.invoke(queue, queue.getCurrentSeekGeneration());
+      tryCatchUpFromWAL.invoke(
+          queue,
+          queue.getCurrentSeekGeneration(),
+          new ProgressWALIterator.ScanBudget(128, Long.MAX_VALUE));
+      tryCatchUpFromWAL.invoke(
+          queue,
+          queue.getCurrentSeekGeneration(),
+          new ProgressWALIterator.ScanBudget(128, Long.MAX_VALUE));
 
       assertSame(iterator, subscriptionWalIterator(queue));
       verify(iterator, times(2)).refresh();
@@ -2313,12 +2322,12 @@ public class ConsensusPrefetchingQueueTest {
               true);
 
       final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
-      when(iterator.hasNext()).thenReturn(true);
+      when(iterator.hasNext(any(ProgressWALIterator.ScanBudget.class))).thenReturn(true);
       setSubscriptionWalIterator(queue, iterator);
 
       invokeEnsureSubscriptionWalReadable(queue);
 
-      verify(iterator).hasNext();
+      verify(iterator).hasNext(any(ProgressWALIterator.ScanBudget.class));
       verify(iterator, never()).refresh();
     } finally {
       if (queue != null) {
@@ -2369,12 +2378,12 @@ public class ConsensusPrefetchingQueueTest {
           };
 
       final ProgressWALIterator exhaustedIterator = mock(ProgressWALIterator.class);
-      when(exhaustedIterator.hasNext()).thenReturn(false);
+      when(exhaustedIterator.hasNext(any(ProgressWALIterator.ScanBudget.class))).thenReturn(false);
       setSubscriptionWalIterator(queue, exhaustedIterator);
 
       invokeEnsureSubscriptionWalReadable(queue);
 
-      verify(exhaustedIterator, times(2)).hasNext();
+      verify(exhaustedIterator, times(2)).hasNext(any(ProgressWALIterator.ScanBudget.class));
       verify(exhaustedIterator).refresh();
       verify(exhaustedIterator).close();
       verify(walNode).rollWALFile();
@@ -2428,6 +2437,7 @@ public class ConsensusPrefetchingQueueTest {
 
       verify(iterator).hasBufferedNext();
       verify(iterator, never()).hasNext();
+      verify(iterator, never()).hasNext(any(ProgressWALIterator.ScanBudget.class));
       verify(iterator, never()).next();
       verify(iterator, never()).refresh();
       assertEquals(1L, queue.getCurrentReadSearchIndex());
@@ -3203,9 +3213,10 @@ public class ConsensusPrefetchingQueueTest {
   private static void invokeEnsureSubscriptionWalReadable(final ConsensusPrefetchingQueue queue)
       throws Exception {
     final Method method =
-        ConsensusPrefetchingQueue.class.getDeclaredMethod("ensureSubscriptionWalReadable");
+        ConsensusPrefetchingQueue.class.getDeclaredMethod(
+            "ensureSubscriptionWalReadable", ProgressWALIterator.ScanBudget.class);
     method.setAccessible(true);
-    method.invoke(queue);
+    method.invoke(queue, new ProgressWALIterator.ScanBudget(128, Long.MAX_VALUE));
   }
 
   private static void invokeReportUnreadableWalReplayIfNecessary(

@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.LongSupplier;
 
 /**
  * Writer-based WAL iterator for the new subscription progress model.
@@ -64,6 +65,41 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   public interface WriterProgressCoverage {
 
     boolean isCovered(long physicalTime, int nodeId, long localSeq);
+  }
+
+  /**
+   * One shared budget for all WAL probes and reads in a prefetch round. The time limit is
+   * cooperative: it is checked between operations and cannot interrupt a single file read.
+   */
+  static final class ScanBudget {
+
+    private int remainingEntries;
+    private final long startNanos;
+    private final long maxDurationNanos;
+    private final LongSupplier nanoTime;
+    private boolean yielded;
+
+    ScanBudget(final int maxEntries, final long maxDurationNanos) {
+      this(maxEntries, maxDurationNanos, System::nanoTime);
+    }
+
+    ScanBudget(final int maxEntries, final long maxDurationNanos, final LongSupplier nanoTime) {
+      this.remainingEntries = maxEntries;
+      this.maxDurationNanos = maxDurationNanos;
+      this.nanoTime = nanoTime;
+      this.startNanos = nanoTime.getAsLong();
+    }
+
+    private boolean shouldYield() {
+      if (remainingEntries <= 0 || nanoTime.getAsLong() - startNanos >= maxDurationNanos) {
+        yielded = true;
+      }
+      return yielded;
+    }
+
+    boolean hasYielded() {
+      return yielded;
+    }
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProgressWALIterator.class);
@@ -104,6 +140,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   private final List<IConsensusRequest> pendingRequests = new ArrayList<>();
 
   private IndexedConsensusRequest nextReady;
+  private boolean scanYielded;
 
   public ProgressWALIterator(final File logDirectory) {
     this(logDirectory, Long.MIN_VALUE);
@@ -183,6 +220,15 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   public boolean hasNext() {
+    return hasNext(null);
+  }
+
+  /**
+   * A false result can also mean that the round's scan budget was consumed. In that case the reader
+   * position and incomplete request fragments are preserved for the next round.
+   */
+  boolean hasNext(final ScanBudget scanBudget) {
+    scanYielded = false;
     while (true) {
       if (nextReady != null) {
         if (!shouldSkip(nextReady)) {
@@ -191,7 +237,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         nextReady = null;
       }
       try {
-        nextReady = advance();
+        nextReady = advance(scanBudget);
         if (nextReady != null) {
           lastError = null;
         }
@@ -212,6 +258,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
    */
   boolean hasBufferedNext() {
     return nextReady != null && !shouldSkip(nextReady);
+  }
+
+  boolean hasYieldedScan() {
+    return scanYielded;
   }
 
   /**
@@ -433,11 +483,16 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     lastError = null;
     incompleteScan = false;
     incompleteScanDetail = null;
+    scanYielded = false;
     resetCurrentFileTracking();
   }
 
-  private IndexedConsensusRequest advance() throws IOException {
+  private IndexedConsensusRequest advance(final ScanBudget scanBudget) throws IOException {
     while (true) {
+      if (scanBudget != null && scanBudget.shouldYield()) {
+        scanYielded = true;
+        return null;
+      }
       if (retryCurrentReader) {
         refresh();
         final int retryFileIndex = findFileIndexByVersion(currentReaderVersionId);
@@ -455,6 +510,11 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       }
       if (currentReader != null && currentReader.hasNext()) {
         try {
+          if (scanBudget != null) {
+            // Count physical entries, including skipped requests and request fragments. A single
+            // hasNext() can otherwise read an arbitrary WAL prefix before returning a request.
+            scanBudget.remainingEntries--;
+          }
           final ByteBuffer buffer = currentReader.next();
           consumedEntryCountInCurrentFile = currentReader.getCurrentEntryIndex() + 1;
           final WALEntryType type = WALEntryType.valueOf(buffer.get());
@@ -529,8 +589,8 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         continue;
       }
 
-      if (!openNextReader()) {
-        if (retryCurrentReader) {
+      if (!openNextReader(scanBudget)) {
+        if (scanYielded || retryCurrentReader) {
           return null;
         }
         final IndexedConsensusRequest flushed = flushPending();
@@ -542,8 +602,13 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     }
   }
 
-  private boolean openNextReader() throws IOException {
-    while (++currentFileIndex < walFiles.length) {
+  private boolean openNextReader(final ScanBudget scanBudget) throws IOException {
+    while (currentFileIndex + 1 < walFiles.length) {
+      if (scanBudget != null && scanBudget.shouldYield()) {
+        scanYielded = true;
+        return false;
+      }
+      currentFileIndex++;
       if (openReaderAtIndex(currentFileIndex, 0)) {
         return true;
       }
@@ -551,6 +616,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         return false;
       }
     }
+    currentFileIndex = walFiles.length;
     return false;
   }
 
