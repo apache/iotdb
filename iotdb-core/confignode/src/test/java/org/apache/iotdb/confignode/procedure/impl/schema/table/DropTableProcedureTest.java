@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -305,6 +306,37 @@ public class DropTableProcedureTest {
                 1,
                 new TGetDropTableModProgressResp(StatusUtils.OK)
                     .setRegionProgress(Collections.emptyMap()))));
+  }
+
+  @Test
+  public void concurrentModProgressQueriesWaitForInFlightRefresh() throws Exception {
+    final DropTableProcedure procedure =
+        new DropTableProcedure("database", "table", "query", false);
+    final Field futureField = DropTableProcedure.class.getDeclaredField("modProgressRefreshFuture");
+    futureField.setAccessible(true);
+    final CountDownLatch waitingQueryStarted = new CountDownLatch(1);
+    final CompletableFuture<Void> refreshFuture =
+        new CompletableFuture<Void>() {
+          @Override
+          public Void join() {
+            waitingQueryStarted.countDown();
+            return super.join();
+          }
+        };
+    futureField.set(procedure, refreshFuture);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<?> waitingQuery = executor.submit(procedure::updateModFileProgress);
+      Assert.assertTrue(waitingQueryStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(waitingQuery.isDone());
+      refreshFuture.complete(null);
+      waitingQuery.get(10, TimeUnit.SECONDS);
+    } finally {
+      refreshFuture.complete(null);
+      futureField.set(procedure, null);
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
   }
 
   @Test

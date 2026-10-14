@@ -59,8 +59,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
 
@@ -70,10 +70,11 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   // Count each region once; followers may have different local TsFiles and apply asynchronously.
   private final Map<TConsensusGroupId, TDataNodeLocation> modProgressTargets =
       new ConcurrentHashMap<>();
-  private final ReentrantLock modProgressLock = new ReentrantLock();
+  private final Object modProgressRefreshMonitor = new Object();
+  private CompletableFuture<Void> modProgressRefreshFuture;
   private volatile int modProgressRegionCount;
   private volatile TDropTableModProgress modFileProgress;
-  private boolean modProgressFinished;
+  private volatile boolean modProgressFinished;
 
   public DropTableProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -100,15 +101,46 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     return progress == null ? null : progress.deepCopy();
   }
 
-  /** Refreshes counters without allowing observability RPCs to block deletion indefinitely. */
+  /** Shares an in-flight counter refresh among concurrent observability requests. */
   public void updateModFileProgress() {
-    if (!modProgressLock.tryLock()) {
-      return;
-    }
-    try {
-      refreshModFileProgress();
-    } finally {
-      modProgressLock.unlock();
+    runModProgressRefresh(this::refreshModFileProgress, false);
+  }
+
+  private void runModProgressRefresh(final Runnable action, final boolean retryAfterWait) {
+    while (true) {
+      final CompletableFuture<Void> refreshFuture;
+      final boolean refreshOwner;
+      synchronized (modProgressRefreshMonitor) {
+        if (modProgressRefreshFuture == null) {
+          refreshFuture = new CompletableFuture<>();
+          modProgressRefreshFuture = refreshFuture;
+          refreshOwner = true;
+        } else {
+          refreshFuture = modProgressRefreshFuture;
+          refreshOwner = false;
+        }
+      }
+      if (!refreshOwner) {
+        refreshFuture.join();
+        if (retryAfterWait) {
+          continue;
+        }
+        return;
+      }
+      try {
+        action.run();
+        return;
+      } catch (final RuntimeException | Error e) {
+        refreshFuture.completeExceptionally(e);
+        throw e;
+      } finally {
+        synchronized (modProgressRefreshMonitor) {
+          if (modProgressRefreshFuture == refreshFuture) {
+            modProgressRefreshFuture = null;
+          }
+          refreshFuture.complete(null);
+        }
+      }
     }
   }
 
@@ -304,16 +336,15 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
                     .setProcedureId(getProcId());
               }))
           .execute();
-      // Serialize the final refresh with queries, using a separate lock so polling does not hold
-      // the procedure monitor or let an older query overwrite the final snapshot.
-      modProgressLock.lock();
-      try {
-        refreshModFileProgress();
-        modProgressFinished = true;
-        setNextState(DropTableState.DELETE_DEVICES);
-      } finally {
-        modProgressLock.unlock();
-      }
+      // Wait for an in-flight query, then publish the final snapshot atomically with the state
+      // transition so a query cannot overwrite it after deletion finishes.
+      runModProgressRefresh(
+          () -> {
+            refreshModFileProgress();
+            modProgressFinished = true;
+            setNextState(DropTableState.DELETE_DEVICES);
+          },
+          true);
     } else {
       modFileProgress = new TDropTableModProgress(0).setRemainingModFileCount(0);
       setNextState(DropTableState.DELETE_DEVICES);
