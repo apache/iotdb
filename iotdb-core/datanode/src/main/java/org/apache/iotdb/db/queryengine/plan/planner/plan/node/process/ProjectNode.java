@@ -92,7 +92,7 @@ public class ProjectNode extends SingleChildProcessNode {
 
   public static ProjectNode deserialize(ByteBuffer byteBuffer) {
     int outputColumnNamesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
+    List<String> outputColumnNames = new ArrayList<>(outputColumnNamesSize);
     while (outputColumnNamesSize > 0) {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       outputColumnNamesSize--;

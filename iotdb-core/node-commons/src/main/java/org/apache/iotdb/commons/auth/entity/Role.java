@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
+import com.google.common.collect.Sets;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -230,12 +232,12 @@ public class Role {
   public void deserialize(ByteBuffer buffer) {
     name = SerializeUtils.deserializeString(buffer);
     int sysPrivilegeSize = buffer.getInt();
-    sysPrivilegeSet = new HashSet<>();
+    sysPrivilegeSet = Sets.newHashSetWithExpectedSize(sysPrivilegeSize);
     for (int i = 0; i < sysPrivilegeSize; i++) {
       sysPrivilegeSet.add(buffer.getInt());
     }
     int sysPriGrantOptSize = buffer.getInt();
-    sysPriGrantOpt = new HashSet<>();
+    sysPriGrantOpt = Sets.newHashSetWithExpectedSize(sysPriGrantOptSize);
     for (int i = 0; i < sysPriGrantOptSize; i++) {
       sysPriGrantOpt.add(buffer.getInt());
     }

@@ -29,12 +29,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
 
 /** This class defines the scan task of schema fetcher. */
@@ -130,7 +130,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
     PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
 
     int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Integer, Template> templateMap = new HashMap<>();
+    Map<Integer, Template> templateMap = Maps.newHashMapWithExpectedSize(templateNum);
     Template template;
     for (int i = 0; i < templateNum; i++) {
       template = new Template();

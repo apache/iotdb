@@ -156,7 +156,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
     List<String> outputColumnNames = null;
     if (cacheOutputColumnNames) {
       int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-      outputColumnNames = new ArrayList<>();
+      outputColumnNames = new ArrayList<>(columnSize);
       while (columnSize > 0) {
         outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
         columnSize--;
