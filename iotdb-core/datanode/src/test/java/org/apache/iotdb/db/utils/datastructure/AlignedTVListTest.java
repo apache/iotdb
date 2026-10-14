@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -27,6 +29,10 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,6 +46,124 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVListTest {
+
+  @Test
+  public void testExtendColumnsPreservesLazyBlocksAndAccounting() {
+    AlignedTVList list =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
+    Binary text = new Binary("value", TSFileConfig.STRING_CHARSET);
+    for (int row = 0; row <= ARRAY_SIZE; row++) {
+      list.putAlignedValue(row, new Object[] {row == 1 ? null : (long) row, text});
+    }
+    long ramBefore = list.getRamSize();
+    long binarySizeBefore = list.memoryBinaryChunkSize[1];
+    list.extendColumns(Arrays.asList(TSDataType.INT32, TSDataType.TEXT, TSDataType.DOUBLE));
+
+    Assert.assertEquals(5, list.memoryBinaryChunkSize.length);
+    Assert.assertEquals(binarySizeBefore, list.memoryBinaryChunkSize[1]);
+    for (int column = 2; column < 5; column++) {
+      Assert.assertEquals(0, list.memoryBinaryChunkSize[column]);
+      Assert.assertEquals(2, list.getValues().get(column).size());
+      Assert.assertNull(list.getValues().get(column).get(0));
+      Assert.assertNull(list.getValues().get(column).get(1));
+      Assert.assertNull(list.getBitMaps().get(column));
+      for (int row = 0; row <= ARRAY_SIZE; row++) {
+        Assert.assertTrue(list.isNullValue(row, column));
+      }
+    }
+    Assert.assertTrue(list.getRamSize() > ramBefore);
+    Assert.assertEquals(list.getRamSize(null), list.getRamSize());
+
+    list.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {null, null, 7, text, 3.5});
+    Assert.assertEquals(7, list.getIntByValueIndex(ARRAY_SIZE + 1, 2));
+    Assert.assertEquals(text, list.getBinaryByValueIndex(ARRAY_SIZE + 1, 3));
+    Assert.assertEquals(3.5, list.getDoubleByValueIndex(ARRAY_SIZE + 1, 4), 0);
+    Assert.assertTrue(list.memoryBinaryChunkSize[3] > 0);
+    for (int column = 2; column < 5; column++) {
+      Assert.assertNull(list.getValues().get(column).get(0));
+      Assert.assertTrue(list.isNullValue(ARRAY_SIZE, column));
+    }
+    Assert.assertEquals(list.getRamSize(null), list.getRamSize());
+    AlignedTVList clone = list.clone();
+    Assert.assertEquals(list.getRamSize(), clone.getRamSize());
+    Assert.assertEquals(list.getRamSize(), list.cloneForFlushSort().getRamSize());
+    clone.clear();
+    list.clear();
+    Assert.assertEquals(list.getRamSize(null), list.getRamSize());
+    Assert.assertTrue(list.getRamSize() < ramBefore);
+    list.putAlignedValue(0, new Object[] {1L, text, 2, text, 3.0});
+    Assert.assertEquals(list.getRamSize(null), list.getRamSize());
+    list.clear();
+  }
+
+  @Test
+  public void testExtendColumnsBeforeFirstWriteAndEmptyBatch() {
+    AlignedTVList list = AlignedTVList.newAlignedList(new ArrayList<>());
+    list.extendColumns(Arrays.asList(TSDataType.INT32, TSDataType.INT64));
+    long[] binarySizes = list.memoryBinaryChunkSize;
+    long ramSize = list.getRamSize();
+    list.extendColumns(Collections.emptyList());
+    Assert.assertSame(binarySizes, list.memoryBinaryChunkSize);
+    Assert.assertEquals(ramSize, list.getRamSize());
+    list.putAlignedValue(0, new Object[] {3, 4L});
+    Assert.assertEquals(3, list.getIntByValueIndex(0, 0));
+    Assert.assertEquals(4L, list.getLongByValueIndex(0, 1));
+    Assert.assertEquals(list.getRamSize(null), list.getRamSize());
+    list.clear();
+  }
+
+  @Test
+  public void testExtendedLazyColumnsRoundTripThroughWAL() throws IOException {
+    AlignedTVList list =
+        AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+    for (int row = 0; row <= ARRAY_SIZE; row++) {
+      list.putAlignedValue(row, new Object[] {(long) row});
+    }
+    list.extendColumns(
+        Arrays.asList(
+            TSDataType.BOOLEAN,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.DATE,
+            TSDataType.TIMESTAMP,
+            TSDataType.BLOB,
+            TSDataType.STRING));
+    Binary text = new Binary("value", TSFileConfig.STRING_CHARSET);
+    list.putAlignedValue(
+        ARRAY_SIZE + 1L,
+        new Object[] {1L, true, 2, 3L, 4.5F, 6.5D, text, 20240101, 7L, text, null});
+
+    int serializedSize = list.serializedSize();
+    long ramSize = list.getRamSize();
+    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(serializedSize));
+    list.serializeToWAL(buffer);
+    Assert.assertEquals(serializedSize, buffer.position());
+    Assert.assertEquals(ramSize, list.getRamSize());
+    AlignedTVList restored =
+        AlignedTVList.deserialize(
+            new DataInputStream(new ByteArrayInputStream(buffer.getBuffer().array())));
+
+    Assert.assertEquals(list.getTsDataTypes(), restored.getTsDataTypes());
+    Assert.assertEquals(list.rowCount(), restored.rowCount());
+    for (int column = 1; column < list.getTsDataTypes().size(); column++) {
+      Assert.assertNull(list.getValues().get(column).get(0));
+      for (int row = 0; row <= ARRAY_SIZE; row++) {
+        Assert.assertTrue(list.isNullValue(row, column));
+        Assert.assertTrue(restored.isNullValue(row, column));
+      }
+    }
+    for (int row = 0; row < list.rowCount(); row++) {
+      Assert.assertEquals(list.getTime(row), restored.getTime(row));
+      Assert.assertEquals(
+          list.getAlignedValue(row).toString(), restored.getAlignedValue(row).toString());
+    }
+    list.clear();
+    restored.clear();
+  }
 
   // A null-only column keeps a null array slot while a populated column materializes its array.
   @Test
