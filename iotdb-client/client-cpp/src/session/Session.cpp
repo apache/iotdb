@@ -2312,6 +2312,11 @@ unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& p
   return impl_->getDefaultSessionConnection()->executeLastDataQuery(paths, lastTime);
 }
 
+unique_ptr<SessionDataSet>
+Session::executeFastLastDataQueryForOnePrefixPath(const vector<string>& prefixes) {
+  return impl_->getDefaultSessionConnection()->executeFastLastDataQueryForOnePrefixPath(prefixes);
+}
+
 void Session::createSchemaTemplate(const Template& templ) {
   TSCreateSchemaTemplateReq req;
   req.__set_name(templ.getName());
