@@ -1823,7 +1823,8 @@ public class ConsensusPrefetchingQueue {
       }
     }
 
-    final int[] readBudget = {Math.max(1, maxWalEntries)};
+    // Bound entries processed across all writer readers in this round, including skipped entries.
+    final int[] remainingEntryBudget = {Math.max(1, maxWalEntries)};
     final int roundRobinStart = orderedWriterRoundRobinStart++;
     while (prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
       if (seekGeneration.get() != expectedSeekGeneration || closeRequested) {
@@ -1834,13 +1835,13 @@ public class ConsensusPrefetchingQueue {
           new ArrayList<>(orderedWriterReplay.entrySet());
       Collections.rotate(writers, Math.floorMod(roundRobinStart, Math.max(1, writers.size())));
       for (final Map.Entry<Integer, WriterReplayState> writer : writers) {
-        if (!fillOrderedWriterHead(writer.getKey(), writer.getValue(), readBudget)) {
+        if (!fillOrderedWriterHead(writer.getKey(), writer.getValue(), remainingEntryBudget)) {
           return flushOrderedBatchAndRetry(expectedSeekGeneration, MEMORY_RETRY_SLEEP_MS);
         }
       }
       // A scan can discover a retired writer absent from the runtime set. Acquire its head before
       // releasing any other writer, with the same shared per-round scan budget.
-      if (orderedWriterReplay.size() != writerCount && readBudget[0] > 0) {
+      if (orderedWriterReplay.size() != writerCount && remainingEntryBudget[0] > 0) {
         continue;
       }
 
@@ -1905,7 +1906,7 @@ public class ConsensusPrefetchingQueue {
       }
       if (Objects.nonNull(buffered)) {
         removeRealtimeEntry(buffered.writerNodeId, buffered.localSeq);
-        readBudget[0]--;
+        remainingEntryBudget[0]--;
       } else {
         markMaterializedProgress(request);
         state.consumedLocalSeq = Math.max(state.consumedLocalSeq, request.getProgressLocalSeq());
@@ -1922,7 +1923,7 @@ public class ConsensusPrefetchingQueue {
         releaseOrderedWriterHead(state);
       }
       unblockRealtimeAdmission();
-      if (readBudget[0] <= 0) {
+      if (remainingEntryBudget[0] <= 0) {
         break;
       }
     }
@@ -1946,8 +1947,8 @@ public class ConsensusPrefetchingQueue {
     if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
       return PrefetchRoundResult.dormant();
     }
-    if (readBudget[0] <= 0
-        || (readBudget[0] < maxWalEntries
+    if (remainingEntryBudget[0] <= 0
+        || (remainingEntryBudget[0] < maxWalEntries
             && orderedWriterReplay.values().stream()
                 .anyMatch(state -> Objects.isNull(state.head) && !state.caughtUp))) {
       return PrefetchRoundResult.rescheduleNow();
@@ -1989,9 +1990,9 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean fillOrderedWriterHead(
-      final int writerNodeId, final WriterReplayState state, final int[] readBudget)
+      final int writerNodeId, final WriterReplayState state, final int[] remainingEntryBudget)
       throws IOException {
-    if (Objects.nonNull(state.head) || readBudget[0] <= 0) {
+    if (Objects.nonNull(state.head) || remainingEntryBudget[0] <= 0) {
       return true;
     }
     for (final IndexedConsensusRequest request : pendingEntries) {
@@ -2012,7 +2013,7 @@ public class ConsensusPrefetchingQueue {
         state.head = request;
         state.fromPending = true;
         state.caughtUp = false;
-        readBudget[0]--;
+        remainingEntryBudget[0]--;
         return true;
       }
     }
@@ -2021,8 +2022,9 @@ public class ConsensusPrefetchingQueue {
       return true;
     }
     state.iterator.skipReportedBrokenWalFiles(reportedOrderedBrokenWalVersions);
-    final int writerBudget = Math.max(1, readBudget[0] / Math.max(1, orderedWriterReplay.size()));
-    for (int scanned = 0; scanned < writerBudget && readBudget[0] > 0; scanned++) {
+    final int writerEntryBudget =
+        Math.max(1, remainingEntryBudget[0] / Math.max(1, orderedWriterReplay.size()));
+    for (int scanned = 0; scanned < writerEntryBudget && remainingEntryBudget[0] > 0; scanned++) {
       if (closeRequested || pendingSeekRequest != null) {
         return true;
       }
@@ -2037,7 +2039,9 @@ public class ConsensusPrefetchingQueue {
       }
       reportOrderedUnreadableWal(state.iterator);
       final IndexedConsensusRequest request = state.iterator.next();
-      readBudget[0]--;
+      // Each reader decodes the shared WAL. Charge skipped and duplicate entries too so a long
+      // prefix cannot monopolize this round's prefetch work.
+      remainingEntryBudget[0]--;
       state.caughtUp = false;
       if (hasComparableWriterProgress(request)) {
         getOrCreateWriterReplay(request.getNodeId());
