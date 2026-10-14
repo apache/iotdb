@@ -23,13 +23,33 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 
 /** Allocates parser working memory from the pool owned by the caller. */
 public interface TsFileInsertionEventParserMemoryManager {
 
-  TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(long sizeInBytes);
+  TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
+      String name, long sizeInBytes);
 
-  TsFileInsertionEventParserMemoryBlock forceAllocate(long sizeInBytes);
+  TsFileInsertionEventParserMemoryBlock forceAllocate(String name, long sizeInBytes);
+
+  /** Allocates a parser child block when the caller has an event-level parent. */
+  default TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlock parent,
+      final Object assigner) {
+    return forceAllocateForTabletWithRetry(name, sizeInBytes);
+  }
+
+  /** Allocates a generic parser child block when the caller has an event-level parent. */
+  default TsFileInsertionEventParserMemoryBlock forceAllocate(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlock parent,
+      final Object assigner) {
+    return forceAllocate(name, sizeInBytes);
+  }
 
   static TsFileInsertionEventParserMemoryManager pipe() {
     return PipeHolder.INSTANCE;
@@ -40,14 +60,50 @@ public interface TsFileInsertionEventParserMemoryManager {
         new TsFileInsertionEventParserMemoryManager() {
           @Override
           public TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
-              final long sizeInBytes) {
+              final String name, final long sizeInBytes) {
             return new PipeBlock(
-                PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(sizeInBytes));
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocateForTabletWithRetry(
+                        name,
+                        sizeInBytes,
+                        PipeMemoryBlockCategory.TABLET,
+                        TsFileInsertionEventParser.class.getSimpleName()));
           }
 
           @Override
-          public TsFileInsertionEventParserMemoryBlock forceAllocate(final long sizeInBytes) {
-            return new PipeBlock(PipeDataNodeResourceManager.memory().forceAllocate(sizeInBytes));
+          public TsFileInsertionEventParserMemoryBlock forceAllocate(
+              final String name, final long sizeInBytes) {
+            return new PipeBlock(
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocate(
+                        name,
+                        sizeInBytes,
+                        PipeMemoryBlockCategory.PARSER,
+                        TsFileInsertionEventParser.class.getSimpleName()));
+          }
+
+          @Override
+          public TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
+              final String name,
+              final long sizeInBytes,
+              final PipeMemoryBlock parent,
+              final Object assigner) {
+            return new PipeBlock(
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocateForTabletWithRetry(
+                        name, sizeInBytes, PipeMemoryBlockCategory.TABLET, assigner, parent));
+          }
+
+          @Override
+          public TsFileInsertionEventParserMemoryBlock forceAllocate(
+              final String name,
+              final long sizeInBytes,
+              final PipeMemoryBlock parent,
+              final Object assigner) {
+            return new PipeBlock(
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocate(
+                        name, sizeInBytes, PipeMemoryBlockCategory.PARSER, assigner, parent));
           }
         };
   }

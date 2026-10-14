@@ -48,6 +48,8 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMemoryReservation;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -83,6 +85,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
   private final TsFileResource resource;
+
+  /** Event-level aggregate for parser and generated tablet blocks. */
+  private final PipeMemoryBlock eventMemoryBlock;
+
   private final String dataRegionId;
   private File tsFile;
   private long extractTime = 0;
@@ -317,6 +323,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     isClosed.set(resource.isClosed());
 
     this.eventParser = new AtomicReference<>(null);
+
+    // Allocate the event aggregate after all immutable event fields have been initialized so its
+    // diagnostic snapshot contains the complete event identity.
+    this.eventMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocate(
+                PipeTsFileInsertionEvent.class.getSimpleName(),
+                0,
+                PipeMemoryBlockCategory.EVENT,
+                this,
+                null);
 
     addOnCommittedHook(
         () -> {
@@ -1652,6 +1669,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } catch (final Exception e) {
       LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
     }
+
+    try {
+      eventMemoryBlock.close();
+    } catch (final Exception e) {
+      LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
+    }
+  }
+
+  @Override
+  public PipeMemoryBlock getEventMemoryBlock() {
+    return eventMemoryBlock;
   }
 
   /////////////////////////// Object ///////////////////////////
@@ -1695,7 +1723,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.sharedModFile,
         this.eventParser,
         this.isTsFileParserMemoryReserved,
-        this.tsFileParserMemoryReservationKey);
+        this.tsFileParserMemoryReservationKey,
+        this.eventMemoryBlock);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -1710,6 +1739,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final String dataRegionId;
     private final AtomicBoolean isTsFileParserMemoryReserved;
     private final TsFileParserMemoryReservation tsFileParserMemoryReservationKey;
+    private final PipeMemoryBlock eventMemoryBlock;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
@@ -1723,7 +1753,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final File sharedModFile,
         final AtomicReference<TsFileInsertionEventParser> eventParser,
         final AtomicBoolean isTsFileParserMemoryReserved,
-        final TsFileParserMemoryReservation tsFileParserMemoryReservationKey) {
+        final TsFileParserMemoryReservation tsFileParserMemoryReservationKey,
+        final PipeMemoryBlock eventMemoryBlock) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
       this.creationTime = creationTime;
@@ -1735,6 +1766,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       this.eventParser = eventParser;
       this.isTsFileParserMemoryReserved = isTsFileParserMemoryReserved;
       this.tsFileParserMemoryReservationKey = tsFileParserMemoryReservationKey;
+      this.eventMemoryBlock = eventMemoryBlock;
     }
 
     @Override
@@ -1782,6 +1814,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 .releaseTsFileParserMemory(pipeName, creationTime, dataRegionId);
           }
         }
+      } catch (final Exception e) {
+        LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
+      }
+      try {
+        eventMemoryBlock.close();
       } catch (final Exception e) {
         LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
       }

@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -669,6 +670,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   ///////////////////////// Utils /////////////////////////
+
+  public String getPipeModel(final String pipeName, final long creationTime) {
+    // Both models can use the same name. Try the indexed keys first, so allocating event blocks
+    // does not scan every pipe's metadata.
+    PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (pipeMeta != null && pipeMeta.getStaticMeta().getCreationTime() != creationTime) {
+      pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, true);
+      if (pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime) {
+        pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      }
+    }
+    return pipeMeta == null
+        ? null
+        : pipeMeta
+            .getStaticMeta()
+            .getSourceParameters()
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+  }
 
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
