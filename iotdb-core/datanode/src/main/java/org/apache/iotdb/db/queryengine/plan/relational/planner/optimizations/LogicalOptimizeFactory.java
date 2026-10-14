@@ -94,6 +94,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Re
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarApplyNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarSubqueries;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveZeroLimit;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ReplaceWindowWithRowNumber;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyCountOverConstant;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions;
@@ -216,6 +217,9 @@ public class LogicalOptimizeFactory {
             ruleStats,
             ImmutableSet.<Rule<?>>builder()
                 .addAll(new CanonicalizeExpressions(plannerContext, typeAnalyzer).rules())
+                // Eliminate LIMIT 0 before scan pushdown (where 0 means unlimited), TopK,
+                // and subquery rewrites. Only this query block becomes empty.
+                .add(new RemoveZeroLimit())
                 .add(new OptimizeRowPattern())
                 .add(new ImplementPatternRecognition())
                 .build()),

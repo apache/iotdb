@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
@@ -157,11 +158,10 @@ public final class QueryCardinalityUtil {
       return Range.atLeast(0L);
     }
 
-    //        @Override
-    //        public Range<Long> visitValues(ValuesNode node, Void context)
-    //        {
-    //            return Range.singleton((long) node.getRowCount());
-    //        }
+    @Override
+    public Range<Long> visitValuesNode(ValuesNode node, Void context) {
+      return Range.singleton((long) node.getRowCount());
+    }
 
     @Override
     public Range<Long> visitOffset(OffsetNode node, Void context) {

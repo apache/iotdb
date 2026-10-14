@@ -977,8 +977,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       Cardinality leftCardinality = extractCardinality(leftSource);
       Cardinality rightCardinality = extractCardinality(rightSource);
-      if (leftCardinality.isAtMostScalar() || rightCardinality.isAtMostScalar()) {
-        // if cardinality of left or right equals to 1, use NestedLoopJoin
+      if (node.getJoinType() == INNER
+          && !node.getAsofCriteria().isPresent()
+          && (leftCardinality.isAtMostScalar() || rightCardinality.isAtMostScalar())) {
+        // Only ordinary inner joins can use NestedLoopJoin. Outer and ASOF joins must
+        // preserve their join keys even when one input is empty or scalar.
         equiJoinClauses.forEach(
             equiJoinClause -> joinFilterBuilder.add(equiJoinClause.toExpression()));
         equiJoinClauses.clear();
