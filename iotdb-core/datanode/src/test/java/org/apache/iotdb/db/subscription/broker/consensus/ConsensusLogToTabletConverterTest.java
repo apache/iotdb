@@ -199,6 +199,66 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
+  public void testConvertRelationalInsertTabletNodeIgnoresDateCapacityBeyondRowCount() {
+    final ConsensusLogToTabletConverter converter = createConverter("value");
+    final LocalDate date = LocalDate.of(2026, 2, 1);
+    final RelationalInsertTabletNode node =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("date-capacity"),
+            new PartialPath(new String[] {StatementTestUtils.tableName()}),
+            true,
+            new String[] {"device_id", "value"},
+            new TSDataType[] {TSDataType.STRING, TSDataType.DATE},
+            new long[] {1L, 2L, 3L, 4L},
+            null,
+            new Object[] {
+              new Binary[] {
+                new Binary("device_0".getBytes(StandardCharsets.UTF_8)), null, null, null
+              },
+              new int[] {DateUtils.parseDateExpressionToInt(date), 0, 0, 0}
+            },
+            1,
+            new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final LocalDate[] convertedDates = (LocalDate[]) tablets.get(0).getValues()[1];
+    Assert.assertEquals(date, convertedDates[0]);
+    Assert.assertNull(convertedDates[1]);
+    Assert.assertNull(convertedDates[2]);
+    Assert.assertNull(convertedDates[3]);
+  }
+
+  @Test
+  public void testConvertTreeInsertTabletNodeIgnoresDateCapacityBeyondRowCount()
+      throws IllegalPathException {
+    final ConsensusLogToTabletConverter converter = createTreeConverter();
+    final LocalDate date = LocalDate.of(2026, 2, 1);
+    final InsertTabletNode node =
+        new InsertTabletNode(
+            new PlanNodeId("tree-date-capacity"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"value"},
+            new TSDataType[] {TSDataType.DATE},
+            new MeasurementSchema[] {new MeasurementSchema("value", TSDataType.DATE)},
+            new long[] {1L, 2L, 3L, 4L},
+            null,
+            new Object[] {new int[] {DateUtils.parseDateExpressionToInt(date), 0, 0, 0}},
+            1);
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final LocalDate[] convertedDates = (LocalDate[]) tablets.get(0).getValues()[0];
+    Assert.assertEquals(date, convertedDates[0]);
+    Assert.assertNull(convertedDates[1]);
+    Assert.assertNull(convertedDates[2]);
+    Assert.assertNull(convertedDates[3]);
+  }
+
+  @Test
   public void testConvertRelationalInsertTabletNodeKeepsNullMatchedFieldColumn() {
     final ConsensusLogToTabletConverter converter = createConverter("m1");
 

@@ -1376,6 +1376,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final PipeProcessorSubtaskExecutionGuard processorExecutionGuard,
       final long expectedParserStateGeneration)
       throws InterruptedException {
+    // Register before enqueueing: memory may be released as soon as admission fails, before this
+    // invocation yields or its worker enters the idle wait.
+    tsFileParserMemoryReservationKey.setWakeUpCallback(
+        processorExecutionGuard.getWorkerWakeUpCallback());
     if (!processorExecutionGuard.isEnabled()) {
       return waitForResourceEnough4Parsing(
           (long) ((1 + Math.random()) * 20 * 1000), expectedParserStateGeneration);

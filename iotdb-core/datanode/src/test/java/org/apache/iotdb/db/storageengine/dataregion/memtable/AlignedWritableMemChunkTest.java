@@ -49,8 +49,7 @@ public class AlignedWritableMemChunkTest {
     IMeasurementSchema integer = new MeasurementSchema("integer", TSDataType.INT32);
     IMeasurementSchema text = new MeasurementSchema("text", TSDataType.TEXT);
     List<IMeasurementSchema> initialSchemas = Arrays.asList(existing, omitted);
-    AlignedWritableMemChunk chunk =
-        new AlignedWritableMemChunk(new ArrayList<>(initialSchemas), false);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(new ArrayList<>(initialSchemas));
     chunk.writeAlignedPoints(0, new Object[] {1L, true}, initialSchemas);
     Binary binary = new Binary("value", TSFileConfig.STRING_CHARSET);
     BitMap integerBitmap = new BitMap(3);
@@ -95,7 +94,7 @@ public class AlignedWritableMemChunkTest {
     chunk.serializeToWAL(buffer);
     AlignedWritableMemChunk restored =
         AlignedWritableMemChunk.deserialize(
-            new DataInputStream(new ByteArrayInputStream(buffer.getBuffer().array())), false);
+            new DataInputStream(new ByteArrayInputStream(buffer.getBuffer().array())));
     Assert.assertEquals(chunk.getSchemaList(), restored.getSchemaList());
     AlignedTVList restoredList = restored.getWorkingTVList();
     for (int row = 0; row < list.rowCount(); row++) {
@@ -113,7 +112,7 @@ public class AlignedWritableMemChunkTest {
     IMeasurementSchema second = new MeasurementSchema("second", TSDataType.INT32);
     IMeasurementSchema omitted = new MeasurementSchema("omitted", TSDataType.BOOLEAN);
     List<IMeasurementSchema> schemas = new ArrayList<>(Arrays.asList(first, second, omitted));
-    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas, false);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
     chunk.writeAlignedPoints(0, new Object[] {1L, 2, true}, schemas);
     AlignedTVList list = chunk.getWorkingTVList();
     List<TSDataType> dataTypes = list.getTsDataTypes();
@@ -148,7 +147,7 @@ public class AlignedWritableMemChunkTest {
     IMeasurementSchema original = new MeasurementSchema("original", TSDataType.INT64);
     IMeasurementSchema added = new MeasurementSchema("added", TSDataType.INT32);
     AlignedWritableMemChunk chunk =
-        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(original)), false);
+        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(original)));
     chunk.writeAlignedPoints(0, new Object[] {1L}, Collections.singletonList(original));
     chunk.removeColumn("original");
     chunk.writeAlignedPoints(1, new Object[] {7, null, 2L}, Arrays.asList(added, null, original));
@@ -180,7 +179,7 @@ public class AlignedWritableMemChunkTest {
     int columnCount = 10_000;
     IMeasurementSchema existing = new MeasurementSchema("existing", TSDataType.INT64);
     AlignedWritableMemChunk chunk =
-        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(existing)), false);
+        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(existing)));
     chunk.writeAlignedPoints(0, new Object[] {1L}, Collections.singletonList(existing));
     List<IMeasurementSchema> incomingSchemas = new ArrayList<>(columnCount);
     Object[] values = new Object[columnCount];

@@ -378,6 +378,7 @@ public class ConsensusPrefetchingQueue {
   protected enum ReplayLocateStatus {
     FOUND,
     AT_END,
+    RETRY_LATER,
     LOCATE_MISS
   }
 
@@ -432,6 +433,12 @@ public class ConsensusPrefetchingQueue {
         final RegionProgress recoveryRegionProgress, final String detail) {
       return new ReplayLocateDecision(
           ReplayLocateStatus.LOCATE_MISS, Long.MIN_VALUE, recoveryRegionProgress, detail);
+    }
+
+    static ReplayLocateDecision retryLater(
+        final RegionProgress recoveryRegionProgress, final String detail) {
+      return new ReplayLocateDecision(
+          ReplayLocateStatus.RETRY_LATER, Long.MIN_VALUE, recoveryRegionProgress, detail);
     }
 
     protected ReplayLocateStatus getStatus() {
@@ -942,6 +949,11 @@ public class ConsensusPrefetchingQueue {
             recoveryRegionProgress,
             progressSource,
             configNodeProgressAvailable || hasPersistedState);
+    if (resolvedStart.getStatus() == ReplayLocateStatus.RETRY_LATER) {
+      // A rolling or temporarily unreadable WAL must leave initialization dormant. The next poll
+      // repeats the lookup before installing recovery frontiers or advancing the replay cursor.
+      return false;
+    }
 
     clearRecoveryWriterProgress();
     final RegionProgress effectiveRecoveryRegionProgress =
@@ -1009,6 +1021,8 @@ public class ConsensusPrefetchingQueue {
             resolvedReplayStartSearchIndex,
             replayTarget.getRecoveryRegionProgress(),
             progressSource + " (" + replayTarget.getDetail() + ")");
+      case RETRY_LATER:
+        return replayTarget;
       case LOCATE_MISS:
       default:
         throw new IllegalStateException(
@@ -1246,9 +1260,13 @@ public class ConsensusPrefetchingQueue {
       final ReplayLocateDecision decision =
           scanReplayStartForRequests(iterator, regionProgress, seekAfter);
       if (iterator.hasIncompleteScan()) {
-        return ReplayLocateDecision.locateMiss(
-            regionProgress,
-            "replay lookup did not complete: " + iterator.getIncompleteScanDetail());
+        final String detail =
+            "replay lookup did not complete: " + iterator.getIncompleteScanDetail();
+        // Retry only a deferred read. Confirmed corruption encountered earlier in the scan must
+        // still surface as a lookup failure, even if a later file is temporarily unreadable.
+        return iterator.isWaitingForReadableWal() && !iterator.hasSkippedBrokenWalFiles()
+            ? ReplayLocateDecision.retryLater(regionProgress, detail)
+            : ReplayLocateDecision.locateMiss(regionProgress, detail);
       }
       return decision;
     } catch (final IOException e) {
@@ -2056,7 +2074,7 @@ public class ConsensusPrefetchingQueue {
     } finally {
       // Advance once for the consumed prefix, including when a gap or memory block stops the
       // batch. Per-entry fast-forward can repeatedly inspect the same uncovered WAL file footer.
-      // Gap recovery creates its own iterator at the current cursor before reading WAL.
+      // Gap recovery realigns the same iterator at the current cursor before reading WAL.
       final ProgressWALIterator iterator = subscriptionWALIterator;
       if (nextExpectedSearchIndex.get() > startSearchIndex
           && Objects.nonNull(iterator)
@@ -2088,13 +2106,15 @@ public class ConsensusPrefetchingQueue {
       final long maxBatchBytes,
       final ProgressWALIterator.ScanBudget walScanBudget) {
     pendingWalGapRetryRequested = false;
-    // A yielded scan can hold an unfinished request before the local replay cursor. Recreating
-    // that iterator would repeatedly scan the same prefix without ever completing the request.
-    if (subscriptionWALIterator == null || !subscriptionWALIterator.hasYieldedScan()) {
-      resetSubscriptionWALPosition(fromIndex);
-    }
     if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
       return MaterializationResult.STALE;
+    }
+    // Preserve the reader position and any memory-blocked request across pending-queue gaps.
+    // Reopening here scans retained WAL prefixes again on every bounded replay round, and drops
+    // the request cached for a memory retry. advanceTo skips covered work without losing uncovered
+    // writer progress, including requests without a local search index.
+    if (Objects.nonNull(subscriptionWALIterator)) {
+      subscriptionWALIterator.advanceTo(fromIndex, this::isWriterProgressCoveredForWalFastForward);
     }
     // A pending-queue jump can span millions of WAL entries when real-time delivery has overflowed.
     // Keep gap recovery within the normal per-round budget so sparse topic filtering cannot hold
@@ -2251,6 +2271,9 @@ public class ConsensusPrefetchingQueue {
                 .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_READING_SUBSCRIPTION_WAL_A3888AC5,
             this,
             e);
+        // next() may have consumed a request whose materialization failed. Reusing this reader
+        // would lose that request, so recover from the unchanged cursor on the next round.
+        requestSubscriptionWalReset(nextExpectedSearchIndex.get(), expectedSeekGeneration);
         break;
       }
     }
@@ -3450,6 +3473,7 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getRecoveryRegionProgress(),
             "regionProgress");
         return;
+      case RETRY_LATER:
       case LOCATE_MISS:
       default:
         throw new IllegalStateException(
@@ -3491,6 +3515,7 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getRecoveryRegionProgress(),
             "regionProgressAfter");
         return;
+      case RETRY_LATER:
       case LOCATE_MISS:
       default:
         throw new IllegalStateException(
