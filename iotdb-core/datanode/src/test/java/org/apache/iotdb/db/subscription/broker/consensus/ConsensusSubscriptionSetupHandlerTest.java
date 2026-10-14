@@ -21,10 +21,14 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,12 +42,18 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongSupplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class ConsensusSubscriptionSetupHandlerTest {
 
@@ -138,6 +148,43 @@ public class ConsensusSubscriptionSetupHandlerTest {
           ConsensusSubscriptionSetupHandler.resolveFallbackCommittedRegionProgress(
               commitManager, "consumerGroup", "topic", new DataRegionId(1)));
       assertEquals(0, queryCount.get());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testStartupDetachedRetentionProtectsPersistedProgress() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("startupDetachedRetention");
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+      final ConsensusSubscriptionCommitManager commitManager =
+          new ConsensusSubscriptionCommitManager(
+              (consumerGroupId, topicName, regionId) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      final DataRegionId regionId = new DataRegionId(41);
+      commitManager.receiveProgressBroadcast(
+          "consumerGroup",
+          "topic",
+          regionId.toString(),
+          new WriterId(regionId.toString(), 7),
+          new WriterProgress(100L, 1L));
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+
+      ConsensusSubscriptionSetupHandler.registerStartupDetachedRetentions(
+          regionId, serverImpl, commitManager);
+
+      verify(serverImpl)
+          .registerDetachedSubscriptionRetention(
+              eq(
+                  ConsensusSubscriptionWalRetention.generateRetentionId(
+                      "consumerGroup", "topic", regionId)),
+              argThat(
+                  policy ->
+                      policy.getRetentionBytes() == SubscriptionWalRetentionPolicy.UNBOUNDED
+                          && policy.getRetentionMs() == SubscriptionWalRetentionPolicy.UNBOUNDED),
+              any(LongSupplier.class));
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }

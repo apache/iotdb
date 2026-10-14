@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
@@ -324,6 +325,31 @@ public class SessionConnection {
 
   protected IClientRPCService.Iface getClient() {
     return client;
+  }
+
+  protected boolean setTransportTimeout(final int timeoutInMs) {
+    if (!(transport instanceof TimeoutChangeableTransport)) {
+      return false;
+    }
+
+    try {
+      ((TimeoutChangeableTransport) transport).setTimeout(timeoutInMs);
+      return true;
+    } catch (final RuntimeException ignored) {
+      return false;
+    }
+  }
+
+  protected void forceCloseTransport() {
+    if (transport == null) {
+      return;
+    }
+
+    try {
+      transport.close();
+    } catch (final RuntimeException ignored) {
+      // Best effort. The caller must still finish updating its lifecycle state.
+    }
   }
 
   protected void setTimeZone(String zoneId)
@@ -943,7 +969,8 @@ public class SessionConnection {
     return new RetryResult<>(status, lastTException, i);
   }
 
-  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc) {
+  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc)
+      throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         status -> status.isSetNeedRetry() && status.isNeedRetry(),
@@ -951,7 +978,7 @@ public class SessionConnection {
   }
 
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Function<T, TSStatus> statusGetter) {
+      TFunction<T> rpc, Function<T, TSStatus> statusGetter) throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         t -> {
@@ -963,9 +990,15 @@ public class SessionConnection {
                 == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
-  /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
+  /**
+   * reconnect if the remote datanode is unreachable retry if the status is set to needRetry
+   *
+   * @throws IoTDBConnectionException if no attempt produced a result, i.e. the last attempt failed
+   *     with a TException. The TException is the cause.
+   */
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
+      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect)
+      throws IoTDBConnectionException {
     TException lastTException = null;
     T result = null;
     int retryAttempt;
@@ -1013,6 +1046,10 @@ public class SessionConnection {
       }
     }
 
+    if (result == null) {
+      // all attempts failed with a TException, callers must not see a null result
+      throw new IoTDBConnectionException(lastTException);
+    }
     return new RetryResult<>(result, lastTException, retryAttempt);
   }
 
@@ -1315,7 +1352,7 @@ public class SessionConnection {
     if (endPointList == null) {
       return MSG_RECONNECTION_FAIL;
     }
-    List<String> urls = new ArrayList<>();
+    List<String> urls = new ArrayList<>(endPointList.size());
     for (TEndPoint end : endPointList) {
       urls.add(UrlUtils.convertTEndPointIpv4AndIpv6Url(end));
     }

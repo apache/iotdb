@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -33,10 +33,9 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -185,6 +184,9 @@ public class NonAlignedChunkData implements ChunkData {
     final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
+    final Type type = Type.fromTsDataType(chunkHeader.getDataType());
+    final TypeServices.ValueSerializer<Object> valueSerializer =
+        TypeServices.StorageEngine.OBJECT_VALUE_SERIALIZER_SERVICE.call(type);
 
     for (int i = 0; i < times.length; i++) {
       if (times[i] > endTime) {
@@ -192,35 +194,7 @@ public class NonAlignedChunkData implements ChunkData {
       }
       if (times[i] >= startTime) {
         dataSize += ReadWriteIOUtils.write(times[i], stream);
-        switch (chunkHeader.getDataType()) {
-          case INT32:
-          case DATE:
-            dataSize += ReadWriteIOUtils.write((int) values[i], stream);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            dataSize += ReadWriteIOUtils.write((long) values[i], stream);
-            break;
-          case FLOAT:
-            dataSize += ReadWriteIOUtils.write((float) values[i], stream);
-            break;
-          case DOUBLE:
-            dataSize += ReadWriteIOUtils.write((double) values[i], stream);
-            break;
-          case BOOLEAN:
-            dataSize += ReadWriteIOUtils.write((boolean) values[i], stream);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            dataSize += ReadWriteIOUtils.write((Binary) values[i], stream);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                    chunkHeader.getDataType()));
-        }
+        dataSize += valueSerializer.serialize(values[i], stream);
       }
     }
   }
@@ -250,41 +224,16 @@ public class NonAlignedChunkData implements ChunkData {
                 chunkHeader.getEncodingType(),
                 chunkHeader.getCompressionType()));
     boolean needDecode;
+    final TypeServices.DecodedChunkWriter decodedChunkWriter =
+        TypeServices.StorageEngine.DECODED_CHUNK_WRITER_SERVICE.call(
+            Type.fromTsDataType(chunkHeader.getDataType()));
     for (int j = 0; j < pageNumber; j++) {
       needDecode = ReadWriteIOUtils.readBool(stream);
       if (needDecode) {
         final int length = ReadWriteIOUtils.readInt(stream);
         for (int i = 0; i < length; i++) {
           final long time = ReadWriteIOUtils.readLong(stream);
-          switch (chunkHeader.getDataType()) {
-            case INT32:
-            case DATE:
-              chunkWriter.write(time, ReadWriteIOUtils.readInt(stream));
-              break;
-            case INT64:
-            case TIMESTAMP:
-              chunkWriter.write(time, ReadWriteIOUtils.readLong(stream));
-              break;
-            case FLOAT:
-              chunkWriter.write(time, ReadWriteIOUtils.readFloat(stream));
-              break;
-            case DOUBLE:
-              chunkWriter.write(time, ReadWriteIOUtils.readDouble(stream));
-              break;
-            case BOOLEAN:
-              chunkWriter.write(time, ReadWriteIOUtils.readBool(stream));
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-              chunkWriter.write(time, ReadWriteIOUtils.readBinary(stream));
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format(
-                      StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                      chunkHeader.getDataType()));
-          }
+          decodedChunkWriter.write(chunkWriter, time, stream);
         }
 
         chunkWriter.sealCurrentPage();

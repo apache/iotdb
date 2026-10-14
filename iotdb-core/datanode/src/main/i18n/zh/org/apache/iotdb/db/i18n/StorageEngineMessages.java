@@ -21,6 +21,23 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
+      "Load TsFile 分片内容为 null 或为空";
+  public static final String MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8 =
+      "Load TsFile 分片元数据无效：sliceCount=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_METADATA_CHANGED_SLICECOUNT_ARG_EXPECTED_ARG_ORIGINBODYSIZE_ARG_EXPECTED_ARG_B16B3122 =
+      "Load TsFile 分片元数据发生变化：sliceCount=%d（预期 %d），originBodySize=%d（预期 %d）";
+  public static final String MESSAGE_UNEXPECTED_LOAD_TSFILE_SLICE_INDEX_ARG_EXPECTED_ARG_SLICECOUNT_ARG_76260F62 =
+      "Load TsFile 分片索引 %d 不符合预期：预期 %d，sliceCount=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_EXCEEDS_ORIGINBODYSIZE_ASSEMBLEDSIZE_ARG_SLICESIZE_ARG_ORIGINBODYSIZE_ARG_0198E0D0 =
+      "Load TsFile 分片超出 originBodySize：assembledSize=%d，sliceSize=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_COMPLETED_BEFORE_THE_LAST_SLICE_RECEIVED_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_0425EA2C =
+      "Load TsFile 内容在最后一个分片之前已达到原始大小：received=%d，sliceCount=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_SIZE_MISMATCH_ASSEMBLEDSIZE_ARG_ORIGINBODYSIZE_ARG_5733FC4B =
+      "Load TsFile 内容大小不匹配：assembledSize=%d，originBodySize=%d";
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_ASSEMBLER_FOR_UUID_ARG_DATAREGION_ARG_SLICEINDEX_ARG_FF6EA463 =
+      "缺少 Load TsFile 分片组装器：uuid %s，DataRegion %s，sliceIndex=%d";
+
     public static final String IS_NOT_SUPPORTED =
       " 不受支持";
 
@@ -331,6 +348,11 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CREATE_WAL_NODE_DISKS_FULL = "由于 WAL 目录的所有磁盘已满，无法创建 WAL 节点。";
   public static final String FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES = "重试后仍无法创建 WAL 节点，标识符: ";
   public static final String FAIL_TO_CREATE_WAL_NODE = "创建 WAL 节点失败";
+  public static final String OVER_SIZED_WAL_ENTRY = "WAL条目大小 %d 超过阈值 %d, 可能是由于文件损坏或者系统配置变更."
+      + "请提高 wal_entry_size_limit_in_byte 或者隔离该文件 %s";
+  public static final String
+      EXCEPTION_THE_WAL_ENTRY_SIZE_ARG_EXCEEDS_WAL_ENTRY_SIZE_LIMIT_IN_BYTE_ARG_691BB408 =
+          "WAL 条目大小 %d 超过 wal_entry_size_limit_in_byte %d。";
 
   // ======================== Flush ========================
 
@@ -394,6 +416,8 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CLOSE_SNAPSHOT_LOGGER = "关闭快照日志器失败";
   public static final String SNAPSHOTTING_COMPRESSION_RATIO = "正在快照压缩率文件 {}。";
   public static final String CATCH_IO_EXCEPTION_CREATING_SNAPSHOT = "创建快照时捕获到 IOException";
+  public static final String CANNOT_SNAPSHOT_UNCLOSED_TSFILE =
+      "无法创建快照，因为 TsFile {} 尚未关闭";
   public static final String HARD_LINK_TARGET_DIR_NOT_EXIST = "硬链接目标目录 {} 不存在";
   public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "硬链接源文件 {} 不存在，该文件将被忽略。";
   public static final String COPY_TARGET_DIR_NOT_EXIST = "复制目标目录 {} 不存在";
@@ -1400,8 +1424,10 @@ public final class StorageEngineMessages {
       "当前 chunk %s 无法与 time chunk：%s 对齐，第一批中的所有 time chunk 为 %s";
   public static final String WAL_NODE_CLOSED_FMT = "wal node-%s 已关闭";
   public static final String BROKEN_WAL_FILE_FMT = "WAL 文件 %s 损坏，大小为 %d";
-  public static final String TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE =
-      "{} TsFileReader 因没有引用已关闭。";
+  public static final String LOG_READER_FOR_CLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_C3B71A85 =
+      "已封口 TsFile {} 的 reader 因引用计数归零而关闭。";
+  public static final String LOG_READER_FOR_UNCLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_088BDEF8 =
+      "未封口 TsFile {} 的 reader 因引用计数归零而关闭。";
   public static final String CLOSED_TSFILE_READER_CLOSED =
       "{} closedTsFileReader 已关闭。";
   public static final String UNCLOSED_TSFILE_READER_CLOSED =

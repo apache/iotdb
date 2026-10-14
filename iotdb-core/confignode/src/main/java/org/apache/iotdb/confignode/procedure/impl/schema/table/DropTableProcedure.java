@@ -70,6 +70,14 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     super(database, tableName, queryId, isGeneratedByPipe);
   }
 
+  public String getDropProgress() {
+    if (isFinished()) {
+      return getState().name();
+    }
+    final DropTableState state = getCurrentState();
+    return state == null ? getState().name() : state.name();
+  }
+
   @Override
   protected String getActionMessage() {
     return "drop table";

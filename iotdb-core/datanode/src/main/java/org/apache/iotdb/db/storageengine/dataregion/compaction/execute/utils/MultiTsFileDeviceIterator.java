@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -82,10 +83,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
       modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
-  private boolean ignoreAllNullRows;
   private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
   private final String databaseName;
+  private final boolean isTableModel;
 
   /**
    * Used for compaction with read chunk performer.
@@ -94,6 +95,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.databaseName = tsFileResources.get(0).getDatabaseName();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
@@ -131,6 +133,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
@@ -156,6 +159,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     // sort tsfiles from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
@@ -236,7 +240,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
     IDeviceID deviceID = currentDevice.left;
     boolean isAligned = currentDevice.right;
-    ignoreAllNullRows = !isAligned || deviceID.getTableName().startsWith("root.");
     if (MetadataLeaseManager.getInstance().isFenced()) {
       // Metadata lease fenced: this DataNode may hold a stale TTL (it could have missed a
       // ConfigNode
@@ -245,7 +248,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       // deletes nothing by TTL while fenced, and real TTL deletion resumes once the lease recovers
       // and the cache resyncs. (Checked first so the table path also avoids the fenced cache.)
       ttlForCurrentDevice = Long.MAX_VALUE;
-    } else if (!ignoreAllNullRows) {
+    } else if (isTableModel) {
       ttlForCurrentDevice =
           DataNodeTTLCache.getInstance().getTTLForTable(databaseName, deviceID.getTableName());
     } else {
@@ -262,6 +265,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return databaseName;
   }
 
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
   public long getTTLForCurrentDevice() {
     return ttlForCurrentDevice;
   }
@@ -271,9 +278,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   }
 
   public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
-    return ignoreAllNullRows
-        ? getAllSchemasOfCurrentDeviceForTree()
-        : getAllSchemasOfCurrentDeviceForTable();
+    return isTableModel
+        ? getAllSchemasOfCurrentDeviceForTable()
+        : getAllSchemasOfCurrentDeviceForTree();
   }
 
   /**
@@ -448,9 +455,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
       getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
-    return ignoreAllNullRows
-        ? getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTree()
-        : getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTable();
+    return isTableModel
+        ? getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTable()
+        : getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTree();
   }
 
   @SuppressWarnings({"checkstyle:AtclauseOrderCheck", "squid:S3824"})
@@ -613,7 +620,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
-              currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
+              currentDevice.left, firstMeasurementNodeOfCurrentDevice, !isTableModel);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
@@ -638,7 +645,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     ModEntry ttlDeletion = null;
     Optional<Long> startTime = tsFileResource.getStartTime(device);
     if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
-      ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
+      ttlDeletion =
+          CompactionUtils.convertTtlToDeletion(
+              device, timeLowerBoundForCurrentDevice, isTableModel);
     }
 
     PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
@@ -652,7 +661,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // match time column modifications
     List<ModEntry> modificationForTimeColumn =
         CompactionUtils.getMatchedModifications(
-            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, ttlDeletion);
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, ttlDeletion, isTableModel);
 
     // match value column modifications
     List<List<ModEntry>> modificationForValueColumns = new ArrayList<>();
@@ -663,7 +672,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       List<ModEntry> modificationList =
           CompactionUtils.getMatchedModifications(
-              modifications, device, valueChunkMetadata.getMeasurementUid(), null);
+              modifications, device, valueChunkMetadata.getMeasurementUid(), null, isTableModel);
       modificationForValueColumns.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
@@ -672,7 +681,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         alignedChunkMetadataList,
         modificationForTimeColumn,
         modificationForValueColumns,
-        ignoreAllNullRows);
+        !isTableModel);
   }
 
   public Map<TsFileResource, TsFileSequenceReader> getReaderMap() {
@@ -884,7 +893,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           // collect the modifications for current series
           List<ModEntry> modificationForCurrentSeries =
               CompactionUtils.getMatchedModifications(
-                  modificationsInThisResource, device, currentCompactingSeries, ttlDeletion);
+                  modificationsInThisResource,
+                  device,
+                  currentCompactingSeries,
+                  ttlDeletion,
+                  isTableModel);
 
           // if there are modifications of current series, apply them to the chunk metadata
           if (!modificationForCurrentSeries.isEmpty()) {
@@ -902,7 +915,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
   // skip data of deleted table
   private boolean isCurrentDeviceDataInDeprecatedTable(TsFileResource resource) {
-    if (ignoreAllNullRows) {
+    if (!isTableModel) {
       return false;
     }
     String tableName = currentDevice.getLeft().getTableName();

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.metric;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.type.Rate;
@@ -29,9 +30,11 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.function.ToDoubleFunction;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +62,10 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
     when(firstQueue.getConsensusGroupId()).thenReturn(firstRegionId);
     when(secondQueue.getPrefetchingQueueId()).thenReturn(queueId);
     when(secondQueue.getConsensusGroupId()).thenReturn(secondRegionId);
+    when(firstQueue.getUnreadableWalFileCount()).thenReturn(4L);
+    when(firstQueue.getUnreadableWalEntryCount()).thenReturn(7L);
+    when(secondQueue.getUnreadableWalFileCount()).thenReturn(5L);
+    when(secondQueue.getUnreadableWalEntryCount()).thenReturn(9L);
     when(staleFirstQueue.getPrefetchingQueueId()).thenReturn(queueId);
     when(staleFirstQueue.getConsensusGroupId()).thenReturn(firstRegionId);
     when(metricService.getOrCreateRate(
@@ -102,6 +109,43 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
 
       assertEquals(2, queueMap.size());
       assertEquals(2, rateMap.size());
+      for (final Metric metric :
+          new Metric[] {
+            Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP,
+            Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES
+          }) {
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        final ArgumentCaptor<ToDoubleFunction<ConsensusPrefetchingQueue>> mapper =
+            ArgumentCaptor.forClass((Class) ToDoubleFunction.class);
+        verify(metricService)
+            .createAutoGauge(
+                eq(metric.toString()),
+                eq(MetricLevel.IMPORTANT),
+                eq(firstQueue),
+                mapper.capture(),
+                eq(Tag.NAME.toString()),
+                eq(queueId),
+                eq(Tag.REGION.toString()),
+                eq(firstRegionId.toString()));
+        verify(metricService)
+            .createAutoGauge(
+                eq(metric.toString()),
+                eq(MetricLevel.IMPORTANT),
+                eq(secondQueue),
+                mapper.capture(),
+                eq(Tag.NAME.toString()),
+                eq(queueId),
+                eq(Tag.REGION.toString()),
+                eq(secondRegionId.toString()));
+        assertEquals(
+            metric == Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP ? 4.0 : 7.0,
+            mapper.getAllValues().get(0).applyAsDouble(firstQueue),
+            0.0);
+        assertEquals(
+            metric == Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP ? 5.0 : 9.0,
+            mapper.getAllValues().get(1).applyAsDouble(secondQueue),
+            0.0);
+      }
       verify(metricService)
           .createAutoGauge(
               eq(Metric.SUBSCRIPTION_CONSENSUS_LAG.toString()),
@@ -134,6 +178,18 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
               eq(firstRegionId.toString()));
       verify(metricService)
           .createAutoGauge(
+              eq(Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString()),
+              eq(MetricLevel.IMPORTANT),
+              eq(firstQueue),
+              any(),
+              eq(Tag.NAME.toString()),
+              eq(queueId),
+              eq(Tag.REGION.toString()),
+              eq(firstRegionId.toString()),
+              eq(Tag.REASON.toString()),
+              eq(SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA.getCode()));
+      verify(metricService)
+          .createAutoGauge(
               eq(Metric.SUBSCRIPTION_CONSENSUS_LAG.toString()),
               eq(MetricLevel.IMPORTANT),
               eq(secondQueue),
@@ -156,6 +212,28 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
       metrics.deregister(firstQueue);
       assertEquals(1, queueMap.size());
       assertEquals(1, rateMap.size());
+      for (final Metric metric :
+          new Metric[] {
+            Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP,
+            Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES
+          }) {
+        verify(metricService)
+            .remove(
+                MetricType.AUTO_GAUGE,
+                metric.toString(),
+                Tag.NAME.toString(),
+                queueId,
+                Tag.REGION.toString(),
+                firstRegionId.toString());
+        verify(metricService, never())
+            .remove(
+                MetricType.AUTO_GAUGE,
+                metric.toString(),
+                Tag.NAME.toString(),
+                queueId,
+                Tag.REGION.toString(),
+                secondRegionId.toString());
+      }
       verify(metricService)
           .remove(
               MetricType.AUTO_GAUGE,
@@ -164,6 +242,16 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
               queueId,
               Tag.REGION.toString(),
               firstRegionId.toString());
+      verify(metricService)
+          .remove(
+              MetricType.AUTO_GAUGE,
+              Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString(),
+              Tag.NAME.toString(),
+              queueId,
+              Tag.REGION.toString(),
+              firstRegionId.toString(),
+              Tag.REASON.toString(),
+              SubscriptionQueueRejectionReason.SUBSCRIPTION_MEMORY_QUOTA.getCode());
       verify(metricService, never())
           .remove(
               MetricType.AUTO_GAUGE,

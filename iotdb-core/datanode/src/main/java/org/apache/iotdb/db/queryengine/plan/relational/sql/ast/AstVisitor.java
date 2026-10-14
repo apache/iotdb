@@ -163,6 +163,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitSetColumnProperties(SetColumnProperties node, C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitRenameColumn(RenameColumn node, C context) {
     return visitStatement(node, context);
   }

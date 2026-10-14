@@ -228,6 +228,14 @@ public class SubscriptionBrokerAgent {
     return false;
   }
 
+  public int requeueInFlightEvents(final ConsumerConfig consumerConfig) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final String consumerId = consumerConfig.getConsumerId();
+    return getBrokers(consumerGroupId).stream()
+        .mapToInt(broker -> broker.requeueInFlightEvents(consumerId))
+        .sum();
+  }
+
   public int refreshInFlightEventLeases(
       final ConsumerConfig consumerConfig,
       final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
@@ -662,7 +670,8 @@ public class SubscriptionBrokerAgent {
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
-      final boolean initialActive) {
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     final ConsensusPrefetchingQueue queue =
         getOrCreateBroker(
                 consumerGroupId,
@@ -684,7 +693,8 @@ public class SubscriptionBrokerAgent {
                 fallbackCommittedRegionProgress,
                 tailStartSearchIndex,
                 initialRuntimeVersion,
-                initialActive);
+                initialActive,
+                replaceDetachedRetention);
     prefetchingQueueCount.invalidate();
     return queue;
   }
@@ -816,7 +826,9 @@ public class SubscriptionBrokerAgent {
   }
 
   public void unbindConsensusPrefetchingQueue(
-      final String consumerGroupId, final String topicName) {
+      final String consumerGroupId,
+      final String topicName,
+      final boolean retainProgressAfterUnsubscribe) {
     final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
@@ -825,7 +837,7 @@ public class SubscriptionBrokerAgent {
           consumerGroupId);
       return;
     }
-    broker.unbindConsensusPrefetchingQueue(topicName);
+    broker.unbindConsensusPrefetchingQueue(topicName, retainProgressAfterUnsubscribe);
     prefetchingQueueCount.invalidate();
   }
 

@@ -40,6 +40,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
@@ -47,6 +48,7 @@ import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +61,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_CALLER;
@@ -640,6 +643,8 @@ public class SourceHandle implements ISourceHandle {
                 startSequenceId,
                 endSequenceId,
                 indexOfUpstreamSinkHandle);
+        DataBlockFetchProgress fetchProgress =
+            new DataBlockFetchProgress(startSequenceId, endSequenceId);
         int attempt = 0;
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
@@ -648,7 +653,10 @@ public class SourceHandle implements ISourceHandle {
           boolean transferAttemptRecorded = false;
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
-            TGetDataBlockResponse resp = client.getDataBlock(req);
+            TGetDataBlockResponse resp = getDataBlockWithFragments(client, req, fetchProgress);
+            if (resp == null) {
+              return;
+            }
             int tsBlockNum = resp.getTsBlocks().size();
             if (tsBlockNum != endSequenceId - startSequenceId) {
               recordTransferAttempt(
@@ -709,7 +717,25 @@ public class SourceHandle implements ISourceHandle {
               return;
             }
             break;
-          } catch (Throwable e) {
+          } catch (IllegalArgumentException | IllegalStateException e) {
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(
+                  false, UserDataTransferErrorCode.UNEXPECTED_RESPONSE_SIZE.name(), e);
+            }
+            fail(e);
+            return;
+          } catch (Error e) {
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(
+                  false,
+                  e instanceof OutOfMemoryError
+                      ? UserDataTransferErrorCode.OUT_OF_MEMORY.name()
+                      : null,
+                  e);
+            }
+            fail(e);
+            throw e;
+          } catch (Exception e) {
 
             if (!transferAttemptRecorded) {
               recordTransferAttempt(false, null, e);
@@ -765,6 +791,134 @@ public class SourceHandle implements ISourceHandle {
                   reservedBytes);
         }
         sourceHandleListener.onFailure(SourceHandle.this, t);
+      }
+    }
+
+    private TGetDataBlockResponse getDataBlockWithFragments(
+        SyncDataNodeMPPDataExchangeServiceClient client,
+        TGetDataBlockRequest request,
+        DataBlockFetchProgress fetchProgress)
+        throws TException {
+      while (!fetchProgress.isFinished()) {
+        synchronized (SourceHandle.this) {
+          if (aborted || closed) {
+            fetchProgress.discard();
+            return null;
+          }
+        }
+        TGetDataBlockRequest fragmentRequest = request.deepCopy();
+        fragmentRequest.setStartSequenceId(fetchProgress.nextSequenceId);
+        fragmentRequest.setOffset(fetchProgress.offset);
+        TGetDataBlockResponse response = client.getDataBlock(fragmentRequest);
+        synchronized (SourceHandle.this) {
+          if (aborted || closed) {
+            fetchProgress.discard();
+            return null;
+          }
+          if (response.getTsBlocks().isEmpty()) {
+            return response;
+          }
+          fetchProgress.addResponse(response);
+        }
+      }
+      return new TGetDataBlockResponse(fetchProgress.tsBlocks);
+    }
+
+    private class DataBlockFetchProgress {
+      private final int endSequenceId;
+      private final List<ByteBuffer> tsBlocks;
+      private int nextSequenceId;
+      private int offset;
+      private PublicBAOS partialTsBlock;
+      private int partialTsBlockTotalLength;
+
+      private DataBlockFetchProgress(int startSequenceId, int endSequenceId) {
+        this.nextSequenceId = startSequenceId;
+        this.endSequenceId = endSequenceId;
+        this.tsBlocks = new ArrayList<>(endSequenceId - startSequenceId);
+      }
+
+      private boolean isFinished() {
+        return nextSequenceId == endSequenceId && partialTsBlock == null;
+      }
+
+      private void discard() {
+        tsBlocks.clear();
+        partialTsBlock = null;
+        partialTsBlockTotalLength = 0;
+        offset = 0;
+      }
+
+      private void addResponse(TGetDataBlockResponse response) {
+        List<ByteBuffer> responseBlocks = response.getTsBlocks();
+        boolean lastBlockIsFragment = response.isSetOffset();
+        int blockIndex = 0;
+
+        if (partialTsBlock != null) {
+          appendFragment(responseBlocks.get(blockIndex++));
+          if (lastBlockIsFragment && blockIndex == responseBlocks.size()) {
+            updateOffset(response.getOffset());
+            return;
+          }
+          Preconditions.checkState(
+              partialTsBlock.size() == partialTsBlockTotalLength,
+              DataNodeQueryMessages
+                  .EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303,
+              partialTsBlock.size(),
+              partialTsBlockTotalLength);
+          tsBlocks.add(ByteBuffer.wrap(partialTsBlock.getBuf(), 0, partialTsBlock.size()));
+          partialTsBlock = null;
+          partialTsBlockTotalLength = 0;
+          offset = 0;
+          nextSequenceId++;
+        }
+
+        int lastCompleteBlockIndex =
+            lastBlockIsFragment ? responseBlocks.size() - 1 : responseBlocks.size();
+        while (blockIndex < lastCompleteBlockIndex) {
+          tsBlocks.add(responseBlocks.get(blockIndex++));
+          nextSequenceId++;
+        }
+
+        if (lastBlockIsFragment) {
+          checkArgument(
+              response.isSetTotalLength(),
+              DataNodeQueryMessages
+                  .EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2);
+          partialTsBlockTotalLength = response.getTotalLength();
+          partialTsBlock = new PublicBAOS(partialTsBlockTotalLength);
+          appendFragment(responseBlocks.get(blockIndex));
+          updateOffset(response.getOffset());
+        }
+
+        Preconditions.checkState(
+            nextSequenceId <= endSequenceId,
+            DataNodeQueryMessages
+                .EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E,
+            nextSequenceId,
+            endSequenceId);
+        Preconditions.checkState(
+            lastBlockIsFragment || nextSequenceId != endSequenceId || partialTsBlock == null,
+            DataNodeQueryMessages
+                .EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287);
+      }
+
+      private void appendFragment(ByteBuffer fragment) {
+        checkArgument(
+            fragment.hasRemaining(),
+            DataNodeQueryMessages.EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863);
+        partialTsBlock.writeBytes(fragment.array());
+      }
+
+      private void updateOffset(int nextOffset) {
+        checkArgument(
+            nextOffset > offset && nextOffset == partialTsBlock.size(),
+            DataNodeQueryMessages
+                .EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047,
+            nextOffset,
+            offset,
+            partialTsBlock.size());
+        offset = nextOffset;
       }
     }
   }

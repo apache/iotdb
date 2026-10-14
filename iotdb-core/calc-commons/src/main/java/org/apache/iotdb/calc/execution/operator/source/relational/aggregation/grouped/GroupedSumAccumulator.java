@@ -22,12 +22,13 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -35,11 +36,14 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedSumAccumulator.class);
   private final TSDataType argumentDataType;
+  private final TypeServices.GroupedSumInput inputStrategy;
   private final BooleanBigArray initResult = new BooleanBigArray();
   private final DoubleBigArray sumValues = new DoubleBigArray();
 
   public GroupedSumAccumulator(TSDataType argumentDataType) {
     this.argumentDataType = argumentDataType;
+    Type type = Type.fromTsDataType(argumentDataType);
+    this.inputStrategy = TypeServices.GROUPED_SUM_INPUT_SERVICE.call(type);
   }
 
   @Override
@@ -58,32 +62,7 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
     checkArgument(
         arguments.length == 1,
         CalcMessages.EXCEPTION_ARGUMENT_OF_SUM_SHOULD_BE_ONE_COLUMN_D6E636D1);
-    switch (argumentDataType) {
-      case INT32:
-        addIntInput(groupIds, arguments[0], mask);
-        return;
-      case INT64:
-        addLongInput(groupIds, arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(groupIds, arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], mask);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_SUM_AGGREGATION_ARG_92F5A18D,
-                argumentDataType));
-    }
+    inputStrategy.addInput(groupIds, arguments[0], mask, sumValues, initResult);
   }
 
   @Override
@@ -103,98 +82,6 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
       columnBuilder.appendNull();
     } else {
       columnBuilder.writeDouble(sumValues.get(groupId));
-    }
-  }
-
-  private void addIntInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult.set(groupIds[i], true);
-          sumValues.add(groupIds[i], column.getInt(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult.set(groupIds[position], true);
-          sumValues.add(groupIds[position], column.getInt(position));
-        }
-      }
-    }
-  }
-
-  private void addLongInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult.set(groupIds[i], true);
-          sumValues.add(groupIds[i], column.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult.set(groupIds[position], true);
-          sumValues.add(groupIds[position], column.getLong(position));
-        }
-      }
-    }
-  }
-
-  private void addFloatInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult.set(groupIds[i], true);
-          sumValues.add(groupIds[i], column.getFloat(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult.set(groupIds[position], true);
-          sumValues.add(groupIds[position], column.getFloat(position));
-        }
-      }
-    }
-  }
-
-  private void addDoubleInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult.set(groupIds[i], true);
-          sumValues.add(groupIds[i], column.getDouble(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult.set(groupIds[position], true);
-          sumValues.add(groupIds[position], column.getDouble(position));
-        }
-      }
     }
   }
 

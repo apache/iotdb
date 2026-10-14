@@ -21,6 +21,46 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =
+          "Subscription prefetch round starting for {}: active={}, initialized={}, closed={}, pendingEntries={}, prefetchedEvents={}, inFlightEvents={}, nextReadSearchIndex={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_COMPLETED_FOR_ARG_DURATIONMS_ARG_RESULT_ARG_DELAYMS_ARG_READSEARCHINDEX_ARG_ARG_PENDINGACCEPTED_ARG_WALACCEPTED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_MEMORYBLOCKREASON_ARG_ADMISSIONBLOCKREASON_ARG_0F0A3D57 =
+          "Subscription prefetch round completed for {}: durationMs={}, result={}, delayMs={}, readSearchIndex={} -> {}, pendingAccepted={}, walAccepted={}, pendingEntries={}, prefetchedEvents={}, inFlightEvents={}, memoryBlockReason={}, admissionBlockReason={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ACQUIRED_QUEUE_READ_LOCK_FOR_ARG_AFTER_ARG_MS_425E9A20 =
+          "Subscription prefetch acquired queue read lock for {} after {} ms.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_SCANNING_WAL_FOR_ARG_NEXTREADSEARCHINDEX_ARG_MAXWALENTRIES_ARG_PREFETCHEDEVENTS_ARG_AA16EEA1 =
+          "Subscription prefetch scanning WAL for {}: nextReadSearchIndex={}, maxWalEntries={}, prefetchedEvents={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARING_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_EE485CC7 =
+          "Subscription prefetch preparing entry for {}: searchIndex={}, writerNodeId={}, localSeq={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARED_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_TABLETS_ARG_ESTIMATEDBYTES_ARG_DURATIONMS_ARG_E91BA0CD =
+          "Subscription prefetch prepared entry for {}: searchIndex={}, writerNodeId={}, localSeq={}, tablets={}, estimatedBytes={}, durationMs={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_MEMORY_RESERVATION_REJECTED_FOR_ARG_ENTRYBYTES_ARG_REASON_ARG_QUOTABYTES_ARG_FREEBYTES_ARG_98903D3B =
+          "Subscription prefetch memory reservation rejected for {}: entryBytes={}, reason={}, quotaBytes={}, freeBytes={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_TASK_ARG_SCHEDULING_AFTER_ROUND_RESULT_ARG_WAKEUPPENDING_ARG_ENQUEUENOW_ARG_DELAYMS_ARG_602EA4A4 =
+          "Subscription prefetch task {} scheduling after round: result={}, wakeupPending={}, enqueueNow={}, delayMs={}.";
+
+  public static final String
+      LOG_SUBSCRIPTION_MEMORY_OVERCOMMIT_ENTRYBYTES_ARG_BUDGETBYTES_ARG_OVERCOMMITBYTES_ARG_OTHER_QUEUES_MAY_BE_BLOCKED_UNTIL_RELEASE_DF9B914E =
+          "Subscription memory overcommit: entryBytes={}, budgetBytes={}, overcommitBytes={}; other queues may be blocked until release.";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_TOOK_ARG_MS_FOR_ARG_DELIVERYIDLETIMEMS_ARG_MEMORYUSEDBYTES_ARG_MEMORYLIMITBYTES_ARG_INSPECT_WORKER_STACKS_WAL_I_O_AND_JVM_PAUSES_D399CEDD =
+          "Subscription prefetch round took {} ms for {}. deliveryIdleTimeMs={}, memoryUsedBytes={}, memoryLimitBytes={}; inspect worker stacks, WAL I/O and JVM pauses.";
+
   public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
       "Failed to resolve transfer exception.";
 
@@ -820,10 +860,16 @@ public final class DataNodePipeMessages {
       "Failed to transfer tsfile batch ({}).";
   public static final String FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY =
       "Failed to transfer tsfile event {} asynchronously.";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_ARG_BECAUSE_FILE_ARG_IS_MISSING_AFTER_ARG_RETRIES_B656E84E =
+          "Failed to transfer TsFile {} because file {} is missing after {} retries.";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
       "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS =
       "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents).";
+  public static final String
+      LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9 =
+          "TsFile {}: modification file {} is missing, transfer the TsFile without modifications.";
   public static final String FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE =
       "Failed to update leader cache for device {} with endpoint {}:{}.";
   public static final String FAILED_TO_WRITE = "Failed to write ";
@@ -1524,25 +1570,12 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_SET_RECENT_PROCESSED_TSFILE_EPOCH =
       "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) "
           + "does not exist";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_ASSIGNER_METRICS =
-      "Failed to unbind from pipe assigner metrics, assigner map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION =
-      "Failed to unbind from pipe data region sink metrics, sink map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_EXTRACTOR_METRICS =
-      "Failed to unbind from pipe extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_PROCESSOR_METRICS =
-      "Failed to unbind from pipe processor metrics, processor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT =
-      "Failed to unbind from pipe remaining event and time metrics, "
-          + "RemainingEventAndTimeOperator map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION =
-      "Failed to unbind from pipe schema region connector metrics, connector map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1 =
-      "Failed to unbind from pipe schema region extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2 =
-      "Failed to unbind from pipe schema region listener metrics, listening queue map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO =
-      "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}";
+
+  // ---------------------------------------------------------------------------
+  // pipe – PipeRow
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_FOR_COLUMN_ARG_4C4CCA6D =
+      "unsupported data type %s for column %s";
 
   // ---------------------------------------------------------------------------
   // pipe – AbstractSameTypeNumericOperator
@@ -1798,6 +1831,12 @@ public final class DataNodePipeMessages {
       "Subscription: The consumer {} has already existed when handshaking, skip creating consumer.";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_HANDSHAKE_SUCCESSFULLY_DATA_NODE_ID_58DA6A5F =
       "Subscription: consumer {} handshake successfully, data node id: {}";
+  public static final String
+      LOG_SUBSCRIPTION_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_WAS_TAKEN_OVER_BY_A_NEWER_CONNECTION_FENCED_THE_PREVIOUS_CONNECTION_4E72DBD9 =
+          "Subscription: consumer {} in consumer group {} was taken over by a newer connection; fenced the previous connection.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONSUMER_CONNECTION_WAS_FENCED_BECAUSE_A_NEWER_CONNECTION_WITH_THE_SAME_CONSUMER_ID_AND_CONSUMER_GROUP_ID_COMPLETED_THE_HANDSHAKE_THIS_CONSUMER_INSTANCE_CANNOT_BE_REUSED_CREATE_A_NEW_CONSUMER_INSTANCE_TO_RECONNECT_B0C2CCBE =
+          "Subscription: consumer connection was fenced because a newer connection with the same consumer ID and consumer group ID completed the handshake. This consumer instance cannot be reused; create a new consumer instance to reconnect.";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_UNSUBSCRIBE_SUCCESSFULLY_AA5E0AA9 =
       "Subscription: consumer {} unsubscribe {} successfully";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_ACCEPTED_SUCCESSFULLY_58D1C111 =
@@ -1860,16 +1899,11 @@ public final class DataNodePipeMessages {
       "Subscription: consumer {} poll excessive payload {} for event {} (outdated: {}) with "
           + "request: {}, something unexpected happened with parameter configuration or payload "
           + "control...";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C =
-      "Failed to unbind from subscription prefetching queue metrics, prefetching queue map not "
-          + "empty";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_F08479A7 =
       "Failed to deregister subscription prefetching queue metrics, "
           + "SubscriptionPrefetchingQueue({}) does not exist";
   public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_SUBSCRIPTIONPREFETCHINGQUEUE_7DEF95B5 =
       "Failed to mark transfer event rate, SubscriptionPrefetchingQueue({}) does not exist";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9 =
-      "Failed to unbind from consensus subscription prefetching queue metrics, queue map not empty";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_CONSENSUS_SUBSCRIPTION_PREFETCHING_8B180091 =
       "Failed to deregister consensus subscription prefetching queue metrics, "
           + "ConsensusPrefetchingQueue({}) does not exist";
@@ -2130,7 +2164,7 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue {}: periodic stats, lag={}, pendingDelta={}, walDelta={}, "
           + "pendingTotal={}, walTotal={}, walGapSkippedEntries={}, pendingQueueSize={}, "
           + "prefetchingQueueSize={}, inFlightEventsSize={}, realtimeWriterCount={}, "
-          + "walHasNext={}, isActive={}, subtaskScheduled={}";
+          + "walNextBuffered={}, isActive={}, subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}: waiting {}ms for WAL gap [{}, {}) to become visible, "
           + "currentNextExpected={}, currentWalIndex={}, seekGeneration={}";
@@ -2194,6 +2228,8 @@ public final class DataNodePipeMessages {
           + "frontier";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7 =
       "ConsensusPrefetchingQueue {}: error during deregister";
+  public static final String LOG_FAILED_TO_FINISH_CLOSING_CONSENSUS_PREFETCHING_QUEUE_ARG_3C31731C =
+      "Failed to finish closing consensus prefetching queue {}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7 =
       "ConsensusPrefetchingQueue {}: failed to flush lingering batch during close, discarding it";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_ROUND_FAILED_TYPE_MESSAGE_63BC909B =
@@ -2208,16 +2244,39 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: failed to open near-live WAL file {}, retrying without blacklisting";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator: error reading WAL";
-  public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
-      "ProgressWALIterator: failed to open WAL file {}, skipping";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
+      "ProgressWALIterator: failed to process WAL file {}, skipping remaining entries";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_IDENTIFY_UNREADABLE_WAL_FILE_7BA9F422 =
+          "failed to identify unreadable WAL file during replay";
+  public static final String
+      SUBSCRIPTION_ERROR_WAL_REPLAY_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_D60C5FB2 =
+          "Subscription WAL replay skipped %d unreadable retained WAL file(s). Historical data in "
+              + "those files cannot be delivered.";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
       "ProgressWALIterator: skipped {} unreadable retained WAL files in directory {}, "
           + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "
           + "files cannot be replayed";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
-      "ConsensusPrefetchingQueue {}: WAL replay skipped unavailable search indexes [{}, {}), "
-          + "skippedEntries={}, totalWalGapSkippedEntries={}; the missing WAL data may have been "
-          + "reclaimed before subscription consumption";
+  public static final String
+      LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILE_ARG_HISTORICAL_SUBSCRIPTION_DATA_MAY_BE_LOST_AE0DBAB1 =
+          "ProgressWALIterator: skipped unreadable retained WAL file {}; historical subscription data may be lost";
+  public static final String
+      MESSAGE_FILE_ARG_VERSIONID_ARG_FILESEARCHINDEXRANGE_ARG_ARG_ENTRYRANGE_ARG_ARG_SKIPPEDENTRIES_ARG_ERROR_ARG_0D6D77B0 =
+          "file=%s, versionId=%d, fileSearchIndexRange=(%s, %s], entryRange=[%d, %s), skippedEntries=%s, error=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_WAL_REPLAY_SKIPPED_ARG_UNREADABLE_RETAINED_WAL_FILE_S_IN_QUEUE_ARG_REGION_ARG_HISTORICAL_DATA_MAY_BE_LOST_DETAILS_RECENT_FILES_FULL_DETAILS_IN_SERVER_LOG_ARG_FEDEFF7E =
+          "Subscription WAL replay skipped %d unreadable retained WAL file(s) in queue %s, region %s. Historical data may be lost. Details (recent files; full details in server log): %s";
+  public static final String MESSAGE_UNKNOWN_AD921D60 = "unknown";
+  public static final String
+      MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
+          "WAL file %s (versionId=%d, entryOffset=%d) is temporarily unreadable; replay will retry without skipping: %s";
+  public static final String
+      MESSAGE_FAILED_TO_REOPEN_WAL_FILE_ARG_AT_ENTRY_OFFSET_ARG_ITERATOR_COULD_NOT_SKIP_TO_THE_REQUESTED_POSITION_332B3AD9 =
+          "failed to reopen WAL file %s at entry offset %s: iterator could not skip to the requested position";
+  public static final String
+      LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A =
+          "{}: WAL gap [{}, {}), skipped {}, total skipped {}; cause undetermined";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, "
           + "shouldMark: {}. {}";
@@ -2633,6 +2692,8 @@ public final class DataNodePipeMessages {
       "Topic metadata for %s is unavailable during consensus subscription setup";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "Topic config for %s is unavailable during consensus subscription setup";
+  public static final String LOG_FAILED_TO_RESTORE_DETACHED_CONSENSUS_SUBSCRIPTION_WAL_RETENTION_FOR_CONSUMER_GROUP_ARG_TOPIC_ARG_REGION_ARG_296129FE =
+      "Failed to restore detached consensus subscription WAL retention for consumer group {}, topic {}, region {}";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
   public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
@@ -2643,4 +2704,6 @@ public final class DataNodePipeMessages {
       "Interrupted while reading OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
+  public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
+      "[%s] Subscription entry requires %d bytes, above the current per-queue maximum %d bytes (DataNode budget %d bytes). Reduce the write batch/field size or increase subscription materialization memory. WAL progress has not advanced.";
 }

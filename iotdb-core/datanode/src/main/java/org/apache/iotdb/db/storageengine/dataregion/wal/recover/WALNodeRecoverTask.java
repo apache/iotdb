@@ -130,12 +130,12 @@ public class WALNodeRecoverTask implements Runnable {
                 .STORAGE_LOG_SUCCESSFULLY_RECOVER_WAL_NODE_IN_THE_DIRECTORY_ADD_THIS_FA6ADE22,
             logDirectory);
       } else {
-        // delete this wal node folder
-        FileUtils.deleteFileOrDirectory(logDirectory);
-        logger.info(
-            StorageEngineMessages
-                .STORAGE_LOG_SUCCESSFULLY_RECOVER_WAL_NODE_IN_THE_DIRECTORY_SO_DELETE_A17892D9,
-            logDirectory);
+        if (cleanupRecoveredDirectory(logDirectory)) {
+          logger.info(
+              StorageEngineMessages
+                  .STORAGE_LOG_SUCCESSFULLY_RECOVER_WAL_NODE_IN_THE_DIRECTORY_SO_DELETE_A17892D9,
+              logDirectory);
+        }
       }
 
       // IoTConsensusV2 will not only delete WAL node folder, but also register WAL node.
@@ -170,6 +170,7 @@ public class WALNodeRecoverTask implements Runnable {
     WALMetaData metaData = new WALMetaData(lastSearchIndex, new ArrayList<>(), new HashSet<>());
     WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     try (WALReader walReader = new WALReader(lastWALFile, true)) {
+      long previousLogicalOffset = 0;
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
         long searchIndex = DEFAULT_SEARCH_INDEX;
@@ -182,13 +183,21 @@ public class WALNodeRecoverTask implements Runnable {
           }
         }
         metaData.setTruncateOffSet(walReader.getWALCurrentReadOffset());
-        metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());
+        long logicalOffset = walReader.getLogicalReadOffset();
+        // Legacy entries may serialize differently in this version; retain their on-disk sizes.
+        metaData.add(
+            Math.toIntExact(logicalOffset - previousLogicalOffset),
+            searchIndex,
+            walEntry.getMemTableId());
+        previousLogicalOffset = logicalOffset;
       }
     } catch (Exception e) {
       logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_LOGS_SKIP, lastWALFile, e);
     }
     // make sure last wal file is correct
-    repairWalFileIfBroken(lastWALFile, metaData);
+    if (!repairWalFileIfBroken(lastWALFile, metaData)) {
+      return new long[] {lastVersionId, lastSearchIndex};
+    }
     // rename last wal file when file status are inconsistent
     if (WALFileUtils.parseStatusCode(lastWALFile.getName()) != fileStatus) {
       String targetName =
@@ -203,13 +212,38 @@ public class WALNodeRecoverTask implements Runnable {
     return new long[] {lastVersionId, lastSearchIndex};
   }
 
-  private static void repairWalFileIfBroken(File walFile, WALMetaData metaData) {
+  /** Clears recovered logs but retains quarantined files for diagnosis across restarts. */
+  static boolean cleanupRecoveredDirectory(File directory) {
+    File[] quarantined =
+        directory.listFiles((dir, name) -> name.matches(".*\\.wal\\.broken(?:\\.\\d+)?"));
+    if (quarantined == null) {
+      return false;
+    }
+    if (quarantined.length == 0) {
+      FileUtils.deleteFileOrDirectory(directory);
+      return true;
+    }
+    File[] logs =
+        directory.listFiles(
+            (dir, name) ->
+                WALFileUtils.walFilenameFilter(dir, name)
+                    || CheckpointFileUtils.checkpointFilenameFilter(dir, name));
+    if (logs != null) {
+      for (File log : logs) {
+        FileUtils.deleteFileOrDirectory(log);
+      }
+    }
+    return false;
+  }
+
+  private static boolean repairWalFileIfBroken(File walFile, WALMetaData metaData) {
     WALRepairWriter walRepairWriter = new WALRepairWriter(walFile);
     try {
-      walRepairWriter.repair(metaData);
+      return walRepairWriter.repair(metaData);
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAIL_TO_RECOVER_WAL_METADATA, walFile, e);
       DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      return false;
     }
   }
 

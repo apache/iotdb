@@ -21,6 +21,11 @@ package org.apache.iotdb.db.i18n;
 
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "请求的查询不属于当前会话。";
+
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
+      "缺少 Load TsFile 分片元数据：%s";
 
     public static final String INVALID_PIPE_NAME =
       "无效的 pipeName";
@@ -603,7 +608,12 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "输入的双精度数值为 Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "BOOLEAN 值应为 true/TRUE、false/FALSE 或 0/1";
-  public static final String UNSUPPORTED_DATA_TYPE_FMT = "不支持的数据类型：%s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3 =
+      "数据类型不一致，输入值 %s，注册类型 %s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858 =
+      "数据类型不一致，输入值 %s，注册类型 %s，原因：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "不支持的数据类型：%s";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
       "聚合函数名称不能为空";
@@ -1070,7 +1080,7 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
       "DataNode 退出。JVM 内存使用情况：{}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "无法向 ConfigNode 上报 DataNode 关闭状态。集群在接下来的几秒内仍会将当前 DataNode 视为 Running。";
+      "未能获得 ConfigNode leader 对 DataNode 关闭报告的确认。";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
       "调用共识层的 triggerSnapshot API 时发生错误。";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =
@@ -1468,5 +1478,14 @@ public final class DataNodeMiscMessages {
   public static final String
       LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
           "table_query_device_entry_batch_size_in_bytes（%d）超过最大 RPC payload（dn_thrift_max_frame_size %d 减去 1024 字节），将使用 %d 作为生效值";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2 =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）不是正数，将使用默认值 %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）超过允许的最大值 %d，将使用 %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）低于允许的最小值 %d，将使用 %d";
 
 }

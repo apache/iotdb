@@ -558,11 +558,15 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   @Override
   protected void adjustClientTimeoutIfNecessary(
-      CnToDnAsyncRequestType CnToDnAsyncRequestType,
+      CnToDnAsyncRequestType requestType,
       AsyncDataNodeInternalServiceClient client,
       Long timeoutInMs) {
-    if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(CnToDnAsyncRequestType)) {
+    if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(requestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllDnMaxTime());
+    } else if (CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE.equals(requestType)
+        || CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE.equals(requestType)) {
+      // Asynchronous DROP TABLE deletion can take arbitrarily long to finish.
+      client.setTimeoutTemporarily(-1);
     } else if (timeoutInMs != null) {
       client.setTimeoutTemporarily(timeoutInMs);
     }
