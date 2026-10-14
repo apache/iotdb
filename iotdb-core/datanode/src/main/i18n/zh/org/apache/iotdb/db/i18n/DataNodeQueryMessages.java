@@ -2518,9 +2518,10 @@ public final class DataNodeQueryMessages {
   public static final String OFFSET_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
 
       "OFFSET 行数必须大于或等于 0（实际值：%s）";
-  public static final String LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
+  public static final String
+      EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3 =
 
-      "LIMIT 行数必须大于或等于 0（实际值：%s）";
+          "LIMIT 行数必须大于 0（实际值：%s）";
   public static final String NON_CONSTANT_PARAMETER_VALUE_FOR_S_S =
 
       "%s 的参数值不是常量：%s";
