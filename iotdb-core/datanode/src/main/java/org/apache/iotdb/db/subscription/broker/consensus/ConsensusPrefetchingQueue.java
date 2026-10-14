@@ -2046,7 +2046,7 @@ public class ConsensusPrefetchingQueue {
     } finally {
       // Advance once for the consumed prefix, including when a gap or memory block stops the
       // batch. Per-entry fast-forward can repeatedly inspect the same uncovered WAL file footer.
-      // Gap recovery creates its own iterator at the current cursor before reading WAL.
+      // Gap recovery realigns the same iterator at the current cursor before reading WAL.
       final ProgressWALIterator iterator = subscriptionWALIterator;
       if (nextExpectedSearchIndex.get() > startSearchIndex
           && Objects.nonNull(iterator)
@@ -2077,9 +2077,15 @@ public class ConsensusPrefetchingQueue {
       final int maxTablets,
       final long maxBatchBytes) {
     pendingWalGapRetryRequested = false;
-    resetSubscriptionWALPosition(fromIndex);
     if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
       return MaterializationResult.STALE;
+    }
+    // Preserve the reader position and any memory-blocked request across pending-queue gaps.
+    // Reopening here scans retained WAL prefixes again on every bounded replay round, and drops
+    // the request cached for a memory retry. advanceTo skips covered work without losing uncovered
+    // writer progress, including requests without a local search index.
+    if (Objects.nonNull(subscriptionWALIterator)) {
+      subscriptionWALIterator.advanceTo(fromIndex, this::isWriterProgressCoveredForWalFastForward);
     }
     // A pending-queue jump can span millions of WAL entries when real-time delivery has overflowed.
     // Keep gap recovery within the normal per-round budget so sparse topic filtering cannot hold
@@ -2223,6 +2229,9 @@ public class ConsensusPrefetchingQueue {
                 .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_READING_SUBSCRIPTION_WAL_A3888AC5,
             this,
             e);
+        // next() may have consumed a request whose materialization failed. Reusing this reader
+        // would lose that request, so recover from the unchanged cursor on the next round.
+        requestSubscriptionWalReset(nextExpectedSearchIndex.get(), expectedSeekGeneration);
         break;
       }
     }
