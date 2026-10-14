@@ -377,7 +377,7 @@ public class LoadTsFileManager {
    * physical state and the {@link LoadTsFileProgress} bitmaps of those loads.
    */
   public List<File> getActiveTaskDirs() {
-    final List<File> result = new ArrayList<>();
+    final List<File> result = new ArrayList<>(uuid2WriterManager.size());
     for (final TsFileWriterManager writerManager : uuid2WriterManager.values()) {
       result.add(writerManager.getTaskDir());
     }
