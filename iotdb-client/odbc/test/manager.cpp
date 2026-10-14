@@ -46,8 +46,15 @@ public:
     path_ = "Software\\ODBC\\ODBC.INI\\" + name_;
     auto write = [&](const std::string& path, const char* name, const std::string& value) {
       HKEY key = nullptr;
-      LONG rc = RegCreateKeyExA(HKEY_CURRENT_USER, path.c_str(), 0, nullptr, REG_OPTION_VOLATILE,
-                                KEY_ALL_ACCESS, nullptr, &key, nullptr);
+      // Creating a volatile path also makes previously absent ODBC parent keys
+      // volatile, preventing normal applications from creating persistent DSNs.
+      // The sandbox explicitly deletes its uniquely named DSN on destruction.
+      LONG rc = RegCreateKeyExA(HKEY_CURRENT_USER, path.c_str(), 0, nullptr,
+                                REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &key, nullptr);
+      // Temporary/sandboxed user hives can require volatile descendants.
+      if (rc == ERROR_CHILD_MUST_BE_VOLATILE)
+        rc = RegCreateKeyExA(HKEY_CURRENT_USER, path.c_str(), 0, nullptr, REG_OPTION_VOLATILE,
+                             KEY_ALL_ACCESS, nullptr, &key, nullptr);
       if (rc == ERROR_SUCCESS) {
         rc = RegSetValueExA(key, name, 0, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()),
                             static_cast<DWORD>(value.size() + 1));

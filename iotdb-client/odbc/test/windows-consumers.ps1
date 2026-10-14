@@ -21,8 +21,15 @@ if (-not [Environment]::Is64BitProcess) { throw 'The release driver requires a 6
 
 $dsn = 'IoTDB-' + $PID + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $dsnPath = 'Software\ODBC\ODBC.INI\' + $dsn
-$key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey(
-    $dsnPath, $true, [Microsoft.Win32.RegistryOptions]::Volatile)
+try {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey(
+        $dsnPath, $true, [Microsoft.Win32.RegistryOptions]::None)
+} catch {
+    # ERROR_CHILD_MUST_BE_VOLATILE: temporary user hives require volatile keys.
+    if (($_.Exception.InnerException.HResult -band 0xffff) -ne 1021) { throw }
+    $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey(
+        $dsnPath, $true, [Microsoft.Win32.RegistryOptions]::Volatile)
+}
 $key.SetValue('Driver', (Resolve-Path -LiteralPath $Driver).Path)
 $key.Close()
 $options = 'DSN=' + $dsn + ';' + $env:IOTDB_ODBC_CONNECTION
