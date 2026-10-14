@@ -164,7 +164,8 @@ public class ConsensusPrefetchingQueueSeekTest {
                                   || request.getSearchIndex() >= startSearchIndex)
                       .iterator();
               final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
-              when(iterator.hasNext()).thenAnswer(ignored -> retainedEntries.hasNext());
+              when(iterator.hasNext(any(ProgressWALIterator.ScanBudget.class)))
+                  .thenAnswer(ignored -> retainedEntries.hasNext());
               when(iterator.next()).thenAnswer(ignored -> retainedEntries.next());
               return iterator;
             }

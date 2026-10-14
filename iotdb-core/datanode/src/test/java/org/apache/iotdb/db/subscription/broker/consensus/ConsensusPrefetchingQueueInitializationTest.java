@@ -210,7 +210,10 @@ public class ConsensusPrefetchingQueueInitializationTest {
     assertNull(queue.poll("consumer"));
     assertEquals(1L, queue.getInitializedStatus());
     assertEquals(2L, queue.getCurrentReadSearchIndex());
-    queue.drivePrefetchOnce();
+    // WAL replay may yield when the round's time slice expires before reaching the tail.
+    for (int round = 0; round < 10 && queue.getCurrentReadSearchIndex() < 4L; round++) {
+      queue.drivePrefetchOnce();
+    }
     final ArgumentCaptor<InsertNode> requests = ArgumentCaptor.forClass(InsertNode.class);
     verify(converter, times(2)).convert(requests.capture());
     assertEquals(
