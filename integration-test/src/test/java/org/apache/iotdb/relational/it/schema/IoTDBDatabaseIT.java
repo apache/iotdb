@@ -914,10 +914,11 @@ public class IoTDBDatabaseIT {
                   "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,false,",
                   "test,test,INF,USING,test,BASE TABLE,true,",
                   "test,view_table,100,USING,null,VIEW FROM TREE,true,")));
+      // Include all system tables and the table and view created in the test database.
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("25,"));
+          Collections.singleton((InformationSchema.getSchemaTables().size() + 2) + ","));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
