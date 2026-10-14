@@ -58,7 +58,7 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
 
   @Override
   protected Column evaluateSelection(boolean[] selection) {
-    List<Column> childrenColumns = new ArrayList<>();
+    List<Column> childrenColumns = new ArrayList<>(columnTransformerList.size());
 
     for (ColumnTransformer child : columnTransformerList) {
       childrenColumns.add(child.getColumnWithSelection(selection));

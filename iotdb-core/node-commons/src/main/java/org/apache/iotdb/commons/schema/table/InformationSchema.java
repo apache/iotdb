@@ -32,7 +32,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class InformationSchema {
   public static final String INFORMATION_DATABASE = "information_schema";
@@ -44,6 +47,7 @@ public class InformationSchema {
   public static final String QUERIES = "queries";
   public static final String DATABASES = "databases";
   public static final String TABLES = "tables";
+  public static final String DROP_TABLE_PROCEDURES = "drop_table_procedures";
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
@@ -144,6 +148,25 @@ public class InformationSchema {
             ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
+
+    final TsTable dropTableProceduresTable = new TsTable(DROP_TABLE_PROCEDURES);
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROCEDURE_ID_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROGRESS_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ERROR_MESSAGE_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(DROP_TABLE_PROCEDURES, dropTableProceduresTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
     columnTable.addColumnSchema(
@@ -359,6 +382,9 @@ public class InformationSchema {
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.STATUS_REASON_TABLE_MODEL, TSDataType.STRING));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.INTERNAL_ADDRESS_TABLE_MODEL, TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
@@ -492,6 +518,41 @@ public class InformationSchema {
             ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
 
     tablesThatSupportPushDownLimitOffset.add(TABLE_DISK_USAGE);
+  }
+
+  // ==================== SPI extension point ====================
+
+  static {
+    for (final InformationSchemaExtension extension :
+        ServiceLoader.load(InformationSchemaExtension.class)) {
+      extension.registerAdditionalInformationSchemaTables(schemaTables::put);
+      extension.enhanceInformationSchemaTables(schemaTables::get);
+    }
+  }
+
+  /** Extends the information schema by adding new tables or enhancing existing tables. */
+  public interface InformationSchemaExtension {
+
+    /**
+     * Registers extension-specific information schema tables that do not exist in the built-in
+     * schema.
+     *
+     * @param registerFunc accepts the table name and its schema definition
+     */
+    default void registerAdditionalInformationSchemaTables(
+        final BiConsumer<String, TsTable> registerFunc) {
+      // Do nothing by default
+    }
+
+    /**
+     * Enhances built-in information schema tables, for example by adding extension-specific
+     * columns. The provider returns the mutable schema definition of the requested table.
+     *
+     * @param tableProvider returns the schema definition for a built-in table name
+     */
+    default void enhanceInformationSchemaTables(final Function<String, TsTable> tableProvider) {
+      // Do nothing by default
+    }
   }
 
   public static Map<String, TsTable> getSchemaTables() {

@@ -665,7 +665,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   @Override
   protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+    if (Objects.nonNull(sinkTaskId)) {
+      // Do not cache the timer, the metric service replaces it when it restarts
       compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(reqInBytes);

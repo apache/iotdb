@@ -33,6 +33,11 @@ public interface TsFileInsertionEvent extends Event, AutoCloseable {
    * The method is used to convert the {@link TsFileInsertionEvent} into several {@link
    * TabletInsertionEvent}s.
    *
+   * <p>The returned iterable represents the lifetime of the conversion. Processors that retain it
+   * for asynchronous work must eventually exhaust the iterable before the event can be considered
+   * complete. A processor should not retain the iterable and silently abandon it, because the
+   * source cannot otherwise determine when all generated tablet events have finished.
+   *
    * @return {@code Iterable<TabletInsertionEvent>} the list of {@link TabletInsertionEvent}
    */
   Iterable<TabletInsertionEvent> toTabletInsertionEvents();

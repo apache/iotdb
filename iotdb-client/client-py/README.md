@@ -47,7 +47,7 @@ You have to install thrift (>=0.14.1) before using the package.
 
 First, download the latest package: `pip3 install apache-iotdb`
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/SessionExample.py)
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/session_example.py)
 
 An example of aligned timeseries: [Aligned Timeseries Session Example](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/SessionAlignedTimeseriesExample.py)
 
@@ -576,7 +576,7 @@ This folder is ignored from git and should **never be pushed to git!**
 
 ### Session Client & Example
 
-We packed up the Thrift interface in `client-py/src/iotdb/Session.py` (similar with its Java counterpart), also provided an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
+We packed up the Thrift interface in `client-py/iotdb/Session.py` (similar with its Java counterpart), also provided an example file `client-py/session_example.py` of how to use the session module. please read it carefully.
 
 
 Or, another simple example:
@@ -606,7 +606,7 @@ To run all defined tests just type `pytest .` in the root folder.
 
 
 
-### Futher Tools
+### Further Tools
 
 [black](https://pypi.org/project/black/) and [flake8](https://pypi.org/project/flake8/) are installed for autoformatting and linting.
 Both can be run by `black .` or `flake8 .` respectively.

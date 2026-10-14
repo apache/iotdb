@@ -23,6 +23,7 @@ public enum Tag {
   TYPE("type"),
   NAME("name"),
   REGION("region"),
+  REASON("reason"),
   STATUS("status"),
   DATABASE("database"),
   FROM("from"),

@@ -58,6 +58,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -75,6 +76,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -303,6 +305,49 @@ public class ImportWALTest {
   }
 
   /**
+   * Every directory must declare a database before any replay starts, otherwise the data model of a
+   * WAL snapshot could only be guessed.
+   */
+  @Test
+  public void testUnresolvedDirectoryRequiresExplicitDatabase() {
+    final List<Path> files =
+        Arrays.asList(
+            Paths.get("factory-3/one.wal"),
+            Paths.get("0/two.wal"),
+            Paths.get("root.sg-4/three.wal"));
+    ImportWAL.requireResolvedDatabases(
+        ImportWAL.resolveDirectoryDatabases(files, "target", true, null));
+
+    final Map<Path, String> unresolved =
+        ImportWAL.resolveDirectoryDatabases(files, null, true, null);
+    final IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class, () -> ImportWAL.requireResolvedDatabases(unresolved));
+    // The inferable directory is not reported, the others are listed in directory order.
+    assertTrue(failure.getMessage().contains("0, root.sg-4"));
+    assertTrue(failure.getMessage().contains("-db/--database"));
+  }
+
+  /** A directory whose database cannot be inferred must fail before any Session is opened. */
+  @Test
+  public void testUnresolvedDatabaseFailsBeforeReplay() throws Exception {
+    final Path directory = temporaryFolder.newFolder("0").toPath();
+    createWALFile(directory, 0);
+    final ByteArrayOutputStream error = new ByteArrayOutputStream();
+
+    assertEquals(
+        1,
+        ImportWAL.run(
+            new String[] {"-f", directory.toString(), "-pw", "password"},
+            new PrintStream(error),
+            new PrintStream(error)));
+
+    assertTrue(error.toString().contains(directory.toString()));
+    assertTrue(error.toString().contains("-db/--database"));
+    assertTrue(error.toString().contains("ElasticStrategy"));
+  }
+
+  /**
    * One thread may visit several databases; each directory needs its own Session and schema cache.
    */
   @Test
@@ -401,6 +446,8 @@ public class ImportWALTest {
     assertTrue(output.toString().contains("--on_unsupported"));
     assertTrue(output.toString().contains("--on_corrupted"));
     assertTrue(output.toString().contains("--skip_db_confirmation"));
+    assertTrue(output.toString().contains("ElasticStrategy"));
+    assertTrue(output.toString().contains("RoundRobinStrategy"));
   }
 
   @Test
@@ -1528,16 +1575,27 @@ public class ImportWALTest {
     final List<IMeasurementSchema> schemas =
         Arrays.asList(
             new MeasurementSchema("s1", TSDataType.INT32),
-            new MeasurementSchema("s2", TSDataType.INT64));
+            new MeasurementSchema("s2", TSDataType.INT64),
+            new MeasurementSchema("s3", TSDataType.DATE));
+    final LocalDate firstDate = LocalDate.of(2026, 9, 23);
+    final LocalDate secondDate = LocalDate.of(2026, 9, 24);
     final StringArrayDeviceID deviceId = new StringArrayDeviceID("root.sg.d1");
-    memTable.write(deviceId, schemas, 3, new Object[] {30, 300L});
-    memTable.write(deviceId, schemas, 1, new Object[] {10, null});
+    memTable.write(
+        deviceId,
+        schemas,
+        3,
+        new Object[] {30, 300L, DateUtils.parseDateExpressionToInt(secondDate)});
+    memTable.write(
+        deviceId,
+        schemas,
+        1,
+        new Object[] {10, null, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg").replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
-    verify(treeSession, times(2)).insertTablet(tabletCaptor.capture());
+    verify(treeSession, times(3)).insertTablet(tabletCaptor.capture());
     final Tablet s1Tablet =
         tabletCaptor.getAllValues().stream()
             .filter(tablet -> "s1".equals(tablet.getSchemas().get(0).getMeasurementName()))
@@ -1547,6 +1605,13 @@ public class ImportWALTest {
     assertEquals(1, s1Tablet.getTimestamp(0));
     assertEquals(3, s1Tablet.getTimestamp(1));
     assertArrayEquals(new int[] {10, 30}, (int[]) s1Tablet.getValues()[0]);
+    final Tablet s3Tablet =
+        tabletCaptor.getAllValues().stream()
+            .filter(tablet -> "s3".equals(tablet.getSchemas().get(0).getMeasurementName()))
+            .findFirst()
+            .orElseThrow(AssertionError::new);
+    assertArrayEquals(
+        new LocalDate[] {firstDate, secondDate}, (LocalDate[]) s3Tablet.getValues()[0]);
   }
 
   /** Covers an aligned snapshot with nulls and verifies the aligned Session API is used. */
@@ -1556,13 +1621,24 @@ public class ImportWALTest {
     final List<IMeasurementSchema> schemas =
         Arrays.asList(
             new MeasurementSchema("s1", TSDataType.INT32),
-            new MeasurementSchema("s2", TSDataType.INT64));
+            new MeasurementSchema("s2", TSDataType.INT64),
+            new MeasurementSchema("s3", TSDataType.DATE));
+    final LocalDate firstDate = LocalDate.of(2026, 9, 23);
+    final LocalDate secondDate = LocalDate.of(2026, 9, 24);
     final StringArrayDeviceID deviceId = new StringArrayDeviceID("root.sg.d1");
-    memTable.writeAlignedRow(deviceId, schemas, 2, new Object[] {20, null});
-    memTable.writeAlignedRow(deviceId, schemas, 1, new Object[] {10, 100L});
+    memTable.writeAlignedRow(
+        deviceId,
+        schemas,
+        2,
+        new Object[] {20, null, DateUtils.parseDateExpressionToInt(secondDate)});
+    memTable.writeAlignedRow(
+        deviceId,
+        schemas,
+        1,
+        new Object[] {10, 100L, DateUtils.parseDateExpressionToInt(firstDate)});
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg").replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession).insertAlignedTablet(tabletCaptor.capture());
@@ -1573,6 +1649,7 @@ public class ImportWALTest {
     assertEquals(2, tablet.getTimestamp(1));
     assertArrayEquals(new int[] {10, 20}, (int[]) tablet.getValues()[0]);
     assertTrue(tablet.getBitMaps()[1].isMarked(1));
+    assertArrayEquals(new LocalDate[] {firstDate, secondDate}, (LocalDate[]) tablet.getValues()[2]);
   }
 
   /** Covers snapshot serialization and deserialization through a real WAL file. */
@@ -1591,7 +1668,7 @@ public class ImportWALTest {
     final ImportWAL.ReplayStatistics statistics =
         ImportWAL.replayWALFiles(
             Collections.singletonList(walFile.toPath()),
-            new ImportWAL.WALReplayer(treeSession, null, null));
+            new ImportWAL.WALReplayer(treeSession, null, "root.sg"));
 
     assertEquals(1, statistics.getReplayedOperationCount());
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
@@ -1612,7 +1689,7 @@ public class ImportWALTest {
     }
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, memTable));
+    new ImportWAL.WALReplayer(treeSession, null, "root.sg").replay(new WALInfoEntry(1, memTable));
 
     final ArgumentCaptor<Tablet> tabletCaptor = ArgumentCaptor.forClass(Tablet.class);
     verify(treeSession, times(2)).insertTablet(tabletCaptor.capture());

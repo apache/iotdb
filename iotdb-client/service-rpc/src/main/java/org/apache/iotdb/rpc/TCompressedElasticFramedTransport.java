@@ -59,10 +59,14 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
 
   @Override
   protected void readFrame() throws TTransportException {
+    // Discard the previous frame's budget before reading the next frame header and payload.
+    resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
     readBuffer.fill(underlying, size);
+    // Bind subsequent protocol reads to the current compressed frame size.
+    resetMessageSizeAndConsumedBytes(size);
     RpcStat.readCompressedBytes.addAndGet(size);
     try {
       int uncompressedLength = uncompressedLength(readBuffer.getBuffer(), 0, size);

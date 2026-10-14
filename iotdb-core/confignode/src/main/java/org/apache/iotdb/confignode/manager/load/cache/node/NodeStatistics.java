@@ -55,6 +55,23 @@ public class NodeStatistics extends AbstractStatistics {
     return new NodeStatistics(Long.MIN_VALUE, NodeStatus.Unknown, null, Long.MAX_VALUE);
   }
 
+  /**
+   * Resolves the requested statistics through {@link NodeStatus#transition}. If the requested
+   * status is accepted, its reason and load score are kept. Otherwise, the final status must not
+   * carry the rejected status's reason or load score, e.g. Removing must not inherit ReadOnly's
+   * DiskFull reason. The requested statistics timestamp is retained in both cases.
+   */
+  public static NodeStatistics transition(
+      NodeStatistics previous, NodeStatistics requested, boolean force) {
+    NodeStatus status = NodeStatus.transition(previous.status, requested.status, force);
+    if (status == requested.status) {
+      return requested;
+    }
+    // if the transition output is not the same as requested, it could be Stopped or Removing status
+    // both do not have status reason, set reason to null.
+    return new NodeStatistics(requested.getStatisticsNanoTimestamp(), status, null, Long.MAX_VALUE);
+  }
+
   public NodeStatus getStatus() {
     return status;
   }
