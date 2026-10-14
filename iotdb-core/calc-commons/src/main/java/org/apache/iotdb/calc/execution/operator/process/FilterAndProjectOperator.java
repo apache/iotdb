@@ -220,6 +220,15 @@ public class FilterAndProjectOperator implements ProcessOperator {
   /**
    * Materializes common expressions for projection after filtering. CASE may have invalidated their
    * caches, so any recomputation must preserve the filter mask and skip rejected input rows.
+   *
+   * <p>This mutates both the destination list and transformer cache state: uncached expressions are
+   * evaluated with selection, which can replace or clear descendant caches, and each appended
+   * column is consumed through {@link ColumnTransformer#getColumn()}, decrementing its cache
+   * reference count and possibly releasing the cached reference. Existing cached columns are
+   * reused; this method does not reset the DAG for a new input block.
+   *
+   * <p>Appended columns retain the original input row indexes. The caller must use the same filter
+   * to construct the compacted output block.
    */
   public static void appendCommonExpressionColumns(
       List<Column> resultColumns,
@@ -477,6 +486,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public long ramBytesUsed() {
+    // Shallow array sizes include the header and every reference slot. This estimate does not
+    // include the transformer objects referenced by the arrays.
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)

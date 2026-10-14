@@ -35,6 +35,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -59,6 +60,22 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final List<Integer> indexes = new ArrayList<>();
   protected TsBlock curBlock;
   protected Column curFilterColumn;
+
+  // Retain the original constructor descriptor for precompiled subclasses without common roots.
+  protected DevicePredicateHandler(
+      final List<LeafColumnTransformer> filterLeafColumnTransformerList,
+      final ColumnTransformer filterOutputTransformer,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final String database,
+      final TsTable table) {
+    this(
+        filterLeafColumnTransformerList,
+        filterOutputTransformer,
+        Collections.emptyList(),
+        columnSchemaList,
+        database,
+        table);
+  }
 
   protected DevicePredicateHandler(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,

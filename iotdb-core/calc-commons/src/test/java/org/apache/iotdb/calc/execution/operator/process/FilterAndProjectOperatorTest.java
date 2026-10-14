@@ -36,6 +36,7 @@ import org.apache.iotdb.calc.transformation.dag.column.multi.CoalesceColumnTrans
 import org.apache.iotdb.calc.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
@@ -50,6 +51,7 @@ import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZoneId;
@@ -172,6 +174,62 @@ public class FilterAndProjectOperatorTest {
         assertBlock(operator.next(), new Double[] {3.0}, new Double[] {3.0});
         assertBlock(operator.next(), new Double[] {4.0}, new Double[] {4.0});
       }
+    }
+  }
+
+  @Test
+  public void testProjectionReadsMaterializedCommonExpression() throws Exception {
+    for (boolean withCase : new boolean[] {false, true}) {
+      Graph filter = new Graph();
+      CountingAdditionColumnTransformer common =
+          new CountingAdditionColumnTransformer(
+              reference(filter.input(0)), reference(filter.constant(1)));
+      ColumnTransformer predicate = filter.greaterThan(common, 0);
+      if (withCase) {
+        predicate =
+            filter.greaterThan(
+                filter.caseWhen(predicate, filter.constant(1), filter.constant(0)), 0);
+      }
+      Graph projection = new Graph();
+      try (Operator operator =
+          operator(
+              new TsBlock[] {block(-2, 3), block(4, -5)},
+              filter,
+              predicate,
+              Collections.singletonList(common),
+              projection,
+              projection.input(1))) {
+        assertBlock(operator.next(), new Double[] {4.0});
+        assertEquals(1, common.fullEvaluationCount);
+        assertEquals(withCase ? 1 : 0, common.selectedEvaluationCount);
+        assertBlock(operator.next(), new Double[] {5.0});
+        assertEquals(2, common.fullEvaluationCount);
+        assertEquals(withCase ? 2 : 0, common.selectedEvaluationCount);
+      }
+    }
+  }
+
+  @Ignore("Known incorrect DIFF state advancement: https://github.com/apache/iotdb/issues/18863")
+  @Test
+  public void testStatefulDiffIsNotReevaluatedAfterCaseFilter() throws Exception {
+    Graph filter = new Graph();
+    ColumnTransformer diff =
+        new DiffFunctionColumnTransformer(DOUBLE, reference(filter.input(0)), true);
+    ColumnTransformer predicate =
+        filter.greaterThan(
+            filter.caseWhen(filter.greaterThan(diff, 1), filter.constant(1), filter.constant(0)),
+            0);
+    Graph projection = new Graph();
+    try (Operator operator =
+        operator(
+            new TsBlock[] {block(1, 3, 6), block(10, 11)},
+            filter,
+            predicate,
+            Collections.singletonList(diff),
+            projection,
+            projection.input(1))) {
+      assertBlock(operator.next(), new Double[] {2.0, 3.0});
+      assertBlock(operator.next(), new Double[] {4.0});
     }
   }
 
@@ -620,6 +678,28 @@ public class FilterAndProjectOperatorTest {
           Collections.singletonList(reference(when)),
           Collections.singletonList(reference(then)),
           reference(otherwise));
+    }
+  }
+
+  private static class CountingAdditionColumnTransformer
+      extends ArithmeticAdditionColumnTransformer {
+    private int fullEvaluationCount;
+    private int selectedEvaluationCount;
+
+    private CountingAdditionColumnTransformer(ColumnTransformer left, ColumnTransformer right) {
+      super(DOUBLE, left, right);
+    }
+
+    @Override
+    public void evaluate() {
+      fullEvaluationCount++;
+      super.evaluate();
+    }
+
+    @Override
+    public void evaluateWithSelection(boolean[] selection) {
+      selectedEvaluationCount++;
+      super.evaluateWithSelection(selection);
     }
   }
 
