@@ -471,6 +471,7 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     final List<IMeasurementMNode<ICachedMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
+    MetaFormatUtils.checkSchemaMeasurementAliases(devicePath, measurements, aliasList);
     final ICachedMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     try {
