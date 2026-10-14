@@ -22,8 +22,10 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -34,6 +36,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,6 +59,65 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   public void setUp() throws Exception {
     super.setUp();
     schemaRegion = getSchemaRegion("root.sg", 0);
+  }
+
+  @Test
+  public void testAlignedBatchRejectsConflictingAliasesBeforeCreation() throws Exception {
+    for (final List<String> aliases :
+        Arrays.asList(
+            Arrays.asList("dup", "dup"), Arrays.asList("s2", null), Arrays.asList(null, "s1"))) {
+      final CreateAlignedTimeSeriesPlanImpl plan = alignedAliasPlan(aliases);
+      try {
+        schemaRegion.createAlignedTimeSeries(plan);
+        Assert.fail("Expected alias collision");
+      } catch (final AliasAlreadyExistException expected) {
+        Assert.assertTrue(
+            SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath("root.sg.batch.*"))
+                .isEmpty());
+      }
+    }
+    schemaRegion.createAlignedTimeSeries(alignedAliasPlan(Arrays.asList("a1", "a2")));
+    final CreateAlignedTimeSeriesPlanImpl merge = alignedAliasPlan(Arrays.asList("dup", "dup"));
+    merge.setWithMerge(true);
+    try {
+      schemaRegion.createAlignedTimeSeries(merge);
+      Assert.fail("Expected alias collision during merge");
+    } catch (final AliasAlreadyExistException expected) {
+      checkAliasAndTagsAndAttributes(
+          "root.sg.batch.s1", "a1", Collections.emptyMap(), Collections.emptyMap());
+      checkAliasAndTagsAndAttributes(
+          "root.sg.batch.s2", "a2", Collections.emptyMap(), Collections.emptyMap());
+    }
+  }
+
+  @Test
+  public void testAlignedSelfAliasAndRemainingAliasAfterDeletion() throws Exception {
+    schemaRegion.createAlignedTimeSeries(alignedAliasPlan(Arrays.asList("s1", "a2")));
+    final PathPatternTree delete = new PathPatternTree();
+    delete.appendPathPattern(new PartialPath("root.sg.batch.s2"));
+    delete.constructTree();
+    schemaRegion.constructSchemaBlackList(delete);
+    schemaRegion.deleteTimeseriesInBlackList(delete);
+    checkAliasAndTagsAndAttributes(
+        "root.sg.batch.s1", "s1", Collections.emptyMap(), Collections.emptyMap());
+    Assert.assertEquals(
+        "root.sg.batch.s1",
+        SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath("root.sg.batch.s1"))
+            .get(0)
+            .getFullPath());
+  }
+
+  private CreateAlignedTimeSeriesPlanImpl alignedAliasPlan(final List<String> aliases)
+      throws MetadataException {
+    return new CreateAlignedTimeSeriesPlanImpl(
+        new PartialPath("root.sg.batch"),
+        new ArrayList<>(Arrays.asList("s1", "s2")),
+        new ArrayList<>(Collections.nCopies(2, TSDataType.INT32)),
+        new ArrayList<>(Collections.nCopies(2, TSEncoding.PLAIN)),
+        new ArrayList<>(Collections.nCopies(2, CompressionType.SNAPPY)),
+        new ArrayList<>(aliases),
+        null,
+        null);
   }
 
   /**
