@@ -113,4 +113,60 @@ public class LogicBinaryColumnTransformerTest {
 
     }
   }
+
+  @Test
+  public void testLogicAndWithNullsAndSelection() {
+    assertSelectedAnd(false);
+  }
+
+  @Test
+  public void testLogicAndWithNullsAndPartialSelection() {
+    assertSelectedAnd(true);
+  }
+
+  private void assertSelectedAnd(boolean partial) {
+    Boolean[] values = {null, false, true};
+    Boolean[] expected = {null, false, null, false, false, false, null, false, true};
+    TsBlockBuilder builder =
+        new TsBlockBuilder(9, Arrays.asList(TSDataType.BOOLEAN, TSDataType.BOOLEAN));
+    for (Boolean left : values) {
+      for (Boolean right : values) {
+        builder.getTimeColumnBuilder().writeLong(0);
+        if (left == null) {
+          builder.getColumnBuilder(0).appendNull();
+        } else {
+          builder.getColumnBuilder(0).writeBoolean(left);
+        }
+        if (right == null) {
+          builder.getColumnBuilder(1).appendNull();
+        } else {
+          builder.getColumnBuilder(1).writeBoolean(right);
+        }
+        builder.declarePosition();
+      }
+    }
+    TsBlock block = builder.build();
+    IdentityColumnTransformer left = new IdentityColumnTransformer(returnType, 0);
+    IdentityColumnTransformer right = new IdentityColumnTransformer(returnType, 1);
+    left.addReferenceCount();
+    right.addReferenceCount();
+    left.initFromTsBlock(block);
+    right.initFromTsBlock(block);
+    LogicAndColumnTransformer transformer = new LogicAndColumnTransformer(returnType, left, right);
+    transformer.addReferenceCount();
+    boolean[] selection = new boolean[9];
+    for (int i = 0; i < selection.length; i++) {
+      selection[i] = !partial || i % 2 == 0;
+    }
+    transformer.evaluateWithSelection(selection);
+    Column result = transformer.getColumn();
+    Assert.assertEquals(expected.length, result.getPositionCount());
+    for (int i = 0; i < expected.length; i++) {
+      if (!selection[i] || expected[i] == null) {
+        Assert.assertTrue(result.isNull(i));
+      } else {
+        Assert.assertEquals(expected[i], result.getBoolean(i));
+      }
+    }
+  }
 }
