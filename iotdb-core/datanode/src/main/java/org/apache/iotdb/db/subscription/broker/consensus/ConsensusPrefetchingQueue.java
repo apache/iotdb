@@ -617,6 +617,36 @@ public class ConsensusPrefetchingQueue {
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
       final boolean initialActive) {
+    this(
+        consumerGroupId,
+        topicName,
+        orderMode,
+        consensusGroupId,
+        serverImpl,
+        retentionPolicy,
+        converter,
+        commitManager,
+        fallbackCommittedRegionProgress,
+        tailStartSearchIndex,
+        initialRuntimeVersion,
+        initialActive,
+        false);
+  }
+
+  public ConsensusPrefetchingQueue(
+      final String consumerGroupId,
+      final String topicName,
+      final String orderMode,
+      final ConsensusGroupId consensusGroupId,
+      final IoTConsensusServerImpl serverImpl,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final ConsensusLogToTabletConverter converter,
+      final ConsensusSubscriptionCommitManager commitManager,
+      final RegionProgress fallbackCommittedRegionProgress,
+      final long tailStartSearchIndex,
+      final long initialRuntimeVersion,
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     this.consumerGroupId = consumerGroupId;
     this.topicName = topicName;
     this.consensusGroupId = consensusGroupId;
@@ -649,8 +679,17 @@ public class ConsensusPrefetchingQueue {
             this::requestPrefetchForRealtimeEntry,
             this::getRealtimeAdmissionRejectionReason,
             this::recordRealtimeAdmissionRejection);
-    serverImpl.registerSubscriptionQueue(
-        pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
+    if (replaceDetachedRetention) {
+      serverImpl.replaceDetachedSubscriptionRetentionWithQueue(
+          ConsensusSubscriptionWalRetention.generateRetentionId(
+              consumerGroupId, topicName, consensusGroupId),
+          pendingEntries,
+          retentionPolicy,
+          this::getRequiredRetainedMinVersionId);
+    } else {
+      serverImpl.registerSubscriptionQueue(
+          pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
+    }
 
     LOGGER.info(
         DataNodePipeMessages
@@ -4191,10 +4230,17 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void close(final boolean removeProgressAfterClose) {
+    close(removeProgressAfterClose, false);
+  }
+
+  public void close(
+      final boolean removeProgressAfterClose, final boolean retainProgressAfterUnsubscribe) {
     if (!lock.writeLock().tryLock()) {
       if (beginClose()) {
         CLOSE_CLEANUP_EXECUTOR.execute(
-            () -> finishCloseAfterWriteLock(removeProgressAfterClose, true));
+            () ->
+                finishCloseAfterWriteLock(
+                    removeProgressAfterClose, retainProgressAfterUnsubscribe, true));
       }
       return;
     }
@@ -4211,7 +4257,8 @@ public class ConsensusPrefetchingQueue {
     }
 
     try {
-      finishCloseRequest(seekRequestToFail, removeProgressAfterClose, false);
+      finishCloseRequest(
+          seekRequestToFail, removeProgressAfterClose, retainProgressAfterUnsubscribe, false);
     } catch (final Exception e) {
       handleCloseFailure(e);
     }
@@ -4219,9 +4266,16 @@ public class ConsensusPrefetchingQueue {
 
   /** Starts teardown without waiting for an active prefetch round or consensus queue writes. */
   public void closeAsync(final boolean removeProgressAfterClose) {
+    closeAsync(removeProgressAfterClose, false);
+  }
+
+  public void closeAsync(
+      final boolean removeProgressAfterClose, final boolean retainProgressAfterUnsubscribe) {
     if (beginClose()) {
       CLOSE_CLEANUP_EXECUTOR.execute(
-          () -> finishCloseAfterWriteLock(removeProgressAfterClose, true));
+          () ->
+              finishCloseAfterWriteLock(
+                  removeProgressAfterClose, retainProgressAfterUnsubscribe, true));
     }
   }
 
@@ -4238,7 +4292,9 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void finishCloseAfterWriteLock(
-      final boolean removeProgressAfterClose, final boolean backgroundCleanup) {
+      final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe,
+      final boolean backgroundCleanup) {
     try {
       final PendingSeekRequest seekRequestToFail;
       acquireWriteLock();
@@ -4248,7 +4304,11 @@ public class ConsensusPrefetchingQueue {
       } finally {
         releaseWriteLock();
       }
-      finishCloseRequest(seekRequestToFail, removeProgressAfterClose, backgroundCleanup);
+      finishCloseRequest(
+          seekRequestToFail,
+          removeProgressAfterClose,
+          retainProgressAfterUnsubscribe,
+          backgroundCleanup);
     } catch (final Exception e) {
       handleCloseFailure(e);
     }
@@ -4257,6 +4317,7 @@ public class ConsensusPrefetchingQueue {
   private void finishCloseRequest(
       final PendingSeekRequest seekRequestToFail,
       final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe,
       final boolean backgroundCleanup) {
     final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding =
         detachPrefetchSubtask();
@@ -4278,22 +4339,26 @@ public class ConsensusPrefetchingQueue {
         && Objects.nonNull(prefetchBinding.right)
         && prefetchBinding.right.isScheduledOrRunning()) {
       CLOSE_CLEANUP_EXECUTOR.execute(
-          () -> finishCloseInBackground(prefetchBinding, removeProgressAfterClose));
+          () ->
+              finishCloseInBackground(
+                  prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe));
       return;
     }
 
     if (backgroundCleanup) {
-      finishCloseInBackground(prefetchBinding, removeProgressAfterClose);
+      finishCloseInBackground(
+          prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe);
     } else {
-      finishClose(prefetchBinding, removeProgressAfterClose);
+      finishClose(prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe);
     }
   }
 
   private void finishCloseInBackground(
       final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding,
-      final boolean removeProgressAfterClose) {
+      final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe) {
     try {
-      finishClose(prefetchBinding, removeProgressAfterClose);
+      finishClose(prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe);
     } catch (final Exception e) {
       handleCloseFailure(e);
     }
@@ -4312,12 +4377,13 @@ public class ConsensusPrefetchingQueue {
 
   private void finishClose(
       final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding,
-      final boolean removeProgressAfterClose) {
+      final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe) {
     // Queue deregistration may wait for consensus-side WAL/index work. Metadata callers use
     // closeAsync so this cleanup cannot hold up the consumer-group metadata push.
     // Requests left in pendingEntries have not advanced subscription progress and can be replayed
     // from WAL if this queue is created again.
-    deregisterPendingEntriesFromConsensusServer();
+    deregisterPendingEntriesFromConsensusServer(retainProgressAfterUnsubscribe);
 
     if (Objects.nonNull(prefetchBinding.right)) {
       prefetchBinding.right.awaitIdle();
@@ -4362,9 +4428,24 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private void deregisterPendingEntriesFromConsensusServer() {
+  private void deregisterPendingEntriesFromConsensusServer(
+      final boolean retainProgressAfterUnsubscribe) {
     try {
-      serverImpl.deregisterSubscriptionQueue(pendingEntries);
+      if (retainProgressAfterUnsubscribe) {
+        serverImpl.replaceSubscriptionQueueWithDetachedRetention(
+            pendingEntries,
+            ConsensusSubscriptionWalRetention.generateRetentionId(
+                consumerGroupId, topicName, consensusGroupId),
+            retentionPolicy,
+            ConsensusSubscriptionWalRetention.createCommittedRetainedMinVersionIdSupplier(
+                consensusGroupId,
+                () -> consensusReqReader,
+                () ->
+                    commitManager.getCommittedRegionProgress(
+                        consumerGroupId, topicName, consensusGroupId)));
+      } else {
+        serverImpl.deregisterSubscriptionQueue(pendingEntries);
+      }
     } catch (final Exception e) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7,

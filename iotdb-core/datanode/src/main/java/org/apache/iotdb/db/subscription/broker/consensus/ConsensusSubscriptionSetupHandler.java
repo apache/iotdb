@@ -119,6 +119,9 @@ public class ConsensusSubscriptionSetupHandler {
    * region, and when a DataRegion is removed, all subscription queues are properly cleaned up.
    */
   public static void ensureNewRegionListenerRegistered() {
+    if (IoTConsensus.onPeerRecovering == null) {
+      IoTConsensus.onPeerRecovering = ConsensusSubscriptionSetupHandler::onRecoveredRegionCreated;
+    }
     if (IoTConsensus.onNewPeerCreated == null) {
       IoTConsensus.onNewPeerCreated = ConsensusSubscriptionSetupHandler::onNewRegionCreated;
       LOGGER.info(
@@ -130,6 +133,37 @@ public class ConsensusSubscriptionSetupHandler {
       LOGGER.info(
           DataNodePipeMessages
               .PIPE_LOG_SET_IOTCONSENSUS_ONPEERREMOVED_CALLBACK_FOR_CONSENSUS_SUBSCRIPTION_21D4D6AC);
+    }
+  }
+
+  private static void onRecoveredRegionCreated(
+      final ConsensusGroupId groupId, final IoTConsensusServerImpl serverImpl) {
+    if (!(groupId instanceof DataRegionId)) {
+      return;
+    }
+    registerStartupDetachedRetentions(
+        groupId, serverImpl, ConsensusSubscriptionCommitManager.getInstance());
+  }
+
+  static void registerStartupDetachedRetentions(
+      final ConsensusGroupId groupId,
+      final IoTConsensusServerImpl serverImpl,
+      final ConsensusSubscriptionCommitManager commitManager) {
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!groupId.toString().equals(stateKey.getRegionId())) {
+        continue;
+      }
+      ConsensusSubscriptionWalRetention.registerDetached(
+          stateKey.getConsumerGroupId(),
+          stateKey.getTopicName(),
+          groupId,
+          serverImpl,
+          new SubscriptionWalRetentionPolicy(
+              stateKey.getTopicName(),
+              SubscriptionWalRetentionPolicy.UNBOUNDED,
+              SubscriptionWalRetentionPolicy.UNBOUNDED),
+          commitManager);
     }
   }
 
@@ -254,7 +288,8 @@ public class ConsensusSubscriptionSetupHandler {
                   committedRegionProgress,
                   tailStartSearchIndex,
                   initialRuntimeVersion,
-                  initialActive);
+                  initialActive,
+                  hasLocalPersistedState);
           SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
         } catch (final Exception e) {
           LOGGER.error(
@@ -287,6 +322,21 @@ public class ConsensusSubscriptionSetupHandler {
         groupId);
     try {
       SubscriptionAgent.broker().unbindByRegion(groupId);
+      final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+      if (dataRegionConsensus instanceof IoTConsensus) {
+        final IoTConsensusServerImpl serverImpl =
+            ((IoTConsensus) dataRegionConsensus).getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+              ConsensusSubscriptionCommitManager.getInstance().getPersistedStateKeys()) {
+            if (groupId.toString().equals(stateKey.getRegionId())) {
+              ConsensusSubscriptionWalRetention.unregisterDetached(
+                  stateKey.getConsumerGroupId(), stateKey.getTopicName(), groupId, serverImpl);
+            }
+          }
+        }
+      }
+      ConsensusSubscriptionCommitManager.getInstance().removeAllStatesForRegion(groupId);
     } catch (final Exception e) {
       LOGGER.error(
           DataNodePipeMessages
@@ -392,7 +442,8 @@ public class ConsensusSubscriptionSetupHandler {
     RuntimeException rollbackFailure = null;
     for (final String topicName : attemptedTopicNames) {
       try {
-        SubscriptionAgent.broker().unbindConsensusPrefetchingQueue(consumerGroupId, topicName);
+        SubscriptionAgent.broker()
+            .unbindConsensusPrefetchingQueue(consumerGroupId, topicName, false);
       } catch (final RuntimeException e) {
         if (Objects.isNull(rollbackFailure)) {
           rollbackFailure = e;
@@ -403,6 +454,8 @@ public class ConsensusSubscriptionSetupHandler {
     }
     try {
       commitManager.restoreSetupSnapshot(setupSnapshot, attemptedTopicNames);
+      restoreStartupDetachedRetentions(
+          consumerGroupId, attemptedTopicNames, setupSnapshot, commitManager);
     } catch (final RuntimeException e) {
       if (Objects.isNull(rollbackFailure)) {
         rollbackFailure = e;
@@ -412,6 +465,36 @@ public class ConsensusSubscriptionSetupHandler {
     }
     if (Objects.nonNull(rollbackFailure)) {
       throw rollbackFailure;
+    }
+  }
+
+  private static void restoreStartupDetachedRetentions(
+      final String consumerGroupId,
+      final Set<String> attemptedTopicNames,
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot,
+      final ConsensusSubscriptionCommitManager commitManager) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    if (!(dataRegionConsensus instanceof IoTConsensus)) {
+      return;
+    }
+    final IoTConsensus ioTConsensus = (IoTConsensus) dataRegionConsensus;
+    for (final String topicName : attemptedTopicNames) {
+      for (final String regionId : setupSnapshot.getRegionIds(topicName)) {
+        final ConsensusGroupId groupId = ConsensusGroupId.Factory.createFromString(regionId);
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.registerDetached(
+              consumerGroupId,
+              topicName,
+              groupId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  topicName,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              commitManager);
+        }
+      }
     }
   }
 
@@ -604,7 +687,8 @@ public class ConsensusSubscriptionSetupHandler {
                   committedRegionProgress,
                   tailStartSearchIndex,
                   initialRuntimeVersion,
-                  initialActive);
+                  initialActive,
+                  hasLocalPersistedState);
       commitManager.initializeStateFromTailProposal(
           consumerGroupId, topicName, groupId, queue.computeTailRegionProgress());
 
@@ -698,16 +782,20 @@ public class ConsensusSubscriptionSetupHandler {
 
   private static long resolveRetentionValue(
       final TopicConfig topicConfig, final String key, final long defaultValue) {
-    if (!topicConfig.hasAttribute(key)) {
+    final String rawValue =
+        topicConfig.getAttribute().entrySet().stream()
+            .filter(entry -> Objects.nonNull(entry.getKey()))
+            .filter(entry -> key.equalsIgnoreCase(entry.getKey()))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElse(null);
+    if (Objects.isNull(rawValue)) {
       return normalizeRetentionValue(defaultValue);
     }
-    final long parsedValue = Long.parseLong(topicConfig.getAttribute().get(key));
+    final long parsedValue = Long.parseLong(rawValue);
     if (parsedValue == 0 || parsedValue < SubscriptionWalRetentionPolicy.UNBOUNDED) {
       throw new IllegalArgumentException(
-          String.format(
-              DataNodePipeMessages.PIPE_EXCEPTION_ILLEGAL_S_S_72D743AA,
-              key,
-              topicConfig.getAttribute().get(key)));
+          String.format(DataNodePipeMessages.PIPE_EXCEPTION_ILLEGAL_S_S_72D743AA, key, rawValue));
     }
     return normalizeRetentionValue(parsedValue);
   }
@@ -718,13 +806,32 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void teardownConsensusSubscriptions(
       final String consumerGroupId, final Set<String> topicNames) {
+    teardownConsensusSubscriptions(consumerGroupId, topicNames, true);
+  }
+
+  public static void teardownConsensusSubscriptions(
+      final String consumerGroupId,
+      final Set<String> topicNames,
+      final boolean retainConfiguredProgress) {
     for (final String topicName : topicNames) {
       try {
-        SubscriptionAgent.broker().unbindConsensusPrefetchingQueue(consumerGroupId, topicName);
+        final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
+        final TopicConfig topicConfig =
+            SubscriptionAgent.topic()
+                .getTopicConfigs(Collections.singleton(topicName), isTableModel)
+                .get(topicName);
+        final boolean retainProgressAfterUnsubscribe =
+            retainConfiguredProgress
+                && Objects.nonNull(topicConfig)
+                && topicConfig.isProgressRetainedAfterUnsubscribe();
+        SubscriptionAgent.broker()
+            .unbindConsensusPrefetchingQueue(
+                consumerGroupId, topicName, retainProgressAfterUnsubscribe);
 
-        // Clean up commit state for all regions of this topic
-        ConsensusSubscriptionCommitManager.getInstance()
-            .removeAllStatesForTopic(consumerGroupId, topicName);
+        if (!retainProgressAfterUnsubscribe) {
+          ConsensusSubscriptionCommitManager.getInstance()
+              .removeAllStatesForTopic(consumerGroupId, topicName);
+        }
 
         LOGGER.info(
             DataNodePipeMessages
@@ -738,6 +845,179 @@ public class ConsensusSubscriptionSetupHandler {
             topicName,
             consumerGroupId,
             e);
+      }
+    }
+  }
+
+  public static void restoreDetachedRetentions() {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    if (!(dataRegionConsensus instanceof IoTConsensus)) {
+      return;
+    }
+
+    ensureNewRegionListenerRegistered();
+    final IoTConsensus ioTConsensus = (IoTConsensus) dataRegionConsensus;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      try {
+        final String consumerGroupId = stateKey.getConsumerGroupId();
+        final String topicName = stateKey.getTopicName();
+        final ConsensusGroupId groupId =
+            ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (!SubscriptionAgent.consumer().containsConsumerGroup(consumerGroupId)) {
+          if (Objects.nonNull(serverImpl)) {
+            ConsensusSubscriptionWalRetention.unregisterDetached(
+                consumerGroupId, topicName, groupId, serverImpl);
+          }
+          commitManager.removeState(consumerGroupId, topicName, groupId);
+          continue;
+        }
+
+        final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
+        final TopicConfig topicConfig =
+            SubscriptionAgent.topic()
+                .getTopicConfigs(Collections.singleton(topicName), isTableModel)
+                .get(topicName);
+        if (Objects.isNull(topicConfig)
+            || !topicConfig.isIncrementalMode()
+            || !topicConfig.isProgressRetainedAfterUnsubscribe()) {
+          if (Objects.nonNull(serverImpl)) {
+            ConsensusSubscriptionWalRetention.unregisterDetached(
+                consumerGroupId, topicName, groupId, serverImpl);
+          }
+          commitManager.removeState(consumerGroupId, topicName, groupId);
+          continue;
+        }
+        if (SubscriptionAgent.consumer()
+            .isTopicSubscribedByConsumerGroup(consumerGroupId, topicName)) {
+          continue;
+        }
+
+        if (Objects.isNull(serverImpl)) {
+          commitManager.removeState(consumerGroupId, topicName, groupId);
+          continue;
+        }
+        ConsensusSubscriptionWalRetention.registerDetached(
+            consumerGroupId,
+            topicName,
+            groupId,
+            serverImpl,
+            buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl),
+            commitManager);
+      } catch (final Exception e) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_FAILED_TO_RESTORE_DETACHED_CONSENSUS_SUBSCRIPTION_WAL_RETENTION_FOR_CONSUMER_GROUP_ARG_TOPIC_ARG_REGION_ARG_296129FE,
+            stateKey.getConsumerGroupId(),
+            stateKey.getTopicName(),
+            stateKey.getRegionId(),
+            e);
+      }
+    }
+  }
+
+  public static void cleanupRetainedProgressForDroppedTopic(
+      final String topicName, final Boolean isTableModel) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus ioTConsensus =
+        dataRegionConsensus instanceof IoTConsensus ? (IoTConsensus) dataRegionConsensus : null;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!topicName.equals(stateKey.getTopicName())) {
+        continue;
+      }
+      final String consumerGroupId = stateKey.getConsumerGroupId();
+      if (Objects.nonNull(isTableModel)
+          && SubscriptionAgent.consumer().containsConsumerGroup(consumerGroupId)
+          && SubscriptionAgent.consumer().isTableModel(consumerGroupId) != isTableModel) {
+        continue;
+      }
+      final ConsensusGroupId groupId =
+          ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+      if (Objects.nonNull(ioTConsensus)) {
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.unregisterDetached(
+              consumerGroupId, topicName, groupId, serverImpl);
+        }
+      }
+      commitManager.removeState(consumerGroupId, topicName, groupId);
+    }
+  }
+
+  public static void cleanupRetainedProgressForConsumerGroup(final String consumerGroupId) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus ioTConsensus =
+        dataRegionConsensus instanceof IoTConsensus ? (IoTConsensus) dataRegionConsensus : null;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!consumerGroupId.equals(stateKey.getConsumerGroupId())) {
+        continue;
+      }
+      final ConsensusGroupId groupId =
+          ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+      if (Objects.nonNull(ioTConsensus)) {
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.unregisterDetached(
+              consumerGroupId, stateKey.getTopicName(), groupId, serverImpl);
+        }
+      }
+    }
+    commitManager.removeAllStatesForConsumerGroup(consumerGroupId);
+  }
+
+  public static void refreshDetachedRetentionsForTopic(
+      final String topicName, final boolean isTableModel, final TopicConfig topicConfig) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus ioTConsensus =
+        dataRegionConsensus instanceof IoTConsensus ? (IoTConsensus) dataRegionConsensus : null;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!topicName.equals(stateKey.getTopicName())) {
+        continue;
+      }
+      final String consumerGroupId = stateKey.getConsumerGroupId();
+      if (!SubscriptionAgent.consumer().containsConsumerGroup(consumerGroupId)) {
+        continue;
+      }
+      if (SubscriptionAgent.consumer().isTableModel(consumerGroupId) != isTableModel) {
+        continue;
+      }
+      if (SubscriptionAgent.consumer()
+          .isTopicSubscribedByConsumerGroup(consumerGroupId, topicName)) {
+        continue;
+      }
+      final ConsensusGroupId groupId =
+          ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+      final IoTConsensusServerImpl serverImpl =
+          Objects.nonNull(ioTConsensus) ? ioTConsensus.getImpl(groupId) : null;
+      if (topicConfig.isIncrementalMode()
+          && topicConfig.isProgressRetainedAfterUnsubscribe()
+          && Objects.nonNull(serverImpl)) {
+        ConsensusSubscriptionWalRetention.registerDetached(
+            consumerGroupId,
+            topicName,
+            groupId,
+            serverImpl,
+            buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl),
+            commitManager);
+      } else {
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.unregisterDetached(
+              consumerGroupId, topicName, groupId, serverImpl);
+        }
+        commitManager.removeState(consumerGroupId, topicName, groupId);
       }
     }
   }

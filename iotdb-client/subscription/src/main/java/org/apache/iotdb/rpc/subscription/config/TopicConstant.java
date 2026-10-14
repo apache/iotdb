@@ -33,6 +33,9 @@ public class TopicConstant {
   public static final String COLUMN_FILTER_KEY = "column-filter";
   public static final String RETENTION_BYTES_KEY = "retention.bytes";
   public static final String RETENTION_MS_KEY = "retention.ms";
+  public static final String RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY =
+      "retain.progress.after.unsubscribe";
+  public static final String RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_DEFAULT_VALUE = "false";
   public static final String DATABASE_DEFAULT_VALUE = ".*";
   public static final String TABLE_DEFAULT_VALUE = ".*";
   public static final String COLUMN_FILTER_DEFAULT_VALUE = "true";

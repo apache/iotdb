@@ -269,6 +269,16 @@ public class ConsensusPrefetchingQueueTest {
 
   @Test
   public void testCloseDetachesBlockedConsensusQueueDeregistration() throws Exception {
+    assertCloseDetachesBlockedConsensusRegistration(false);
+  }
+
+  @Test
+  public void testRetainingCloseDetachesBlockedConsensusQueueReplacement() throws Exception {
+    assertCloseDetachesBlockedConsensusRegistration(true);
+  }
+
+  private void assertCloseDetachesBlockedConsensusRegistration(
+      final boolean retainProgressAfterUnsubscribe) throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("async-prefetch-deregister");
     final CountDownLatch deregistrationStarted = new CountDownLatch(1);
@@ -279,14 +289,19 @@ public class ConsensusPrefetchingQueueTest {
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(reader);
       when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
-      doAnswer(
-              invocation -> {
-                deregistrationStarted.countDown();
-                releaseDeregistration.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                return null;
-              })
-          .when(serverImpl)
-          .deregisterSubscriptionQueue(any());
+      final IoTConsensusServerImpl blockedServer =
+          doAnswer(
+                  invocation -> {
+                    deregistrationStarted.countDown();
+                    releaseDeregistration.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    return null;
+                  })
+              .when(serverImpl);
+      if (retainProgressAfterUnsubscribe) {
+        blockedServer.replaceSubscriptionQueueWithDetachedRetention(any(), any(), any(), any());
+      } else {
+        blockedServer.deregisterSubscriptionQueue(any());
+      }
 
       final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
       when(converter.getDatabaseName()).thenReturn("db");
@@ -318,7 +333,7 @@ public class ConsensusPrefetchingQueueTest {
       setPrefetchBinding(queue, prefetchExecutor, subtask);
 
       final long closeStartNanos = System.nanoTime();
-      queue.closeAsync(false);
+      queue.closeAsync(false, retainProgressAfterUnsubscribe);
       final long closeElapsedMillis =
           TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - closeStartNanos);
 
