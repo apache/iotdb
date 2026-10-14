@@ -98,6 +98,7 @@ public class ConsensusPrefetchingQueueDeliveryTest {
 
   private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
   private final List<ConsensusPrefetchingQueue> queues = new ArrayList<>();
+  private final AtomicLong walIteratorCreations = new AtomicLong();
   private String originalSystemDir;
   private int originalMaxDelay;
   private int originalMaxTablets;
@@ -203,6 +204,77 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     assertEquals(0L, queue.getRetainedTabletBytes());
     assertEquals(1L, requiredRetainedVersion(queue));
     assertEquals(0, deliveryRecordCount(queue));
+  }
+
+  @Test
+  public void testWalDeliveryReusesInitialReadAndRestorationProof() throws Exception {
+    writeWal(1, true);
+    final ConsensusPrefetchingQueue queue = newQueue();
+    assertNull(queue.poll(CONSUMER));
+    queue.drivePrefetchOnce();
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    final long initialReads = walIteratorCreations.get();
+    final SubscriptionPollResponse first = deliver(event);
+    assertTrue(event.isPayloadDetached());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+    assertEquals(initialReads, walIteratorCreations.get());
+
+    assertTrue(queue.nack(CONSUMER, event.getCommitContext()));
+    assertSame(event, queue.poll(CONSUMER));
+    assertEquals(initialReads + 1, walIteratorCreations.get());
+    assertEquals(first.getPayload(), deliver(event).getPayload());
+    assertTrue(event.isPayloadDetached());
+    // Restoration reads WAL once; delivering the restored response needs no validation scan.
+    assertEquals(initialReads + 1, walIteratorCreations.get());
+    assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
+  }
+
+  @Test
+  public void testPendingDeliveryDefersWalValidationToPrefetch() throws Exception {
+    writeWal(1, true);
+    final ConsensusPrefetchingQueue queue = newQueue();
+    assertNull(queue.poll(CONSUMER));
+    assertTrue(pendingEntries(queue).offer(request(1, 1, WRITER)));
+    queue.drivePrefetchOnce();
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    final long initialReads = walIteratorCreations.get();
+    deliver(event);
+    // Even with readable WAL, an unverified pending batch must not read it in the poll callback.
+    assertEquals(initialReads, walIteratorCreations.get());
+    assertFalse(event.isPayloadDetached());
+    assertEquals(tabletBytes, queue.getRetainedTabletBytes());
+
+    queue.drivePrefetchOnce();
+    assertTrue(walIteratorCreations.get() > initialReads);
+    assertTrue(event.isPayloadDetached());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+    assertTrue(committedProgress().getWriterPositions().isEmpty());
+    assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
+  }
+
+  @Test
+  public void testMixedPendingAndWalBatchWaitsForAllMembersToBeReadable() throws Exception {
+    config.setSubscriptionConsensusBatchMaxTabletCount(2);
+    writeWal(1, true);
+    currentSearchIndex.set(2);
+    final ConsensusPrefetchingQueue queue = newQueue();
+    assertNull(queue.poll(CONSUMER));
+    assertTrue(pendingEntries(queue).offer(request(2, 2, WRITER)));
+    queue.drivePrefetchOnce();
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    assertNotNull(event);
+    assertEquals(Arrays.asList(1001L, 1002L), timestamps(deliver(event)));
+    assertFalse(event.isPayloadDetached());
+    queue.drivePrefetchOnce();
+    assertFalse(event.isPayloadDetached());
+    assertEquals(tabletBytes * 2, queue.getRetainedTabletBytes());
+
+    writeWal(2, true);
+    queue.drivePrefetchOnce();
+    assertTrue(event.isPayloadDetached());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+    assertTrue(committedProgress().getWriterPositions().isEmpty());
+    assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
   }
 
   @Test
@@ -340,9 +412,16 @@ public class ConsensusPrefetchingQueueDeliveryTest {
             "flushBatch", batch.getClass(), long.class);
     flush.setAccessible(true);
     assertTrue((boolean) flush.invoke(queue, batch, queue.getCurrentSeekGeneration()));
+    // Manual batch construction bypasses the WAL pump. Advance its local cursor past the consumed
+    // range before the asynchronous validation round, so normal prefetch does not enqueue it again.
+    final Field cursor =
+        ConsensusPrefetchingQueue.class.getDeclaredField("nextExpectedSearchIndex");
+    cursor.setAccessible(true);
+    ((AtomicLong) cursor.get(queue)).set(4L);
     final SubscriptionEvent event = queue.poll(CONSUMER);
     final SubscriptionPollResponse first = deliver(event);
     assertEquals(Arrays.asList(1001L, 1003L), timestamps(first));
+    queue.drivePrefetchOnce();
     assertTrue(event.isPayloadDetached());
     assertTrue(queue.nack(CONSUMER, event.getCommitContext()));
     assertSame(event, queue.poll(CONSUMER));
@@ -511,7 +590,13 @@ public class ConsensusPrefetchingQueueDeliveryTest {
             new RegionProgress(Collections.emptyMap()),
             1L,
             1L,
-            true);
+            true) {
+          @Override
+          protected ProgressWALIterator createSubscriptionWALIterator(final long startSearchIndex) {
+            walIteratorCreations.incrementAndGet();
+            return super.createSubscriptionWALIterator(startSearchIndex);
+          }
+        };
     queue.setSubscriptionMemoryManager(memoryManager);
     queues.add(queue);
     return queue;
