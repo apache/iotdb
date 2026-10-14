@@ -1222,7 +1222,8 @@ public abstract class TableOperatorGenerator<
         addOperatorContext(
             context, node.getPlanNodeId(), EnforceSingleRowOperator.class.getSimpleName());
 
-    return new EnforceSingleRowOperator(operatorContext, child);
+    return new EnforceSingleRowOperator(
+        operatorContext, child, getOutputColumnTypes(node, context.getTableTypeProvider()));
   }
 
   @Override

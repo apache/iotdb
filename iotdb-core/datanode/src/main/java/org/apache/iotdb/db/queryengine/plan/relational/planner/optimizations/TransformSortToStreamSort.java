@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -164,6 +165,12 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       // the actual input ordering before using this streaming candidate.
       context.retainOrderPreservingSymbols(TableFunctionOrdering.getOrderPreservingSymbols(node));
       return rewritten;
+    }
+
+    @Override
+    public PlanNode visitValuesNode(ValuesNode node, Context context) {
+      context.setCanTransform(false);
+      return node;
     }
 
     @Override

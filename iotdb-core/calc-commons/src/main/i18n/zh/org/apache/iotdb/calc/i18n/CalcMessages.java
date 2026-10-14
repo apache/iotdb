@@ -558,4 +558,6 @@ public final class CalcMessages {
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "聚合函数 [%s] 需要 %d 个参数，但实际传入 %d 个";
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6 =
+      "标量子查询返回了多行。";
 }

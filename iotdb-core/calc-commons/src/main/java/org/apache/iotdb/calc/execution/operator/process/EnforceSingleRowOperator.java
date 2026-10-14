@@ -21,31 +21,40 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.List;
 
 public class EnforceSingleRowOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(EnforceSingleRowOperator.class);
 
-  private static final String MULTIPLE_ROWS_ERROR_MESSAGE =
-      "Scalar sub-query has returned multiple rows.";
-
-  private static final String NO_RESULT_ERROR_MESSAGE = "Scalar sub-query does not have output.";
-
   private final CommonOperatorContext operatorContext;
   private final Operator child;
+  private final TsBlock nullRow;
 
-  private boolean finished = false;
+  private boolean hasOutput = false;
 
-  public EnforceSingleRowOperator(CommonOperatorContext operatorContext, Operator child) {
+  public EnforceSingleRowOperator(
+      CommonOperatorContext operatorContext, Operator child, List<TSDataType> dataTypes) {
     this.operatorContext = operatorContext;
     this.child = child;
+    TsBlockBuilder builder = new TsBlockBuilder(1, dataTypes);
+    builder.getTimeColumnBuilder().writeLong(0);
+    for (int i = 0; i < dataTypes.size(); i++) {
+      builder.getColumnBuilder(i).appendNull();
+    }
+    builder.declarePosition();
+    nullRow = builder.build();
   }
 
   @Override
@@ -55,14 +64,23 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    if (child.isFinished()) {
+      if (hasOutput) {
+        return null;
+      }
+      // An empty scalar subquery has the value NULL, with its original output types.
+      hasOutput = true;
+      return nullRow;
+    }
     TsBlock tsBlock = child.nextWithTimer();
     if (tsBlock == null || tsBlock.isEmpty()) {
       return tsBlock;
     }
-    if (tsBlock.getPositionCount() > 1 || finished) {
-      throw new SemanticException(MULTIPLE_ROWS_ERROR_MESSAGE);
+    if (tsBlock.getPositionCount() > 1 || hasOutput) {
+      throw new SemanticException(
+          CalcMessages.EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6);
     }
-    finished = true;
+    hasOutput = true;
     return tsBlock;
   }
 
@@ -80,38 +98,34 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    boolean childFinished = child.isFinished();
-    if (childFinished && !finished) {
-      // finished == false means the child has no result returned up to now, but we need at least
-      // one result.
-      throw new SemanticException(NO_RESULT_ERROR_MESSAGE);
-    }
-    // Even if finished == true, we can not return true here, we need to call child.next() to check
-    // if child has more data.
-    // For example, if the child is a TableScanOperator with a filter, childFinished = false does
-    // not mean that the child can produce more data.(see the isFinished() of TableScanOperator)
-    return childFinished;
+    // Keep consuming after the first row to detect a scalar subquery returning multiple rows.
+    // If the child is empty, next() must still emit the single NULL row.
+    return child.isFinished() && hasOutput;
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
+    return Math.max(child.calculateMaxPeekMemory(), calculateMaxReturnSize())
+        + nullRow.getRetainedSizeInBytes();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return child.calculateMaxReturnSize()
-        / TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    return Math.max(
+        child.calculateMaxReturnSize()
+            / TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+        nullRow.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return child.calculateRetainedSizeAfterCallingNext();
+    return child.calculateRetainedSizeAfterCallingNext() + nullRow.getRetainedSizeInBytes();
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
+        + nullRow.getRetainedSizeInBytes()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }

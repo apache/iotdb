@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
 import org.junit.Test;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.node;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 
 public class EvaluateEmptyIntersectTest {
 
@@ -37,12 +38,12 @@ public class EvaluateEmptyIntersectTest {
         new PlanTester()
             .createPlan(
                 "(select tag1 from t1 limit 0) intersect (select tag1 from t2)  intersect (select tag1 from t3)"),
-        output((limit(0, tableScan("testdb.t1")))));
+        output((project(node(ValuesNode.class)))));
 
     assertPlan(
         new PlanTester()
             .createPlan(
                 "(select tag1 from t1 ) intersect all (select tag1 from t2 limit 0)  intersect all (select tag1 from t3)"),
-        output((limit(0, tableScan("testdb.t2")))));
+        output((project(node(ValuesNode.class)))));
   }
 }

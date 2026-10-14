@@ -582,4 +582,6 @@ public final class CalcMessages {
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "Aggregate function [%s] requires %d arguments, but got %d";
 
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6 =
+      "Scalar sub-query has returned multiple rows.";
 }

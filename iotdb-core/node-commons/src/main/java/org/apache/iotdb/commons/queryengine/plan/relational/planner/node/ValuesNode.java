@@ -153,6 +153,8 @@ public class ValuesNode extends SourceNode {
 
   @Override
   public void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_VALUES_NODE.serialize(byteBuffer);
+
     ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
     outputSymbols.forEach(symbol -> ReadWriteIOUtils.write(symbol.getName(), byteBuffer));
     ReadWriteIOUtils.write(rowCount, byteBuffer);
@@ -188,15 +190,13 @@ public class ValuesNode extends SourceNode {
   }
 
   public static ValuesNode deserialize(ByteBuffer byteBuffer) {
-    PlanNodeType.TABLE_VALUES_NODE.serialize(byteBuffer);
-
-    int size = ReadWriteIOUtils.read(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Symbol> outputSymbols = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       outputSymbols.add(new Symbol(ReadWriteIOUtils.readString(byteBuffer)));
     }
 
-    int rowCount = ReadWriteIOUtils.read(byteBuffer);
+    int rowCount = ReadWriteIOUtils.readInt(byteBuffer);
 
     List<Expression> rows = new ArrayList<>();
     boolean flag = ReadWriteIOUtils.readBool(byteBuffer);
