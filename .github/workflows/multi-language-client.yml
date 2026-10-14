@@ -6,6 +6,7 @@ on:
       - master
       - "rc/*"
     paths:
+      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
@@ -20,6 +21,7 @@ on:
       - "rc/*"
       - 'force_ci/**'
     paths:
+      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
@@ -80,7 +82,7 @@ jobs:
           go=false
           while IFS= read -r file; do
             case "$file" in
-              iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+              pom.xml|iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
                 cpp=true
                 ;;
             esac
@@ -108,7 +110,7 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, windows-2025-vs2026, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-22.04-arm, windows-2022, windows-2025-vs2026, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -182,8 +184,8 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-
+          key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-m2-
       - name: Check C++ format (Spotless)
         shell: bash
         run: |
@@ -209,7 +211,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: cpp-IT-${{ runner.os }}
+          name: cpp-IT-${{ matrix.os }}
           path: distribution/target/apache-iotdb-*-all-bin/apache-iotdb-*-all-bin/logs
           retention-days: 1
 

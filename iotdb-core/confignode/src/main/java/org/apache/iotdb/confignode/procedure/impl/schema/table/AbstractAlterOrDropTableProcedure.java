@@ -136,6 +136,25 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     }
   }
 
+  protected void commitReleaseWithHA(
+      final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
+    final TUpdateTableReq req =
+        SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), oldName);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
+
+    if (!proceeded) {
+      LOGGER.warn(
+          ProcedureMessages
+              .LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572,
+          getActionMessage(),
+          database,
+          table.getTableName(),
+          ProcedureMessages.FAILED_TO_PROVE_DN_IS_FENCED);
+    }
+  }
+
   @Override
   protected boolean isRollbackSupported(final T state) {
     return true;

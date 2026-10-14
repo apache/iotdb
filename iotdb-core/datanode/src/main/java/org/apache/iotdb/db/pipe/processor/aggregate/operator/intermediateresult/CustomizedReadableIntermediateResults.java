@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.pipe.api.type.Binary;
-import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Map;
+
+import static org.apache.iotdb.db.utils.TypeServices.Pipe.CUSTOMIZED_INTERMEDIATE_RESULT_TO_DOUBLE_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Pipe.CUSTOMIZED_INTERMEDIATE_RESULT_TO_FLOAT_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Pipe.CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Pipe.CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Pipe.CUSTOMIZED_INTERMEDIATE_RESULT_TO_STRING_SERVICE;
 
 public class CustomizedReadableIntermediateResults {
   private final Map<String, Pair<TSDataType, Object>> intermediateResults;
@@ -55,117 +55,33 @@ public class CustomizedReadableIntermediateResults {
   public int getInt(final String key) {
     final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    final TSDataType type = typeResultPair.getLeft();
-    final Object value = typeResultPair.getRight();
-    switch (type) {
-      case INT32:
-        return (int) value;
-      case DATE:
-        return DateUtils.parseDateExpressionToInt((LocalDate) value);
-      case INT64:
-      case TIMESTAMP:
-        return (int) (long) value;
-      case FLOAT:
-        return (int) (float) value;
-      case DOUBLE:
-        return (int) (double) value;
-      case TEXT:
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_INT_659069CC,
-                typeResultPair.getLeft()));
-    }
+    return CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE
+        .call(getType(typeResultPair.getLeft(), "int"))
+        .applyAsInt(typeResultPair.getRight());
   }
 
   public long getLong(final String key) {
     final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    final TSDataType type = typeResultPair.getLeft();
-    final Object value = typeResultPair.getRight();
-    switch (type) {
-      case INT32:
-        return (int) value;
-      case DATE:
-        return DateUtils.parseDateExpressionToInt((LocalDate) value);
-      case INT64:
-      case TIMESTAMP:
-        return (long) value;
-      case FLOAT:
-        return (long) (float) value;
-      case DOUBLE:
-        return (long) (double) value;
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-      case BLOB:
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_LONG_2D206561,
-                typeResultPair.getLeft()));
-    }
+    return CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE
+        .call(getType(typeResultPair.getLeft(), "long"))
+        .applyAsLong(typeResultPair.getRight());
   }
 
   public float getFloat(final String key) {
     final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    final TSDataType type = typeResultPair.getLeft();
-    final Object value = typeResultPair.getRight();
-    switch (type) {
-      case INT32:
-        return (int) value;
-      case DATE:
-        return DateUtils.parseDateExpressionToInt((LocalDate) value);
-      case INT64:
-      case TIMESTAMP:
-        return (long) value;
-      case FLOAT:
-        return (float) value;
-      case DOUBLE:
-        return (float) (double) value;
-      case TEXT:
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_FLOAT_C15A8A95,
-                typeResultPair.getLeft()));
-    }
+    return CUSTOMIZED_INTERMEDIATE_RESULT_TO_FLOAT_SERVICE
+        .call(getType(typeResultPair.getLeft(), "float"))
+        .apply(typeResultPair.getRight());
   }
 
   public double getDouble(final String key) {
     final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    final TSDataType type = typeResultPair.getLeft();
-    final Object value = typeResultPair.getRight();
-    switch (type) {
-      case INT32:
-        return (int) value;
-      case DATE:
-        return DateUtils.parseDateExpressionToInt((LocalDate) value);
-      case INT64:
-      case TIMESTAMP:
-        return (long) value;
-      case FLOAT:
-        return (float) value;
-      case DOUBLE:
-        return (double) value;
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-      case BLOB:
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_DOUBLE_E577C0D7,
-                typeResultPair.getLeft()));
-    }
+    return CUSTOMIZED_INTERMEDIATE_RESULT_TO_DOUBLE_SERVICE
+        .call(getType(typeResultPair.getLeft(), "double"))
+        .applyAsDouble(typeResultPair.getRight());
   }
 
   // Note: This method will cast any decimal types to string without throwing
@@ -173,37 +89,17 @@ public class CustomizedReadableIntermediateResults {
   public String getString(final String key) {
     final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    final TSDataType type = typeResultPair.getLeft();
-    final Object value = typeResultPair.getRight();
-    switch (type) {
-      case BOOLEAN:
-        return Boolean.toString((boolean) value);
-      case INT32:
-        return Integer.toString((int) value);
-      case DATE:
-        return ((LocalDate) value).toString();
-      case INT64:
-        return Long.toString((long) value);
-      case TIMESTAMP:
-        return RpcUtils.formatDatetime(
-            RpcUtils.DEFAULT_TIME_FORMAT,
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
-            (long) value,
-            ZoneId.systemDefault());
-      case FLOAT:
-        return Float.toString((float) value);
-      case DOUBLE:
-        return Double.toString((double) value);
-      case TEXT:
-      case STRING:
-        return (String) value;
-      case BLOB:
-        return BytesUtils.parseBlobByteArrayToString(((Binary) value).getValues());
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_STRING_34983FBD,
-                typeResultPair.getLeft()));
+    return CUSTOMIZED_INTERMEDIATE_RESULT_TO_STRING_SERVICE
+        .call(getType(typeResultPair.getLeft(), "string"))
+        .apply(typeResultPair.getRight());
+  }
+
+  private static Type getType(final TSDataType dataType, final String targetType) {
+    try {
+      return Type.fromTsDataType(dataType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new UnsupportedOperationException(
+          String.format("The type %s cannot be casted to %s.", dataType, targetType));
     }
   }
 

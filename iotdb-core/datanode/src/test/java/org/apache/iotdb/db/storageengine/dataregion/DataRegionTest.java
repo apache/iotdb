@@ -106,14 +106,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
@@ -2261,5 +2265,44 @@ public class DataRegionTest {
 
     future.get();
     assertTrue(tsFileResourceSeq.isClosed());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testSyncCloseWaitsForAlreadyClosingProcessor() throws Exception {
+    TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Future<?> closeFuture = Mockito.mock(Future.class);
+    CountDownLatch waitStarted = new CountDownLatch(1);
+    CountDownLatch allowClose = new CountDownLatch(1);
+    Mockito.doReturn(closeFuture).when(processor).getCloseFuture();
+    Mockito.when(closeFuture.get())
+        .thenAnswer(
+            invocation -> {
+              waitStarted.countDown();
+              assertTrue(allowClose.await(10, TimeUnit.SECONDS));
+              return null;
+            });
+
+    Field closingProcessorsField =
+        DataRegion.class.getDeclaredField("closingSequenceTsFileProcessor");
+    closingProcessorsField.setAccessible(true);
+    Set<TsFileProcessor> closingProcessors =
+        (Set<TsFileProcessor>) closingProcessorsField.get(dataRegion);
+    closingProcessors.add(processor);
+
+    CompletableFuture<Void> syncCloseTask = null;
+    try {
+      syncCloseTask = CompletableFuture.runAsync(dataRegion::syncCloseAllWorkingTsFileProcessors);
+      assertTrue(waitStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(syncCloseTask.isDone());
+      allowClose.countDown();
+      syncCloseTask.get(10, TimeUnit.SECONDS);
+    } finally {
+      allowClose.countDown();
+      closingProcessors.remove(processor);
+      if (syncCloseTask != null) {
+        syncCloseTask.get(10, TimeUnit.SECONDS);
+      }
+    }
   }
 }

@@ -86,6 +86,7 @@ public class ColumnHeaderConstant {
   public static final String NODE_ID = "NodeID";
   public static final String NODE_TYPE = "NodeType";
   public static final String STATUS = "Status";
+  public static final String STATUS_REASON = "StatusReason";
   public static final String INTERNAL_ADDRESS = "InternalAddress";
   public static final String INTERNAL_PORT = "InternalPort";
   public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
@@ -304,6 +305,9 @@ public class ColumnHeaderConstant {
   public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_processor";
   public static final String PIPE_SINK_TABLE_MODEL = "pipe_sink";
   public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
+  public static final String PROCEDURE_ID_TABLE_MODEL = "procedure_id";
+  public static final String PROGRESS_TABLE_MODEL = "progress";
+  public static final String ERROR_MESSAGE_TABLE_MODEL = "error_message";
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
@@ -359,6 +363,7 @@ public class ColumnHeaderConstant {
 
   public static final String NODE_ID_TABLE_MODEL = "node_id";
   public static final String NODE_TYPE_TABLE_MODEL = "node_type";
+  public static final String STATUS_REASON_TABLE_MODEL = "status_reason";
   public static final String INTERNAL_PORT_TABLE_MODEL = "internal_port";
   public static final String BUILD_INFO_TABLE_MODEL = "build_info";
 

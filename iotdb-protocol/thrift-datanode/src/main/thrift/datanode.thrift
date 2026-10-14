@@ -90,10 +90,16 @@ struct TGetDataBlockRequest {
   3: required i32 endSequenceId
   // Index of upstream SinkChannel
   4: required i32 index
+  // Optional byte range for fetching one serialized TsBlock in fragments.
+  5: optional i32 offset
 }
 
 struct TGetDataBlockResponse {
   1: required list<binary> tsBlocks
+  // The start offset of the next fragment. It is set only when the last element in tsBlocks is a fragment.
+  2: optional i32 offset
+  // Total serialized length of the TsBlock when the response starts its first fragment.
+  3: optional i32 totalLength
 }
 
 struct TAcknowledgeDataBlockEvent {
@@ -399,6 +405,9 @@ struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    4: optional i32 sliceIndex
+    5: optional i32 sliceCount
+    6: optional i32 originBodySize
 }
 
 struct TLoadCommandReq {
@@ -919,6 +928,8 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
+
+  i32 getThriftMaxFrameSize();
 
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
@@ -29,7 +28,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
@@ -125,134 +124,8 @@ public class QueryDataSetUtils {
       }
 
       int currentCount = tsBlock.getPositionCount();
-      // serialize time column
-      for (int i = 0; i < currentCount; i++) {
-        // use columnOutput to write byte array
-        dataOutputStreams[0].writeLong(tsBlock.getTimeByIndex(i));
-      }
-
-      // serialize each value column and its bitmap
-      for (int k = 0; k < columnNum; k++) {
-        // get DataOutputStream for current value column and its bitmap
-        DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1];
-        DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (k + 1)];
-
-        Column column = tsBlock.getColumn(k);
-        TSDataType type = column.getDataType();
-        switch (type) {
-          case INT32:
-          case DATE:
-            for (int i = 0; i < currentCount; i++) {
-              rowCount++;
-              if (column.isNull(i)) {
-                bitmaps[k] = bitmaps[k] << 1;
-              } else {
-                bitmaps[k] = (bitmaps[k] << 1) | FLAG;
-                dataOutputStream.writeInt(column.getInt(i));
-              }
-              if (rowCount != 0 && rowCount % 8 == 0) {
-                dataBitmapOutputStream.writeByte(bitmaps[k]);
-                // we should clear the bitmap every 8 points
-                bitmaps[k] = 0;
-              }
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            for (int i = 0; i < currentCount; i++) {
-              rowCount++;
-              if (column.isNull(i)) {
-                bitmaps[k] = bitmaps[k] << 1;
-              } else {
-                bitmaps[k] = (bitmaps[k] << 1) | FLAG;
-                dataOutputStream.writeLong(column.getLong(i));
-              }
-              if (rowCount != 0 && rowCount % 8 == 0) {
-                dataBitmapOutputStream.writeByte(bitmaps[k]);
-                // we should clear the bitmap every 8 points
-                bitmaps[k] = 0;
-              }
-            }
-            break;
-          case FLOAT:
-            for (int i = 0; i < currentCount; i++) {
-              rowCount++;
-              if (column.isNull(i)) {
-                bitmaps[k] = bitmaps[k] << 1;
-              } else {
-                bitmaps[k] = (bitmaps[k] << 1) | FLAG;
-                dataOutputStream.writeFloat(column.getFloat(i));
-              }
-              if (rowCount != 0 && rowCount % 8 == 0) {
-                dataBitmapOutputStream.writeByte(bitmaps[k]);
-                // we should clear the bitmap every 8 points
-                bitmaps[k] = 0;
-              }
-            }
-            break;
-          case DOUBLE:
-            for (int i = 0; i < currentCount; i++) {
-              rowCount++;
-              if (column.isNull(i)) {
-                bitmaps[k] = bitmaps[k] << 1;
-              } else {
-                bitmaps[k] = (bitmaps[k] << 1) | FLAG;
-                dataOutputStream.writeDouble(column.getDouble(i));
-              }
-              if (rowCount != 0 && rowCount % 8 == 0) {
-                dataBitmapOutputStream.writeByte(bitmaps[k]);
-                // we should clear the bitmap every 8 points
-                bitmaps[k] = 0;
-              }
-            }
-            break;
-          case BOOLEAN:
-            for (int i = 0; i < currentCount; i++) {
-              rowCount++;
-              if (column.isNull(i)) {
-                bitmaps[k] = bitmaps[k] << 1;
-              } else {
-                bitmaps[k] = (bitmaps[k] << 1) | FLAG;
-                dataOutputStream.writeBoolean(column.getBoolean(i));
-              }
-              if (rowCount != 0 && rowCount % 8 == 0) {
-                dataBitmapOutputStream.writeByte(bitmaps[k]);
-                // we should clear the bitmap every 8 points
-                bitmaps[k] = 0;
-              }
-            }
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            for (int i = 0; i < currentCount; i++) {
-              rowCount++;
-              if (column.isNull(i)) {
-                bitmaps[k] = bitmaps[k] << 1;
-              } else {
-                bitmaps[k] = (bitmaps[k] << 1) | FLAG;
-                Binary binary = column.getBinary(i);
-                dataOutputStream.writeInt(binary.getLength());
-                dataOutputStream.write(binary.getValues());
-              }
-              if (rowCount != 0 && rowCount % 8 == 0) {
-                dataBitmapOutputStream.writeByte(bitmaps[k]);
-                // we should clear the bitmap every 8 points
-                bitmaps[k] = 0;
-              }
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                    type));
-        }
-        if (k != columnNum - 1) {
-          rowCount -= currentCount;
-        }
-      }
+      serializeTsBlock(rowCount, currentCount, tsBlock, columnNum, dataOutputStreams, bitmaps);
+      rowCount += currentCount;
     }
     // feed the remaining bitmap
     int remaining = rowCount % 8;
@@ -299,42 +172,11 @@ public class QueryDataSetUtils {
       DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (k + 1)];
 
       Column column = tsBlock.getColumn(k);
-      TSDataType type = column.getDataType();
-      switch (type) {
-        case INT32:
-        case DATE:
-          doWithInt32Column(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          doWithInt64Column(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
-          break;
-        case FLOAT:
-          doWithFloatColumn(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
-          break;
-        case DOUBLE:
-          doWithDoubleColumn(
-              rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
-          break;
-        case BOOLEAN:
-          doWithBooleanColumn(
-              rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          doWithTextColumn(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4, type));
-      }
+      serializeColumn(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
     }
   }
 
-  private static void doWithInt32Column(
+  private static void serializeColumn(
       int rowCount,
       Column column,
       int[] bitmaps,
@@ -348,129 +190,7 @@ public class QueryDataSetUtils {
         bitmaps[columnIndex] = bitmaps[columnIndex] << 1;
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
-        dataOutputStream.writeInt(column.getInt(i));
-      }
-      if (rowCount != 0 && rowCount % 8 == 0) {
-        dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
-        // we should clear the bitmap every 8 points
-        bitmaps[columnIndex] = 0;
-      }
-    }
-  }
-
-  private static void doWithInt64Column(
-      int rowCount,
-      Column column,
-      int[] bitmaps,
-      int columnIndex,
-      DataOutputStream dataOutputStream,
-      DataOutputStream dataBitmapOutputStream)
-      throws IOException {
-    for (int i = 0, size = column.getPositionCount(); i < size; i++) {
-      rowCount++;
-      if (column.isNull(i)) {
-        bitmaps[columnIndex] = bitmaps[columnIndex] << 1;
-      } else {
-        bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
-        dataOutputStream.writeLong(column.getLong(i));
-      }
-      if (rowCount != 0 && rowCount % 8 == 0) {
-        dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
-        // we should clear the bitmap every 8 points
-        bitmaps[columnIndex] = 0;
-      }
-    }
-  }
-
-  private static void doWithFloatColumn(
-      int rowCount,
-      Column column,
-      int[] bitmaps,
-      int columnIndex,
-      DataOutputStream dataOutputStream,
-      DataOutputStream dataBitmapOutputStream)
-      throws IOException {
-    for (int i = 0, size = column.getPositionCount(); i < size; i++) {
-      rowCount++;
-      if (column.isNull(i)) {
-        bitmaps[columnIndex] = bitmaps[columnIndex] << 1;
-      } else {
-        bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
-        dataOutputStream.writeFloat(column.getFloat(i));
-      }
-      if (rowCount != 0 && rowCount % 8 == 0) {
-        dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
-        // we should clear the bitmap every 8 points
-        bitmaps[columnIndex] = 0;
-      }
-    }
-  }
-
-  private static void doWithDoubleColumn(
-      int rowCount,
-      Column column,
-      int[] bitmaps,
-      int columnIndex,
-      DataOutputStream dataOutputStream,
-      DataOutputStream dataBitmapOutputStream)
-      throws IOException {
-    for (int i = 0, size = column.getPositionCount(); i < size; i++) {
-      rowCount++;
-      if (column.isNull(i)) {
-        bitmaps[columnIndex] = bitmaps[columnIndex] << 1;
-      } else {
-        bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
-        dataOutputStream.writeDouble(column.getDouble(i));
-      }
-      if (rowCount != 0 && rowCount % 8 == 0) {
-        dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
-        // we should clear the bitmap every 8 points
-        bitmaps[columnIndex] = 0;
-      }
-    }
-  }
-
-  private static void doWithBooleanColumn(
-      int rowCount,
-      Column column,
-      int[] bitmaps,
-      int columnIndex,
-      DataOutputStream dataOutputStream,
-      DataOutputStream dataBitmapOutputStream)
-      throws IOException {
-    for (int i = 0, size = column.getPositionCount(); i < size; i++) {
-      rowCount++;
-      if (column.isNull(i)) {
-        bitmaps[columnIndex] = bitmaps[columnIndex] << 1;
-      } else {
-        bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
-        dataOutputStream.writeBoolean(column.getBoolean(i));
-      }
-      if (rowCount != 0 && rowCount % 8 == 0) {
-        dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
-        // we should clear the bitmap every 8 points
-        bitmaps[columnIndex] = 0;
-      }
-    }
-  }
-
-  private static void doWithTextColumn(
-      int rowCount,
-      Column column,
-      int[] bitmaps,
-      int columnIndex,
-      DataOutputStream dataOutputStream,
-      DataOutputStream dataBitmapOutputStream)
-      throws IOException {
-    for (int i = 0, size = column.getPositionCount(); i < size; i++) {
-      rowCount++;
-      if (column.isNull(i)) {
-        bitmaps[columnIndex] = bitmaps[columnIndex] << 1;
-      } else {
-        bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
-        Binary binary = column.getBinary(i);
-        dataOutputStream.writeInt(binary.getLength());
-        dataOutputStream.write(binary.getValues());
+        column.writeTo(i, dataOutputStream);
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -624,64 +344,10 @@ public class QueryDataSetUtils {
       ByteBuffer buffer, TSDataType[] types, int columns, int size) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
-      switch (types[i]) {
-        case BOOLEAN:
-          boolean[] boolValues = new boolean[size];
-          for (int index = 0; index < size; index++) {
-            boolValues[index] = BytesUtils.byteToBool(buffer.get());
-          }
-          values[i] = boolValues;
-          break;
-        case INT32:
-        case DATE:
-          int[] intValues = new int[size];
-          for (int index = 0; index < size; index++) {
-            intValues[index] = buffer.getInt();
-          }
-          values[i] = intValues;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long[] longValues = new long[size];
-          for (int index = 0; index < size; index++) {
-            longValues[index] = buffer.getLong();
-          }
-          values[i] = longValues;
-          break;
-        case FLOAT:
-          float[] floatValues = new float[size];
-          for (int index = 0; index < size; index++) {
-            floatValues[index] = buffer.getFloat();
-          }
-          values[i] = floatValues;
-          break;
-        case DOUBLE:
-          double[] doubleValues = new double[size];
-          for (int index = 0; index < size; index++) {
-            doubleValues[index] = buffer.getDouble();
-          }
-          values[i] = doubleValues;
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          Binary[] binaryValues = new Binary[size];
-          for (int index = 0; index < size; index++) {
-            int binarySize = buffer.getInt();
-            byte[] binaryValue = new byte[binarySize];
-            buffer.get(binaryValue);
-            binaryValues[index] = new Binary(binaryValue);
-          }
-          values[i] = binaryValues;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  DataNodeMiscMessages
-                      .MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
-                  types[i]));
-      }
+      values[i] =
+          TypeServices.StorageEngine.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
+              .call(Type.fromTsDataType(types[i]))
+              .apply(buffer, size);
     }
     return values;
   }
@@ -690,95 +356,11 @@ public class QueryDataSetUtils {
       DataInputStream stream, TSDataType[] types, int columns, int size) throws IOException {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
-      switch (types[i]) {
-        case BOOLEAN:
-          parseBooleanColumn(size, stream, values, i);
-          break;
-        case DATE:
-        case INT32:
-          parseInt32Column(size, stream, values, i);
-          break;
-        case TIMESTAMP:
-        case INT64:
-          parseInt64Column(size, stream, values, i);
-          break;
-        case FLOAT:
-          parseFloatColumn(size, stream, values, i);
-          break;
-        case DOUBLE:
-          parseDoubleColumn(size, stream, values, i);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          parseTextColumn(size, stream, values, i);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  DataNodeMiscMessages
-                      .MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
-                  types[i]));
-      }
+      values[i] =
+          TypeServices.StorageEngine.RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE
+              .call(Type.fromTsDataType(types[i]))
+              .deserialize(stream, size);
     }
     return values;
-  }
-
-  private static void parseBooleanColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    boolean[] boolValues = new boolean[size];
-    for (int index = 0; index < size; index++) {
-      boolValues[index] = BytesUtils.byteToBool(stream.readByte());
-    }
-    values[columnIndex] = boolValues;
-  }
-
-  private static void parseInt32Column(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    int[] intValues = new int[size];
-    for (int index = 0; index < size; index++) {
-      intValues[index] = stream.readInt();
-    }
-    values[columnIndex] = intValues;
-  }
-
-  private static void parseInt64Column(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    long[] longValues = new long[size];
-    for (int index = 0; index < size; index++) {
-      longValues[index] = stream.readLong();
-    }
-    values[columnIndex] = longValues;
-  }
-
-  private static void parseFloatColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    float[] floatValues = new float[size];
-    for (int index = 0; index < size; index++) {
-      floatValues[index] = stream.readFloat();
-    }
-    values[columnIndex] = floatValues;
-  }
-
-  private static void parseDoubleColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    double[] doubleValues = new double[size];
-    for (int index = 0; index < size; index++) {
-      doubleValues[index] = stream.readDouble();
-    }
-    values[columnIndex] = doubleValues;
-  }
-
-  private static void parseTextColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    Binary[] binaryValues = new Binary[size];
-    for (int index = 0; index < size; index++) {
-      int binarySize = stream.readInt();
-      byte[] binaryValue = new byte[binarySize];
-      stream.readFully(binaryValue);
-      binaryValues[index] = new Binary(binaryValue);
-    }
-    values[columnIndex] = binaryValues;
   }
 }
