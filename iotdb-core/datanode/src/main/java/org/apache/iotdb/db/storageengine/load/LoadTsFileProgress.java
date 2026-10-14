@@ -528,6 +528,8 @@ public class LoadTsFileProgress {
 
       while (true) {
         final long entryStart = countingIn.getBytesRead();
+        // The mark keeps skip() inside the buffer. Without it, a skip that runs past the end of the
+        // file is delegated to the file stream, which reports it as a full skip and hides the tear.
         in.mark(Integer.BYTES);
         final int read = in.read(lengthBuf);
         if (read < 0) {
