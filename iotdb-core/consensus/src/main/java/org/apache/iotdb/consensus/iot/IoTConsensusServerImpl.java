@@ -1584,7 +1584,8 @@ public class IoTConsensusServerImpl {
           IConsensusRequest insertNode = insertNodes.get(i);
           insertNode.markAsGeneratedByRemoteConsensusLeader();
           // The replica may become read-only while this batch waits for its turn. Recheck before
-          // applying each request so shutdown cannot acknowledge writes after the final flush.
+          // applying each request: a late write can reopen a stopped WAL node without recovery,
+          // append a new checkpoint header to the old file, and acknowledge unrecoverable data.
           TSStatus status =
               isReadOnly()
                   ? RpcUtils.getStatus(

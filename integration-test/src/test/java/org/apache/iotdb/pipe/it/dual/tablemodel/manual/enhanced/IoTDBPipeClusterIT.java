@@ -348,6 +348,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
         try (final SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+          // Distinguish a source-side write loss during the restart from a p2 transfer failure.
+          TableModelUtils.assertData("test1", "test1", 0, 300, senderEnv);
+
           // Create a new pipe and write new data
           final Map<String, String> sourceAttributes = new HashMap<>();
           final Map<String, String> processorAttributes = new HashMap<>();

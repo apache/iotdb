@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.CheckpointRecoverUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -83,6 +84,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 public class IoTConsensusShutdownTest {
@@ -216,6 +218,55 @@ public class IoTConsensusShutdownTest {
       syncLogThread.join(TimeUnit.SECONDS.toMillis(10));
       backgroundTaskService.shutdownNow();
     }
+  }
+
+  @Test
+  public void testUncheckedWriteAfterWalManagerStopLosesCheckpoint() throws Exception {
+    writeAndAssertSuccess(1);
+    commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+    WALManager.getInstance().waitAllWALFlushed();
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    final File flushedFile = dataRegion.getSequenceFileList().get(0).getTsFile();
+    final WALNode originalWalNode = (WALNode) dataRegion.getWALNode().get();
+    StorageEngine.getInstance().stop();
+    WALManager.getInstance().stop();
+
+    // Bypass the guarded SyncLog entry point to reproduce the old late-apply behavior. Unlike a
+    // write before WAL stop, this recreates the node in a directory containing closed WAL files.
+    writeAndAssertSuccess(2);
+    final WALNode lateWalNode = (WALNode) dataRegion.getWALNode().get();
+    assertNotSame(originalWalNode, lateWalNode);
+    assertEquals(originalWalNode.getLogDirectory(), lateWalNode.getLogDirectory());
+    final File lateFile =
+        dataRegion
+            .getWorkSequenceTsFileProcessors()
+            .iterator()
+            .next()
+            .getTsFileResource()
+            .getTsFile();
+    WALManager.getInstance().waitAllWALFlushed();
+    WALManager.getInstance().stop();
+    // The new CheckpointManager appends another header to the existing _0.checkpoint file. Even
+    // with a drained and normally closed WAL, recovery cannot find the late memtable in that file.
+    assertTrue(
+        CheckpointRecoverUtils.recoverMemTableInfo(lateWalNode.getLogDirectory())
+            .getMemTableId2Info()
+            .isEmpty());
+    dataRegion.forceCloseAllWorkingTsFileProcessors();
+    dataRegion.getWorkSequenceTsFileProcessors().clear();
+    dataRegion.getWorkUnsequenceTsFileProcessors().clear();
+
+    final WALRecoverManager recoverManager = WALRecoverManager.getInstance();
+    recoverManager.clear();
+    final UnsealedTsFileRecoverPerformer performer =
+        new UnsealedTsFileRecoverPerformer(
+            new TsFileResource(lateFile), true, recovered -> assertFalse(recovered.canWrite()));
+    recoverManager.addRecoverPerformer(performer);
+    recoverManager.setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
+    recoverManager.recover();
+    assertEquals(WALRecoverListener.Status.SUCCESS, performer.getRecoverListener().waitForResult());
+    assertSingleRow(flushedFile, 1);
+    assertTrue(performer.getTsFileResource().isEmpty());
   }
 
   @Test
