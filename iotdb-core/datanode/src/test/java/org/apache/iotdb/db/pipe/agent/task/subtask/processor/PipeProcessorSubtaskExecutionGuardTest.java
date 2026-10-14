@@ -89,7 +89,10 @@ public class PipeProcessorSubtaskExecutionGuardTest {
       final PipeTsFileInsertionEvent eventToConsume = event;
       final PipeProcessorSubtaskExecutionGuard executionGuard =
           new PipeProcessorSubtaskExecutionGuard();
+      final AtomicInteger wakeUpCount = new AtomicInteger();
+      executionGuard.setWorkerWakeUpCallback(wakeUpCount::incrementAndGet);
       executionGuard.start();
+      wakeUpCount.set(0);
       executionGuard.enter();
 
       final long startTimeInNanos = System.nanoTime();
@@ -107,10 +110,12 @@ public class PipeProcessorSubtaskExecutionGuardTest {
       Assert.assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeInNanos) < 1000);
       executionGuard.exit();
 
-      executionGuard.stop();
-      event.cancelTsFileParserMemoryReservationIfPending();
+      // A yielded invocation must keep its fair queue position and receive the release signal.
       memoryManager.releaseTsFileParserMemory("blocker", 0, "0");
       isBlockerReserved = false;
+      Assert.assertEquals(1, wakeUpCount.get());
+      executionGuard.stop();
+      event.cancelTsFileParserMemoryReservationIfPending();
       isCompetitorReserved =
           memoryManager.tryReserveTsFileParserMemory("competitor", 0, "0", competitorReservation);
       Assert.assertTrue(isCompetitorReserved);
@@ -119,6 +124,7 @@ public class PipeProcessorSubtaskExecutionGuardTest {
 
       final AtomicInteger consumedTabletCount = new AtomicInteger(0);
       executionGuard.start();
+      Assert.assertEquals(2, wakeUpCount.get());
       executionGuard.enter();
       event.consumeTabletInsertionEventsWithRetry(
           parsedEvent -> {

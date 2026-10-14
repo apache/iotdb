@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStrategy;
 
 import org.slf4j.Logger;
@@ -65,6 +66,7 @@ public class PipeMemoryManager {
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
   private volatile long reservedTsFileParserCount;
+  private volatile long waitingTsFileParserCount;
 
   private final Map<PipeIdentity, Integer> reservedTsFileParserCountByPipe = new HashMap<>();
   private final Map<PipeRegionIdentity, Integer> reservedTsFileParserCountByPipeRegion =
@@ -115,22 +117,25 @@ public class PipeMemoryManager {
   // 3. The sum of the memory proportion occupied by the tablet memory block and the tsfile memory
   // block does not exceed TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD
 
-  private double allowedMaxMemorySizeInBytesOfTabletsAndTsFiles() {
+  private double allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(
+      final long totalNonFloatingMemorySizeInBytes) {
     return (PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
             + PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold())
-        * getTotalNonFloatingMemorySizeInBytes();
+        * totalNonFloatingMemorySizeInBytes;
   }
 
-  private double allowedMaxMemorySizeInBytesOfTablets() {
+  private double allowedMaxMemorySizeInBytesOfTablets(
+      final long totalNonFloatingMemorySizeInBytes) {
     return (PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
             + PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() / 2)
-        * getTotalNonFloatingMemorySizeInBytes();
+        * totalNonFloatingMemorySizeInBytes;
   }
 
-  private double allowedMaxMemorySizeInBytesOfTsTiles() {
+  private double allowedMaxMemorySizeInBytesOfTsTiles(
+      final long totalNonFloatingMemorySizeInBytes) {
     return (PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
             + PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() / 2)
-        * getTotalNonFloatingMemorySizeInBytes();
+        * totalNonFloatingMemorySizeInBytes;
   }
 
   private static long getTsFileParserMemorySizeInBytes() {
@@ -142,39 +147,48 @@ public class PipeMemoryManager {
     return reservedTsFileParserCount * getTsFileParserMemorySizeInBytes();
   }
 
-  private boolean isEnough4TabletParsingWithReservedParserMemory(final long extraMemoryInBytes) {
+  private boolean isEnough4TabletParsingWithReservedParserMemory(
+      final long extraMemoryInBytes, final long totalNonFloatingMemorySizeInBytes) {
     final double tabletMemoryWithParserMemory =
         (double) usedMemorySizeInBytesOfTablets
             + getReservedTsFileParserMemorySizeInBytes()
             + extraMemoryInBytes;
     return tabletMemoryWithParserMemory + (double) usedMemorySizeInBytesOfTsFiles
-            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+            < EXCEED_PROTECT_THRESHOLD
+                * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
         && tabletMemoryWithParserMemory
-            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTablets();
+            < EXCEED_PROTECT_THRESHOLD
+                * allowedMaxMemorySizeInBytesOfTablets(totalNonFloatingMemorySizeInBytes);
   }
 
   private boolean isHardEnough4TabletParsingWithReservedParserMemory(
-      final long extraMemoryInBytes) {
+      final long extraMemoryInBytes, final long totalNonFloatingMemorySizeInBytes) {
     final double tabletMemoryWithParserMemory =
         (double) usedMemorySizeInBytesOfTablets
             + getReservedTsFileParserMemorySizeInBytes()
             + extraMemoryInBytes;
     return tabletMemoryWithParserMemory + (double) usedMemorySizeInBytesOfTsFiles
-            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
-        && tabletMemoryWithParserMemory < allowedMaxMemorySizeInBytesOfTablets();
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
+        && tabletMemoryWithParserMemory
+            < allowedMaxMemorySizeInBytesOfTablets(totalNonFloatingMemorySizeInBytes);
   }
 
   public boolean isEnough4TabletParsing() {
+    final long totalNonFloatingMemorySizeInBytes = getTotalNonFloatingMemorySizeInBytes();
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+            < EXCEED_PROTECT_THRESHOLD
+                * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
         && (double) usedMemorySizeInBytesOfTablets
-            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTablets();
+            < EXCEED_PROTECT_THRESHOLD
+                * allowedMaxMemorySizeInBytesOfTablets(totalNonFloatingMemorySizeInBytes);
   }
 
   private boolean isHardEnough4TabletParsing() {
+    final long totalNonFloatingMemorySizeInBytes = getTotalNonFloatingMemorySizeInBytes();
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
-        && (double) usedMemorySizeInBytesOfTablets < allowedMaxMemorySizeInBytesOfTablets();
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
+        && (double) usedMemorySizeInBytesOfTablets
+            < allowedMaxMemorySizeInBytesOfTablets(totalNonFloatingMemorySizeInBytes);
   }
 
   public synchronized boolean tryReserveTsFileParserMemory(
@@ -200,16 +214,24 @@ public class PipeMemoryManager {
         reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
     if (reservedTsFileParserCount >= globalLimit
         || reservedCountOfPipeRegion >= perPipeRegionLimit) {
+      PipeResourceMetrics.getInstance().recordTsFileParserAdmissionReject();
       notifyNextTsFileParserMemoryReservationInternal();
       return false;
     }
 
     final long parserMemorySizeInBytes = getTsFileParserMemorySizeInBytes();
+    // Reuse one live snapshot for both thresholds. The supplier traverses all pipe metadata, so
+    // repeatedly sampling it while holding this monitor amplifies contention with many pipes.
+    final long totalNonFloatingMemorySizeInBytes =
+        PIPE_MEMORY_MANAGEMENT_ENABLED ? getTotalNonFloatingMemorySizeInBytes() : 0;
     final boolean isSoftMemoryEnough =
         !PIPE_MEMORY_MANAGEMENT_ENABLED
-            || isEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes);
+            || isEnough4TabletParsingWithReservedParserMemory(
+                parserMemorySizeInBytes, totalNonFloatingMemorySizeInBytes);
     if (!isSoftMemoryEnough
-        && !isHardEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes)) {
+        && !isHardEnough4TabletParsingWithReservedParserMemory(
+            parserMemorySizeInBytes, totalNonFloatingMemorySizeInBytes)) {
+      PipeResourceMetrics.getInstance().recordTsFileParserAdmissionReject();
       return false;
     }
 
@@ -220,13 +242,17 @@ public class PipeMemoryManager {
     if (!pipeRegionIdentity.equals(nextPipeRegion)
         || requestsOfPipeRegion == null
         || !reservationKey.equals(requestsOfPipeRegion.iterator().next())) {
-      notifyNextTsFileParserMemoryReservationInternal();
+      PipeResourceMetrics.getInstance().recordTsFileParserAdmissionReject();
+      signalTsFileParserMemoryReservation(nextPipeRegion);
       return false;
     }
 
     removeTsFileParserReservationRequest(pipeRegionIdentity, reservationKey, true);
     if (wasRequestAlreadyWaiting) {
       lastAdmittedWaitingTsFileParserPipe = pipeIdentity;
+      PipeResourceMetrics.getInstance()
+          .recordTsFileParserAdmissionWait(
+              System.nanoTime() - reservationKey.waitingStartTimeInNanos);
     }
     reservedTsFileParserCount++;
     reservedTsFileParserCountByPipe.merge(pipeIdentity, 1, Integer::sum);
@@ -300,7 +326,12 @@ public class PipeMemoryManager {
               regionOrder.addLast(key);
               return new LinkedHashSet<>();
             });
-    return !requestsOfPipeRegion.add(reservationKey);
+    if (requestsOfPipeRegion.add(reservationKey)) {
+      waitingTsFileParserCount++;
+      reservationKey.waitingStartTimeInNanos = System.nanoTime();
+      return false;
+    }
+    return true;
   }
 
   public synchronized void notifyNextTsFileParserMemoryReservation() {
@@ -309,16 +340,20 @@ public class PipeMemoryManager {
 
   private void notifyNextTsFileParserMemoryReservationInternal() {
     final int globalLimit = Math.max(1, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNum());
-    if (reservedTsFileParserCount >= globalLimit) {
+    if (waitingTsFileParserPipeOrder.isEmpty() || reservedTsFileParserCount >= globalLimit) {
       return;
     }
 
     final long parserMemorySizeInBytes = getTsFileParserMemorySizeInBytes();
+    final long totalNonFloatingMemorySizeInBytes =
+        PIPE_MEMORY_MANAGEMENT_ENABLED ? getTotalNonFloatingMemorySizeInBytes() : 0;
     final boolean isSoftMemoryEnough =
         !PIPE_MEMORY_MANAGEMENT_ENABLED
-            || isEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes);
+            || isEnough4TabletParsingWithReservedParserMemory(
+                parserMemorySizeInBytes, totalNonFloatingMemorySizeInBytes);
     if (!isSoftMemoryEnough
-        && !isHardEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes)) {
+        && !isHardEnough4TabletParsingWithReservedParserMemory(
+            parserMemorySizeInBytes, totalNonFloatingMemorySizeInBytes)) {
       return;
     }
 
@@ -327,6 +362,10 @@ public class PipeMemoryManager {
             1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
     final PipeRegionIdentity nextPipeRegion =
         getNextEligibleTsFileParserPipeRegion(perPipeRegionLimit, !isSoftMemoryEnough);
+    signalTsFileParserMemoryReservation(nextPipeRegion);
+  }
+
+  private void signalTsFileParserMemoryReservation(final PipeRegionIdentity nextPipeRegion) {
     if (nextPipeRegion == null) {
       return;
     }
@@ -397,6 +436,7 @@ public class PipeMemoryManager {
     if (requestsOfPipeRegion == null || !requestsOfPipeRegion.remove(reservationKey)) {
       return;
     }
+    waitingTsFileParserCount--;
 
     final PipeIdentity pipeIdentity = pipeRegionIdentity.pipeIdentity;
     final ArrayDeque<PipeRegionIdentity> regionOrder =
@@ -430,6 +470,14 @@ public class PipeMemoryManager {
   public static final class TsFileParserMemoryReservation {
 
     private boolean isSignaled;
+    private volatile Runnable wakeUpCallback;
+    // Accessed only under the PipeMemoryManager monitor while this request is queued.
+    private long waitingStartTimeInNanos;
+
+    /** The callback must only wake the worker; it runs while the memory manager monitor is held. */
+    public void setWakeUpCallback(final Runnable wakeUpCallback) {
+      this.wakeUpCallback = wakeUpCallback;
+    }
 
     public synchronized void await(final long timeoutInMs) throws InterruptedException {
       if (!isSignaled) {
@@ -441,6 +489,10 @@ public class PipeMemoryManager {
     private synchronized void signal() {
       isSignaled = true;
       notify();
+      final Runnable callback = wakeUpCallback;
+      if (callback != null) {
+        callback.run();
+      }
     }
   }
 
@@ -461,7 +513,8 @@ public class PipeMemoryManager {
       return elapsedTimeInMs >= maxRetryTimeInMs;
     }
 
-    if (!isHardEnough4TabletParsingWithReservedParserMemory(0)) {
+    if (!isHardEnough4TabletParsingWithReservedParserMemory(
+        0, getTotalNonFloatingMemorySizeInBytes())) {
       return true;
     }
 
@@ -470,35 +523,44 @@ public class PipeMemoryManager {
   }
 
   public boolean isEnough4TsFileSlicing() {
+    final long totalNonFloatingMemorySizeInBytes = getTotalNonFloatingMemorySizeInBytes();
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+            < EXCEED_PROTECT_THRESHOLD
+                * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
         && (double) usedMemorySizeInBytesOfTsFiles
-            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTsTiles();
+            < EXCEED_PROTECT_THRESHOLD
+                * allowedMaxMemorySizeInBytesOfTsTiles(totalNonFloatingMemorySizeInBytes);
   }
 
   private boolean isHardEnough4TsFileSlicing() {
+    final long totalNonFloatingMemorySizeInBytes = getTotalNonFloatingMemorySizeInBytes();
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
-        && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
+        && (double) usedMemorySizeInBytesOfTsFiles
+            < allowedMaxMemorySizeInBytesOfTsTiles(totalNonFloatingMemorySizeInBytes);
   }
 
   private boolean isHardEnoughForResizing(
       final PipeMemoryBlock block, final long extraMemoryInBytes) {
+    if (!(block instanceof PipeTabletMemoryBlock) && !(block instanceof PipeTsFileMemoryBlock)) {
+      return true;
+    }
+    final long totalNonFloatingMemorySizeInBytes = getTotalNonFloatingMemorySizeInBytes();
     if (block instanceof PipeTabletMemoryBlock) {
       return (double) usedMemorySizeInBytesOfTablets
                   + (double) extraMemoryInBytes
                   + (double) usedMemorySizeInBytesOfTsFiles
-              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
           && (double) usedMemorySizeInBytesOfTablets + (double) extraMemoryInBytes
-              < allowedMaxMemorySizeInBytesOfTablets();
+              < allowedMaxMemorySizeInBytesOfTablets(totalNonFloatingMemorySizeInBytes);
     }
     if (block instanceof PipeTsFileMemoryBlock) {
       return (double) usedMemorySizeInBytesOfTablets
                   + (double) usedMemorySizeInBytesOfTsFiles
                   + (double) extraMemoryInBytes
-              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes)
           && (double) usedMemorySizeInBytesOfTsFiles + (double) extraMemoryInBytes
-              < allowedMaxMemorySizeInBytesOfTsTiles();
+              < allowedMaxMemorySizeInBytesOfTsTiles(totalNonFloatingMemorySizeInBytes);
     }
     return true;
   }
@@ -1072,6 +1134,14 @@ public class PipeMemoryManager {
 
   public long getUsedMemorySizeInBytesOfTsFiles() {
     return usedMemorySizeInBytesOfTsFiles;
+  }
+
+  public long getReservedTsFileParserCount() {
+    return reservedTsFileParserCount;
+  }
+
+  public long getWaitingTsFileParserCount() {
+    return waitingTsFileParserCount;
   }
 
   public long getFreeMemorySizeInBytes() {
