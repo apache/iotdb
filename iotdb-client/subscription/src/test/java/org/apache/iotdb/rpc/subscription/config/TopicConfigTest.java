@@ -49,6 +49,21 @@ public class TopicConfigTest {
     Assert.assertTrue(topicConfigWithMode(" INCREMENTAL ").isIncrementalMode());
   }
 
+  @Test
+  public void testRecycleUncommittedEventInterval() {
+    Assert.assertNull(new TopicConfig().getRecycleUncommittedEventIntervalMs());
+
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, " 120000 ");
+    Assert.assertEquals(
+        Long.valueOf(120000L), new TopicConfig(attributes).getRecycleUncommittedEventIntervalMs());
+
+    attributes.clear();
+    attributes.put("RECYCLE-UNCOMMITTED-EVENT-INTERVAL-MS", "300000");
+    Assert.assertEquals(
+        Long.valueOf(300000L), new TopicConfig(attributes).getRecycleUncommittedEventIntervalMs());
+  }
+
   @SuppressWarnings("deprecation")
   @Test
   public void testLegacyModeValues() {

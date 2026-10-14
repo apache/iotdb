@@ -306,6 +306,89 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
+  public void testAcceptRecycleUncommittedEventInterval() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final Map<String, String> initialAttributes = newInitialTableTopicAttributes();
+    initialAttributes.put(
+        TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, " 9223372036854775807 ");
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("initial_topic").setTopicAttributes(initialAttributes)));
+
+    final Map<String, String> incrementalAttributes = newIncrementalTableTopicAttributes();
+    incrementalAttributes.put("Recycle-Uncommitted-Event-Interval-Ms", "300000");
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("incremental_topic").setTopicAttributes(incrementalAttributes)));
+
+    for (final String format :
+        new String[] {
+          TopicConstant.FORMAT_TS_FILE_VALUE, TopicConstant.FORMAT_RECORD_HANDLER_VALUE
+        }) {
+      final Map<String, String> snapshotAttributes = new HashMap<>();
+      snapshotAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+      snapshotAttributes.put(TopicConstant.FORMAT_KEY, format);
+      snapshotAttributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1200000");
+      Assert.assertTrue(
+          subscriptionInfo.validateBeforeCreatingTopic(
+              new TCreateTopicReq("snapshot_topic").setTopicAttributes(snapshotAttributes)));
+    }
+  }
+
+  @Test
+  public void testRejectInvalidRecycleUncommittedEventInterval() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String value :
+        new String[] {"0", "-1", "not-a-number", "", " ", "1.5", "9223372036854775808", null}) {
+      final Map<String, String> attributes = newInitialTableTopicAttributes();
+      attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
+      assertCreateRejected(
+          subscriptionInfo, attributes, "expected a positive long value in milliseconds");
+    }
+  }
+
+  @Test
+  public void testAcceptAlteringRecycleUncommittedEventInterval() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String mode :
+        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_INCREMENTAL_VALUE}) {
+      final Map<String, String> attributes = newInitialTableTopicAttributes();
+      attributes.put(TopicConstant.MODE_KEY, mode);
+      attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1200000");
+      subscriptionInfo.createTopic(new CreateTopicPlan(new TopicMeta(mode, 1L, attributes)));
+
+      final Map<String, String> updatedAttributes = new HashMap<>(attributes);
+      updatedAttributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "300000");
+      subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta(mode, 1L, updatedAttributes));
+    }
+  }
+
+  @Test
+  public void testRejectAlteringInvalidRecycleUncommittedEventInterval() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    subscriptionInfo.createTopic(new CreateTopicPlan(new TopicMeta("table_topic", 1L, attributes)));
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "0");
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta("table_topic", 1L, attributes));
+      Assert.fail("Expected an invalid recycle interval to be rejected");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("expected a positive long value in milliseconds"));
+    }
+  }
+
+  @Test
+  public void testRejectDuplicateRecycleUncommittedEventIntervals() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1200000");
+    attributes.put("RECYCLE-UNCOMMITTED-EVENT-INTERVAL-MS", "300000");
+    assertCreateRejected(
+        subscriptionInfo, attributes, "duplicate recycle-uncommitted-event-interval-ms attributes");
+  }
+
+  @Test
   public void testRejectAlteringRetentionConfig() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
