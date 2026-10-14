@@ -50,11 +50,12 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluate() {
     firstColumnTransformer.tryEvaluate();
-    secondColumnTransformer.tryEvaluate();
-    thirdColumnTransformer.tryEvaluate();
     int positionCount = firstColumnTransformer.getColumnCachePositionCount();
     Column firstColumn = firstColumnTransformer.getColumn();
+    // A later child can clear shared caches; retain each column before evaluating its sibling.
+    secondColumnTransformer.tryEvaluate();
     Column secondColumn = secondColumnTransformer.getColumn();
+    thirdColumnTransformer.tryEvaluate();
     Column thirdColumn = thirdColumnTransformer.getColumn();
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
     doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount);
@@ -64,11 +65,11 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluateWithSelection(boolean[] selection) {
     firstColumnTransformer.evaluateWithSelection(selection);
-    secondColumnTransformer.evaluateWithSelection(selection);
-    thirdColumnTransformer.evaluateWithSelection(selection);
     int positionCount = firstColumnTransformer.getColumnCachePositionCount();
     Column firstColumn = firstColumnTransformer.getColumn();
+    secondColumnTransformer.evaluateWithSelection(selection);
     Column secondColumn = secondColumnTransformer.getColumn();
+    thirdColumnTransformer.evaluateWithSelection(selection);
     Column thirdColumn = thirdColumnTransformer.getColumn();
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
     doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount, selection);

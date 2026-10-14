@@ -45,6 +45,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.appendCommonExpressionColumns;
 import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
 public class DeviceAttributeUpdater extends DeviceUpdater {
@@ -152,13 +153,8 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     final List<Column> filterResultColumns =
         new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
 
-    // CASE evaluation can clear a common expression after the filter used it. Recompute it before
-    // materializing the column for projection within this same batch.
-    commonTransformerList.forEach(
-        columnTransformer -> {
-          columnTransformer.tryEvaluate();
-          filterResultColumns.add(columnTransformer.getColumn());
-        });
+    appendCommonExpressionColumns(
+        filterResultColumns, commonTransformerList, curFilterColumn, deviceSchemaBatch.size());
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
 
     final int rowCount =

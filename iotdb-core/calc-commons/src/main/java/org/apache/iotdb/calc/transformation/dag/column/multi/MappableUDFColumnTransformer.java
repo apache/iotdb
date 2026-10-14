@@ -44,30 +44,30 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluate() {
     // pull columns from previous transformers
-    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
-      inputColumnTransformer.tryEvaluate();
+    Column[] columns = new Column[inputColumnTransformers.length];
+    for (int i = 0; i < inputColumnTransformers.length; i++) {
+      inputColumnTransformers[i].tryEvaluate();
+      // A later child can clear shared caches; retain each column before evaluating its sibling.
+      columns[i] = inputColumnTransformers[i].getColumn();
     }
-    doTransform();
+    doTransform(columns);
   }
 
   @Override
   public void evaluateWithSelection(boolean[] selection) {
-    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
-      inputColumnTransformer.evaluateWithSelection(selection);
+    Column[] columns = new Column[inputColumnTransformers.length];
+    for (int i = 0; i < inputColumnTransformers.length; i++) {
+      inputColumnTransformers[i].evaluateWithSelection(selection);
+      columns[i] = inputColumnTransformers[i].getColumn();
     }
-    doTransform();
+    doTransform(columns);
     // clear cache
     for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
       inputColumnTransformer.clearCache();
     }
   }
 
-  private void doTransform() {
-    int size = inputColumnTransformers.length;
-    Column[] columns = new Column[size];
-    for (int i = 0; i < size; i++) {
-      columns[i] = inputColumnTransformers[i].getColumn();
-    }
+  private void doTransform(Column[] columns) {
     // construct input TsBlock with columns
     int positionCount = columns[0].getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);

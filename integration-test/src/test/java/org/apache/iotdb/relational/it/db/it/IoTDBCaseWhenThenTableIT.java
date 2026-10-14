@@ -725,6 +725,72 @@ public class IoTDBCaseWhenThenTableIT {
   }
 
   @Test
+  public void testCaseOperandsAndMultiArgumentFunctions() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_operands (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_operands(time, dev, x) VALUES (0, 'd0', 1.0), (1, 'd0', -2.0)"
+        });
+    String caseWhen = "CASE WHEN x > 0 THEN 2.0 ELSE 3.0 END";
+    String[] expressions = {
+      "x + " + caseWhen,
+      "CASE WHEN x > -100 THEN coalesce(x, 0.0) END",
+      "greatest(x, " + caseWhen + ")",
+      "CASE WHEN x BETWEEN -5.0 AND " + caseWhen + " THEN 1.0 ELSE 0.0 END",
+      "CASE WHEN x > -100 THEN CASE WHEN x BETWEEN -5.0 AND "
+          + caseWhen
+          + " THEN 1.0 ELSE 0.0 END END",
+      "coalesce(x, " + caseWhen + ")",
+      "CASE WHEN x > -100 THEN coalesce(x, " + caseWhen + ") END"
+    };
+    String[][] results = {
+      {"3.0,", "1.0,"},
+      {"1.0,", "-2.0,"},
+      {"2.0,", "3.0,"},
+      {"1.0,", "1.0,"},
+      {"1.0,", "1.0,"},
+      {"1.0,", "-2.0,"},
+      {"1.0,", "-2.0,"}
+    };
+    for (int i = 0; i < expressions.length; i++) {
+      tableResultSetEqualTest(
+          "SELECT " + expressions[i] + " AS result FROM case_operands ORDER BY time",
+          new String[] {"result"},
+          results[i],
+          DATABASE);
+    }
+    tableResultSetEqualTest(
+        "SELECT coalesce(x, 0.0) AS result FROM case_operands "
+            + "WHERE CASE WHEN coalesce(x, 0.0) > 0 THEN 1.0 ELSE 0.0 END > 0",
+        new String[] {"result"},
+        new String[] {"1.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testCommonCastRespectsCaseFilter() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE guarded_common_cast (dev STRING TAG, src STRING FIELD)",
+          "INSERT INTO guarded_common_cast(time, dev, src) VALUES "
+              + "(0, 'd0', 'n/a'), (1, 'd0', '5')"
+        });
+    String query =
+        "SELECT CAST(src AS INT32) + 1 AS result FROM guarded_common_cast "
+            + "WHERE CASE WHEN src <> 'n/a' THEN CAST(src AS INT32) > 10 ELSE false END";
+    tableResultSetEqualTest(query, new String[] {"result"}, new String[0], DATABASE);
+
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "INSERT INTO guarded_common_cast(time, dev, src) VALUES (2, 'd0', '50')"
+        });
+    tableResultSetEqualTest(query, new String[] {"result"}, new String[] {"51,"}, DATABASE);
+  }
+
+  @Test
   public void testReusingCasePreservesPendingSiblingColumn() {
     prepareTableData(
         new String[] {

@@ -66,20 +66,21 @@ public class IoTDBCaseDeviceCacheIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       createTable(statement, "predicate_cache");
-      String predicate = CASE_RESULT + " = src";
-      assertResultSetEqual(
-          statement.executeQuery("SHOW DEVICES FROM predicate_cache WHERE " + predicate),
-          "id,src,a,b,",
-          new HashSet<>(
-              Arrays.asList(
-                  "d0,match,null,null,",
-                  "d1,match,null,null,",
-                  "d2,other,null,null,",
-                  "d3,other,null,null,")));
-      assertResultSetEqual(
-          statement.executeQuery("COUNT DEVICES FROM predicate_cache WHERE " + predicate),
-          "count(devices),",
-          Collections.singleton("4,"));
+      for (String predicate : new String[] {CASE_RESULT + " = src", "src = " + CASE_RESULT}) {
+        assertResultSetEqual(
+            statement.executeQuery("SHOW DEVICES FROM predicate_cache WHERE " + predicate),
+            "id,src,a,b,",
+            new HashSet<>(
+                Arrays.asList(
+                    "d0,match,null,null,",
+                    "d1,match,null,null,",
+                    "d2,other,null,null,",
+                    "d3,other,null,null,")));
+        assertResultSetEqual(
+            statement.executeQuery("COUNT DEVICES FROM predicate_cache WHERE " + predicate),
+            "count(devices),",
+            Collections.singleton("4,"));
+      }
     }
   }
 
@@ -98,6 +99,18 @@ public class IoTDBCaseDeviceCacheIT {
                   "d1,match,match,match,",
                   "d2,other,other,other,",
                   "d3,other,other,other,")));
+      statement.execute(
+          "UPDATE projection_cache SET a = "
+              + "concat(src, CASE WHEN src = 'match' THEN '-m' ELSE '-o' END)");
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM projection_cache"),
+          "id,src,a,b,",
+          new HashSet<>(
+              Arrays.asList(
+                  "d0,match,match-m,match,",
+                  "d1,match,match-m,match,",
+                  "d2,other,other-o,other,",
+                  "d3,other,other-o,other,")));
     }
   }
 
@@ -107,17 +120,47 @@ public class IoTDBCaseDeviceCacheIT {
         Statement statement = connection.createStatement()) {
       createTable(statement, "common_cache");
       statement.execute(
-          "UPDATE common_cache SET a = src "
-              + "WHERE CASE WHEN src = 'match' THEN true ELSE false END");
+          "UPDATE common_cache SET a = upper(src) "
+              + "WHERE CASE WHEN upper(src) = 'MATCH' THEN true ELSE false END");
       assertResultSetEqual(
           statement.executeQuery("SHOW DEVICES FROM common_cache"),
           "id,src,a,b,",
           new HashSet<>(
               Arrays.asList(
-                  "d0,match,match,null,",
-                  "d1,match,match,null,",
+                  "d0,match,MATCH,null,",
+                  "d1,match,MATCH,null,",
                   "d2,other,null,null,",
                   "d3,other,null,null,")));
+    }
+  }
+
+  @Test
+  public void testGuardedCommonCastInAttributeUpdate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      statement.execute(
+          "CREATE TABLE guarded_cast "
+              + "(id STRING TAG, src STRING ATTRIBUTE, a STRING ATTRIBUTE, v DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO guarded_cast(time, id, src, a, v) VALUES "
+              + "(1, 'd0', 'n/a', 'seed', 1), (2, 'd1', '5', 'seed', 1)");
+      String update =
+          "UPDATE guarded_cast SET a = CAST(CAST(src AS INT32) + 1 AS STRING) "
+              + "WHERE CASE WHEN src <> 'n/a' THEN CAST(src AS INT32) > 10 ELSE false END";
+
+      statement.execute(update);
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM guarded_cast"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d0,n/a,seed,", "d1,5,seed,")));
+
+      statement.execute("UPDATE guarded_cast SET src = '50' WHERE id = 'd1'");
+      statement.execute(update);
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM guarded_cast"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d0,n/a,seed,", "d1,50,51,")));
     }
   }
 

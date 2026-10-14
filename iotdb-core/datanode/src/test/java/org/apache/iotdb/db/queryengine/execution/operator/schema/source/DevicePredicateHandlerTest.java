@@ -25,6 +25,7 @@ import org.apache.iotdb.calc.transformation.dag.column.binary.CompareEqualToColu
 import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.UpperColumnTransformer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -164,10 +165,10 @@ public class DevicePredicateHandlerTest {
   @Test
   public void testAttributeUpdaterRecomputesCommonExpressionClearedByCase() throws Exception {
     Graph filter = new Graph();
-    ColumnTransformer shared = filter.input(0);
+    ColumnTransformer shared = new UpperColumnTransformer(STRING, reference(filter.input(0)));
     ColumnTransformer predicate =
         filter.caseWhen(
-            filter.equal(shared, filter.constant("match")),
+            filter.equal(shared, filter.constant("MATCH")),
             filter.constant(true),
             filter.constant(false));
     Graph projection = new Graph();
@@ -183,7 +184,7 @@ public class DevicePredicateHandlerTest {
       updateBatch(updater, "match");
       updateBatch(updater, "other", "match");
       assertEquals(
-          Arrays.asList(Arrays.asList("match", "match"), Arrays.asList("match", "match")), updates);
+          Arrays.asList(Arrays.asList("match", "MATCH"), Arrays.asList("match", "MATCH")), updates);
     }
   }
 

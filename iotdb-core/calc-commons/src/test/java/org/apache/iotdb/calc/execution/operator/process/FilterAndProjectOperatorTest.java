@@ -27,34 +27,43 @@ import org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransfo
 import org.apache.iotdb.calc.transformation.dag.column.TableCaseWhenThenColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.NullColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.CoalesceColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.ternary.BetweenColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -167,6 +176,153 @@ public class FilterAndProjectOperatorTest {
   }
 
   @Test
+  public void testCommonCastOnlyEvaluatesRowsPassingCaseFilter() throws Exception {
+    for (boolean runLengthEncodedTime : new boolean[] {false, true}) {
+      Graph filter = new Graph();
+      ColumnTransformer input = filter.leaf(new IdentityColumnTransformer(STRING, 0));
+      ColumnTransformer invalid =
+          filter.leaf(
+              new ConstantColumnTransformer(
+                  STRING,
+                  new BinaryColumn(
+                      1,
+                      Optional.empty(),
+                      new Binary[] {new Binary("n/a", TSFileConfig.STRING_CHARSET)})));
+      ColumnTransformer guard =
+          new CompareNonEqualColumnTransformer(BOOLEAN, reference(input), reference(invalid));
+      ColumnTransformer common =
+          new CastFunctionColumnTransformer(INT32, reference(input), ZoneId.of("UTC"));
+      ColumnTransformer otherwise =
+          filter.leaf(
+              new ConstantColumnTransformer(
+                  BOOLEAN, new BooleanColumn(1, Optional.empty(), new boolean[] {false})));
+      ColumnTransformer predicate =
+          new TableCaseWhenThenColumnTransformer(
+              BOOLEAN,
+              Collections.singletonList(reference(guard)),
+              Collections.singletonList(reference(filter.greaterThan(common, 10))),
+              reference(otherwise));
+      IdentityColumnTransformer output = new IdentityColumnTransformer(INT32, 1);
+      reference(common);
+      try (Operator operator =
+          new FilterAndProjectOperator(
+              new TestOperatorContext(),
+              new ValuesOperator(
+                  new TestOperatorContext(),
+                  Arrays.asList(
+                      stringBlock(runLengthEncodedTime, "n/a", "5"),
+                      stringBlock(runLengthEncodedTime, "n/a", "50", "5"),
+                      stringBlock(runLengthEncodedTime, "n/a", "60"))),
+              Arrays.asList(TSDataType.STRING, TSDataType.INT32),
+              filter.leaves,
+              reference(predicate),
+              Collections.singletonList(common),
+              Collections.singletonList(output),
+              Collections.singletonList(reference(output)),
+              false,
+              true)) {
+        assertEquals(0, operator.next().getPositionCount());
+        TsBlock firstMatch = operator.next();
+        assertEquals(1, firstMatch.getPositionCount());
+        assertEquals(50, firstMatch.getColumn(0).getInt(0));
+        TsBlock secondMatch = operator.next();
+        assertEquals(1, secondMatch.getPositionCount());
+        assertEquals(60, secondMatch.getColumn(0).getInt(0));
+      }
+    }
+  }
+
+  @Test
+  public void testCommonMultiArgumentExpressionRespectsCaseFilter() throws Exception {
+    Graph filter = new Graph();
+    ColumnTransformer common =
+        new CoalesceColumnTransformer(
+            DOUBLE, Arrays.asList(reference(filter.input(0)), reference(filter.constant(0))));
+    ColumnTransformer caseWhen =
+        filter.caseWhen(filter.greaterThan(common, 0), filter.constant(1), filter.constant(0));
+    Graph projection = new Graph();
+    try (Operator operator =
+        operator(
+            new TsBlock[] {block(-2, 3), block(4, -5)},
+            filter,
+            filter.greaterThan(caseWhen, 0),
+            Collections.singletonList(common),
+            projection,
+            projection.input(1))) {
+      assertBlock(operator.next(), new Double[] {3.0});
+      assertBlock(operator.next(), new Double[] {4.0});
+    }
+  }
+
+  @Test
+  public void testBinaryPreservesSiblingColumnBeforeCase() throws Exception {
+    Graph graph = new Graph();
+    ColumnTransformer input = graph.input(0);
+    ColumnTransformer caseWhen =
+        graph.caseWhen(graph.greaterThan(input, 0), graph.constant(2), graph.constant(3));
+    try (Operator operator =
+        project(graph, new TsBlock[] {block(1, -2)}, graph.add(input, caseWhen))) {
+      assertBlock(operator.next(), new Double[] {3.0, 1.0});
+    }
+  }
+
+  @Test
+  public void testMultiArgumentFunctionPreservesSiblingColumnBeforeCase() throws Exception {
+    for (boolean selected : new boolean[] {false, true}) {
+      Graph graph = new Graph();
+      ColumnTransformer input = graph.input(0);
+      ColumnTransformer caseWhen =
+          graph.caseWhen(graph.greaterThan(input, 0), graph.constant(2), graph.constant(3));
+      ColumnTransformer output =
+          new CoalesceColumnTransformer(
+              DOUBLE, Arrays.asList(reference(input), reference(caseWhen)));
+      if (selected) {
+        output = graph.caseWhen(graph.greaterThan(graph.constant(1), 0), output, graph.nullValue());
+      }
+      try (Operator operator = project(graph, new TsBlock[] {block(1, -2)}, output)) {
+        assertBlock(operator.next(), new Double[] {1.0, -2.0});
+      }
+    }
+  }
+
+  @Test
+  public void testTernaryPreservesSiblingColumnsBeforeCase() throws Exception {
+    for (boolean selected : new boolean[] {false, true}) {
+      Graph graph = new Graph();
+      ColumnTransformer input = graph.input(0);
+      ColumnTransformer caseWhen =
+          graph.caseWhen(graph.greaterThan(input, 0), graph.constant(2), graph.constant(3));
+      ColumnTransformer between =
+          new BetweenColumnTransformer(
+              BOOLEAN, reference(input), reference(graph.constant(-5)), reference(caseWhen), false);
+      ColumnTransformer output = graph.caseWhen(between, graph.constant(1), graph.constant(0));
+      if (selected) {
+        output = graph.caseWhen(graph.greaterThan(graph.constant(1), 0), output, graph.nullValue());
+      }
+      try (Operator operator = project(graph, new TsBlock[] {block(1, -2)}, output)) {
+        assertBlock(operator.next(), new Double[] {1.0, 1.0});
+      }
+    }
+  }
+
+  @Test
+  public void testMappableUdfPreservesSiblingColumnsBeforeCase() throws Exception {
+    for (boolean selected : new boolean[] {false, true}) {
+      Graph graph = new Graph();
+      ColumnTransformer input = graph.input(0);
+      ColumnTransformer caseWhen =
+          graph.caseWhen(graph.greaterThan(input, 0), graph.constant(2), graph.constant(3));
+      ColumnTransformer output = sumUdf(input, caseWhen);
+      if (selected) {
+        output = graph.caseWhen(graph.greaterThan(graph.constant(1), 0), output, graph.nullValue());
+      }
+      try (Operator operator = project(graph, new TsBlock[] {block(1, -2)}, output)) {
+        assertBlock(operator.next(), new Double[] {3.0, 1.0});
+      }
+    }
+  }
+
+  @Test
   public void testProjectionClearsCachedDescendantsOfNestedCase() throws Exception {
     Graph graph = new Graph();
     ColumnTransformer shared = graph.add(graph.input(0), 0);
@@ -233,7 +389,8 @@ public class FilterAndProjectOperatorTest {
     try (FilterAndProjectOperator original = project(graph, new TsBlock[0], graph.add(input, 1));
         FilterAndProjectOperator copy =
             new FilterAndProjectOperator(
-                original, new TsBlockSourceOperator(new TsBlock[] {block(1), block(2)}))) {
+                original,
+                new ValuesOperator(new TestOperatorContext(), Arrays.asList(block(1), block(2))))) {
       assertEquals(1, input.childTraversalCount);
       assertBlock(copy.next(), new Double[] {2.0});
       assertBlock(copy.next(), new Double[] {3.0});
@@ -293,29 +450,32 @@ public class FilterAndProjectOperatorTest {
     ColumnTransformer input = graph.input(0);
     ColumnTransformer caseWhen =
         graph.caseWhen(graph.greaterThan(input, 0), graph.constant(1), graph.constant(0));
-    ColumnTransformer udf =
-        new MappableUDFColumnTransformer(
-            DOUBLE,
-            new ColumnTransformer[] {reference(caseWhen), reference(input)},
-            new UDTFExecutor("test", ZoneId.of("UTC")) {
-              @Override
-              public void execute(Column[] columns, ColumnBuilder builder) {
-                for (int i = 0; i < columns[0].getPositionCount(); i++) {
-                  builder.writeDouble(columns[0].getDouble(i) + columns[1].getDouble(i));
-                }
-              }
-
-              @Override
-              public void beforeDestroy() {
-                // No UDF resources are allocated by this test executor.
-              }
-            });
+    ColumnTransformer udf = sumUdf(caseWhen, input);
     try (Operator operator =
         project(graph, new TsBlock[] {block(1), block(-2, 3), block(4)}, udf)) {
       assertBlock(operator.next(), new Double[] {2.0});
       assertBlock(operator.next(), new Double[] {-2.0, 4.0});
       assertBlock(operator.next(), new Double[] {5.0});
     }
+  }
+
+  private static ColumnTransformer sumUdf(ColumnTransformer left, ColumnTransformer right) {
+    return new MappableUDFColumnTransformer(
+        DOUBLE,
+        new ColumnTransformer[] {reference(left), reference(right)},
+        new UDTFExecutor("test", ZoneId.of("UTC")) {
+          @Override
+          public void execute(Column[] columns, ColumnBuilder builder) {
+            for (int i = 0; i < columns[0].getPositionCount(); i++) {
+              builder.writeDouble(columns[0].getDouble(i) + columns[1].getDouble(i));
+            }
+          }
+
+          @Override
+          public void beforeDestroy() {
+            // No UDF resources are allocated by this test executor.
+          }
+        });
   }
 
   @Test
@@ -360,7 +520,7 @@ public class FilterAndProjectOperatorTest {
     }
     return new FilterAndProjectOperator(
         new TestOperatorContext(),
-        new TsBlockSourceOperator(blocks),
+        new ValuesOperator(new TestOperatorContext(), Arrays.asList(blocks)),
         Collections.nCopies(1 + common.size(), TSDataType.DOUBLE),
         filter == null ? Collections.emptyList() : filter.leaves,
         predicate == null ? null : reference(predicate),
@@ -382,6 +542,16 @@ public class FilterAndProjectOperatorTest {
 
   private static TsBlock block(double... values) {
     return block(false, values);
+  }
+
+  private static TsBlock stringBlock(boolean runLengthEncodedTime, String... values) {
+    Binary[] binaries =
+        Arrays.stream(values)
+            .map(value -> new Binary(value, TSFileConfig.STRING_CHARSET))
+            .toArray(Binary[]::new);
+    return new TsBlock(
+        block(runLengthEncodedTime, new double[values.length]).getTimeColumn(),
+        new BinaryColumn(values.length, Optional.empty(), binaries));
   }
 
   private static TsBlock block(boolean runLengthEncodedTime, double... values) {
@@ -490,60 +660,6 @@ public class FilterAndProjectOperatorTest {
 
     @Override
     public int getPipelineId() {
-      return 0;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return 0;
-    }
-  }
-
-  private static class TsBlockSourceOperator implements Operator {
-    private final Iterator<TsBlock> blocks;
-    private final CommonOperatorContext context = new TestOperatorContext();
-
-    private TsBlockSourceOperator(TsBlock[] blocks) {
-      this.blocks = Arrays.asList(blocks).iterator();
-    }
-
-    @Override
-    public CommonOperatorContext getOperatorContext() {
-      return context;
-    }
-
-    @Override
-    public TsBlock next() {
-      return blocks.next();
-    }
-
-    @Override
-    public boolean hasNext() {
-      return blocks.hasNext();
-    }
-
-    @Override
-    public boolean isFinished() {
-      return !hasNext();
-    }
-
-    @Override
-    public void close() {
-      // No resources to release.
-    }
-
-    @Override
-    public long calculateMaxPeekMemory() {
-      return 0;
-    }
-
-    @Override
-    public long calculateMaxReturnSize() {
-      return 0;
-    }
-
-    @Override
-    public long calculateRetainedSizeAfterCallingNext() {
       return 0;
     }
 

@@ -189,13 +189,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
 
     if (!hasNonMappableUDF) {
-      // get result of calculated common sub expressions
-      for (ColumnTransformer columnTransformer : commonTransformerList) {
-        // CASE evaluation can clear a common expression after the filter used it. Recompute it
-        // before materializing the column for projection within this same input block.
-        columnTransformer.tryEvaluate();
-        resultColumns.add(columnTransformer.getColumn());
-      }
+      appendCommonExpressionColumns(
+          resultColumns, commonTransformerList, filterColumn, positionCount);
     }
 
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
@@ -219,6 +214,28 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
       filterTsBlockBuilder.declarePositions(rowCount);
       return filterTsBlockBuilder.build();
+    }
+  }
+
+  /**
+   * Materializes common expressions for projection after filtering. CASE may have invalidated their
+   * caches, so any recomputation must preserve the filter mask and skip rejected input rows.
+   */
+  public static void appendCommonExpressionColumns(
+      List<Column> resultColumns,
+      List<ColumnTransformer> commonTransformers,
+      Column filterColumn,
+      int positionCount) {
+    if (commonTransformers.isEmpty()) {
+      return;
+    }
+    boolean[] selection = new boolean[positionCount];
+    for (int i = 0; i < positionCount; i++) {
+      selection[i] = satisfy(filterColumn, i);
+    }
+    for (ColumnTransformer transformer : commonTransformers) {
+      transformer.tryEvaluateWithSelection(selection);
+      resultColumns.add(transformer.getColumn());
     }
   }
 

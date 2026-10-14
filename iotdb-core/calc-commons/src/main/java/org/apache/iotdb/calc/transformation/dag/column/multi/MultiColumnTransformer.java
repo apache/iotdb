@@ -28,7 +28,6 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public abstract class MultiColumnTransformer extends ColumnTransformer {
 
@@ -43,20 +42,17 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluate() {
 
+    List<Column> childrenColumns = new ArrayList<>(columnTransformerList.size());
     for (ColumnTransformer child : columnTransformerList) {
       child.tryEvaluate();
+      // A later child can clear shared caches; retain each column before evaluating its sibling.
+      childrenColumns.add(child.getColumn());
     }
 
-    // attention: get positionCount before calling getColumn
-    int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
+    int positionCount = childrenColumns.get(0).getPositionCount();
 
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-    doTransform(
-        columnTransformerList.stream()
-            .map(ColumnTransformer::getColumn)
-            .collect(Collectors.toList()),
-        builder,
-        positionCount);
+    doTransform(childrenColumns, builder, positionCount);
     initializeColumnCache(builder.build());
   }
 
@@ -69,7 +65,8 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
       childrenColumns.add(child.getColumn());
     }
 
-    int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
+    // getColumn() can release the first child's cache; read the retained column's size instead.
+    int positionCount = childrenColumns.get(0).getPositionCount();
 
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     doTransform(childrenColumns, builder, positionCount, selection);

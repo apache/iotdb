@@ -54,6 +54,13 @@ public abstract class ColumnTransformer {
     }
   }
 
+  /** Reuses the cached column, or evaluates with the selection if it was invalidated. */
+  public void tryEvaluateWithSelection(boolean[] selection) {
+    if (!columnCache.hasCached()) {
+      evaluateWithSelection(selection);
+    }
+  }
+
   public Column getColumn() {
     return columnCache.getColumn();
   }
@@ -123,7 +130,7 @@ public abstract class ColumnTransformer {
    * Clears caches during evaluation. Subclasses should define child edges via {@link
    * #forEachChild(Consumer)} instead of overriding this method.
    *
-   * <p>This legacy entry point remains non-final for compatibility with existing test doubles.
+   * <p>Kept non-final so existing Mockito-based tests can stub it.
    */
   public void clearCache() {
     this.columnCache.clear();
