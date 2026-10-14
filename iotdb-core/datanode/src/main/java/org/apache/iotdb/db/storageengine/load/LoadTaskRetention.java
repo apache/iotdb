@@ -137,7 +137,8 @@ final class LoadTaskRetention {
     }
 
     LoadTsFileCleaner.getInstance().start();
-    LoadTsFileCleaner.getInstance().sweep();
+    // Only the registered tasks can become releasable here; the disk is swept on its own period.
+    LoadTsFileCleaner.getInstance().sweepRegisteredTasks();
   }
 
   private void dispatchToCleaner(final String loadId, final RetainedTaskDir retained) {

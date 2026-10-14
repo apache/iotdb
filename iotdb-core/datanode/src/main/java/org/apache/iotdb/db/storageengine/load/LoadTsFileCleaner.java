@@ -137,18 +137,27 @@ public class LoadTsFileCleaner {
 
   /** Sweeps both in-memory registered tasks and unmanaged disk staging directories. */
   public void sweep() {
-    // 1. Clean registered memory-tracked tasks
+    sweepRegisteredTasks();
+
+    // Discover and sweep unmanaged directories left behind by unexpected crashes, forgetting the
+    // ones that are gone whatever removed them.
+    unmanagedTaskDirFirstSeenMillis.keySet().removeIf(path -> !new File(path).exists());
+    scanRegions();
+  }
+
+  /**
+   * Releases the registered tasks whose watermark has been reached. The watermark moves far more
+   * often than the sweep period, and only the tasks it can release are in memory, so this is the
+   * part the release path runs: walking every staged directory of every region for it would cost a
+   * scan per advance to learn nothing.
+   */
+  public void sweepRegisteredTasks() {
     for (final Map.Entry<String, RetainedTask> entry : loadId2RetainedTask.entrySet()) {
       final RetainedTask retainedTask = entry.getValue();
       if (canDelete(retainedTask) && loadId2RetainedTask.remove(entry.getKey(), retainedTask)) {
         delete(retainedTask);
       }
     }
-
-    // 2. Discover and sweep unmanaged directories left behind by unexpected crashes, forgetting the
-    // ones that are gone whatever removed them
-    unmanagedTaskDirFirstSeenMillis.keySet().removeIf(path -> !new File(path).exists());
-    scanRegions();
   }
 
   private void scanRegions() {
@@ -172,6 +181,16 @@ public class LoadTsFileCleaner {
 
         for (final File taskDir : taskDirs) {
           if (!taskDir.isDirectory() || loadId2RetainedTask.containsKey(taskDir.getName())) {
+            continue;
+          }
+
+          // A task the region still holds is in progress: the command path and the terminal path
+          // own it, and reading its records here would open every progress file of the directory on
+          // every scan to learn nothing. The idle timeout is still applied to it.
+          final long recordedCommandTimeMillis =
+              recordedCommandTimeMillis(dataRegion, taskDir.getName());
+          if (recordedCommandTimeMillis >= 0L) {
+            reclaimIfIdle(dataRegion, taskDir.getName(), taskDir, recordedCommandTimeMillis);
             continue;
           }
 
