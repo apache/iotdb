@@ -397,14 +397,11 @@ public class LoadTsFileManager {
                   dataRegion.getDatabaseName(),
                   dataRegion.getDataRegionIdString()),
               loadId);
-      final File[] files = taskDir.listFiles();
+      final File[] files = taskDir.listFiles(LoadTsFileProgress.PROGRESS_FILE_FILTER);
       if (files == null) {
         continue;
       }
       for (final File file : files) {
-        if (!file.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
-          continue;
-        }
         try {
           final LoadTsFileProgress.TerminalRecord terminal = LoadTsFileProgress.readTerminal(file);
           if (terminal != null && terminal.op() == LoadTsFileConsensusOp.COMMIT) {

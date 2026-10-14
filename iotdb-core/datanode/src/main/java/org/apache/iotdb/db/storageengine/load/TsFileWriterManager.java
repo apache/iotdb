@@ -607,16 +607,12 @@ final class TsFileWriterManager {
    * writers.
    */
   TsFileWriterManager recoverFromDisk() throws IOException {
-    final File[] files = taskDir.listFiles();
+    final File[] files = taskDir.listFiles(LoadTsFileProgress.PROGRESS_FILE_FILTER);
     if (files == null) {
       return this;
     }
 
     for (final File progressFile : files) {
-      if (!progressFile.getName().endsWith(LoadTsFileProgress.PROGRESS_SUFFIX)) {
-        continue;
-      }
-
       final String progressName = progressFile.getName();
       final File tsFile =
           new File(

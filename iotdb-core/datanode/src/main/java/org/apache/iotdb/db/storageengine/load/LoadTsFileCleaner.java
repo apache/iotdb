@@ -306,18 +306,17 @@ public class LoadTsFileCleaner {
 
   /** The largest consensus index recorded in the directory, or -1 when it holds no record. */
   static long lastRecordedSearchIndex(final File taskDir) throws IOException {
-    final File[] files = taskDir.listFiles();
+    final File[] files = taskDir.listFiles(LoadTsFileProgress.PROGRESS_FILE_FILTER);
     if (files == null) {
       return -1L;
     }
     long lastSearchIndex = -1L;
     for (final File file : files) {
       final String name = file.getName();
-      final int progressSuffixAt = name.lastIndexOf(LoadTsFileProgress.PROGRESS_SUFFIX);
-      if (progressSuffixAt < 0) {
-        continue;
-      }
-      final File tsFile = new File(file.getParentFile(), name.substring(0, progressSuffixAt));
+      final File tsFile =
+          new File(
+              file.getParentFile(),
+              name.substring(0, name.length() - LoadTsFileProgress.PROGRESS_SUFFIX.length()));
       final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
       progress.readAllRecords();
       lastSearchIndex = Math.max(lastSearchIndex, progress.getLastRecordedSearchIndex());
@@ -327,19 +326,17 @@ public class LoadTsFileCleaner {
 
   /** Verifies that every staged TsFile in the directory has no missing chunks. */
   private static boolean isComplete(final File taskDir) {
-    final File[] files = taskDir.listFiles();
+    final File[] files = taskDir.listFiles(LoadTsFileProgress.PROGRESS_FILE_FILTER);
     if (files == null) {
       return false;
     }
 
     for (final File file : files) {
       final String name = file.getName();
-      final int progressSuffixAt = name.lastIndexOf(LoadTsFileProgress.PROGRESS_SUFFIX);
-      if (progressSuffixAt < 0) {
-        continue;
-      }
-
-      final File tsFile = new File(file.getParentFile(), name.substring(0, progressSuffixAt));
+      final File tsFile =
+          new File(
+              file.getParentFile(),
+              name.substring(0, name.length() - LoadTsFileProgress.PROGRESS_SUFFIX.length()));
       try {
         if (!new LoadTsFileProgress(tsFile).isReady(tsFile.length())) {
           return false;

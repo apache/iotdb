@@ -42,6 +42,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -71,6 +72,14 @@ public class LoadTsFileProgress {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileProgress.class);
 
   public static final String PROGRESS_SUFFIX = ".progress";
+
+  /**
+   * The progress files of a staged directory, for {@link File#listFiles(FilenameFilter)}: a name it
+   * rejects never becomes a {@link File}.
+   */
+  public static final FilenameFilter PROGRESS_FILE_FILTER =
+      (dir, name) -> name.endsWith(PROGRESS_SUFFIX);
+
   private static final String MAGIC = "LTPROG1";
 
   // Unified Version 1 entry markers
@@ -482,14 +491,11 @@ public class LoadTsFileProgress {
    * files holds one. A progress file that cannot be read is skipped: the others still tell.
    */
   public static TerminalRecord readTerminalOfTaskDir(final File taskDir) {
-    final File[] files = taskDir.listFiles();
+    final File[] files = taskDir.listFiles(PROGRESS_FILE_FILTER);
     if (files == null) {
       return null;
     }
     for (final File file : files) {
-      if (!file.getName().endsWith(PROGRESS_SUFFIX)) {
-        continue;
-      }
       try {
         final TerminalRecord terminal = readTerminal(file);
         if (terminal != null) {
