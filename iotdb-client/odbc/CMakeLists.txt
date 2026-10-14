@@ -115,8 +115,15 @@ install(FILES "${odbc_json_SOURCE_DIR}/LICENSE.MIT" DESTINATION licenses RENAME 
 install(DIRECTORY ../client-cpp/src/assembly/package-metadata/third_party/ DESTINATION licenses/sdk)
 install(FILES ../../LICENSE ../../NOTICE DESTINATION .)
 install(DIRECTORY licenses/ DESTINATION licenses)
-execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+get_filename_component(ODBC_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." REALPATH)
+# Container builds read the host checkout as root. Trust only this configured
+# source repository for the provenance query, without changing global Git policy.
+execute_process(COMMAND git -c "safe.directory=${ODBC_REPOSITORY_ROOT}" rev-parse HEAD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     OUTPUT_VARIABLE ODBC_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT ODBC_COMMIT)
+    set(ODBC_COMMIT "unknown")
+endif()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/BUILD-INFO.txt"
     "version=${ODBC_PACKAGE_VERSION}\ncommit=${ODBC_COMMIT}\n"
     "platform=${ODBC_PACKAGE_CLASSIFIER}\ncompiler=${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\n"
