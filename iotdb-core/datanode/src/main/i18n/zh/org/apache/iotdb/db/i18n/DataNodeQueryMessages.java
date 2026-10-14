@@ -4697,4 +4697,6 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
 
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "PlanNode %s 已注册到内存侧 %s，不能注册到 %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "查询 %s、Fragment %s、PlanNode %s 尚未注册内存账目";
 }

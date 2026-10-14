@@ -66,9 +66,10 @@ public class SourceHandleTest {
   public static void beforeClass() {
     maxBytesPerFI =
         IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    // INPUT receives half of the fragment budget, allowing five buffered blocks.
     IoTDBDescriptor.getInstance()
         .getMemoryConfig()
-        .setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
+        .setMaxBytesPerFragmentInstance(10 * MOCK_TSBLOCK_SIZE);
   }
 
   @AfterClass
