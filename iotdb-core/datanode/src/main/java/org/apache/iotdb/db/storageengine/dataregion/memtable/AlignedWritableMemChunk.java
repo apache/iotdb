@@ -75,7 +75,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   private AlignedTVList list;
   private List<AlignedTVList> sortedList;
   private long sortedRowCount = 0;
-  private final boolean ignoreAllNullRows;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
@@ -84,14 +83,12 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private EncryptParameter encryptParameter;
 
-  public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, boolean isTableModel) {
-    this(schemaList, isTableModel, EncryptUtils.getEncryptParameter());
+  public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
+    this(schemaList, EncryptUtils.getEncryptParameter());
   }
 
   public AlignedWritableMemChunk(
-      List<IMeasurementSchema> schemaList,
-      boolean isTableModel,
-      EncryptParameter encryptParameter) {
+      List<IMeasurementSchema> schemaList, EncryptParameter encryptParameter) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.dataTypes = new ArrayList<>();
     this.schemaList = schemaList;
@@ -101,20 +98,15 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
     this.list = AlignedTVList.newAlignedList(dataTypes);
     this.sortedList = new ArrayList<>();
-    this.ignoreAllNullRows = !isTableModel;
     this.encryptParameter = encryptParameter;
   }
 
-  private AlignedWritableMemChunk(
-      List<IMeasurementSchema> schemaList, AlignedTVList list, boolean isTableModel) {
-    this(schemaList, list, isTableModel, EncryptUtils.getEncryptParameter());
+  private AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, AlignedTVList list) {
+    this(schemaList, list, EncryptUtils.getEncryptParameter());
   }
 
   private AlignedWritableMemChunk(
-      List<IMeasurementSchema> schemaList,
-      AlignedTVList list,
-      boolean isTableModel,
-      EncryptParameter encryptParameter) {
+      List<IMeasurementSchema> schemaList, AlignedTVList list, EncryptParameter encryptParameter) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
@@ -123,7 +115,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     this.list = list;
     this.dataTypes = list.getTsDataTypes();
     this.sortedList = new ArrayList<>();
-    this.ignoreAllNullRows = !isTableModel;
     this.encryptParameter = encryptParameter;
   }
 
@@ -476,7 +467,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public long count() {
+  public long count(boolean ignoreAllNullRows) {
     if (!ignoreAllNullRows && measurementIndexMap.isEmpty()) {
       return rowCount();
     }
@@ -498,8 +489,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public long getMaxTime() {
-    if (isEmpty()) {
+  public long getMaxTime(boolean ignoreAllNullRows) {
+    if (isEmpty(ignoreAllNullRows)) {
       return Long.MIN_VALUE;
     }
     long maxTime = list.getMaxTime();
@@ -593,7 +584,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   public void encodeWorkingAlignedTVList(
       BlockingQueue<Object> ioTaskQueue,
       long maxNumberOfPointsInChunk,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      boolean ignoreAllNullRows) {
     List<IMeasurementSchema> activeSchemaList = getActiveSchemaList();
     if (activeSchemaList.isEmpty() && ignoreAllNullRows) {
       return;
@@ -1076,7 +1068,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public void encode(BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
+  public void encode(
+      BlockingQueue<Object> ioTaskQueue,
+      BatchEncodeInfo encodeInfo,
+      long[] times,
+      boolean ignoreAllNullRows) {
     encodeInfo.maxNumberOfPointsInChunk =
         Math.min(
             encodeInfo.maxNumberOfPointsInChunk,
@@ -1084,7 +1080,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(
-          ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.maxNumberOfPointsInPage);
+          ioTaskQueue,
+          encodeInfo.maxNumberOfPointsInChunk,
+          encodeInfo.maxNumberOfPointsInPage,
+          ignoreAllNullRows);
       return;
     }
 
@@ -1162,15 +1161,15 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public long getLastPoint() {
+  public long getLastPoint(boolean ignoreAllNullRows) {
     if (rowCount() == 0) {
       return Long.MIN_VALUE;
     }
-    return getMaxTime();
+    return getMaxTime(ignoreAllNullRows);
   }
 
   @Override
-  public boolean isEmpty() {
+  public boolean isEmpty(boolean ignoreAllNullRows) {
     if (rowCount() == 0) {
       return true;
     }
@@ -1226,8 +1225,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     list.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunk deserialize(DataInputStream stream, boolean isTableModel)
-      throws IOException {
+  public static AlignedWritableMemChunk deserialize(DataInputStream stream) throws IOException {
     int schemaListSize = stream.readInt();
     List<IMeasurementSchema> schemaList = new ArrayList<>(schemaListSize);
     for (int i = 0; i < schemaListSize; i++) {
@@ -1241,13 +1239,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       sortedList.add(tvList);
     }
     AlignedTVList list = AlignedTVList.deserialize(stream);
-    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemaList, list, isTableModel);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemaList, list);
     chunk.sortedList = sortedList;
     return chunk;
   }
 
-  public static AlignedWritableMemChunk deserializeSingleTVListMemChunks(
-      DataInputStream stream, boolean isTableModel) throws IOException {
+  public static AlignedWritableMemChunk deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
     int schemaListSize = stream.readInt();
     List<IMeasurementSchema> schemaList = new ArrayList<>(schemaListSize);
     for (int i = 0; i < schemaListSize; i++) {
@@ -1256,7 +1254,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
 
     AlignedTVList list = AlignedTVList.deserialize(stream);
-    return new AlignedWritableMemChunk(schemaList, list, isTableModel);
+    return new AlignedWritableMemChunk(schemaList, list);
   }
 
   public List<IMeasurementSchema> getSchemaList() {
