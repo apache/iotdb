@@ -2938,7 +2938,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
    * tell which devices use it.
    */
   private Map<PartialPath, List<Pair<String, TSDataType>>> collectDevicesUsingExtendedTemplate(
-      final Template oldTemplate, final Template newTemplate) throws MetadataException {
+      final Template oldTemplate, final Template newTemplate) throws Exception {
     final List<Pair<String, TSDataType>> extendedMeasurements =
         newTemplate.getSchemaMap().values().stream()
             .filter(
@@ -2964,7 +2964,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (!setPathString.startsWith(schemaRegion.getDatabaseFullPath())) {
           continue;
         }
-        final ISchemaReader<IDeviceSchemaInfo> deviceReader =
+        try (final ISchemaReader<IDeviceSchemaInfo> deviceReader =
             schemaRegion.getDeviceReader(
                 SchemaRegionReadPlanFactory.getShowDevicesPlan(
                     setPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
@@ -2972,11 +2972,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     0,
                     false,
                     newTemplate.getId(),
-                    SchemaConstant.ALL_MATCH_SCOPE));
-        while (deviceReader.hasNext()) {
-          device2Measurements
-              .computeIfAbsent(deviceReader.next().getPartialPath(), device -> new ArrayList<>())
-              .addAll(extendedMeasurements);
+                    SchemaConstant.ALL_MATCH_SCOPE))) {
+          while (deviceReader.hasNext()) {
+            device2Measurements
+                .computeIfAbsent(deviceReader.next().getPartialPath(), device -> new ArrayList<>())
+                .addAll(extendedMeasurements);
+          }
         }
       }
     }
