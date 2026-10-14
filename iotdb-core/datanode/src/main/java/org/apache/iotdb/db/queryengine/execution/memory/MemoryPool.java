@@ -365,10 +365,15 @@ public class MemoryPool {
           DataNodeQueryMessages.BLOCKED_RESERVE_REQUEST_ARG_BYTES_MEMORY_FOR_PLANNODEIDARG,
           bytesToReserve,
           planNodeId);
-      ListenableFuture<Void> result =
+      MemoryReservationFuture<Void> result =
           MemoryReservationFuture.create(
               queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
-      memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
+      memoryReservationFutures.add(result);
+      // A concurrent free may have missed this request before it was published. Retry after
+      // publication, under the same future lock used by free and tryCancel to avoid charging twice.
+      if (tryCompleteReservation(result)) {
+        memoryReservationFutures.remove(result);
+      }
       return new MemoryReservationResult(result, false, bytesToReserve);
     }
   }
@@ -463,24 +468,32 @@ public class MemoryPool {
     Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
     while (iterator.hasNext()) {
       MemoryReservationFuture<Void> future = iterator.next();
-      synchronized (future) {
-        if (future.isCancelled() || future.isDone()) {
-          iterator.remove();
-          continue;
-        }
-        long bytesToReserve = future.getBytesToReserve();
-        String curQueryId = future.getQueryId();
-        String curFragmentInstanceId = future.getFragmentInstanceId();
-        String curPlanNodeId = future.getPlanNodeId();
-        long maxBytesCanReserve = future.getMaxBytesCanReserve();
-        if (tryReserve(
-            curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve, maxBytesCanReserve)) {
-          future.set(null);
-          iterator.remove();
-        } else {
-          rollbackReserve(curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve);
-        }
+      if (tryCompleteReservation(future)) {
+        iterator.remove();
       }
+    }
+  }
+
+  private boolean tryCompleteReservation(MemoryReservationFuture<Void> future) {
+    synchronized (future) {
+      if (future.isDone()) {
+        return true;
+      }
+      long bytesToReserve = future.getBytesToReserve();
+      String queryId = future.getQueryId();
+      String fragmentInstanceId = future.getFragmentInstanceId();
+      String planNodeId = future.getPlanNodeId();
+      if (tryReserve(
+          queryId,
+          fragmentInstanceId,
+          planNodeId,
+          bytesToReserve,
+          future.getMaxBytesCanReserve())) {
+        future.set(null);
+        return true;
+      }
+      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
+      return false;
     }
   }
 

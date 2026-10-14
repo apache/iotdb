@@ -32,8 +32,15 @@ import org.mockito.Mockito;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
 
@@ -582,12 +589,11 @@ public class MemoryPoolTest {
 
   @Test
   public void testConcurrentPlanNodesShareOneSideCounter() throws Exception {
-    java.util.concurrent.ExecutorService executor =
-        java.util.concurrent.Executors.newFixedThreadPool(16);
-    java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
-    java.util.concurrent.CountDownLatch attempted = new java.util.concurrent.CountDownLatch(16);
-    java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
-    java.util.List<java.util.concurrent.Future<?>> tasks = new java.util.ArrayList<>();
+    ExecutorService executor = Executors.newFixedThreadPool(16);
+    CountDownLatch start = new CountDownLatch(1);
+    CountDownLatch attempted = new CountDownLatch(16);
+    CountDownLatch release = new CountDownLatch(1);
+    List<Future<?>> tasks = new ArrayList<>();
     try {
       for (int i = 0; i < 16; i++) {
         String id = "pipeline-" + i;
@@ -618,13 +624,147 @@ public class MemoryPoolTest {
           pool.getFragmentMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.INPUT));
       Assert.assertEquals(details, pool.getReservedBytes());
       release.countDown();
-      for (java.util.concurrent.Future<?> task : tasks) task.get(10, TimeUnit.SECONDS);
+      for (Future<?> task : tasks) task.get(10, TimeUnit.SECONDS);
       Assert.assertEquals(0, pool.getReservedBytes());
       Assert.assertEquals(0, pool.getQueryMemoryReservedBytes(QUERY_ID));
     } finally {
       start.countDown();
       release.countDown();
       executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testReleaseBeforePendingReservationIsPublished() throws Exception {
+    pool = Mockito.spy(pool);
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", MemorySide.INPUT);
+    Assert.assertTrue(
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 256, false)
+            .isReserveSuccess());
+    CountDownLatch failedAttempt = new CountDownLatch(1);
+    CountDownLatch released = new CountDownLatch(1);
+    AtomicBoolean firstAttempt = new AtomicBoolean(true);
+    Mockito.doAnswer(
+            invocation -> {
+              boolean granted = (boolean) invocation.callRealMethod();
+              if (!granted && firstAttempt.compareAndSet(true, false)) {
+                failedAttempt.countDown();
+                Assert.assertTrue(released.await(10, TimeUnit.SECONDS));
+              }
+              return granted;
+            })
+        .when(pool)
+        .tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", 256, 256);
+    FutureTask<MemoryReservationResult> reservation =
+        new FutureTask<>(
+            () ->
+                pool.reserveWithPriority(
+                    QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", 256, 256, false));
+    Thread reserver = new Thread(reservation, "reserve-shared-input");
+    reserver.start();
+    try {
+      Assert.assertTrue(failedAttempt.await(10, TimeUnit.SECONDS));
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256);
+      released.countDown();
+      MemoryReservationResult result = reservation.get(10, TimeUnit.SECONDS);
+      Assert.assertTrue(
+          "Releasing the last owner must wake the pending request", result.getFuture().isDone());
+      result.getFuture().get(10, TimeUnit.SECONDS);
+      Assert.assertEquals(256, pool.getReservedBytes());
+      Assert.assertEquals(
+          256,
+          pool.getFragmentMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.INPUT));
+      Assert.assertEquals(
+          256, pool.getPlanNodeMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, "input2"));
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", 256);
+      Assert.assertEquals(0, pool.getReservedBytes());
+    } finally {
+      released.countDown();
+      reserver.join(10000);
+      Assert.assertFalse(reserver.isAlive());
+    }
+  }
+
+  @Test
+  public void testCancelledInputDoesNotConsumeReleasedSharedBudget() throws Exception {
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, "cancelled", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, "waiting", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, "output", MemorySide.OUTPUT);
+    pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 256, false);
+    MemoryReservationResult cancelled =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, "cancelled", 128, 256, false);
+    MemoryReservationResult waiting =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, "waiting", 256, 256, false);
+    Assert.assertFalse(cancelled.getFuture().isDone());
+    Assert.assertFalse(waiting.getFuture().isDone());
+    Assert.assertTrue(
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, "output", 128, 256, false)
+            .isReserveSuccess());
+    Assert.assertEquals(128, pool.tryCancel(cancelled.getFuture()));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256);
+    waiting.getFuture().get(10, TimeUnit.SECONDS);
+    Assert.assertTrue(cancelled.getFuture().isCancelled());
+    Assert.assertEquals(
+        0, pool.getPlanNodeMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, "cancelled"));
+    Assert.assertEquals(
+        256, pool.getFragmentMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.INPUT));
+    Assert.assertEquals(
+        128,
+        pool.getFragmentMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.OUTPUT));
+    Assert.assertEquals(384, pool.getReservedBytes());
+    Assert.assertEquals(0, pool.getMemoryReservationSize());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, "waiting", 256);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, "output", 128);
+    Assert.assertEquals(0, pool.getQueryMemoryReservedBytes(QUERY_ID));
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testConcurrentPendingReservationsCompleteAndReleaseAllAccounting() throws Exception {
+    int count = 16;
+    ExecutorService executor = Executors.newFixedThreadPool(count);
+    CountDownLatch attempted = new CountDownLatch(count);
+    List<Future<?>> tasks = new ArrayList<>();
+    pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 128, 128, false);
+    try {
+      for (int i = 0; i < count; i++) {
+        String id = "waiting-" + i;
+        pool.registerPlanNodeIdToQueryMemoryMap(
+            QUERY_ID, FRAGMENT_INSTANCE_ID, id, MemorySide.INPUT);
+        tasks.add(
+            executor.submit(
+                () -> {
+                  for (int round = 0; round < 50; round++) {
+                    MemoryReservationResult result =
+                        pool.reserveWithPriority(
+                            QUERY_ID, FRAGMENT_INSTANCE_ID, id, 32, 128, false);
+                    if (round == 0) attempted.countDown();
+                    result.getFuture().get(10, TimeUnit.SECONDS);
+                    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, id, result.getReservedBytes());
+                  }
+                  return null;
+                }));
+      }
+      Assert.assertTrue(attempted.await(10, TimeUnit.SECONDS));
+      Assert.assertEquals(count, pool.getMemoryReservationSize());
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 128);
+      for (Future<?> task : tasks) task.get(30, TimeUnit.SECONDS);
+      for (int i = 0; i < count; i++) {
+        Assert.assertEquals(
+            0, pool.getPlanNodeMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, "waiting-" + i));
+      }
+      Assert.assertEquals(
+          0, pool.getFragmentMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.INPUT));
+      Assert.assertEquals(0, pool.getReservedBytes());
+      Assert.assertEquals(0, pool.getQueryMemoryReservedBytes(QUERY_ID));
+      Assert.assertEquals(0, pool.getMemoryReservationSize());
+    } finally {
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
     }
   }
 }

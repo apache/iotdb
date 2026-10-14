@@ -273,4 +273,27 @@ public class IoTDBCollectFanInIT {
       }
     }
   }
+
+  @Test
+  public void testTopKAfterGlobalWindowConsumesUnorderedInput() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      int limit = DEVICES + 5;
+      try (ResultSet result =
+          statement.executeQuery(
+              "SELECT device, zone, value, COUNT(*) OVER () AS n FROM readings1 "
+                  + "ORDER BY value DESC, device LIMIT "
+                  + limit)) {
+        for (int row = 0; row < limit; row++) {
+          assertTrue(result.next());
+          assertEquals(device(row % DEVICES), result.getString(1));
+          assertEquals(zone(row % DEVICES), result.getString(2));
+          assertEquals(ROWS - row / DEVICES, result.getInt(3));
+          assertEquals((long) DEVICES * ROWS, result.getLong(4));
+        }
+        assertFalse(result.next());
+      }
+    }
+  }
 }
