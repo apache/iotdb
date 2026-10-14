@@ -744,6 +744,11 @@ SQLRETURN getColTypeName(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
   ConnectionHandle* cnct = stmt->getConnection();
   logMessage(cnct, "getColTypeName: Entering", LOG_LEVEL_TRACE);
 
+  // Declared catalog types remain available for empty and all-NULL results.
+  const auto declaredType = stmt->resultSetPtr->getColumnType(columnNumber - 1);
+  if (!declaredType.empty())
+    return setString(declaredType, stringBuffer, bufferLength, stringLength);
+
   if (!stringBuffer) {
     logMessage(cnct, "getColTypeName: stringBuffer is null", LOG_LEVEL_ERROR);
     stmt->addDiagnostic("HY009", "Invalid use of null pointer");
@@ -4781,10 +4786,15 @@ SQLRETURN SQL_API SQLGetTypeInfo(SQLHSTMT statementHandle, SQLSMALLINT dataType)
               << ", dataType = " << dataType;
     logMessage(cnct, logStream.str(), LOG_LEVEL_TRACE);
   }
-  // Create ODBCResultSet with type information
-  if (!stmt->resultSetPtr) {
-    stmt->AllocateSessionResultSet();
-  }
+  stmt->clearDiagnostics();
+  stmt->ClearResultSet();
+  stmt->AllocateSessionResultSet();
+  stmt->curRow = -1;
+  stmt->rowsReturned = 0;
+  stmt->isQuery = true;
+  stmt->isStream = false;
+  stmt->lastGetDataRow = -1;
+  stmt->getDataOffsets.clear();
 
   // Define the type information data
   std::vector<std::string> columnNames = {
@@ -4795,8 +4805,8 @@ SQLRETURN SQL_API SQLGetTypeInfo(SQLHSTMT statementHandle, SQLSMALLINT dataType)
       "SQL_DATETIME_SUB", "NUM_PREC_RADIX",     "INTERVAL_PRECISION"};
 
   std::vector<std::string> columnTypes = {
-      "TEXT",  "INT32", "INT32", "TEXT",  "TEXT",  "TEXT",  "INT32", "INT32", "INT32", "INT32",
-      "INT32", "INT32", "TEXT",  "INT32", "INT32", "INT32", "INT32", "INT32", "INT32"};
+      "TEXT",  "INT16", "INT32", "TEXT",  "TEXT",  "TEXT",  "INT16", "INT16", "INT16", "INT16",
+      "INT16", "INT16", "TEXT",  "INT16", "INT16", "INT16", "INT16", "INT32", "INT16"};
 
   ODBCField null = ODBCField::null();
   std::vector<std::vector<ODBCField>> typeData = {

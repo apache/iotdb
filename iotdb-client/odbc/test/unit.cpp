@@ -331,6 +331,32 @@ int main() {
     check(SQLStatistics(&statement, nullptr, 0, nullptr, 0, nullptr, 0, SQL_INDEX_ALL, SQL_QUICK) ==
           SQL_SUCCESS);
     check(SQLNumResultCols(&statement, &catalogColumns) == SQL_SUCCESS && catalogColumns == 13);
+    SQLCHAR typeName[16]{};
+    SQLSMALLINT typeNameLength = 0;
+    check(SQLColAttribute(&statement, 2, SQL_DESC_TYPE_NAME, nullptr, 0, &typeNameLength,
+                          nullptr) == SQL_SUCCESS &&
+          typeNameLength == 4);
+    check(SQLColAttribute(&statement, 2, SQL_DESC_TYPE_NAME, typeName, sizeof(typeName), nullptr,
+                          nullptr) == SQL_SUCCESS &&
+          std::string(reinterpret_cast<char*>(typeName)) == "TEXT");
+    check(SQLFreeStmt(&statement, SQL_UNBIND) == SQL_SUCCESS);
+    check(SQLGetTypeInfo(&statement, SQL_ALL_TYPES) == SQL_SUCCESS);
+    SQLSMALLINT catalogType = 0;
+    check(SQLDescribeCol(&statement, 2, nullptr, 0, nullptr, &catalogType, nullptr, nullptr,
+                         nullptr) == SQL_SUCCESS &&
+          catalogType == SQL_SMALLINT);
+    check(SQLFetch(&statement) == SQL_SUCCESS);
+    SQLCHAR firstType[32]{};
+    SQLLEN firstTypeLength = 0;
+    check(SQLGetData(&statement, 1, SQL_C_CHAR, firstType, sizeof(firstType), &firstTypeLength) ==
+          SQL_SUCCESS);
+    check(SQLGetTypeInfo(&statement, SQL_ALL_TYPES) == SQL_SUCCESS);
+    check(SQLFetch(&statement) == SQL_SUCCESS);
+    SQLCHAR refreshedType[32]{};
+    check(SQLGetData(&statement, 1, SQL_C_CHAR, refreshedType, sizeof(refreshedType),
+                     &firstTypeLength) == SQL_SUCCESS &&
+          std::string(reinterpret_cast<char*>(firstType)) ==
+              std::string(reinterpret_cast<char*>(refreshedType)));
     check(SQLSetStmtAttr(&statement, SQL_ATTR_CURSOR_TYPE,
                          reinterpret_cast<SQLPOINTER>(SQL_CURSOR_STATIC), 0) == SQL_ERROR);
     check(SQLCloseCursor(&statement) == SQL_SUCCESS);
