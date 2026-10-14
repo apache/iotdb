@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -80,12 +81,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 public class IoTConsensusShutdownTest {
 
@@ -102,6 +107,7 @@ public class IoTConsensusShutdownTest {
   private String previousConsensusProtocol;
   private NodeStatus previousNodeStatus;
   private String previousStatusReason;
+  private boolean previousStopping;
   private DataRegion dataRegion;
   private IoTConsensusDataRegionStateMachine stateMachine;
 
@@ -112,10 +118,12 @@ public class IoTConsensusShutdownTest {
     previousConsensusProtocol = config.getDataRegionConsensusProtocolClass();
     previousNodeStatus = commonConfig.getNodeStatus();
     previousStatusReason = commonConfig.getStatusReason();
+    previousStopping = commonConfig.isStopping();
     config.setWalMode(WALMode.ASYNC);
     config.setDataNodeId(0);
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
     commonConfig.setNodeStatus(NodeStatus.Running);
+    commonConfig.setStopping(false);
     EnvironmentUtils.envSetUp();
     dataRegion =
         new DataRegion(
@@ -130,6 +138,7 @@ public class IoTConsensusShutdownTest {
   @After
   public void tearDown() throws Exception {
     try {
+      commonConfig.setStopping(false);
       commonConfig.setNodeStatus(NodeStatus.Running);
       if (dataRegion != null) {
         dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -142,6 +151,7 @@ public class IoTConsensusShutdownTest {
       config.setDataRegionConsensusProtocolClass(previousConsensusProtocol);
       commonConfig.setNodeStatus(NodeStatus.Running);
       commonConfig.setNodeStatusWithReason(previousNodeStatus, previousStatusReason);
+      commonConfig.setStopping(previousStopping);
     }
   }
 
@@ -150,25 +160,7 @@ public class IoTConsensusShutdownTest {
     writeAndAssertSuccess(1);
     final ScheduledExecutorService backgroundTaskService =
         Executors.newSingleThreadScheduledExecutor();
-    final Peer thisNode = new Peer(new DataRegionId(0), 0, new TEndPoint("127.0.0.1", 6667));
-    final IoTConsensusServerImpl server =
-        new IoTConsensusServerImpl(
-            temporaryFolder.getRoot().getAbsolutePath(),
-            null,
-            DirectoryStrategyType.SEQUENCE_STRATEGY,
-            thisNode,
-            Collections.singletonList(thisNode),
-            stateMachine,
-            backgroundTaskService,
-            null,
-            null,
-            IoTConsensusConfig.newBuilder()
-                .setReplication(
-                    IoTConsensusConfig.Replication.newBuilder()
-                        .setMaxPendingBatchesNum(2)
-                        .setMaxWaitingTimeForWaitBatchInMs(TimeUnit.MINUTES.toMillis(5))
-                        .build())
-                .build());
+    final IoTConsensusServerImpl server = newServer(stateMachine, backgroundTaskService, 2);
     final DeserializedBatchIndexedConsensusRequest request =
         new DeserializedBatchIndexedConsensusRequest(1, 2, 2, 1, 2);
     request.add(insertRow(2));
@@ -183,7 +175,9 @@ public class IoTConsensusShutdownTest {
           .until(() -> syncLogThread.getState() == Thread.State.TIMED_WAITING);
 
       // Follow the production order: read-only, final flush, storage stop, then WAL stop.
+      commonConfig.setStopping(true);
       commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+      StorageEngine.getInstance().stopIoTConsensusWrites();
       WALManager.getInstance().waitAllWALFlushed();
       StorageEngine.getInstance().syncCloseAllProcessor();
       final File flushedFile = dataRegion.getSequenceFileList().get(0).getTsFile();
@@ -221,6 +215,225 @@ public class IoTConsensusShutdownTest {
   }
 
   @Test
+  public void testSyncLogBecomesReadOnlyAfterPreApplyCheck() throws Exception {
+    writeAndAssertSuccess(1);
+    final CountDownLatch preApplyCheckPassed = new CountDownLatch(1);
+    final CountDownLatch resumeApply = new CountDownLatch(1);
+    final IoTConsensusDataRegionStateMachine delayedStateMachine = spy(stateMachine);
+    doAnswer(
+            invocation -> {
+              preApplyCheckPassed.countDown();
+              assertTrue(resumeApply.await(30, TimeUnit.SECONDS));
+              return invocation.callRealMethod();
+            })
+        .when(delayedStateMachine)
+        .write(any(IConsensusRequest.class));
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final ExecutorService syncLogExecutor = Executors.newSingleThreadExecutor();
+    final IoTConsensusServerImpl server = newServer(delayedStateMachine, backgroundTaskService, 1);
+    final DeserializedBatchIndexedConsensusRequest request =
+        new DeserializedBatchIndexedConsensusRequest(1, 2, 2, 1, 2);
+    request.add(insertRow(2));
+    request.add(insertRow(3));
+    final Future<TSStatus> syncLog = syncLogExecutor.submit(() -> server.syncLog(1, request));
+    try {
+      // The consensus-layer read-only check has returned false, but apply has not started.
+      assertTrue(preApplyCheckPassed.await(10, TimeUnit.SECONDS));
+      commonConfig.setStopping(true);
+      commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+      StorageEngine.getInstance().stopIoTConsensusWrites();
+      WALManager.getInstance().waitAllWALFlushed();
+      StorageEngine.getInstance().syncCloseAllProcessor();
+      final File flushedFile = dataRegion.getSequenceFileList().get(0).getTsFile();
+      StorageEngine.getInstance().stop();
+      WALManager.getInstance().stop();
+      assertEquals(0, WALManager.getInstance().getWALNodesNum());
+
+      resumeApply.countDown();
+      final TSStatus status = syncLog.get(10, TimeUnit.SECONDS);
+      assertEquals(2, status.getSubStatusSize());
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), status.getSubStatus().get(0).getCode());
+      assertEquals(
+          TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(),
+          status.getSubStatus().get(1).getCode());
+      assertEquals(0, server.getEffectiveSafePhysicalTime(1));
+      assertEquals(0, WALManager.getInstance().getWALNodesNum());
+      assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
+      assertTrue(dataRegion.getWorkUnsequenceTsFileProcessors().isEmpty());
+      assertSingleRow(flushedFile, 1);
+    } finally {
+      resumeApply.countDown();
+      syncLogExecutor.shutdownNow();
+      assertTrue(syncLogExecutor.awaitTermination(10, TimeUnit.SECONDS));
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testShutdownDrainsAdmittedApplyBeforeClosingStorage() throws Exception {
+    writeAndAssertSuccess(1);
+    final CountDownLatch admittedApply = new CountDownLatch(1);
+    final CountDownLatch resumeApply = new CountDownLatch(1);
+    final InsertRowNode pendingRow = spy(insertRow(2));
+    doAnswer(
+            invocation -> {
+              admittedApply.countDown();
+              assertTrue(resumeApply.await(30, TimeUnit.SECONDS));
+              return invocation.callRealMethod();
+            })
+        .when(pendingRow)
+        .accept(any(IPlanVisitor.class), any(DataRegion.class));
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final CountDownLatch shutdownStarted = new CountDownLatch(1);
+    final CountDownLatch admissionClosed = new CountDownLatch(1);
+    final AtomicReference<Thread> shutdownThread = new AtomicReference<>();
+    final Future<TSStatus> write =
+        executor.submit(() -> stateMachine.write((IConsensusRequest) pendingRow));
+    try {
+      // Unlike the pre-apply-check test, this request has passed the check under the lifecycle
+      // lock.
+      assertTrue(admittedApply.await(10, TimeUnit.SECONDS));
+      commonConfig.setStopping(true);
+      commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+      final Future<?> shutdown =
+          executor.submit(
+              () -> {
+                shutdownThread.set(Thread.currentThread());
+                shutdownStarted.countDown();
+                StorageEngine.getInstance().stopIoTConsensusWrites();
+                admissionClosed.countDown();
+                WALManager.getInstance().waitAllWALFlushed();
+                StorageEngine.getInstance().syncCloseAllProcessor();
+                StorageEngine.getInstance().stop();
+                WALManager.getInstance().stop();
+              });
+      assertTrue(shutdownStarted.await(10, TimeUnit.SECONDS));
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(
+              () ->
+                  admissionClosed.getCount() == 0
+                      || shutdownThread.get().getState() == Thread.State.WAITING);
+      assertEquals(1, admissionClosed.getCount());
+      assertFalse(shutdown.isDone());
+      assertFalse(dataRegion.getSequenceFileList().get(0).isClosed());
+
+      resumeApply.countDown();
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), write.get(10, TimeUnit.SECONDS).getCode());
+      shutdown.get(10, TimeUnit.SECONDS);
+      assertRows(dataRegion.getSequenceFileList().get(0).getTsFile(), 1, 2);
+      assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
+      assertTrue(dataRegion.getWorkUnsequenceTsFileProcessors().isEmpty());
+      assertEquals(0, WALManager.getInstance().getWALNodesNum());
+
+      // Stopping storage closes admission permanently, even if the node status changes again.
+      commonConfig.setStopping(false);
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(),
+          stateMachine.write((IConsensusRequest) insertRow(3)).getCode());
+      assertEquals(0, WALManager.getInstance().getWALNodesNum());
+    } finally {
+      resumeApply.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testShutdownDuringWriteRetryDoesNotHoldAdmissionLock() throws Exception {
+    writeAndAssertSuccess(1);
+    final CountDownLatch retryWaiting = new CountDownLatch(1);
+    final CountDownLatch resumeRetry = new CountDownLatch(1);
+    stateMachine =
+        new IoTConsensusDataRegionStateMachine(dataRegion) {
+          @Override
+          protected void waitBeforeNextWriteRetry() throws InterruptedException {
+            retryWaiting.countDown();
+            assertTrue(resumeRetry.await(30, TimeUnit.SECONDS));
+          }
+        };
+    final AtomicInteger applyAttempts = new AtomicInteger();
+    final InsertRowNode pendingRow = spy(insertRow(2));
+    doAnswer(
+            invocation ->
+                applyAttempts.incrementAndGet() == 1
+                    ? new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode())
+                    : invocation.callRealMethod())
+        .when(pendingRow)
+        .accept(any(IPlanVisitor.class), any(DataRegion.class));
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final Future<TSStatus> write =
+        executor.submit(() -> stateMachine.write((IConsensusRequest) pendingRow));
+    try {
+      assertTrue(retryWaiting.await(10, TimeUnit.SECONDS));
+      commonConfig.setStopping(true);
+      commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+      StorageEngine.getInstance().stopIoTConsensusWrites();
+      WALManager.getInstance().waitAllWALFlushed();
+      StorageEngine.getInstance().syncCloseAllProcessor();
+      final File flushedFile = dataRegion.getSequenceFileList().get(0).getTsFile();
+      StorageEngine.getInstance().stop();
+      WALManager.getInstance().stop();
+      assertFalse(write.isDone());
+
+      resumeRetry.countDown();
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), write.get(10, TimeUnit.SECONDS).getCode());
+      assertEquals(1, applyAttempts.get());
+      assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
+      assertTrue(dataRegion.getWorkUnsequenceTsFileProcessors().isEmpty());
+      assertEquals(0, WALManager.getInstance().getWALNodesNum());
+      assertSingleRow(flushedFile, 1);
+    } finally {
+      resumeRetry.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testReadOnlyCanBecomeWritableBeforeShutdown() throws Exception {
+    writeAndAssertSuccess(1);
+    commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+    assertEquals(
+        TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(),
+        stateMachine.write((IConsensusRequest) insertRow(2)).getCode());
+    commonConfig.setNodeStatus(NodeStatus.Running);
+    writeAndAssertSuccess(2);
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    assertRows(dataRegion.getSequenceFileList().get(0).getTsFile(), 1, 2);
+  }
+
+  private IoTConsensusServerImpl newServer(
+      IoTConsensusDataRegionStateMachine targetStateMachine,
+      ScheduledExecutorService backgroundTaskService,
+      int maxPendingBatchesNum)
+      throws Exception {
+    final Peer thisNode = new Peer(new DataRegionId(0), 0, new TEndPoint("127.0.0.1", 6667));
+    return new IoTConsensusServerImpl(
+        temporaryFolder.getRoot().getAbsolutePath(),
+        null,
+        DirectoryStrategyType.SEQUENCE_STRATEGY,
+        thisNode,
+        Collections.singletonList(thisNode),
+        targetStateMachine,
+        backgroundTaskService,
+        null,
+        null,
+        IoTConsensusConfig.newBuilder()
+            .setReplication(
+                IoTConsensusConfig.Replication.newBuilder()
+                    .setMaxPendingBatchesNum(maxPendingBatchesNum)
+                    .setMaxWaitingTimeForWaitBatchInMs(TimeUnit.MINUTES.toMillis(5))
+                    .build())
+            .build());
+  }
+
+  @Test
   public void testUncheckedWriteAfterWalManagerStopLosesCheckpoint() throws Exception {
     writeAndAssertSuccess(1);
     commonConfig.setNodeStatus(NodeStatus.ReadOnly);
@@ -231,9 +444,9 @@ public class IoTConsensusShutdownTest {
     StorageEngine.getInstance().stop();
     WALManager.getInstance().stop();
 
-    // Bypass the guarded SyncLog entry point to reproduce the old late-apply behavior. Unlike a
-    // write before WAL stop, this recreates the node in a directory containing closed WAL files.
-    writeAndAssertSuccess(2);
+    // Bypass lifecycle admission with the real visitor to reproduce the old late-apply behavior.
+    // Unlike a write before WAL stop, this recreates the node in a directory containing closed WAL.
+    writeUncheckedAndAssertSuccess(2);
     final WALNode lateWalNode = (WALNode) dataRegion.getWALNode().get();
     assertNotSame(originalWalNode, lateWalNode);
     assertEquals(originalWalNode.getLogDirectory(), lateWalNode.getLogDirectory());
@@ -295,8 +508,8 @@ public class IoTConsensusShutdownTest {
     final File lateFile;
     try {
       assertTrue(syncBlocked.await(10, TimeUnit.SECONDS));
-      // Call the real state machine directly to model the old unchecked SyncLog apply.
-      writeAndAssertSuccess(2);
+      // Call the real visitor directly to model the old unchecked SyncLog apply.
+      writeUncheckedAndAssertSuccess(2);
       assertFalse(buffer.isAllWALEntriesConsumed());
       assertEquals(1, dataRegion.getWorkSequenceTsFileProcessors().size());
       final TsFileProcessor processor =
@@ -335,6 +548,12 @@ public class IoTConsensusShutdownTest {
         stateMachine.write((IConsensusRequest) insertRow(time)).getCode());
   }
 
+  private void writeUncheckedAndAssertSuccess(long time) throws Exception {
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        insertRow(time).accept(new DataExecutionVisitor(), dataRegion).getCode());
+  }
+
   private static InsertRowNode insertRow(long time) throws Exception {
     final InsertRowNode node =
         new InsertRowNode(
@@ -352,16 +571,22 @@ public class IoTConsensusShutdownTest {
   }
 
   private static void assertSingleRow(File file, long time) throws Exception {
+    assertRows(file, time);
+  }
+
+  private static void assertRows(File file, long... times) throws Exception {
     try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(file.getPath());
         TsFileReader reader = new TsFileReader(sequenceReader)) {
       final QueryDataSet dataSet =
           reader.query(
               QueryExpression.create(
                   Collections.singletonList(new Path(DEVICE, MEASUREMENT, false)), null));
-      assertTrue(dataSet.hasNext());
-      final RowRecord row = dataSet.next();
-      assertEquals(time, row.getTimestamp());
-      assertEquals((int) time * 10, row.getFields().get(0).getIntV());
+      for (long time : times) {
+        assertTrue(dataSet.hasNext());
+        final RowRecord row = dataSet.next();
+        assertEquals(time, row.getTimestamp());
+        assertEquals((int) time * 10, row.getFields().get(0).getIntV());
+      }
       assertFalse(dataSet.hasNext());
     }
   }
