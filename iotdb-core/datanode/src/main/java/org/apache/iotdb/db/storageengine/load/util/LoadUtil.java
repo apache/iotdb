@@ -384,7 +384,11 @@ public class LoadUtil {
     }
   }
 
-  private static void transferFile(
+  /**
+   * Links {@code sourceFile} to {@code targetFile} when the file system allows it, and copies the
+   * bytes when it does not.
+   */
+  public static void transferFile(
       final File sourceFile, final File targetFile, final boolean useHardLink) throws IOException {
     Exception linkException = null;
     if (useHardLink) {

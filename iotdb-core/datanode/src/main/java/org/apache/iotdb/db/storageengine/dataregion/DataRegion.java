@@ -161,6 +161,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecove
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
@@ -4590,9 +4591,13 @@ public class DataRegion implements IDataRegionForQuery {
               return null;
             });
       } else {
+        // The staged bytes have to stay for a replica that has not applied this command yet, so
+        // they cannot be moved. A sealed TsFile is never written again, so a hard link gives this
+        // region its own path to the very same bytes instead of a second copy of them; the resource
+        // file below is updated by the load and is still copied.
         RetryUtils.retryOnException(
             () -> {
-              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+              LoadUtil.transferFile(tsFileToLoad, targetFile, true);
               return null;
             });
       }
