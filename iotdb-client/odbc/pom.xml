@@ -44,12 +44,16 @@
                     <execution>
                         <id>configure-odbc</id>
                         <phase>generate-resources</phase>
-                        <goals><goal>exec</goal></goals>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
                         <configuration>
                             <executable>cmake</executable>
                             <arguments>
-                                <argument>-S</argument><argument>${project.basedir}</argument>
-                                <argument>-B</argument><argument>${odbc.build.dir}</argument>
+                                <argument>-S</argument>
+                                <argument>${project.basedir}</argument>
+                                <argument>-B</argument>
+                                <argument>${odbc.build.dir}</argument>
                                 <argument>-DCMAKE_BUILD_TYPE=${odbc.build.type}</argument>
                                 <argument>-DODBC_PACKAGE_VERSION=${project.version}</argument>
                                 <argument>-DODBC_PACKAGE_CLASSIFIER=${odbc.package.classifier}</argument>
@@ -60,25 +64,33 @@
                     <execution>
                         <id>build-odbc</id>
                         <phase>compile</phase>
-                        <goals><goal>exec</goal></goals>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
                         <configuration>
                             <executable>cmake</executable>
                             <arguments>
-                                <argument>--build</argument><argument>${odbc.build.dir}</argument>
-                                <argument>--config</argument><argument>${odbc.build.type}</argument>
+                                <argument>--build</argument>
+                                <argument>${odbc.build.dir}</argument>
+                                <argument>--config</argument>
+                                <argument>${odbc.build.type}</argument>
                             </arguments>
                         </configuration>
                     </execution>
                     <execution>
                         <id>test-odbc</id>
                         <phase>test</phase>
-                        <goals><goal>exec</goal></goals>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
                         <configuration>
                             <skip>${skipTests}</skip>
                             <executable>ctest</executable>
                             <arguments>
-                                <argument>--test-dir</argument><argument>${odbc.build.dir}</argument>
-                                <argument>-C</argument><argument>${odbc.build.type}</argument>
+                                <argument>--test-dir</argument>
+                                <argument>${odbc.build.dir}</argument>
+                                <argument>-C</argument>
+                                <argument>${odbc.build.type}</argument>
                                 <argument>--output-on-failure</argument>
                             </arguments>
                         </configuration>
@@ -86,12 +98,15 @@
                     <execution>
                         <id>package-odbc</id>
                         <phase>package</phase>
-                        <goals><goal>exec</goal></goals>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
                         <configuration>
                             <executable>cpack</executable>
                             <workingDirectory>${odbc.build.dir}</workingDirectory>
                             <arguments>
-                                <argument>-C</argument><argument>${odbc.build.type}</argument>
+                                <argument>-C</argument>
+                                <argument>${odbc.build.type}</argument>
                             </arguments>
                         </configuration>
                     </execution>
