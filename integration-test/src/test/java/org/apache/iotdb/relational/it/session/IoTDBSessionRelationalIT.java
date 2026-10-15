@@ -36,6 +36,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.TableSessionBuilder;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -98,9 +99,19 @@ public class IoTDBSessionRelationalIT {
   @After
   public void tearDown() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db3");
+      for (String database : Arrays.asList("db1", "db2", "db3")) {
+        // Asynchronous DROP TABLE procedures may still be running when the test finishes.
+        Awaitility.await()
+            .atMost(60, TimeUnit.SECONDS)
+            .pollInSameThread()
+            .ignoreExceptionsMatching(
+                e ->
+                    e instanceof StatementExecutionException
+                        && ((StatementExecutionException) e).getStatusCode()
+                            == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode())
+            .untilAsserted(
+                () -> session.executeNonQueryStatement("DROP DATABASE IF EXISTS " + database));
+      }
     }
   }
 
