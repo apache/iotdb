@@ -24,7 +24,14 @@ public enum MemorySide {
   INPUT,
   OUTPUT;
 
-  public long getMaxBytes(long fragmentExchangeMaxBytes) {
+  /** Split only when both directions charge this FI; an unused direction has no budget. */
+  public long getMaxBytes(long fragmentExchangeMaxBytes, boolean hasInput, boolean hasOutput) {
+    if (!(this == INPUT ? hasInput : hasOutput)) {
+      return 0;
+    }
+    if (!hasInput || !hasOutput) {
+      return fragmentExchangeMaxBytes;
+    }
     long inputMaxBytes = fragmentExchangeMaxBytes / 2;
     return this == INPUT ? inputMaxBytes : fragmentExchangeMaxBytes - inputMaxBytes;
   }

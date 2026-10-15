@@ -37,7 +37,7 @@ TableTopK、CountMerge 的任意就绪消费留到后续；有序输入标志仍
 
 在生成全部 pipeline 后再决定预算模式。内部 pipeline 队列具有转发依赖，因此存在多个 pipeline 或调度依赖时整组回退原策略。只含 Collect 的某个子树不会绕过 FI 级否决。
 
-通过上述检查后，F 为配置的单 FI 交换预算，INPUT=F/2，OUTPUT=F-INPUT。两侧均须容纳配置的最大 TsBlock，否则回退原配额，避免仅有输出的 FI 因预算减半而无法打开 SinkChannel。未启用共享的 FI 恢复原有 exchangeSumNum 配额计算和按 plan node 的申请上限；不能只恢复限额数值却仍按同侧总量进行准入。
+通过上述检查后，F 为配置的单 FI 交换预算。按照实际由本 FI 计费的方向分配：只有 INPUT 时 INPUT=F；只有 OUTPUT 时 OUTPUT=F；同时存在两侧时 INPUT=F/2、OUTPUT=F-INPUT；未使用的方向预算为 0。方向在完整本地计划生成后确定，远端 SourceHandle 表示本 FI 的 INPUT，fragment sink 表示 OUTPUT；LocalSourceHandle 的队列由生产 FI 计费，不重复占用接收 FI 的 INPUT。仅实际启用的方向须容纳配置的最大 TsBlock，否则回退原配额。未启用共享的 FI 恢复原有 exchangeSumNum 配额计算和按 plan node 的申请上限；不能只恢复限额数值却仍按同侧总量进行准入。
 远端 SourceHandle 计入接收 FI 的 INPUT；SinkChannel 和 SharedTsBlockQueue 计入生产 FI 的 OUTPUT。
 本地共享队列只计费一次，创建先后不改变所有者。
 
@@ -150,3 +150,18 @@ mvn -o test-compile -DskipTests
 ```
 
 本次生产代码没有新增未本地化的字符串，且没有修改中英文消息常量。
+
+## 单方向预算修正验证（2026-10-15）
+
+移除默认按两侧均分的单参数接口。`MemorySide.getMaxBytes(F, hasInput, hasOutput)`
+显式接收本 FI 实际计费的方向：单方向使用完整 F，双方向才拆分，未使用方向为 0。
+最大 TsBlock 校验只作用于启用的方向；原有 Collect 资格和依赖回退规则保持不变。
+
+新增输入单向、输出单向、B=F、本地输入和本地/远端混合输入用例；
+同时验证奇数 F、未使用方向及每个单方向一次申请完整 F 的边界。
+113 项定向单测全部通过。首轮中单块边界测试的默认测试池上限为 512、申请为 513，
+将该测试池配置为目标 F=513 后重跑 MemoryPoolTest，38 项全部通过，其余 75 项首轮通过。
+
+完整 reactor 中英文 test-compile、Spotless、Checkstyle 和许可证检查通过。
+重新从当前代码打包节点后，IoTDBCollectFanInIT 在 TableSimpleIT 和三 DataNode 的
+TableClusterIT 中各 8 项全部通过；集群复用同一份节点模板，节点包哈希与本次构建一致。
