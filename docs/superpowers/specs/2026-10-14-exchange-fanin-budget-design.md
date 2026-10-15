@@ -42,7 +42,7 @@ TableTopK、CountMerge 的任意就绪消费留到后续；有序输入标志仍
 本地共享队列只计费一次，创建先后不改变所有者。
 
 MemoryPool 维护 query→FI→planNode 明细，注册时固定 side。
-本地计划生成全部算子和 pipeline 后，一次性检查共享资格并计算两个方向的预算，写入 FI 记录的 `inputMaxBytes`、`outputMaxBytes` 字段。`MemorySide` 仅表示方向，不计算预算，也不接受 `hasInput`/`hasOutput` 参数。共享模式的申请、单块上限检查和等待唤醒统一读取 FI 保存的预算；handle 传入的限额仅用于原有独立配额模式。
+本地计划生成全部算子和 pipeline 后，一次性检查共享资格并计算两个方向的预算，写入 `FragmentInstanceContext` 的 `inputMaxBytes`、`outputMaxBytes` 字段。`MemorySide` 仅表示方向，不计算预算，也不接受 `hasInput`/`hasOutput` 参数。MemoryPool 的 FI 账目仅保留该上下文的引用，不复制预算字段。共享模式的申请、单块上限检查和等待唤醒统一读取 FI 保存的预算；handle 传入的限额仅用于原有独立配额模式。回退独立配额时上下文的两个共享预算字段为零。
 FI 两侧保留 AtomicLong 统计，plan node 保留字节明细。申请和释放在 FI 的记账锁内更新；全局池采用有界原子申请。申请前先检查适用的同侧总量或 plan node 限额，失败不产生临时计费，也不需要回滚，避免并发请求分别撞到不同限额后全部挂起。
 
 释放后在 FI 记账锁外完成等待 Future；保留入队后的重试和每个 Future 的完成/取消同步。稳定快照中的 FI 同侧总量等于同侧明细之和。
@@ -181,3 +181,18 @@ TableClusterIT 中各 8 项全部通过；集群复用同一份节点模板，�
 
 重新打包当前源码后，`IoTDBCollectFanInIT` 在 TableSimpleIT 和三 DataNode 的 TableClusterIT
 中各 8 项全部通过，无失败或跳过。集群复用同一份节点模板，其服务端 jar 哈希与本次构建一致。
+
+## FI 预算配置归属修正验证（2026-10-15）
+
+预算字段移至 `FragmentInstanceContext`，由完整本地计划生成后的初始化流程赋值。
+MemoryPool 的 FI 账目保存上下文引用，通过 getter 读取限额，不再复制预算或保存共享布尔字段。
+该引用随 FI 记账记录注销；预算仍在 driver 启动前初始化。
+独立配额回退时上下文的两个共享预算字段为零，不注册共享预算。
+
+123 项定向单测通过，包括真实 FI 上下文的初始化字段断言、申请上限和等待唤醒回归，
+以及已有的 FI 上下文生命周期测试。生产代码没有新增字符串字面量。
+
+本次单测在前述 `-Dtest` 列表中加入 `FragmentInstanceContextTest`。完整 reactor 的中英文
+`test-compile -DskipTests`、Spotless、Checkstyle、许可证与 `git diff --check` 检查均通过。
+重新打包节点后，`IoTDBCollectFanInIT` 在 TableSimpleIT 和三 DataNode 的 TableClusterIT 中各
+8 项全部通过，无失败或跳过；测试模板与当前服务端 jar 的哈希一致。

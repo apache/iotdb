@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -174,14 +175,18 @@ public class MemoryPool {
     private final Map<String, PlanNodeReservation> planNodes = new ConcurrentHashMap<>();
     private final AtomicLong inputUsedBytes = new AtomicLong();
     private final AtomicLong outputUsedBytes = new AtomicLong();
-    // Set by local planning before this FI starts reserving exchange memory.
-    private boolean sharedBudget;
-    private long inputMaxBytes;
-    private long outputMaxBytes;
+    // Registered after local planning; the FI context owns the initialized shared limits.
+    private FragmentInstanceContext instanceContext;
+
+    private boolean isSharedBudget() {
+      return instanceContext != null;
+    }
 
     private long getMaxBytesCanReserve(PlanNodeReservation reservation, long legacyLimit) {
-      return sharedBudget
-          ? (reservation.side == MemorySide.INPUT ? inputMaxBytes : outputMaxBytes)
+      return isSharedBudget()
+          ? (reservation.side == MemorySide.INPUT
+              ? instanceContext.getInputMaxBytes()
+              : instanceContext.getOutputMaxBytes())
           : legacyLimit;
     }
 
@@ -264,21 +269,17 @@ public class MemoryPool {
     }
   }
 
-  /**
-   * Initialize once after the complete FI has been checked for input and pipeline dependencies,
-   * before any driver starts reserving exchange memory. An unused direction has a zero budget.
-   */
-  public void registerFragmentInstanceSharedBudget(
-      String queryId, String fragmentInstanceId, long inputMaxBytes, long outputMaxBytes) {
+  /** Register the FI-owned shared limits after local planning and before drivers start. */
+  public void registerFragmentInstanceSharedBudget(FragmentInstanceContext instanceContext) {
+    String queryId = instanceContext.getId().getQueryId().getId();
+    String fragmentInstanceId = instanceContext.getId().getFullId();
     synchronized (queryMemoryReservations) {
       FragmentMemoryReservation fragment =
           queryMemoryReservations
               .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
               .computeIfAbsent(fragmentInstanceId, x -> new FragmentMemoryReservation());
       synchronized (fragment) {
-        fragment.inputMaxBytes = inputMaxBytes;
-        fragment.outputMaxBytes = outputMaxBytes;
-        fragment.sharedBudget = true;
+        fragment.instanceContext = instanceContext;
       }
     }
   }
@@ -574,7 +575,7 @@ public class MemoryPool {
               fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
       maxBytesCanReserve = fragment.getMaxBytesCanReserve(reservation, maxBytesCanReserve);
       long usedBytes =
-          fragment.sharedBudget
+          fragment.isSharedBudget()
               ? fragment.getUsedBytes(reservation.side).get()
               : reservation.bytesReserved;
       // Do not publish speculative charges. Two competing requests must not reject one another
