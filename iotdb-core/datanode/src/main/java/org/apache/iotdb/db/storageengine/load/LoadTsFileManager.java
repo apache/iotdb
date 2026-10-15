@@ -519,6 +519,10 @@ public class LoadTsFileManager {
     // instead of resuming the finished task. A task that was aborted is garbage as soon as that
     // command was applied, while a committed one is kept until every replica got past it and the
     // staged files are known to be complete.
+    //
+    // The command is only recorded on files it can describe: complete for a commit, continuous for
+    // an abort. A directory that does not qualify keeps no record, so a restart treats it as
+    // unfinished and the idle timeout releases it instead.
     writerManager.recordTerminal(terminalOp, node.getSearchIndex());
     writerManager.close(true);
     retention.retain(node.getLoadId(), taskDir, terminalOp, node.getSearchIndex());

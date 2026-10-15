@@ -170,7 +170,11 @@ final class LoadTaskRetention {
   // Data Records
   // -------------------------------------------------------------------------
 
-  /** Tracks a finished staged directory waiting for the consensus watermark. */
+  /**
+   * Tracks a finished staged directory waiting for the consensus watermark. The op decides whether
+   * completeness is still required before deleting, since an aborted directory is garbage while a
+   * committed one has to be complete, and the index is the watermark its command reached.
+   */
   private record RetainedTaskDir(
       File dir, long reachedSearchIndex, LoadTsFileConsensusOp terminalOp) {}
 }

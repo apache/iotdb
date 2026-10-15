@@ -91,6 +91,9 @@ public final class StorageEngineMessages {
       "The chunk payload of %d bytes at offset %d is longer than the staged file %s";
   public static final String EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9 =
       "Invalid inline chunk payload length %d, the maximum is %d";
+  public static final String LOG_STAGED_FILE_ARG_OF_THE_LOAD_TASK_IS_NOT_CONTINUOUS_SO_IT_CANNOT_BE_MARKED_ARG_AND_THE_TERMINAL_RECORD_IS_WITHHELD_7B21F365 =
+      "Staged file %s of the LOAD task is not continuous, so it cannot be marked %s and the terminal record is withheld";
+
   public static final String LOG_DROPPED_THE_TRAILING_ENTRY_OF_THE_LOAD_PROGRESS_FILE_ARG_FROM_OFFSET_ARG_ON_WHICH_WAS_NOT_FULLY_APPENDED_05C8341B =
       "Dropped the trailing entry of the LOAD progress file {} from offset {} on, which was not fully appended";
   public static final String EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06 =

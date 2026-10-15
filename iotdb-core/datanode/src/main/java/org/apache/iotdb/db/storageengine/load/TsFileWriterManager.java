@@ -211,9 +211,36 @@ final class TsFileWriterManager {
    */
   void recordTerminal(final LoadTsFileConsensusOp terminalOp, final long searchIndex)
       throws IOException {
+    for (final Map.Entry<DataPartitionInfo, LoadTsFileProgress> entry :
+        dataPartition2Progress.entrySet()) {
+      final TsFilePrecalculatedChunkWriter writer = dataPartition2Writer.get(entry.getKey());
+      final LoadTsFileProgress progress = entry.getValue();
+      if (writer == null || !canMarkTerminal(terminalOp, progress, writer.getFile().length())) {
+        LOGGER.warn(
+            StorageEngineMessages
+                .LOG_STAGED_FILE_ARG_OF_THE_LOAD_TASK_IS_NOT_CONTINUOUS_SO_IT_CANNOT_BE_MARKED_ARG_AND_THE_TERMINAL_RECORD_IS_WITHHELD_7B21F365,
+            writer == null
+                ? progress.getProgressFile().getAbsolutePath()
+                : writer.getFile().getAbsolutePath(),
+            terminalOp);
+        return;
+      }
+    }
     for (final LoadTsFileProgress progress : dataPartition2Progress.values()) {
       progress.recordTerminal(terminalOp, searchIndex);
     }
+  }
+
+  /** Whether a staged file is in the state the command a task ended with may describe. */
+  static boolean canMarkTerminal(
+      final LoadTsFileConsensusOp terminalOp,
+      final LoadTsFileProgress progress,
+      final long fileLength)
+      throws IOException {
+    // The bytes of an aborted task are never imported, so only a committed one has to be complete.
+    return terminalOp == LoadTsFileConsensusOp.COMMIT
+        ? progress.isReady(fileLength)
+        : progress.getFirstHoleOffset() < 0L;
   }
 
   /** Writes a chunk into the target staged file or skips if the byte range was already recorded. */

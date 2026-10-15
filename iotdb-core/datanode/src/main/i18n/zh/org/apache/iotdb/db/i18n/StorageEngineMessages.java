@@ -90,6 +90,9 @@ public final class StorageEngineMessages {
       "偏移 %d 处 %d 字节的 chunk payload 比暂存文件 %s 更长";
   public static final String EXCEPTION_INVALID_INLINE_CHUNK_PAYLOAD_LENGTH_ARG_THE_MAXIMUM_IS_ARG_20EE95D9 =
       "内联 chunk payload 长度 %d 非法，最大为 %d";
+  public static final String LOG_STAGED_FILE_ARG_OF_THE_LOAD_TASK_IS_NOT_CONTINUOUS_SO_IT_CANNOT_BE_MARKED_ARG_AND_THE_TERMINAL_RECORD_IS_WITHHELD_7B21F365 =
+      "暂存文件 %s 不连续，无法标记为 %s，terminal 记录未写入";
+
   public static final String LOG_DROPPED_THE_TRAILING_ENTRY_OF_THE_LOAD_PROGRESS_FILE_ARG_FROM_OFFSET_ARG_ON_WHICH_WAS_NOT_FULLY_APPENDED_05C8341B =
       "已丢弃 LOAD 进度文件 {} 从偏移 {} 开始、未被完整追加的尾部条目";
   public static final String EXCEPTION_THE_STAGED_FILE_ARG_OF_LOAD_TASK_ARG_ALREADY_EXISTS_BUT_NO_WRITER_COULD_RESUME_IT_SO_THE_PIECE_CANNOT_BE_STAGED_D6AB3A06 =

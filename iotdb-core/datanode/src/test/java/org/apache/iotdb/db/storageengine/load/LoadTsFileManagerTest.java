@@ -685,6 +685,22 @@ public class LoadTsFileManagerTest {
   }
 
   @Test
+  public void testATerminalIsOnlyMarkedOnFilesThatCanCarryIt() throws Exception {
+    final LoadTsFileProgress progress = Mockito.mock(LoadTsFileProgress.class);
+
+    Mockito.when(progress.isReady(128L)).thenReturn(true);
+    assertTrue(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L));
+    Mockito.when(progress.isReady(128L)).thenReturn(false);
+    assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L));
+
+    // An aborted task never imports its bytes, so only continuity is asked of it.
+    Mockito.when(progress.getFirstHoleOffset()).thenReturn(-1L);
+    assertTrue(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L));
+    Mockito.when(progress.getFirstHoleOffset()).thenReturn(160L);
+    assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L));
+  }
+
+  @Test
   public void testStagedDirectoryWithoutTerminalRecordIsKeptOnRecovery() throws Exception {
     // A directory whose progress files hold no terminal record may belong to an in-progress task,
     // so recovery must leave it on disk.

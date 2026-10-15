@@ -262,6 +262,13 @@ public class LoadTsFileProgress {
     flushQueuedRecords();
   }
 
+  /**
+   * Appends the command a task ended with to the tail of this progress file, and forces it: it is
+   * the last entry of the file, and what a restart reads to release the directory instead of
+   * resuming a finished task. Both fields matter: the op cannot be told from the records, since a
+   * complete file may still have been aborted, and the index is the watermark the release waits
+   * for, which the records cannot supply - a torn tail would understate it.
+   */
   public void recordTerminal(final LoadTsFileConsensusOp op, final long searchIndex)
       throws IOException {
     ensureActivated();
