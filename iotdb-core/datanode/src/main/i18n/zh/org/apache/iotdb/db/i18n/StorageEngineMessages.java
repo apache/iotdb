@@ -1635,6 +1635,9 @@ public final class StorageEngineMessages {
       "已恢复 chunk 元数据：file={}，chunkCount={}，seriesCount={}";
   public static final String LOG_SEALED_PRECALCULATED_CHUNK_FILE_FILE_ARG_METAOFFSET_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_FILELENGTH_ARG_D837F9C1 =
       "已封口预计算 chunk 文件：file={}，metaOffset={}，chunkCount={}，seriesCount={}，fileLength={}";
+  public static final String EXCEPTION_THE_OUTPUT_OF_THE_PRECALCULATED_CHUNK_WRITER_CANNOT_SEEK_SO_THE_CHUNK_OF_ARG_ARG_CANNOT_BE_WRITTEN_AT_OFFSET_ARG_WHILE_THE_STREAM_IS_ALREADY_AT_ARG_5A60F53A =
+      "预计算 chunk writer 的输出不可 seek，无法把 %s.%s 的 chunk 写到 offset %d（流当前位置已是 %d）";
+
   public static final String LOG_PRECALCULATED_CHUNK_WRITER_IS_ALREADY_SEALED_IGNORING_CLOSE_FILE_ARG_A5E3C6CE =
       "预计算 chunk writer 已封口，忽略本次 close：file={}";
   public static final String LOG_SKIPPING_THE_CHUNKS_OF_ARG_BECAUSE_THEIR_PAYLOAD_IS_ALREADY_STAGED_IN_ARG_OF_THE_LOAD_TASK_ARG_BAFEEE84 =

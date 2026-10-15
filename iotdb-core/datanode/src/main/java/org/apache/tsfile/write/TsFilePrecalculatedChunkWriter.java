@@ -259,17 +259,16 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
       return expectedOffset;
     }
     if (currentOffset > expectedOffset) {
-      // A non-seekable output cannot place the piece at its own offset, so the bytes land where the
-      // stream already is.
-      LOGGER.warn(
-          StorageEngineMessages
-              .LOG_PRECALCULATED_OFFSET_IS_BEHIND_ACTUAL_FILE_POSITION_USING_ACTUAL_POSITION_FILE_ARG_DEVICE_ARG_MEASUREMENT_ARG_EXPECTEDOFFSET_ARG_ACTUALOFFSET_ARG_DELTA_ARG_F05C873F,
-          getFileForLog(),
-          device,
-          chunk.getHeader().getMeasurementID(),
-          expectedOffset,
-          currentOffset,
-          currentOffset - expectedOffset);
+      // A non-seekable output cannot place the chunk at its own offset: writing it where the stream
+      // already is would produce a file that does not match the layout the pieces were built from.
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_THE_OUTPUT_OF_THE_PRECALCULATED_CHUNK_WRITER_CANNOT_SEEK_SO_THE_CHUNK_OF_ARG_ARG_CANNOT_BE_WRITTEN_AT_OFFSET_ARG_WHILE_THE_STREAM_IS_ALREADY_AT_ARG_5A60F53A,
+              device,
+              chunk.getHeader().getMeasurementID(),
+              expectedOffset,
+              currentOffset));
     }
     return expectedOffset;
   }

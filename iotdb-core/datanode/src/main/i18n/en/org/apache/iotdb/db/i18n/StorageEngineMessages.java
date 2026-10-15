@@ -1715,6 +1715,9 @@ public final class StorageEngineMessages {
       "Restored chunk metadata: file={}, chunkCount={}, seriesCount={}";
   public static final String LOG_SEALED_PRECALCULATED_CHUNK_FILE_FILE_ARG_METAOFFSET_ARG_CHUNKCOUNT_ARG_SERIESCOUNT_ARG_FILELENGTH_ARG_D837F9C1 =
       "Sealed precalculated chunk file: file={}, metaOffset={}, chunkCount={}, seriesCount={}, fileLength={}";
+  public static final String EXCEPTION_THE_OUTPUT_OF_THE_PRECALCULATED_CHUNK_WRITER_CANNOT_SEEK_SO_THE_CHUNK_OF_ARG_ARG_CANNOT_BE_WRITTEN_AT_OFFSET_ARG_WHILE_THE_STREAM_IS_ALREADY_AT_ARG_5A60F53A =
+      "The output of the precalculated chunk writer cannot seek, so the chunk of %s.%s cannot be written at offset %d while the stream is already at %d";
+
   public static final String LOG_PRECALCULATED_CHUNK_WRITER_IS_ALREADY_SEALED_IGNORING_CLOSE_FILE_ARG_A5E3C6CE =
       "Precalculated chunk writer is already sealed, ignoring close: file={}";
   public static final String LOG_SKIPPING_THE_CHUNKS_OF_ARG_BECAUSE_THEIR_PAYLOAD_IS_ALREADY_STAGED_IN_ARG_OF_THE_LOAD_TASK_ARG_BAFEEE84 =
