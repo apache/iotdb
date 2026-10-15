@@ -123,6 +123,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -170,6 +171,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -264,7 +266,6 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
  * will be called as a callback.
  */
 public class DataRegion implements IDataRegionForQuery {
-
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
@@ -289,6 +290,10 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
+
+  // Only the latest drop is retained per region. The ConfigNode captures its final counters
+  // before the dedicated DROP TABLE worker executes another procedure's DELETE_DATA state.
+  private volatile Pair<Long, DropTableModProgress> dropTableModProgress;
 
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
@@ -3202,6 +3207,11 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public TDropTableModProgress getDropTableModProgress(final long procedureId) {
+    final Pair<Long, DropTableModProgress> progress = dropTableModProgress;
+    return progress != null && progress.left == procedureId ? progress.right.snapshot() : null;
+  }
+
   public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
     if (node.getDatabaseName() != null && !node.getDatabaseName().equals(databaseName)) {
       // not targeted on this database, return
@@ -3215,12 +3225,24 @@ public class DataRegion implements IDataRegionForQuery {
     }
     List<TableDeletionEntry> modEntries = node.getModEntries();
 
+    final long procedureId = DropTableModProgress.procedureId(node.getPlanNodeId());
+    final DropTableModProgress progress =
+        procedureId >= 0 && modEntries.size() == 1 && modEntries.get(0).isDroppingTable()
+            ? new DropTableModProgress()
+            : null;
+
     logger.info(StorageEngineMessages.DELETION_EXECUTING_TABLE_DELETION, node);
 
     writeLock("delete");
     boolean hasReleasedLock = false;
     try {
+      if (progress != null) {
+        dropTableModProgress = new Pair<>(procedureId, progress);
+      }
       if (deleted) {
+        if (progress != null) {
+          progress.setTotalModFileCount(0);
+        }
         return;
       }
       String tableName = modEntries.get(0).getTableName();
@@ -3302,7 +3324,7 @@ public class DataRegion implements IDataRegionForQuery {
       hasReleasedLock = true;
 
       for (int i = 0; i < modEntries.size(); i++) {
-        deleteDataInSealedFiles(sealedTsFileResourceLists.get(i), modEntries.get(i));
+        deleteDataInSealedFiles(sealedTsFileResourceLists.get(i), modEntries.get(i), progress);
       }
     } catch (Exception e) {
       throw new IOException(e);
@@ -3619,6 +3641,12 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
+    deleteDataInSealedFiles(sealedTsFiles, deletion, null);
+  }
+
+  private void deleteDataInSealedFiles(
+      Collection<TsFileResource> sealedTsFiles, ModEntry deletion, DropTableModProgress progress)
+      throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
@@ -3753,6 +3781,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
 
+    if (progress != null) {
+      progress.setTotalModFileCount(involvedModificationFiles.size());
+    }
+
     if (involvedModificationFiles.isEmpty()) {
       logger.info(StorageEngineMessages.DELETION_DOES_NOT_INVOLVE_ANY_FILE, deletion);
       return;
@@ -3765,6 +3797,9 @@ public class DataRegion implements IDataRegionForQuery {
                   try {
                     modFile.write(deletion);
                     modFile.close();
+                    if (progress != null) {
+                      progress.modFileWritten();
+                    }
                   } catch (Exception e) {
                     return e;
                   }

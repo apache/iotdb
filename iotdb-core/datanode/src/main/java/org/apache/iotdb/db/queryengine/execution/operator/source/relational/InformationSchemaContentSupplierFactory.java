@@ -532,6 +532,16 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[5].appendNull();
       }
+      if (currentProcedure.isSetWrittenModFileCount()) {
+        columnBuilders[6].writeLong(currentProcedure.getWrittenModFileCount());
+      } else {
+        columnBuilders[6].appendNull();
+      }
+      if (currentProcedure.isSetRemainingModFileCount()) {
+        columnBuilders[7].writeLong(currentProcedure.getRemainingModFileCount());
+      } else {
+        columnBuilders[7].appendNull();
+      }
       resultBuilder.declarePosition();
       currentProcedure = null;
     }
