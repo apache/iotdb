@@ -32,6 +32,8 @@ import org.apache.iotdb.calc.transformation.dag.column.multi.MappableUDFColumnTr
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -47,8 +49,11 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.Set;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -70,6 +75,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private final ColumnTransformer[] filterCacheTransformers;
 
   private final ColumnTransformer[] projectCacheTransformers;
+
+  private final int retainedInputColumnCount;
 
   private final TsBlockBuilder filterTsBlockBuilder;
 
@@ -111,6 +118,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.filterCacheTransformers = ColumnTransformer.collectTransformers(filterRoots);
     this.projectCacheTransformers =
         ColumnTransformer.collectTransformers(projectOutputTransformerList);
+    this.retainedInputColumnCount =
+        countRetainedInputColumns(filterCacheTransformers, projectCacheTransformers);
   }
 
   public FilterAndProjectOperator(
@@ -124,10 +133,24 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.projectOutputTransformerList = filterAndProjectOperator.projectOutputTransformerList;
     this.filterCacheTransformers = filterAndProjectOperator.filterCacheTransformers;
     this.projectCacheTransformers = filterAndProjectOperator.projectCacheTransformers;
+    this.retainedInputColumnCount = filterAndProjectOperator.retainedInputColumnCount;
     this.hasNonMappableUDF = filterAndProjectOperator.hasNonMappableUDF;
     this.hasFilter = filterAndProjectOperator.hasFilter;
     this.filterTsBlockBuilder = filterAndProjectOperator.filterTsBlockBuilder;
     this.inputOperator = inputOperator;
+  }
+
+  private static int countRetainedInputColumns(ColumnTransformer[]... phases) {
+    Set<ColumnTransformer> retained = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (ColumnTransformer[] transformers : phases) {
+      for (ColumnTransformer transformer : transformers) {
+        if (transformer instanceof DiffFunctionColumnTransformer
+            || transformer instanceof DiffColumnTransformer) {
+          retained.add(transformer);
+        }
+      }
+    }
+    return retained.size();
   }
 
   @Override
@@ -356,7 +379,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
               maxPeekMemory,
               (long) maxCachedColumn
                   * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte())
-          + inputOperator.calculateRetainedSizeAfterCallingNext();
+          + calculateRetainedSizeAfterCallingNext();
     }
 
     // has Filter
@@ -373,7 +396,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return Math.max(
             maxPeekMemory,
             (long) maxCachedColumn * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte())
-        + inputOperator.calculateRetainedSizeAfterCallingNext();
+        + calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
@@ -390,7 +413,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext();
+    // DIFF retains a complete result until the next input even after its ordinary cache is
+    // consumed.
+    // Filter and projection results can coexist, so count distinct nodes across both phases.
+    return inputOperator.calculateRetainedSizeAfterCallingNext()
+        + (long) retainedInputColumnCount
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
   }
 
   private int getMaxLevelOfColumnTransformerTree(ColumnTransformer columnTransformer) {

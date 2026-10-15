@@ -36,6 +36,7 @@ import org.apache.iotdb.calc.transformation.dag.column.multi.CoalesceColumnTrans
 import org.apache.iotdb.calc.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -43,6 +44,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -496,6 +498,63 @@ public class FilterAndProjectOperatorTest {
               new Double[] {4.0, 1.0});
         }
       }
+    }
+  }
+
+  @Test
+  public void testNestedAndIndependentDiffResultsAreIncludedInMemoryEstimates() throws Exception {
+    int diffCount = 8;
+    long pageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    for (boolean nested : new boolean[] {true, false}) {
+      Graph graph = new Graph();
+      ColumnTransformer input = graph.input(0);
+      ColumnTransformer output = nested ? input : graph.constant(0);
+      for (int i = 0; i < diffCount; i++) {
+        ColumnTransformer argument = nested ? output : graph.add(input, i);
+        ColumnTransformer diff =
+            new DiffFunctionColumnTransformer(DOUBLE, reference(argument), true);
+        output = nested ? diff : graph.add(output, diff);
+      }
+      try (Operator operator = project(graph, new TsBlock[] {block(1, 3, 6)}, output)) {
+        // Retained DIFF columns coexist with the input/scratch columns during evaluation.
+        assertTrue(operator.calculateMaxPeekMemory() >= (diffCount + 1) * pageSize);
+        operator.next();
+        // The child has returned its only block, but every DIFF still retains its result.
+        assertEquals(diffCount * pageSize, operator.calculateRetainedSizeAfterCallingNext());
+      }
+    }
+  }
+
+  @Test
+  public void testDiffRetainedMemoryDeduplicatesSharedNodesAcrossPhases() throws Exception {
+    Graph filter = new Graph();
+    ColumnTransformer input = filter.input(0);
+    ColumnTransformer unary = new DiffFunctionColumnTransformer(DOUBLE, reference(input), true);
+    ColumnTransformer flags =
+        filter.leaf(
+            new ConstantColumnTransformer(
+                BOOLEAN, new BooleanColumn(1, Optional.empty(), new boolean[] {true})));
+    ColumnTransformer binary =
+        new DiffColumnTransformer(DOUBLE, reference(input), reference(flags));
+    ColumnTransformer predicate = filter.greaterThan(filter.add(unary, binary), 0);
+    long pageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    try (FilterAndProjectOperator original =
+            operator(
+                new TsBlock[0],
+                filter,
+                predicate,
+                Arrays.asList(unary, binary),
+                new Graph(),
+                unary,
+                binary,
+                unary);
+        FilterAndProjectOperator copy =
+            new FilterAndProjectOperator(
+                original, new ValuesOperator(new TestOperatorContext(), Collections.emptyList()))) {
+      assertEquals(2 * pageSize, original.calculateRetainedSizeAfterCallingNext());
+      assertTrue(original.calculateMaxPeekMemory() >= 6 * pageSize);
+      assertEquals(2 * pageSize, copy.calculateRetainedSizeAfterCallingNext());
+      assertEquals(original.calculateMaxPeekMemory(), copy.calculateMaxPeekMemory());
     }
   }
 
