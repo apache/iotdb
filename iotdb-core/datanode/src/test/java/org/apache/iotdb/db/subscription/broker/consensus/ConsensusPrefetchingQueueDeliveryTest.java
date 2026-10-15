@@ -207,7 +207,7 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   }
 
   @Test
-  public void testWalDeliveryReusesInitialReadAndRestorationProof() throws Exception {
+  public void testWalDeliveryReadsOnlyForRedelivery() throws Exception {
     writeWal(1, true);
     final ConsensusPrefetchingQueue queue = newQueue();
     assertNull(queue.poll(CONSUMER));
@@ -230,7 +230,7 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   }
 
   @Test
-  public void testPendingDeliveryDefersWalValidationToPrefetch() throws Exception {
+  public void testPendingDeliveryReleasesPayloadWithoutWalValidation() throws Exception {
     writeWal(1, true);
     final ConsensusPrefetchingQueue queue = newQueue();
     assertNull(queue.poll(CONSUMER));
@@ -239,13 +239,12 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     final SubscriptionEvent event = queue.poll(CONSUMER);
     final long initialReads = walIteratorCreations.get();
     deliver(event);
-    // Even with readable WAL, an unverified pending batch must not read it in the poll callback.
     assertEquals(initialReads, walIteratorCreations.get());
-    assertFalse(event.isPayloadDetached());
-    assertEquals(tabletBytes, queue.getRetainedTabletBytes());
+    assertTrue(event.isPayloadDetached());
+    assertEquals(0L, queue.getRetainedTabletBytes());
 
     queue.drivePrefetchOnce();
-    assertTrue(walIteratorCreations.get() > initialReads);
+    assertEquals(initialReads, walIteratorCreations.get());
     assertTrue(event.isPayloadDetached());
     assertEquals(0L, queue.getRetainedTabletBytes());
     assertTrue(committedProgress().getWriterPositions().isEmpty());
@@ -253,7 +252,8 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   }
 
   @Test
-  public void testMixedPendingAndWalBatchWaitsForAllMembersToBeReadable() throws Exception {
+  public void testMixedPendingAndWalBatchRetriesRedeliveryUntilAllMembersAreReadable()
+      throws Exception {
     config.setSubscriptionConsensusBatchMaxTabletCount(2);
     writeWal(1, true);
     currentSearchIndex.set(2);
@@ -263,14 +263,23 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     queue.drivePrefetchOnce();
     final SubscriptionEvent event = queue.poll(CONSUMER);
     assertNotNull(event);
-    assertEquals(Arrays.asList(1001L, 1002L), timestamps(deliver(event)));
-    assertFalse(event.isPayloadDetached());
+    final long initialReads = walIteratorCreations.get();
+    final SubscriptionPollResponse first = deliver(event);
+    assertEquals(Arrays.asList(1001L, 1002L), timestamps(first));
+    assertTrue(event.isPayloadDetached());
     queue.drivePrefetchOnce();
-    assertFalse(event.isPayloadDetached());
-    assertEquals(tabletBytes * 2, queue.getRetainedTabletBytes());
+    assertEquals(initialReads, walIteratorCreations.get());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+    assertTrue(queue.nack(CONSUMER, event.getCommitContext()));
+    assertNull(queue.poll(CONSUMER));
+    assertTrue(event.isPayloadDetached());
+    assertEquals(1, deliveryRecordCount(queue));
+    assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+    assertTrue(committedProgress().getWriterPositions().isEmpty());
 
     writeWal(2, true);
-    queue.drivePrefetchOnce();
+    assertSame(event, queue.poll(CONSUMER));
+    assertEquals(first.getPayload(), deliver(event).getPayload());
     assertTrue(event.isPayloadDetached());
     assertEquals(0L, queue.getRetainedTabletBytes());
     assertTrue(committedProgress().getWriterPositions().isEmpty());
@@ -316,24 +325,35 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   }
 
   @Test
-  public void testIncompleteOrNotYetVisibleWalKeepsPayloadUntilReplayable() throws Exception {
+  public void testIncompleteOrNotYetVisibleWalRetriesRedeliveryWithoutRetainingPayload()
+      throws Exception {
     currentSearchIndex.set(1);
     final ConsensusPrefetchingQueue queue = newQueue();
     assertNull(queue.poll(CONSUMER));
     assertTrue(pendingEntries(queue).offer(request(1, 1, WRITER)));
     queue.drivePrefetchOnce();
     final SubscriptionEvent event = queue.poll(CONSUMER);
-    deliver(event);
-    assertFalse(event.isPayloadDetached());
-    assertEquals(tabletBytes, queue.getRetainedTabletBytes());
+    final long initialReads = walIteratorCreations.get();
+    final SubscriptionPollResponse first = deliver(event);
+    assertEquals(initialReads, walIteratorCreations.get());
+    assertTrue(event.isPayloadDetached());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+    assertTrue(queue.nack(CONSUMER, event.getCommitContext()));
+    assertNull(queue.poll(CONSUMER));
+    assertEquals(1, deliveryRecordCount(queue));
+    assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+    assertTrue(committedProgress().getWriterPositions().isEmpty());
 
     writeWal(1, false);
-    queue.drivePrefetchOnce();
-    assertFalse(event.isPayloadDetached());
-    assertEquals(tabletBytes, queue.getRetainedTabletBytes());
+    assertNull(queue.poll(CONSUMER));
+    assertTrue(event.isPayloadDetached());
+    assertEquals(1, deliveryRecordCount(queue));
+    assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
+    assertTrue(committedProgress().getWriterPositions().isEmpty());
 
     writeWal(1, true);
-    queue.drivePrefetchOnce();
+    assertSame(event, queue.poll(CONSUMER));
+    assertEquals(first.getPayload(), deliver(event).getPayload());
     assertTrue(event.isPayloadDetached());
     assertEquals(0L, queue.getRetainedTabletBytes());
     assertTrue(committedProgress().getWriterPositions().isEmpty());
@@ -413,7 +433,7 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     flush.setAccessible(true);
     assertTrue((boolean) flush.invoke(queue, batch, queue.getCurrentSeekGeneration()));
     // Manual batch construction bypasses the WAL pump. Advance its local cursor past the consumed
-    // range before the asynchronous validation round, so normal prefetch does not enqueue it again.
+    // range so normal prefetch does not enqueue it again.
     final Field cursor =
         ConsensusPrefetchingQueue.class.getDeclaredField("nextExpectedSearchIndex");
     cursor.setAccessible(true);

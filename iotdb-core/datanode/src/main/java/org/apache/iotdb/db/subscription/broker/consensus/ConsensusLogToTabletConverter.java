@@ -141,7 +141,7 @@ public class ConsensusLogToTabletConverter {
     return deserializeToInsertNode(indexedRequest, false);
   }
 
-  /** A payload can be discarded only after every fragment, including the seal, is readable. */
+  /** WAL replay must wait until every fragment, including the seal, is readable. */
   static InsertNode deserializeCompleteInsertNode(final IndexedConsensusRequest indexedRequest) {
     return deserializeToInsertNode(indexedRequest, true);
   }

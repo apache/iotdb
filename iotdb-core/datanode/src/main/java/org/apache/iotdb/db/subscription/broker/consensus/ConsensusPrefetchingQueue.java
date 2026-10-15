@@ -1494,7 +1494,6 @@ public class ConsensusPrefetchingQueue {
           }
           final DeliveryBatchRecord batchRecord = deliveryBatches.get(event);
           if (Objects.nonNull(batchRecord)) {
-            batchRecord.delivered = false;
             // A fresh response identity fences a late delivery callback from an earlier poll.
             event.restorePayload(event.getCurrentResponse().getPayload());
           }
@@ -1676,7 +1675,6 @@ public class ConsensusPrefetchingQueue {
       }
 
       applyPendingSubscriptionWalReset(observedSeekGeneration);
-      reclaimDeliveredPayloads();
       recycleInFlightEvents();
 
       if (!isActive) {
@@ -1976,12 +1974,7 @@ public class ConsensusPrefetchingQueue {
       final int maxTablets,
       final long maxBatchBytes,
       final boolean fromPending) {
-    final PreparedEntry preparedEntry =
-        prepareEntry(
-            request,
-            !fromPending
-                && Objects.nonNull(subscriptionWALIterator)
-                && !subscriptionWALIterator.hasIncompleteScan());
+    final PreparedEntry preparedEntry = prepareEntry(request);
     if (Objects.isNull(preparedEntry)) {
       return memoryBlockedEntryBytes > 0L
           ? MaterializationResult.MEMORY_BLOCKED
@@ -2458,8 +2451,7 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private PreparedEntry prepareEntry(
-      final IndexedConsensusRequest indexedRequest, final boolean fromReadableWal) {
+  private PreparedEntry prepareEntry(final IndexedConsensusRequest indexedRequest) {
     final boolean debugEnabled = LOGGER.isDebugEnabled();
     final long prepareStartNs = debugEnabled ? System.nanoTime() : 0L;
     if (debugEnabled) {
@@ -2471,17 +2463,8 @@ public class ConsensusPrefetchingQueue {
           indexedRequest.getNodeId(),
           indexedRequest.getProgressLocalSeq());
     }
-    // Reuse the initial WAL read and strict deserialization as the replayability proof. Pending
-    // entries have no such proof, and a partial WAL request keeps the existing materialization
-    // behavior while retaining its payload until an independent validation succeeds.
-    final InsertNode completeWalInsertNode =
-        fromReadableWal
-            ? ConsensusLogToTabletConverter.deserializeCompleteInsertNode(indexedRequest)
-            : null;
     final InsertNode insertNode =
-        Objects.nonNull(completeWalInsertNode)
-            ? completeWalInsertNode
-            : ConsensusLogToTabletConverter.deserializeToInsertNode(indexedRequest);
+        ConsensusLogToTabletConverter.deserializeToInsertNode(indexedRequest);
     if (Objects.isNull(insertNode)) {
       memoryBlockedEntryBytes = -1L;
       return null;
@@ -2531,8 +2514,7 @@ public class ConsensusPrefetchingQueue {
         writerNodeId,
         localSeq,
         searchIndex,
-        replayConverter,
-        Objects.nonNull(completeWalInsertNode));
+        replayConverter);
   }
 
   private static long estimateTabletSize(final Tablet tablet) {
@@ -2798,49 +2780,20 @@ public class ConsensusPrefetchingQueue {
             || outstandingEventsByCommitContext.get(event.getCommitContext()) != event) {
           return;
         }
-        record.delivered = true;
-        // The delivery callback only detaches payloads already proven replayable. Pending batches
-        // may need disk reads; wake the prefetch worker below to validate them off the poll path.
-        if (record.replayable) {
-          reclaimDeliveredPayload(event, record);
+        // Delivery records protect the WAL needed for replay. Release the serialized payload
+        // without a validation scan; if pending WAL is not readable yet, redelivery retries it
+        // without advancing committed progress.
+        if (event.detachCurrentPayload(response)) {
+          final Long retainedBytes = retainedBytesByEvent.remove(event);
+          if (Objects.nonNull(retainedBytes)) {
+            releaseTabletMemory(retainedBytes);
+          }
         }
       }
     } finally {
       releaseReadLock();
     }
     requestPrefetch();
-  }
-
-  private void reclaimDeliveredPayloads() {
-    // Only materialized events need a check. The number of these is bounded by the memory budget.
-    for (final SubscriptionEvent event : retainedBytesByEvent.keySet()) {
-      synchronized (event) {
-        final DeliveryBatchRecord record = deliveryBatches.get(event);
-        if (Objects.nonNull(record) && record.delivered && !event.isCommitted()) {
-          reclaimDeliveredPayload(event, record);
-        }
-      }
-    }
-  }
-
-  private void reclaimDeliveredPayload(
-      final SubscriptionEvent event, final DeliveryBatchRecord record) {
-    if (event.isPayloadDetached() || !record.delivered) {
-      return;
-    }
-    // Batches read completely from WAL reuse that proof and need no validation scan. Only pending
-    // or partial batches are checked by the prefetch worker before releasing the only payload copy.
-    // Cache a successful check across redeliveries; this read changes no committed/replay progress.
-    if (!record.replayable && Objects.isNull(readDeliveryBatch(event, record, false))) {
-      return;
-    }
-    record.replayable = true;
-    if (event.detachCurrentPayload(event.getCurrentResponse())) {
-      final Long retainedBytes = retainedBytesByEvent.remove(event);
-      if (Objects.nonNull(retainedBytes)) {
-        releaseTabletMemory(retainedBytes);
-      }
-    }
   }
 
   private boolean restorePayloadForDelivery(final SubscriptionEvent event) {
@@ -2853,7 +2806,7 @@ public class ConsensusPrefetchingQueue {
     }
     boolean restored = false;
     try {
-      final List<Tablet> tablets = readDeliveryBatch(event, record, true);
+      final List<Tablet> tablets = readDeliveryBatch(event, record);
       if (Objects.isNull(tablets)
           || tablets.size() != record.tabletCount
           || estimateTabletsBytes(tablets) > record.estimatedBytes) {
@@ -2874,7 +2827,7 @@ public class ConsensusPrefetchingQueue {
 
   /** Reads exactly the recorded members in delivery order, including non-local writer records. */
   private List<Tablet> readDeliveryBatch(
-      final SubscriptionEvent event, final DeliveryBatchRecord record, final boolean materialize) {
+      final SubscriptionEvent event, final DeliveryBatchRecord record) {
     final List<ReplayEntryPosition> positions = record.decodePositions();
     final Map<WriterProgress, Integer> members = new HashMap<>();
     for (int index = 0; index < positions.size(); index++) {
@@ -2913,8 +2866,7 @@ public class ConsensusPrefetchingQueue {
         if (Objects.isNull(node)) {
           return null;
         }
-        tabletsByMember.set(
-            memberIndex, materialize ? record.converter.convert(node) : Collections.emptyList());
+        tabletsByMember.set(memberIndex, record.converter.convert(node));
         members.remove(progress);
       }
       if (!members.isEmpty() || iterator.hasIncompleteScan()) {
@@ -5281,8 +5233,6 @@ public class ConsensusPrefetchingQueue {
 
     ConsensusLogToTabletConverter getReplayConverter();
 
-    boolean isReplayable();
-
     OrderingKey getOrderingKey();
   }
 
@@ -5296,7 +5246,6 @@ public class ConsensusPrefetchingQueue {
     private long minimumSearchIndex;
     private boolean hasNonLocalEntry;
     private boolean replayEligible;
-    private boolean replayable;
     private ConsensusLogToTabletConverter replayConverter;
     private long startSearchIndex;
     private long endSearchIndex;
@@ -5348,7 +5297,6 @@ public class ConsensusPrefetchingQueue {
       hasNonLocalEntry |= entry.getSearchIndex() < 0;
       replayEligible &=
           entry.getPhysicalTime() >= 0 && entry.getLocalSeq() >= 0 && entry.getWriterNodeId() >= 0;
-      replayable &= entry.isReplayable();
       estimatedBytes += entryEstimatedBytes;
       physicalTime = entry.getPhysicalTime();
       lastLocalSeq = entry.getLocalSeq();
@@ -5368,8 +5316,7 @@ public class ConsensusPrefetchingQueue {
           tablets.size(),
           estimatedBytes,
           converter.getDatabaseName(),
-          Objects.nonNull(replayConverter) ? replayConverter : converter,
-          replayable);
+          Objects.nonNull(replayConverter) ? replayConverter : converter);
     }
 
     private void reset() {
@@ -5381,7 +5328,6 @@ public class ConsensusPrefetchingQueue {
       minimumSearchIndex = Long.MAX_VALUE;
       hasNonLocalEntry = false;
       replayEligible = true;
-      replayable = true;
       replayConverter = null;
       startSearchIndex = -1L;
       endSearchIndex = -1L;
@@ -5409,7 +5355,7 @@ public class ConsensusPrefetchingQueue {
 
   private static final class DeliveryBatchRecord {
     // Delta + zigzag varints keep contiguous indices/sequences and timestamp deltas compact.
-    // Positions are decoded only while verifying or materializing one memory-bounded batch.
+    // Positions are decoded only while materializing one memory-bounded batch for redelivery.
     private final byte[] positions;
     private final int entryCount;
     private final long minimumSearchIndex;
@@ -5417,8 +5363,6 @@ public class ConsensusPrefetchingQueue {
     private final long estimatedBytes;
     private final String databaseName;
     private final ConsensusLogToTabletConverter converter;
-    private boolean delivered;
-    private boolean replayable;
 
     private DeliveryBatchRecord(
         final byte[] positions,
@@ -5427,8 +5371,7 @@ public class ConsensusPrefetchingQueue {
         final int tabletCount,
         final long estimatedBytes,
         final String databaseName,
-        final ConsensusLogToTabletConverter converter,
-        final boolean replayable) {
+        final ConsensusLogToTabletConverter converter) {
       this.positions = positions;
       this.entryCount = entryCount;
       this.minimumSearchIndex = minimumSearchIndex;
@@ -5436,7 +5379,6 @@ public class ConsensusPrefetchingQueue {
       this.estimatedBytes = estimatedBytes;
       this.databaseName = databaseName;
       this.converter = converter;
-      this.replayable = replayable;
     }
 
     private List<ReplayEntryPosition> decodePositions() {
@@ -5489,7 +5431,6 @@ public class ConsensusPrefetchingQueue {
     private final long localSeq;
     private final long searchIndex;
     private final ConsensusLogToTabletConverter replayConverter;
-    private final boolean replayable;
 
     private PreparedEntry(
         final List<Tablet> tablets,
@@ -5498,7 +5439,7 @@ public class ConsensusPrefetchingQueue {
         final int writerNodeId,
         final long localSeq,
         final long searchIndex) {
-      this(tablets, estimatedBytes, physicalTime, writerNodeId, localSeq, searchIndex, null, false);
+      this(tablets, estimatedBytes, physicalTime, writerNodeId, localSeq, searchIndex, null);
     }
 
     private PreparedEntry(
@@ -5508,8 +5449,7 @@ public class ConsensusPrefetchingQueue {
         final int writerNodeId,
         final long localSeq,
         final long searchIndex,
-        final ConsensusLogToTabletConverter replayConverter,
-        final boolean replayable) {
+        final ConsensusLogToTabletConverter replayConverter) {
       this.tablets = tablets;
       this.estimatedBytes = estimatedBytes;
       this.physicalTime = physicalTime;
@@ -5517,7 +5457,6 @@ public class ConsensusPrefetchingQueue {
       this.localSeq = localSeq;
       this.searchIndex = searchIndex;
       this.replayConverter = replayConverter;
-      this.replayable = replayable;
     }
 
     @Override
@@ -5553,11 +5492,6 @@ public class ConsensusPrefetchingQueue {
     @Override
     public ConsensusLogToTabletConverter getReplayConverter() {
       return replayConverter;
-    }
-
-    @Override
-    public boolean isReplayable() {
-      return replayable;
     }
 
     @Override
