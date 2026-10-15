@@ -96,10 +96,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return requests;
   }
 
-  public synchronized List<ByteBuffer> getSerializedRequests() {
-    // Requests that deferred their serialization materialize their bytes here, that is, when a
-    // batch is actually built for sending.
-    buildSerializedRequests();
+  public List<ByteBuffer> getSerializedRequests() {
     return serializedRequests;
   }
 

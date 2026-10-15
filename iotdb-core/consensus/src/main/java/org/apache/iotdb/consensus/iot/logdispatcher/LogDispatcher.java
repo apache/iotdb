@@ -660,6 +660,9 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
+      // A request that deferred its serialization keeps only its source objects while it is queued,
+      // so its bytes are materialized here, when the batch that carries them is built.
+      request.buildSerializedRequests();
       TLogEntry logEntry =
           new TLogEntry(
               request.getSerializedRequests(),

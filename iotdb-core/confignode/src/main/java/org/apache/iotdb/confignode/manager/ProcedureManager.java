@@ -32,12 +32,14 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -58,7 +60,9 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
@@ -112,6 +116,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTableColumnPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
@@ -157,6 +162,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
@@ -165,6 +171,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -775,8 +782,8 @@ public class ProcedureManager {
       removedDataNodesRegionSet.add(regionMigrationPlan.getRegionId());
     }
 
-    // 4. Check if there are any other unknown or readonly DataNodes in the consensus group that are
-    // not the remove DataNodes
+    // 4. Check if there are any other unknown, stopped or readonly DataNodes in the consensus
+    // group that are not the remove DataNodes
 
     for (TDataNodeLocation removeDataNode : dataNodeLocations) {
       Set<TDataNodeLocation> relatedDataNodes =
@@ -786,13 +793,11 @@ public class ProcedureManager {
       for (TDataNodeLocation relatedDataNode : relatedDataNodes) {
         NodeStatus nodeStatus =
             getConfigManager().getLoadManager().getNodeStatus(relatedDataNode.getDataNodeId());
-        if (nodeStatus == NodeStatus.Unknown || nodeStatus == NodeStatus.ReadOnly) {
+        if (nodeStatus.isOffline() || nodeStatus == NodeStatus.ReadOnly) {
           failMessage =
               String.format(
-                  "Submit RemoveDataNodesProcedure failed, "
-                      + "because when there are other unknown or readonly nodes in the consensus group that are not remove nodes, "
-                      + "the remove operation cannot be performed for security reasons. "
-                      + "Please check the status of the node %s and ensure it is running.",
+                  ProcedureMessages
+                      .MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6,
                   relatedDataNode.getDataNodeId());
         }
       }
@@ -2146,7 +2151,10 @@ public class ProcedureManager {
         && System.currentTimeMillis() - startTimeForCurrentProcedure < procedureWaitRetryTimeout) {
       sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
     }
-    if (!procedure.isFinished()) {
+    // Conflict checks can fail before a procedure is assigned a persistent id. In that case the
+    // procedure remains at NO_PROC_ID but already carries the user-facing failure.
+    if (!procedure.isFinished()
+        && !(procedure.getProcId() == Procedure.NO_PROC_ID && procedure.isFailed())) {
       // The procedure is still executing
       status =
           RpcUtils.getStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT, PROCEDURE_TIMEOUT_MESSAGE);
@@ -2286,6 +2294,25 @@ public class ProcedureManager {
                 false));
   }
 
+  public TSStatus alterTableSetColumnProperties(final TAlterOrDropTableReq req) {
+    final String columnName = ReadWriteIOUtils.readString(req.updateInfo);
+    final SetTableColumnPropertiesProcedure procedure =
+        new SetTableColumnPropertiesProcedure(
+            req.database,
+            req.tableName,
+            columnName,
+            req.queryId,
+            ReadWriteIOUtils.readMap(req.updateInfo),
+            false);
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.SET_TABLE_COLUMN_PROPERTIES_PROCEDURE,
+        procedure);
+  }
+
   public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
@@ -2356,15 +2383,63 @@ public class ProcedureManager {
 
   public TSStatus dropTable(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        isView ? ProcedureType.DROP_VIEW_PROCEDURE : ProcedureType.DROP_TABLE_PROCEDURE,
-        isView
-            ? new DropViewProcedure(req.database, req.tableName, req.queryId, false)
-            : new DropTableProcedure(req.database, req.tableName, req.queryId, false));
+    if (isView) {
+      return executeWithoutDuplicate(
+          req.database,
+          null,
+          req.tableName,
+          req.queryId,
+          ProcedureType.DROP_VIEW_PROCEDURE,
+          new DropViewProcedure(req.database, req.tableName, req.queryId, false));
+    }
+    synchronized (this) {
+      if (!executor.isRunning()) {
+        return RpcUtils.getStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP);
+      }
+      final Pair<Long, Boolean> duplicate =
+          checkDuplicateTableTask(
+              req.database,
+              null,
+              req.tableName,
+              null,
+              req.queryId,
+              ProcedureType.DROP_TABLE_PROCEDURE);
+      if (duplicate.getLeft() != -1) {
+        return StatusUtils.OK;
+      }
+      if (Boolean.TRUE.equals(duplicate.getRight())) {
+        return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+      }
+      try {
+        final Optional<Pair<TsTable, TableNodeStatus>> table =
+            configManager
+                .getClusterSchemaManager()
+                .getTableAndStatusIfExists(req.database, req.tableName);
+        if (table.isEmpty()) {
+          final TableNotExistsException e =
+              new TableNotExistsException(req.database, req.tableName);
+          return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        }
+        if (table.get().getRight() == TableNodeStatus.PRE_DELETE) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        final Optional<Pair<TSStatus, TsTable>> viewCheck =
+            ClusterSchemaManager.checkTable4View(req.database, table.get().getLeft(), false);
+        if (viewCheck.isPresent()) {
+          return viewCheck.get().getLeft();
+        }
+      } catch (final MetadataException e) {
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      final Procedure<ConfigNodeProcedureEnv> procedure =
+          new DropTableProcedure(req.database, req.tableName, req.queryId, false);
+      try {
+        executor.submitProcedureAndPersist(procedure);
+        return StatusUtils.OK;
+      } catch (final Exception e) {
+        return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+    }
   }
 
   public TSStatus renameTable(final TAlterOrDropTableReq req) {
@@ -2464,6 +2539,45 @@ public class ProcedureManager {
     return result;
   }
 
+  /** Returns running drops and completed results retained by the executor's shared TTL cleaner. */
+  public List<TDropTableProcedureInfo> getDropTableProcedures() {
+    final Map<Long, DropTableProcedure> dropProcedures = new HashMap<>();
+    Stream.concat(
+            executor.getProcedures().values().stream(), executor.getCompletedProcedures().stream())
+        .filter(
+            procedure ->
+                procedure instanceof DropTableProcedure
+                    && !(procedure instanceof DropViewProcedure))
+        .map(procedure -> (DropTableProcedure) procedure)
+        .forEach(procedure -> dropProcedures.put(procedure.getProcId(), procedure));
+    dropProcedures.values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .forEach(DropTableProcedure::updateModFileProgress);
+    return dropProcedures.values().stream()
+        .map(
+            procedure -> {
+              final TDropTableProcedureInfo info =
+                  new TDropTableProcedureInfo(
+                      procedure.getDatabase(),
+                      procedure.getTableName(),
+                      procedure.getProcId(),
+                      procedure.getState().name(),
+                      procedure.getDropProgress());
+              final TDropTableModProgress modProgress = procedure.getModFileProgress();
+              if (modProgress != null) {
+                info.setWrittenModFileCount(modProgress.getWrittenModFileCount());
+                if (modProgress.isSetRemainingModFileCount()) {
+                  info.setRemainingModFileCount(modProgress.getRemainingModFileCount());
+                }
+              }
+              if (procedure.hasException()) {
+                info.setErrorMessage(procedure.getException().getMessage());
+              }
+              return info;
+            })
+        .collect(Collectors.toList());
+  }
+
   public TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
@@ -2538,6 +2652,7 @@ public class ProcedureManager {
         case ADD_VIEW_COLUMN_PROCEDURE:
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case SET_VIEW_PROPERTIES_PROCEDURE:
+        case SET_TABLE_COLUMN_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case RENAME_VIEW_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:

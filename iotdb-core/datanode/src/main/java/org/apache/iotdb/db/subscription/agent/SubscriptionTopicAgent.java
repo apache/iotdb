@@ -26,11 +26,13 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -39,14 +41,17 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class SubscriptionTopicAgent {
@@ -54,6 +59,12 @@ public class SubscriptionTopicAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
   private final TopicMetaKeeper topicMetaKeeper;
+
+  // Queue operations read this derived runtime config without acquiring the topic-meta lock.
+  // Topic-meta updates can wake queues while holding that lock, so taking it from a queue operation
+  // would reverse the lock order. The data model is part of the key to isolate same-name topics.
+  private final Map<Pair<String, Boolean>, Long> topicRecycleIntervalsMs =
+      new ConcurrentHashMap<>();
 
   public SubscriptionTopicAgent() {
     this.topicMetaKeeper = new TopicMetaKeeper();
@@ -108,8 +119,18 @@ public class SubscriptionTopicAgent {
     final boolean isTableModel = metaFromCoordinator.visibleUnderTableModel();
     final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
     TopicMeta.validateOwnerProgression(oldMeta, metaFromCoordinator);
+    final Long recycleIntervalMs =
+        metaFromCoordinator.getConfig().getRecycleUncommittedEventIntervalMs();
     topicMetaKeeper.removeTopicMeta(topicName, isTableModel);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+    final Pair<String, Boolean> topicKey = new Pair<>(topicName, isTableModel);
+    final Long oldRecycleIntervalMs =
+        Objects.isNull(recycleIntervalMs)
+            ? topicRecycleIntervalsMs.remove(topicKey)
+            : topicRecycleIntervalsMs.put(topicKey, recycleIntervalMs);
+    if (!Objects.equals(oldRecycleIntervalMs, recycleIntervalMs)) {
+      SubscriptionAgent.broker().wakeUpConsensusPrefetchingQueues(topicName, isTableModel);
+    }
     if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
     } else if (!metaFromCoordinator.getConfig().isTableTopic()
@@ -121,6 +142,8 @@ public class SubscriptionTopicAgent {
     SubscriptionAgent.broker()
         .refreshConsensusQueueOrderMode(
             topicName, isTableModel, metaFromCoordinator.getConfig().getOrderMode());
+    ConsensusSubscriptionSetupHandler.refreshDetachedRetentionsForTopic(
+        topicName, isTableModel, metaFromCoordinator.getConfig());
   }
 
   static boolean shouldRefreshColumnFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
@@ -170,9 +193,14 @@ public class SubscriptionTopicAgent {
       final List<TopicMeta> topicMetasFromCoordinator) {
     acquireWriteLock();
     try {
+      final Set<Pair<String, Boolean>> currentTopics = new HashSet<>();
       for (final TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
         try {
           handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
+          currentTopics.add(
+              new Pair<>(
+                  topicMetaFromCoordinator.getTopicName(),
+                  topicMetaFromCoordinator.visibleUnderTableModel()));
         } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
           LOGGER.warn(
@@ -186,6 +214,15 @@ public class SubscriptionTopicAgent {
                   topicName, e);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
+        }
+      }
+      // Remove absent topics only after applying the full snapshot. Clearing first would let queue
+      // operations temporarily use the global timeout and could recycle an event prematurely.
+      for (final Pair<String, Boolean> topicKey : topicRecycleIntervalsMs.keySet()) {
+        if (!currentTopics.contains(topicKey)) {
+          topicRecycleIntervalsMs.remove(topicKey);
+          SubscriptionAgent.broker()
+              .wakeUpConsensusPrefetchingQueues(topicKey.left, topicKey.right);
         }
       }
       return null;
@@ -225,6 +262,8 @@ public class SubscriptionTopicAgent {
         Objects.isNull(isTableModel)
             ? topicMetaKeeper.getTopicMeta(topicName)
             : topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+    ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForDroppedTopic(
+        topicName, Objects.nonNull(topicMeta) ? topicMeta.visibleUnderTableModel() : isTableModel);
     if (Objects.isNull(isTableModel)) {
       topicMetaKeeper.removeTopicMeta(topicName);
     } else {
@@ -233,6 +272,19 @@ public class SubscriptionTopicAgent {
     if (Objects.nonNull(topicMeta) && topicMeta.visibleUnderTableModel()) {
       SubscriptionAgent.broker().dropColumnFilter(topicName);
     }
+    if (Objects.nonNull(topicMeta) || Objects.nonNull(isTableModel)) {
+      topicRecycleIntervalsMs.remove(
+          new Pair<>(
+              topicName,
+              Objects.nonNull(isTableModel) ? isTableModel : topicMeta.visibleUnderTableModel()));
+    }
+  }
+
+  public long getTopicRecycleUncommittedEventIntervalMs(
+      final String topicName, final boolean isTableModel) {
+    return topicRecycleIntervalsMs.getOrDefault(
+        new Pair<>(topicName, isTableModel),
+        (long) SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
   }
 
   public boolean isTopicExisted(final String topicName) {

@@ -140,15 +140,25 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           refreshAndGetTopicOwnership(topicName, queues, consumerId);
       final List<ConsensusPrefetchingQueue> assignedQueues =
           getAssignedQueues(queues, consumerId, ownershipSnapshot);
-      if (assignedQueues.isEmpty()) {
+      final List<ConsensusPrefetchingQueue> pollQueues =
+          new ArrayList<>(buildPollOrderForAssignedQueues(assignedQueues, topicName));
+      final int assignedQueueCount = pollQueues.size();
+      pollQueues.addAll(buildFallbackPollOrder(queues, assignedQueues));
+      if (pollQueues.isEmpty()) {
         continue;
       }
-
-      final List<ConsensusPrefetchingQueue> pollQueues =
-          buildPollOrderForAssignedQueues(assignedQueues, topicName);
       final int eventsBeforeTopicPoll = eventsToPoll.size();
 
-      for (final ConsensusPrefetchingQueue consensusQueue : pollQueues) {
+      for (int queueIndex = 0; queueIndex < pollQueues.size(); queueIndex++) {
+        final boolean isFallbackQueue = queueIndex >= assignedQueueCount;
+        // Ownership remains the preferred polling path. Only borrow one ready event from another
+        // region when every assigned region is currently empty, preventing a consumer from timing
+        // out solely because its region has a temporary dry spell.
+        if (isFallbackQueue && eventsToPoll.size() > eventsBeforeTopicPoll) {
+          break;
+        }
+
+        final ConsensusPrefetchingQueue consensusQueue = pollQueues.get(queueIndex);
         if (consensusQueue.isClosed()) {
           continue;
         }
@@ -185,7 +195,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         eventsToPoll.add(event);
         totalSize += currentSize;
 
-        if (totalSize >= maxBytes) {
+        if (isFallbackQueue || totalSize >= maxBytes) {
           break;
         }
       }
@@ -314,6 +324,14 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
     final ConsensusPrefetchingQueue queue = getQueueForCommitContext(queues, commitContext);
     return Objects.nonNull(queue) && queue.requeue(consumerId, commitContext);
+  }
+
+  @Override
+  public int requeueInFlightEvents(final String consumerId) {
+    return topicNameToConsensusPrefetchingQueues.values().stream()
+        .flatMap(List::stream)
+        .mapToInt(queue -> queue.requeueInFlightEvents(consumerId))
+        .sum();
   }
 
   @Override
@@ -608,6 +626,21 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     return orderedQueues;
   }
 
+  private List<ConsensusPrefetchingQueue> buildFallbackPollOrder(
+      final List<ConsensusPrefetchingQueue> queues,
+      final List<ConsensusPrefetchingQueue> assignedQueues) {
+    return queues.stream()
+        .filter(queue -> !queue.isClosed())
+        .filter(queue -> !assignedQueues.contains(queue))
+        // Do not block on another consumer's region. Borrow only events that are already ready.
+        .filter(queue -> queue.getPrefetchedEventCount() > 0)
+        .sorted(
+            Comparator.comparingLong(ConsensusPrefetchingQueue::getLag)
+                .reversed()
+                .thenComparing(queue -> queue.getConsensusGroupId().toString()))
+        .collect(Collectors.toList());
+  }
+
   private ConsensusPrefetchingQueue getQueueForCommitContext(
       final List<ConsensusPrefetchingQueue> queues, final SubscriptionCommitContext commitContext) {
     final String regionId = commitContext.getRegionId();
@@ -646,7 +679,8 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
-      final boolean initialActive) {
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     synchronized (queueLifecycleLock) {
       // Get or create the list of queues for this topic
       final List<ConsensusPrefetchingQueue> queues =
@@ -680,7 +714,8 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
               fallbackCommittedRegionProgress,
               tailStartSearchIndex,
               initialRuntimeVersion,
-              initialActive);
+              initialActive,
+              replaceDetachedRetention);
       queues.add(consensusQueue);
       LOGGER.info(
           DataNodePipeMessages
@@ -709,13 +744,24 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
   }
 
-  public void unbindConsensusPrefetchingQueue(final String topicName) {
-    closeAndRemoveConsensusPrefetchingQueues(topicName, true);
+  public void unbindConsensusPrefetchingQueue(
+      final String topicName, final boolean retainProgressAfterUnsubscribe) {
+    // Subscription setup teardown and rollback manage commit state after this call returns.
+    // Persist it on close so asynchronous cleanup cannot delete state restored by a rollback.
+    closeAndRemoveConsensusPrefetchingQueues(topicName, true, retainProgressAfterUnsubscribe);
+  }
+
+  public void wakeUpPrefetchingQueues(final String topicName, final boolean isTableModel) {
+    final List<ConsensusPrefetchingQueue> queues =
+        topicNameToConsensusPrefetchingQueues.get(topicName);
+    if (Objects.nonNull(queues)) {
+      queues.forEach(queue -> queue.wakeUpForTopicConfigChange(isTableModel));
+    }
   }
 
   @Override
   public void unbind(final String topicName) {
-    unbindConsensusPrefetchingQueue(topicName);
+    unbindConsensusPrefetchingQueue(topicName, false);
   }
 
   public int unbindByRegion(final ConsensusGroupId regionId) {
@@ -741,7 +787,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
 
     for (int i = 0; i < queuesToClose.size(); i++) {
-      queuesToClose.get(i).close();
+      queuesToClose.get(i).closeAsync(false);
       LOGGER.info(
           DataNodePipeMessages
               .PIPE_LOG_SUBSCRIPTION_CLOSED_CONSENSUS_PREFETCHING_QUEUE_FOR_TOPIC_3A9DDEC5,
@@ -816,11 +862,13 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           topicName,
           brokerId);
     }
-    closeAndRemoveConsensusPrefetchingQueues(topicName, false);
+    closeAndRemoveConsensusPrefetchingQueues(topicName, false, false);
   }
 
   private void closeAndRemoveConsensusPrefetchingQueues(
-      final String topicName, final boolean warnIfMissing) {
+      final String topicName,
+      final boolean warnIfMissing,
+      final boolean retainProgressAfterUnsubscribe) {
     final List<ConsensusPrefetchingQueue> queuesToClose;
     synchronized (queueLifecycleLock) {
       final List<ConsensusPrefetchingQueue> queues =
@@ -841,7 +889,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
 
     for (final ConsensusPrefetchingQueue q : queuesToClose) {
-      q.close();
+      q.closeAsync(false, retainProgressAfterUnsubscribe);
     }
     LOGGER.info(
         DataNodePipeMessages

@@ -21,16 +21,18 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -39,14 +41,15 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Semaphore;
 
 public class DataNodeTableCacheTest {
 
   private static final String DATABASE = "interrupted_fetch_database";
   private static final String TABLE_CACHE_TEST_DATABASE = "root.table_cache_test";
-  private static final String TABLE_CACHE_TEST_DATABASE_NAME = "table_cache_test";
   private static final String TABLE_NAME = "table1";
 
   @Test
@@ -97,99 +100,7 @@ public class DataNodeTableCacheTest {
       cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
       cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
 
-      Assert.assertFalse(
-          cache
-              .getTableSnapshot()
-              .getOrDefault(TABLE_CACHE_TEST_DATABASE_NAME, Collections.emptyMap())
-              .containsKey(TABLE_NAME));
-    } finally {
-      cache.invalid(TABLE_CACHE_TEST_DATABASE);
-    }
-  }
-
-  @Test
-  public void rollbackAlteredTableRestoresOriginalSchema() throws Exception {
-    final ITableCache cache = DataNodeTableCache.getInstance();
-    cache.invalid(TABLE_CACHE_TEST_DATABASE);
-    try {
-      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-
-      final TsTable alteredTable = createTable(TABLE_NAME);
-      ((FieldColumnSchema) alteredTable.getColumnSchema("s1")).setDataType(TSDataType.DOUBLE);
-      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, alteredTable, null);
-
-      // A concurrent fetch may promote the pending table into the regular cache before rollback.
-      // Keep that path covered because rollback must still restore the pre-update schema.
-      final Method updateUsingTable =
-          DataNodeTableCache.class.getDeclaredMethod(
-              "updateUsingTable", Map.class, Map.class, LeaseFencedRetryPolicy.class);
-      updateUsingTable.setAccessible(true);
-      final Map<String, Map<String, TsTable>> fetchedTables = new HashMap<>();
-      fetchedTables.put(
-          TABLE_CACHE_TEST_DATABASE, Collections.singletonMap(TABLE_NAME, alteredTable));
-      final Map<String, Map<String, Long>> previousVersions = new HashMap<>();
-      previousVersions.put(
-          TABLE_CACHE_TEST_DATABASE_NAME, Collections.singletonMap(TABLE_NAME, 1L));
-      updateUsingTable.invoke(
-          cache, fetchedTables, previousVersions, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
-
-      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-      Assert.assertEquals(
-          TSDataType.INT32,
-          cache
-              .getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME)
-              .getColumnSchema("s1")
-              .getDataType());
-    } finally {
-      cache.invalid(TABLE_CACHE_TEST_DATABASE);
-    }
-  }
-
-  @Test
-  public void delayedRollbackDoesNotEvictCommittedAlteredSchema() {
-    final ITableCache cache = DataNodeTableCache.getInstance();
-    cache.invalid(TABLE_CACHE_TEST_DATABASE);
-    try {
-      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-
-      final TsTable alteredTable = createTable(TABLE_NAME);
-      ((FieldColumnSchema) alteredTable.getColumnSchema("s1")).setDataType(TSDataType.DOUBLE);
-      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, alteredTable, null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-
-      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-      Assert.assertEquals(
-          TSDataType.DOUBLE,
-          cache
-              .getTableSnapshot()
-              .get(TABLE_CACHE_TEST_DATABASE_NAME)
-              .get(TABLE_NAME)
-              .getColumnSchema("s1")
-              .getDataType());
-    } finally {
-      cache.invalid(TABLE_CACHE_TEST_DATABASE);
-    }
-  }
-
-  @Test
-  public void delayedRollbackDoesNotRestoreCommittedDeletedTable() {
-    final ITableCache cache = DataNodeTableCache.getInstance();
-    cache.invalid(TABLE_CACHE_TEST_DATABASE);
-    try {
-      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-
-      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, new PreDeleteTsTable(TABLE_NAME), null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-
-      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-      Assert.assertFalse(
-          cache
-              .getTableSnapshot()
-              .getOrDefault(TABLE_CACHE_TEST_DATABASE_NAME, Collections.emptyMap())
-              .containsKey(TABLE_NAME));
+      Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, false));
     } finally {
       cache.invalid(TABLE_CACHE_TEST_DATABASE);
     }
@@ -216,94 +127,108 @@ public class DataNodeTableCacheTest {
   }
 
   @Test
-  public void rollbackAfterRestartEvictsUnknownPreviousSchema() {
+  public void commitRenameRepairsCacheWhenPreReleaseWasMissed() throws Exception {
     final ITableCache cache = DataNodeTableCache.getInstance();
+    final String oldName = "table1";
+    final String newName = "table2";
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
-      final TsTable alteredTable = createTable(TABLE_NAME);
-      ((FieldColumnSchema) alteredTable.getColumnSchema("s1")).setDataType(TSDataType.DOUBLE);
-      final byte[] initializationBytes =
-          TsTableInternalRPCUtil.serializeTableInitializationInfo(
-              Collections.singletonMap(
-                  TABLE_CACHE_TEST_DATABASE, Collections.singletonList(alteredTable)),
-              Collections.singletonMap(
-                  TABLE_CACHE_TEST_DATABASE,
-                  Collections.singletonList(new NonCommittableTsTable(TABLE_NAME))));
-      cache.init(initializationBytes);
+      // The activation snapshot of a DataNode that started during the pre-release: the old name is
+      // a using table, and it is also marked as NonCommittable.
+      final Map<String, List<TsTable>> usingTables = new HashMap<>();
+      usingTables.put(TABLE_CACHE_TEST_DATABASE, Collections.singletonList(createTable(oldName)));
+      final Map<String, List<TsTable>> specialTables = new HashMap<>();
+      specialTables.put(
+          TABLE_CACHE_TEST_DATABASE, Collections.singletonList(new NonCommittableTsTable(oldName)));
+      cache.init(
+          TsTableInternalRPCUtil.serializeTableInitializationInfo(usingTables, specialTables));
 
-      // A restart cannot retain the in-memory pre-update snapshot. Evict the potentially stale
-      // schema even if the recovered procedure repeats PRE_UPDATE, and fail closed until the
-      // canonical schema can be fetched from the CN.
-      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, alteredTable, null);
-      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-      Assert.assertFalse(
-          cache
-              .getTableSnapshot()
-              .getOrDefault(TABLE_CACHE_TEST_DATABASE_NAME, Collections.emptyMap())
-              .containsKey(TABLE_NAME));
+      // The commit is the only sign of the rename, and the HA broadcast may send it more than once.
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName);
+      assertRenameRepaired(cache, oldName, newName);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName);
+      assertRenameRepaired(cache, oldName, newName);
     } finally {
       cache.invalid(TABLE_CACHE_TEST_DATABASE);
     }
   }
 
-  private Semaphore getFetchTableSemaphore(final ITableCache cache) throws Exception {
-    final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
-    field.setAccessible(true);
-    return (Semaphore) field.get(cache);
+  @Test
+  public void fetchingPreDeleteTableReportsDedicatedStatusCode() throws Exception {
+    final ITableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(DATABASE);
+    try {
+      // Hold the table as pending-delete, which is what makes the fetch below conclude that the
+      // table is still being deleted.
+      cache.preUpdateTable(DATABASE, new PreDeleteTsTable(TABLE_NAME), null);
+
+      final Map<String, Map<String, TsTable>> fetchedTables = new HashMap<>();
+      fetchedTables.put(
+          DATABASE, Collections.singletonMap(TABLE_NAME, new PreDeleteTsTable(TABLE_NAME)));
+
+      final InvocationTargetException thrown =
+          Assert.assertThrows(
+              InvocationTargetException.class,
+              () -> updateDeleteTable(cache, fetchedTables, TABLE_NAME));
+
+      final SemanticException cause = (SemanticException) thrown.getCause();
+      Assert.assertEquals(TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode(), cause.getErrorCode());
+    } finally {
+      cache.invalid(DATABASE);
+    }
   }
 
-  @Test
-  public void preDeletedTableRefreshReportsDeletionAndRecovers() throws Exception {
-    final ITableCache cache = DataNodeTableCache.getInstance();
-    final Method updateDeleteTable =
+  /**
+   * The pre-delete branch lives in the private {@code updateDeleteTable}, which is only reachable
+   * through a ConfigNode fetch, so invoke it directly.
+   */
+  private static void updateDeleteTable(
+      final ITableCache cache,
+      final Map<String, Map<String, TsTable>> fetchedTables,
+      final String tableName)
+      throws Exception {
+    final Method method =
         DataNodeTableCache.class.getDeclaredMethod(
             "updateDeleteTable",
             Map.class,
             String.class,
             String.class,
             LeaseFencedRetryPolicy.class);
-    updateDeleteTable.setAccessible(true);
-    final String database = "pre_delete_table_test";
-    cache.invalid(database);
-    try {
-      cache.preUpdateTable(database, new PreDeleteTsTable(TABLE_NAME), null);
-      final InvocationTargetException failure =
-          Assert.assertThrows(
-              InvocationTargetException.class,
-              () ->
-                  updateDeleteTable.invoke(
-                      cache,
-                      Collections.singletonMap(
-                          database,
-                          Collections.singletonMap(TABLE_NAME, new PreDeleteTsTable(TABLE_NAME))),
-                      database,
-                      TABLE_NAME,
-                      LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS));
-      Assert.assertTrue(failure.getCause() instanceof SemanticException);
-      Assert.assertEquals(
-          new TableInDeletionException(database, TABLE_NAME).getMessage(),
-          failure.getCause().getCause().getMessage());
+    method.setAccessible(true);
+    method.invoke(
+        cache, fetchedTables, DATABASE, tableName, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+  }
 
-      updateDeleteTable.invoke(
-          cache,
-          Collections.singletonMap(
-              database, Collections.singletonMap(TABLE_NAME, createTable(TABLE_NAME))),
-          database,
-          TABLE_NAME,
-          LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
-      Assert.assertNotNull(cache.getTableInWrite(database, TABLE_NAME));
+  /** The old name must be gone, and the new name left as a placeholder to be re-fetched. */
+  private static void assertRenameRepaired(
+      final ITableCache cache, final String oldName, final String newName) throws Exception {
+    Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, oldName, false));
+    Assert.assertTrue(
+        getSpecialStatusTable(cache, TABLE_CACHE_TEST_DATABASE, newName)
+            instanceof NonCommittableTsTable);
+  }
 
-      cache.preUpdateTable(database, new PreDeleteTsTable(TABLE_NAME), null);
-      updateDeleteTable.invoke(
-          cache,
-          Collections.singletonMap(database, Collections.singletonMap(TABLE_NAME, null)),
-          database,
-          TABLE_NAME,
-          LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
-      Assert.assertNull(cache.getTableInWrite(database, TABLE_NAME));
-    } finally {
-      cache.invalid(database);
+  /** A placeholder for a table to be re-fetched only shows up in the private specialStatusMap. */
+  @SuppressWarnings("unchecked")
+  private static TsTable getSpecialStatusTable(
+      final ITableCache cache, final String database, final String tableName) throws Exception {
+    final Field field = DataNodeTableCache.class.getDeclaredField("specialStatusMap");
+    field.setAccessible(true);
+    final Map<String, Map<String, Pair<TsTable, Long>>> specialStatusMap =
+        (Map<String, Map<String, Pair<TsTable, Long>>>) field.get(cache);
+    final Map<String, Pair<TsTable, Long>> tableMap =
+        specialStatusMap.get(PathUtils.unQualifyDatabaseName(database));
+    if (Objects.isNull(tableMap)) {
+      return null;
     }
+    final Pair<TsTable, Long> tablePair = tableMap.get(tableName);
+    return Objects.isNull(tablePair) ? null : tablePair.getLeft();
+  }
+
+  private Semaphore getFetchTableSemaphore(final ITableCache cache) throws Exception {
+    final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
+    field.setAccessible(true);
+    return (Semaphore) field.get(cache);
   }
 
   private TsTable createTable(final String tableName) {

@@ -256,7 +256,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             readerAndChunkMetadataList,
             writer,
             summary,
-            device.getTableName().startsWith("root."));
+            !deviceIterator.isTableModel());
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {

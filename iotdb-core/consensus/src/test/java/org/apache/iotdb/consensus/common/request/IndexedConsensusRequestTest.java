@@ -43,6 +43,7 @@ public class IndexedConsensusRequestTest {
     Assert.assertEquals(64L, request.getRetainedMemorySize());
 
     // The bytes are materialized when a batch is built for sending
+    request.buildSerializedRequests();
     Assert.assertFalse(request.getSerializedRequests().isEmpty());
     Assert.assertEquals(1, deferred.serializationCount);
     Assert.assertEquals(64L, request.getMemorySize());
@@ -63,6 +64,7 @@ public class IndexedConsensusRequestTest {
     Assert.assertEquals(64L, request.getQueueReservedMemorySize());
 
     // Materializing the payloads must not change what a release returns
+    request.buildSerializedRequests();
     Assert.assertFalse(request.getSerializedRequests().isEmpty());
     Assert.assertEquals(96L, request.getRetainedMemorySize());
     Assert.assertEquals(64L, request.getQueueReservedMemorySize());

@@ -24,13 +24,13 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 
+import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -50,7 +50,7 @@ public class InFilter extends SchemaFilter {
 
   public InFilter(final ByteBuffer byteBuffer) {
     final int length = ReadWriteIOUtils.readInt(byteBuffer);
-    this.values = new HashSet<>();
+    this.values = Sets.newHashSetWithExpectedSize(length);
     for (int i = 0; i < length; ++i) {
       values.add(ReadWriteIOUtils.readString(byteBuffer));
     }

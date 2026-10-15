@@ -28,7 +28,6 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,12 +85,12 @@ public class PipeAssignerMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<Integer> dataRegionIds = ImmutableSet.copyOf(assignerMap.keySet());
-    for (int dataRegionId : dataRegionIds) {
-      deregister(dataRegionId);
-    }
-    if (!assignerMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_ASSIGNER_METRICS);
+    // Keep the assigners registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    synchronized (this) {
+      for (int dataRegionId : assignerMap.keySet()) {
+        removeMetrics(dataRegionId);
+      }
     }
   }
 

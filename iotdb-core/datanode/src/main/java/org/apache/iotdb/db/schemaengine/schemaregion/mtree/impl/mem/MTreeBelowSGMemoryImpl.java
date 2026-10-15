@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.BasicInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
@@ -403,6 +404,7 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
+    MetaFormatUtils.checkSchemaMeasurementAliases(devicePath, measurements, aliasList);
     final IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     // synchronize check and add, we need addChild operation be atomic.
@@ -706,28 +708,13 @@ public class MTreeBelowSGMemoryImpl {
   public void deleteEmptyInternalMNode(final IDeviceMNode<IMemMNode> entityMNode) {
     IMemMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
-      boolean hasMeasurement = false;
-      boolean hasNonViewMeasurement = false;
-      IMemMNode child;
-      try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode)) {
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          if (child.isMeasurement()) {
-            hasMeasurement = true;
-            if (!child.getAsMeasurementMNode().isLogicalView()) {
-              hasNonViewMeasurement = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (!hasMeasurement) {
+      final BasicInternalMNode internalNode = (BasicInternalMNode) curNode.getBasicMNode();
+      if (internalNode.getMeasurementChildCount() == 0) {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
         }
         refreshAncestorsHavingDeviceDescendant(curNode.getParent());
-      } else if (!hasNonViewMeasurement) {
+      } else if (internalNode.getNonViewMeasurementChildCount() == 0) {
         // has some measurement but they are all logical view
         entityMNode.setAligned(null);
       }
@@ -1041,6 +1028,9 @@ public class MTreeBelowSGMemoryImpl {
   public IMemMNode getNodeByPath(final PartialPath path) throws PathNotExistException {
     final String[] nodes = path.getNodes();
     IMemMNode cur = databaseMNode;
+    if (cur == null) {
+      throw new PathNotExistException(path.getFullPath(), true);
+    }
     IMemMNode next;
     for (int i = levelOfDB + 1; i < nodes.length; i++) {
       next = cur.getChild(nodes[i]);
@@ -1924,6 +1914,9 @@ public class MTreeBelowSGMemoryImpl {
   // region table device management
 
   public int getTableDeviceNotExistNum(final String tableName, final List<Object[]> deviceIdList) {
+    if (databaseMNode == null) {
+      return deviceIdList.size();
+    }
     final IMemMNode tableNode = databaseMNode.getChild(tableName);
     int notExistNum = deviceIdList.size();
     if (tableNode == null) {

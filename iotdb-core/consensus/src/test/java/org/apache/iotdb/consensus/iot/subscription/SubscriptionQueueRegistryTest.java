@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,94 +40,92 @@ public class SubscriptionQueueRegistryTest {
   @Test
   public void testOfferWithoutQueuesDoesNotSerializeRequest() {
     final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
-    final ByteBufferConsensusRequest inner = new ByteBufferConsensusRequest(ByteBuffer.allocate(1));
-    final IndexedConsensusRequest request = newRequest(inner);
+    final IndexedConsensusRequest request = newRequest();
 
     assertFalse(registry.offer(request));
-    assertEquals(0, inner.getSerializationCount());
+    assertTrue(request.getSerializedRequests().isEmpty());
   }
 
   @Test
   public void testOfferSerializesRequestBeforeQueueAdmission() {
     final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
     final InspectingQueue queue = new InspectingQueue();
-    register(registry, queue);
-    final ByteBufferConsensusRequest inner = new ByteBufferConsensusRequest(ByteBuffer.allocate(1));
-    final IndexedConsensusRequest request = newRequest(inner);
-
-    assertTrue(registry.offer(request));
-    assertEquals(1, inner.getSerializationCount());
-    assertEquals(1, request.getSerializedRequests().size());
-    assertEquals(1, queue.getSerializedRequestCountAtOffer());
-    assertSame(request, queue.poll());
-  }
-
-  @Test
-  public void testOfferDefersSerializationOfDeferredRequest() {
-    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
-    final ArrayBlockingQueue<IndexedConsensusRequest> queue = new ArrayBlockingQueue<>(1);
-    register(registry, queue);
-    final ByteBufferConsensusRequest inner =
-        new ByteBufferConsensusRequest(ByteBuffer.allocate(1), true);
-    final IndexedConsensusRequest request = newRequest(inner);
-
-    assertTrue(registry.offer(request));
-    assertEquals(
-        "a request that deferred its serialization must stay unexpanded while it waits in the queue",
-        0,
-        inner.getSerializationCount());
-    assertEquals(1, request.getSerializedRequests().size());
-    assertEquals(1, inner.getSerializationCount());
-  }
-
-  private static void register(
-      final SubscriptionQueueRegistry registry,
-      final ArrayBlockingQueue<IndexedConsensusRequest> queue) {
     registry.register(
         queue,
         new SubscriptionWalRetentionPolicy(
             "test",
             SubscriptionWalRetentionPolicy.UNBOUNDED,
             SubscriptionWalRetentionPolicy.UNBOUNDED));
+    final IndexedConsensusRequest request = newRequest();
+
+    assertTrue(registry.offer(request));
+    assertEquals(1, request.getSerializedRequests().size());
+    assertEquals(1, queue.getSerializedRequestCountAtOffer());
+    assertSame(request, queue.poll());
   }
 
-  private static IndexedConsensusRequest newRequest(final IConsensusRequest inner) {
-    return new IndexedConsensusRequest(1, Collections.singletonList(inner));
+  @Test
+  public void testDetachedRetentionProtectsWalWithoutReceivingRequests() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final SubscriptionWalRetentionPolicy policy =
+        new SubscriptionWalRetentionPolicy("topic", 100, 200);
+    registry.registerDetachedRetention("retention", policy, () -> 7L);
+    final IndexedConsensusRequest request = newRequest();
+
+    assertFalse(registry.isEmpty());
+    assertFalse(registry.hasQueues());
+    assertFalse(registry.offer(request));
+    assertTrue(request.getSerializedRequests().isEmpty());
+    assertEquals(Collections.singletonList(policy), registry.getRetentionPolicies());
+    assertEquals(Collections.singletonList(7L), registry.getRetainedMinVersionIds());
+  }
+
+  @Test
+  public void testReplaceQueueAndDetachedRetentionAtomically() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final InspectingQueue firstQueue = new InspectingQueue();
+    final InspectingQueue secondQueue = new InspectingQueue();
+    final SubscriptionWalRetentionPolicy policy =
+        new SubscriptionWalRetentionPolicy("topic", 100, 200);
+    final AtomicLong retainedVersion = new AtomicLong(3L);
+    registry.register(firstQueue, policy, retainedVersion::get);
+
+    registry.replaceQueueWithDetachedRetention(
+        firstQueue, "retention", policy, retainedVersion::get);
+    assertFalse(registry.hasQueues());
+    assertFalse(registry.isEmpty());
+    assertFalse(registry.offer(newRequest()));
+
+    retainedVersion.set(9L);
+    registry.replaceDetachedRetentionWithQueue(
+        "retention", secondQueue, policy, retainedVersion::get);
+    assertTrue(registry.hasQueues());
+    assertTrue(registry.offer(newRequest()));
+    assertEquals(1, secondQueue.size());
+    assertEquals(Collections.singletonList(9L), registry.getRetainedMinVersionIds());
+  }
+
+  private static IndexedConsensusRequest newRequest() {
+    return new IndexedConsensusRequest(
+        1, Collections.singletonList(new ByteBufferConsensusRequest(ByteBuffer.allocate(1))));
   }
 
   private static final class ByteBufferConsensusRequest implements IConsensusRequest {
 
     private final ByteBuffer buffer;
-    private final boolean deferred;
-    private int serializationCount;
 
     private ByteBufferConsensusRequest(final ByteBuffer buffer) {
-      this(buffer, false);
-    }
-
-    private ByteBufferConsensusRequest(final ByteBuffer buffer, final boolean deferred) {
       this.buffer = buffer;
-      this.deferred = deferred;
     }
 
     @Override
     public ByteBuffer serializeToByteBuffer() {
-      serializationCount++;
       return buffer;
     }
 
     @Override
     public long getMemorySize() {
       return buffer.capacity();
-    }
-
-    @Override
-    public boolean isSerializationDeferred() {
-      return deferred;
-    }
-
-    private int getSerializationCount() {
-      return serializationCount;
     }
   }
 

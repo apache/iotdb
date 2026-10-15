@@ -42,6 +42,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -77,7 +78,12 @@ public class SchemaValidator {
       final MPPQueryContext context,
       AccessControl accessControl) {
     try {
-      for (final QualifiedObjectName targetTable : getTargetTables(insertStatement, context)) {
+      final InsertBaseStatement innerInsertStatement = insertStatement.getInnerTreeStatement();
+      final boolean uniformTargets =
+          innerInsertStatement instanceof InsertRowsStatement
+              && ((InsertRowsStatement) innerInsertStatement).isUniformTargets();
+      for (final QualifiedObjectName targetTable :
+          resolveTargetTables(insertStatement, context, uniformTargets)) {
         accessControl.checkCanInsertIntoTable(
             context.getSession().getUserName(), targetTable, context);
       }
@@ -90,26 +96,44 @@ public class SchemaValidator {
     }
   }
 
-  private static Set<QualifiedObjectName> getTargetTables(
-      final WrappedInsertStatement insertStatement, final MPPQueryContext context) {
-    final Set<QualifiedObjectName> targetTables = new LinkedHashSet<>();
-    if (insertStatement instanceof InsertRows) {
-      for (final InsertRowStatement rowStatement :
-          ((InsertRows) insertStatement).getInnerTreeStatement().getInsertRowStatementList()) {
-        final String database = AnalyzeUtils.getDatabaseName(rowStatement, context);
-        if (database == null) {
-          throw new SemanticException(DATABASE_NOT_SPECIFIED);
-        }
-        targetTables.add(
-            new QualifiedObjectName(unQualifyDatabaseName(database), rowStatement.getTableName()));
-      }
-    } else {
-      targetTables.add(
+  /**
+   * Resolves the target tables to check. When the statement is uniform, i.e. every row targets the
+   * same table and carries the same columns, the first row is representative; otherwise every row
+   * is considered, since the rows may target different tables.
+   */
+  private static Set<QualifiedObjectName> resolveTargetTables(
+      final WrappedInsertStatement insertStatement,
+      final MPPQueryContext context,
+      final boolean uniformTargets) {
+    if (!(insertStatement instanceof InsertRows)) {
+      return Collections.singleton(
           new QualifiedObjectName(
               unQualifyDatabaseName(insertStatement.getDatabase()),
               insertStatement.getTableName()));
     }
+
+    final List<InsertRowStatement> rowStatements =
+        ((InsertRows) insertStatement).getInnerTreeStatement().getInsertRowStatementList();
+    if (uniformTargets) {
+      return rowStatements.isEmpty()
+          ? Collections.emptySet()
+          : Collections.singleton(resolveTargetTable(rowStatements.get(0), context));
+    }
+
+    final Set<QualifiedObjectName> targetTables = new LinkedHashSet<>();
+    for (final InsertRowStatement rowStatement : rowStatements) {
+      targetTables.add(resolveTargetTable(rowStatement, context));
+    }
     return targetTables;
+  }
+
+  private static QualifiedObjectName resolveTargetTable(
+      final InsertRowStatement rowStatement, final MPPQueryContext context) {
+    final String database = AnalyzeUtils.getDatabaseName(rowStatement, context);
+    if (database == null) {
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+    return new QualifiedObjectName(unQualifyDatabaseName(database), rowStatement.getTableName());
   }
 
   public static ISchemaTree validate(

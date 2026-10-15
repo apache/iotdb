@@ -546,6 +546,7 @@ public class IoTDBTableIT {
           Collections.singleton("null,"));
 
       statement.execute("drop table table2");
+      awaitDropProcedure(statement, "test2", "table2");
       try {
         statement.executeQuery("describe table2");
         fail();
@@ -882,6 +883,33 @@ public class IoTDBTableIT {
 
       insertThread.join();
       deletionThread.join();
+    }
+  }
+
+  @Test
+  public void testCreateViewFromTreePathWithSpaces() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.tv143_cmp_3");
+      statement.execute("CREATE TIMESERIES root.`tv143_cmp_3`.`a b`.`d1`.s1 INT32");
+      statement.execute("INSERT INTO root.`tv143_cmp_3`.`a b`.`d1`(time,s1) VALUES (1,10)");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE tv143_cmp_3");
+      statement.execute("USE tv143_cmp_3");
+      statement.execute(
+          "CREATE VIEW v (device STRING TAG, value INT32 FIELD FROM s1) WITH (ttl='INF') "
+              + "AS root.\"`tv143_cmp_3`\".\"`a b`\".**");
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SELECT value FROM v ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(10, resultSet.getInt("value"));
+        assertFalse(resultSet.next());
+      }
     }
   }
 
@@ -1228,5 +1256,75 @@ public class IoTDBTableIT {
         assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
       }
     }
+  }
+
+  @Test
+  public void testAsyncDropTableProgress() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database async_drop_db");
+      statement.execute("use async_drop_db");
+      statement.execute("create table drop_target (device string tag, reading int32)");
+      statement.execute("drop table drop_target");
+
+      // The drop may finish before the first query. Its completed result remains visible until
+      // the procedure cleaner evicts it, so verify that result after waiting for completion.
+      awaitDropProcedure(statement, "async_drop_db", "drop_target");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables from async_drop_db"),
+          "TableName,TTL(ms),",
+          Collections.emptySet());
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "select procedure_id, state, progress, error_message, "
+                  + "written_mod_file_count, remaining_mod_file_count "
+                  + "from information_schema.drop_table_procedures "
+                  + "where database = 'async_drop_db' and table_name = 'drop_target'")) {
+        assertTrue(resultSet.next());
+        assertTrue(resultSet.getLong(1) >= 0);
+        assertEquals("SUCCESS", resultSet.getString(2));
+        assertEquals("SUCCESS", resultSet.getString(3));
+        Assert.assertNull(resultSet.getString(4));
+        assertEquals(0, resultSet.getLong(5));
+        assertFalse(resultSet.wasNull());
+        assertEquals(0, resultSet.getLong(6));
+        assertFalse(resultSet.wasNull());
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  private static void awaitDropProcedure(
+      final Statement statement, final String database, final String tableName)
+      throws SQLException {
+    final long deadline = System.currentTimeMillis() + 60_000;
+    while (System.currentTimeMillis() < deadline) {
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "select state, error_message from information_schema.drop_table_procedures "
+                  + "where database = '"
+                  + database
+                  + "' and table_name = '"
+                  + tableName
+                  + "'")) {
+        if (resultSet.next()) {
+          final String state = resultSet.getString(1);
+          if ("SUCCESS".equals(state)) {
+            return;
+          }
+          if ("ROLLEDBACK".equals(state)) {
+            throw new SQLException(resultSet.getString(2));
+          }
+        }
+      }
+      try {
+        Thread.sleep(20);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new SQLException(e);
+      }
+    }
+    throw new SQLException("Timed out waiting for drop table procedure");
   }
 }

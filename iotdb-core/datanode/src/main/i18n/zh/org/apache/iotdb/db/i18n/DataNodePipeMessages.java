@@ -21,6 +21,46 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =
+          "订阅预取轮次开始，队列 {}：active={}，initialized={}，closed={}，pendingEntries={}，prefetchedEvents={}，inFlightEvents={}，nextReadSearchIndex={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_COMPLETED_FOR_ARG_DURATIONMS_ARG_RESULT_ARG_DELAYMS_ARG_READSEARCHINDEX_ARG_ARG_PENDINGACCEPTED_ARG_WALACCEPTED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_MEMORYBLOCKREASON_ARG_ADMISSIONBLOCKREASON_ARG_0F0A3D57 =
+          "订阅预取轮次结束，队列 {}：durationMs={}，result={}，delayMs={}，readSearchIndex={} -> {}，pendingAccepted={}，walAccepted={}，pendingEntries={}，prefetchedEvents={}，inFlightEvents={}，memoryBlockReason={}，admissionBlockReason={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ACQUIRED_QUEUE_READ_LOCK_FOR_ARG_AFTER_ARG_MS_425E9A20 =
+          "订阅预取已获取队列 {} 的读锁，距离轮次开始已过 {} ms。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_SCANNING_WAL_FOR_ARG_NEXTREADSEARCHINDEX_ARG_MAXWALENTRIES_ARG_PREFETCHEDEVENTS_ARG_AA16EEA1 =
+          "订阅预取开始扫描队列 {} 的 WAL：nextReadSearchIndex={}，maxWalEntries={}，prefetchedEvents={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARING_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_EE485CC7 =
+          "订阅预取开始解析和转换队列 {} 的 entry：searchIndex={}，writerNodeId={}，localSeq={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_PREPARED_ENTRY_FOR_ARG_SEARCHINDEX_ARG_WRITERNODEID_ARG_LOCALSEQ_ARG_TABLETS_ARG_ESTIMATEDBYTES_ARG_DURATIONMS_ARG_E91BA0CD =
+          "订阅预取完成队列 {} 的 entry 解析和转换：searchIndex={}，writerNodeId={}，localSeq={}，tablets={}，estimatedBytes={}，durationMs={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_MEMORY_RESERVATION_REJECTED_FOR_ARG_ENTRYBYTES_ARG_REASON_ARG_QUOTABYTES_ARG_FREEBYTES_ARG_98903D3B =
+          "订阅预取队列 {} 的内存预留被拒绝：entryBytes={}，reason={}，quotaBytes={}，freeBytes={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_TASK_ARG_SCHEDULING_AFTER_ROUND_RESULT_ARG_WAKEUPPENDING_ARG_ENQUEUENOW_ARG_DELAYMS_ARG_602EA4A4 =
+          "订阅预取任务 {} 的轮次后调度：result={}，wakeupPending={}，enqueueNow={}，delayMs={}。";
+
+  public static final String
+      LOG_SUBSCRIPTION_MEMORY_OVERCOMMIT_ENTRYBYTES_ARG_BUDGETBYTES_ARG_OVERCOMMITBYTES_ARG_OTHER_QUEUES_MAY_BE_BLOCKED_UNTIL_RELEASE_DF9B914E =
+          "订阅内存超出预算：entryBytes={}，budgetBytes={}，overcommitBytes={}；其它队列可能阻塞，直到该 entry 释放。";
+
+  public static final String
+      LOG_SUBSCRIPTION_PREFETCH_ROUND_TOOK_ARG_MS_FOR_ARG_DELIVERYIDLETIMEMS_ARG_MEMORYUSEDBYTES_ARG_MEMORYLIMITBYTES_ARG_INSPECT_WORKER_STACKS_WAL_I_O_AND_JVM_PAUSES_D399CEDD =
+          "订阅预取轮次耗时 {} ms，队列 {}。deliveryIdleTimeMs={}，memoryUsedBytes={}，memoryLimitBytes={}；请检查工作线程栈、WAL I/O 和 JVM 停顿。";
+
   public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
       "解析 transfer exception 失败。";
 
@@ -774,10 +814,16 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_TRANSFER_TSFILE_BATCH = "传输 tsfile batch ({}) 失败。";
   public static final String FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY =
       "传输 tsfile event {} asynchronously 失败。";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_ARG_BECAUSE_FILE_ARG_IS_MISSING_AFTER_ARG_RETRIES_B656E84E =
+          "TsFile {} 传输失败，文件 {} 重试 {} 次后仍不存在。";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
       "传输 TsFileInsertionEvent {}（committer key {}，commit id {}）失败。";
   public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS =
       "传输 TsFileInsertionEvent {}（批量 TableInsertionEvent）失败。";
+  public static final String
+      LOG_TSFILE_ARG_MODIFICATION_FILE_ARG_IS_MISSING_TRANSFER_THE_TSFILE_WITHOUT_MODIFICATIONS_8588D1E9 =
+          "TsFile {}：修改文件 {} 不存在，将不带修改记录传输 TsFile。";
   public static final String FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE =
       "更新 leader cache for device {} with endpoint {}:{} 失败。";
   public static final String FAILED_TO_WRITE = "写入失败 ";
@@ -1423,25 +1469,6 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_SET_RECENT_PROCESSED_TSFILE_EPOCH =
       "设置 recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) does not "
           + "exist 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_ASSIGNER_METRICS =
-      "解绑 from pipe assigner metrics, assigner map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION =
-      "解绑 from pipe data region sink metrics, sink map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_EXTRACTOR_METRICS =
-      "解绑 from pipe extractor metrics, extractor map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_PROCESSOR_METRICS =
-      "解绑 from pipe processor metrics, processor map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT =
-      "解绑 from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not "
-          + "empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION =
-      "解绑 from pipe schema region connector metrics, connector map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1 =
-      "解绑 from pipe schema region extractor metrics, extractor map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2 =
-      "解绑 from pipe schema region listener metrics, listening queue map not empty 失败";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO =
-      "解绑 from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {} 失败";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeRow
@@ -1740,14 +1767,10 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_POLL_EXCESSIVE_PAYLOAD_FOR_EVENT_OUTDATED_2BFF690B =
       "Subscription：consumer {} poll 到过大的 payload {}，event={}（outdated：{}），请求：{}，参数配置或 payload "
           + "控制可能出现意外情况……";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C =
-      "解绑 subscription prefetching queue metrics 失败，prefetching queue map 非空";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_F08479A7 =
       "注销 subscription prefetching queue metrics 失败，SubscriptionPrefetchingQueue({}) 不存在";
   public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_SUBSCRIPTIONPREFETCHINGQUEUE_7DEF95B5 =
       "标记传输事件速率失败，SubscriptionPrefetchingQueue({}) 不存在";
-  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9 =
-      "解绑 consensus subscription prefetching queue metrics 失败，queue map 非空";
   public static final String PIPE_LOG_FAILED_TO_DEREGISTER_CONSENSUS_SUBSCRIPTION_PREFETCHING_8B180091 =
       "注销 consensus subscription prefetching queue metrics 失败，ConsensusPrefetchingQueue({}) 不存在";
   public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_CONSENSUSPREFETCHINGQUEUE_FE9B91C3 =
@@ -1987,7 +2010,7 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608 =
       "ConsensusPrefetchingQueue {}：周期统计，lag={}，pendingDelta={}，walDelta={}，pendingTotal={}，"
           + "walTotal={}，walGapSkippedEntries={}，pendingQueueSize={}，prefetchingQueueSize={}，"
-          + "inFlightEventsSize={}，realtimeWriterCount={}，walHasNext={}，isActive={}，"
+          + "inFlightEventsSize={}，realtimeWriterCount={}，walNextBuffered={}，isActive={}，"
           + "subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}：等待 {}ms，使 WAL 缺口 [{}, {}) 可见，currentNextExpected={}，"
@@ -2048,6 +2071,8 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue {}：不支持 seekAfterRegionProgress（没有 WAL 目录）";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_READ_WAL_METADATA_FROM_A2ED50D1 =
       "ConsensusPrefetchingQueue {}：计算 seekToEnd frontier 时，从 {} 读取 WAL metadata 失败";
+  public static final String LOG_FAILED_TO_FINISH_CLOSING_CONSENSUS_PREFETCHING_QUEUE_ARG_3C31731C =
+      "未能完成共识预取队列 {} 的关闭";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7 =
       "ConsensusPrefetchingQueue {}：注销期间出错";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7 =
@@ -2062,14 +2087,37 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：打开 near-live WAL 文件 {} 失败，不加入黑名单并重试";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
       "ProgressWALIterator：读取 WAL 出错";
-  public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
-      "ProgressWALIterator：打开 WAL 文件 {} 失败，跳过该文件";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_PROCESS_WAL_FILE_SKIPPING_REMAINING_ENTRIES_093F14A9 =
+      "ProgressWALIterator：处理 WAL 文件 {} 失败，跳过该文件的剩余条目";
+  public static final String
+      PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_IDENTIFY_UNREADABLE_WAL_FILE_7BA9F422 =
+          "重放时无法确定不可读的 WAL 文件";
+  public static final String
+      SUBSCRIPTION_ERROR_WAL_REPLAY_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_D60C5FB2 =
+          "订阅 WAL 重放跳过了 %d 个无法读取的保留 WAL 文件。这些文件中的历史数据无法投递。";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
       "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
           + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
-      "ConsensusPrefetchingQueue {}：WAL 重放跳过了不可用的 searchIndex 区间 [{}, {})，"
-          + "skippedEntries={}，totalWalGapSkippedEntries={}；缺失的 WAL 数据可能已在订阅消费前被回收";
+  public static final String
+      LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILE_ARG_HISTORICAL_SUBSCRIPTION_DATA_MAY_BE_LOST_AE0DBAB1 =
+          "ProgressWALIterator：跳过了无法读取的保留 WAL 文件 {}；历史订阅数据可能丢失";
+  public static final String
+      MESSAGE_FILE_ARG_VERSIONID_ARG_FILESEARCHINDEXRANGE_ARG_ARG_ENTRYRANGE_ARG_ARG_SKIPPEDENTRIES_ARG_ERROR_ARG_0D6D77B0 =
+          "file=%s，versionId=%d，fileSearchIndexRange=(%s, %s]，entryRange=[%d, %s)，skippedEntries=%s，error=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_WAL_REPLAY_SKIPPED_ARG_UNREADABLE_RETAINED_WAL_FILE_S_IN_QUEUE_ARG_REGION_ARG_HISTORICAL_DATA_MAY_BE_LOST_DETAILS_RECENT_FILES_FULL_DETAILS_IN_SERVER_LOG_ARG_FEDEFF7E =
+          "订阅 WAL 重放累计跳过了 %d 个无法读取的保留 WAL 文件，队列 %s，region %s。历史数据可能丢失。详情（近期文件；完整信息见服务端日志）：%s";
+  public static final String MESSAGE_UNKNOWN_AD921D60 = "未知";
+  public static final String
+      MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
+          "WAL 文件 %s（versionId=%d，entryOffset=%d）暂不可读；重放将重试而不跳过：%s";
+  public static final String
+      MESSAGE_FAILED_TO_REOPEN_WAL_FILE_ARG_AT_ENTRY_OFFSET_ARG_ITERATOR_COULD_NOT_SKIP_TO_THE_REQUESTED_POSITION_332B3AD9 =
+          "重新打开 WAL 文件 %s（条目偏移 %s）失败：迭代器无法跳到请求的位置";
+  public static final String
+      LOG_ARG_WAL_GAP_ARG_ARG_SKIPPED_ARG_TOTAL_SKIPPED_ARG_CAUSE_UNDETERMINED_D4E6491A =
+          "{}：WAL 缺口 [{}, {})，跳过 {} 条，累计跳过 {} 条；原因尚未确定";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}：历史传输的终止事件已提交。creationTime：{}，shouldMark：{}。{}";
   public static final String PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19 =
@@ -2469,6 +2517,8 @@ public final class DataNodePipeMessages {
       "共识订阅设置期间 topic %s 的元数据不可用";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "共识订阅设置期间 topic %s 的配置不可用";
+  public static final String LOG_FAILED_TO_RESTORE_DETACHED_CONSENSUS_SUBSCRIPTION_WAL_RETENTION_FOR_CONSUMER_GROUP_ARG_TOPIC_ARG_REGION_ARG_296129FE =
+      "为 consumer group {}、topic {}、region {} 恢复 detached consensus subscription WAL retention 失败";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
   public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
@@ -2479,4 +2529,6 @@ public final class DataNodePipeMessages {
       "读取 OPC UA 服务器操作限制时被中断，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
+  public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
+      "[%s] 订阅 entry 需要 %d 字节，超过当前队列可用上限 %d 字节（DataNode 预算 %d 字节）。请减小写入 batch/字段大小或增加订阅物化内存。WAL 进度未推进。";
 }

@@ -1444,6 +1444,9 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
+    conf.setWalEntrySizeLimitInByte(
+        Integer.parseInt(properties.getProperty("wal_entry_size_limit_in_byte", "-1")));
+
     boolean WALInsertNodeCacheShrinkClearEnabled =
         Boolean.parseBoolean(
             properties.getProperty(

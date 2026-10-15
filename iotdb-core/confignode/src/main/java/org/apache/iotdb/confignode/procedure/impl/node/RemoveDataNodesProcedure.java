@@ -120,6 +120,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                 removedDataNodes);
             return Flow.NO_MORE_STATE;
           }
+          // Retry preparation separately: changing nodes to Removing affects the capacity check.
+          break;
         case REMOVE_DATA_NODE_PREPARE:
           Map<Integer, NodeStatus> removedNodeStatusMap = new HashMap<>();
           removedDataNodes.forEach(
@@ -159,6 +161,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
+        } else {
+          setNextState(state);
         }
       }
     }
@@ -211,7 +215,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         dataNodeLocation.getDataNodeId(), dataNodeLocation.getInternalEndPoint().getIp());
   }
 
-  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) {
+  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) throws IOException {
     List<TRegionReplicaSet> replicaSets =
         env.getConfigManager().getPartitionManager().getAllReplicaSets();
     List<TDataNodeLocation> rollBackDataNodes = new ArrayList<>();

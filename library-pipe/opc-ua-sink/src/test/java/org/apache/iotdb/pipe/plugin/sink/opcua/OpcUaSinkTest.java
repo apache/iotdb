@@ -37,8 +37,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.ServerSocket;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -67,34 +65,15 @@ public class OpcUaSinkTest {
 
   @Test
   public void testCustomizeQualityParameters() throws Exception {
-    final int[] qualityPorts = findTwoFreePorts();
-    final int[] normalPorts = findTwoFreePorts();
+    final PipeParameters qualityParameters = createQualityServerParameters(0);
+    qualityParameters
+        .getAttribute()
+        .put(PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY, "BAD");
     try (final OpcUaSink qualitySink = new OpcUaSink();
         final OpcUaSink normalSink = new OpcUaSink()) {
-      qualitySink.customize(
-          createParameters(
-              PipeSinkConstant.CONNECTOR_KEY,
-              PipeSinkConstant.OPC_UA_SINK_NAME,
-              PipeSinkConstant.CONNECTOR_OPC_UA_WITH_QUALITY_KEY,
-              "true",
-              PipeSinkConstant.CONNECTOR_OPC_UA_VALUE_NAME_KEY,
-              "value1",
-              PipeSinkConstant.CONNECTOR_OPC_UA_QUALITY_NAME_KEY,
-              "quality1",
-              PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY,
-              "BAD",
-              PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_KEY,
-              "None",
-              PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY,
-              Integer.toString(qualityPorts[0]),
-              PipeSinkConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY,
-              Integer.toString(qualityPorts[1]),
-              PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_KEY,
-              createSecurityDir()),
-          createRuntimeConfiguration());
+      qualitySink.customize(qualityParameters, createRuntimeConfiguration());
       normalSink.customize(
-          createOpcUaServerParameters(normalPorts[0], normalPorts[1], "root", "root"),
-          createRuntimeConfiguration());
+          createOpcUaServerParameters(1, "root", "root"), createRuntimeConfiguration());
 
       Assert.assertEquals("value1", qualitySink.getValueName());
       Assert.assertEquals("quality1", qualitySink.getQualityName());
@@ -136,16 +115,11 @@ public class OpcUaSinkTest {
       qualityTablet.addValue(opcSchemaList.get(1).getMeasurementName(), rowSize, true);
     }
 
-    final int[] qualityPorts = findTwoFreePorts();
-    final int[] normalPorts = findTwoFreePorts();
     try (final OpcUaSink qualitySink = new OpcUaSink();
         final OpcUaSink normalSink = new OpcUaSink()) {
-      qualitySink.customize(
-          createQualityServerParameters(qualityPorts[0], qualityPorts[1]),
-          createRuntimeConfiguration());
+      qualitySink.customize(createQualityServerParameters(0), createRuntimeConfiguration());
       normalSink.customize(
-          createOpcUaServerParameters(normalPorts[0], normalPorts[1], "root", "root"),
-          createRuntimeConfiguration());
+          createOpcUaServerParameters(1, "root", "root"), createRuntimeConfiguration());
 
       final PipeRawTabletInsertionEvent event =
           new PipeRawTabletInsertionEvent(
@@ -173,12 +147,9 @@ public class OpcUaSinkTest {
 
   @Test
   public void testSharedServerLifecycle() throws Exception {
-    final int[] ports = findTwoFreePorts();
     final PipeTaskRuntimeConfiguration configuration = createRuntimeConfiguration();
-    final PipeParameters parameters =
-        createOpcUaServerParameters(ports[0], ports[1], "root", "root");
-    final PipeParameters conflictingParameters =
-        createOpcUaServerParameters(ports[0], ports[1], "root", "conflict");
+    final PipeParameters parameters = createOpcUaServerParameters(0, "root", "root");
+    final PipeParameters conflictingParameters = createOpcUaServerParameters(0, "root", "conflict");
 
     try (final OpcUaSink firstSink = new OpcUaSink();
         final OpcUaSink secondSink = new OpcUaSink()) {
@@ -214,11 +185,9 @@ public class OpcUaSinkTest {
     Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(expectedMessagePart));
   }
 
-  private static PipeParameters createQualityServerParameters(
-      final int tcpPort, final int httpsPort) {
+  private static PipeParameters createQualityServerParameters(final int serverId) {
     final Map<String, String> attributes =
-        new HashMap<>(
-            createOpcUaServerParameters(tcpPort, httpsPort, "root", "root").getAttribute());
+        new HashMap<>(createOpcUaServerParameters(serverId, "root", "root").getAttribute());
     attributes.put(PipeSinkConstant.CONNECTOR_OPC_UA_WITH_QUALITY_KEY, "true");
     attributes.put(PipeSinkConstant.CONNECTOR_OPC_UA_VALUE_NAME_KEY, "value1");
     attributes.put(PipeSinkConstant.CONNECTOR_OPC_UA_QUALITY_NAME_KEY, "quality1");
@@ -226,14 +195,17 @@ public class OpcUaSinkTest {
   }
 
   private static PipeParameters createOpcUaServerParameters(
-      final int tcpPort, final int httpsPort, final String user, final String password) {
+      final int serverId, final String user, final String password) {
+    // Bind port 0 directly so the OS allocates the TCP port atomically. HTTPS is not bound by the
+    // TCP-only transport, but its configured port still distinguishes the sink's shared server
+    // keys.
     return createParameters(
         PipeSinkConstant.CONNECTOR_KEY,
         PipeSinkConstant.OPC_UA_SINK_NAME,
         PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY,
-        Integer.toString(tcpPort),
+        "0",
         PipeSinkConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY,
-        Integer.toString(httpsPort),
+        Integer.toString(serverId),
         PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_KEY,
         "None",
         PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
@@ -266,20 +238,5 @@ public class OpcUaSinkTest {
                 + File.separatorChar
                 + UUID.randomUUID())
         .getAbsolutePath();
-  }
-
-  private static int[] findTwoFreePorts() throws IOException {
-    final int firstPort = findFreePort();
-    int secondPort;
-    do {
-      secondPort = findFreePort();
-    } while (secondPort == firstPort);
-    return new int[] {firstPort, secondPort};
-  }
-
-  private static int findFreePort() throws IOException {
-    try (final ServerSocket socket = new ServerSocket(0)) {
-      return socket.getLocalPort();
-    }
   }
 }
