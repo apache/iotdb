@@ -58,7 +58,6 @@ import org.apache.tsfile.write.TsFilePrecalculatedChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -299,7 +298,7 @@ final class TsFileWriterManager {
     final List<ChunkPayloadRef> chunkPayloadRefs = new ArrayList<>(chunks.size());
     for (int i = 0; i < chunks.size(); i++) {
       final Chunk chunk = chunks.get(i);
-      final int chunkHeaderSize = getChunkHeaderSerializedSize(chunk.getHeader());
+      final int chunkHeaderSize = chunk.getHeader().getSerializedSize();
       final int payloadSize =
           payloadInMemory
               ? chunk.getData().remaining()
@@ -917,14 +916,6 @@ final class TsFileWriterManager {
     final String baseName = tsFileName.substring(0, tsFileName.lastIndexOf('.'));
     final int lastDash = baseName.lastIndexOf(IoTDBConstant.FILE_NAME_SEPARATOR);
     return Long.parseLong(baseName.substring(lastDash + 1));
-  }
-
-  private static int getChunkHeaderSerializedSize(final ChunkHeader chunkHeader) {
-    try (final ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-      return chunkHeader.serializeTo(output);
-    } catch (final IOException e) {
-      throw new IllegalStateException(e);
-    }
   }
 
   private static Map<File, Long> snapshotFileLengths(final File taskDir) {
