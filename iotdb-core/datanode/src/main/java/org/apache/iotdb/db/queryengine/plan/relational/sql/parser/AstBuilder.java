@@ -769,14 +769,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final StringBuilder builder = new StringBuilder("root.");
     for (int i = 0; i < nodeNames.size(); i++) {
       if (nodeNames.get(i).nodeNameWithoutWildcard() != null) {
-        builder
-            .append("`")
-            .append(
-                parseNodeString(
-                    ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
-                        .getValue()))
-            .append("`")
-            .append(i == nodeNames.size() - 1 ? "" : ".");
+        final String nodeName =
+            parseNodeString(
+                ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                    .getValue());
+        if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+          builder.append(nodeName);
+        } else {
+          builder.append("`").append(nodeName).append("`");
+        }
+        builder.append(i == nodeNames.size() - 1 ? "" : ".");
       } else {
         builder.append(nodeNames.get(i).getText());
       }
