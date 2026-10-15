@@ -77,6 +77,13 @@ public final class CliMessages {
           "参数无效：未提供 table 选项的必填值。";
 
   private CliMessages() {}
+  public static final String EXCEPTION_FAILED_TO_INSERT_CSV_BATCH_ARG_159E0269 =
+      "CSV 批次写入失败：%s";
+  public static final String MESSAGE_ARG_UNEXPECTED_ERROR_OCCURRED_ARG_E7255EE6 =
+      "[%s] - 发生意外错误：%s";
+  public static final String
+      EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768 =
+          "SQL/TsFile 导出要求查询仅来自数据库 %s 中的一张表。";
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------

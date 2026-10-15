@@ -54,6 +54,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -370,16 +371,13 @@ public class ImportDataTable extends AbstractImportData {
   }
 
   private static void writeAndEmptyDataSet(Tablet tablet, int retryTime) {
-    try (ITableSession session = sessionPool.getSession()) {
-      session.insert(tablet);
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(tablet, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    }
+    executeWithRetry(
+        () -> {
+          try (ITableSession session = sessionPool.getSession()) {
+            session.insert(tablet);
+          }
+        },
+        retryTime);
   }
 
   private void parseHeaders(
@@ -389,17 +387,20 @@ public class ImportDataTable extends AbstractImportData {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      headerName = headerName.toLowerCase();
       Matcher matcher = pattern.matcher(headerName);
       String type;
       String headerNameWithoutType;
       if (matcher.find()) {
         type = matcher.group();
-        headerNameWithoutType = headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
+        headerNameWithoutType =
+            headerName
+                .replace("(" + type + ")", "")
+                .replaceAll("\\s+", "")
+                .toLowerCase(Locale.ROOT);
         headerNameMap.put(headerNameWithoutType, headerName);
-        headerTypeMap.put(headerNameWithoutType, getType(type));
+        headerTypeMap.put(headerNameWithoutType, getType(type.toUpperCase(Locale.ROOT)));
       } else {
-        headerNameMap.put(headerName, headerName);
+        headerNameMap.put(headerName.toLowerCase(Locale.ROOT), headerName);
       }
     }
   }

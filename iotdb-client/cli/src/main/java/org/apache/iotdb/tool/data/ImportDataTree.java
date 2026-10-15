@@ -401,26 +401,21 @@ public class ImportDataTree extends AbstractImportData {
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        sessionPool.insertRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      } else {
-        sessionPool.insertAlignedRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-    } finally {
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    executeWithRetry(
+        () -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            sessionPool.insertRecordsOfOneDevice(
+                device, times, measurementsList, typesList, valuesList);
+          } else {
+            sessionPool.insertAlignedRecordsOfOneDevice(
+                device, times, measurementsList, typesList, valuesList);
+          }
+        },
+        retryTime);
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void writeAndEmptyDataSet(
@@ -430,27 +425,21 @@ public class ImportDataTree extends AbstractImportData {
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        sessionPool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } else {
-        sessionPool.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(
-            deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    } finally {
-      deviceIds.clear();
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    executeWithRetry(
+        () -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            sessionPool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+          } else {
+            sessionPool.insertAlignedRecords(
+                deviceIds, times, measurementsList, typesList, valuesList);
+          }
+        },
+        retryTime);
+    deviceIds.clear();
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void queryType(
