@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
@@ -272,16 +273,25 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   }
 
   public void setExchangeMemoryLimits(PlanNode plan, MemoryPool memoryPool) {
-    long inputMaxBytes = MemorySide.INPUT.getMaxBytes(fragmentExchangeMaxBytes);
-    long outputMaxBytes = MemorySide.OUTPUT.getMaxBytes(fragmentExchangeMaxBytes);
+    // Only remote sources charge this FI's INPUT. Local inputs are owned by the producing FI;
+    // internal pipeline queues cannot enable sharing because of the pipeline check below.
+    boolean hasInput =
+        exchangeOperatorList.stream()
+            .anyMatch(exchange -> exchange.getSourceHandle() instanceof SourceHandle);
+    boolean hasOutput = !legacySinkLimits.isEmpty();
+    long inputMaxBytes =
+        MemorySide.INPUT.getMaxBytes(fragmentExchangeMaxBytes, hasInput, hasOutput);
+    long outputMaxBytes =
+        MemorySide.OUTPUT.getMaxBytes(fragmentExchangeMaxBytes, hasInput, hasOutput);
     long maxBlockBytes = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     boolean sharedBudget =
-        SharedExchangeMemoryEligibility.isEligible(plan)
+        (hasInput || hasOutput)
+            && SharedExchangeMemoryEligibility.isEligible(plan)
             // Internal pipeline queues and their downstream sinks must not compete for OUTPUT.
             && pipelineDriverFactories.size() == 1
             && pipelineDriverFactories.get(0).getDependencyPipelineIndex() == -1
-            && inputMaxBytes >= maxBlockBytes
-            && outputMaxBytes >= maxBlockBytes;
+            && (!hasInput || inputMaxBytes >= maxBlockBytes)
+            && (!hasOutput || outputMaxBytes >= maxBlockBytes);
     if (sharedBudget) {
       FragmentInstanceId id = getFragmentInstanceId();
       memoryPool.registerFragmentInstanceSharedBudget(id.getQueryId().getId(), id.getFullId());

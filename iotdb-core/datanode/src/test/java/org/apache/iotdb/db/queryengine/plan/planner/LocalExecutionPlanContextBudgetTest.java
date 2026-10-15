@@ -34,7 +34,9 @@ import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.PipelineSourceHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
@@ -133,7 +135,7 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   private ISourceHandle addSource(LocalExecutionPlanContext target) {
-    ISourceHandle handle = mock(ISourceHandle.class);
+    ISourceHandle handle = mock(SourceHandle.class);
     ExchangeOperator operator = mock(ExchangeOperator.class);
     when(operator.getSourceHandle()).thenReturn(handle);
     target.addExchangeOperator(operator);
@@ -141,9 +143,13 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   private void assertAdmissionIsShared(boolean shared) {
+    assertAdmissionIsShared(shared, MemorySide.INPUT);
+  }
+
+  private void assertAdmissionIsShared(boolean shared, MemorySide side) {
     String fi = context.getFragmentInstanceId().getFullId();
-    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a", MemorySide.INPUT);
-    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a", side);
+    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b", side);
     assertTrue(pool.reserveWithPriority("budget", fi, "a", 256, 256, false).isReserveSuccess());
     MemoryPool.MemoryReservationResult second =
         pool.reserveWithPriority("budget", fi, "b", 256, 256, false);
@@ -170,7 +176,73 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   @Test
+  public void testInputOnlyCollectUsesFullBudgetEvenForOneFullBlock() {
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(1024);
+    context.setExchangeSumNum(1);
+    ISourceHandle source = addSource(context);
+    context.setExchangeMemoryLimits(
+        node(PlanNodeType.TABLE_COLLECT_NODE, node(PlanNodeType.TABLE_EXCHANGE_NODE)), pool);
+    verify(source).setMaxBytesCanReserve(1024);
+    assertAdmissionIsShared(true);
+  }
+
+  @Test
+  public void testOutputOnlyCollectUsesFullBudgetEvenForOneFullBlock() {
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(1024);
+    context.setExchangeSumNum(1);
+    ISinkHandle sink = mock(ISinkHandle.class);
+    context.setISink(sink);
+    context.setExchangeMemoryLimits(
+        node(
+            PlanNodeType.IDENTITY_SINK,
+            node(
+                PlanNodeType.TABLE_COLLECT_NODE,
+                node(PlanNodeType.SERIES_SCAN),
+                node(PlanNodeType.SERIES_SCAN))),
+        pool);
+    verify(sink).setMaxBytesCanReserve(1024);
+    assertAdmissionIsShared(true, MemorySide.OUTPUT);
+  }
+
+  private void addLocalInput() {
+    ExchangeOperator exchange = mock(ExchangeOperator.class);
+    when(exchange.getSourceHandle()).thenReturn(mock(LocalSourceHandle.class));
+    context.addExchangeOperator(exchange);
+  }
+
+  @Test
+  public void testLocalInputsDoNotSplitOutputBudget() {
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(1024);
+    addLocalInput();
+    ISinkHandle sink = mock(ISinkHandle.class);
+    context.setISink(sink);
+    context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
+    verify(sink).setMaxBytesCanReserve(1024);
+    assertAdmissionIsShared(true, MemorySide.OUTPUT);
+  }
+
+  @Test
+  public void testMixedLocalAndRemoteInputsStillSplitBidirectionalBudget() {
+    addLocalInput();
+    ISourceHandle source = addSource(context);
+    ISinkHandle sink = mock(ISinkHandle.class);
+    context.setISink(sink);
+    context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
+    verify(source).setMaxBytesCanReserve(512);
+    verify(sink).setMaxBytesCanReserve(512);
+    assertAdmissionIsShared(true);
+  }
+
+  @Test
+  public void testLocalInputsWithoutSinkDoNotRegisterUnusedSharedBudget() {
+    addLocalInput();
+    context.setExchangeMemoryLimits(collect(), pool);
+    assertAdmissionIsShared(false);
+  }
+
+  @Test
   public void testMappingCollectUsesSharedBudget() {
+    addSource(context);
     PlanNode union =
         new UnionNode(
             new PlanNodeId("union"),
@@ -184,6 +256,7 @@ public class LocalExecutionPlanContextBudgetTest {
 
   @Test
   public void testTreeCollectUsesSharedBudget() {
+    addSource(context);
     context.setExchangeMemoryLimits(
         node(PlanNodeType.TREE_COLLECT, node(PlanNodeType.EXCHANGE), node(PlanNodeType.EXCHANGE)),
         pool);
@@ -286,6 +359,8 @@ public class LocalExecutionPlanContextBudgetTest {
 
   @Test
   public void testSideSmallerThanOneBlockKeepsLegacyBudget() {
+    addSource(context);
+    context.setISink(mock(ISinkHandle.class));
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(1024);
     context.setExchangeMemoryLimits(collect(), pool);
     assertAdmissionIsShared(false);

@@ -577,14 +577,39 @@ public class MemoryPoolTest {
 
   @Test
   public void testOddBudgetAndSingleRequestBoundary() {
-    Assert.assertEquals(256, MemorySide.INPUT.getMaxBytes(513));
-    Assert.assertEquals(257, MemorySide.OUTPUT.getMaxBytes(513));
+    Assert.assertEquals(256, MemorySide.INPUT.getMaxBytes(513, true, true));
+    Assert.assertEquals(257, MemorySide.OUTPUT.getMaxBytes(513, true, true));
     try {
       pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 257, 256, false);
       Assert.fail("request exceeds the input budget");
     } catch (IllegalArgumentException expected) {
       Assert.assertEquals(0, pool.getReservedBytes());
       Assert.assertEquals(0, pool.getQueryMemoryReservedBytes(QUERY_ID));
+    }
+  }
+
+  @Test
+  public void testSingleDirectionKeepsFullBudgetAndSingleBlockLimit() {
+    Assert.assertEquals(513, MemorySide.INPUT.getMaxBytes(513, true, false));
+    Assert.assertEquals(0, MemorySide.OUTPUT.getMaxBytes(513, true, false));
+    Assert.assertEquals(0, MemorySide.INPUT.getMaxBytes(513, false, true));
+    Assert.assertEquals(513, MemorySide.OUTPUT.getMaxBytes(513, false, true));
+    Assert.assertEquals(0, MemorySide.INPUT.getMaxBytes(513, false, false));
+    Assert.assertEquals(0, MemorySide.OUTPUT.getMaxBytes(513, false, false));
+    MemoryPool singleDirectionPool =
+        new MemoryPool("single-direction", new MemoryManager(1024), 513);
+    singleDirectionPool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID);
+    for (MemorySide side : MemorySide.values()) {
+      String node = side.name();
+      singleDirectionPool.registerPlanNodeIdToQueryMemoryMap(
+          QUERY_ID, FRAGMENT_INSTANCE_ID, node, side);
+      long limit = side.getMaxBytes(513, side == MemorySide.INPUT, side == MemorySide.OUTPUT);
+      Assert.assertTrue(
+          singleDirectionPool
+              .reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, node, 513, limit, false)
+              .isReserveSuccess());
+      singleDirectionPool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, node, 513);
+      Assert.assertEquals(0, singleDirectionPool.getReservedBytes());
     }
   }
 
