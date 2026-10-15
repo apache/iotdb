@@ -237,7 +237,7 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
       processor.setManagedByFlushManager(true);
-      processor.asyncFlush();
+      processor.asyncClose();
       Assert.assertNull(processor.getWorkMemTable());
 
       MeasurementPath path = new MeasurementPath(deviceId + "." + measurementId);
@@ -268,15 +268,6 @@ public class TsFileProcessorTest {
                         && info.getLockInfo().getIdentityHashCode()
                             == System.identityHashCode(flushingMemTables);
                   });
-          DeleteDataNode node =
-              new DeleteDataNode(
-                  new PlanNodeId(""),
-                  Collections.singletonList(path),
-                  Long.MIN_VALUE,
-                  Long.MAX_VALUE);
-          assertEquals(
-              WALFlushListener.Status.SUCCESS,
-              processor.logDeleteDataNodeInWAL(node).waitForResult());
           assertTrue(processor.deleteDataInMemory(deletion));
         }
       } finally {
@@ -339,27 +330,17 @@ public class TsFileProcessorTest {
       long memTableId = processor.getWorkMemTable().getMemTableId();
       logDeletionForTest(tableModel, 2);
 
-      // Flush detaches the working memtable synchronously, while keeping the processor open.
-      long secondMemTableId;
+      // Use the production close path, while keeping flush execution under test control.
       processor.setManagedByFlushManager(true);
       try {
-        processor.asyncFlush();
+        processor.asyncClose();
         Assert.assertNull(processor.getWorkMemTable());
         assertEquals(1, processor.getFlushingMemTableSize());
-        processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
-        secondMemTableId = processor.getWorkMemTable().getMemTableId();
-        processor.asyncFlush();
-        Assert.assertNull(processor.getWorkMemTable());
-        assertEquals(2, processor.getFlushingMemTableSize());
-        logDeletionForTest(tableModel, 3);
-        processor.flushOneMemTable();
-        logDeletionForTest(tableModel, 4);
         processor.flushOneMemTable();
       } finally {
         processor.setManagedByFlushManager(false);
       }
       assertEquals(0, processor.getFlushingMemTableSize());
-      logDeletionForTest(tableModel, 5);
       walNode.rollWALFile();
 
       List<Long> memTableIds = new ArrayList<>();
@@ -397,14 +378,8 @@ public class TsFileProcessorTest {
         }
       }
       assertEquals(
-          Arrays.asList(
-              (long) TsFileProcessor.MEMTABLE_NOT_EXIST,
-              memTableId,
-              secondMemTableId,
-              secondMemTableId,
-              (long) TsFileProcessor.MEMTABLE_NOT_EXIST),
-          memTableIds);
-      assertEquals(Arrays.asList(1L, 2L, 3L, 4L, 5L), searchIndexes);
+          Arrays.asList((long) TsFileProcessor.MEMTABLE_NOT_EXIST, memTableId), memTableIds);
+      assertEquals(Arrays.asList(1L, 2L), searchIndexes);
     } finally {
       try {
         if (processor != null) {

@@ -54,7 +54,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -74,8 +73,6 @@ public class WALNodeRecoverTask implements Runnable {
   private long firstValidVersionId = Long.MAX_VALUE;
   private Map<Long, MemTableInfo> memTableId2Info;
   private Map<Long, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
-  // Multiple unflushed memtables in one TsFile share a single recovery lifecycle.
-  private final Set<UnsealedTsFileRecoverPerformer> recoverPerformers = new HashSet<>();
 
   public WALNodeRecoverTask(File logDirectory, CountDownLatch allNodesRecoveredLatch) {
     this.logDirectory = logDirectory;
@@ -95,11 +92,11 @@ public class WALNodeRecoverTask implements Runnable {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
     } catch (Exception e) {
-      for (UnsealedTsFileRecoverPerformer recoverPerformer : recoverPerformers) {
+      for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         recoverPerformer.getRecoverListener().fail(e);
       }
     } finally {
-      for (UnsealedTsFileRecoverPerformer recoverPerformer : recoverPerformers) {
+      for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         try {
           if (!recoverPerformer.canWrite()) {
             recoverPerformer.close();
@@ -266,16 +263,13 @@ public class WALNodeRecoverTask implements Runnable {
     }
     // update firstValidVersionId and get recover performer from WALRecoverManager
     memTableId2RecoverPerformer = new HashMap<>();
-    Map<File, UnsealedTsFileRecoverPerformer> file2RecoverPerformer = new HashMap<>();
     for (MemTableInfo memTableInfo : memTableId2Info.values()) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
 
-      File tsFile = new File(memTableInfo.getTsFilePath());
       UnsealedTsFileRecoverPerformer recoverPerformer =
-          file2RecoverPerformer.computeIfAbsent(tsFile, walRecoverManger::removeRecoverPerformer);
+          walRecoverManger.removeRecoverPerformer(new File(memTableInfo.getTsFilePath()));
       if (recoverPerformer != null) {
         memTableId2RecoverPerformer.put(memTableInfo.getMemTableId(), recoverPerformer);
-        recoverPerformers.add(recoverPerformer);
       }
     }
   }
@@ -285,7 +279,7 @@ public class WALNodeRecoverTask implements Runnable {
       return;
     }
     // make preparation for recovery
-    for (UnsealedTsFileRecoverPerformer recoverPerformer : recoverPerformers) {
+    for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
       try {
         recoverPerformer.startRecovery();
       } catch (Exception e) {
@@ -354,7 +348,7 @@ public class WALNodeRecoverTask implements Runnable {
 
   private void endRecovery() {
     // end recovering all recover performers
-    for (UnsealedTsFileRecoverPerformer recoverPerformer : recoverPerformers) {
+    for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
       try {
         recoverPerformer.endRecovery();
         recoverPerformer.getRecoverListener().succeed();

@@ -24,13 +24,11 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -54,13 +52,9 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.TsFileWriter;
@@ -82,8 +76,6 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -94,7 +86,6 @@ import java.util.concurrent.Future;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -165,69 +156,6 @@ public class WALRecoverManagerTest {
     walBuffer.close();
     bufferClosed = true;
     recoverAndCheck();
-  }
-
-  @Test
-  public void testRecoverMultipleMemTablesWithDeletionInSameTsFile() throws Exception {
-    IMemTable firstMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
-    IMemTable lastMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
-    // Both memtables are pending flush in the same file when the process crashes.
-    for (IMemTable memTable : Arrays.asList(firstMemTable, lastMemTable)) {
-      MemTableInfo info =
-          new MemTableInfo(memTable, FILE_WITH_WAL_NAME, walBuffer.getCurrentWALFileVersion());
-      checkpointManager.makeCreateMemTableCPInMemory(info);
-      checkpointManager.makeCreateMemTableCPOnDisk(memTable.getMemTableId());
-    }
-    checkpointManager.fsyncCheckpointFile();
-    walBuffer.write(
-        new WALInfoEntry(
-            firstMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME.toString(), 4L), true));
-    walBuffer.write(
-        new WALInfoEntry(
-            lastMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME.toString(), 5L), true));
-    DeleteDataNode deletion =
-        new DeleteDataNode(
-            new PlanNodeId(""),
-            Collections.singletonList(new MeasurementPath(DEVICE2_NAME + ".s1")),
-            4L,
-            5L);
-    // TsFileProcessor associates deletion with the last pending memtable when workMemTable is null.
-    walBuffer.write(new WALInfoEntry(lastMemTable.getMemTableId(), deletion, true));
-    walBuffer.close();
-    bufferClosed = true;
-
-    recoverManager.clear();
-    File tsFile = new File(FILE_WITH_WAL_NAME);
-    generateCrashedFile(tsFile);
-    tsFileWithWALResource = new TsFileResource(tsFile);
-    UnsealedTsFileRecoverPerformer performer =
-        new UnsealedTsFileRecoverPerformer(
-            tsFileWithWALResource, true, p -> assertFalse(p.canWrite()));
-    recoverManager.addRecoverPerformer(performer);
-    recoverManager.setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
-    recoverManager.recover();
-    assertEquals(WALRecoverListener.Status.SUCCESS, performer.getRecoverListener().waitForResult());
-
-    try (TsFileReader reader = new TsFileReader(new TsFileSequenceReader(FILE_WITH_WAL_NAME))) {
-      QueryDataSet dataSet =
-          reader.query(
-              QueryExpression.create(
-                  Arrays.asList(
-                      new Path(DEVICE2_NAME, "s1", true), new Path(DEVICE2_NAME, "s2", true)),
-                  null));
-      for (long time : new long[] {3L, 4L, 5L}) {
-        assertTrue(dataSet.hasNext());
-        RowRecord record = dataSet.next();
-        assertEquals(time, record.getTimestamp());
-        if (time == 3L) {
-          assertEquals(3.0f, record.getFields().get(0).getFloatV(), 0);
-        } else {
-          assertNull(record.getFields().get(0));
-        }
-        assertEquals(time == 3L ? 3.0d : 1.0d, record.getFields().get(1).getDoubleV(), 0);
-      }
-      assertFalse(dataSet.hasNext());
-    }
   }
 
   private void prepareCheckpointAndWALFileForNormal()

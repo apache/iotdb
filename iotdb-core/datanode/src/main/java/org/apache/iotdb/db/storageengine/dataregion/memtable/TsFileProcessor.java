@@ -1625,36 +1625,17 @@ public class TsFileProcessor {
     }
   }
 
+  // A processor may exist before its first memtable is created if table registration fails.
   public WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
-    flushQueryLock.readLock().lock();
-    try {
-      walEntryNum++;
-      return walNode.log(getMemTableIdForDeletion(), deleteDataNode);
-    } finally {
-      flushQueryLock.readLock().unlock();
-    }
+    walEntryNum++;
+    return walNode.log(
+        workMemTable == null ? MEMTABLE_NOT_EXIST : workMemTable.getMemTableId(), deleteDataNode);
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(RelationalDeleteDataNode deleteDataNode) {
-    flushQueryLock.readLock().lock();
-    try {
-      walEntryNum++;
-      return walNode.log(getMemTableIdForDeletion(), deleteDataNode);
-    } finally {
-      flushQueryLock.readLock().unlock();
-    }
-  }
-
-  // Called with flushQueryLock held until the deletion is queued in WAL, before the selected
-  // memtable can be released and its flush checkpoint recorded.
-  private long getMemTableIdForDeletion() {
-    if (workMemTable != null) {
-      return workMemTable.getMemTableId();
-    }
-    IMemTable flushingMemTable = flushingMemTables.peekLast();
-    // A pending flush still needs this deletion during recovery. If no memtable remains, keep
-    // logging with the existing sentinel so that IoTConsensus can replicate the deletion.
-    return flushingMemTable == null ? MEMTABLE_NOT_EXIST : flushingMemTable.getMemTableId();
+    walEntryNum++;
+    return walNode.log(
+        workMemTable == null ? MEMTABLE_NOT_EXIST : workMemTable.getMemTableId(), deleteDataNode);
   }
 
   public TsFileResource getTsFileResource() {
