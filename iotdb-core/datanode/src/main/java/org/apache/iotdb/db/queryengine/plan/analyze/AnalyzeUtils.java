@@ -173,11 +173,6 @@ public class AnalyzeUtils {
       return realStatement;
     }
     analysis.setRealStatement(realStatement);
-    // A failed insert may retain TAG columns after every FIELD column was rejected.
-    if (analysis.isFailed() && hasNoValidMeasurements(realStatement)) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      return realStatement;
-    }
 
     analyzeDataPartition(
         analysis,
@@ -185,16 +180,6 @@ public class AnalyzeUtils {
         context.getSession().getUserName(),
         partitionFetcher);
     return realStatement;
-  }
-
-  private static boolean hasNoValidMeasurements(InsertBaseStatement statement) {
-    if (statement instanceof InsertRowsStatement) {
-      return ((InsertRowsStatement) statement)
-          .getInsertRowStatementList().stream()
-              .noneMatch(InsertBaseStatement::hasValidMeasurements);
-    }
-    return (statement instanceof InsertRowStatement || statement instanceof InsertTabletStatement)
-        && !statement.hasValidMeasurements();
   }
 
   public static String getDatabaseName(

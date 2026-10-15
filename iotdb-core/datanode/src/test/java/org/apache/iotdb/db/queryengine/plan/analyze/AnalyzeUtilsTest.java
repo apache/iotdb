@@ -74,14 +74,14 @@ import static org.junit.Assert.assertTrue;
 public class AnalyzeUtilsTest {
 
   @Test
-  public void testRejectedOnlyFieldStopsRowAndTabletBeforePartitionLookup() throws Exception {
+  public void testRejectedOnlyFieldStillLooksUpRowAndTabletPartition() throws Exception {
     final InsertRowStatement row = new InsertRowStatement();
     row.setDevicePath(new PartialPath("root.sg.d1"));
     row.setMeasurements(new String[] {"tag", "field"});
     row.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT64});
     row.setValues(new Object[] {"device", 1L});
     row.setTime(1L);
-    assertRejectedFieldStopsBeforePartitionLookup(row);
+    assertRejectedFieldStillLooksUpPartition(row);
 
     final InsertTabletStatement tablet = new InsertTabletStatement();
     tablet.setDevicePath(new PartialPath("root.sg.d1"));
@@ -90,10 +90,10 @@ public class AnalyzeUtilsTest {
     tablet.setColumns(new Object[] {new String[] {"device"}, new long[] {1L}});
     tablet.setTimes(new long[] {1L});
     tablet.setRowCount(1);
-    assertRejectedFieldStopsBeforePartitionLookup(tablet);
+    assertRejectedFieldStillLooksUpPartition(tablet);
   }
 
-  private static void assertRejectedFieldStopsBeforePartitionLookup(InsertBaseStatement statement) {
+  private static void assertRejectedFieldStillLooksUpPartition(InsertBaseStatement statement) {
     statement.setColumnCategories(
         new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
     statement.setMeasurementSchemas(
@@ -103,44 +103,55 @@ public class AnalyzeUtilsTest {
         });
     final Analysis analysis = new Analysis();
     final MPPQueryContext context = new MPPQueryContext(new QueryId("rejected_field"));
+    context.setSession(Mockito.mock(SessionInfo.class));
+    final DataPartition partition = Mockito.mock(DataPartition.class);
+    final AtomicBoolean partitionQueried = new AtomicBoolean();
 
     AnalyzeUtils.analyzeInsert(
         context,
         statement,
         () -> statement.markFailedMeasurement(1, new IllegalArgumentException("type mismatch")),
         (params, userName) -> {
-          throw new AssertionError("Partition lookup must not run after every field fails");
+          partitionQueried.set(true);
+          return partition;
         },
         AnalyzeUtils::computeTableDataPartitionParams,
         analysis,
         false);
 
-    assertTrue(analysis.isFinishQueryAfterAnalyze());
+    assertTrue(partitionQueried.get());
+    assertFalse(analysis.isFinishQueryAfterAnalyze());
     assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
     assertTrue(analysis.getFailStatus().getMessage().contains("field"));
+    assertSame(partition, analysis.getDataPartitionInfo());
   }
 
   @Test
-  public void testRejectedFieldsInEveryRowStopBeforePartitionLookup() throws Exception {
+  public void testRejectedFieldsInEveryRowStillLookUpPartition() throws Exception {
     final InsertRowsStatement rows = createRowsWithRejectedFields(2);
     final Analysis analysis = new Analysis();
     final MPPQueryContext context = new MPPQueryContext(new QueryId("all_rows_rejected"));
     context.setSession(Mockito.mock(SessionInfo.class));
+    final DataPartition partition = Mockito.mock(DataPartition.class);
+    final AtomicBoolean partitionQueried = new AtomicBoolean();
 
     AnalyzeUtils.analyzeInsert(
         context,
         rows,
         () -> {},
         (params, userName) -> {
-          throw new AssertionError("Partition lookup must not run after every field fails");
+          partitionQueried.set(true);
+          return partition;
         },
         AnalyzeUtils::computeTableDataPartitionParams,
         analysis,
         false);
 
-    assertTrue(analysis.isFinishQueryAfterAnalyze());
+    assertTrue(partitionQueried.get());
+    assertFalse(analysis.isFinishQueryAfterAnalyze());
     assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
     assertTrue(analysis.getFailStatus().getMessage().contains("field"));
+    assertSame(partition, analysis.getDataPartitionInfo());
   }
 
   @Test
