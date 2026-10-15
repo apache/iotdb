@@ -184,11 +184,18 @@ final class TsFileWriterManager {
       }
     }
 
-    // The bytes of a piece go straight to the file, so there is nothing to flush before the records
-    // that describe them follow. Neither side is fsynced: a tail that a crash kept off the disk is
-    // truncated and staged again.
+    // Nothing is flushed while a piece is written: its bytes go straight to the file. Once the
+    // whole piece is there, its files are forced, before the records that describe them follow.
+    forceStagedFiles();
     flushRecordedChunks();
     return createPieceRefs(taskDir, previousLengths);
+  }
+
+  /** One fsync per staged file of the piece, after every chunk of that piece is written. */
+  private void forceStagedFiles() throws IOException {
+    for (final TsFilePrecalculatedChunkWriter writer : dataPartition2Writer.values()) {
+      writer.getOutput().force();
+    }
   }
 
   private void flushRecordedChunks() throws IOException {

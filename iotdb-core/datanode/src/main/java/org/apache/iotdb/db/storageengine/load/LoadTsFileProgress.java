@@ -230,8 +230,8 @@ public class LoadTsFileProgress {
         written++;
       }
       output.flush();
-      // Deliberately not fsynced, like the staged bytes a piece writes: a crash can leave a tail
-      // that recovery truncates and stages again.
+      // Not fsynced: the bytes of the piece were forced before these records were appended, so a
+      // record may lag the bytes it names, but it can never lead them.
     } finally {
       queuedChunkRecords.subList(0, written).clear();
     }
