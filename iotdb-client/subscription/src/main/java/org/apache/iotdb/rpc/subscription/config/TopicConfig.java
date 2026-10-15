@@ -136,6 +136,14 @@ public class TopicConfig extends PipeParameters {
     return TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(getMode());
   }
 
+  public boolean isProgressRetainedAfterUnsubscribe() {
+    return Boolean.parseBoolean(
+        getStringIgnoreCase(
+                TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_DEFAULT_VALUE)
+            .trim());
+  }
+
   /**
    * @deprecated Use {@link #isInitialMode()}.
    */

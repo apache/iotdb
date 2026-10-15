@@ -326,6 +326,21 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
+  public void testAcceptAlteringRetainProgressAfterUnsubscribe() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
+    originalAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
+    updatedAttributes.put("Retain.Progress.After.Unsubscribe", "true");
+
+    subscriptionInfo.validateBeforeAlteringTopic(
+        new TopicMeta("table_topic", 2L, updatedAttributes));
+  }
+
+  @Test
   public void testRejectIllegalMode() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = new HashMap<>();
@@ -383,6 +398,35 @@ public class SubscriptionInfoTopicValidationTest {
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
     assertCreateRejected(subscriptionInfo, attributes, "only supported for incremental topics");
+  }
+
+  @Test
+  public void testAcceptRetainingProgressOnIncrementalTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put("Retain.Progress.After.Unsubscribe", " TRUE ");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectRetainingProgressOnInitialTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for incremental topics");
+  }
+
+  @Test
+  public void testRejectIllegalRetainProgressValue() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");
+
+    assertCreateRejected(subscriptionInfo, attributes, "expected true or false");
   }
 
   @Test

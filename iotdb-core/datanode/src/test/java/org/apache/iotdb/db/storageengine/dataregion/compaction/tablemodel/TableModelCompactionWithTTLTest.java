@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -47,7 +46,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(Parameterized.class)
-public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
+public class TableModelCompactionWithTTLTest extends AbstractTableModelCompactionTest {
 
   private final String performerType;
   private String threadName;
@@ -57,7 +56,7 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     this.threadName = Thread.currentThread().getName();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
-    DataNodeTableCache.getInstance().invalid(this.COMPACTION_TEST_SG);
+    DataNodeTableCache.getInstance().invalid(TABLE_MODEL_TEST_SG);
     super.setUp();
   }
 
@@ -65,7 +64,7 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     Thread.currentThread().setName(threadName);
-    DataNodeTableCache.getInstance().invalid(this.COMPACTION_TEST_SG);
+    DataNodeTableCache.getInstance().invalid(TABLE_MODEL_TEST_SG);
   }
 
   public TableModelCompactionWithTTLTest(String performerType) {
@@ -170,7 +169,7 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
     tsTable.addColumnSchema(
         new FieldColumnSchema("s1", TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
     tsTable.addProp(TsTable.TTL_PROPERTY, ttl + "");
-    DataNodeTableCache.getInstance().preUpdateTable(this.COMPACTION_TEST_SG, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(this.COMPACTION_TEST_SG, tableName, null);
+    DataNodeTableCache.getInstance().preUpdateTable(TABLE_MODEL_TEST_SG, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(TABLE_MODEL_TEST_SG, tableName, null);
   }
 }

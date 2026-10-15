@@ -146,6 +146,7 @@ public class DataNodeLocationSupplierFactory {
           return getReadableDataNodeLocations();
         case InformationSchema.DATABASES:
         case InformationSchema.TABLES:
+        case InformationSchema.DROP_TABLE_PROCEDURES:
         case InformationSchema.COLUMNS:
         case InformationSchema.REGIONS:
         case InformationSchema.PIPES:
@@ -160,6 +161,7 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.CONFIG_NODES:
         case InformationSchema.DATA_NODES:
         case InformationSchema.SERVICES:
+        case InformationSchema.PIPE_MEMORY:
           return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
         default:
           throw new UnsupportedOperationException(DataNodeQueryMessages.UNKNOWN_TABLE + tableName);

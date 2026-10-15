@@ -181,8 +181,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
-    this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForBatchData =
+        allocateTabletMemory(
+            TsFileInsertionEventScanParser.class.getSimpleName() + "#batchData", 0);
+    this.allocatedMemoryBlockForChunk =
+        allocateTabletMemory(TsFileInsertionEventScanParser.class.getSimpleName() + "#chunk", 0);
 
     try {
       currentModifications =
@@ -190,7 +193,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          allocateTabletMemory(
+              TsFileInsertionEventScanParser.class.getSimpleName() + "#modifications",
+              currentModifications.ramBytesUsed());
 
       tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -257,7 +262,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     allocatedMemoryBlockForTsFileInput =
-        memoryManager.forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
+        allocateTabletMemory(
+            TsFileInsertionEventScanParser.class.getSimpleName() + "#tsFileInput",
+            TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
     return new TsFileSequenceReader(
         new BufferedTsFileInput(tsFile.toPath(), TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES),
         false,
@@ -691,7 +698,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
-                    currentDevice, Collections.singletonList(measurementID), currentModifications));
+                    currentDevice,
+                    Collections.singletonList(measurementID),
+                    currentModifications,
+                    false));
             return;
           }
         case MetaMarker.VALUE_CHUNK_HEADER:
@@ -830,7 +840,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               chunkHeader.getMeasurementID(),
               statistics.getStartTime(),
               statistics.getEndTime(),
-              currentModifications)) {
+              currentModifications,
+              false)) {
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
       }
@@ -999,7 +1010,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             chunkHeader.getCompressionType()));
     pendingAlignedChunkGroup.modsInfos.addAll(
         ModsOperationUtil.initializeMeasurementMods(
-            currentDevice, Collections.singletonList(measurementID), currentModifications));
+            currentDevice, Collections.singletonList(measurementID), currentModifications, false));
   }
 
   private PendingAlignedChunkGroup getOrCreatePendingAlignedChunkGroup(final int timeChunkIndex) {

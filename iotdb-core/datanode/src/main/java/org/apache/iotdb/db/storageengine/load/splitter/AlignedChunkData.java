@@ -399,7 +399,7 @@ public class AlignedChunkData implements ChunkData {
     final long dataSize = ReadWriteIOUtils.readLong(stream);
     final boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     final int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);
-    final List<ChunkHeader> chunkHeaderList = new ArrayList<>();
+    final List<ChunkHeader> chunkHeaderList = new ArrayList<>(chunkHeaderListSize);
     for (int i = 0; i < chunkHeaderListSize; i++) {
       final byte chunkType = ReadWriteIOUtils.readByte(stream);
       ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
@@ -407,7 +407,7 @@ public class AlignedChunkData implements ChunkData {
       chunkHeader.setMeasurementID(MEASUREMENT_ID_CACHE.get(measurementID, m -> m));
       chunkHeaderList.add(chunkHeader);
     }
-    final List<Integer> pageNumbers = new ArrayList<>();
+    final List<Integer> pageNumbers = new ArrayList<>(needDecodeChunk ? chunkHeaderListSize : 0);
     if (needDecodeChunk) {
       for (int i = 0; i < chunkHeaderListSize; i++) {
         pageNumbers.add(ReadWriteIOUtils.readInt(stream));

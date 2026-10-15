@@ -5058,11 +5058,11 @@ public class StatementAnalyzer {
       }
       rowCount.ifPresent(
           count -> {
-            if (count < 0) {
+            if (count <= 0) {
               throw new SemanticException(
                   String.format(
                       DataNodeQueryMessages
-                          .LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S,
+                          .EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3,
                       count));
             }
           });

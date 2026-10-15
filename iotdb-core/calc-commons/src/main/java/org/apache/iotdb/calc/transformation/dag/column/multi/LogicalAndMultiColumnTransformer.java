@@ -40,7 +40,7 @@ public class LogicalAndMultiColumnTransformer extends LogicalMultiColumnTransfor
     boolean[] selectionCopy = selection.clone();
     boolean[] hasNull = new boolean[selection.length];
 
-    List<Column> childrenColumns = new ArrayList<>();
+    List<Column> childrenColumns = new ArrayList<>(columnTransformerList.size());
     for (ColumnTransformer child : columnTransformerList) {
       child.evaluateWithSelection(selectionCopy);
       Column childColumn = child.getColumn();

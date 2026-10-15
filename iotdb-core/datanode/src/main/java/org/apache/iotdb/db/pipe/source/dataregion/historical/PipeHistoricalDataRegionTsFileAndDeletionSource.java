@@ -71,7 +71,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,16 +123,12 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivileges;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class PipeHistoricalDataRegionTsFileAndDeletionSource
     implements PipeHistoricalDataRegionSource {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileAndDeletionSource.class);
-
-  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private String pipeName;
   private long creationTime;
@@ -1026,7 +1021,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         .anyMatch(
             deviceID -> {
               if (!isModelDetected) {
-                detectModel(resource, deviceID);
+                detectModel(resource);
                 isModelDetected = true;
               }
 
@@ -1039,13 +1034,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             });
   }
 
-  private void detectModel(final TsFileResource resource, final IDeviceID deviceID) {
-    this.isTableModel =
-        !(deviceID instanceof PlainDeviceID
-            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-            || deviceID.getTableName().equals(PATH_ROOT));
-
+  private void detectModel(final TsFileResource resource) {
+    // One source serves one data region, so the data model is decided by its database.
     final String databaseName = resource.getDatabaseName();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     isDbNameCoveredByPattern =
         isTableModel
             ? tablePattern.isTableModelDataAllowedToBeCaptured()

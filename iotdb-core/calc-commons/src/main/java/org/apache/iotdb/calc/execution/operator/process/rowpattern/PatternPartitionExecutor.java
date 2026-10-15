@@ -118,7 +118,7 @@ public final class PatternPartitionExecutor {
     this.matchNumber = 1;
 
     // Prepare for peer group comparing
-    List<TSDataType> sortDataTypes = new ArrayList<>();
+    List<TSDataType> sortDataTypes = new ArrayList<>(sortChannels.size());
     for (int channel : sortChannels) {
       TSDataType dataType = dataTypes.get(channel);
       sortDataTypes.add(dataType);

@@ -380,6 +380,23 @@ struct TDeleteColumnDataReq {
 struct TDeleteDataOrDevicesForDropTableReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
+  3: optional i64 procedureId
+}
+
+struct TDropTableModProgress {
+  1: required i64 writtenModFileCount
+  // Unset until the region has identified all mod files involved in this deletion.
+  2: optional i64 remainingModFileCount
+}
+
+struct TGetDropTableModProgressReq {
+  1: required i64 procedureId
+  2: required list<common.TConsensusGroupId> regionIdList
+}
+
+struct TGetDropTableModProgressResp {
+  1: required common.TSStatus status
+  2: optional map<i32, TDropTableModProgress> regionProgress
 }
 
 struct TTableDeviceDeletionWithPatternAndFilterReq {
@@ -1355,6 +1372,8 @@ service IDataNodeRPCService {
   * Delete data for drop table
   */
   common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
+
+  TGetDropTableModProgressResp getDropTableModProgress(TGetDropTableModProgressReq req)
 
   /**
   * Delete devices for drop table

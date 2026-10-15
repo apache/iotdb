@@ -247,7 +247,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
       // get time modifications of this file
       List<ModEntry> timeModifications =
-          getModificationsFromCache(resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          getModificationsFromCache(
+              resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER, !ignoreAllNullRows);
       // get value modifications of this file
       List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
@@ -260,7 +261,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                     valueModifications.add(null);
                   } else {
                     valueModifications.add(
-                        getModificationsFromCache(resource, deviceId, x.getMeasurementUid()));
+                        getModificationsFromCache(
+                            resource, deviceId, x.getMeasurementUid(), !ignoreAllNullRows));
                   }
                 } catch (IllegalPathException e) {
                   throw new RuntimeException(e);
