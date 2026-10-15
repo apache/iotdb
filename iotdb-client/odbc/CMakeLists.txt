@@ -114,7 +114,12 @@ install(FILES "${odbc_curl_SOURCE_DIR}/COPYING" DESTINATION licenses RENAME curl
 install(FILES "${odbc_json_SOURCE_DIR}/LICENSE.MIT" DESTINATION licenses RENAME json.txt)
 install(DIRECTORY ../client-cpp/src/assembly/package-metadata/third_party/ DESTINATION licenses/sdk)
 install(FILES ../../LICENSE ../../NOTICE DESTINATION .)
-install(DIRECTORY licenses/ DESTINATION licenses)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # GCC runtime notices belong to the combined GNU/Linux binary, not the
+    # Apache source tree or the MSVC package.
+    configure_file(cmake/PackageGccRuntime.cmake.in generated/PackageGccRuntime.cmake @ONLY)
+    install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/generated/PackageGccRuntime.cmake")
+endif()
 get_filename_component(ODBC_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." REALPATH)
 # Container builds read the host checkout as root. Trust only this configured
 # source repository for the provenance query, without changing global Git policy.

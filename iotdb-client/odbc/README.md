@@ -64,6 +64,19 @@ The dependency URLs, versions and checksums are exposed as `ODBC_CURL_*` and
 File logging is excluded from release builds by default; enable it explicitly
 with `-DODBC_ENABLE_LOGGING=ON` when troubleshooting.
 
+GNU/Linux binary packages combine GCC's libstdc++ and libgcc runtime object code
+under GPL-3.0-or-later WITH GCC-exception-3.1. The
+[ASF GCC Runtime Library exception policy](https://www.apache.org/legal/resolved.html#gcc-runtime-library)
+addresses this binary combination; the project PMC must review the inclusion.
+No GCC runtime source or GPL license text is vendored in the IoTDB source tree.
+At install/package time, GNU builds download the two license texts from the GCC
+14.2.0 upstream release, verify pinned SHA-256 hashes and include them under
+`licenses/gcc`, with a disclosure in the binary's `LICENSE`. See the
+[GCC runtime licensing documentation](https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html).
+Windows/MSVC packages do not include GCC runtime notices. Offline GNU packaging
+requires prepopulating `<build>/runtime-licenses/GPL-3.0.txt` and
+`GCC-Runtime-Exception.txt` with those verified upstream files.
+
 ## ODBC conformance
 
 The implementation reference is Microsoft's official

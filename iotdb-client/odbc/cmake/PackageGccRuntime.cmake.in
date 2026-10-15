@@ -1,0 +1,66 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Only the combined GNU/Linux binary incorporates GCC runtime object code.
+# Fetch notices at install/package time; never vendor runtime sources or license
+# texts in the Apache source release. See the GCC Runtime Library exception at
+# https://www.apache.org/legal/resolved.html#gcc-runtime-library
+set(runtime_license_cache "@CMAKE_CURRENT_BINARY_DIR@/runtime-licenses")
+file(MAKE_DIRECTORY "${runtime_license_cache}")
+
+function(package_gcc_license upstream_name package_name sha256)
+    set(cached "${runtime_license_cache}/${package_name}")
+    if(NOT EXISTS "${cached}")
+        if("@IOTDB_OFFLINE@")
+            message(FATAL_ERROR "Offline packaging requires ${cached}")
+        endif()
+        file(DOWNLOAD
+            "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-14.2.0/${upstream_name}"
+            "${cached}.download" TLS_VERIFY ON STATUS download_status)
+        list(GET download_status 0 download_code)
+        if(NOT download_code EQUAL 0)
+            message(FATAL_ERROR "Cannot obtain GCC runtime notice ${upstream_name}: ${download_status}")
+        endif()
+        file(SHA256 "${cached}.download" actual_sha256)
+        if(NOT actual_sha256 STREQUAL sha256)
+            message(FATAL_ERROR "GCC runtime notice checksum mismatch: ${upstream_name}")
+        endif()
+        file(RENAME "${cached}.download" "${cached}")
+    endif()
+    file(SHA256 "${cached}" actual_sha256)
+    if(NOT actual_sha256 STREQUAL sha256)
+        message(FATAL_ERROR "Cached GCC runtime notice checksum mismatch: ${cached}")
+    endif()
+    file(INSTALL "${cached}" DESTINATION "${CMAKE_INSTALL_PREFIX}/licenses/gcc")
+endfunction()
+
+package_gcc_license(COPYING3 GPL-3.0.txt
+    8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903)
+package_gcc_license(COPYING.RUNTIME GCC-Runtime-Exception.txt
+    9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74)
+
+file(APPEND "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/LICENSE" "\n
+GNU/Linux GCC runtime inclusion
+-------------------------------
+This binary contains libstdc++ and libgcc runtime object code combined with the
+Apache IoTDB driver and its test executables by GCC. These runtime portions are
+covered by GPL-3.0-or-later WITH GCC-exception-3.1; the IoTDB source remains under
+the Apache License 2.0. See licenses/gcc/GPL-3.0.txt and
+licenses/gcc/GCC-Runtime-Exception.txt for the corresponding license texts.
+GCC homepage and upstream sources: https://gcc.gnu.org/
+Runtime license: https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html
+")
