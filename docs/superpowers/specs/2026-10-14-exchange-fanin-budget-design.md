@@ -42,6 +42,7 @@ TableTopK、CountMerge 的任意就绪消费留到后续；有序输入标志仍
 本地共享队列只计费一次，创建先后不改变所有者。
 
 MemoryPool 维护 query→FI→planNode 明细，注册时固定 side。
+本地计划生成全部算子和 pipeline 后，一次性检查共享资格并计算两个方向的预算，写入 FI 记录的 `inputMaxBytes`、`outputMaxBytes` 字段。`MemorySide` 仅表示方向，不计算预算，也不接受 `hasInput`/`hasOutput` 参数。共享模式的申请、单块上限检查和等待唤醒统一读取 FI 保存的预算；handle 传入的限额仅用于原有独立配额模式。
 FI 两侧保留 AtomicLong 统计，plan node 保留字节明细。申请和释放在 FI 的记账锁内更新；全局池采用有界原子申请。申请前先检查适用的同侧总量或 plan node 限额，失败不产生临时计费，也不需要回滚，避免并发请求分别撞到不同限额后全部挂起。
 
 释放后在 FI 记账锁外完成等待 Future；保留入队后的重试和每个 Future 的完成/取消同步。稳定快照中的 FI 同侧总量等于同侧明细之和。
@@ -153,8 +154,9 @@ mvn -o test-compile -DskipTests
 
 ## 单方向预算修正验证（2026-10-15）
 
-移除默认按两侧均分的单参数接口。`MemorySide.getMaxBytes(F, hasInput, hasOutput)`
-显式接收本 FI 实际计费的方向：单方向使用完整 F，双方向才拆分，未使用方向为 0。
+该轮修正取消默认按两侧均分，改为根据本 FI 实际计费方向分配：
+单方向使用完整 F，双方向才拆分，未使用方向为 0。本次已将计算统一收回本地计划初始化，
+不再保留该轮引入的 `MemorySide.getMaxBytes(F, hasInput, hasOutput)` 接口。
 最大 TsBlock 校验只作用于启用的方向；原有 Collect 资格和依赖回退规则保持不变。
 
 新增输入单向、输出单向、B=F、本地输入和本地/远端混合输入用例；
@@ -165,3 +167,17 @@ mvn -o test-compile -DskipTests
 完整 reactor 中英文 test-compile、Spotless、Checkstyle 和许可证检查通过。
 重新从当前代码打包节点后，IoTDBCollectFanInIT 在 TableSimpleIT 和三 DataNode 的
 TableClusterIT 中各 8 项全部通过；集群复用同一份节点模板，节点包哈希与本次构建一致。
+
+## FI 预算字段初始化验证（2026-10-15）
+
+`FragmentMemoryReservation` 保存 `inputMaxBytes`、`outputMaxBytes`；
+完整本地计划生成后按输入 exchange、fragment sink 和依赖检查结果一次性初始化。
+共享申请、单块上限检查与等待重试均读取 FI 字段，独立配额模式仍读取 handle 限额。
+`MemorySide` 只保留方向枚举，移除布尔参数预算接口。
+
+115 项定向单测通过，覆盖 handle 参数不能增减共享上限、超额请求不进入等待队列、
+未使用方向预算为零、奇数预算拆分和原有独立配额回退。
+完整 reactor 中英文编译、Spotless、Checkstyle 和许可证检查通过；生产代码没有新增字符串字面量。
+
+重新打包当前源码后，`IoTDBCollectFanInIT` 在 TableSimpleIT 和三 DataNode 的 TableClusterIT
+中各 8 项全部通过，无失败或跳过。集群复用同一份节点模板，其服务端 jar 哈希与本次构建一致。

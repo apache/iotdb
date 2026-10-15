@@ -22,17 +22,5 @@ package org.apache.iotdb.db.queryengine.execution.memory;
 /** The exchange budget charged by a registered plan node. */
 public enum MemorySide {
   INPUT,
-  OUTPUT;
-
-  /** Split only when both directions charge this FI; an unused direction has no budget. */
-  public long getMaxBytes(long fragmentExchangeMaxBytes, boolean hasInput, boolean hasOutput) {
-    if (!(this == INPUT ? hasInput : hasOutput)) {
-      return 0;
-    }
-    if (!hasInput || !hasOutput) {
-      return fragmentExchangeMaxBytes;
-    }
-    long inputMaxBytes = fragmentExchangeMaxBytes / 2;
-    return this == INPUT ? inputMaxBytes : fragmentExchangeMaxBytes - inputMaxBytes;
-  }
+  OUTPUT
 }

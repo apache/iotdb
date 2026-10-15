@@ -57,7 +57,6 @@ public class MemoryPoolTest {
   public void before() {
     MemoryManager memoryManager = Mockito.spy(new MemoryManager(1024L));
     pool = new MemoryPool("test", memoryManager, 512L);
-    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID);
     pool.registerPlanNodeIdToQueryMemoryMap(
         QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, MemorySide.INPUT);
   }
@@ -530,6 +529,7 @@ public class MemoryPoolTest {
 
   @Test
   public void testSharedInputBudgetAndIndependentOutput() {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 256, 256);
     pool.registerPlanNodeIdToQueryMemoryMap(
         QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", MemorySide.INPUT);
     pool.registerPlanNodeIdToQueryMemoryMap(
@@ -576,45 +576,80 @@ public class MemoryPoolTest {
   }
 
   @Test
-  public void testOddBudgetAndSingleRequestBoundary() {
-    Assert.assertEquals(256, MemorySide.INPUT.getMaxBytes(513, true, true));
-    Assert.assertEquals(257, MemorySide.OUTPUT.getMaxBytes(513, true, true));
+  public void testSharedRequestCannotExceedInitializedInputBudget() {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 256, 256);
     try {
-      pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 257, 256, false);
-      Assert.fail("request exceeds the input budget");
+      pool.reserveWithPriority(
+          QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 257, Long.MAX_VALUE, false);
+      Assert.fail("request exceeds the initialized input budget");
     } catch (IllegalArgumentException expected) {
       Assert.assertEquals(0, pool.getReservedBytes());
       Assert.assertEquals(0, pool.getQueryMemoryReservedBytes(QUERY_ID));
+      Assert.assertEquals(0, pool.getMemoryReservationSize());
     }
   }
 
   @Test
+  public void testHandleLimitsCannotChangeInitializedSharedBudgets() throws Exception {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 256, 256);
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, "output", MemorySide.OUTPUT);
+    Assert.assertTrue(
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 200, 1, false)
+            .isReserveSuccess());
+    MemoryReservationResult pending =
+        pool.reserveWithPriority(
+            QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", 100, Long.MAX_VALUE, false);
+    Assert.assertFalse(pending.getFuture().isDone());
+    Assert.assertTrue(
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, "output", 256, 1, false)
+            .isReserveSuccess());
+    // Waking the input request must still respect the FI's saved limit.
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, "output", 256);
+    Assert.assertFalse(pending.getFuture().isDone());
+    Assert.assertFalse(
+        pool.tryReserveForTest(QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", 100, Long.MAX_VALUE));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 200);
+    pending.getFuture().get(10, TimeUnit.SECONDS);
+    Assert.assertEquals(
+        100, pool.getFragmentMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.INPUT));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", 100);
+    Assert.assertEquals(0, pool.getReservedBytes());
+    Assert.assertEquals(0, pool.getMemoryReservationSize());
+  }
+
+  @Test
   public void testSingleDirectionKeepsFullBudgetAndSingleBlockLimit() {
-    Assert.assertEquals(513, MemorySide.INPUT.getMaxBytes(513, true, false));
-    Assert.assertEquals(0, MemorySide.OUTPUT.getMaxBytes(513, true, false));
-    Assert.assertEquals(0, MemorySide.INPUT.getMaxBytes(513, false, true));
-    Assert.assertEquals(513, MemorySide.OUTPUT.getMaxBytes(513, false, true));
-    Assert.assertEquals(0, MemorySide.INPUT.getMaxBytes(513, false, false));
-    Assert.assertEquals(0, MemorySide.OUTPUT.getMaxBytes(513, false, false));
     MemoryPool singleDirectionPool =
         new MemoryPool("single-direction", new MemoryManager(1024), 513);
-    singleDirectionPool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID);
     for (MemorySide side : MemorySide.values()) {
-      String node = side.name();
+      String fi = side.name();
+      singleDirectionPool.registerFragmentInstanceSharedBudget(
+          QUERY_ID, fi, side == MemorySide.INPUT ? 513 : 0, side == MemorySide.OUTPUT ? 513 : 0);
+      singleDirectionPool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, fi, "active", side);
       singleDirectionPool.registerPlanNodeIdToQueryMemoryMap(
-          QUERY_ID, FRAGMENT_INSTANCE_ID, node, side);
-      long limit = side.getMaxBytes(513, side == MemorySide.INPUT, side == MemorySide.OUTPUT);
+          QUERY_ID, fi, "unused", side == MemorySide.INPUT ? MemorySide.OUTPUT : MemorySide.INPUT);
       Assert.assertTrue(
           singleDirectionPool
-              .reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, node, 513, limit, false)
+              .reserveWithPriority(QUERY_ID, fi, "active", 513, 1, false)
               .isReserveSuccess());
-      singleDirectionPool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, node, 513);
+      try {
+        singleDirectionPool.reserveWithPriority(QUERY_ID, fi, "unused", 1, Long.MAX_VALUE, false);
+        Assert.fail("an unused direction must not acquire a budget from a handle");
+      } catch (IllegalArgumentException expected) {
+        Assert.assertEquals(0, singleDirectionPool.getMemoryReservationSize());
+        Assert.assertEquals(513, singleDirectionPool.getReservedBytes());
+      }
+      singleDirectionPool.free(QUERY_ID, fi, "active", 513);
       Assert.assertEquals(0, singleDirectionPool.getReservedBytes());
     }
   }
 
   @Test
   public void testConcurrentPlanNodesShareOneSideCounter() throws Exception {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 128, 128);
     ExecutorService executor = Executors.newFixedThreadPool(16);
     CountDownLatch start = new CountDownLatch(1);
     CountDownLatch attempted = new CountDownLatch(16);
@@ -662,6 +697,7 @@ public class MemoryPoolTest {
 
   @Test
   public void testReleaseBeforePendingReservationIsPublished() throws Exception {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 256, 256);
     pool = Mockito.spy(pool);
     pool.registerPlanNodeIdToQueryMemoryMap(
         QUERY_ID, FRAGMENT_INSTANCE_ID, "input2", MemorySide.INPUT);
@@ -714,6 +750,7 @@ public class MemoryPoolTest {
 
   @Test
   public void testCancelledInputDoesNotConsumeReleasedSharedBudget() throws Exception {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 256, 256);
     pool.registerPlanNodeIdToQueryMemoryMap(
         QUERY_ID, FRAGMENT_INSTANCE_ID, "cancelled", MemorySide.INPUT);
     pool.registerPlanNodeIdToQueryMemoryMap(
@@ -751,6 +788,7 @@ public class MemoryPoolTest {
 
   @Test
   public void testConcurrentPendingReservationsCompleteAndReleaseAllAccounting() throws Exception {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 128, 128);
     int count = 16;
     ExecutorService executor = Executors.newFixedThreadPool(count);
     CountDownLatch attempted = new CountDownLatch(count);
@@ -811,6 +849,7 @@ public class MemoryPoolTest {
 
   @Test
   public void testSharedAndLegacyFragmentsDoNotChangeEachOthersPolicy() {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 256, 256);
     pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, "legacy", "a", MemorySide.INPUT);
     pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, "legacy", "b", MemorySide.INPUT);
     pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, "b", MemorySide.INPUT);
@@ -834,6 +873,7 @@ public class MemoryPoolTest {
 
   @Test
   public void testConcurrentAdmissionAlwaysGrantsOneRequestWhenOneFits() throws Exception {
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID, 256, 256);
     for (int i = 0; i < 3; i++) {
       String fi = "other" + i;
       pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, fi, PLAN_NODE_ID, MemorySide.OUTPUT);
