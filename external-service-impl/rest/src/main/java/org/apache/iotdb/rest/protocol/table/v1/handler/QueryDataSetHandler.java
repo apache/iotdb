@@ -22,9 +22,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
-import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
+import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.table.v1.model.QueryDataSet;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -45,7 +44,7 @@ public class QueryDataSetHandler {
   private QueryDataSetHandler() {}
 
   /**
-   * @param actualRowSizeLimit max number of rows to return. no limit when actualRowSizeLimit <= 0.
+   * @param actualRowSizeLimit max number of rows to return.
    */
   public static Response fillQueryDataSet(
       IQueryExecution queryExecution, Statement statement, int actualRowSizeLimit)
@@ -61,7 +60,6 @@ public class QueryDataSetHandler {
       IQueryExecution queryExecution, final int actualRowSizeLimit) throws IoTDBException {
     QueryDataSet targetDataSet = new QueryDataSet();
     int fetched = 0;
-    int columnNum = queryExecution.getOutputValueColumnCount();
 
     DatasetHeader header = queryExecution.getDatasetHeader();
     List<String> resultColumns = header.getRespColumns();
@@ -73,17 +71,6 @@ public class QueryDataSetHandler {
       targetDataSet.addValuesItem(new ArrayList<>());
     }
     while (true) {
-      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
-        return Response.ok()
-            .entity(
-                new ExecutionStatus()
-                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
-                    .message(
-                        String.format(
-                            "Dataset row size exceeded the given max row size (%d)",
-                            actualRowSizeLimit)))
-            .build();
-      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent() || optionalTsBlock.get().isEmpty()) {
         if (fetched == 0) {
@@ -94,22 +81,22 @@ public class QueryDataSetHandler {
       }
       TsBlock tsBlock = optionalTsBlock.get();
       int currentCount = tsBlock.getPositionCount();
+      if (QueryRowLimitUtils.exceedsLimit(fetched, currentCount, actualRowSizeLimit)) {
+        return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(actualRowSizeLimit);
+      }
 
       for (int k = 0; k < resultColumns.size(); k++) {
         Column column = tsBlock.getColumn(headerMap.get(resultColumns.get(k)));
         List<Object> targetDataSetColumn = targetDataSet.getValues().get(k);
         for (int i = 0; i < currentCount; i++) {
-          fetched++;
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
             addTypedValueToTarget(targetDataSet.getDataTypes(), k, i, targetDataSetColumn, column);
           }
         }
-        if (k != columnNum - 1) {
-          fetched -= currentCount;
-        }
       }
+      fetched += currentCount;
     }
     targetDataSet.setValues(convertColumnToRow(targetDataSet.getValues()));
     return Response.ok().entity(targetDataSet).build();
@@ -174,17 +161,6 @@ public class QueryDataSetHandler {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
     while (true) {
-      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
-        return Response.ok()
-            .entity(
-                new ExecutionStatus()
-                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
-                    .message(
-                        String.format(
-                            "Dataset row size exceeded the given max row size (%d)",
-                            actualRowSizeLimit)))
-            .build();
-      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
         if (fetched == 0) {
@@ -199,21 +175,21 @@ public class QueryDataSetHandler {
         targetDataSet.setValues(new ArrayList<>());
         return Response.ok().entity(targetDataSet).build();
       }
+      if (QueryRowLimitUtils.exceedsLimit(fetched, currentCount, actualRowSizeLimit)) {
+        return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(actualRowSizeLimit);
+      }
       for (int k = 0; k < columnNum; k++) {
         Column column = tsBlock.getColumn(targetDataSetIndexToSourceDataSetIndex[k]);
         List<Object> targetDataSetColumn = targetDataSet.getValues().get(k);
         for (int i = 0; i < currentCount; i++) {
-          fetched++;
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
             addTypedValueToTarget(targetDataSet.getDataTypes(), k, i, targetDataSetColumn, column);
           }
         }
-        if (k != columnNum - 1) {
-          fetched -= currentCount;
-        }
       }
+      fetched += currentCount;
     }
     targetDataSet.setValues(convertColumnToRow(targetDataSet.getValues()));
     return Response.ok().entity(targetDataSet).build();

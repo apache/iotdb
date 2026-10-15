@@ -69,17 +69,21 @@ public class InsertValues extends InsertRows {
       final Values values,
       final ZoneId zoneId) {
     super(createPlaceholderStatement(databaseName), null);
-    this.databaseName = requireNonNull(databaseName, "databaseName is null");
-    this.tableName = requireNonNull(tableName, "tableName is null");
+    this.databaseName =
+        requireNonNull(databaseName, DataNodeQueryMessages.EXCEPTION_DATABASENAME_IS_NULL_A811DE1B);
+    this.tableName =
+        requireNonNull(tableName, DataNodeQueryMessages.EXCEPTION_TABLENAME_IS_NULL_20708596);
     this.columnNames =
         columnIdentifiers == null
             ? null
             : columnIdentifiers.stream().map(Identifier::getValue).collect(Collectors.toList());
     this.rows =
-        requireNonNull(values, "values is null").getRows().stream()
+        requireNonNull(values, DataNodeQueryMessages.EXCEPTION_VALUES_IS_NULL_A580EDAA)
+            .getRows()
+            .stream()
             .map(InsertValues::normalizeRow)
             .collect(Collectors.toList());
-    this.zoneId = requireNonNull(zoneId, "zoneId is null");
+    this.zoneId = requireNonNull(zoneId, DataNodeQueryMessages.EXCEPTION_ZONEID_IS_NULL_7DAA5E2C);
   }
 
   public void materialize(PlannerContext plannerContext, SessionInfo session) {
@@ -93,6 +97,8 @@ public class InsertValues extends InsertRows {
             ? toInsertRowStatementsWithTableSchema(plannerContext, session)
             : toInsertRowStatementsWithColumns(plannerContext, session));
     insertRowsStatement.setWriteToTable(true);
+    // All rows of an INSERT VALUES statement share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     insertRowsStatement.setDatabaseName(databaseName);
     setInnerTreeStatement(insertRowsStatement);
     materialized = true;
@@ -150,7 +156,10 @@ public class InsertValues extends InsertRows {
     TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
     if (table == null) {
       throw new SemanticException(
-          "Insert target table does not exist: " + databaseName + "." + tableName);
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INSERT_TARGET_TABLE_DOES_NOT_EXIST_ARG_ARG_78F05787,
+              databaseName,
+              tableName));
     }
     return table;
   }
@@ -192,10 +201,11 @@ public class InsertValues extends InsertRows {
     List<TsTableColumnSchema> columnList = table.getColumnList();
     if (expressions.size() != columnList.size()) {
       throw new SemanticException(
-          "expressions and columns do not match, expressions size: "
-              + expressions.size()
-              + ", columns size: "
-              + columnList.size());
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE_ARG_COLUMNS_SIZE_ARG_F933A8C1,
+              expressions.size(),
+              columnList.size()));
     }
 
     String[] nonTimeColumnNames = new String[columnList.size() - 1];
@@ -260,7 +270,9 @@ public class InsertValues extends InsertRows {
       if (timeColumnIndex >= expressions.size()) {
         throw new SemanticException(
             String.format(
-                "TimeColumnIndex out of bound: %d-%d", timeColumnIndex, expressions.size()));
+                DataNodeQueryMessages.TIMECOLUMNINDEX_OUT_OF_BOUND_D_D,
+                timeColumnIndex,
+                expressions.size()));
       }
 
       timestamp =
@@ -272,8 +284,9 @@ public class InsertValues extends InsertRows {
     if (nonTimeColumnCount != nonTimeColumnNames.length) {
       throw new SemanticException(
           String.format(
-              "Inconsistent numbers of non-time column names and values: %d-%d",
-              nonTimeColumnNames.length, nonTimeColumnCount));
+              DataNodeQueryMessages.INCONSISTENT_NUMBERS_OF_NON_TIME_COLUMN_NAMES_AND_VALUES_D_D,
+              nonTimeColumnNames.length,
+              nonTimeColumnCount));
     }
 
     TimestampPrecisionUtils.checkTimestampPrecision(timestamp);

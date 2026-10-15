@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class ShowCreateTaskTest {
 
@@ -114,7 +115,7 @@ public class ShowCreateTaskTest {
   }
 
   @Test
-  public void testShowCreatePipeSQLShouldKeepExplicitCredentials() {
+  public void testShowCreatePipeSQLShouldMaskExplicitCredentials() {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put(PipeSourceConstant.SOURCE_KEY, "iotdb-source");
     sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, "alice");
@@ -136,13 +137,13 @@ public class ShowCreateTaskTest {
 
     assertEquals(
         "CREATE PIPE \"test_pipe\""
-            + " WITH SOURCE ('source'='iotdb-source','source.password'='secret','source.username'='alice')"
-            + " WITH SINK ('sink'='write-back-sink','sink.password'='secret','sink.username'='alice')",
+            + " WITH SOURCE ('source'='iotdb-source','source.password'='******','source.username'='alice')"
+            + " WITH SINK ('sink'='write-back-sink','sink.password'='******','sink.username'='alice')",
         ShowCreatePipeTask.getShowCreatePipeSQL(pipeMeta));
   }
 
   @Test
-  public void testShowCreatePipeSQLShouldKeepExplicitCredentialsWhenInjectionMarkerIsReset() {
+  public void testShowCreatePipeSQLShouldMaskExplicitCredentialsWhenInjectionMarkerIsReset() {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put(PipeSourceConstant.SOURCE_KEY, "iotdb-source");
     sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, "alice");
@@ -170,9 +171,42 @@ public class ShowCreateTaskTest {
 
     assertEquals(
         "CREATE PIPE \"test_pipe\""
-            + " WITH SOURCE ('source'='iotdb-source','source.password'='secret','source.username'='alice')"
-            + " WITH SINK ('sink'='write-back-sink','sink.password'='secret','sink.username'='alice')",
+            + " WITH SOURCE ('source'='iotdb-source','source.password'='******','source.username'='alice')"
+            + " WITH SINK ('sink'='write-back-sink','sink.password'='******','sink.username'='alice')",
         ShowCreatePipeTask.getShowCreatePipeSQL(pipeMeta));
+  }
+
+  @Test
+  public void testShowCreatePipeSQLShouldMaskSensitiveAliasAttributes() {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.EXTRACTOR_KEY, "iotdb-extractor");
+    sourceAttributes.put(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY, "source-secret");
+    sourceAttributes.put("extractor.ssl.key-store-pwd", "key-store-secret");
+
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put(PipeSinkConstant.CONNECTOR_KEY, "iotdb-thrift-connector");
+    sinkAttributes.put(PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, "sink-secret");
+
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta("test_pipe", 1L, sourceAttributes, new HashMap<>(), sinkAttributes),
+            new PipeRuntimeMeta());
+
+    final String sql = ShowCreatePipeTask.getShowCreatePipeSQL(pipeMeta);
+    assertEquals(3, countOccurrences(sql, "******"));
+    assertFalse(sql.contains("source-secret"));
+    assertFalse(sql.contains("key-store-secret"));
+    assertFalse(sql.contains("sink-secret"));
+  }
+
+  private static int countOccurrences(final String value, final String searchedValue) {
+    int count = 0;
+    int index = 0;
+    while ((index = value.indexOf(searchedValue, index)) >= 0) {
+      count++;
+      index += searchedValue.length();
+    }
+    return count;
   }
 
   @Test

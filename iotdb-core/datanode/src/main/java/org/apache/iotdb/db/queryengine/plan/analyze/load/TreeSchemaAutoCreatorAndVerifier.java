@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
@@ -81,6 +82,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getValidatedDevicePath;
+
 public class TreeSchemaAutoCreatorAndVerifier {
 
   private static final Logger LOGGER =
@@ -114,6 +117,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
+
+      getValidatedDevicePath(device);
 
       try {
         if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -154,20 +159,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // not a timeseries, skip
         } else {
           // check WRITE_DATA permission of timeseries
-          long startTime = System.nanoTime();
-          try {
-            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
-            TSStatus status =
-                AuthorityChecker.getAccessControl()
-                    .checkFullPathWriteDataPermission(
-                        userEntity, device, timeseriesMetadata.getMeasurementId());
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new AuthException(
-                  TSStatusCode.representOf(status.getCode()), status.getMessage());
-            }
-          } finally {
-            PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
-          }
+          checkWritePermission(device, timeseriesMetadata.getMeasurementId());
           final Pair<CompressionType, TSEncoding> compressionEncodingPair =
               reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
           schemaCache.addTimeSeries(
@@ -188,6 +180,66 @@ public class TreeSchemaAutoCreatorAndVerifier {
           flush();
         }
       }
+    }
+  }
+
+  public void checkWritePermission(
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+      throws AuthException, LoadAnalyzeInvalidPathException {
+    for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+        device2TimeseriesMetadataList.entrySet()) {
+      final IDeviceID device = entry.getKey();
+
+      getValidatedDevicePath(device);
+
+      try {
+        if (schemaCache.isDeviceDeletedByMods(device)) {
+          continue;
+        }
+      } catch (IllegalPathException e) {
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .FAILED_TO_CHECK_IF_DEVICE_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT_DELETED,
+            device,
+            e);
+      }
+
+      for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        try {
+          if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
+            continue;
+          }
+        } catch (IllegalPathException e) {
+          if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+            LOGGER.warn(
+                DataNodeQueryMessages
+                    .FAILED_TO_CHECK_IF_DEVICE_ARG_TIMESERIES_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT,
+                device,
+                timeseriesMetadata.getMeasurementId(),
+                e);
+          }
+        }
+
+        if (!TSDataType.VECTOR.equals(timeseriesMetadata.getTsDataType())) {
+          checkWritePermission(device, timeseriesMetadata.getMeasurementId());
+        }
+      }
+    }
+  }
+
+  private void checkWritePermission(final IDeviceID device, final String measurementId)
+      throws AuthException {
+    final long startTime = System.nanoTime();
+    try {
+      UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
+      TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkFullPathWriteDataPermission(userEntity, device, measurementId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
+      }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
   }
 
@@ -229,7 +281,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (loadTsFileAnalyzer.isVerifySchema()) {
         verifySchema(schemaTree);
       }
-    } catch (AuthException e) {
+    } catch (AuthException | LoadAnalyzeInvalidPathException e) {
       throw e;
     } catch (LoadAnalyzeTypeMismatchException e) {
       if (loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
@@ -312,7 +364,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
     final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
     for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
-      final PartialPath devicePath = new PartialPath(device);
+      final PartialPath devicePath = getValidatedDevicePath(device);
 
       final String[] devicePrefixNodes = devicePath.getNodes();
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
@@ -343,13 +395,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                 SchemaConstant.ALL_MATCH_SCOPE.serialize());
         final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
 
-        for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
-          schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
-          databasesNeededToBeSet.removeIf(
-              database ->
-                  database.startsWith(databaseName)
-                      || databaseName.startsWith(database.getFullPath()));
-        }
+        filterAlreadySetDatabases(databasesNeededToBeSet, resp.getDatabaseInfoMap().keySet());
       } catch (IOException | TException | ClientManagerException e) {
         throw new LoadFileException(e);
       }
@@ -366,6 +412,28 @@ public class TreeSchemaAutoCreatorAndVerifier {
       executeSetDatabaseStatement(statement);
 
       schemaCache.addAlreadySetDatabase(databasePath);
+    }
+  }
+
+  void filterAlreadySetDatabases(
+      final Set<PartialPath> databasesNeededToBeSet, final Set<String> alreadySetDatabaseNames) {
+    for (final String databaseName : alreadySetDatabaseNames) {
+      final PartialPath databasePath;
+      try {
+        databasePath = new PartialPath(databaseName);
+      } catch (final IllegalPathException e) {
+        // Ignore malformed databases left by older versions so they do not block valid loads.
+        continue;
+      }
+
+      // The path parser normalizes a trailing separator away, for example, "root." to "root".
+      if (!databaseName.equals(databasePath.getFullPath())) {
+        continue;
+      }
+
+      schemaCache.addAlreadySetDatabase(databasePath);
+      databasesNeededToBeSet.removeIf(
+          database -> database.startsWithOrPrefixOf(databasePath.getNodes()));
     }
   }
 
@@ -453,6 +521,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         encodingsList,
         compressionTypesList,
         isAlignedList,
+        loadTsFileAnalyzer.isAutoCreateSchemaRequested(),
         loadTsFileAnalyzer.context);
   }
 

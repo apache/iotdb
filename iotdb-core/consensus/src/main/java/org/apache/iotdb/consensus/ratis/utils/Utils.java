@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
 import org.apache.iotdb.rpc.RpcSslUtils;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.conf.Parameters;
@@ -82,7 +83,7 @@ public class Utils {
   private Utils() {}
 
   public static String hostAddress(TEndPoint endpoint) {
-    return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
+    return UrlUtils.convertTEndPointIpv4AndIpv6Url(endpoint);
   }
 
   public static String fromTEndPointToString(TEndPoint endpoint) {
@@ -103,8 +104,7 @@ public class Utils {
   }
 
   public static TEndPoint fromRaftPeerAddressToTEndPoint(String address) {
-    String[] items = address.split(":");
-    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+    return UrlUtils.parseTEndPointIpv4AndIpv6Url(address);
   }
 
   public static int fromRaftPeerIdToNodeId(RaftPeerId id) {
@@ -112,8 +112,7 @@ public class Utils {
   }
 
   public static TEndPoint fromRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
-    String[] items = proto.getAddress().split(":");
-    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+    return fromRaftPeerAddressToTEndPoint(proto.getAddress());
   }
 
   // priority is used as ordinal of leader election

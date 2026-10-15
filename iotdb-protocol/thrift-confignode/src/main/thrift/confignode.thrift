@@ -129,6 +129,7 @@ struct TRuntimeConfiguration {
   10: optional bool enableSeparationOfAdminPowers
   // use 'optional' here to support rolling upgrade
   11: optional list<common.TExternalServiceEntry> allUserDefinedServiceInfo
+  12: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeRegisterReq {
@@ -157,6 +158,11 @@ struct TDataNodeRestartResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
   4: optional list<common.TRegionReplicaSet> correctConsensusGroups
+}
+
+struct TDataNodeLeaseRecoveryResp{
+ 1: required common.TSStatus status
+ 2: optional binary tableInfo
 }
 
 struct TDataNodeRemoveReq {
@@ -234,6 +240,7 @@ struct TDatabaseSchema {
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
     11: optional bool isTableModel
+    12: optional bool needLastCache
 }
 
 // Schema
@@ -636,6 +643,9 @@ struct TShowClusterResp {
   4: required list<common.TAINodeLocation> aiNodeList
   5: required map<i32, string> nodeStatus
   6: required map<i32, TNodeVersionInfo> nodeVersionInfo
+  // The reason why the node is in its current status, independent of nodeStatus.
+  // Absent when the ConfigNode is an old version.
+  7: optional map<i32, string> nodeStatusReason
 }
 
 struct TGetClusterIdResp {
@@ -678,6 +688,9 @@ struct TDataNodeInfo {
   5: required i32 dataRegionNum
   6: required i32 schemaRegionNum
   7: optional i32 cpuCoreNum
+  // The reason why the DataNode is in its current status, independent of status.
+  // Absent when the ConfigNode is an old version.
+  8: optional string statusReason
 }
 
 struct TAINodeInfo {
@@ -716,6 +729,9 @@ struct TConfigNodeInfo {
   3: required string internalAddress
   4: required i32 internalPort
   5: required string roleType
+  // The reason why the ConfigNode is in its current status, independent of status.
+  // Absent when the ConfigNode is an old version.
+  6: optional string statusReason
 }
 
 struct TShowConfigNodesResp {
@@ -747,6 +763,7 @@ struct TDatabaseInfo {
   9: required i32 dataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
+  13: optional bool needLastCache
 }
 
 struct TGetDatabaseReq {
@@ -877,6 +894,7 @@ struct TShowPipeInfo {
   8: optional i64 remainingEventCount
   9: optional double EstimatedRemainingTime
   10: optional bool isDegraded
+  11: optional map<string, i64> recentFailures
 }
 
 struct TGetAllPipeInfoResp {
@@ -1059,11 +1077,13 @@ struct TUnsubscribeReq {
 struct TShowSubscriptionReq {
     1: optional string topicName
     2: optional bool isTableModel
+    3: optional bool details
 }
 
 struct TShowSubscriptionResp {
     1: required common.TSStatus status
     2: optional list<TShowSubscriptionInfo> subscriptionInfoList
+    3: optional list<TSubscriptionProgressInfo> subscriptionProgressList
 }
 
 struct TShowSubscriptionInfo {
@@ -1071,6 +1091,28 @@ struct TShowSubscriptionInfo {
     2: required string consumerGroupId
     3: required set<string> consumerIds
     4: optional i64 creationTime
+}
+
+struct TSubscriptionProgressInfo {
+    1: required string topicName
+    2: required string consumerGroupId
+    3: required string regionId
+    4: required i32 dataNodeId
+    5: required bool active
+    6: required bool initialized
+    7: required string status
+    8: required i64 remainingEventCount
+    9: required i64 rawWalGap
+    10: required i64 approximateLag
+    11: required i64 inFlightEventCount
+    12: required i64 prefetchedEventCount
+    13: required i64 pendingEventCount
+    14: required i64 currentWalSearchIndex
+    15: required i64 nextReadSearchIndex
+    16: required i64 lastProgressTimeMs
+    17: required i64 lastPollTimeMs
+    18: required string lastConsumerId
+    19: required i64 seekGeneration
 }
 
 struct TDropSubscriptionReq {
@@ -1272,6 +1314,20 @@ struct TShowTable4InformationSchemaResp {
    2: optional map<string, list<TTableInfo>> databaseTableInfoMap
 }
 
+struct TShowDropTableProceduresResp {
+   1: required common.TSStatus status
+   2: optional list<TDropTableProcedureInfo> dropTableProcedureInfoList
+}
+
+struct TDropTableProcedureInfo {
+   1: required string database
+   2: required string tableName
+   3: required i64 procedureId
+   4: required string state
+   5: required string progress
+   6: optional string errorMessage
+}
+
 struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
@@ -1302,6 +1358,7 @@ struct TTableInfo {
    3: optional i32 state
    4: optional string comment
    5: optional i32 type
+   6: optional bool needLastCache
 }
 
 struct TCreateTableViewReq {
@@ -1343,6 +1400,11 @@ service IConfigNodeRPCService {
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 
 
+  /**
+  * get all metadate cache when the heartbeart renew the lease
+  */
+  TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery();
+
    // ======================================================
    // AINode
    // ======================================================
@@ -1383,9 +1445,11 @@ service IConfigNodeRPCService {
 
   /**
    * Report that the specified DataNode will be shutdown.
-   * The ConfigNode-leader will mark it as Unknown.
+   * The leader requests Stopped, retaining Removing if set. Success confirms persistence.
+   * Without a report, heartbeat timeout produces Unknown only if no Stopped or Removing
+   * status can be retained, including a status restored from persistence.
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return SUCCESS_STATUS if the resulting status is persisted
    */
   common.TSStatus reportDataNodeShutdown(common.TDataNodeLocation dataNodeLocation)
 
@@ -1618,9 +1682,11 @@ service IConfigNodeRPCService {
 
   /**
    * Report that the specified ConfigNode will be shutdown.
-   * The ConfigNode-leader will mark it as Unknown.
+   * The leader requests Stopped, retaining Removing if set. Success confirms persistence.
+   * Without a report, heartbeat timeout produces Unknown only if no Stopped or Removing
+   * status can be retained, including a status restored from persistence.
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return SUCCESS_STATUS if the resulting status is persisted
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
@@ -2090,12 +2156,13 @@ service IConfigNodeRPCService {
   TShowTableResp showTables(string database, bool isDetails)
 
   TShowTable4InformationSchemaResp showTables4InformationSchema()
+  TShowDropTableProceduresResp showDropTableProcedures()
 
   TDescTableResp describeTable(string database, string tableName, bool isDetails)
 
   TDescTable4InformationSchemaResp descTables4InformationSchema()
 
-  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap, byte tableNodeStatus)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 

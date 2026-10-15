@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.it.env.cluster;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
 import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +70,17 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
 public class EnvUtils {
 
+  /**
+   * The status a node locally stopped via {@code AbstractNodeWrapper.stop()} is expected to be in.
+   * On Windows, {@code Process.destroy()} terminates the node process without running the JVM
+   * shutdown hooks, so the graceful-shutdown report is never sent and the ConfigNode marks the node
+   * Unknown by heartbeat timeout. On Unix, the shutdown hook reports the stop and the node becomes
+   * Stopped.
+   */
+  public static NodeStatus getNodeStatusAfterLocalStop() {
+    return SystemUtils.IS_OS_WINDOWS ? NodeStatus.Unknown : NodeStatus.Stopped;
+  }
+
   public static int[] searchAvailablePorts() {
     int length = 10;
     while (true) {
@@ -92,8 +105,12 @@ public class EnvUtils {
         // ignore
       }
       // Delete the lock file if the ports can't be used or some error happens
-      if (lockFile.exists() && !lockFile.delete()) {
-        IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath);
+      try {
+        if (lockFile.exists() && !Files.deleteIfExists(lockFile.toPath())) {
+          IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath);
+        }
+      } catch (IOException e) {
+        IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath, e);
       }
     }
   }

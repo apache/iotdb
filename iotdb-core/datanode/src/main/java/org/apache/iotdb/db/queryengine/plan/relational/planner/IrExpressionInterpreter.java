@@ -937,14 +937,20 @@ public class IrExpressionInterpreter {
       if (returnType.equals(INT32)) {
         int intValue = toInt(value);
         if (intValue == Integer.MIN_VALUE) {
-          throw new SemanticException(String.format("The %s is out of range of int.", intValue));
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_INT_F8E58471,
+                  intValue));
         }
         return -intValue;
       }
       if (returnType.equals(INT64) || returnType.equals(TIMESTAMP)) {
         long longValue = toLong(value);
         if (longValue == Long.MIN_VALUE) {
-          throw new SemanticException(String.format("The %s is out of range of long.", longValue));
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_LONG_9B1C872A,
+                  longValue));
         }
         return -longValue;
       }
@@ -990,7 +996,9 @@ public class IrExpressionInterpreter {
             return Math.multiplyExact(left, right);
           case DIVIDE:
             if (left == Integer.MIN_VALUE && right == -1) {
-              throw new SemanticException(String.format("int overflow: %s / %s", left, right));
+              throw new SemanticException(
+                  String.format(
+                      DataNodeQueryMessages.EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017, left, right));
             }
             return left / right;
           case MODULUS:
@@ -1017,7 +1025,9 @@ public class IrExpressionInterpreter {
           case DIVIDE:
             if ((leftType.equals(INT32) && left == Integer.MIN_VALUE && right == -1)
                 || (leftType.equals(INT64) && left == Long.MIN_VALUE && right == -1)) {
-              throw new SemanticException(String.format("long overflow: %s / %s", left, right));
+              throw new SemanticException(
+                  String.format(
+                      DataNodeQueryMessages.EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2, left, right));
             }
             return left / right;
           case MODULUS:

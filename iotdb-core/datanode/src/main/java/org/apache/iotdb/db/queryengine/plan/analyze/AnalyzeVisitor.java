@@ -145,6 +145,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatemen
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -232,11 +233,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
   private final IModelFetcher modelFetcher;
+  private final TreeAnalysisMutationJournal mutationJournal;
 
-  public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+  public AnalyzeVisitor(
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      TreeAnalysisMutationJournal mutationJournal) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
     this.modelFetcher = ModelFetcher.getInstance();
+    this.mutationJournal = mutationJournal;
   }
 
   @Override
@@ -280,7 +286,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     try {
       // check for semantic errors
-      queryStatement.semanticCheck();
+      boolean originalCountTimeAggregation = queryStatement.isCountTimeAggregation();
+      try {
+        queryStatement.semanticCheck();
+      } finally {
+        // semanticCheck derives this flag from SELECT and writes it into QueryStatement. Record the
+        // rare actual change so a failed attempt or dispatch retry restores the parser-owned state;
+        // ordinary queries pay no journal entry or copy cost.
+        if (queryStatement.isCountTimeAggregation() != originalCountTimeAggregation) {
+          mutationJournal.recordCountTimeAggregationChange(
+              queryStatement, originalCountTimeAggregation);
+        }
+      }
 
       context.initResultSetColumnMemoryTracking(
           queryStatement.getSeriesLimit(),
@@ -311,7 +328,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         if (deviceList.size() > 1
             && TemplatedAnalyze.canBuildPlanUseTemplate(
-                analysis, queryStatement, partitionFetcher, schemaTree, context, deviceList)) {
+                analysis,
+                queryStatement,
+                partitionFetcher,
+                schemaTree,
+                context,
+                deviceList,
+                mutationJournal)) {
           // when device size is less than 1, there is no need to use template optimization, i.e. no
           // need to extract common variables
           return analysis;
@@ -319,6 +342,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
+          mutationJournal.recordLimitOffsetPushDown(queryStatement);
           deviceList =
               pushDownLimitOffsetInGroupByTimeForDevice(
                   deviceList, queryStatement, context.getZoneId());
@@ -460,7 +484,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     queryStatement =
         (QueryStatement)
             concatPathRewriter.rewrite(
-                queryStatement, new PathPatternTree(queryStatement.useWildcard()), context);
+                queryStatement,
+                new PathPatternTree(queryStatement.useWildcard()),
+                context,
+                mutationJournal);
     analysis.setRealStatement(queryStatement);
 
     // request schema fetch API
@@ -521,24 +548,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Expression globalTimePredicate = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
-      WhereCondition whereCondition = queryStatement.getWhereCondition();
-      Expression predicate = whereCondition.getPredicate();
-
-      Pair<Expression, Boolean> resultPair =
-          PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
-      globalTimePredicate = resultPair.left;
+      Expression predicate = queryStatement.getWhereCondition().getPredicate();
+      PredicateUtils.GlobalTimePredicateExtractionResult extractionResult =
+          PredicateUtils.extractGlobalTimePredicate(predicate);
+      globalTimePredicate = extractionResult.getGlobalTimePredicate();
       if (globalTimePredicate != null) {
         globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
       }
-      hasValueFilter = resultPair.right;
+      hasValueFilter = extractionResult.hasValueFilter();
 
-      predicate = PredicateUtils.simplifyPredicate(predicate);
+      Expression residualPredicate =
+          PredicateUtils.simplifyPredicate(extractionResult.getResidualPredicate());
 
-      // set where condition to null if predicate is true or time filter.
-      if (!hasValueFilter || predicate.equals(ConstantOperand.TRUE)) {
-        queryStatement.setWhereCondition(null);
-      } else {
-        whereCondition.setPredicate(predicate);
+      // Keep the parser-owned predicate untouched. The journal only saves its wrapper reference,
+      // while the analyzer installs a residual working predicate built by path-copying the nodes
+      // changed by time-filter extraction and simplification.
+      if (!hasValueFilter || residualPredicate.equals(ConstantOperand.TRUE)) {
+        mutationJournal.replaceWhereCondition(queryStatement, null);
+      } else if (residualPredicate != predicate) {
+        mutationJournal.replaceWhereCondition(
+            queryStatement, WhereCondition.fromNormalizedPredicate(residualPredicate));
       }
     }
     analysis.setGlobalTimePredicate(globalTimePredicate);
@@ -1810,7 +1839,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       orderByExpressions.add(orderByExpression);
     }
     analysis.setOrderByExpressions(orderByExpressions);
-    queryStatement.updateSortItems(orderByExpressions);
+    mutationJournal.updateSortItems(queryStatement, orderByExpressions);
   }
 
   private void analyzeOrderBy(
@@ -1986,7 +2015,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setOrderByExpressions(deviceViewOrderByExpression);
-    queryStatement.updateSortItems(deviceViewOrderByExpression);
+    mutationJournal.updateSortItems(queryStatement, deviceViewOrderByExpression);
     analysis.setDeviceToSortItems(deviceToSortItems);
     analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }
@@ -2130,13 +2159,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setGroupByTimeParameter(groupByTimeParameter);
 
     Expression globalTimePredicate = analysis.getGlobalTimePredicate();
-    Expression groupByTimePredicate = ExpressionFactory.groupByTime(groupByTimeParameter);
+    Expression groupByTimePredicate = getGroupByTimePredicate(groupByTimeParameter);
     if (globalTimePredicate == null) {
       globalTimePredicate = groupByTimePredicate;
     } else {
       globalTimePredicate = ExpressionFactory.and(globalTimePredicate, groupByTimePredicate);
     }
     analysis.setGlobalTimePredicate(globalTimePredicate);
+  }
+
+  private static Expression getGroupByTimePredicate(GroupByTimeParameter groupByTimeParameter) {
+    if (groupByTimeParameter.isLeftCRightO()
+        || groupByTimeParameter.getEndTime() != Long.MAX_VALUE) {
+      return ExpressionFactory.groupByTime(groupByTimeParameter);
+    }
+    GroupByTimeParameter rightOpenParameter =
+        new GroupByTimeParameter(
+            groupByTimeParameter.getStartTime() + 1,
+            groupByTimeParameter.getEndTime(),
+            groupByTimeParameter.getInterval(),
+            groupByTimeParameter.getSlidingStep(),
+            true);
+    return ExpressionFactory.or(
+        ExpressionFactory.groupByTime(rightOpenParameter),
+        ExpressionFactory.eq(
+            ExpressionFactory.time(), ExpressionFactory.longValue(Long.MAX_VALUE)));
   }
 
   static void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
@@ -2218,7 +2265,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // (-oo, +oo)
       return new Pair<>(Collections.emptyList(), new Pair<>(true, true));
     }
-    List<TimeRange> timeRangeList = timeFilter.getTimeRanges();
+    List<TimeRange> timeRangeList = normalizeTimeRanges(timeFilter.getTimeRanges());
     if (timeRangeList.isEmpty()) {
       // no satisfied time range
       return new Pair<>(Collections.emptyList(), new Pair<>(false, false));
@@ -2269,11 +2316,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        // beware of overflow
-        endTime =
-            endTime + TimePartitionUtils.getTimePartitionInterval() > endTime
-                ? endTime + TimePartitionUtils.getTimePartitionInterval()
-                : Long.MAX_VALUE;
+        endTime = TimePartitionUtils.getTimePartitionUpperBound(endTime);
       } else {
         index++;
         if (index < size) {
@@ -2302,8 +2345,39 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
-    context.reserveMemoryForFrontEnd(
-        RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class) * size);
+    context.reserveMemoryForFrontEnd(estimateTimePartitionSlotMemory(size));
+  }
+
+  private static List<TimeRange> normalizeTimeRanges(List<TimeRange> timeRanges) {
+    if (timeRanges.size() < 2) {
+      return timeRanges;
+    }
+
+    List<TimeRange> normalized = new ArrayList<>();
+    TimeRange current = timeRanges.get(0);
+    for (int i = 1; i < timeRanges.size(); i++) {
+      TimeRange next = timeRanges.get(i);
+      // Time ranges returned by a Filter are ordered. Merge both overlapping and adjacent ranges
+      // so partition routing does not depend on the shape of an OR expression.
+      boolean overlaps = next.getMin() <= current.getMax();
+      boolean adjacent =
+          current.getMax() != Long.MAX_VALUE && next.getMin() == current.getMax() + 1;
+      if (overlaps || adjacent) {
+        current = new TimeRange(current.getMin(), Math.max(current.getMax(), next.getMax()));
+      } else {
+        normalized.add(current);
+        current = next;
+      }
+    }
+    normalized.add(current);
+    return normalized;
+  }
+
+  static long estimateTimePartitionSlotMemory(long timePartitionSlotCount) {
+    long timePartitionSlotSize = RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class);
+    return timePartitionSlotCount > Long.MAX_VALUE / timePartitionSlotSize
+        ? Long.MAX_VALUE
+        : timePartitionSlotSize * timePartitionSlotCount;
   }
 
   private void analyzeInto(
@@ -2315,7 +2389,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
-    queryStatement.setOrderByComponent(null);
+    mutationJournal.clearOrderByComponent(queryStatement);
 
     List<PartialPath> sourceDevices = new ArrayList<>(deviceSet);
     List<Expression> sourceColumns =
@@ -2373,7 +2447,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
-    queryStatement.setOrderByComponent(null);
+    mutationJournal.clearOrderByComponent(queryStatement);
 
     List<Expression> sourceColumns =
         outputExpressions.stream()
@@ -3267,19 +3341,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private void analyzeGlobalTimeConditionInShowMetaData(
       WhereCondition timeCondition, Analysis analysis) {
     Expression predicate = timeCondition.getPredicate();
-    Pair<Expression, Boolean> resultPair =
-        PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
-    if (resultPair.right) {
+    PredicateUtils.GlobalTimePredicateExtractionResult extractionResult =
+        PredicateUtils.extractGlobalTimePredicate(predicate);
+    if (extractionResult.hasValueFilter()) {
       throw new SemanticException(
           DataNodeQueryMessages
               .VALUE_FILTER_CAN_T_EXIST_IN_THE_CONDITION_OF_SHOW_COUNT_CLAUSE_ONLY_TIME_CONDITION);
     }
-    if (resultPair.left == null) {
+    if (extractionResult.getGlobalTimePredicate() == null) {
       throw new SemanticException(
           DataNodeQueryMessages
               .TIME_CONDITION_CAN_T_BE_EMPTY_IN_THE_CONDITION_OF_SHOW_COUNT_CLAUSE);
     }
-    Expression globalTimePredicate = resultPair.left;
+    Expression globalTimePredicate = extractionResult.getGlobalTimePredicate();
     globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
     analysis.setGlobalTimePredicate(globalTimePredicate);
   }
@@ -3859,14 +3933,40 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
 
-    if (!analyzeWhereForShowStatements(
+    analyzeWhereForShowStatements(
         analysis,
         showQueriesStatement.getWhereCondition(),
-        ColumnHeaderConstant.showQueriesColumnHeaders)) {
-      showQueriesStatement.setWhereCondition(null);
-    }
+        ColumnHeaderConstant.showQueriesColumnHeaders);
 
     analysis.setMergeOrderParameter(new OrderByParameter(showQueriesStatement.getSortItemList()));
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowReceivers(
+      ShowReceiversStatement showReceiversStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setRealStatement(showReceiversStatement);
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowReceiversHeader());
+    analysis.setVirtualSource(true);
+
+    List<TDataNodeLocation> allReadableDataNodeLocations = getReadableDataNodeLocations();
+    if (allReadableDataNodeLocations.isEmpty()) {
+      throw new StatementAnalyzeException(DataNodeQueryMessages.NO_RUNNING_DATANODES);
+    }
+    analysis.setReadableDataNodeLocations(allReadableDataNodeLocations);
+
+    Set<Expression> sourceExpressions = new HashSet<>();
+    for (ColumnHeader columnHeader : analysis.getRespDatasetHeader().getColumnHeaders()) {
+      sourceExpressions.add(
+          TimeSeriesOperand.constructColumnHeaderExpression(
+              columnHeader.getColumnName(), columnHeader.getColumnType()));
+    }
+    analysis.setSourceExpressions(sourceExpressions);
+    sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
+
+    analysis.setMergeOrderParameter(new OrderByParameter(showReceiversStatement.getSortItemList()));
 
     return analysis;
   }
@@ -3894,12 +3994,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
 
-    if (!analyzeWhereForShowStatements(
+    analyzeWhereForShowStatements(
         analysis,
         showDiskUsageStatement.getWhereCondition(),
-        ColumnHeaderConstant.showDiskUsageColumnHeaders)) {
-      showDiskUsageStatement.setWhereCondition(null);
-    }
+        ColumnHeaderConstant.showDiskUsageColumnHeaders);
 
     analysis.setMergeOrderParameter(new OrderByParameter(showDiskUsageStatement.getSortItemList()));
 
@@ -3927,17 +4025,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Expression predicate =
         ExpressionAnalyzer.bindTypeForTimeSeriesOperand(
             whereCondition.getPredicate(), statementColumnHeaders);
-    Pair<Expression, Boolean> resultPair =
-        PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
-    boolean hasValueFilter = resultPair.getRight();
+    PredicateUtils.GlobalTimePredicateExtractionResult extractionResult =
+        PredicateUtils.extractGlobalTimePredicate(predicate);
+    boolean hasValueFilter = extractionResult.hasValueFilter();
 
-    predicate = PredicateUtils.simplifyPredicate(predicate);
+    predicate = PredicateUtils.simplifyPredicate(extractionResult.getResidualPredicate());
 
     // set where condition to null if predicate is true or don't have value filter
     if (!hasValueFilter || predicate.equals(ConstantOperand.TRUE)) {
       return false;
-    } else {
-      whereCondition.setPredicate(predicate);
     }
     TSDataType outputType = analyzeExpressionType(analysis, predicate);
     if (outputType != TSDataType.BOOLEAN) {

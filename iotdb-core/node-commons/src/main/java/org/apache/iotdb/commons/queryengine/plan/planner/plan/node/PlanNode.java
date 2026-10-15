@@ -78,6 +78,14 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public abstract void addChild(PlanNode child);
 
+  /** Releases fields that are no longer needed after the target region has been determined. */
+  public void clearUselessFieldsAfterRouting() {
+    final List<PlanNode> children = getChildren();
+    if (children != null) {
+      children.forEach(PlanNode::clearUselessFieldsAfterRouting);
+    }
+  }
+
   /**
    * If this plan node has to be serialized or deserialized, override this method. If this method is
    * overridden, the serialization and deserialization methods must be implemented.

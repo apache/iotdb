@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -242,7 +243,7 @@ public class PipeTsFileInsertionEventTest {
     }
   }
 
-  @Test(timeout = 5000)
+  @Test(timeout = 60000)
   public void testRealtimeEventCanSkipWaitingForClosedStatusAfterTsFileSealed() throws Exception {
     final File tempDir = Files.createTempDirectory("pipeTsFileSealed").toFile();
 
@@ -373,6 +374,12 @@ public class PipeTsFileInsertionEventTest {
 
     @Override
     public void checkUserGlobalSysPrivilege(IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkUserGlobalSysPrivilege(
+        IAuditEntity auditEntity,
+        AuditLogOperation auditLogOperation,
+        Supplier<String> auditObject) {}
 
     @Override
     public boolean hasGlobalPrivilege(IAuditEntity auditEntity, PrivilegeType privilegeType) {

@@ -226,7 +226,8 @@ public class SchemaPredicateUtil {
     final int tagCount = tableInstance.getTagNum();
     for (int i = 0; i < index2FilterMapList.size(); i++) {
       final Map<Integer, List<SchemaFilter>> filterMap = index2FilterMapList.get(i);
-      if (filterMap.size() == tagCount
+      if (tagCount > 0
+          && filterMap.size() == tagCount
           && filterMap.values().stream()
               .allMatch(
                   filterList ->

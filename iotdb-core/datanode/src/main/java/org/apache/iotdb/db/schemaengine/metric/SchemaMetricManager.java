@@ -44,6 +44,10 @@ public class SchemaMetricManager {
     MetricService.getInstance().addMetricSet(engineMetric);
   }
 
+  public ISchemaEngineMetric getEngineMetric() {
+    return engineMetric;
+  }
+
   public void addSchemaRegionMetric(int schemaRegionId, ISchemaRegionMetric schemaRegionMetric) {
     schemaRegionMetricMap.put(schemaRegionId, schemaRegionMetric);
     MetricService.getInstance().addMetricSet(schemaRegionMetric);

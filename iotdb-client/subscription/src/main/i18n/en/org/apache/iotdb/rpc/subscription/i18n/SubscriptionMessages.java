@@ -21,6 +21,10 @@ package org.apache.iotdb.rpc.subscription.i18n;
 
 public final class SubscriptionMessages {
 
+  public static final String
+      EXCEPTION_SUBSCRIPTION_REQUEST_EXCEEDS_THE_NEGOTIATED_FRAME_LIMIT_CA8DEB50 =
+          "Subscription request exceeds the negotiated frame limit";
+
   // --- TopicConstant / ConsumerConstant ---
   public static final String UTILITY_CLASS = "Utility class";
 
@@ -53,6 +57,8 @@ public final class SubscriptionMessages {
 
   // --- SubscriptionExecutorServiceManager ---
   public static final String EXECUTOR_LAUNCHING = "Launching {} with core pool size {}...";
+  public static final String LOG_SUBSCRIPTION_HEARTBEAT_EXECUTOR_REACHED_ITS_THREAD_OR_QUEUE_LIMIT_SKIP_13157249 =
+      "Subscription heartbeat executor reached its thread or queue limit; skipping heartbeat tasks until the next interval (thread limit {}, queue capacity {}).";
   public static final String EXECUTOR_SHUTTING_DOWN = "Shutting down {}...";
   public static final String EXECUTOR_NOT_LAUNCHED_SUBMIT =
       "{} has not been launched, ignore submit task";
@@ -140,6 +146,8 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTREEREADER_TABLE_MODEL_TSFILE_68621ECF = "%s does not support openTreeReader() for table model tsfile.";
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTABLEREADER_TREE_MODEL_TSFILE_CEC27860 = "%s does not support openTableReader() for tree model tsfile.";
   public static final String EXCEPTION_UNKNOWN_COLUMN_CATEGORY_4F49F64B = "Unknown column category: ";
+  public static final String EXCEPTION_RESULTSET_COLUMN_INDEX_OUT_OF_BOUND_ARG_2D8CC5A3 =
+      "ResultSet column index out of bound: %d";
   public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s is not supported.";
   public static final String LOG_SUBSCRIPTIONPUSHCONSUMER_ARG_POLL_EMPTY_MESSAGE_TOPICS_ARG_AFTER_ARG_MILLISECOND_741801C2 = "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)";
   public static final String LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D = "Consumer listener raised an exception while consuming message: {}";
@@ -153,6 +161,8 @@ public final class SubscriptionMessages {
       + " provider unavailable";
   public static final String LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739 = "Exception occurred when {} closing and removing subscription provider {} because of {}";
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198 = "Cluster has no available subscription providers to connect with initial endpoints %s";
+  public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA =
+      "Cluster has no available subscription providers to connect with initial endpoints %s. Connection failures: %s";
   public static final String LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3 = "{} has been launched, set core pool size to {} will be ignored";
   public static final String LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F = "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.";
   public static final String LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9 =
@@ -268,7 +278,7 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FETCH_ALL_ENDPOINTS_D232693E = "Cluster has no available subscription providers when %s fetch all endpoints";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43 = "password and encryptedPassword are mutually exclusive; encryptedPassword is already set";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E = "password and encryptedPassword are mutually exclusive; password is already set";
-  public static final String EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732 = "Consensus mode topic should not generate pipe source attributes";
+  public static final String EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393 = "Incremental mode topic should not generate pipe source attributes";
   public static final String EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B = "Unsupported SubscriptionCommitContext version: ";
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "outdated subscription event";
   public static final String FIELD_SEPARATOR = ", ";

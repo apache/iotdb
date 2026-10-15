@@ -46,10 +46,13 @@ import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
@@ -84,11 +87,13 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivileges;
 
 public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
@@ -123,6 +128,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   protected boolean isForwardingPipeRequests;
 
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
   private boolean sloppyPattern; // true to disable pattern filter after extraction
@@ -239,6 +245,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -254,28 +262,21 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     }
 
     startTimePartitionIdLowerBound =
-        (realtimeDataExtractionStartTime % TimePartitionUtils.getTimePartitionInterval() == 0)
+        TimePartitionUtils.isTimePartitionStartTime(realtimeDataExtractionStartTime)
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime) + 1;
     endTimePartitionIdUpperBound =
-        (realtimeDataExtractionEndTime % TimePartitionUtils.getTimePartitionInterval() == 0)
+        TimePartitionUtils.isTimePartitionStartTime(realtimeDataExtractionEndTime)
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
     if (isDoubleLiving) {
       isForwardingPipeRequests = false;
     } else {
       isForwardingPipeRequests =
           parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeSourceConstant.FORWARDING_PIPE_REQUESTS_KEYS,
               PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     }
 
@@ -419,6 +420,38 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected abstract void doExtract(final PipeRealtimeEvent event);
 
+  protected static int compareTsFileEpochsByQueryPriority(
+      final TsFileEpoch epoch1, final TsFileEpoch epoch2) {
+    final TsFileResource resource1 = epoch1.getResource();
+    final TsFileResource resource2 = epoch2.getResource();
+
+    final int queryPriorityComparison =
+        new MergeReaderPriority(
+                resource1.getTsFileID().getTimestamp(),
+                resource1.getVersion(),
+                0,
+                resource1.isSeq())
+            .compareTo(
+                new MergeReaderPriority(
+                    resource2.getTsFileID().getTimestamp(),
+                    resource2.getVersion(),
+                    0,
+                    resource2.isSeq()));
+    if (queryPriorityComparison != 0) {
+      return queryPriorityComparison;
+    }
+
+    // Equal query priority does not imply the same file: this file-level comparison omits
+    // compaction versions and directories, and fixes the chunk offset at zero. Use deterministic
+    // tie-breakers for distinct files with the same seq/unseq flag, version and timestamp.
+    final int compactionVersionComparison =
+        Long.compare(
+            resource1.getTsFileID().compactionVersion, resource2.getTsFileID().compactionVersion);
+    return compactionVersionComparison != 0
+        ? compactionVersionComparison
+        : resource1.getTsFilePath().compareTo(resource2.getTsFilePath());
+  }
+
   protected void extractHeartbeat(final PipeRealtimeEvent event) {
     // Record the pending queue size before trying to put heartbeatEvent into queue
     ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
@@ -448,7 +481,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
         break;
       }
-      pendingQueue.pollLast();
+      final PipeRealtimeEvent droppedEvent = (PipeRealtimeEvent) pendingQueue.pollLast();
+      if (droppedEvent != null) {
+        droppedEvent.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
+      }
     }
     final Event last = pendingQueue.peekLast();
     if (last instanceof PipeRealtimeEvent
@@ -459,6 +495,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
           oldEvent
               .getProgressIndex()
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
       return;
     }
     pendingQueue.offer(event);
@@ -616,6 +653,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public final boolean isShouldTransferModFile() {
     return shouldTransferModFile;
+  }
+
+  public final String getTsFileParser() {
+    return tsFileParser;
   }
 
   private void maySkipProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {

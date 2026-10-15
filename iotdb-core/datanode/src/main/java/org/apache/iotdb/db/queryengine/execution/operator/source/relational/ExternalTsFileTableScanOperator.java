@@ -98,11 +98,22 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
   }
 
   @Override
+  protected boolean shouldStopScanByRuntimeFilter() {
+    // Each device uses its own QueryDataSource; exhausting files for a non-last device must not
+    // stop scanning remaining devices in the same external TsFile task.
+    if (currentDeviceIndex < deviceCount - 1) {
+      return false;
+    }
+    return super.shouldStopScanByRuntimeFilter();
+  }
+
+  @Override
   protected void moveToNextDevice() {
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       constructAlignedSeriesScanUtil();
-      seriesScanUtil.initQueryDataSource(updateCurrentDeviceQueryDataSource());
+      queryDataSource = updateCurrentDeviceQueryDataSource();
+      seriesScanUtil.initQueryDataSource(queryDataSource);
       this.operatorContext.recordSpecifiedInfo(
           CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }

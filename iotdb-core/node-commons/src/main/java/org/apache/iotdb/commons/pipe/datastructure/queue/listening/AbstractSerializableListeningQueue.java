@@ -139,7 +139,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
       return;
     }
 
-    queue.clear();
+    close();
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
       isClosed.set(ReadWriteIOUtils.readBool(inputStream));
       final QueueSerializerType type =

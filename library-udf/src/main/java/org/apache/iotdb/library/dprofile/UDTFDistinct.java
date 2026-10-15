@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -50,7 +51,7 @@ public class UDTFDistinct implements UDTF {
   private DoubleHashSet doubleSet;
   private BooleanHashSet booleanSet;
   private HashSet<String> stringSet;
-  private Type dataType;
+  private DistinctOperations operations;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -66,146 +67,184 @@ public class UDTFDistinct implements UDTF {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(parameters.getDataType(0));
-    dataType = parameters.getDataType(0);
-    switch (dataType) {
-      case INT32:
-        intSet = new IntHashSet();
-        break;
-      case INT64:
-        longSet = new LongHashSet();
-        break;
-      case FLOAT:
-        floatSet = new FloatHashSet();
-        break;
-      case DOUBLE:
-        doubleSet = new DoubleHashSet();
-        break;
-      case TEXT:
-        stringSet = new HashSet<>();
-        break;
-      case BOOLEAN:
-        booleanSet = new BooleanHashSet();
-        break;
-      case BLOB:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        break;
-    }
+    Type dataType = parameters.getDataType(0);
+    operations =
+        TypeServices.scalarService(
+                BOOLEAN_OPERATIONS,
+                INT_OPERATIONS,
+                LONG_OPERATIONS,
+                FLOAT_OPERATIONS,
+                DOUBLE_OPERATIONS,
+                TEXT_OPERATIONS,
+                UNSUPPORTED_OPERATIONS)
+            .call(TypeServices.toReadType(dataType));
+    operations.initialize(this);
   }
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
-    switch (dataType) {
-      case INT32:
-        intSet.add(row.getInt(0));
-        break;
-      case INT64:
-        longSet.add(row.getLong(0));
-        break;
-      case FLOAT:
-        floatSet.add(row.getFloat(0));
-        break;
-      case DOUBLE:
-        doubleSet.add(row.getDouble(0));
-        break;
-      case TEXT:
-        stringSet.add(row.getString(0));
-        break;
-      case BOOLEAN:
-        booleanSet.add(row.getBoolean(0));
-        break;
-      case BLOB:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        break;
-    }
+    operations.add(this, row);
   }
 
   @Override
   public void terminate(PointCollector pc) throws Exception {
-    int i = 0;
-    switch (dataType) {
-      case INT32:
-        MutableIntIterator intIterator = intSet.intIterator();
-        while (intIterator.hasNext()) {
-          pc.putInt(i, intIterator.next());
-          i++;
-        }
-        break;
-      case INT64:
-        MutableLongIterator longIterator = longSet.longIterator();
-        while (longIterator.hasNext()) {
-          pc.putLong(i, longIterator.next());
-          i++;
-        }
-        break;
-      case FLOAT:
-        MutableFloatIterator floatIterator = floatSet.floatIterator();
-        while (floatIterator.hasNext()) {
-          pc.putFloat(i, floatIterator.next());
-          i++;
-        }
-        break;
-      case DOUBLE:
-        MutableDoubleIterator doubleIterator = doubleSet.doubleIterator();
-        while (doubleIterator.hasNext()) {
-          pc.putDouble(i, doubleIterator.next());
-          i++;
-        }
-        break;
-      case TEXT:
-        for (String s : stringSet) {
-          pc.putString(i, s);
-          i++;
-        }
-        break;
-      case BOOLEAN:
-        MutableBooleanIterator booleanIterator = booleanSet.booleanIterator();
-        while (booleanIterator.hasNext()) {
-          pc.putBoolean(i, booleanIterator.next());
-          i++;
-        }
-        break;
-      case BLOB:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        break;
-    }
+    operations.terminate(this, pc);
   }
 
   @Override
   public void beforeDestroy() {
-    switch (dataType) {
-      case INT32:
-        intSet.clear();
-        break;
-      case INT64:
-        longSet.clear();
-        break;
-      case FLOAT:
-        floatSet.clear();
-        break;
-      case DOUBLE:
-        doubleSet.clear();
-        break;
-      case TEXT:
-        stringSet.clear();
-        break;
-      case BOOLEAN:
-        booleanSet.clear();
-        break;
-      case BLOB:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        break;
-    }
+    operations.clear(this);
+  }
+
+  private static final DistinctOperations INT_OPERATIONS =
+      new DistinctOperations() {
+        public void initialize(UDTFDistinct target) {
+          target.intSet = new IntHashSet();
+        }
+
+        public void add(UDTFDistinct target, Row row) throws Exception {
+          target.intSet.add(row.getInt(0));
+        }
+
+        public void terminate(UDTFDistinct target, PointCollector collector) throws Exception {
+          MutableIntIterator iterator = target.intSet.intIterator();
+          int i = 0;
+          while (iterator.hasNext()) {
+            collector.putInt(i++, iterator.next());
+          }
+        }
+
+        public void clear(UDTFDistinct target) {
+          target.intSet.clear();
+        }
+      };
+  private static final DistinctOperations LONG_OPERATIONS =
+      new DistinctOperations() {
+        public void initialize(UDTFDistinct target) {
+          target.longSet = new LongHashSet();
+        }
+
+        public void add(UDTFDistinct target, Row row) throws Exception {
+          target.longSet.add(row.getLong(0));
+        }
+
+        public void terminate(UDTFDistinct target, PointCollector collector) throws Exception {
+          MutableLongIterator iterator = target.longSet.longIterator();
+          int i = 0;
+          while (iterator.hasNext()) {
+            collector.putLong(i++, iterator.next());
+          }
+        }
+
+        public void clear(UDTFDistinct target) {
+          target.longSet.clear();
+        }
+      };
+  private static final DistinctOperations FLOAT_OPERATIONS =
+      new DistinctOperations() {
+        public void initialize(UDTFDistinct target) {
+          target.floatSet = new FloatHashSet();
+        }
+
+        public void add(UDTFDistinct target, Row row) throws Exception {
+          target.floatSet.add(row.getFloat(0));
+        }
+
+        public void terminate(UDTFDistinct target, PointCollector collector) throws Exception {
+          MutableFloatIterator iterator = target.floatSet.floatIterator();
+          int i = 0;
+          while (iterator.hasNext()) {
+            collector.putFloat(i++, iterator.next());
+          }
+        }
+
+        public void clear(UDTFDistinct target) {
+          target.floatSet.clear();
+        }
+      };
+  private static final DistinctOperations DOUBLE_OPERATIONS =
+      new DistinctOperations() {
+        public void initialize(UDTFDistinct target) {
+          target.doubleSet = new DoubleHashSet();
+        }
+
+        public void add(UDTFDistinct target, Row row) throws Exception {
+          target.doubleSet.add(row.getDouble(0));
+        }
+
+        public void terminate(UDTFDistinct target, PointCollector collector) throws Exception {
+          MutableDoubleIterator iterator = target.doubleSet.doubleIterator();
+          int i = 0;
+          while (iterator.hasNext()) {
+            collector.putDouble(i++, iterator.next());
+          }
+        }
+
+        public void clear(UDTFDistinct target) {
+          target.doubleSet.clear();
+        }
+      };
+  private static final DistinctOperations BOOLEAN_OPERATIONS =
+      new DistinctOperations() {
+        public void initialize(UDTFDistinct target) {
+          target.booleanSet = new BooleanHashSet();
+        }
+
+        public void add(UDTFDistinct target, Row row) throws Exception {
+          target.booleanSet.add(row.getBoolean(0));
+        }
+
+        public void terminate(UDTFDistinct target, PointCollector collector) throws Exception {
+          MutableBooleanIterator iterator = target.booleanSet.booleanIterator();
+          int i = 0;
+          while (iterator.hasNext()) {
+            collector.putBoolean(i++, iterator.next());
+          }
+        }
+
+        public void clear(UDTFDistinct target) {
+          target.booleanSet.clear();
+        }
+      };
+  private static final DistinctOperations TEXT_OPERATIONS =
+      new DistinctOperations() {
+        public void initialize(UDTFDistinct target) {
+          target.stringSet = new HashSet<>();
+        }
+
+        public void add(UDTFDistinct target, Row row) throws Exception {
+          target.stringSet.add(row.getString(0));
+        }
+
+        public void terminate(UDTFDistinct target, PointCollector collector) throws Exception {
+          int i = 0;
+          for (String value : target.stringSet) {
+            collector.putString(i++, value);
+          }
+        }
+
+        public void clear(UDTFDistinct target) {
+          target.stringSet.clear();
+        }
+      };
+  private static final DistinctOperations UNSUPPORTED_OPERATIONS =
+      new DistinctOperations() {
+        public void initialize(UDTFDistinct target) {}
+
+        public void add(UDTFDistinct target, Row row) {}
+
+        public void terminate(UDTFDistinct target, PointCollector collector) {}
+
+        public void clear(UDTFDistinct target) {}
+      };
+
+  private interface DistinctOperations {
+    void initialize(UDTFDistinct target) throws Exception;
+
+    void add(UDTFDistinct target, Row row) throws Exception;
+
+    void terminate(UDTFDistinct target, PointCollector collector) throws Exception;
+
+    void clear(UDTFDistinct target);
   }
 }

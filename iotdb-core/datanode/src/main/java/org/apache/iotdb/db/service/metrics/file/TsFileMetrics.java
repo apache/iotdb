@@ -83,6 +83,17 @@ public class TsFileMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     this.metricService.set(metricService);
+    // The cached gauges may have been dropped by the metric service, e.g. when it restarts, so
+    // recreate all of them from the recorded values.
+    Arrays.asList(seqFileCountMap, unseqFileCountMap)
+        .forEach(map -> map.values().forEach(TsFileMetrics::clearGauges));
+    Arrays.asList(seqFileSizeMap, unseqFileSizeMap)
+        .forEach(map -> map.values().forEach(TsFileMetrics::clearGauges));
+    Arrays.asList(seqLevelTsFileCountMap, unseqLevelTsFileCountMap)
+        .forEach(TsFileMetrics::clearGauges);
+    Arrays.asList(seqLevelTsFileSizeMap, unseqLevelTsFileSizeMap)
+        .forEach(TsFileMetrics::clearGauges);
+    hasRemainData.set(true);
     checkIfThereRemainingData();
   }
 
@@ -91,11 +102,29 @@ public class TsFileMetrics implements IMetricSet {
     // do nothing here
   }
 
+  private static <K, V> void clearGauges(Map<K, Pair<V, Gauge>> map) {
+    for (K key : map.keySet()) {
+      map.computeIfPresent(
+          key,
+          (k, v) -> {
+            v.setRight(null);
+            return v;
+          });
+    }
+  }
+
   // region external update tsfile related metrics
-  public void addTsFile(String database, String regionId, long size, boolean seq, String name) {
-    updateGlobalTsFileCountAndSize(database, regionId, 1, size, seq);
+  public void addTsFile(TsFileResource tsFileResource) {
+    if (!tsFileResource.markAsRecordedByMetric()) {
+      return;
+    }
+    long size = tsFileResource.getTsFileSize();
+    boolean seq = tsFileResource.isSeq();
+    updateGlobalTsFileCountAndSize(
+        tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId(), 1, size, seq);
     try {
-      TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(tsFileResource.getTsFile().getName());
       int level = tsFileName.getInnerCompactionCnt();
       updateLevelTsFileCountAndSize(size, 1, seq, level);
     } catch (IOException e) {
@@ -103,10 +132,14 @@ public class TsFileMetrics implements IMetricSet {
     }
   }
 
-  public void deleteFile(boolean seq, List<TsFileResource> tsFileResourceList) {
+  public void deleteFile(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
+      if (!tsFileResource.markAsUnrecordedByMetric()) {
+        continue;
+      }
       String name = tsFileResource.getTsFile().getName();
       long size = tsFileResource.getTsFileSize();
+      boolean seq = tsFileResource.isSeq();
       updateGlobalTsFileCountAndSize(
           tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId(), -1, -size, seq);
       try {

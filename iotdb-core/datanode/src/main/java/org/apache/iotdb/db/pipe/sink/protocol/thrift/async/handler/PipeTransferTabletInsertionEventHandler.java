@@ -76,7 +76,11 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
             .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
       }
       event.decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
-      if (status.isSetRedirectNode()) {
+      // A multi-device InsertRowsNode response stores redirect endpoints in per-device
+      // sub-statuses instead of on the top-level status.
+      if (status.isSetRedirectNode()
+          || (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+              && status.isSetSubStatus())) {
         updateLeaderCache(status);
       }
     } catch (final Exception e) {
@@ -93,12 +97,12 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
       PipeLogger.log(
           LOGGER::warn,
           exception,
-          "Failed to transfer TabletInsertionEvent %s (committer key=%s, commit id=%s).",
+          DataNodePipeMessages.FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID,
           event.coreReportMessage(),
           event.getCommitterKey(),
           event.getCommitId());
     } finally {
-      sink.addFailureEventToRetryQueue(event, exception);
+      sink.addFailureEventToRetryQueue(event, exception, this);
     }
   }
 

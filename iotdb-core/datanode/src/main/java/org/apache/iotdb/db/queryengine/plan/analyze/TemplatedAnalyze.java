@@ -98,7 +98,8 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree,
       MPPQueryContext context,
-      List<PartialPath> deviceList) {
+      List<PartialPath> deviceList,
+      TreeAnalysisMutationJournal mutationJournal) {
     if (queryStatement.getGroupByComponent() != null
         || queryStatement.isSelectInto()
         || queryStatement.hasFill()
@@ -115,7 +116,14 @@ public class TemplatedAnalyze {
 
     if (queryStatement.isAggregationQuery()) {
       return canBuildAggregationPlanUseTemplate(
-          analysis, queryStatement, partitionFetcher, schemaTree, context, template, deviceList);
+          analysis,
+          queryStatement,
+          partitionFetcher,
+          schemaTree,
+          context,
+          template,
+          deviceList,
+          mutationJournal);
     }
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
@@ -189,7 +197,8 @@ public class TemplatedAnalyze {
     }
     analysis.setDeviceList(deviceList);
 
-    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList, context);
+    analyzeDeviceToOrderBy(
+        analysis, queryStatement, schemaTree, deviceList, context, mutationJournal);
     analyzeDeviceToSourceTransform(analysis);
     analyzeDeviceToSource(analysis);
 
@@ -277,7 +286,8 @@ public class TemplatedAnalyze {
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
       List<PartialPath> deviceSet,
-      MPPQueryContext queryContext) {
+      MPPQueryContext queryContext,
+      TreeAnalysisMutationJournal mutationJournal) {
     if (!queryStatement.hasOrderByExpression()) {
       return;
     }
@@ -325,7 +335,7 @@ public class TemplatedAnalyze {
     }
 
     analysis.setOrderByExpressions(deviceViewOrderByExpression);
-    queryStatement.updateSortItems(deviceViewOrderByExpression);
+    mutationJournal.updateSortItems(queryStatement, deviceViewOrderByExpression);
     analysis.setDeviceToSortItems(deviceToSortItems);
     analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }

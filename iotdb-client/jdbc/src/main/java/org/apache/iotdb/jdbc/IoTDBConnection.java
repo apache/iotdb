@@ -129,7 +129,7 @@ public class IoTDBConnection implements Connection {
     }
     params = Utils.parseUrl(url, info);
     this.url = url;
-    this.userName = info.get("user").toString();
+    this.userName = params.getUsername();
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
@@ -543,12 +543,13 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
-    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
+    DeepCopyRpcTransportFactory transportFactory =
+        DeepCopyRpcTransportFactory.getInstance(
+            params.getThriftDefaultBufferSize(), params.getThriftMaxFrameSize());
 
     if (params.isUseSSL()) {
       transport =
-          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+          transportFactory.getTransport(
               params.getHost(),
               params.getPort(),
               getNetworkTimeout(),
@@ -559,8 +560,7 @@ public class IoTDBConnection implements Connection {
               params.getSslProtocol());
     } else {
       transport =
-          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-              params.getHost(), params.getPort(), getNetworkTimeout());
+          transportFactory.getTransport(params.getHost(), params.getPort(), getNetworkTimeout());
     }
     if (!transport.isOpen()) {
       transport.open();

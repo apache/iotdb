@@ -35,9 +35,10 @@ import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryManager;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -74,7 +75,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFileInsertionEventQueryParser.class);
 
-  private final PipeMemoryBlock allocatedMemoryBlock;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlock;
   private final TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
@@ -166,6 +167,39 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
       final boolean isWithMod)
       throws IOException, IllegalPathException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        entity,
+        skipIfNoPrivileges,
+        deviceIsAlignedMap,
+        deviceMeasurementsMapOverride,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventQueryParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap,
+      final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException, IllegalPathException {
     super(
         tsFile,
         pipeName,
@@ -178,7 +212,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         entity,
         skipIfNoPrivileges,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        memoryManager);
 
     try {
       currentModifications =
@@ -186,8 +221,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          allocateTabletMemory(
+              TsFileInsertionEventQueryParser.class.getSimpleName() + "#modifications",
+              currentModifications.ramBytesUsed());
 
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
@@ -249,7 +285,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
       allocatedMemoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
+          allocateGenericMemory(
+              TsFileInsertionEventQueryParser.class.getSimpleName() + "#metadata",
+              memoryRequiredInBytes);
 
       final Iterator<Map.Entry<IDeviceID, List<String>>> iterator =
           deviceMeasurementsMap.entrySet().iterator();
@@ -287,7 +325,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                       measurement,
                       meta.getStatistics().getStartTime(),
                       meta.getStatistics().getEndTime(),
-                      currentModifications);
+                      currentModifications,
+                      false);
                 } catch (IOException e) {
                   LOGGER.warn(
                       DataNodePipeMessages.FAILED_TO_READ_METADATA_FOR_DEVICEID_MEASUREMENT,
@@ -326,6 +365,25 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final boolean isWithMod)
       throws IOException, IllegalPathException {
     this(
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        deviceMeasurementsMapOverride,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventQueryParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException, IllegalPathException {
+    this(
         null,
         0,
         tsFile,
@@ -338,7 +396,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         false,
         null,
         deviceMeasurementsMapOverride,
-        isWithMod);
+        isWithMod,
+        memoryManager);
   }
 
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
@@ -524,6 +583,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                   final Tablet tablet = tabletIterator.next();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
+                  releaseTabletMemoryBlock();
                   final boolean isAligned =
                       deviceIsAlignedMap.getOrDefault(
                           IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);

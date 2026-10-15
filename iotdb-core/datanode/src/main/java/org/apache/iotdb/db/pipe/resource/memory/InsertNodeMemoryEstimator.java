@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -38,11 +39,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -136,16 +140,8 @@ public class InsertNodeMemoryEstimator {
 
   // ============================= Primitive Type Wrapper Classes =========
 
-  private static final long SIZE_OF_LONG =
-      RamUsageEstimator.alignObjectSize(Long.BYTES + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_INT =
       RamUsageEstimator.alignObjectSize(Integer.BYTES + NUM_BYTES_OBJECT_HEADER);
-  private static final long SIZE_OF_DOUBLE =
-      RamUsageEstimator.alignObjectSize(Double.BYTES + NUM_BYTES_OBJECT_HEADER);
-  private static final long SIZE_OF_FLOAT =
-      RamUsageEstimator.alignObjectSize(Float.BYTES + NUM_BYTES_OBJECT_HEADER);
-  private static final long SIZE_OF_BOOLEAN =
-      RamUsageEstimator.alignObjectSize(1 + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_STRING = RamUsageEstimator.shallowSizeOfInstance(String.class);
 
   private static final long SIZE_OF_ARRAYLIST =
@@ -154,6 +150,12 @@ public class InsertNodeMemoryEstimator {
   // The calculated result needs to be magnified by 1.3 times, which is 1.3 times different
   // from the actual result because the properties of the parent class are not added.
   private static final double INSERT_ROW_NODE_EXPANSION_FACTOR = 1.3;
+
+  // Composite insert nodes are estimated on write threads. Reuse the identity set between events,
+  // but discard unusually large sets to avoid retaining a large table on every write thread.
+  private static final int MAX_RETAINED_DEDUPLICATED_OBJECTS = 1024;
+  private static final ThreadLocal<Set<Object>> REUSABLE_DEDUPLICATED_OBJECTS =
+      ThreadLocal.withInitial(InsertNodeMemoryEstimator::newDeduplicatedObjectSet);
 
   public static long sizeOf(final InsertNode insertNode) {
     try {
@@ -220,7 +222,7 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertTabletNode(final InsertTabletNode node) {
-    return sizeOfInsertTabletNode(node, newDeduplicatedObjectSet());
+    return sizeOfInsertTabletNode(node, null);
   }
 
   private static long sizeOfInsertTabletNode(
@@ -235,7 +237,7 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertRowNode(final InsertRowNode node) {
-    return sizeOfInsertRowNode(node, newDeduplicatedObjectSet());
+    return sizeOfInsertRowNode(node, null);
   }
 
   private static long sizeOfInsertRowNode(
@@ -247,47 +249,67 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertRowsNode(final InsertRowsNode node) {
-    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
-    long size = INSERT_ROWS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
-    size += sizeOfResults(node.getResults());
-    return size;
+    final Set<Object> deduplicatedObjects =
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
+    try {
+      long size = INSERT_ROWS_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+      size += sizeOfResults(node.getResults());
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfInsertRowsOfOneDeviceNode(final InsertRowsOfOneDeviceNode node) {
-    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
-    long size = INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
-    size += sizeOfResults(node.getResults());
-    return size;
+    final Set<Object> deduplicatedObjects =
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
+    try {
+      long size = INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+      size += sizeOfResults(node.getResults());
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfInsertMultiTabletsNode(final InsertMultiTabletsNode node) {
-    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
-    long size = INSERT_MULTI_TABLETS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertTabletNodeList(node.getInsertTabletNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getParentInsertTabletNodeIndexList());
-    size += sizeOfResults(node.getResults());
-    return size;
+    final Set<Object> deduplicatedObjects =
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertTabletNodeList());
+    try {
+      long size = INSERT_MULTI_TABLETS_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertTabletNodeList(node.getInsertTabletNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getParentInsertTabletNodeIndexList());
+      size += sizeOfResults(node.getResults());
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfRelationalInsertRowsNode(final RelationalInsertRowsNode node) {
-    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
-    long size = RELATIONAL_INSERT_ROWS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
-    // ignore deviceIDs
-    return size;
+    final Set<Object> deduplicatedObjects =
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
+    try {
+      long size = RELATIONAL_INSERT_ROWS_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+      // ignore deviceIDs
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfRelationalInsertRowNode(final RelationalInsertRowNode node) {
-    return sizeOfRelationalInsertRowNode(node, newDeduplicatedObjectSet());
+    return sizeOfRelationalInsertRowNode(node, null);
   }
 
   private static long sizeOfRelationalInsertRowNode(
@@ -299,7 +321,7 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfRelationalInsertTabletNode(final RelationalInsertTabletNode node) {
-    return sizeOfRelationalInsertTabletNode(node, newDeduplicatedObjectSet());
+    return sizeOfRelationalInsertTabletNode(node, null);
   }
 
   private static long sizeOfRelationalInsertTabletNode(
@@ -542,10 +564,6 @@ public class InsertNodeMemoryEstimator {
 
   // =============================Write==================================
 
-  private static long sizeOfBinary(final Binary binary) {
-    return Objects.nonNull(binary) ? binary.ramBytesUsed() : 0L;
-  }
-
   public static long sizeOfColumns(
       final Object[] columns, final MeasurementSchema[] measurementSchemas) {
     if (Objects.isNull(columns)) {
@@ -568,42 +586,9 @@ public class InsertNodeMemoryEstimator {
           || measurementSchemas[i].getType() == null) {
         continue;
       }
-      switch (measurementSchemas[i].getType()) {
-        case INT64:
-        case TIMESTAMP:
-          {
-            size += RamUsageEstimator.sizeOf((long[]) columns[i]);
-            break;
-          }
-        case DATE:
-        case INT32:
-          {
-            size += RamUsageEstimator.sizeOf((int[]) columns[i]);
-            break;
-          }
-        case DOUBLE:
-          {
-            size += RamUsageEstimator.sizeOf((double[]) columns[i]);
-            break;
-          }
-        case FLOAT:
-          {
-            size += RamUsageEstimator.sizeOf((float[]) columns[i]);
-            break;
-          }
-        case BOOLEAN:
-          {
-            size += RamUsageEstimator.sizeOf((boolean[]) columns[i]);
-            break;
-          }
-        case STRING:
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-          {
-            size += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
-            break;
-          }
+      final TSDataType dataType = measurementSchemas[i].getType();
+      if (dataType != TSDataType.UNKNOWN && dataType != TSDataType.VECTOR) {
+        size += Type.fromTsDataType(dataType).estimateArraySize(columns[i]);
       }
     }
     return size;
@@ -637,42 +622,11 @@ public class InsertNodeMemoryEstimator {
         size += NUM_BYTES_OBJECT_HEADER;
         continue;
       }
-      switch (measurementSchemas[i].getType()) {
-        case INT64:
-        case TIMESTAMP:
-          {
-            size += SIZE_OF_LONG;
-            break;
-          }
-        case DATE:
-        case INT32:
-          {
-            size += SIZE_OF_INT;
-            break;
-          }
-        case DOUBLE:
-          {
-            size += SIZE_OF_DOUBLE;
-            break;
-          }
-        case FLOAT:
-          {
-            size += SIZE_OF_FLOAT;
-            break;
-          }
-        case BOOLEAN:
-          {
-            size += SIZE_OF_BOOLEAN;
-            break;
-          }
-        case STRING:
-        case TEXT:
-        case BLOB:
-          {
-            final Binary binary = (Binary) values[i];
-            size += sizeOfBinary(binary);
-          }
-      }
+      final TSDataType dataType = measurementSchemas[i].getType();
+      size +=
+          TypeServices.Memory.INSERT_NODE_VALUE_SIZE_SERVICE
+              .call(Type.fromTsDataType(dataType))
+              .applyAsLong(values[i]);
     }
     return size;
   }
@@ -733,24 +687,16 @@ public class InsertNodeMemoryEstimator {
     if (list == null) {
       return 0L;
     }
-    long size = RamUsageEstimator.shallowSizeOf(list);
-    if (list instanceof ArrayList) {
-      size +=
-          RamUsageEstimator.alignObjectSize(
-              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * list.size());
-    }
-    return size;
+    return SIZE_OF_ARRAYLIST
+        + RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * list.size());
   }
 
   private static long sizeOfIntegerList(final List<Integer> integers) {
     if (integers == null) {
       return 0L;
     }
-    long size = sizeOfObjectList(integers);
-    for (Integer ignored : integers) {
-      size += SIZE_OF_INT;
-    }
-    return size;
+    return sizeOfObjectList(integers) + (long) SIZE_OF_INT * integers.size();
   }
 
   private static long sizeOfResults(final Map<Integer, TSStatus> results) {
@@ -769,6 +715,26 @@ public class InsertNodeMemoryEstimator {
 
   private static Set<Object> newDeduplicatedObjectSet() {
     return Collections.newSetFromMap(new IdentityHashMap<>());
+  }
+
+  private static Set<Object> acquireDeduplicatedObjectSetIfNeeded(final List<?> children) {
+    return children != null && children.size() > 1 ? REUSABLE_DEDUPLICATED_OBJECTS.get() : null;
+  }
+
+  private static void releaseDeduplicatedObjectSet(final Set<Object> deduplicatedObjects) {
+    if (deduplicatedObjects == null) {
+      return;
+    }
+    final boolean oversized = deduplicatedObjects.size() > MAX_RETAINED_DEDUPLICATED_OBJECTS;
+    deduplicatedObjects.clear();
+    if (oversized) {
+      REUSABLE_DEDUPLICATED_OBJECTS.remove();
+    }
+  }
+
+  @TestOnly
+  static void clearReusableDeduplicatedObjectsForTest() {
+    REUSABLE_DEDUPLICATED_OBJECTS.remove();
   }
 
   private static boolean shouldCountObject(

@@ -32,6 +32,7 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.session.DummyNodesSupplier;
@@ -426,7 +427,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.formattedNodeUrls = String.format("%s:%s", host, port);
+    this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
@@ -469,7 +470,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.formattedNodeUrls = String.format("%s:%s", host, port);
+    this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
@@ -574,7 +575,7 @@ public class SessionPool implements ISessionPool {
       this.host = builder.host;
       this.port = builder.rpcPort;
       this.nodeUrls = null;
-      this.formattedNodeUrls = String.format("%s:%s", host, port);
+      this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
       if (enableAutoFetch) {
         initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
       } else {

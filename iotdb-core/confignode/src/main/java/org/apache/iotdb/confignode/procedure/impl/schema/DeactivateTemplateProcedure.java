@@ -49,6 +49,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +82,7 @@ public class DeactivateTemplateProcedure
   private Map<String, List<Integer>> dataNodeRequest; // transient
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public DeactivateTemplateProcedure(boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -384,7 +385,7 @@ public class DeactivateTemplateProcedure
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<PartialPath, List<Template>> templateSetInfo = new HashMap<>();
+    Map<PartialPath, List<Template>> templateSetInfo = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; i++) {
       PartialPath pattern = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
       int templateNum = ReadWriteIOUtils.readInt(byteBuffer);

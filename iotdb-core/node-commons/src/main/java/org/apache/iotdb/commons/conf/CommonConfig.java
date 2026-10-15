@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -58,6 +59,7 @@ public class CommonConfig {
   public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
   public static final long DEFAULT_TIME_PARTITION_INTERVAL = 604_800_000L;
+  public static final boolean SUBSCRIPTION_ENABLED = false;
 
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
@@ -173,8 +175,11 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
-  private NodeStatus lastStatus = NodeStatus.Unknown;
-  private String lastStatusReason = "";
+  /**
+   * Maximum length of the error message embedded in the UnrecoverableError status reason, keeping
+   * the reason bounded in heartbeats and SHOW results.
+   */
+  private static final int MAX_STATUS_REASON_LENGTH = 256;
 
   private volatile boolean isStopping = false;
 
@@ -235,6 +240,9 @@ public class CommonConfig {
   private int pipeDataStructureTabletSizeInBytes = 16 * 1024 * 1024;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.3;
+
+  // Maximum proportion for floating memory retained by InsertNode queues. Unused floating memory
+  // can be borrowed by non-floating Pipe allocations.
   private volatile double pipeTotalFloatingMemoryProportion = 0.5;
 
   // Check if memory check is enabled for Pipe
@@ -247,6 +255,13 @@ public class CommonConfig {
   // TSFile format to Tablet format
   // Note: Pipes that do not decompose pattern/time do not need this part of memory
   private long pipeTsFileParserMemory = 17 * MB;
+
+  // Limit concurrently active TsFile parsers globally and for each region task of a pipe. The
+  // per-pipe-region limit also serves as an approximate parser memory quota because every admitted
+  // parser reserves pipeTsFileParserMemory bytes.
+  private int pipeTsFileParserInFlightMaxNum =
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  private int pipeTsFileParserInFlightMaxNumPerPipeRegion = 1;
 
   // Memory for Sink batch sending (InsertNode/TsFile, choose one)
   // 1. InsertNode: 15MB, used for batch sending data to the downstream system
@@ -292,6 +307,8 @@ public class CommonConfig {
   private int pipeAsyncSinkForcedRetryTabletEventQueueSize = 20;
   private int pipeAsyncSinkForcedRetryTotalEventQueueSize = 30;
   private long pipeAsyncSinkMaxRetryExecutionTimeMsPerCall = 500;
+  private long pipeAsyncSinkRetryMaxDurationMs = 60 * 1000L;
+  private long pipeAsyncSinkRetryProbeIntervalMs = 30 * 1000L;
   private int pipeAsyncSinkSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncSinkMaxClientNumber =
@@ -329,8 +346,8 @@ public class CommonConfig {
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
   private boolean pipeReceiverLoadConversionEnabled = false;
-  private volatile long pipePeriodicalLogMinIntervalSeconds = 60;
-  private volatile long pipeLoggerCacheMaxSizeInBytes = 16 * MB;
+  private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
+  private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
 
   private volatile double pipeMetaReportMaxLogNumPerRound = 0.1;
   private volatile int pipeMetaReportMaxLogIntervalRounds = 360;
@@ -339,6 +356,8 @@ public class CommonConfig {
 
   private volatile boolean pipeMemoryManagementEnabled = true;
   private volatile long pipeMemoryAllocateRetryIntervalMs = 50;
+  // Besides limiting allocation retries, this value also caps the TsFile parser memory admission
+  // backoff at pipeCheckMemoryEnoughIntervalMs * max(1, pipeMemoryAllocateMaxRetries).
   private volatile int pipeMemoryAllocateMaxRetries = 10;
   private volatile long pipeMemoryAllocateMinSizeInBytes = 32;
   private volatile long pipeMemoryAllocateForTsFileSequenceReaderInBytes =
@@ -371,8 +390,6 @@ public class CommonConfig {
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
   private boolean pipeAutoSplitFullEnabled = true;
-
-  private boolean subscriptionEnabled = true;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
@@ -413,8 +430,10 @@ public class CommonConfig {
 
   private int subscriptionConsensusBatchMaxDelayInMs = 50;
   private long subscriptionConsensusBatchMaxSizeInBytes = 8 * MB;
-  private int subscriptionConsensusBatchMaxTabletCount = 64;
-  private int subscriptionConsensusBatchMaxWalEntries = 128;
+  // Favor fewer poll/commit round trips during WAL catch-up. The byte limit remains the primary
+  // memory and RPC payload guard for large tablets.
+  private int subscriptionConsensusBatchMaxTabletCount = 512;
+  private int subscriptionConsensusBatchMaxWalEntries = 1024;
 
   private long subscriptionConsensusWalRetentionSizeInBytes = 512 * MB;
   private long subscriptionConsensusWalRetentionTimeMs = -1L;
@@ -453,16 +472,6 @@ public class CommonConfig {
   // timeseries and device limit
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
-
-  private boolean enableBinaryAllocator = true;
-
-  private int arenaNum = 4;
-
-  private int minAllocateSize = 4096;
-
-  private int maxAllocateSize = 1024 * 1024;
-
-  private int log2SizeClassGroup = 3;
 
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
@@ -778,8 +787,26 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
-  public void handleUnrecoverableError() {
-    handleSystemErrorStrategy.handle();
+  /**
+   * Handles an unrecoverable error with the given exception. The ReadOnly status reason is
+   * assembled here so that all call sites share one format: "UnrecoverableError, <timestamp>,
+   * <error message>". The error message is truncated to {@link #MAX_STATUS_REASON_LENGTH}
+   * characters so that the reason published in heartbeats and SHOW results stays bounded.
+   */
+  public void handleUnrecoverableError(Throwable e) {
+    String errorMessage =
+        e.getMessage() == null || e.getMessage().isEmpty()
+            ? e.getClass().getSimpleName()
+            : e.getMessage();
+    if (errorMessage.length() > MAX_STATUS_REASON_LENGTH) {
+      errorMessage = errorMessage.substring(0, MAX_STATUS_REASON_LENGTH) + "...";
+    }
+    handleSystemErrorStrategy.handle(
+        NodeStatus.UNRECOVERABLE_ERROR
+            + ", "
+            + DateTimeUtils.convertLongToDate(System.currentTimeMillis(), "ms")
+            + ", "
+            + errorMessage);
   }
 
   public double getDiskSpaceWarningThreshold() {
@@ -822,10 +849,33 @@ public class CommonConfig {
     return status;
   }
 
+  /**
+   * Sets the node status without a new reason. An existing ReadOnly reason is preserved when
+   * ReadOnly is requested again; requests for other statuses clear the reason.
+   */
   public void setNodeStatus(NodeStatus newStatus) {
+    setNodeStatusWithReason(newStatus, null);
+  }
+
+  /**
+   * Sets the node status and reason together. ReadOnly-to-ReadOnly updates select the reason
+   * through {@link NodeStatus#transitionReadOnlyReason(String, String)}. Other statuses clear the
+   * reason.
+   */
+  public synchronized void setNodeStatusWithReason(NodeStatus newStatus, String newReason) {
+    if (newStatus != NodeStatus.ReadOnly) {
+      newReason = null;
+    } else if (status == NodeStatus.ReadOnly) {
+      newReason = NodeStatus.transitionReadOnlyReason(statusReason, newReason);
+    }
+    if (status == newStatus) {
+      this.statusReason = newReason;
+      return;
+    }
+
     logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
     this.status = newStatus;
-    this.statusReason = null;
+    this.statusReason = newReason;
 
     switch (newStatus) {
       case ReadOnly:
@@ -841,10 +891,6 @@ public class CommonConfig {
 
   public String getStatusReason() {
     return statusReason;
-  }
-
-  public void setStatusReason(String statusReason) {
-    this.statusReason = statusReason;
   }
 
   public int getTTimePartitionSlotTransmitLimit() {
@@ -1035,6 +1081,39 @@ public class CommonConfig {
     }
     this.pipeTsFileParserMemory = pipeTsFileParserMemory;
     logger.info(ConfigMessages.CONFIG_SET_TO, "pipeTsFileParserMemory", pipeTsFileParserMemory);
+  }
+
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return pipeTsFileParserInFlightMaxNum;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNum(final int pipeTsFileParserInFlightMaxNum) {
+    final int validatedValue =
+        pipeTsFileParserInFlightMaxNum > 0
+            ? pipeTsFileParserInFlightMaxNum
+            : Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+    if (this.pipeTsFileParserInFlightMaxNum == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNum = validatedValue;
+    logger.info(ConfigMessages.CONFIG_SET_TO, "pipeTsFileParserInFlightMaxNum", validatedValue);
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return pipeTsFileParserInFlightMaxNumPerPipeRegion;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNumPerPipeRegion(
+      final int pipeTsFileParserInFlightMaxNumPerPipeRegion) {
+    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNumPerPipeRegion);
+    if (this.pipeTsFileParserInFlightMaxNumPerPipeRegion == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNumPerPipeRegion = validatedValue;
+    logger.info(
+        ConfigMessages.CONFIG_SET_TO,
+        "pipeTsFileParserInFlightMaxNumPerPipeRegion",
+        validatedValue);
   }
 
   public long getPipeSinkBatchMemoryInsertNode() {
@@ -1317,6 +1396,34 @@ public class CommonConfig {
 
   public long getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall() {
     return pipeAsyncSinkMaxRetryExecutionTimeMsPerCall;
+  }
+
+  public void setPipeAsyncSinkRetryMaxDurationMs(long pipeAsyncSinkRetryMaxDurationMs) {
+    if (this.pipeAsyncSinkRetryMaxDurationMs == pipeAsyncSinkRetryMaxDurationMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryMaxDurationMs = pipeAsyncSinkRetryMaxDurationMs;
+    logger.info(
+        ConfigMessages.LOG_PIPEASYNCSINKRETRYMAXDURATIONMS_IS_SET_TO_ARG_5058C99F,
+        pipeAsyncSinkRetryMaxDurationMs);
+  }
+
+  public long getPipeAsyncSinkRetryMaxDurationMs() {
+    return pipeAsyncSinkRetryMaxDurationMs;
+  }
+
+  public void setPipeAsyncSinkRetryProbeIntervalMs(long pipeAsyncSinkRetryProbeIntervalMs) {
+    if (this.pipeAsyncSinkRetryProbeIntervalMs == pipeAsyncSinkRetryProbeIntervalMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryProbeIntervalMs = Math.max(1, pipeAsyncSinkRetryProbeIntervalMs);
+    logger.info(
+        ConfigMessages.LOG_PIPEASYNCSINKRETRYPROBEINTERVALMS_IS_SET_TO_ARG_A1E9AF45,
+        this.pipeAsyncSinkRetryProbeIntervalMs);
+  }
+
+  public long getPipeAsyncSinkRetryProbeIntervalMs() {
+    return pipeAsyncSinkRetryProbeIntervalMs;
   }
 
   public int getPipeAsyncSinkSelectorNumber() {
@@ -1868,33 +1975,48 @@ public class CommonConfig {
         pipeReceiverLoadConversionEnabled);
   }
 
+  public long getLoggerPeriodicalLogMinIntervalSeconds() {
+    return loggerPeriodicalLogMinIntervalSeconds;
+  }
+
+  public void setLoggerPeriodicalLogMinIntervalSeconds(long loggerPeriodicalLogMinIntervalSeconds) {
+    if (this.loggerPeriodicalLogMinIntervalSeconds == loggerPeriodicalLogMinIntervalSeconds) {
+      return;
+    }
+    this.loggerPeriodicalLogMinIntervalSeconds = loggerPeriodicalLogMinIntervalSeconds;
+    logger.info(
+        ConfigMessages.CONFIG_SET_TO,
+        "loggerPeriodicalLogMinIntervalSeconds",
+        loggerPeriodicalLogMinIntervalSeconds);
+  }
+
   public long getPipePeriodicalLogMinIntervalSeconds() {
-    return pipePeriodicalLogMinIntervalSeconds;
+    return getLoggerPeriodicalLogMinIntervalSeconds();
   }
 
   public void setPipePeriodicalLogMinIntervalSeconds(long pipePeriodicalLogMinIntervalSeconds) {
-    if (this.pipePeriodicalLogMinIntervalSeconds == pipePeriodicalLogMinIntervalSeconds) {
+    setLoggerPeriodicalLogMinIntervalSeconds(pipePeriodicalLogMinIntervalSeconds);
+  }
+
+  public long getLoggerCacheMaxSizeInBytes() {
+    return loggerCacheMaxSizeInBytes;
+  }
+
+  public void setLoggerCacheMaxSizeInBytes(long loggerCacheMaxSizeInBytes) {
+    if (this.loggerCacheMaxSizeInBytes == loggerCacheMaxSizeInBytes) {
       return;
     }
-    this.pipePeriodicalLogMinIntervalSeconds = pipePeriodicalLogMinIntervalSeconds;
+    this.loggerCacheMaxSizeInBytes = loggerCacheMaxSizeInBytes;
     logger.info(
-        ConfigMessages.LOG_PIPEPERIODICALLOGMININTERVALSECONDS_SET_ARG_5535C79E,
-        pipePeriodicalLogMinIntervalSeconds);
+        ConfigMessages.CONFIG_SET_TO, "loggerCacheMaxSizeInBytes", loggerCacheMaxSizeInBytes);
   }
 
   public long getPipeLoggerCacheMaxSizeInBytes() {
-    return pipeLoggerCacheMaxSizeInBytes;
+    return getLoggerCacheMaxSizeInBytes();
   }
 
   public void setPipeLoggerCacheMaxSizeInBytes(long pipeLoggerCacheMaxSizeInBytes) {
-    if (this.pipeLoggerCacheMaxSizeInBytes == pipeLoggerCacheMaxSizeInBytes) {
-      return;
-    }
-    this.pipeLoggerCacheMaxSizeInBytes = pipeLoggerCacheMaxSizeInBytes;
-    logger.info(
-        ConfigMessages.CONFIG_SET_TO,
-        "pipeLoggerCacheMaxSizeInBytes",
-        pipeLoggerCacheMaxSizeInBytes);
+    setLoggerCacheMaxSizeInBytes(pipeLoggerCacheMaxSizeInBytes);
   }
 
   public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
@@ -2451,11 +2573,7 @@ public class CommonConfig {
   }
 
   public boolean getSubscriptionEnabled() {
-    return subscriptionEnabled;
-  }
-
-  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
-    this.subscriptionEnabled = subscriptionEnabled;
+    return SUBSCRIPTION_ENABLED;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
@@ -2940,46 +3058,6 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
-  }
-
-  public int getArenaNum() {
-    return arenaNum;
-  }
-
-  public void setArenaNum(int arenaNum) {
-    this.arenaNum = arenaNum;
-  }
-
-  public int getMinAllocateSize() {
-    return minAllocateSize;
-  }
-
-  public void setMinAllocateSize(int minAllocateSize) {
-    this.minAllocateSize = minAllocateSize;
-  }
-
-  public int getMaxAllocateSize() {
-    return maxAllocateSize;
-  }
-
-  public void setMaxAllocateSize(int maxAllocateSize) {
-    this.maxAllocateSize = maxAllocateSize;
-  }
-
-  public boolean isEnableBinaryAllocator() {
-    return enableBinaryAllocator;
-  }
-
-  public void setEnableBinaryAllocator(boolean enableBinaryAllocator) {
-    this.enableBinaryAllocator = enableBinaryAllocator;
-  }
-
-  public int getLog2SizeClassGroup() {
-    return log2SizeClassGroup;
-  }
-
-  public void setLog2SizeClassGroup(int log2SizeClassGroup) {
-    this.log2SizeClassGroup = log2SizeClassGroup;
   }
 
   public int getPathLogMaxSize() {

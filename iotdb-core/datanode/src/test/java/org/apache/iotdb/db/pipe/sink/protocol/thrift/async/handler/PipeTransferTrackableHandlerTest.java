@@ -24,10 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -46,22 +48,36 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class PipeTransferTrackableHandlerTest {
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private int originalRequestSliceThresholdBytes;
+  private long originalRetryMaxDurationMs;
+  private long originalRetryProbeIntervalMs;
+  private long originalSinkSubtaskSleepIntervalInitMs;
+  private long originalSinkSubtaskSleepIntervalMaxMs;
 
   @Before
   public void setUp() {
     originalRequestSliceThresholdBytes = commonConfig.getPipeSinkRequestSliceThresholdBytes();
+    originalRetryMaxDurationMs = commonConfig.getPipeAsyncSinkRetryMaxDurationMs();
+    originalRetryProbeIntervalMs = commonConfig.getPipeAsyncSinkRetryProbeIntervalMs();
+    originalSinkSubtaskSleepIntervalInitMs = commonConfig.getPipeSinkSubtaskSleepIntervalInitMs();
+    originalSinkSubtaskSleepIntervalMaxMs = commonConfig.getPipeSinkSubtaskSleepIntervalMaxMs();
     commonConfig.setPipeSinkRequestSliceThresholdBytes(4);
   }
 
   @After
   public void tearDown() {
     commonConfig.setPipeSinkRequestSliceThresholdBytes(originalRequestSliceThresholdBytes);
+    commonConfig.setPipeAsyncSinkRetryMaxDurationMs(originalRetryMaxDurationMs);
+    commonConfig.setPipeAsyncSinkRetryProbeIntervalMs(originalRetryProbeIntervalMs);
+    commonConfig.setPipeSinkSubtaskSleepIntervalInitMs(originalSinkSubtaskSleepIntervalInitMs);
+    commonConfig.setPipeSinkSubtaskSleepIntervalMaxMs(originalSinkSubtaskSleepIntervalMaxMs);
   }
 
   @Test
@@ -181,9 +197,190 @@ public class PipeTransferTrackableHandlerTest {
     handler.transfer(client, createReq(1));
 
     final InOrder inOrder = Mockito.inOrder(sink, client);
-    inOrder.verify(sink).waitIfReceiverTemporarilyUnavailable(endPoint);
+    inOrder.verify(sink).waitIfReceiverRetryIsBackedOff(endPoint);
     inOrder.verify(client).pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
     Mockito.verify(sink).recordReceiverStatus(endPoint, status);
+  }
+
+  @Test
+  public void testClientIsReturnedWhenReceiverProbeIsDelayed() throws Exception {
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    final PipeRuntimeSinkNonReportTimeConfigurableException exception =
+        new PipeRuntimeSinkNonReportTimeConfigurableException("probe delayed", Long.MAX_VALUE);
+    Mockito.when(client.getEndPoint()).thenReturn(endPoint);
+    Mockito.doThrow(exception).when(sink).waitIfReceiverRetryIsBackedOff(endPoint);
+
+    final TestPipeTransferTrackableHandler handler = new TestPipeTransferTrackableHandler(sink);
+
+    handler.transfer(client, createReq(1));
+    Assert.assertEquals(1, handler.errorCount);
+    Mockito.verify(client).setShouldReturnSelf(true);
+    Mockito.verify(client).returnSelf(Mockito.any());
+    Mockito.verify(client, Mockito.never())
+        .pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
+  }
+
+  @Test
+  public void testTerminalCallbacksAreIdempotent() {
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    final TestPipeTransferTrackableHandler completeHandler =
+        new TestPipeTransferTrackableHandler(sink);
+
+    completeHandler.onComplete(successResp());
+    completeHandler.onComplete(successResp());
+
+    Assert.assertEquals(1, completeHandler.completeCount);
+    Mockito.verify(sink, Mockito.times(1)).eliminateHandler(completeHandler, false);
+
+    final TestPipeTransferTrackableHandler errorHandler =
+        new TestPipeTransferTrackableHandler(sink);
+    errorHandler.onError(new PipeException("first"));
+    errorHandler.onError(new PipeException("second"));
+
+    Assert.assertEquals(1, errorHandler.errorCount);
+    Mockito.verify(sink, Mockito.times(1)).eliminateHandler(errorHandler, false);
+  }
+
+  @Test
+  public void testCompletionFailureReachesErrorCallback() throws Exception {
+    commonConfig.setPipeSinkRequestSliceThresholdBytes(1024);
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    final PipeException exception = new PipeException("recording receiver status failed");
+    Mockito.when(client.getEndPoint()).thenReturn(endPoint);
+    Mockito.doThrow(exception)
+        .when(sink)
+        .recordReceiverStatus(Mockito.eq(endPoint), Mockito.any(TSStatus.class));
+    Mockito.doAnswer(
+            invocation -> {
+              final AsyncMethodCallback<TPipeTransferResp> callback = invocation.getArgument(1);
+              // TAsyncMethodCall reports exceptions from onComplete through onError.
+              try {
+                callback.onComplete(successResp());
+              } catch (final Exception e) {
+                callback.onError(e);
+              }
+              return null;
+            })
+        .when(client)
+        .pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
+
+    final TestPipeTransferTrackableHandler handler = new TestPipeTransferTrackableHandler(sink);
+    handler.transfer(client, createReq(1));
+
+    Assert.assertEquals(0, handler.completeCount);
+    Assert.assertEquals(1, handler.errorCount);
+    Mockito.verify(sink).eliminateHandler(handler, false);
+  }
+
+  @Test
+  public void testSinkCloseDoesNotDeadlockWithHandlerCallback() throws Exception {
+    final CloseAwareAsyncSink sink = new CloseAwareAsyncSink();
+    final CountDownLatch callbackEntered = new CountDownLatch(1);
+    final CountDownLatch allowCallbackToFinish = new CountDownLatch(1);
+    final PipeTransferTrackableHandler handler =
+        new PipeTransferTrackableHandler(sink) {
+          @Override
+          protected boolean onCompleteInternal(final TPipeTransferResp response) {
+            callbackEntered.countDown();
+            try {
+              allowCallbackToFinish.await();
+            } catch (final InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return false;
+            }
+            return true;
+          }
+
+          @Override
+          protected void onErrorInternal(final Exception exception) {
+            // No-op.
+          }
+
+          @Override
+          protected void doTransfer(
+              final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req) {
+            // No-op.
+          }
+
+          @Override
+          public void clearEventsReferenceCount() {
+            // No-op.
+          }
+        };
+    sink.trackHandler(handler);
+
+    final Thread callbackThread =
+        new Thread(() -> handler.onComplete(successResp()), "pipe-handler-callback");
+    callbackThread.setDaemon(true);
+    final Thread closeThread = new Thread(sink::close, "pipe-sink-close");
+    closeThread.setDaemon(true);
+
+    callbackThread.start();
+    Assert.assertTrue(callbackEntered.await(5, TimeUnit.SECONDS));
+    closeThread.start();
+    Assert.assertTrue(sink.closeEliminationStarted.await(5, TimeUnit.SECONDS));
+
+    try {
+      allowCallbackToFinish.countDown();
+      callbackThread.join(TimeUnit.SECONDS.toMillis(5));
+      closeThread.join(TimeUnit.SECONDS.toMillis(5));
+      Assert.assertFalse(callbackThread.isAlive());
+      Assert.assertFalse(closeThread.isAlive());
+      Assert.assertTrue(sink.isClosed());
+    } finally {
+      allowCallbackToFinish.countDown();
+      callbackThread.interrupt();
+      closeThread.interrupt();
+    }
+  }
+
+  @Test
+  public void testReceiverRetriesAreSerializedForAnyFailureStatus() {
+    commonConfig.setPipeSinkSubtaskSleepIntervalInitMs(40);
+    commonConfig.setPipeSinkSubtaskSleepIntervalMaxMs(40);
+    commonConfig.setPipeAsyncSinkRetryMaxDurationMs(5000);
+
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    sink.recordReceiverStatus(
+        endPoint, new TSStatus().setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
+
+    final long startTimeInMs = System.currentTimeMillis();
+    sink.waitIfReceiverRetryIsBackedOff(endPoint);
+    sink.waitIfReceiverRetryIsBackedOff(endPoint);
+
+    Assert.assertTrue(System.currentTimeMillis() - startTimeInMs >= 60);
+  }
+
+  @Test
+  public void testReceiverRetryFallsBackToSingleProbeAfterMaxDuration() {
+    commonConfig.setPipeAsyncSinkRetryMaxDurationMs(0);
+    commonConfig.setPipeAsyncSinkRetryProbeIntervalMs(1000);
+
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    sink.recordReceiverStatus(endPoint, temporarilyUnavailableStatus());
+
+    sink.waitIfReceiverRetryIsBackedOff(endPoint);
+    Assert.assertThrows(
+        PipeRuntimeSinkNonReportTimeConfigurableException.class,
+        () -> sink.waitIfReceiverRetryIsBackedOff(endPoint));
+    Assert.assertTrue(sink.peekSchedulingDelayMs() > 0);
+
+    sink.recordReceiverStatus(
+        endPoint, new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    sink.waitIfReceiverRetryIsBackedOff(endPoint);
+  }
+
+  private static TSStatus temporarilyUnavailableStatus() {
+    return new TSStatus()
+        .setCode(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
   }
 
   private static TPipeTransferReq createReq(final int bodySize) {
@@ -252,6 +449,26 @@ public class PipeTransferTrackableHandlerTest {
     @Override
     public void clearEventsReferenceCount() {
       // Do nothing
+    }
+  }
+
+  private static class CloseAwareAsyncSink extends IoTDBDataRegionAsyncSink {
+    private final CountDownLatch closeEliminationStarted = new CountDownLatch(1);
+    private volatile Thread closeThread;
+
+    @Override
+    public void close() {
+      closeThread = Thread.currentThread();
+      super.close();
+    }
+
+    @Override
+    public void eliminateHandler(
+        final PipeTransferTrackableHandler handler, final boolean closeClient) {
+      if (Thread.currentThread() == closeThread) {
+        closeEliminationStarted.countDown();
+      }
+      super.eliminateHandler(handler, closeClient);
     }
   }
 }

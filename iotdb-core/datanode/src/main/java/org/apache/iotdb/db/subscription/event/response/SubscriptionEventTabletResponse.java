@@ -23,10 +23,13 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
@@ -69,6 +72,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private final SubscriptionPipeTabletEventBatch batch;
   private final SubscriptionPrefetchingQueue queue;
   private final SubscriptionPipeTabletBatchEvents events;
+  private final ColumnFilterMatcher columnFilterMatcher;
 
   private final SubscriptionCommitContext commitContext;
   private final SubscriptionCommitContext rootCommitContext;
@@ -92,6 +96,11 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
     this.commitContext = commitContext;
     this.rootCommitContext = rootCommitContext;
+    this.columnFilterMatcher =
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                queue.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(queue.getConsumerGroupId()));
 
     init();
   }
@@ -162,7 +171,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     return new CachedSubscriptionPollResponse(
         SubscriptionPollResponseType.TABLETS.getType(),
         new TabletsPayload(Collections.emptyList(), nextOffset.incrementAndGet()),
-        commitContext);
+        commitContext,
+        isTimeSelected());
   }
 
   private synchronized CachedSubscriptionPollResponse generateNextTabletResponse()
@@ -176,7 +186,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.TABLETS.getType(),
           new TabletsPayload(Collections.emptyList(), -totalTablets),
-          commitContext);
+          commitContext,
+          isTimeSelected());
     }
 
     CachedSubscriptionPollResponse response = null;
@@ -215,7 +226,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
-                commitContext);
+                commitContext,
+                isTimeSelected(),
+                getTimeSelectedByTable(currentTablets));
         break;
       }
 
@@ -225,7 +238,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
-                commitContext);
+                commitContext,
+                isTimeSelected(),
+                getTimeSelectedByTable(currentTablets));
         break;
       }
 
@@ -246,14 +261,17 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(Collections.emptyList(), -totalTablets),
-                commitContext);
+                commitContext,
+                isTimeSelected());
         hasNoMore = true;
       } else {
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
-                commitContext);
+                commitContext,
+                isTimeSelected(),
+                getTimeSelectedByTable(currentTablets));
       }
     }
 
@@ -261,7 +279,12 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final List<Tablet> tablets = ((TabletsPayload) response.getPayload()).getTablets();
     if (Objects.nonNull(tablets) && !tablets.isEmpty()) {
       final PipeTabletMemoryBlock memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(currentBufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  SubscriptionEventTabletResponse.class.getSimpleName(),
+                  currentBufferSize,
+                  PipeMemoryBlockCategory.SUBSCRIPTION,
+                  SubscriptionEventTabletResponse.class.getSimpleName());
       response.setMemoryBlock(memoryBlock);
     }
 
@@ -320,6 +343,34 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
   private void transportIterationSnapshot() {
     events.receiveIterationSnapshot(batch.sendIterationSnapshot());
+  }
+
+  private boolean isTimeSelected() {
+    return columnFilterMatcher.isTimeSelected();
+  }
+
+  private Map<String, Map<String, Boolean>> getTimeSelectedByTable(
+      final Map<String, List<Tablet>> tablets) {
+    if (Objects.isNull(tablets) || tablets.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    final Map<String, Map<String, Boolean>> result = new HashMap<>();
+    tablets.forEach(
+        (databaseName, tabletList) -> {
+          if (Objects.isNull(databaseName) || Objects.isNull(tabletList)) {
+            return;
+          }
+          final Map<String, Boolean> tableMap =
+              result.computeIfAbsent(databaseName, ignored -> new HashMap<>());
+          for (final Tablet tablet : tabletList) {
+            if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {
+              tableMap.put(
+                  tablet.getTableName(),
+                  columnFilterMatcher.isTimeSelected(databaseName, tablet.getTableName()));
+            }
+          }
+        });
+    return result;
   }
 
   /////////////////////////////// stringify ///////////////////////////////

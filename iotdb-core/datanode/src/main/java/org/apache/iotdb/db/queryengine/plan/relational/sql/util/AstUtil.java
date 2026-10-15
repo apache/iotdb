@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -181,9 +182,14 @@ public final class AstUtil {
 
   private static Object evaluateInsertConstantExpression(
       Expression expression, PlannerContext plannerContext, SessionInfo session) {
+    if (preOrder(expression).anyMatch(Parameter.class::isInstance)) {
+      throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
+    }
     if (expression instanceof Identifier) {
       throw new SemanticException(
-          String.format("Cannot insert identifier %s, please use string literal", expression));
+          String.format(
+              DataNodeQueryMessages.CANNOT_INSERT_IDENTIFIER_S_PLEASE_USE_STRING_LITERAL,
+              expression));
     }
 
     try {
@@ -195,8 +201,10 @@ public final class AstUtil {
       if (value instanceof Expression) {
         throw new SemanticException(
             String.format(
-                "Insert expression must be constant after constant folding: %s (folded to %s)",
-                expression, value));
+                DataNodeQueryMessages
+                    .EXCEPTION_INSERT_EXPRESSION_MUST_BE_CONSTANT_AFTER_CONSTANT_FOLDING_ARG_FOLDED_TO_ARG_D9EE1433,
+                expression,
+                value));
       }
       return value;
     } catch (SemanticException e) {
@@ -204,8 +212,10 @@ public final class AstUtil {
     } catch (RuntimeException e) {
       throw new SemanticException(
           String.format(
-              "Cannot evaluate insert expression as a constant: %s. %s",
-              expression, e.getMessage()));
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_EVALUATE_INSERT_EXPRESSION_AS_A_CONSTANT_ARG_ARG_F478C134,
+              expression,
+              e.getMessage()));
     }
   }
 

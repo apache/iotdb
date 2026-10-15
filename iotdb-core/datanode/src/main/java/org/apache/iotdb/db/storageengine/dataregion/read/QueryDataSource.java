@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -70,6 +73,22 @@ public class QueryDataSource implements IQueryDataSource {
 
   private String databaseName = null;
 
+  /**
+   * Physical seq/unseq TsFile indices pruned by TopK runtime filter at resource level. Initialized
+   * only when TopK runtime filter is enabled for this scan.
+   */
+  private BitMap seqInvalidatedByRuntimeFilter;
+
+  private BitMap unseqInvalidatedByRuntimeFilter;
+
+  /**
+   * Remaining seq + unseq TsFileResources that may still contain RF-qualifying rows. Initialized
+   * together with the bitmaps above.
+   */
+  private int validSize;
+
+  private boolean runtimeFilterTrackingEnabled;
+
   private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
@@ -91,6 +110,79 @@ public class QueryDataSource implements IQueryDataSource {
     this.unseqResources = other.unseqResources;
     this.unSeqFileOrderIndex = other.unSeqFileOrderIndex;
     this.databaseName = other.databaseName;
+    if (other.runtimeFilterTrackingEnabled) {
+      this.runtimeFilterTrackingEnabled = true;
+      this.validSize = other.validSize;
+      this.seqInvalidatedByRuntimeFilter = other.seqInvalidatedByRuntimeFilter.clone();
+      this.unseqInvalidatedByRuntimeFilter = other.unseqInvalidatedByRuntimeFilter.clone();
+    }
+  }
+
+  /** Initializes RF tracking state when TopK runtime filter is present for this scan. */
+  public void initRuntimeFilterTracking() {
+    if (runtimeFilterTrackingEnabled) {
+      return;
+    }
+    runtimeFilterTrackingEnabled = true;
+    seqInvalidatedByRuntimeFilter = new BitMap(getSeqResourcesSize());
+    unseqInvalidatedByRuntimeFilter = new BitMap(getUnseqResourcesSize());
+    validSize = getSeqResourcesSize() + getUnseqResourcesSize();
+  }
+
+  public boolean isRuntimeFilterTrackingEnabled() {
+    return runtimeFilterTrackingEnabled;
+  }
+
+  @TestOnly
+  public int getValidSize() {
+    return validSize;
+  }
+
+  /** Returns true if any seq/unseq file may still contain RF-qualifying resources. */
+  public boolean hasValidResource() {
+    if (!runtimeFilterTrackingEnabled) {
+      return true;
+    }
+    return validSize > 0;
+  }
+
+  /**
+   * Marks the seq file at physical {@code index} as pruned by TopK RF at resource level.
+   *
+   * <p>Caller must skip indices for which {@link #isRuntimeFilterPruned(boolean, int)} is already
+   * true; this method does not deduplicate marks.
+   */
+  public void setSeqTsFileResourceInvalidated(int physicalIndex) {
+    if (!runtimeFilterTrackingEnabled) {
+      return;
+    }
+    seqInvalidatedByRuntimeFilter.mark(physicalIndex);
+    validSize--;
+  }
+
+  /**
+   * Marks the unseq file at traversal {@code orderIndex} as pruned by TopK RF at resource level.
+   *
+   * <p>Caller must skip indices for which {@link #isRuntimeFilterPruned(boolean, int)} is already
+   * true; this method does not deduplicate marks.
+   */
+  public void setUnseqTsFileResourceInvalidated(int orderIndex) {
+    if (!runtimeFilterTrackingEnabled) {
+      return;
+    }
+    unseqInvalidatedByRuntimeFilter.mark(unSeqFileOrderIndex[orderIndex]);
+    validSize--;
+  }
+
+  /** Returns true if this file was already pruned by RF at resource level on a prior device. */
+  public boolean isRuntimeFilterPruned(boolean isSeq, int index) {
+    if (!runtimeFilterTrackingEnabled) {
+      return false;
+    }
+    if (isSeq) {
+      return seqInvalidatedByRuntimeFilter.isMarked(index);
+    }
+    return unseqInvalidatedByRuntimeFilter.isMarked(unSeqFileOrderIndex[index]);
   }
 
   public List<TsFileResource> getSeqResources() {
@@ -144,6 +236,11 @@ public class QueryDataSource implements IQueryDataSource {
     return curSeqSatisfied;
   }
 
+  public boolean isSeqSatisfiedByRuntimeFilter(
+      int curIndex, TopKRuntimeFilter filter, boolean debug) {
+    return isResourceSatisfiedByRuntimeFilter(curIndex, filter, true, debug);
+  }
+
   public long getCurrentSeqOrderTime(int curIndex) {
     if (curIndex != this.curSeqIndex) {
       throw new IllegalArgumentException(
@@ -194,6 +291,10 @@ public class QueryDataSource implements IQueryDataSource {
     }
 
     return curUnSeqSatisfied;
+  }
+
+  public boolean isUnSeqSatisfiedByRuntimeFilter(int curIndex, TopKRuntimeFilter filter) {
+    return isResourceSatisfiedByRuntimeFilter(curIndex, filter, false, false);
   }
 
   public long getCurrentUnSeqOrderTime(int curIndex) {
@@ -263,6 +364,19 @@ public class QueryDataSource implements IQueryDataSource {
     curUnSeqIndex = -1;
     curUnSeqOrderTime = 0;
     curUnSeqSatisfied = null;
+  }
+
+  private boolean isResourceSatisfiedByRuntimeFilter(
+      int curIndex, TopKRuntimeFilter filter, boolean isSeq, boolean debug) {
+    if (filter == null) {
+      return true;
+    }
+    TsFileResource tsFileResource =
+        isSeq ? seqResources.get(curIndex) : unseqResources.get(unSeqFileOrderIndex[curIndex]);
+    // Resource-level RF uses the TsFile's global time range, not per-device bounds.
+    long startTime = tsFileResource.getFileStartTime();
+    long endTime = tsFileResource.isClosed() ? tsFileResource.getFileEndTime() : Long.MAX_VALUE;
+    return filter.mayQualifyRange(startTime, endTime);
   }
 
   public String getDatabaseName() {

@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
@@ -55,6 +56,12 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   protected volatile WALWriter currentWALFileWriter;
+
+  // Only the sync thread accesses this state. Once sealed, the old WAL must never be written or
+  // closed again, even if renaming it or creating its successor fails because the disk is full.
+  private File pendingRollFile;
+  private WALFileStatus pendingRollStatus;
+  private long pendingRollSearchIndex;
 
   protected AbstractWALBuffer(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
@@ -99,18 +106,22 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
    * @throws IOException If failing to close or open the log writer
    */
   protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
-    // close file
-    currentWALFileWriter.close();
-    addDiskUsage(currentWALFileWriter.size());
-    addFileNum(1);
-    File lastFile = currentWALFileWriter.getLogFile();
+    if (!hasPendingRoll()) {
+      // Record the boundary only after sealing and forcing the old WAL have both succeeded.
+      currentWALFileWriter.close();
+      pendingRollFile = currentWALFileWriter.getLogFile();
+      pendingRollStatus = fileStatus;
+      pendingRollSearchIndex = searchIndex;
+      addDiskUsage(currentWALFileWriter.size());
+    }
+    File lastFile = pendingRollFile;
     String lastName = lastFile.getName();
-    if (WALFileUtils.parseStatusCode(lastName) != fileStatus) {
+    if (WALFileUtils.parseStatusCode(lastName) != pendingRollStatus) {
       String targetName =
           WALFileUtils.getLogFileName(
               WALFileUtils.parseVersionId(lastName),
               WALFileUtils.parseStartSearchIndex(lastName),
-              fileStatus);
+              pendingRollStatus);
       File targetFile = SystemFileFactory.INSTANCE.getFile(logDirectory, targetName);
       Files.move(
           lastFile.toPath(),
@@ -118,6 +129,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
           StandardCopyOption.REPLACE_EXISTING,
           StandardCopyOption.ATOMIC_MOVE);
       lastFile = targetFile;
+      pendingRollFile = targetFile;
     }
     // roll file
     long nextFileVersion = currentWALFileVersion + 1;
@@ -125,11 +137,22 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
         SystemFileFactory.INSTANCE.getFile(
             logDirectory,
             WALFileUtils.getLogFileName(
-                nextFileVersion, searchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX));
+                nextFileVersion, pendingRollSearchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX));
+    // A failed header write may leave a partial successor. Do not append to it on retry, or
+    // overwrite an unexpected existing WAL; either requires recovery rather than online rotation.
+    if (nextLogFile.length() > 0) {
+      throw new FileAlreadyExistsException(nextLogFile.toString());
+    }
     currentWALFileWriter = new WALWriter(nextLogFile);
     currentWALFileVersion = nextFileVersion;
+    addFileNum(1);
+    pendingRollFile = null;
     logger.debug(StorageEngineMessages.OPEN_NEW_WAL_FILE_FOR_BUFFER, nextLogFile, identifier);
     return lastFile;
+  }
+
+  protected boolean hasPendingRoll() {
+    return pendingRollFile != null;
   }
 
   public long getDiskUsage() {

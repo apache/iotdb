@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
@@ -53,6 +54,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -263,6 +265,63 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
+  public void markAsNeedToReportShouldInheritSourceTsFileGeneratedReportSkipping()
+      throws Exception {
+    final PipeTsFileInsertionEvent sourceEvent = Mockito.mock(PipeTsFileInsertionEvent.class);
+    Mockito.when(sourceEvent.shouldReportGeneratedEventsOnCommit()).thenReturn(true);
+    final PipeRawTabletInsertionEvent tabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            false);
+
+    tabletEvent.markAsNeedToReport();
+    Assert.assertTrue(tabletEvent.isShouldReportOnCommit());
+
+    Mockito.when(sourceEvent.shouldReportGeneratedEventsOnCommit()).thenReturn(false);
+    final PipeRawTabletInsertionEvent skippedTabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            false);
+
+    skippedTabletEvent.markAsNeedToReport();
+    Assert.assertFalse(skippedTabletEvent.isShouldReportOnCommit());
+
+    final PipeRawTabletInsertionEvent constructorSkippedTabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            true);
+
+    Assert.assertFalse(constructorSkippedTabletEvent.isShouldReportOnCommit());
+  }
+
+  @Test
   public void convertToTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(insertRowNode, new PrefixTreePattern(pattern));
@@ -279,14 +338,14 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(isAligned2);
 
     PipeRawTabletInsertionEvent event3 =
-        new PipeRawTabletInsertionEvent(tablet1, false, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(false, tablet1, false, new PrefixTreePattern(pattern));
     Tablet tablet3 = event3.convertToTablet();
     boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertFalse(isAligned3);
 
     PipeRawTabletInsertionEvent event4 =
-        new PipeRawTabletInsertionEvent(tablet2, false, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(false, tablet2, false, new PrefixTreePattern(pattern));
     Tablet tablet4 = event4.convertToTablet();
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
@@ -312,14 +371,14 @@ public class PipeTabletInsertionEventTest {
     Assert.assertTrue(isAligned2);
 
     PipeRawTabletInsertionEvent event3 =
-        new PipeRawTabletInsertionEvent(tablet1, true, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(false, tablet1, true, new PrefixTreePattern(pattern));
     Tablet tablet3 = event3.convertToTablet();
     boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertTrue(isAligned3);
 
     PipeRawTabletInsertionEvent event4 =
-        new PipeRawTabletInsertionEvent(tablet2, true, new PrefixTreePattern(pattern));
+        new PipeRawTabletInsertionEvent(false, tablet2, true, new PrefixTreePattern(pattern));
     Tablet tablet4 = event4.convertToTablet();
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
@@ -330,7 +389,7 @@ public class PipeTabletInsertionEventTest {
   public void processAlignedTabletWithCollectPreservesAlignmentForTest() {
     final PipeRawTabletInsertionEvent event =
         new PipeRawTabletInsertionEvent(
-            tabletForInsertTabletNode, true, new PrefixTreePattern(pattern));
+            false, tabletForInsertTabletNode, true, new PrefixTreePattern(pattern));
 
     final List<TabletInsertionEvent> events = new ArrayList<>();
     event
@@ -484,7 +543,7 @@ public class PipeTabletInsertionEventTest {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
             null,
-            new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L),
+            new PipeRawTabletInsertionEvent(false, tabletForInsertRowNode, 111L, 113L),
             insertRowNode,
             new PrefixTreePattern(pattern),
             null);
@@ -496,7 +555,7 @@ public class PipeTabletInsertionEventTest {
     TabletInsertionEventTreePatternParser container2 =
         new TabletInsertionEventTreePatternParser(
             null,
-            new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L),
+            new PipeRawTabletInsertionEvent(false, tabletForInsertRowNode, 110L, 110L),
             insertRowNode,
             new PrefixTreePattern(pattern),
             null);
@@ -508,7 +567,7 @@ public class PipeTabletInsertionEventTest {
     TabletInsertionEventTreePatternParser container3 =
         new TabletInsertionEventTreePatternParser(
             null,
-            new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L),
+            new PipeRawTabletInsertionEvent(false, tabletForInsertTabletNode, 111L, 113L),
             insertTabletNode,
             new PrefixTreePattern(pattern),
             null);
@@ -520,7 +579,7 @@ public class PipeTabletInsertionEventTest {
     TabletInsertionEventTreePatternParser container4 =
         new TabletInsertionEventTreePatternParser(
             null,
-            new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
+            new PipeRawTabletInsertionEvent(false, tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
             insertTabletNode,
             new PrefixTreePattern(pattern),
             null);
@@ -534,20 +593,20 @@ public class PipeTabletInsertionEventTest {
   public void isEventTimeOverlappedWithTimeRangeTest() {
     PipeRawTabletInsertionEvent event;
 
-    event = new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L);
+    event = new PipeRawTabletInsertionEvent(false, tabletForInsertRowNode, 111L, 113L);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
-    event = new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L);
+    event = new PipeRawTabletInsertionEvent(false, tabletForInsertRowNode, 110L, 110L);
     Assert.assertTrue(event.mayEventTimeOverlappedWithTimeRange());
 
-    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L);
+    event = new PipeRawTabletInsertionEvent(false, tabletForInsertTabletNode, 111L, 113L);
     Assert.assertTrue(event.mayEventTimeOverlappedWithTimeRange());
-    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 110L);
+    event = new PipeRawTabletInsertionEvent(false, tabletForInsertTabletNode, Long.MIN_VALUE, 110L);
     Assert.assertTrue(event.mayEventTimeOverlappedWithTimeRange());
-    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 114L, Long.MAX_VALUE);
+    event = new PipeRawTabletInsertionEvent(false, tabletForInsertTabletNode, 114L, Long.MAX_VALUE);
     Assert.assertTrue(event.mayEventTimeOverlappedWithTimeRange());
-    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L);
+    event = new PipeRawTabletInsertionEvent(false, tabletForInsertTabletNode, Long.MIN_VALUE, 109L);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
-    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
+    event = new PipeRawTabletInsertionEvent(false, tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
   }
 
@@ -560,9 +619,9 @@ public class PipeTabletInsertionEventTest {
     partialTablet.setRowSize(3);
 
     PipeRawTabletInsertionEvent rawEvent =
-        new PipeRawTabletInsertionEvent(partialTablet, 111L, 112L);
+        new PipeRawTabletInsertionEvent(false, partialTablet, 111L, 112L);
     Assert.assertTrue(rawEvent.mayEventTimeOverlappedWithTimeRange());
-    rawEvent = new PipeRawTabletInsertionEvent(partialTablet, 113L, Long.MAX_VALUE);
+    rawEvent = new PipeRawTabletInsertionEvent(false, partialTablet, 113L, Long.MAX_VALUE);
     Assert.assertFalse(rawEvent.mayEventTimeOverlappedWithTimeRange());
 
     final InsertTabletNode partialInsertTabletNode =

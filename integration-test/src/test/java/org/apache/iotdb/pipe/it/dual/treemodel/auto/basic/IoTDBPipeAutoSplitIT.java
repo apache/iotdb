@@ -125,15 +125,26 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(3, showPipeResult.size());
+      // a2b2 is a finite history-only pipe and may have already been auto-dropped when there is no
+      // historical data to transfer. The other two pipes must remain and none of the pipes should
+      // be split because they are not full-sync pipes.
+      Assert.assertTrue(showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, "a2b1")));
+      Assert.assertTrue(showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, "a2b3")));
+      Assert.assertTrue(
+          showPipeResult.stream()
+              .allMatch(
+                  i ->
+                      Objects.equals(i.id, "a2b1")
+                          || Objects.equals(i.id, "a2b2")
+                          || Objects.equals(i.id, "a2b3")));
     }
 
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "drop pipe a2b1",
-            "drop pipe a2b2",
-            "drop pipe a2b3",
+            "drop pipe if exists a2b1",
+            "drop pipe if exists a2b2",
+            "drop pipe if exists a2b3",
             "insert into root.test.device(time, field) values(0,1),(1,2)",
             "delete from root.test.device.* where time == 0",
             String.format(

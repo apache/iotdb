@@ -23,9 +23,12 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
@@ -41,11 +44,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.LongSupplier;
 
 /**
  * Writer-based WAL iterator for the new subscription progress model.
@@ -55,7 +61,49 @@ import java.util.Set;
  */
 public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensusRequest> {
 
+  @FunctionalInterface
+  public interface WriterProgressCoverage {
+
+    boolean isCovered(long physicalTime, int nodeId, long localSeq);
+  }
+
+  /**
+   * One shared budget for all WAL probes and reads in a prefetch round. The time limit is
+   * cooperative: it is checked between operations and cannot interrupt a single file read.
+   */
+  static final class ScanBudget {
+
+    private int remainingEntries;
+    private final long startNanos;
+    private final long maxDurationNanos;
+    private final LongSupplier nanoTime;
+    private boolean yielded;
+
+    ScanBudget(final int maxEntries, final long maxDurationNanos) {
+      this(maxEntries, maxDurationNanos, System::nanoTime);
+    }
+
+    ScanBudget(final int maxEntries, final long maxDurationNanos, final LongSupplier nanoTime) {
+      this.remainingEntries = maxEntries;
+      this.maxDurationNanos = maxDurationNanos;
+      this.nanoTime = nanoTime;
+      this.startNanos = nanoTime.getAsLong();
+    }
+
+    private boolean shouldYield() {
+      if (remainingEntries <= 0 || nanoTime.getAsLong() - startNanos >= maxDurationNanos) {
+        yielded = true;
+      }
+      return yielded;
+    }
+
+    boolean hasYielded() {
+      return yielded;
+    }
+  }
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ProgressWALIterator.class);
+  private static final int MAX_SKIPPED_FILE_DETAILS = 8;
 
   private static final int SEARCH_INDEX_OFFSET =
       WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES;
@@ -64,15 +112,23 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
           WALFileVersion.V2.getVersionBytes().length, WALFileVersion.V3.getVersionBytes().length);
 
   private final File logDirectory;
-  private final long startSearchIndex;
+  private long minimumSearchIndex;
   private final WALNode liveWalNode;
   private File[] walFiles;
+  private long[] walFileVersionIds;
   private int currentFileIndex = -1;
   private ProgressWALReader currentReader;
   private long currentReaderVersionId = -1L;
   private boolean currentReaderUsesLiveSnapshot = false;
   private int consumedEntryCountInCurrentFile = 0;
   private final Set<Long> skippedBrokenWalVersionIds = new HashSet<>();
+  private final List<String> skippedBrokenWalFileDetails = new ArrayList<>();
+  private long skippedBrokenWalEntryCount;
+  private boolean retryCurrentReader;
+  private long eofRetryVersionId = -1L;
+  private int eofRetryEntryOffset = -1;
+  private long eofRetryFileLength = -1L;
+  private long eofRetryFileModified = -1L;
   private IOException lastError;
   private boolean incompleteScan = false;
   private String incompleteScanDetail;
@@ -84,6 +140,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   private final List<IConsensusRequest> pendingRequests = new ArrayList<>();
 
   private IndexedConsensusRequest nextReady;
+  private boolean scanYielded;
 
   public ProgressWALIterator(final File logDirectory) {
     this(logDirectory, Long.MIN_VALUE);
@@ -104,7 +161,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   private ProgressWALIterator(
       final File logDirectory, final long startSearchIndex, final WALNode liveWalNode) {
     this.logDirectory = logDirectory;
-    this.startSearchIndex = startSearchIndex;
+    this.minimumSearchIndex = startSearchIndex;
     this.liveWalNode = liveWalNode;
     refreshFileList();
   }
@@ -113,67 +170,248 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     final File[] discoveredWalFiles = WALFileUtils.listAllWALFiles(logDirectory);
     if (discoveredWalFiles == null) {
       walFiles = new File[0];
+      walFileVersionIds = new long[0];
       return;
     }
     WALFileUtils.ascSortByVersionId(discoveredWalFiles);
-    final List<File> filteredWalFiles = new ArrayList<>(discoveredWalFiles.length);
+    final File[] filteredWalFiles = new File[discoveredWalFiles.length];
+    final long[] filteredWalFileVersionIds = new long[discoveredWalFiles.length];
+    int filteredWalFileCount = 0;
     for (int i = 0; i < discoveredWalFiles.length; i++) {
       final File walFile = discoveredWalFiles[i];
+      final long versionId = WALFileUtils.parseVersionId(walFile.getName());
       final boolean isLastWalFile = i == discoveredWalFiles.length - 1;
-      if (!isLastWalFile && shouldSkipWalFile(walFile)) {
+      if (!isLastWalFile && shouldSkipWalFile(walFile, versionId)) {
         continue;
       }
-      filteredWalFiles.add(walFile);
+      filteredWalFiles[filteredWalFileCount] = walFile;
+      filteredWalFileVersionIds[filteredWalFileCount] = versionId;
+      filteredWalFileCount++;
     }
-    walFiles = filteredWalFiles.toArray(new File[0]);
+    walFiles = Arrays.copyOf(filteredWalFiles, filteredWalFileCount);
+    walFileVersionIds = Arrays.copyOf(filteredWalFileVersionIds, filteredWalFileCount);
   }
 
-  private boolean shouldSkipWalFile(final File walFile) {
-    final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+  private boolean shouldSkipWalFile(final File walFile, final long versionId) {
     return skippedBrokenWalVersionIds.contains(versionId) || isHeaderOnlyWalFile(walFile);
   }
 
-  private boolean isHeaderOnlyWalFile(final File walFile) {
+  static boolean isHeaderOnlyWalFile(final File walFile) {
     return walFile.length() <= HEADER_ONLY_WAL_FILE_BYTES;
   }
 
   public void refresh() {
+    final boolean exhaustedKnownFiles = currentFileIndex >= walFiles.length;
     final long currentVersionId =
         (currentFileIndex >= 0 && currentFileIndex < walFiles.length)
-            ? WALFileUtils.parseVersionId(walFiles[currentFileIndex].getName())
-            : -1;
+            ? walFileVersionIds[currentFileIndex]
+            : exhaustedKnownFiles && walFileVersionIds.length > 0
+                ? walFileVersionIds[walFileVersionIds.length - 1]
+                : -1;
 
     refreshFileList();
 
     if (currentVersionId >= 0) {
+      final int refreshedIndex = Arrays.binarySearch(walFileVersionIds, currentVersionId);
+      currentFileIndex = refreshedIndex >= 0 ? refreshedIndex : -refreshedIndex - 2;
+    } else if (exhaustedKnownFiles) {
       currentFileIndex = -1;
-      for (int i = 0; i < walFiles.length; i++) {
-        if (WALFileUtils.parseVersionId(walFiles[i].getName()) >= currentVersionId) {
-          currentFileIndex = i;
-          break;
-        }
-      }
-      if (currentFileIndex < 0) {
-        currentFileIndex = walFiles.length;
-      }
     }
   }
 
   public boolean hasNext() {
-    if (nextReady != null) {
+    return hasNext(null);
+  }
+
+  /**
+   * A false result can also mean that the round's scan budget was consumed. In that case the reader
+   * position and incomplete request fragments are preserved for the next round.
+   */
+  boolean hasNext(final ScanBudget scanBudget) {
+    scanYielded = false;
+    while (true) {
+      if (nextReady != null) {
+        if (!shouldSkip(nextReady)) {
+          return true;
+        }
+        nextReady = null;
+      }
+      try {
+        nextReady = advance(scanBudget);
+        if (nextReady != null) {
+          lastError = null;
+        }
+      } catch (IOException e) {
+        lastError = e;
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41, e);
+      }
+      if (nextReady == null) {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * Returns whether a usable request is already buffered, without reading or advancing WAL. A false
+   * result does not imply that the iterator is exhausted.
+   */
+  boolean hasBufferedNext() {
+    return nextReady != null && !shouldSkip(nextReady);
+  }
+
+  boolean hasYieldedScan() {
+    return scanYielded;
+  }
+
+  /**
+   * Keeps a request returned by {@link #next()} available for a retry without reopening the WAL.
+   * The caller uses this when materialization is temporarily blocked and replay progress has not
+   * advanced yet.
+   */
+  void retry(final IndexedConsensusRequest request) {
+    nextReady = Objects.requireNonNull(request);
+  }
+
+  /**
+   * Advances the local search-index lower bound without rebuilding the iterator. Whole WAL files
+   * are skipped only when every writer progress tuple in them is already covered by queue state.
+   */
+  public void advanceTo(
+      final long targetSearchIndex, final WriterProgressCoverage writerProgressCoverage) {
+    if (targetSearchIndex <= minimumSearchIndex) {
+      return;
+    }
+    minimumSearchIndex = targetSearchIndex;
+
+    if (writerProgressCoverage == null || !canDiscardBufferedRequests(writerProgressCoverage)) {
+      return;
+    }
+
+    refreshForNewerLiveWalFile();
+    int targetFileIndex = locateTargetFile(targetSearchIndex);
+    if (targetFileIndex < 0
+        && liveWalNode != null
+        && targetSearchIndex <= liveWalNode.getCurrentSearchIndex()) {
+      refresh();
+      targetFileIndex = locateTargetFile(targetSearchIndex);
+    }
+    if (targetFileIndex < 0 || targetFileIndex <= currentFileIndex) {
+      return;
+    }
+
+    final int firstFileToSkip = Math.max(0, currentFileIndex);
+    try {
+      for (int fileIndex = firstFileToSkip; fileIndex < targetFileIndex; fileIndex++) {
+        if (!isWalFileCovered(fileIndex, writerProgressCoverage)) {
+          return;
+        }
+      }
+
+      closeCurrentReader();
+      nextReady = null;
+      pendingRequests.clear();
+      pendingSearchIndex = Long.MIN_VALUE;
+      pendingLocalSeq = Long.MIN_VALUE;
+      currentFileIndex = targetFileIndex - 1;
+      resetCurrentFileTracking();
+    } catch (final IOException ignored) {
+      // Fast-forward is opportunistic. Sequential replay remains the correctness fallback.
+    }
+  }
+
+  private void refreshForNewerLiveWalFile() {
+    if (walFileVersionIds.length == 0
+        || (liveWalNode != null
+            && walFileVersionIds[walFileVersionIds.length - 1]
+                < liveWalNode.getCurrentWALFileVersion())) {
+      refresh();
+    }
+  }
+
+  private int locateTargetFile(final long targetSearchIndex) {
+    if (walFiles.length == 0
+        || (liveWalNode != null && targetSearchIndex > liveWalNode.getCurrentSearchIndex())) {
+      return -1;
+    }
+    return WALFileUtils.binarySearchFileBySearchIndex(walFiles, targetSearchIndex);
+  }
+
+  private boolean canDiscardBufferedRequests(final WriterProgressCoverage writerProgressCoverage) {
+    return (nextReady == null || isCovered(nextReady, writerProgressCoverage))
+        && (pendingRequests.isEmpty()
+            || isCovered(
+                pendingSearchIndex,
+                pendingPhysicalTime,
+                pendingNodeId,
+                pendingLocalSeq,
+                writerProgressCoverage));
+  }
+
+  private boolean isCovered(
+      final IndexedConsensusRequest request, final WriterProgressCoverage writerProgressCoverage) {
+    return isCovered(
+        request.getSearchIndex(),
+        request.getPhysicalTime(),
+        request.getNodeId(),
+        request.getProgressLocalSeq(),
+        writerProgressCoverage);
+  }
+
+  private boolean isCovered(
+      final long searchIndex,
+      final long physicalTime,
+      final int nodeId,
+      final long localSeq,
+      final WriterProgressCoverage writerProgressCoverage) {
+    if (searchIndex >= 0 && searchIndex < minimumSearchIndex) {
       return true;
     }
-    try {
-      nextReady = advance();
-      if (nextReady != null) {
-        lastError = null;
-      }
-    } catch (IOException e) {
-      lastError = e;
-      LOGGER.warn(DataNodePipeMessages.PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41, e);
+    return nodeId >= 0
+        && physicalTime >= 0
+        && localSeq >= 0
+        && writerProgressCoverage.isCovered(physicalTime, nodeId, localSeq);
+  }
+
+  private boolean isWalFileCovered(
+      final int fileIndex, final WriterProgressCoverage writerProgressCoverage) throws IOException {
+    final File walFile = walFiles[fileIndex];
+    if (WALFileVersion.getVersion(walFile) != WALFileVersion.V3) {
       return false;
     }
-    return nextReady != null;
+
+    final WALMetaData metadata;
+    final long versionId = walFileVersionIds[fileIndex];
+    if (liveWalNode != null && versionId == liveWalNode.getCurrentWALFileVersion()) {
+      metadata = liveWalNode.getCurrentWALMetaDataSnapshot();
+    } else {
+      try (final ProgressWALReader reader = new ProgressWALReader(walFile)) {
+        metadata = reader.getMetaData();
+      }
+    }
+
+    final List<Integer> bufferSizes = metadata.getBuffersSize();
+    final List<Long> physicalTimes = metadata.getPhysicalTimes();
+    final List<Short> nodeIds = metadata.getNodeIds();
+    final List<Long> localSeqs = metadata.getLocalSeqs();
+    if (physicalTimes.size() != bufferSizes.size()
+        || nodeIds.size() != bufferSizes.size()
+        || localSeqs.size() != bufferSizes.size()) {
+      return false;
+    }
+
+    for (int entryIndex = 0; entryIndex < bufferSizes.size(); entryIndex++) {
+      final long physicalTime = physicalTimes.get(entryIndex);
+      final int nodeId = nodeIds.get(entryIndex);
+      final long localSeq = localSeqs.get(entryIndex);
+      if (nodeId < 0
+          || physicalTime < 0
+          || localSeq < 0
+          || !writerProgressCoverage.isCovered(physicalTime, nodeId, localSeq)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public IndexedConsensusRequest next() {
@@ -195,6 +433,27 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
 
   public boolean hasSkippedBrokenWalFiles() {
     return !skippedBrokenWalVersionIds.isEmpty();
+  }
+
+  int getSkippedBrokenWalFileCount() {
+    return skippedBrokenWalVersionIds.size();
+  }
+
+  long getSkippedBrokenWalEntryCount() {
+    return skippedBrokenWalEntryCount;
+  }
+
+  boolean isWaitingForReadableWal() {
+    return retryCurrentReader;
+  }
+
+  String getSkippedBrokenWalFileDetails(final int firstFileIndex) {
+    final int firstAvailableIndex =
+        getSkippedBrokenWalFileCount() - skippedBrokenWalFileDetails.size();
+    final int start = Math.max(0, firstFileIndex - firstAvailableIndex);
+    return (firstFileIndex < firstAvailableIndex ? "...; " : "")
+        + String.join(
+            "; ", skippedBrokenWalFileDetails.subList(start, skippedBrokenWalFileDetails.size()));
   }
 
   public boolean hasIncompleteScan() {
@@ -224,13 +483,38 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     lastError = null;
     incompleteScan = false;
     incompleteScanDetail = null;
+    scanYielded = false;
     resetCurrentFileTracking();
   }
 
-  private IndexedConsensusRequest advance() throws IOException {
+  private IndexedConsensusRequest advance(final ScanBudget scanBudget) throws IOException {
     while (true) {
+      if (scanBudget != null && scanBudget.shouldYield()) {
+        scanYielded = true;
+        return null;
+      }
+      if (retryCurrentReader) {
+        refresh();
+        final int retryFileIndex = findFileIndexByVersion(currentReaderVersionId);
+        if (retryFileIndex < 0) {
+          // Do not let a temporarily invisible file make replay silently move to its successor.
+          return null;
+        }
+        if (!openReaderAtIndex(retryFileIndex, consumedEntryCountInCurrentFile)) {
+          if (retryCurrentReader) {
+            return null;
+          }
+          continue;
+        }
+        retryCurrentReader = false;
+      }
       if (currentReader != null && currentReader.hasNext()) {
         try {
+          if (scanBudget != null) {
+            // Count physical entries, including skipped requests and request fragments. A single
+            // hasNext() can otherwise read an arbitrary WAL prefix before returning a request.
+            scanBudget.remainingEntries--;
+          }
           final ByteBuffer buffer = currentReader.next();
           consumedEntryCountInCurrentFile = currentReader.getCurrentEntryIndex() + 1;
           final WALEntryType type = WALEntryType.valueOf(buffer.get());
@@ -261,20 +545,26 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
           }
           continue;
         } catch (final EOFException eofException) {
-          if (!currentReaderUsesLiveSnapshot) {
-            throw eofException;
+          if (!isConfirmedRetainedWalTruncation()) {
+            deferCurrentReader(eofException);
+            return null;
           }
-          // Live snapshot metadata may get ahead of the bytes currently visible in the file. Treat
-          // EOF as "this snapshot is exhausted for now" instead of terminating the iterator.
-          final IndexedConsensusRequest flushed = flushPending();
+          final IndexedConsensusRequest flushed = skipUnreadableCurrentWalFile(eofException);
           if (flushed != null && !shouldSkip(flushed)) {
-            closeCurrentReader();
             return flushed;
           }
-          if (reopenLiveSnapshotReader()) {
-            continue;
+          continue;
+        } catch (final IOException readException) {
+          if (!(readException instanceof BrokenWALFileException)
+              && !isCurrentEntryAboveSizeLimit()) {
+            deferCurrentReader(readException);
+            return null;
           }
-          return null;
+          final IndexedConsensusRequest flushed = skipUnreadableCurrentWalFile(readException);
+          if (flushed != null && !shouldSkip(flushed)) {
+            return flushed;
+          }
+          continue;
         }
       }
 
@@ -299,7 +589,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         continue;
       }
 
-      if (!openNextReader()) {
+      if (!openNextReader(scanBudget)) {
+        if (scanYielded || retryCurrentReader) {
+          return null;
+        }
         final IndexedConsensusRequest flushed = flushPending();
         if (flushed != null && !shouldSkip(flushed)) {
           return flushed;
@@ -309,12 +602,21 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     }
   }
 
-  private boolean openNextReader() throws IOException {
-    while (++currentFileIndex < walFiles.length) {
+  private boolean openNextReader(final ScanBudget scanBudget) throws IOException {
+    while (currentFileIndex + 1 < walFiles.length) {
+      if (scanBudget != null && scanBudget.shouldYield()) {
+        scanYielded = true;
+        return false;
+      }
+      currentFileIndex++;
       if (openReaderAtIndex(currentFileIndex, 0)) {
         return true;
       }
+      if (retryCurrentReader) {
+        return false;
+      }
     }
+    currentFileIndex = walFiles.length;
     return false;
   }
 
@@ -336,44 +638,67 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       if (fileIndex < 0) {
         return false;
       }
-      return openReaderAtIndex(fileIndex, consumedEntryCountInCurrentFile);
+      return openReaderAtIndex(fileIndex, consumedEntryCountInCurrentFile, true, snapshot);
     }
 
     final int previousFileIndex = findFileIndexByVersion(currentReaderVersionId);
     if (previousFileIndex < 0) {
       return openFirstReaderAfterVersion(currentReaderVersionId);
     }
+    final long versionToReopen = currentReaderVersionId;
     if (openReaderAtIndex(previousFileIndex, consumedEntryCountInCurrentFile)) {
       return true;
     }
-    return openFirstReaderAfterVersion(currentReaderVersionId);
+    if (retryCurrentReader) {
+      return false;
+    }
+    return openFirstReaderAfterVersion(versionToReopen);
   }
 
   private boolean openReaderAtIndex(final int fileIndex, final int skipEntries) throws IOException {
-    return openReaderAtIndex(fileIndex, skipEntries, true);
+    return openReaderAtIndex(fileIndex, skipEntries, true, null);
   }
 
   private boolean openReaderAtIndex(
       final int fileIndex, final int skipEntries, final boolean allowNearLiveRetry)
       throws IOException {
+    return openReaderAtIndex(fileIndex, skipEntries, allowNearLiveRetry, null);
+  }
+
+  private boolean openReaderAtIndex(
+      final int fileIndex,
+      final int skipEntries,
+      final boolean allowNearLiveRetry,
+      final WALMetaData liveMetaDataSnapshot)
+      throws IOException {
     final File walFile = walFiles[fileIndex];
-    final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+    final long versionId = walFileVersionIds[fileIndex];
+    currentFileIndex = fileIndex;
     final boolean useLiveSnapshot =
         liveWalNode != null && versionId == liveWalNode.getCurrentWALFileVersion();
 
+    ProgressWALReader reader = null;
     try {
-      final ProgressWALReader reader =
+      reader =
           useLiveSnapshot
-              ? new ProgressWALReader(walFile, liveWalNode.getCurrentWALMetaDataSnapshot())
+              ? new ProgressWALReader(
+                  walFile,
+                  liveMetaDataSnapshot != null
+                      ? liveMetaDataSnapshot
+                      : liveWalNode.getCurrentWALMetaDataSnapshot())
               : new ProgressWALReader(walFile);
       if (!skipEntries(reader, skipEntries)) {
         reader.close();
         markIncompleteScan(
             String.format(
-                "failed to reopen WAL file %s at entry offset %s: iterator could not skip to the requested position",
-                walFile.getName(), skipEntries),
+                DataNodePipeMessages
+                    .MESSAGE_FAILED_TO_REOPEN_WAL_FILE_ARG_AT_ENTRY_OFFSET_ARG_ITERATOR_COULD_NOT_SKIP_TO_THE_REQUESTED_POSITION_332B3AD9,
+                walFile.getName(),
+                skipEntries),
             null);
-        resetCurrentFileTracking();
+        currentReaderVersionId = versionId;
+        consumedEntryCountInCurrentFile = skipEntries;
+        retryCurrentReader = true;
         return false;
       }
       currentReader = reader;
@@ -381,9 +706,19 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       currentReaderVersionId = versionId;
       currentReaderUsesLiveSnapshot = useLiveSnapshot;
       consumedEntryCountInCurrentFile = skipEntries;
+      retryCurrentReader = false;
       return true;
     } catch (final IOException e) {
-      if (isNearLiveWalVersion(versionId)) {
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (final IOException closeException) {
+          e.addSuppressed(closeException);
+        }
+      }
+      if (isNearLiveWalVersion(versionId)
+          || !(e instanceof BrokenWALFileException)
+          || (liveWalNode == null && fileIndex == walFiles.length - 1)) {
         LOGGER.debug(
             DataNodePipeMessages
                 .PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_NEAR_LIVE_WAL_FILE_RETRYING_5AEB94AC,
@@ -400,19 +735,180 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         }
         markIncompleteScan(
             String.format(
-                "failed to open near-live WAL file %s while replay scan was still in progress",
-                walFile.getName()),
+                DataNodePipeMessages
+                    .MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD,
+                walFile.getAbsolutePath(),
+                versionId,
+                skipEntries,
+                summarizeException(e)),
             e);
+        currentReaderVersionId = versionId;
+        consumedEntryCountInCurrentFile = skipEntries;
+        retryCurrentReader = true;
         return false;
       }
-      skippedBrokenWalVersionIds.add(versionId);
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092,
-          walFile.getName(),
-          e);
+      recordSkippedBrokenWalFile(versionId, walFile, e, null, skipEntries);
+      pendingRequests.clear();
+      pendingSearchIndex = Long.MIN_VALUE;
+      pendingLocalSeq = Long.MIN_VALUE;
+      resetCurrentFileTracking();
       return false;
     }
+  }
+
+  private void recordSkippedBrokenWalFile(
+      final long versionId,
+      final File walFile,
+      final IOException error,
+      final WALMetaData metadata,
+      final int firstSkippedEntryOffset) {
+    if (!skippedBrokenWalVersionIds.add(versionId)) {
+      return;
+    }
+
+    final int entryCount = metadata == null ? -1 : metadata.getBuffersSize().size();
+    final long skippedEntries =
+        entryCount < 0 ? -1L : Math.max(0L, (long) entryCount - firstSkippedEntryOffset);
+    if (skippedEntries > 0L) {
+      skippedBrokenWalEntryCount += skippedEntries;
+    }
+    // Filename boundaries are file-level search-index bounds, not an entry count. Footer entry
+    // ordinals also include request fragments and entries from other writers.
+    final long firstSearchIndex = WALFileUtils.parseStartSearchIndex(walFile.getName());
+    final int fileIndex = findFileIndexByVersion(versionId);
+    final long lastSearchIndex =
+        fileIndex >= 0 && fileIndex + 1 < walFiles.length
+            ? WALFileUtils.parseStartSearchIndex(walFiles[fileIndex + 1].getName())
+            : -1L;
+    final String detail =
+        String.format(
+            DataNodePipeMessages
+                .MESSAGE_FILE_ARG_VERSIONID_ARG_FILESEARCHINDEXRANGE_ARG_ARG_ENTRYRANGE_ARG_ARG_SKIPPEDENTRIES_ARG_ERROR_ARG_0D6D77B0,
+            walFile.getAbsolutePath(),
+            versionId,
+            formatKnownValue(firstSearchIndex),
+            formatKnownValue(lastSearchIndex),
+            firstSkippedEntryOffset,
+            formatKnownValue(entryCount),
+            formatKnownValue(skippedEntries),
+            summarizeException(error));
+    if (skippedBrokenWalFileDetails.size() == MAX_SKIPPED_FILE_DETAILS) {
+      skippedBrokenWalFileDetails.remove(0);
+    }
+    skippedBrokenWalFileDetails.add(detail);
+    LOGGER.warn(
+        DataNodePipeMessages
+            .LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILE_ARG_HISTORICAL_SUBSCRIPTION_DATA_MAY_BE_LOST_AE0DBAB1,
+        detail,
+        error);
+  }
+
+  private static String formatKnownValue(final long value) {
+    return value < 0 ? DataNodePipeMessages.MESSAGE_UNKNOWN_AD921D60 : String.valueOf(value);
+  }
+
+  private boolean isConfirmedRetainedWalTruncation() {
+    final File walFile = walFiles[currentFileIndex];
+    final boolean sealed =
+        liveWalNode != null
+            ? !isNearLiveWalVersion(currentReaderVersionId)
+            : currentFileIndex + 1 < walFiles.length;
+    final boolean confirmed =
+        !currentReaderUsesLiveSnapshot
+            && sealed
+            && eofRetryVersionId == currentReaderVersionId
+            && eofRetryEntryOffset == consumedEntryCountInCurrentFile
+            && eofRetryFileLength == walFile.length()
+            && eofRetryFileModified == walFile.lastModified();
+    eofRetryVersionId = currentReaderVersionId;
+    eofRetryEntryOffset = consumedEntryCountInCurrentFile;
+    eofRetryFileLength = walFile.length();
+    eofRetryFileModified = walFile.lastModified();
+    return confirmed;
+  }
+
+  private void deferCurrentReader(final IOException error) throws IOException {
+    // Keep the incomplete request and the offset of the first unread entry. Flushing or reopening
+    // at offset zero here would either deliver a partial request or duplicate its fragments.
+    markIncompleteScan(
+        String.format(
+            DataNodePipeMessages
+                .MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD,
+            walFiles[currentFileIndex].getAbsolutePath(),
+            currentReaderVersionId,
+            consumedEntryCountInCurrentFile,
+            summarizeException(error)),
+        error);
+    retryCurrentReader = true;
+    closeCurrentReader();
+  }
+
+  private boolean isCurrentEntryAboveSizeLimit() {
+    final int entryIndex = currentReader.getCurrentEntryIndex();
+    final List<Integer> sizes = currentReader.getMetaData().getBuffersSize();
+    // An entry above the supported limit is deterministically unreadable, even after reopening.
+    // Preserve the existing large-entry escape path, but report the resulting data gap explicitly.
+    return entryIndex >= 0
+        && entryIndex < sizes.size()
+        && sizes.get(entryIndex)
+            > IoTDBDescriptor.getInstance().getConfig().getWalEntrySizeLimitInByte();
+  }
+
+  private IndexedConsensusRequest skipUnreadableCurrentWalFile(final IOException error) {
+    final int failedFileIndex = currentFileIndex;
+    final File walFile =
+        failedFileIndex >= 0 && failedFileIndex < walFiles.length
+            ? walFiles[failedFileIndex]
+            : null;
+    final long versionId =
+        failedFileIndex >= 0 && failedFileIndex < walFileVersionIds.length
+            ? walFileVersionIds[failedFileIndex]
+            : currentReaderVersionId;
+    final WALMetaData failedFileMetadata =
+        currentReader == null ? null : currentReader.getMetaData();
+    final int firstSkippedEntryOffset =
+        Math.max(
+            0,
+            consumedEntryCountInCurrentFile
+                - (isFailedEntryPartOfPendingRequest() ? pendingRequests.size() : 0));
+    final IndexedConsensusRequest flushed =
+        isFailedEntryPartOfPendingRequest() ? null : flushPending();
+
+    try {
+      closeCurrentReader();
+    } catch (final IOException closeException) {
+      error.addSuppressed(closeException);
+    }
+    pendingRequests.clear();
+    pendingSearchIndex = Long.MIN_VALUE;
+    pendingLocalSeq = Long.MIN_VALUE;
+    resetCurrentFileTracking();
+
+    if (walFile == null || versionId < 0) {
+      markIncompleteScan(
+          DataNodePipeMessages
+              .PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_IDENTIFY_UNREADABLE_WAL_FILE_7BA9F422,
+          error);
+      return flushed;
+    }
+    recordSkippedBrokenWalFile(
+        versionId, walFile, error, failedFileMetadata, firstSkippedEntryOffset);
+    return flushed;
+  }
+
+  private boolean isFailedEntryPartOfPendingRequest() {
+    return currentReader != null
+        && !pendingRequests.isEmpty()
+        && isSamePendingRequest(
+            currentReader.getCurrentEntryPhysicalTime(),
+            currentReader.getCurrentEntryNodeId(),
+            currentReader.getCurrentEntryLocalSeq());
+  }
+
+  private static String summarizeException(final IOException error) {
+    return error.getMessage() == null
+        ? error.getClass().getSimpleName()
+        : error.getClass().getSimpleName() + ": " + error.getMessage();
   }
 
   private boolean skipEntries(final ProgressWALReader reader, final int skipEntries)
@@ -421,19 +917,20 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private int findFileIndexByVersion(final long versionId) {
-    for (int i = 0; i < walFiles.length; i++) {
-      if (WALFileUtils.parseVersionId(walFiles[i].getName()) == versionId) {
-        return i;
-      }
-    }
-    return -1;
+    final int fileIndex = Arrays.binarySearch(walFileVersionIds, versionId);
+    return fileIndex >= 0 ? fileIndex : -1;
   }
 
   private boolean openFirstReaderAfterVersion(final long versionId) throws IOException {
-    for (int i = 0; i < walFiles.length; i++) {
-      if (WALFileUtils.parseVersionId(walFiles[i].getName()) > versionId
-          && openReaderAtIndex(i, 0)) {
+    final int matchedFileIndex = Arrays.binarySearch(walFileVersionIds, versionId);
+    final int firstFileIndexAfterVersion =
+        matchedFileIndex >= 0 ? matchedFileIndex + 1 : -matchedFileIndex - 1;
+    for (int i = firstFileIndexAfterVersion; i < walFiles.length; i++) {
+      if (openReaderAtIndex(i, 0)) {
         return true;
+      }
+      if (retryCurrentReader) {
+        return false;
       }
     }
     resetCurrentFileTracking();
@@ -461,8 +958,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return metadataSearchIndex;
     }
     buffer.position(SEARCH_INDEX_OFFSET);
-    final long bodySearchIndex = buffer.getLong();
-    return bodySearchIndex >= 0 ? bodySearchIndex : metadataSearchIndex;
+    final long bodySearchIndex = SearchNode.extractSearchIndex(buffer.getLong());
+    // A replicated request has no local search index. The metadata fallback is based on the
+    // WAL entry offset, which also counts fragments and cannot assign a local index to it.
+    return bodySearchIndex;
   }
 
   private void startPending(
@@ -494,13 +993,14 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private boolean shouldSkip(final IndexedConsensusRequest request) {
-    return request.getSearchIndex() >= 0 && request.getSearchIndex() < startSearchIndex;
+    return request.getSearchIndex() >= 0 && request.getSearchIndex() < minimumSearchIndex;
   }
 
   private void closeCurrentReader() throws IOException {
     if (currentReader != null) {
-      currentReader.close();
+      final ProgressWALReader reader = currentReader;
       currentReader = null;
+      reader.close();
     }
   }
 
@@ -508,6 +1008,9 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     currentReaderVersionId = -1L;
     currentReaderUsesLiveSnapshot = false;
     consumedEntryCountInCurrentFile = 0;
+    retryCurrentReader = false;
+    eofRetryVersionId = -1L;
+    eofRetryEntryOffset = -1;
   }
 
   private void markIncompleteScan(final String detail, final IOException cause) {

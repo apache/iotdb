@@ -26,13 +26,18 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
@@ -42,6 +47,9 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBUserDefinedTableFunctionIT {
   private static final String DATABASE_NAME = "test";
+  private static final int MAX_TSBLOCK_SIZE_IN_BYTES = 1024;
+  private static final int LARGE_RESULT_REPEAT_COUNT = 64;
+  private static final int LARGE_RESULT_PAYLOAD_SIZE = 128;
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -57,6 +65,10 @@ public class IoTDBUserDefinedTableFunctionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeCommonConfig()
+        .setMaxTsBlockSizeInByte(MAX_TSBLOCK_SIZE_IN_BYTES);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
@@ -180,6 +192,74 @@ public class IoTDBUserDefinedTableFunctionIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testLargeResultIsSplitWithoutDataLoss() throws Exception {
+    SQLFunctionUtils.createUDF(
+        "large_result",
+        "org.apache.iotdb.db.query.udf.example.relational.LargeResultTableFunction");
+
+    Set<String> returnedRows = new HashSet<>();
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT * FROM large_result(vehicle, "
+                  + LARGE_RESULT_REPEAT_COUNT
+                  + ", "
+                  + LARGE_RESULT_PAYLOAD_SIZE
+                  + ")")) {
+        while (resultSet.next()) {
+          int repeatIndex = resultSet.getInt("repeat_index");
+          long time = resultSet.getLong("time");
+          Assert.assertTrue(repeatIndex >= 0 && repeatIndex < LARGE_RESULT_REPEAT_COUNT);
+          Assert.assertEquals(
+              repeatIndex + ":" + "x".repeat(LARGE_RESULT_PAYLOAD_SIZE),
+              resultSet.getString("payload"));
+          assertPassThroughColumns(resultSet, time);
+          Assert.assertTrue(
+              "Duplicate result row for time " + time + " and repeat index " + repeatIndex,
+              returnedRows.add(time + ":" + repeatIndex));
+        }
+      }
+    }
+
+    long[] inputTimes = new long[] {1, 2, 3, 5};
+    Assert.assertEquals(inputTimes.length * LARGE_RESULT_REPEAT_COUNT, returnedRows.size());
+    for (long time : inputTimes) {
+      for (int repeatIndex = 0; repeatIndex < LARGE_RESULT_REPEAT_COUNT; repeatIndex++) {
+        Assert.assertTrue(returnedRows.contains(time + ":" + repeatIndex));
+      }
+    }
+  }
+
+  private static void assertPassThroughColumns(ResultSet resultSet, long time) throws SQLException {
+    switch ((int) time) {
+      case 1:
+        Assert.assertEquals("d0", resultSet.getString("device_id"));
+        Assert.assertEquals(1, resultSet.getInt("s1"));
+        Assert.assertEquals(1, resultSet.getLong("s2"));
+        break;
+      case 2:
+        Assert.assertEquals("d0", resultSet.getString("device_id"));
+        Assert.assertNull(resultSet.getObject("s1"));
+        Assert.assertEquals(2, resultSet.getLong("s2"));
+        break;
+      case 3:
+        Assert.assertEquals("d0", resultSet.getString("device_id"));
+        Assert.assertEquals(3, resultSet.getInt("s1"));
+        Assert.assertEquals(3, resultSet.getLong("s2"));
+        break;
+      case 5:
+        Assert.assertEquals("d1", resultSet.getString("device_id"));
+        Assert.assertEquals(4, resultSet.getInt("s1"));
+        Assert.assertNull(resultSet.getObject("s2"));
+        break;
+      default:
+        Assert.fail("Unexpected pass-through time: " + time);
+    }
   }
 
   @Test

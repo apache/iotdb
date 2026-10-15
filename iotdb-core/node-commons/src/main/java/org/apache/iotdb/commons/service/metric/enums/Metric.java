@@ -30,6 +30,8 @@ public enum Metric {
   // cluster related
   NODE_NUM("node_num"),
   DATABASE_NUM("database_num"),
+  TABLE_DATABASE_NUM("table_database_num"),
+  TABLE_NUM("table_num"),
   REGION_NUM("region_num"),
   REGION_NUM_IN_DATA_NODE("region_num_in_data_node"),
   REGION_GROUP_LEADER_NUM_IN_DATA_NODE("region_group_leader_num_in_data_node"),
@@ -92,6 +94,7 @@ public enum Metric {
   PAM_ALLOCATED_FAILURE_COUNT("primitive_array_manager_allocated_failure_count"),
   PAM_RELEASED_FAILURE_COUNT("primitive_array_manager_released_failure_count"),
   TABLE_DISK_USAGE_CACHE("table_disk_usage_cache"),
+  SUSPICIOUS_DISK_EXCEPTION_COUNT("suspicious_disk_exception_count"),
 
   // compaction related
   DATA_WRITTEN("data_written"),
@@ -113,6 +116,9 @@ public enum Metric {
   LEADER_QUANTITY("leader_quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
+  // The per-table metrics have an extra table tag, so they cannot share the names above
+  SCHEMA_REGION_TABLE("schema_region_table"),
+  SCHEMA_ENGINE_TABLE("schema_engine_table"),
   // query engine related
   QUERY_PLAN_COST("query_plan_cost"),
   OPERATOR_EXECUTION_COST("operator_execution_cost"),
@@ -176,6 +182,11 @@ public enum Metric {
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
   PIPE_MEM("pipe_mem"),
+  PIPE_TSFILE_PARSER_ADMISSION_REJECT("pipe_tsfile_parser_admission_reject"),
+  PIPE_TSFILE_PARSER_ADMISSION_YIELD("pipe_tsfile_parser_admission_yield"),
+  PIPE_TSFILE_PARSER_ADMISSION_WAIT("pipe_tsfile_parser_admission_wait"),
+  PIPE_TSFILE_PARSER_IN_FLIGHT("pipe_tsfile_parser_in_flight"),
+  PIPE_TSFILE_PARSER_WAITING("pipe_tsfile_parser_waiting"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   PIPE_LINKED_TSFILE_SIZE("pipe_linked_tsfile_size"),
   PIPE_PHANTOM_REFERENCE_COUNT("pipe_phantom_reference_count"),
@@ -210,8 +221,45 @@ public enum Metric {
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   SUBSCRIPTION_CONSENSUS_LAG("subscription_consensus_lag"),
   SUBSCRIPTION_CONSENSUS_WAL_GAP("subscription_consensus_wal_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP("subscription_consensus_wal_file_gap"),
+  SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES("subscription_consensus_wal_file_gap_entries"),
   SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE("subscription_consensus_routing_epoch_change"),
   SUBSCRIPTION_CONSENSUS_WATERMARK("subscription_consensus_watermark"),
+  SUBSCRIPTION_CONSENSUS_SEEK_GENERATION("subscription_consensus_seek_generation"),
+  SUBSCRIPTION_CONSENSUS_ACTIVE("subscription_consensus_active"),
+  SUBSCRIPTION_CONSENSUS_INITIALIZED("subscription_consensus_initialized"),
+  SUBSCRIPTION_CONSENSUS_REMAINING_EVENT_COUNT("subscription_consensus_remaining_event_count"),
+  SUBSCRIPTION_CONSENSUS_RAW_WAL_GAP("subscription_consensus_raw_wal_gap"),
+  SUBSCRIPTION_CONSENSUS_CURRENT_WAL_SEARCH_INDEX(
+      "subscription_consensus_current_wal_search_index"),
+  SUBSCRIPTION_CONSENSUS_NEXT_READ_SEARCH_INDEX("subscription_consensus_next_read_search_index"),
+  SUBSCRIPTION_CONSENSUS_IN_FLIGHT_EVENT_COUNT("subscription_consensus_in_flight_event_count"),
+  SUBSCRIPTION_CONSENSUS_PREFETCHED_EVENT_COUNT("subscription_consensus_prefetched_event_count"),
+  SUBSCRIPTION_CONSENSUS_PENDING_EVENT_COUNT("subscription_consensus_pending_event_count"),
+  SUBSCRIPTION_CONSENSUS_LAST_POLL_TIME("subscription_consensus_last_poll_time"),
+  SUBSCRIPTION_CONSENSUS_LAST_PROGRESS_TIME("subscription_consensus_last_progress_time"),
+  SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS(
+      "subscription_consensus_last_delivery_interval_ms"),
+  SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS(
+      "subscription_consensus_max_delivery_interval_ms"),
+  SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS("subscription_consensus_delivery_idle_time_ms"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS("subscription_consensus_prefetch_duration_ms"),
+  SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS(
+      "subscription_consensus_max_prefetch_duration_ms"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS("subscription_consensus_prefetch_idle_time_ms"),
+  SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS("subscription_consensus_progress_status"),
+  SUBSCRIPTION_MEMORY_USED_BYTES("subscription_memory_used_bytes"),
+  SUBSCRIPTION_MEMORY_LIMIT_BYTES("subscription_memory_limit_bytes"),
+  SUBSCRIPTION_MEMORY_OVERCOMMIT_BYTES("subscription_memory_overcommit_bytes"),
+  SUBSCRIPTION_MEMORY_OVERSIZED_ENTRY_COUNT("subscription_memory_oversized_entry_count"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_USED("subscription_consensus_memory_used"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA("subscription_consensus_memory_quota"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM("subscription_consensus_memory_maximum"),
+  SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS("subscription_consensus_admission_rejections"),
+  SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON(
+      "subscription_consensus_admission_rejections_by_reason"),
+  SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS("subscription_consensus_memory_rejections"),
+  SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS("subscription_consensus_oversized_rejections"),
   // load related
   ACTIVE_LOADING_FILES_NUMBER("active_loading_files_number"),
   ACTIVE_LOADING_FILES_SIZE("active_loading_files_size"),
@@ -220,7 +268,6 @@ public enum Metric {
   LOAD_TIME_COST("load_time_cost"),
   LOAD_POINT_COUNT("load_point_count"),
   MEMTABLE_POINT_COUNT("memtable_point_count"),
-  BINARY_ALLOCATOR("binary_allocator"),
   // memory related
   MEMORY_THRESHOLD_SIZE("memory_threshold_size"),
   MEMORY_ACTUAL_SIZE("memory_actual_size"),

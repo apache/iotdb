@@ -43,4 +43,14 @@ public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   public ConfigNodeConfig setLeaderDistributionPolicy(String policy) {
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setRatisLogAppenderBufferSizeMax(int size) {
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    return this;
+  }
 }

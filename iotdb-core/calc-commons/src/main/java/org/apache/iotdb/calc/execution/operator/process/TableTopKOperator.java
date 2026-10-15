@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.calc.execution.operator.process;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 
 import org.apache.tsfile.block.column.Column;
@@ -33,6 +35,29 @@ import java.util.Comparator;
 import java.util.List;
 
 public class TableTopKOperator extends TopKOperator {
+
+  private final int timeFilterColumnIndex;
+
+  public TableTopKOperator(
+      CommonOperatorContext operatorContext,
+      List<Operator> childrenOperators,
+      List<TSDataType> dataTypes,
+      Comparator<SortKey> comparator,
+      int topValue,
+      boolean childrenDataInOrder,
+      TopKRuntimeFilter topKRuntimeFilter,
+      int timeFilterColumnIndex) {
+    super(
+        operatorContext,
+        childrenOperators,
+        dataTypes,
+        comparator,
+        topValue,
+        childrenDataInOrder,
+        topKRuntimeFilter);
+    this.timeFilterColumnIndex = timeFilterColumnIndex;
+  }
+
   public TableTopKOperator(
       CommonOperatorContext operatorContext,
       List<Operator> childrenOperators,
@@ -40,7 +65,20 @@ public class TableTopKOperator extends TopKOperator {
       Comparator<SortKey> comparator,
       int topValue,
       boolean childrenDataInOrder) {
-    super(operatorContext, childrenOperators, dataTypes, comparator, topValue, childrenDataInOrder);
+    super(
+        operatorContext,
+        childrenOperators,
+        dataTypes,
+        comparator,
+        topValue,
+        childrenDataInOrder,
+        null);
+    this.timeFilterColumnIndex = -1;
+  }
+
+  @Override
+  protected long extractThresholdTime(MergeSortKey peek) {
+    return peek.tsBlock.getColumn(timeFilterColumnIndex).getLong(peek.rowIndex);
   }
 
   @Override

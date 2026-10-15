@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
@@ -32,13 +33,20 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.response.IoTConsensusV2TransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
+import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferResp;
+import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder.IoTConsensusV2SyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
@@ -83,6 +91,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   private final int thisDataNodeId;
   private final int consensusGroupId;
   private final IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
+  private final TEndPoint localEndPoint;
+  private final DataRegionId dataRegionId;
   private IoTConsensusV2SyncBatchReqBuilder tabletBatchBuilder;
 
   public IoTConsensusV2SyncSink(
@@ -95,7 +105,12 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     // retain the implementation of list to cope with possible future expansion
     this.peers = peers;
     this.consensusGroupId = consensusGroupId;
+    this.dataRegionId = new DataRegionId(consensusGroupId);
     this.thisDataNodeId = thisDataNodeId;
+    this.localEndPoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
     this.syncRetryClientManager =
         IoTV2GlobalComponentContainer.getInstance().getGlobalSyncClientManager();
     this.iotConsensusV2SinkMetrics = iotConsensusV2SinkMetrics;
@@ -152,7 +167,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                   .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_S_9710318F,
               tabletInsertionEvent,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
   }
 
@@ -177,7 +193,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                   .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_S_21AD3263,
               tsFileInsertionEvent,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
   }
 
@@ -193,17 +210,27 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   }
 
   private void doTransfer() {
+    boolean transferAttemptRecorded = false;
     try (final SyncIoTConsensusV2ServiceClient syncIoTConsensusV2ServiceClient =
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
       final TIoTConsensusV2BatchTransferResp resp;
-      resp =
-          syncIoTConsensusV2ServiceClient.iotConsensusV2BatchTransfer(
-              tabletBatchBuilder.toTIoTConsensusV2BatchTransferReq());
+      final TIoTConsensusV2BatchTransferReq req =
+          tabletBatchBuilder.toTIoTConsensusV2BatchTransferReq();
+      resp = syncIoTConsensusV2ServiceClient.iotConsensusV2BatchTransfer(req);
 
       final List<TSStatus> statusList =
           resp.getBatchResps().stream()
               .map(TIoTConsensusV2TransferResp::getStatus)
               .collect(Collectors.toList());
+      if (isUserDataTransferAuditEnabled()) {
+        final TSStatus failedStatus =
+            statusList.stream().filter(status -> !isSuccessful(status)).findFirst().orElse(null);
+        recordTransferAttemptWithoutGroupCheck(
+            failedStatus == null,
+            failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
+            null);
+        transferAttemptRecorded = true;
+      }
 
       // TODO(support batch): handle retry logic
       // Only handle the failed statuses to avoid string format performance overhead
@@ -219,6 +246,9 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
 
       tabletBatchBuilder.onSuccess();
     } catch (final Exception e) {
+      if (!transferAttemptRecorded) {
+        recordTransferAttempt(false, null, e);
+      }
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
               IOT_CONSENSUS_V2_SYNC_CONNECTION_FAILED_FORMAT,
@@ -226,7 +256,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               TABLET_BATCH_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
   }
 
@@ -258,14 +289,14 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     try (final SyncIoTConsensusV2ServiceClient syncIoTConsensusV2ServiceClient =
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
       progressIndex = pipeDeleteDataNodeEvent.getProgressIndex();
-      resp =
-          syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(
-              IoTConsensusV2DeleteNodeReq.toTIoTConsensusV2TransferReq(
-                  pipeDeleteDataNodeEvent.getDeleteDataNode(),
-                  tCommitId,
-                  tConsensusGroupId,
-                  progressIndex,
-                  thisDataNodeId));
+      final TIoTConsensusV2TransferReq req =
+          IoTConsensusV2DeleteNodeReq.toTIoTConsensusV2TransferReq(
+              pipeDeleteDataNodeEvent.getDeleteDataNode(),
+              tCommitId,
+              tConsensusGroupId,
+              progressIndex,
+              thisDataNodeId);
+      resp = syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(req);
     } catch (final Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
@@ -274,7 +305,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               DELETION_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -324,17 +356,27 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
     final TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
+    boolean transferAttemptRecorded = false;
 
     try (final SyncIoTConsensusV2ServiceClient syncIoTConsensusV2ServiceClient =
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
 
-      resp =
-          syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(
-              IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-                  insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId));
+      final TIoTConsensusV2TransferReq req =
+          IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
+              insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
+      resp = syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(req);
+      final TSStatus status = resp.getStatus();
+      recordTransferAttempt(
+          isSuccessful(status),
+          isSuccessful(status) ? null : String.valueOf(status.getCode()),
+          null);
+      transferAttemptRecorded = true;
     } catch (final Exception e) {
+      if (!transferAttemptRecorded) {
+        recordTransferAttempt(false, null, e);
+      }
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
               IOT_CONSENSUS_V2_SYNC_CONNECTION_FAILED_FORMAT,
@@ -342,7 +384,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               TABLET_INSERTION_NODE_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -416,7 +459,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               TSFILE_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -439,10 +483,17 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       final TCommitId tCommitId,
       final TConsensusGroupId tConsensusGroupId)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(
+                    IoTConsensusV2SyncSink.class.getSimpleName(),
+                    readFileBufferSize,
+                    PipeMemoryBlockCategory.SINK,
+                    IoTConsensusV2SyncSink.class.getSimpleName());
+        final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      long position = 0;
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
@@ -454,6 +505,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                 ? readBuffer
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         final IoTConsensusV2TransferFilePieceResp resp;
+        final long transferPosition = position;
+        boolean transferAttemptRecorded = false;
         try {
           resp =
               IoTConsensusV2TransferFilePieceResp.fromTIoTConsensusV2TransferResp(
@@ -473,14 +526,24 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                               tCommitId,
                               tConsensusGroupId,
                               thisDataNodeId)));
+          final TSStatus transferStatus = resp.getStatus();
+          recordTransferAttempt(
+              isSuccessful(transferStatus),
+              isSuccessful(transferStatus) ? null : String.valueOf(transferStatus.getCode()),
+              null);
+          transferAttemptRecorded = true;
         } catch (Exception e) {
+          if (!transferAttemptRecorded) {
+            recordTransferAttempt(false, null, e);
+          }
           throw new PipeRuntimeSinkRetryTimesConfigurableException(
               String.format(
                   DataNodePipeMessages
                       .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_FILE_S_BECAUSE_S_3C673B7A,
                   file,
                   e.getMessage()),
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              e);
         }
 
         position += readLength;
@@ -508,10 +571,39 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     }
   }
 
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min(
+            (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+            Math.max(file.length(), 1L));
+  }
+
   private TEndPoint getFollowerUrl() {
     // In current iotConsensusV2 design, one connector corresponds to one follower, so the peers is
     // actually a singleton list
     return peers.get(0);
+  }
+
+  private static boolean isSuccessful(TSStatus status) {
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+  }
+
+  private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
+    if (!isUserDataTransferAuditEnabled()) {
+      return;
+    }
+    recordTransferAttemptWithoutGroupCheck(success, errorCode, error);
+  }
+
+  private void recordTransferAttemptWithoutGroupCheck(
+      boolean success, String errorCode, Throwable error) {
+    DataNodeUserDataTransferAuditor.record(
+        localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
+  }
+
+  private boolean isUserDataTransferAuditEnabled() {
+    return DataNodeUserDataTransferAuditor.isEnabledFor(dataRegionId);
   }
 
   // synchronized to avoid close connector when transfer event

@@ -73,6 +73,39 @@ public final class ConfigMessages {
           + "上一次配置文件更新可能发生了意外中断。"
           + "忽略临时文件 {}";
 
+  // ---------------------------------------------------------------------------
+  // protocol – ConfigNodeInfo
+  // ---------------------------------------------------------------------------
+  public static final String UPDATE_CONFIG_NODE_SUCCESSFULLY =
+          "成功更新 ConfigNode：{}，耗时 {} 毫秒。";
+  public static final String UPDATE_CONFIG_NODE_FAILED = "更新 ConfigNode 失败。";
+  public static final String SYSTEM_PROPERTIES_NOT_EXIST =
+          "系统属性文件不存在，无需存储 ConfigNode 列表";
+  public static final String LOAD_CONFIG_NODE_SUCCESSFULLY =
+          "成功加载 ConfigNode：{}，耗时 {} 毫秒。";
+  public static final String CANNOT_PARSE_CONFIG_NODE_LIST =
+          "无法解析 system.properties 中的 ConfigNode 列表";
+  public static final String MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHEN_NODE_STARTED_2ACA2BD0 =
+          "只有在 %s 已成功启动的环境中才允许移除。请检查它是否已在 ConfigNode 上移除，或是否误删了 system.properties 文件。";
+
+  // --- ConfigNodeClient ---
+  public static final String MSG_RECONNECTION_FAIL =
+          "无法连接到任何 config node。请检查 ConfigNodes 的状态或已连接 %s 的日志";
+  public static final String MSG_RECONNECTION_NODE_FAIL =
+          "连接 ConfigNode %s 失败：从 %s %s 执行 %s 时，异常:";
+  public static final String NODE_LEADER_MAY_DOWN_TRY_NEXT =
+          "当前节点 leader 可能已宕机 {}，尝试下一个节点";
+  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE =
+          "等待尝试连接 ConfigNode 时发生意外中断";
+  public static final String NODE_MAY_DOWN_TRY_NEXT =
+          "当前节点可能已宕机 {}，尝试下一个节点";
+  public static final String FAILED_CONNECT_CONFIG_NODE_NOT_LEADER =
+          "连接 ConfigNode {} 失败：从 {} {} 发起，因为当前节点不是 leader 或尚未就绪，稍后将重试";
+  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
+          "等待尝试连接 ConfigNode 时发生意外中断，可能因为当前节点已宕机。将中断当前执行流程以避免无意义的等待";
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_NODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_2ACA2BD0 =
+          "ConfigNode leader {} 正在预热，暂未对 {} {} 提供服务，将等待并重试。原因：{}";
+
   private ConfigMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
@@ -91,6 +124,10 @@ public final class ConfigMessages {
   public static final String LOG_PIPEASYNCSINKFORCEDRETRYTABLETEVENTQUEUESIZE_SET_ARG_8FDA7023 = "pipeAsyncSinkForcedRetryTabletEventQueueSize 已设置为 {}。";
   public static final String LOG_PIPEASYNCSINKFORCEDRETRYTOTALEVENTQUEUESIZE_SET_ARG_92D6EACB = "pipeAsyncSinkForcedRetryTotalEventQueueSize 已设置为 {}。";
   public static final String LOG_PIPEASYNCSINKMAXRETRYEXECUTIONTIMEMSPERCALL_SET_ARG_77E7B216 = "pipeAsyncSinkMaxRetryExecutionTimeMsPerCall 已设置为 {}。";
+  public static final String LOG_PIPEASYNCSINKRETRYMAXDURATIONMS_IS_SET_TO_ARG_5058C99F =
+      "pipeAsyncSinkRetryMaxDurationMs 已设置为 {}。";
+  public static final String LOG_PIPEASYNCSINKRETRYPROBEINTERVALMS_IS_SET_TO_ARG_A1E9AF45 =
+      "pipeAsyncSinkRetryProbeIntervalMs 已设置为 {}。";
   public static final String LOG_PIPEASYNCSINKSELECTORNUMBER_SHOULD_GREATER_THAN_0_CONFIGURING_IT_NOT_CHANGE_EEB9793C = "pipeAsyncSinkSelectorNumber 应大于 0，配置保持不变。";
   public static final String LOG_PIPEASYNCSINKMAXCLIENTNUMBER_SHOULD_GREATER_THAN_0_CONFIGURING_IT_NOT_CHANGE_11EF47BF = "pipeAsyncSinkMaxClientNumber 应大于 0，配置保持不变。";
   public static final String LOG_PIPEASYNCSINKMAXTSFILECLIENTNUMBER_SHOULD_GREATER_THAN_0_CONFIGURING_IT_NOT_CHANGE_AC812FE2 = "pipeAsyncSinkMaxTsFileClientNumber 应大于 0，配置保持不变。";

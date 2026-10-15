@@ -27,6 +27,7 @@ import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.external.commons.io.file.PathUtils;
@@ -123,6 +124,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.TAB;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_LIB_PATH;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEST_NODE_ADDRESS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TRIGGER_LIB_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.UDF_LIB_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
@@ -181,7 +183,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
     this.portList = portList;
-    this.nodeAddress = "127.0.0.1";
+    this.nodeAddress = System.getProperty(TEST_NODE_ADDRESS, "127.0.0.1");
     this.nodePort = portList[0];
     this.metricPort = portList[portList.length - 2];
     jmxPort = this.portList[portList.length - 1];
@@ -606,7 +608,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public final String getIpAndPortString() {
-    return this.getIp() + ":" + this.getPort();
+    return UrlUtils.formatTEndPointIpv4AndIpv6Url(this.getIp(), this.getPort());
   }
 
   protected String workDirFilePath(String dirName, String fileName) {

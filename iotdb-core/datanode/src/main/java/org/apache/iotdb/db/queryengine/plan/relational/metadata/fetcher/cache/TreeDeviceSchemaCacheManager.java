@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -29,7 +30,9 @@ import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewExceptio
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 
@@ -64,12 +67,17 @@ public class TreeDeviceSchemaCacheManager {
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  private TreeDeviceSchemaCacheManager() {
+  TreeDeviceSchemaCacheManager() {
     tableDeviceSchemaCache = TableDeviceSchemaCache.getInstance();
   }
 
   public static TreeDeviceSchemaCacheManager getInstance() {
     return TreeDeviceSchemaCacheManagerHolder.INSTANCE;
+  }
+
+  void failIfMetadataLeaseFenced() {
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   /** singleton pattern. */
@@ -101,6 +109,7 @@ public class TreeDeviceSchemaCacheManager {
    * @return timeseries partialPath and its SchemaEntity
    */
   public ClusterSchemaTree get(final PartialPath devicePath, final String[] measurements) {
+    failIfMetadataLeaseFenced();
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema = tableDeviceSchemaCache.getDeviceSchema(devicePath.getNodes());
     if (!(schema instanceof TreeDeviceNormalSchema)) {
@@ -130,6 +139,7 @@ public class TreeDeviceSchemaCacheManager {
    * @return empty if cache miss or the device path is not a template activated path
    */
   public ClusterSchemaTree getMatchedTemplateSchema(final PartialPath devicePath) {
+    failIfMetadataLeaseFenced();
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema = tableDeviceSchemaCache.getDeviceSchema(devicePath.getNodes());
     if (!(schema instanceof TreeDeviceTemplateSchema)) {
@@ -149,6 +159,7 @@ public class TreeDeviceSchemaCacheManager {
    * @return empty if cache miss
    */
   public ClusterSchemaTree getMatchedNormalSchema(final PartialPath fullPath) {
+    failIfMetadataLeaseFenced();
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema =
         tableDeviceSchemaCache.getDeviceSchema(
@@ -168,6 +179,7 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   public List<Integer> computeWithoutTemplate(final ISchemaComputation schemaComputation) {
+    failIfMetadataLeaseFenced();
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final String[] measurements = schemaComputation.getMeasurements();
     if (measurements == null) {
@@ -208,6 +220,7 @@ public class TreeDeviceSchemaCacheManager {
     if (!schemaComputation.hasLogicalViewNeedProcess()) {
       return new Pair<>(new ArrayList<>(), new ArrayList<>());
     }
+    failIfMetadataLeaseFenced();
 
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final Pair<Integer, Integer> beginToEnd =
@@ -263,6 +276,7 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   public List<Integer> computeWithTemplate(final ISchemaComputation computation) {
+    failIfMetadataLeaseFenced();
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final String[] measurements = computation.getMeasurements();
     final IDeviceSchema deviceSchema =
@@ -338,8 +352,23 @@ public class TreeDeviceSchemaCacheManager {
       final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
     tableDeviceSchemaCache.updateLastCache(
         database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
+  }
+
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    tableDeviceSchemaCache.updateLastCache(
+        database, deviceID, measurements, updateSource, isAligned, measurementSchemas);
   }
 
   /**
@@ -363,6 +392,10 @@ public class TreeDeviceSchemaCacheManager {
    * @param measurementPath the fetched {@link MeasurementPath}
    */
   public void declareLastCache(final String database, final MeasurementPath measurementPath) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getIDeviceID(),

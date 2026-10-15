@@ -71,7 +71,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
               "create pipe %s"
                   + " with source ("
                   + "'capture.tree'='false',"
-                  + "'mode.double-living'='true')"
+                  + "'double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               "p1", receiverDataNode.getIpAndPortString()));
@@ -84,7 +84,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
               "create pipe %s"
                   + " with source ("
                   + "'capture.table'='false',"
-                  + "'mode.double-living'='true')"
+                  + "'source.mode.double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               "p2", receiverDataNode.getIpAndPortString()));
@@ -286,7 +286,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
           String.format(
               "create pipe %s"
                   + " with source ("
-                  + "'mode.double-living'='true')"
+                  + "'double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               treePipeName, receiverDataNode.getIpAndPortString()));
@@ -308,7 +308,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
           String.format(
               "create pipe %s"
                   + " with source ("
-                  + "'mode.double-living'='true')"
+                  + "'source.mode.double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               tablePipeName, receiverDataNode.getIpAndPortString()));
@@ -350,7 +350,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
       statement.execute(
           String.format(
               "create pipe %s"
-                  + " with source ('mode.double-living'='true')"
+                  + " with source ('extractor.double-living'='true')"
                   + " with sink ('node-urls'='%s')",
               pipeName, receiverDataNode.getIpAndPortString()));
     }

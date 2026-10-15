@@ -117,14 +117,14 @@ public abstract class IoTDBReceiverAgent {
             FileUtils.deleteDirectory(receiverFileDir);
             return null;
           });
-      LOGGER.info(PipeMessages.CLEAN_RECEIVER_DIR_SUCCESS, receiverFileDir);
+      LOGGER.debug(PipeMessages.CLEAN_RECEIVER_DIR_SUCCESS, receiverFileDir);
     } catch (final Exception e) {
       LOGGER.warn(PipeMessages.CLEAN_RECEIVER_DIR_FAILED, receiverFileDir, e);
     }
 
     try {
       FileUtils.forceMkdir(receiverFileDir);
-      LOGGER.info(PipeMessages.CREATE_RECEIVER_DIR_SUCCESS, receiverFileDir);
+      LOGGER.debug(PipeMessages.CREATE_RECEIVER_DIR_SUCCESS, receiverFileDir);
     } catch (final IOException e) {
       LOGGER.warn(PipeMessages.CREATE_RECEIVER_DIR_FAILED, receiverFileDir, e);
     }

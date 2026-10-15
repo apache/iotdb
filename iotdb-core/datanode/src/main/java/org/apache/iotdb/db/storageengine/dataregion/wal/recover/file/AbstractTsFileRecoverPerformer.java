@@ -98,7 +98,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       if (versionNumber != TSFileConfig.VERSION_NUMBER) {
         // cannot rewrite a file with V3 header, delete it first
         writer.close();
-        tsFile.delete();
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
         writer =
             new RestorableTsFileIOWriter(
                 tsFile,

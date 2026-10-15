@@ -30,8 +30,14 @@ public final class RpcMessages {
   public static final String FRAME_ERROR_NEGATIVE_FRAME_SIZE = "读取到负数帧大小 (%d)%s！";
   public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED =
       "帧大小 (%d) 超过保护最大值 (%d)%s！";
+  public static final String
+      EXCEPTION_FRAME_SIZE_ARG_EXCEEDS_THE_MAXIMUM_SUPPORTED_MESSAGE_SIZE_E83C0952 =
+      "帧大小 (%d) 超过支持的最大消息大小！";
   public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
       "字符串长度 (%d) 超过保护最大值 (%d)%s！";
+  public static final String
+      EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE =
+          "请求读取的大小 (%d) 超过当前帧剩余大小 (%d)%s！";
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
@@ -58,6 +64,11 @@ public final class RpcMessages {
   public static final String COLUMN_INDEX_OUT_OF_RANGE = "列索引 %d 超出范围 %d";
   public static final String UNKNOWN_COLUMN_NAME = "未知列名：";
   public static final String NO_RECORD_REMAINS = "没有剩余记录";
+  public static final String CANNOT_READ_BOOLEAN_FROM_TIME_COLUMN = "无法从时间列读取 boolean 值";
+  public static final String CANNOT_READ_DOUBLE_FROM_TIME_COLUMN = "无法从时间列读取 double 值";
+  public static final String CANNOT_READ_FLOAT_FROM_TIME_COLUMN = "无法从时间列读取 float 值";
+  public static final String CANNOT_READ_INT32_FROM_TIME_COLUMN = "无法从时间列读取 int32 值";
+  public static final String CANNOT_READ_BINARY_FROM_TIME_COLUMN = "无法从时间列读取 binary 值";
   public static final String CANNOT_CLOSE_DATASET = "无法关闭数据集，网络连接异常：{} ";
 
   // RpcUtils

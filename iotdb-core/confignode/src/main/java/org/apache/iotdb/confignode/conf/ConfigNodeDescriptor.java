@@ -25,9 +25,10 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.snapshot.SnapshotStreamFactory;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
@@ -312,6 +313,11 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
+    conf.setMetadataLeaseFenceMs(
+        Long.parseLong(
+            properties.getProperty(
+                "metadata_lease_fence_ms", String.valueOf(conf.getMetadataLeaseFenceMs()))));
+
     conf.setEnableTopologyProbing(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -396,8 +402,21 @@ public class ConfigNodeDescriptor {
                 "procedure_core_worker_thread_count",
                 String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
 
+    conf.setLoadStatisticsPublisherThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_load_statistics_publisher_thread_count",
+                String.valueOf(conf.getLoadStatisticsPublisherThreadCount()))));
+
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
+
+    conf.setConfigNodeSnapshotBufferSizeMax(
+        Long.parseLong(
+            properties.getProperty(
+                "config_node_snapshot_buffer_size_max",
+                String.valueOf(conf.getConfigNodeSnapshotBufferSizeMax()))));
+    SnapshotStreamFactory.setBufferSizeMax(conf.getConfigNodeSnapshotBufferSizeMax());
   }
 
   private void loadRatisConsensusConfig(TrimProperties properties) {
@@ -959,7 +978,7 @@ public class ConfigNodeDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
-    PipePeriodicalLogReducer.update();
+    LoggerPeriodicalLogReducer.update();
   }
 
   public static ConfigNodeDescriptor getInstance() {

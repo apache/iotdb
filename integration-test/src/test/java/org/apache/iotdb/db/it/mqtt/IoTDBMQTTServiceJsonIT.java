@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -479,6 +480,46 @@ public class IoTDBMQTTServiceJsonIT {
         }
         assertEquals(5, count);
       }
+    }
+  }
+
+  @Test
+  public void testIllegalMeasurementIsRejected() throws Exception {
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      String payload =
+          "["
+              + "{\"device\":\"root.sg.invalid\",\"timestamp\":1,\"measurements\":[\"a.b\"],\"values\":[1]},"
+              + "{\"device\":\"root.sg.invalid\",\"timestamp\":2,\"measurements\":[\"valid\"],\"values\":[2]}"
+              + "]";
+
+      Awaitility.await()
+          .atMost(3, TimeUnit.MINUTES)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                connection.publish("root.sg.invalid", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+                try (final SessionDataSet dataSet =
+                    session.executeQueryStatement(
+                        "select valid from root.sg.invalid where time = 2")) {
+                  return dataSet.hasNext();
+                } catch (StatementExecutionException e) {
+                  if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
+                    return false;
+                  }
+                  throw e;
+                }
+              });
+
+      int timeseriesCount = 0;
+      try (final SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries root.sg.invalid.**")) {
+        while (dataSet.hasNext()) {
+          dataSet.next();
+          timeseriesCount++;
+        }
+      }
+      assertEquals(1, timeseriesCount);
+      assertFalse(session.checkTimeseriesExists("root.sg.invalid.a.b"));
     }
   }
 }

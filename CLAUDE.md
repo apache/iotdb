@@ -92,6 +92,10 @@ mvn clean verify -DskipUTs -Dit.test=ClassName -DfailIfNoTests=false -Dfailsafe.
 
 # Run a single test method within an IT class (use ClassName#methodName)
 mvn clean verify -DskipUTs -Dit.test=ClassName#methodName -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -PTableSimpleIT -P with-integration-tests
+
+# Build the Edge distribution and run its dedicated Tree/Table read-write IT
+mvn clean package -DskipTests -pl distribution -am
+mvn verify -DskipUTs -Dit.test=IoTDBEdgeBasicIT -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -P EdgeIT -P with-integration-tests
 ```
 
 When verifying a new feature, only run the specific IT classes/methods that were added or modified in the current branch — do not run all ITs.
@@ -112,6 +116,15 @@ To run integration tests from IntelliJ: enable the `with-integration-tests` prof
 - **ConfigNode** (`iotdb-core/confignode`): Manages cluster metadata, schema regions, data regions, partition tables. Coordinates via Ratis consensus.
 - **DataNode** (`iotdb-core/datanode`): Handles data storage, query execution, and client connections. The main server component.
 - **AINode** (`iotdb-core/ainode`): Python-based node for AI/ML inference tasks.
+
+### Edge Distribution
+
+- `EdgeNode` (`iotdb-core/confignode/src/main/java/org/apache/iotdb/edge/EdgeNode.java`) starts the ConfigNode and DataNode in one JVM for resource-constrained single-node deployments.
+- `distribution/src/assembly/edge.xml` produces the additional `apache-iotdb-<version>-edge-bin.zip` artifact. Keep its `edge-bin` assembly id unique so it cannot replace an existing attached artifact.
+- Edge-specific system defaults live under `iotdb-core/node-commons/src/assembly/resources/conf/edge/`. Standard node, all-in-one, and integration-test assemblies must continue to exclude `edge/**`.
+- Edge launchers must reuse the configuration-aware port checks in `scripts/conf/iotdb-common.sh`. Stop scripts must match both the `EdgeNode` main class and the exact `IOTDB_HOME`; never fall back to a global process-name kill.
+- Package node-independent tools that work with the combined process. Exclude scripts that require standalone node launchers or environment files, including destructive, daemon-management, and health-check scripts.
+- After packaging changes, run a clean distribution build, check that every existing distribution artifact is still produced, and inspect the Edge zip contents and startup/shutdown behavior.
 
 ### Dual Data Model
 

@@ -675,8 +675,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
 
     if (deviceTableScanNode != null) {
-      boxValue.add(
-          String.format("DeviceNumber: %s", deviceTableScanNode.getDeviceEntries().size()));
+      boxValue.add(String.format("DeviceNumber: %s", deviceTableScanNode.getDeviceEntryCount()));
       boxValue.add(String.format("ScanOrder: %s", deviceTableScanNode.getScanOrder()));
       if (deviceTableScanNode.getTimePredicate().isPresent()) {
         boxValue.add(
@@ -698,6 +697,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       boxValue.add(
           String.format(
               "PushDownLimitToEachDevice: %s", deviceTableScanNode.isPushLimitToEachDevice()));
+      String topKRuntimeFilterSourceId = deviceTableScanNode.getTopKRuntimeFilterSourceId();
+      if (topKRuntimeFilterSourceId != null) {
+        boxValue.add(String.format("TOPN OPT: %s", topKRuntimeFilterSourceId));
+      }
     }
 
     boxValue.add(
@@ -794,7 +797,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
           String.format("Project-Expressions: %s", node.getProjection().getMap().values()));
     }
 
-    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntries().size()));
+    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntryCount()));
     boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
@@ -1049,6 +1052,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
     boxValue.add(String.format("Count: %s", node.getCount()));
+    if (node.getTopKRuntimeFilterSourceId() != null) {
+      boxValue.add("TOPN OPT");
+    }
     return render(node, boxValue, context);
   }
 

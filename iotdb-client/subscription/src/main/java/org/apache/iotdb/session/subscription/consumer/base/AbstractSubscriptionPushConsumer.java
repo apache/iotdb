@@ -66,6 +66,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
   protected AbstractSubscriptionPushConsumer(
       final AbstractSubscriptionPushConsumerBuilder builder) {
@@ -127,10 +128,14 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       return;
     }
 
-    super.open();
-
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    try {
+      super.open();
+    } catch (final SubscriptionException e) {
+      isClosed.set(true);
+      throw e;
+    }
     emptyPollLogThrottler.reset();
 
     // submit auto poll worker
@@ -138,13 +143,24 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   }
 
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
       return;
     }
 
-    super.close();
-    isClosed.set(true);
+    try {
+      synchronized (this) {
+        if (isClosed.get()) {
+          return;
+        }
+
+        isClosed.set(true);
+        prepareClose();
+        super.close();
+      }
+    } finally {
+      isClosing.set(false);
+    }
   }
 
   @Override
@@ -159,7 +175,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
     future[0] =
         SubscriptionExecutorServiceManager.submitAutoPollWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.PUSH_CONSUMER_CANCEL_AUTO_POLL, this);
@@ -175,7 +191,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   class AutoPollWorker implements Runnable {
     @Override
     public void run() {
-      if (isClosed()) {
+      if (isClosed() || isFenced()) {
         return;
       }
 

@@ -390,8 +390,7 @@ TEST_CASE("Session rejects SQL after close", "[sessionClose]") {
       builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
   localSession->open();
   localSession->close();
-  REQUIRE_THROWS_AS(localSession->executeNonQueryStatement("show databases"),
-                    IoTDBConnectionException);
+  REQUIRE_THROWS_AS(localSession->executeQueryStatement("SHOW VERSION"), IoTDBConnectionException);
 }
 
 TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
@@ -905,6 +904,21 @@ TEST_CASE("UrlUtils - parseTEndPointIpv4AndIpv6Url", "[UrlUtils]") {
     REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1:65535"), "127.0.0.1",
                       65535);
   }
+}
+
+TEST_CASE("UrlUtils - isWildcardAddress", "[UrlUtils]") {
+  REQUIRE(UrlUtils::isWildcardAddress("0.0.0.0"));
+  REQUIRE(UrlUtils::isWildcardAddress("[0.0.0.0]"));
+  REQUIRE(UrlUtils::isWildcardAddress("::"));
+  REQUIRE(UrlUtils::isWildcardAddress("[::]"));
+  REQUIRE(UrlUtils::isWildcardAddress("0:0:0:0:0:0:0:0"));
+  REQUIRE(UrlUtils::isWildcardAddress("0::0"));
+
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress(""));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("127.0.0.1"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("localhost"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("::1"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("[::1]"));
 }
 
 TEST_CASE("TsBlock deserialize rejects truncated malicious payload", "[TsBlockDeserialize]") {

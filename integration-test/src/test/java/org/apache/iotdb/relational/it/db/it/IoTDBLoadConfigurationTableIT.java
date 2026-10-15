@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
@@ -101,11 +102,13 @@ public class IoTDBLoadConfigurationTableIT {
             + "conf"
             + File.separator
             + "iotdb-system.properties";
+    int dataNodeId = findDataNodeIdByRpcPort(dataNodeWrapper.getPort());
 
     // Case 1: non-positive guard params (`if (x > 0) setX(x)`) must display the effective
     // default value, not the raw file value (0 / -1).
     Map<String, String> afterGuardReload =
         appendLinesLoadAndShow(
+            dataNodeId,
             confPath,
             "cte_buffer_size_in_bytes=0",
             "max_rows_in_cte_buffer=-1",
@@ -116,20 +119,20 @@ public class IoTDBLoadConfigurationTableIT {
 
     // Case 2: a valid value is not rewritten, so display must equal the file value (regression).
     Map<String, String> afterValidReload =
-        appendLinesLoadAndShow(confPath, "cte_buffer_size_in_bytes=262144");
+        appendLinesLoadAndShow(dataNodeId, confPath, "cte_buffer_size_in_bytes=262144");
     Assert.assertEquals("262144", afterValidReload.get("cte_buffer_size_in_bytes"));
 
     // Case 3: params whose template default is 0 are always rewritten to a computed default,
     // so they must never display 0 (this was always wrong, even without a bad file value).
-    Map<String, String> defaultsReload = appendLinesLoadAndShow(confPath);
+    Map<String, String> defaultsReload = appendLinesLoadAndShow(dataNodeId, confPath);
     assertPositiveNonZero(defaultsReload, "sort_buffer_size_in_bytes");
     assertPositiveNonZero(defaultsReload, "mods_cache_size_limit_per_fi_in_bytes");
   }
 
   // Appends the given lines to the config file, runs `load configuration`, fetches the
   // `show configuration` result, and restores the file to its original length.
-  private Map<String, String> appendLinesLoadAndShow(String confPath, String... lines)
-      throws Exception {
+  private Map<String, String> appendLinesLoadAndShow(
+      int dataNodeId, String confPath, String... lines) throws Exception {
     long length = new File(confPath).length();
     try {
       if (lines.length > 0) {
@@ -145,7 +148,7 @@ public class IoTDBLoadConfigurationTableIT {
           Statement statement = connection.createStatement()) {
         statement.execute("LOAD CONFIGURATION");
       }
-      return fetchShowConfiguration();
+      return fetchShowConfiguration(dataNodeId);
     } finally {
       try (FileChannel fileChannel =
           FileChannel.open(new File(confPath).toPath(), StandardOpenOption.WRITE)) {
@@ -154,11 +157,24 @@ public class IoTDBLoadConfigurationTableIT {
     }
   }
 
-  private Map<String, String> fetchShowConfiguration() throws Exception {
+  private int findDataNodeIdByRpcPort(int rpcPort) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("SHOW DATANODES")) {
+      while (resultSet.next()) {
+        if (resultSet.getInt(4) == rpcPort) {
+          return resultSet.getInt(1);
+        }
+      }
+    }
+    throw new AssertionError("Cannot find DataNode id for RPC port: " + rpcPort);
+  }
+
+  private Map<String, String> fetchShowConfiguration(int dataNodeId) throws Exception {
     Map<String, String> result = new HashMap<>();
     try (ITableSession tableSessionConnection = EnvFactory.getEnv().getTableSessionConnection()) {
       SessionDataSet sessionDataSet =
-          tableSessionConnection.executeQueryStatement("show configuration");
+          tableSessionConnection.executeQueryStatement("show configuration on " + dataNodeId);
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String name = iterator.getString(1);

@@ -56,7 +56,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * DataSet
  * pattern: ts
  * loose-range: all
- * mode: live
+ * mode: initial
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionTreeRegressionConsumer.class})
@@ -82,7 +82,7 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionTr
         "2024-01-01T00:00:00+08:00",
         "2024-02-13T08:00:02+08:00",
         false,
-        TopicConstant.MODE_LIVE_VALUE,
+        TopicConstant.MODE_INITIAL_VALUE,
         TopicConstant.LOOSE_RANGE_ALL_VALUE);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);

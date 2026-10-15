@@ -19,19 +19,42 @@
 
 package org.apache.iotdb.commons.pipe.config.plugin.env;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 
 public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
   private final PipeTaskMeta pipeTaskMeta;
+  private final UserEntity sourceUserEntity;
+  private final String sourcePassword;
 
   public PipeTaskProcessorRuntimeEnvironment(
       String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+    this(pipeName, creationTime, regionId, pipeTaskMeta, null, null);
+  }
+
+  public PipeTaskProcessorRuntimeEnvironment(
+      String pipeName,
+      long creationTime,
+      int regionId,
+      PipeTaskMeta pipeTaskMeta,
+      UserEntity sourceUserEntity,
+      String sourcePassword) {
     super(pipeName, creationTime, regionId);
     this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceUserEntity = sourceUserEntity;
+    this.sourcePassword = sourcePassword;
   }
 
   public PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
+  }
+
+  public UserEntity getSourceUserEntity() {
+    return sourceUserEntity;
+  }
+
+  public String getSourcePassword() {
+    return sourcePassword;
   }
 }

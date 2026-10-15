@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import org.apache.tsfile.utils.Pair;
@@ -35,6 +37,8 @@ import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
 public class QueryStatementTest {
@@ -153,6 +157,28 @@ public class QueryStatementTest {
     assertEquals(2, fullPaths.size());
     assertEquals("root.sg.d1.s1", fullPaths.get(0).getFullPath());
     assertEquals("root.sg.d1.s3", fullPaths.get(1).getFullPath());
+  }
+
+  @Test
+  public void testOrderByCopyPreservesRawAndNormalizedExpressions() {
+    QueryStatement statement =
+        (QueryStatement)
+            StatementGenerator.createStatement(
+                "SELECT s1 FROM root.sg.d1 ORDER BY Sin(s1)", ZonedDateTime.now().getOffset());
+    OrderByComponent source = statement.getOrderByComponent();
+    Expression rawExpression = source.getSortItemList().get(0).getExpression();
+    Expression normalizedExpression = source.getExpressionSortItemList().get(0);
+
+    assertEquals("Sin(s1)", rawExpression.getExpressionString());
+    assertEquals("sin(s1)", normalizedExpression.getExpressionString());
+    assertNotSame(rawExpression, normalizedExpression);
+
+    OrderByComponent copy = OrderByComponent.copyOf(source);
+
+    assertNotSame(source.getSortItemList(), copy.getSortItemList());
+    assertNotSame(source.getSortItemList().get(0), copy.getSortItemList().get(0));
+    assertSame(rawExpression, copy.getSortItemList().get(0).getExpression());
+    assertSame(normalizedExpression, copy.getExpressionSortItemList().get(0));
   }
 
   private void checkErrorQuerySql(String sql) {

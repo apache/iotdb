@@ -27,6 +27,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Optional;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -88,6 +89,38 @@ public class UtilsTest {
     assertEquals(params.getPort(), port);
     assertEquals(params.getUsername(), userName);
     assertEquals(params.getPassword(), userPwd);
+  }
+
+  @Test
+  public void testParseBracketedIPV6URL() throws IoTDBURLException {
+    String host = "AD80:E32B:CA25:B3AE:DA4A:DAAF:EEAE:BBBE";
+    int port = 6667;
+    Properties properties = new Properties();
+
+    IoTDBConnectionParams params =
+        Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "[%s]:%s/", host, port), properties);
+    assertEquals(host, params.getHost());
+    assertEquals(port, params.getPort());
+
+    params =
+        Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "[%s]:%s", host, port), properties);
+    assertEquals(host, params.getHost());
+    assertEquals(port, params.getPort());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseBracketedIPV6URLWithoutPortSeparator() throws IoTDBURLException {
+    Utils.parseUrl(Config.IOTDB_URL_PREFIX + "[::1]6667", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseBracketedIPV6URLWithoutPort() throws IoTDBURLException {
+    Utils.parseUrl(Config.IOTDB_URL_PREFIX + "[::1]:", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseBracketedIPV6URLWithoutEndMark() throws IoTDBURLException {
+    Utils.parseUrl(Config.IOTDB_URL_PREFIX + "[::1:6667", new Properties());
   }
 
   @Test(expected = IoTDBURLException.class)
@@ -197,5 +230,18 @@ public class UtilsTest {
     assertEquals("url_trust_pass", params.getTrustStorePwd());
     assertEquals("/tmp/url-keystore.p12", params.getKeyStore());
     assertEquals("url_key_pass", params.getKeyStorePwd());
+  }
+
+  @Test
+  public void testParseSslConfigFromBracketedIpv6Url() throws IoTDBURLException {
+    IoTDBConnectionParams params =
+        Utils.parseUrl(
+            "jdbc:iotdb://[::1]:6667/ipv6_db?use_ssl=true&sql_dialect=table", new Properties());
+
+    assertEquals("::1", params.getHost());
+    assertEquals(6667, params.getPort());
+    assertEquals(Optional.of("ipv6_db"), params.getDb());
+    assertEquals(Constant.TABLE_DIALECT, params.getSqlDialect());
+    assertTrue(params.isUseSSL());
   }
 }

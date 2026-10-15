@@ -76,6 +76,8 @@ private:
 
 public:
   static TEndPoint parseTEndPointIpv4AndIpv6Url(const std::string& endPointUrl);
+
+  static bool isWildcardAddress(const std::string& host);
 };
 
 #endif

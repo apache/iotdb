@@ -35,7 +35,6 @@ public class MemoryConfig {
   private boolean isAutoResizingBufferMemoryControlEnabled;
 
   private MemoryConfig() {
-    initAutoResizingBufferMemoryControl();
     MetricService.getInstance().addMetricSet(new AutoResizingBufferMemoryMetrics(this));
   }
 
@@ -53,39 +52,33 @@ public class MemoryConfig {
     private MemoryConfigHolder() {}
   }
 
-  private void initAutoResizingBufferMemoryControl() {
+  private void initAutoResizingBufferMemoryControl(IMemoryBlock memoryBlock) {
     AutoResizingBufferMemoryManager.setMemoryControl(
         new AutoResizingBufferMemoryControl() {
           @Override
-          public synchronized boolean allocate(long sizeInBytes) {
-            IMemoryBlock memoryBlock = getAutoResizingBufferMemoryBlock();
-            if (memoryBlock == null) {
-              return true;
-            }
+          public boolean allocate(long sizeInBytes) {
             return memoryBlock.allocate(sizeInBytes);
           }
 
           @Override
-          public synchronized void release(long sizeInBytes) {
-            IMemoryBlock memoryBlock = getAutoResizingBufferMemoryBlock();
-            if (memoryBlock != null) {
-              memoryBlock.release(sizeInBytes);
-            }
+          public void release(long sizeInBytes) {
+            memoryBlock.release(sizeInBytes);
           }
         });
   }
 
+  /**
+   * Installs RPC auto-resizing buffer memory control once. Replacing a live control would orphan
+   * the memory blocks retained by existing RPC buffers.
+   */
   public synchronized void setAutoResizingBufferMemoryControl(
       MemoryManager parentMemoryManager, long memorySizeInBytes) {
     if (autoResizingBufferMemoryManagerParent != null) {
-      autoResizingBufferMemoryManagerParent.releaseChildMemoryManager(
-          AUTO_RESIZING_BUFFER_MEMORY_MANAGER_NAME);
+      return;
     }
     autoResizingBufferMemoryManagerParent = parentMemoryManager;
-    autoResizingBufferMemoryBlock = null;
 
     if (memorySizeInBytes <= 0) {
-      isAutoResizingBufferMemoryControlEnabled = false;
       return;
     }
 
@@ -93,13 +86,13 @@ public class MemoryConfig {
         parentMemoryManager.getOrCreateMemoryManager(
             AUTO_RESIZING_BUFFER_MEMORY_MANAGER_NAME, memorySizeInBytes, true);
     if (autoResizingBufferMemoryManager == null) {
-      isAutoResizingBufferMemoryControlEnabled = false;
       return;
     }
     autoResizingBufferMemoryBlock =
         autoResizingBufferMemoryManager.exactAllocate(
             AUTO_RESIZING_BUFFER_MEMORY_BLOCK_NAME, memorySizeInBytes, MemoryBlockType.DYNAMIC);
     isAutoResizingBufferMemoryControlEnabled = true;
+    initAutoResizingBufferMemoryControl(autoResizingBufferMemoryBlock);
   }
 
   private synchronized IMemoryBlock getAutoResizingBufferMemoryBlock() {

@@ -38,10 +38,12 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -78,6 +80,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.LoadTsFilePieceNodeAssembler;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -96,6 +99,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -179,6 +183,8 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
+    TimePartitionUtils.setTimePartitionOrigin(
+        CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
     TimePartitionUtils.setTimePartitionInterval(
         CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
   }
@@ -236,7 +242,8 @@ public class StorageEngine implements IService {
               checkResults(futures, StorageEngineMessages.STORAGE_ENGINE_FAILED_TO_RECOVER);
               isReadyForReadAndWrite.set(true);
               LOGGER.info(
-                  StorageEngineMessages.STORAGE_LOG_STORAGE_ENGINE_RECOVER_COST_S_C8AEE9D9,
+                  StorageEngineMessages
+                      .STORAGE_LOG_STORAGE_ENGINE_LOCAL_RECOVERY_TASKS_FINISHED_IN_ARGS_03F9135F,
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
@@ -266,7 +273,8 @@ public class StorageEngine implements IService {
               }
               dataRegionMap.put(dataRegionId, dataRegion);
               LOGGER.info(
-                  StorageEngineMessages.STORAGE_LOG_DATA_REGIONS_HAVE_BEEN_RECOVERED_D5BD3A80,
+                  StorageEngineMessages
+                      .STORAGE_LOG_LOCAL_DATAREGION_LOADING_PROGRESS_ARG_ARG_8146929B,
                   readyDataRegionNum.incrementAndGet(),
                   recoverDataRegionNum);
               return null;
@@ -395,7 +403,7 @@ public class StorageEngine implements IService {
       if (dataRegion != null) {
         List<Callable<Void>> asyncTsFileResourceRecoverTasks =
             dataRegion.getAsyncTsFileResourceRecoverTaskList();
-        if (asyncTsFileResourceRecoverTasks != null) {
+        if (asyncTsFileResourceRecoverTasks != null && !asyncTsFileResourceRecoverTasks.isEmpty()) {
           Callable<Void> taskOfRegion =
               () -> {
                 for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
@@ -432,6 +440,7 @@ public class StorageEngine implements IService {
       }
     }
     syncCloseAllProcessor();
+    dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     ThreadUtils.stopThreadPool(
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
@@ -454,6 +463,8 @@ public class StorageEngine implements IService {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);
+    } finally {
+      dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     }
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
@@ -509,6 +520,7 @@ public class StorageEngine implements IService {
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
+    dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     dataRegionMap.clear();
   }
 
@@ -818,9 +830,9 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void deleteDataRegion(DataRegionId regionId) {
+  public TSStatus deleteDataRegion(DataRegionId regionId) {
     if (!dataRegionMap.containsKey(regionId) || deletingDataRegionMap.containsKey(regionId)) {
-      return;
+      return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
     }
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
@@ -849,12 +861,8 @@ public class StorageEngine implements IService {
                       dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
                       region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
               if (regionSnapshotDir.exists()) {
-                try {
-                  FileUtils.deleteDirectory(regionSnapshotDir);
-                } catch (IOException e) {
-                  LOGGER.error(
-                      StorageEngineMessages.FAILED_TO_DELETE_SNAPSHOT_DIR, regionSnapshotDir, e);
-                }
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectoryWithRateLimiter(
+                    regionSnapshotDir, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
               }
             }
             break;
@@ -881,10 +889,13 @@ public class StorageEngine implements IService {
             region.getDatabaseName(),
             region.getDataRegionIdString(),
             e);
+        return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
       } finally {
         deletingDataRegionMap.remove(regionId);
       }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
+    return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
   }
 
   /**
@@ -1060,6 +1071,35 @@ public class StorageEngine implements IService {
     }
 
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus writeLoadTsFileNodeSlice(
+      final DataRegionId dataRegionId,
+      final ByteBuffer body,
+      final String uuid,
+      final int sliceIndex,
+      final int sliceCount,
+      final int originBodySize) {
+    final LoadTsFilePieceNodeAssembler.Result result =
+        loadTsFileManager.appendPieceNodeSlice(
+            dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
+    if (!result.isValid()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
+    }
+    if (!result.isComplete()) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
+    try {
+      final Object planNode = PlanNodeType.deserialize(result.getBody());
+      if (!(planNode instanceof LoadTsFilePieceNode)) {
+        return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+      }
+      return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
+    } catch (final Exception e) {
+      return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+    }
   }
 
   public TSStatus executeLoadCommand(

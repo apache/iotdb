@@ -333,7 +333,8 @@ public class ImportData extends AbstractDataTool {
     if (!sqlDialectTree
         && Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)
         && StringUtils.isBlank(table)) {
-      ioTPrinter.println("Invalid args: Required values for option table not provided.");
+      ioTPrinter.println(
+          CliMessages.MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA);
       System.exit(Constants.CODE_ERROR);
     }
   }

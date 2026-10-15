@@ -66,6 +66,8 @@ public final class SessionMessages {
 
   // SessionUtils
   public static final String NODE_URLS_IS_NULL = "nodeUrls 为 null";
+  public static final String EXCEPTION_NODEURL_INCORRECT_FORMAT_C1463B2C =
+      "NodeUrl 格式不正确";
 
   // InternalNode (template)
   public static final String DUPLICATED_CHILD_IN_TEMPLATE =

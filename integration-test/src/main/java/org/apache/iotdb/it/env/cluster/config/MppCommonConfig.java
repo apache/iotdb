@@ -86,6 +86,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    setProperty("metadata_lease_fence_ms", String.valueOf(metadataLeaseFenceMs));
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     setProperty("time_partition_interval", String.valueOf(partitionInterval));
     return this;
@@ -486,12 +492,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
-    return this;
-  }
-
-  @Override
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
     return this;
   }
 

@@ -25,14 +25,19 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -49,6 +54,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -108,6 +114,7 @@ public class ProcedureManagerTest {
   @BeforeClass
   public static void setUp() throws IOException {
     IManager CONFIG_MANAGER = new ConfigManager();
+    IManager CONFIG_MANAGER_SPY = spy(CONFIG_MANAGER);
     ProcedureManager procedureManager = CONFIG_MANAGER.getProcedureManager();
     PROCEDURE_MANAGER = spy(procedureManager);
 
@@ -127,6 +134,10 @@ public class ProcedureManagerTest {
     when(PROCEDURE_EXECUTOR.getProcedures()).thenReturn(procedureMap);
     when(PROCEDURE_MANAGER.getEnv()).thenReturn(ENV);
     when(ENV.getRemoveDataNodeHandler()).thenReturn(REMOVE_DATA_NODE_HANDLER);
+    // Inject the LoadManager spy into the call chain used by checkRemoveDataNodes, so that the
+    // node-status stubs below take effect on the production path
+    when(PROCEDURE_MANAGER.getConfigManager()).thenReturn(CONFIG_MANAGER_SPY);
+    when(CONFIG_MANAGER_SPY.getLoadManager()).thenReturn(LOAD_MANAGER);
   }
 
   @Test
@@ -139,6 +150,19 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+  }
+
+  @Test
+  public void testPreSubmissionFailureWithNoProcedureIdIsReportedImmediately() {
+    final Procedure<ConfigNodeProcedureEnv> procedure = mock(Procedure.class);
+    when(procedure.getProcId()).thenReturn(Procedure.NO_PROC_ID);
+    when(procedure.isFinished()).thenReturn(false);
+    when(procedure.isFailed()).thenReturn(true);
+    when(procedure.getException()).thenReturn(new ProcedureException("conflict"));
+
+    Assert.assertEquals(
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+        PROCEDURE_MANAGER.waitingProcedureFinished(procedure, 0).getCode());
   }
 
   @Test
@@ -194,5 +218,60 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+    Assert.assertTrue(status.getMessage().contains("unknown"));
+  }
+
+  @Test
+  public void testCheckRemoveDataNodeWithAnotherStoppedDataNode() {
+    Set<TDataNodeLocation> relatedDataNodes = new HashSet<>();
+    relatedDataNodes.add(removeDataNodeLocationA);
+    relatedDataNodes.add(coordinatorDataNodeLocation);
+
+    when(REMOVE_DATA_NODE_HANDLER.getRelatedDataNodeLocations(removeDataNodeLocationA))
+        .thenReturn(relatedDataNodes);
+
+    when(LOAD_MANAGER.getNodeStatus(removeDataNodeLocationA.getDataNodeId()))
+        .thenReturn(NodeStatus.Running);
+    when(LOAD_MANAGER.getNodeStatus(coordinatorDataNodeLocation.getDataNodeId()))
+        .thenReturn(NodeStatus.Stopped);
+
+    TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
+    Assert.assertTrue(isFailed(status));
+    Assert.assertTrue(status.getMessage().contains("stopped"));
+  }
+
+  @Test
+  public void testInjectTreeViewSourceAttributes() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    final TsTable treeViewTable = new TsTable("tree_view");
+    treeViewTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.sg.**");
+
+    ProcedureManager.injectTreeViewSourceAttributes(topicAttributes, treeViewTable);
+
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
+    Assert.assertEquals(
+        "root.sg.**", topicAttributes.get(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
+  }
+
+  @Test
+  public void testInjectTreeViewSourceAttributesPreservesUserTreePattern() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(PipeSourceConstant.SOURCE_PATTERN_KEY, "root.custom.**");
+    final TsTable treeViewTable = new TsTable("tree_view");
+    treeViewTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.sg.**");
+
+    ProcedureManager.injectTreeViewSourceAttributes(topicAttributes, treeViewTable);
+
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
+    Assert.assertEquals(
+        "root.custom.**", topicAttributes.get(PipeSourceConstant.SOURCE_PATTERN_KEY));
+    Assert.assertFalse(
+        topicAttributes.containsKey(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
   }
 }

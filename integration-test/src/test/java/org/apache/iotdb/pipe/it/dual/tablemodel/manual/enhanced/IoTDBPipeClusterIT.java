@@ -130,7 +130,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
   private void testMachineDowntime(String sink) {
     StringBuilder a = new StringBuilder();
     for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
-      a.append(nodeWrapper.getIp()).append(":").append(nodeWrapper.getPort());
+      a.append(nodeWrapper.getIpAndPortString());
       a.append(",");
     }
     a.deleteCharAt(a.length() - 1);
