@@ -55,6 +55,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -422,6 +423,119 @@ public class CollectOperatorTest {
     a.finished = true;
     assertNull(collect.next());
     assertEquals(21, collect.next().getColumn(0).getInt(0));
+    collect.close();
+  }
+
+  @Test
+  public void testLegacyInitializesOtherInputsOnceAndFinishesAtLastChild() throws Exception {
+    Child a = new Child(block(1));
+    Child b = new Child(block(2));
+    b.ready();
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Arrays.asList(a, b)));
+    for (int i = 0; i < 10; i++) {
+      assertFalse(collect.isBlocked().isDone());
+    }
+    assertEquals(11, a.waitCalls);
+    assertEquals(1, b.waitCalls);
+    assertEquals(0, b.advances);
+    a.ready();
+    assertSame(a.output, collect.next());
+    a.hasNext = false;
+    assertNull(collect.next());
+    assertTrue(collect.hasNext());
+    assertFalse(collect.isFinished());
+    for (int i = 0; i < 10; i++) {
+      assertTrue(collect.isBlocked().isDone());
+    }
+    assertEquals(11, a.waitCalls);
+    assertEquals(11, b.waitCalls);
+    assertSame(b.output, collect.next());
+    b.hasNext = false;
+    assertNull(collect.next());
+    assertFalse(collect.hasNext());
+    assertTrue(collect.isFinished());
+    assertTrue(collect.isBlocked().isDone());
+    collect.close();
+    assertEquals(1, a.closes);
+    assertEquals(1, b.closes);
+  }
+
+  @Test
+  public void testLegacyMemoryUsesLargestChildPeak() throws Exception {
+    Child a = new Child(block(1));
+    Child b = new Child(block(2));
+    a.peak = 100;
+    a.retained = 30;
+    a.returnSize = 10;
+    b.peak = 80;
+    b.retained = 50;
+    b.returnSize = 20;
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Arrays.asList(a, b)));
+    assertEquals(100, collect.calculateMaxPeekMemory());
+    assertEquals(0, collect.calculateRetainedSizeAfterCallingNext());
+    assertEquals(20, collect.calculateMaxReturnSize());
+    collect.close();
+  }
+
+  @Test
+  public void testCannotEnableReadyConsumptionAfterLegacyInputIsRetired() throws Exception {
+    Child a = new Child(block(1));
+    Child b = new Child(block(2));
+    a.hasNext = false;
+    b.ready();
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Arrays.asList(a, b)));
+    assertNull(collect.next());
+    assertThrows(IllegalStateException.class, collect::enableReadyInputConsumption);
+    assertSame(b.output, collect.next());
+    b.hasNext = false;
+    assertNull(collect.next());
+    assertTrue(collect.isFinished());
+  }
+
+  @Test
+  public void testCannotEnableReadyConsumptionAfterLegacyReadinessObservation() throws Exception {
+    Child child = new Child(block(1));
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Collections.singletonList(child)));
+    assertFalse(collect.isBlocked().isDone());
+    assertThrows(IllegalStateException.class, collect::enableReadyInputConsumption);
+    collect.close();
+  }
+
+  @Test
+  public void testCannotEnableReadyConsumptionAfterLegacyNextWithoutIsBlocked() throws Exception {
+    Child child = new Child(block(1));
+    child.ready();
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Collections.singletonList(child)));
+    assertSame(child.output, collect.next());
+    assertThrows(IllegalStateException.class, collect::enableReadyInputConsumption);
+    collect.close();
+  }
+
+  @Test
+  public void testCannotEnableReadyConsumptionAfterLegacyClose() throws Exception {
+    Child child = new Child(block(1));
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Collections.singletonList(child)));
+    collect.close();
+    assertThrows(IllegalStateException.class, collect::enableReadyInputConsumption);
+    assertEquals(1, child.closes);
+  }
+
+  @Test
+  public void testEnablingReadyConsumptionIsIdempotent() throws Exception {
+    Child child = new Child(block(1));
+    child.ready();
+    CollectOperator collect = collect(child);
+    collect.enableReadyInputConsumption();
+    ListenableFuture<?> selection = collect.isBlocked();
+    collect.enableReadyInputConsumption();
+    assertSame(selection, collect.isBlocked());
+    assertSame(child.output, collect.next());
     collect.close();
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -30,6 +31,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.util.concurrent.Futures.getDone;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 
@@ -41,6 +43,7 @@ public class CollectOperator implements ProcessOperator {
   protected final List<Operator> children;
   private AnyChildBlocked anyChildBlocked;
   private boolean inited;
+  private boolean executionStarted;
   protected int currentIndex;
   private ListenableFuture<Integer> selectionFuture;
   private ListenableFuture<Integer> exposedFuture;
@@ -58,6 +61,10 @@ public class CollectOperator implements ProcessOperator {
    */
   public void enableReadyInputConsumption() {
     if (anyChildBlocked == null) {
+      checkState(
+          !executionStarted,
+          CalcMessages
+              .EXCEPTION_READY_INPUT_CONSUMPTION_MUST_BE_ENABLED_BEFORE_COLLECT_EXECUTION_STARTS_5FAF2DC4);
       anyChildBlocked = new AnyChildBlocked(children);
     }
   }
@@ -71,6 +78,7 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    executionStarted = true;
     if (anyChildBlocked == null) {
       if (children.get(currentIndex).hasNextWithTimer()) {
         TsBlock block = children.get(currentIndex).nextWithTimer();
@@ -137,6 +145,7 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    executionStarted = true;
     if (anyChildBlocked == null) {
       if (!inited) {
         inited = true;
@@ -170,6 +179,7 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
+    executionStarted = true;
     if (anyChildBlocked == null) {
       for (int i = currentIndex; i < children.size(); i++) {
         if (children.get(i) != null) {

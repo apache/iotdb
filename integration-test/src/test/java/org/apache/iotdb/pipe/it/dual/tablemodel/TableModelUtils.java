@@ -366,7 +366,11 @@ public class TableModelUtils {
   }
 
   public static String getQuerySql(final String table) {
-    return "select s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,time from " + table;
+    // ClusterTestResultSet compares replicas row by row. All tags plus time form a unique key,
+    // so require the same row order even when Collect consumes inputs in readiness order.
+    return "select s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,time from "
+        + table
+        + " order by s0,s1,s2,s3,time";
   }
 
   public static String getQueryCountSql(final String table) {

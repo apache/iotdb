@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -34,6 +36,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -55,6 +58,7 @@ public class IoTDBCollectFanInIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setDegreeOfParallelism(1)
         .setMaxTsBlockLineNumber(2)
         .setSortBufferSize(128 * 1024)
         .setDataRegionGroupExtensionPolicy("CUSTOM")
@@ -106,6 +110,23 @@ public class IoTDBCollectFanInIT {
               + "SELECT device, zone, value FROM readings1";
       try (ResultSet result = statement.executeQuery(sql)) {
         assertUnorderedQueryResult(sql, result, "device,zone,value,", expectedRows);
+      }
+    }
+  }
+
+  @Test
+  public void testPipeVerificationQueryUsesDeterministicPrimaryKeyOrder() throws Exception {
+    TableModelUtils.createDataBaseAndTable(EnvFactory.getEnv(), "pipe_readings", DATABASE);
+    TableModelUtils.insertData(DATABASE, "pipe_readings", 0, DEVICES * ROWS, EnvFactory.getEnv());
+    List<String> expected =
+        new ArrayList<>(TableModelUtils.generateExpectedResults(0, DEVICES * ROWS));
+    Collections.sort(expected);
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      try (ResultSet result =
+          statement.executeQuery(TableModelUtils.getQuerySql("pipe_readings"))) {
+        TestUtils.assertResultSetEqual(result, TableModelUtils.generateHeaderResults(), expected);
       }
     }
   }

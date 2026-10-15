@@ -181,6 +181,85 @@ public class MemoryPoolTest {
   }
 
   @Test
+  public void testDeregisterCancelsPendingReservationsBeforeUnrelatedFree() {
+    pool.registerPlanNodeIdToQueryMemoryMap("healthy", "fi", "a", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap("healthy", "fi", "b", MemorySide.INPUT);
+    Assert.assertTrue(pool.tryReserve("healthy", "fi", "a", 512, 512));
+    Assert.assertTrue(pool.tryReserve("healthy", "fi", "b", 512, 512));
+    MemoryReservationResult pending =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 512, false);
+    Assert.assertFalse(pending.getFuture().isDone());
+
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
+
+    Assert.assertTrue(pending.getFuture().isCancelled());
+    pool.free("healthy", "fi", "a", 512);
+    pool.free("healthy", "fi", "b", 512);
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testForceDeregisterCancelsPendingReservationsEvenWhenReportingLeak() {
+    Assert.assertTrue(pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512, 512));
+    MemoryReservationResult pending =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 512, false);
+    pool.registerPlanNodeIdToQueryMemoryMap("healthy", "fi", "a", MemorySide.INPUT);
+    Assert.assertTrue(pool.tryReserve("healthy", "fi", "a", 256, 512));
+
+    Assert.assertThrows(
+        MemoryLeakException.class,
+        () ->
+            pool.deRegisterFragmentInstanceFromQueryMemoryMap(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, true));
+
+    Assert.assertTrue(pending.getFuture().isCancelled());
+    pool.free("healthy", "fi", "a", 256);
+    // Forced cleanup still reports and retains the original leaked allocation.
+    Assert.assertEquals(512, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testNonForcedDeregisterKeepsPendingReservationWhileMemoryIsLive() {
+    Assert.assertTrue(pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512, 512));
+    MemoryReservationResult pending =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 512, false);
+
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, false);
+
+    Assert.assertFalse(pending.getFuture().isDone());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512);
+    Assert.assertTrue(pending.getFuture().isDone());
+    Assert.assertFalse(pending.getFuture().isCancelled());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, false);
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testDeregisterDoesNotCancelOtherFragmentPendingReservation() {
+    pool.registerPlanNodeIdToQueryMemoryMap("healthy", "fi", "a", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap("healthy", "fi", "b", MemorySide.INPUT);
+    Assert.assertTrue(pool.tryReserve("healthy", "fi", "a", 512, 512));
+    Assert.assertTrue(pool.tryReserve("healthy", "fi", "b", 512, 512));
+    pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, "other", PLAN_NODE_ID, MemorySide.INPUT);
+    MemoryReservationResult pending =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 512, false);
+    MemoryReservationResult other =
+        pool.reserveWithPriority(QUERY_ID, "other", PLAN_NODE_ID, 256, 512, false);
+
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
+
+    Assert.assertTrue(pending.getFuture().isCancelled());
+    Assert.assertFalse(other.getFuture().isDone());
+    pool.free("healthy", "fi", "a", 512);
+    Assert.assertTrue(other.getFuture().isDone());
+    Assert.assertFalse(other.getFuture().isCancelled());
+    pool.free(QUERY_ID, "other", PLAN_NODE_ID, 256);
+    pool.free("healthy", "fi", "b", 512);
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
   public void testTryReserve() {
 
     Assert.assertTrue(
@@ -891,7 +970,19 @@ public class MemoryPoolTest {
 
   @Test
   public void testConcurrentAdmissionAlwaysGrantsOneRequestWhenOneFits() throws Exception {
-    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID);
+    assertConcurrentAdmissionAlwaysGrantsOneRequestWhenOneFits(true);
+  }
+
+  @Test
+  public void testLegacyConcurrentAdmissionAlwaysGrantsOneRequestWhenOneFits() throws Exception {
+    assertConcurrentAdmissionAlwaysGrantsOneRequestWhenOneFits(false);
+  }
+
+  private void assertConcurrentAdmissionAlwaysGrantsOneRequestWhenOneFits(boolean shared)
+      throws Exception {
+    if (shared) {
+      pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID);
+    }
     for (int i = 0; i < 3; i++) {
       String fi = "other" + i;
       pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, fi, PLAN_NODE_ID, MemorySide.OUTPUT);
@@ -937,5 +1028,68 @@ public class MemoryPoolTest {
     }
     for (int i = 0; i < 3; i++) pool.free(QUERY_ID, "other" + i, PLAN_NODE_ID, 256);
     Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testConcurrentLegacyReservationsKeepIndependentQuotasAndAccurateSideTotals()
+      throws Exception {
+    for (boolean samePlanNode : new boolean[] {true, false}) {
+      MemoryPool legacyPool = new MemoryPool("legacy", new MemoryManager(1024), 512);
+      ExecutorService executor = Executors.newFixedThreadPool(16);
+      CountDownLatch start = new CountDownLatch(1);
+      CountDownLatch attempted = new CountDownLatch(16);
+      CountDownLatch release = new CountDownLatch(1);
+      List<Future<?>> tasks = new ArrayList<>();
+      try {
+        for (int i = 0; i < 16; i++) {
+          String id = samePlanNode ? "same" : "pipeline-" + i;
+          legacyPool.registerPlanNodeIdToQueryMemoryMap(
+              QUERY_ID, FRAGMENT_INSTANCE_ID, id, MemorySide.INPUT);
+          tasks.add(
+              executor.submit(
+                  () -> {
+                    start.await();
+                    boolean reserved =
+                        legacyPool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, id, 32, 128);
+                    attempted.countDown();
+                    release.await();
+                    if (reserved) {
+                      legacyPool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, id, 32);
+                    }
+                    return null;
+                  }));
+        }
+        start.countDown();
+        Assert.assertTrue(attempted.await(10, TimeUnit.SECONDS));
+        long expected = samePlanNode ? 128 : 512;
+        Assert.assertEquals(expected, legacyPool.getReservedBytes());
+        Assert.assertEquals(
+            expected,
+            legacyPool.getFragmentMemoryReservedBytes(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.INPUT));
+        if (samePlanNode) {
+          Assert.assertEquals(
+              128,
+              legacyPool.getPlanNodeMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, "same"));
+        } else {
+          for (int i = 0; i < 16; i++) {
+            Assert.assertEquals(
+                32,
+                legacyPool.getPlanNodeMemoryReservedBytes(
+                    QUERY_ID, FRAGMENT_INSTANCE_ID, "pipeline-" + i));
+          }
+        }
+        release.countDown();
+        for (Future<?> task : tasks) {
+          task.get(10, TimeUnit.SECONDS);
+        }
+        Assert.assertEquals(0, legacyPool.getReservedBytes());
+        Assert.assertEquals(0, legacyPool.getQueryMemoryReservedBytes(QUERY_ID));
+      } finally {
+        start.countDown();
+        release.countDown();
+        executor.shutdownNow();
+      }
+    }
   }
 }
