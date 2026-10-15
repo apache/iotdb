@@ -887,6 +887,33 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testCreateViewFromTreePathWithSpaces() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.tv143_cmp_3");
+      statement.execute("CREATE TIMESERIES root.`tv143_cmp_3`.`a b`.`d1`.s1 INT32");
+      statement.execute("INSERT INTO root.`tv143_cmp_3`.`a b`.`d1`(time,s1) VALUES (1,10)");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE tv143_cmp_3");
+      statement.execute("USE tv143_cmp_3");
+      statement.execute(
+          "CREATE VIEW v (device STRING TAG, value INT32 FIELD FROM s1) WITH (ttl='INF') "
+              + "AS root.\"`tv143_cmp_3`\".\"`a b`\".**");
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SELECT value FROM v ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(10, resultSet.getInt("value"));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
