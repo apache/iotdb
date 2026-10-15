@@ -238,9 +238,11 @@ final class TsFileWriterManager {
       final long fileLength)
       throws IOException {
     // The bytes of an aborted task are never imported, so only a committed one has to be complete.
+    // An aborted one still has to reach the end of its records, so that no recorded chunk is left
+    // half-written, and to be continuous, so that no piece was skipped.
     return terminalOp == LoadTsFileConsensusOp.COMMIT
         ? progress.isReady(fileLength)
-        : progress.getFirstHoleOffset() < 0L;
+        : progress.getFirstHoleOffset() < 0L && fileLength >= progress.getTotalLength();
   }
 
   /** Writes a chunk into the target staged file or skips if the byte range was already recorded. */

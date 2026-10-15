@@ -693,10 +693,15 @@ public class LoadTsFileManagerTest {
     Mockito.when(progress.isReady(128L)).thenReturn(false);
     assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L));
 
-    // An aborted task never imports its bytes, so only continuity is asked of it.
+    // An aborted task never imports its bytes, so it only has to be continuous and to reach the end
+    // of its records: a file shorter than them has a chunk that was never fully written.
     Mockito.when(progress.getFirstHoleOffset()).thenReturn(-1L);
+    Mockito.when(progress.getTotalLength()).thenReturn(128L);
     assertTrue(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L));
+    assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 127L));
+
     Mockito.when(progress.getFirstHoleOffset()).thenReturn(160L);
+    Mockito.when(progress.getTotalLength()).thenReturn(96L);
     assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L));
   }
 
