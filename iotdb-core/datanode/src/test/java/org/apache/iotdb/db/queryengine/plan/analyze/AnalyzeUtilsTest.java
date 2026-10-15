@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
@@ -42,6 +44,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -54,13 +57,17 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -111,6 +118,84 @@ public class AnalyzeUtilsTest {
     assertTrue(analysis.isFinishQueryAfterAnalyze());
     assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
     assertTrue(analysis.getFailStatus().getMessage().contains("field"));
+  }
+
+  @Test
+  public void testRejectedFieldsInEveryRowStopBeforePartitionLookup() throws Exception {
+    final InsertRowsStatement rows = createRowsWithRejectedFields(2);
+    final Analysis analysis = new Analysis();
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("all_rows_rejected"));
+    context.setSession(Mockito.mock(SessionInfo.class));
+
+    AnalyzeUtils.analyzeInsert(
+        context,
+        rows,
+        () -> {},
+        (params, userName) -> {
+          throw new AssertionError("Partition lookup must not run after every field fails");
+        },
+        AnalyzeUtils::computeTableDataPartitionParams,
+        analysis,
+        false);
+
+    assertTrue(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertTrue(analysis.getFailStatus().getMessage().contains("field"));
+  }
+
+  @Test
+  public void testValidFieldInAnotherRowContinuesPartitionLookup() throws Exception {
+    final InsertRowsStatement rows = createRowsWithRejectedFields(1);
+    final Analysis analysis = new Analysis();
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("one_valid_row"));
+    context.setSession(Mockito.mock(SessionInfo.class));
+    final DataPartition partition = Mockito.mock(DataPartition.class);
+    final AtomicBoolean partitionQueried = new AtomicBoolean();
+
+    AnalyzeUtils.analyzeInsert(
+        context,
+        rows,
+        () -> {},
+        (params, userName) -> {
+          partitionQueried.set(true);
+          return partition;
+        },
+        AnalyzeUtils::computeTableDataPartitionParams,
+        analysis,
+        false);
+
+    assertTrue(partitionQueried.get());
+    assertFalse(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertSame(partition, analysis.getDataPartitionInfo());
+  }
+
+  private static InsertRowsStatement createRowsWithRejectedFields(int rejectedRows)
+      throws Exception {
+    final List<InsertRowStatement> rowStatements = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      final InsertRowStatement row = new InsertRowStatement();
+      row.setDevicePath(new PartialPath("root.sg.d1"));
+      row.setMeasurements(new String[] {"tag", "field"});
+      row.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT64});
+      row.setColumnCategories(
+          new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+      row.setMeasurementSchemas(
+          new MeasurementSchema[] {
+            new MeasurementSchema("tag", TSDataType.STRING),
+            new MeasurementSchema("field", TSDataType.INT64)
+          });
+      row.setValues(new Object[] {"device" + i, 1L});
+      row.setTime(i);
+      if (i < rejectedRows) {
+        row.markFailedMeasurement(1, new IllegalArgumentException("type mismatch"));
+      }
+      rowStatements.add(row);
+    }
+    final InsertRowsStatement rows = new InsertRowsStatement();
+    rows.setInsertRowStatementList(rowStatements);
+    rows.updateAfterSchemaValidation(null);
+    return rows;
   }
 
   @Test
