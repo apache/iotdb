@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public abstract class TernaryColumnTransformer extends ColumnTransformer {
 
   protected ColumnTransformer firstColumnTransformer;
@@ -117,5 +119,12 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
     firstColumnTransformer.close();
     secondColumnTransformer.close();
     thirdColumnTransformer.close();
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    action.accept(firstColumnTransformer);
+    action.accept(secondColumnTransformer);
+    action.accept(thirdColumnTransformer);
   }
 }

@@ -27,6 +27,7 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public abstract class MultiColumnTransformer extends ColumnTransformer {
@@ -68,7 +69,8 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
       childrenColumns.add(child.getColumn());
     }
 
-    int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
+    // getColumn() may have released the cache; the retained column still has its size.
+    int positionCount = childrenColumns.get(0).getPositionCount();
 
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     doTransform(childrenColumns, builder, positionCount, selection);
@@ -103,5 +105,10 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
     for (ColumnTransformer columnTransformer : columnTransformerList) {
       columnTransformer.close();
     }
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    columnTransformerList.forEach(action);
   }
 }

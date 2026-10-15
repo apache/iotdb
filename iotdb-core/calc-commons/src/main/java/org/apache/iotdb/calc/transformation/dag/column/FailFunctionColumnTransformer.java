@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.tsfile.read.common.block.column.NullColumn;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 /**
  * when evaluate of FailFunctionColumnTransformer is called, throw Exception to inform the user with
  * specified errorMsg
@@ -58,5 +60,10 @@ public class FailFunctionColumnTransformer extends ColumnTransformer {
   @Override
   protected void checkType() {
     // do nothing
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    // The fail function has no children.
   }
 }

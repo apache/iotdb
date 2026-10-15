@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public abstract class BinaryColumnTransformer extends ColumnTransformer {
 
   protected final ColumnTransformer leftTransformer;
@@ -101,5 +103,11 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
     super.close();
     this.leftTransformer.close();
     this.rightTransformer.close();
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    action.accept(leftTransformer);
+    action.accept(rightTransformer);
   }
 }
