@@ -32,6 +32,8 @@ import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.container.MemMNodeContainer;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.BasicInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MeasurementCollector;
 
@@ -40,16 +42,143 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 public class MTreeBelowSGMemoryImplTest {
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testWideDeviceDeletionDoesNotScanChildrenPerMeasurement() throws Exception {
+    final MTreeBelowSGMemoryImpl mtree = newMTree();
+    final int measurementCount = 1024;
+    final List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < measurementCount; i++) {
+      measurements.add("s" + i);
+    }
+    mtree.createAlignedTimeSeries(
+        new PartialPath("root.sg.d"),
+        measurements,
+        Collections.nCopies(measurementCount, TSDataType.INT32),
+        Collections.nCopies(measurementCount, TSEncoding.PLAIN),
+        Collections.nCopies(measurementCount, CompressionType.SNAPPY),
+        null,
+        false,
+        Collections.emptySet(),
+        new AtomicBoolean(true));
+    final IMemMNode device = mtree.getNodeByPath(new PartialPath("root.sg.d"));
+    final CountingChildren children = new CountingChildren();
+    children.putAll(device.getChildren());
+    device.setChildren(children);
+    final PartialPath pattern = new PartialPath("root.sg.d.*");
+    mtree.constructSchemaBlackList(pattern, new AtomicBoolean());
+    final List<PartialPath> paths = mtree.getPreDeletedTimeSeries(pattern);
+    Assert.assertEquals(measurementCount, paths.size());
+    children.scans = 0;
+    for (final PartialPath path : paths) {
+      mtree.deleteTimeSeries(path);
+    }
+    Assert.assertEquals(0, children.scans);
+    assertPathNotExist(mtree, new PartialPath("root.sg.d"));
+    Assert.assertEquals(
+        0, mtree.getNodeByPath(new PartialPath("root.sg")).getSubtreeMeasurementCount());
+  }
+
+  @Test
+  public void testDirectChildCountsAfterSnapshotWithNestedDevice() throws Exception {
+    final MTreeBelowSGMemoryImpl mtree = newMTree();
+    for (final String path : Arrays.asList("root.sg.d.s1", "root.sg.d.child.s2")) {
+      mtree.createTimeSeries(
+          new MeasurementPath(path),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          null,
+          null,
+          false,
+          null);
+    }
+    final File snapshotDir = temporaryFolder.newFolder();
+    Assert.assertTrue(mtree.createSnapshot(snapshotDir));
+    final MemSchemaRegionStatistics statistics = newRegionStatistics();
+    final MTreeBelowSGMemoryImpl recovered =
+        MTreeBelowSGMemoryImpl.loadFromSnapshot(
+            snapshotDir,
+            "root.sg",
+            statistics,
+            new SchemaRegionMemMetric(statistics, "root.sg"),
+            node -> {},
+            node -> {},
+            (node, table) -> {},
+            node -> Collections.emptyMap(),
+            node -> Collections.emptyMap());
+    final IMemMNode device = recovered.getNodeByPath(new PartialPath("root.sg.d"));
+    Assert.assertEquals(
+        1, ((BasicInternalMNode) device.getBasicMNode()).getMeasurementChildCount());
+    Assert.assertEquals(2, device.getSubtreeMeasurementCount());
+    recovered.deleteTimeSeries(new PartialPath("root.sg.d.s1"));
+    Assert.assertFalse(recovered.getNodeByPath(new PartialPath("root.sg.d")).isDevice());
+    Assert.assertTrue(recovered.getNodeByPath(new PartialPath("root.sg.d.child")).isDevice());
+    recovered.deleteTimeSeries(new PartialPath("root.sg.d.child.s2"));
+    assertPathNotExist(recovered, new PartialPath("root.sg.d"));
+  }
+
+  @Test
+  public void testAlignmentResetsWhenOnlyLogicalViewsRemain() throws Exception {
+    final MTreeBelowSGMemoryImpl mtree = newMTree();
+    mtree.createTimeSeries(
+        new MeasurementPath("root.sg.d.s"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.SNAPPY,
+        null,
+        null,
+        false,
+        null);
+    final IMemMNode device = mtree.getNodeByPath(new PartialPath("root.sg.d"));
+    // The OSS factory does not create logical views. Model a view child to verify cleanup
+    // semantics.
+    final IMemMNode view = mock(IMemMNode.class);
+    final IMeasurementMNode<IMemMNode> viewMeasurement = mock(IMeasurementMNode.class);
+    when(view.isMeasurement()).thenReturn(true);
+    when(view.getAsMeasurementMNode()).thenReturn(viewMeasurement);
+    when(viewMeasurement.isLogicalView()).thenReturn(true);
+    device.addChild("view", view);
+    device.addChild("view", view);
+    Assert.assertEquals(
+        2, ((BasicInternalMNode) device.getBasicMNode()).getMeasurementChildCount());
+    mtree.deleteTimeSeries(new PartialPath("root.sg.d.s"));
+    Assert.assertTrue(device.isDevice());
+    Assert.assertNull(device.getAsDeviceMNode().isAlignedNullable());
+    device.deleteChild("view");
+    mtree.deleteEmptyInternalMNode(device.getAsDeviceMNode());
+    assertPathNotExist(mtree, new PartialPath("root.sg.d"));
+  }
+
+  private static class CountingChildren extends MemMNodeContainer {
+    private int scans;
+
+    @Override
+    public Collection<IMemMNode> values() {
+      scans++;
+      return super.values();
+    }
+  }
 
   @Test
   public void testPathAndTableDeviceChecksAfterClear() throws Exception {

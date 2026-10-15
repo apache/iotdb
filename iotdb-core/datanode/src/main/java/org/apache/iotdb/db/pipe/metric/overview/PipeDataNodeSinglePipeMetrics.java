@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.metric.overview;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -27,6 +29,8 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -52,6 +56,8 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
       remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
+  final Map<String, PipeDataNodeCompletionOperator> completionOperatorMap =
+      new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -89,6 +95,19 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
+
+    final PipeDataNodeCompletionOperator completionOperator = completionOperatorMap.get(pipeID);
+    if (completionOperator != null) {
+      metricService.createAutoGauge(
+          Metric.PIPE_DATANODE_COMPLETION_READY.toString(),
+          MetricLevel.IMPORTANT,
+          completionOperator,
+          PipeDataNodeCompletionOperator::getCompletion,
+          Tag.NAME.toString(),
+          operator.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(operator.getCreationTime()));
+    }
 
     // Resources
     metricService.createAutoGauge(
@@ -165,6 +184,16 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
+    if (completionOperatorMap.containsKey(
+        generatePipeID(operator.getPipeName(), operator.getCreationTime()))) {
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.PIPE_DATANODE_COMPLETION_READY.toString(),
+          Tag.NAME.toString(),
+          operator.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(operator.getCreationTime()));
+    }
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
@@ -226,15 +255,90 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public synchronized void register(final IoTDBDataRegionSource source) {
     // The metric is global thus the regionId is omitted
     final String pipeID = generatePipeID(source.getPipeName(), source.getCreationTime());
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
+    final PipeDataNodeRemainingEventAndTimeOperator remainingOperator =
+        remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeID,
             k ->
                 new PipeDataNodeRemainingEventAndTimeOperator(
-                    source.getPipeName(), source.getCreationTime()))
-        .register(source);
+                    source.getPipeName(), source.getCreationTime()));
+    remainingOperator.register(source);
+    final PipeDataNodeCompletionOperator completionOperator =
+        completionOperatorMap.computeIfAbsent(
+            pipeID,
+            k ->
+                new PipeDataNodeCompletionOperator(
+                    () -> remainingOperator.getRemainingNonHeartbeatEvents() == 0,
+                    () ->
+                        PipeDataNodeAgent.task()
+                            .getPipeCompletionSnapshot(
+                                source.getPipeName(), source.getCreationTime())));
+    if (source.getRealtimeSourceForCompletion() != null) {
+      completionOperator.registerDataRegionSource(source.getRealtimeSourceForCompletion());
+    }
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
+    }
+  }
+
+  public void register(
+      final PipeRealtimeDataRegionSource source, final PipeDataRegionAssigner assigner) {
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
+    final PipeDataNodeCompletionOperator operator = completionOperatorMap.get(pipeID);
+    if (operator != null) {
+      operator.register(source, assigner);
+    }
+  }
+
+  public void deregister(final IoTDBDataRegionSource source) {
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
+    final PipeDataNodeRemainingEventAndTimeOperator remainingOperator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (remainingOperator != null) {
+      remainingOperator.deregister(source);
+    }
+
+    final PipeDataNodeCompletionOperator operator = completionOperatorMap.get(pipeID);
+    if (operator != null && source.getRealtimeSourceForCompletion() != null) {
+      operator.deregisterDataRegionSource(source.getRealtimeSourceForCompletion());
+    }
+  }
+
+  public void deregister(
+      final PipeRealtimeDataRegionSource source, final PipeDataRegionAssigner assigner) {
+    final PipeDataNodeCompletionOperator operator =
+        completionOperatorMap.get(source.getPipeName() + "_" + source.getCreationTime());
+    if (operator != null) {
+      operator.deregister(source, assigner);
+    }
+  }
+
+  public void markDataRegionCompleted(
+      final String pipeName,
+      final long creationTime,
+      final int dataRegionId,
+      final PipeTaskMeta pipeTaskMeta,
+      final long assignerEpoch,
+      final long generation,
+      final long sourceId,
+      final CommitterKey committerKey) {
+    final PipeDataNodeCompletionOperator operator =
+        completionOperatorMap.get(pipeName + "_" + creationTime);
+    if (operator != null) {
+      operator.markCompleted(
+          dataRegionId, pipeTaskMeta, assignerEpoch, generation, sourceId, committerKey);
+    }
+  }
+
+  public void markDataRegionCompletionInvalid(
+      final String pipeName,
+      final long creationTime,
+      final int dataRegionId,
+      final PipeTaskMeta pipeTaskMeta,
+      final long sourceId) {
+    final PipeDataNodeCompletionOperator operator =
+        completionOperatorMap.get(pipeName + "_" + creationTime);
+    if (operator != null) {
+      operator.markInvalid(dataRegionId, pipeTaskMeta, sourceId);
     }
   }
 
@@ -374,11 +478,13 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.remove(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_REMAINING_EVENT_AND, pipeID);
+      completionOperatorMap.remove(pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeAutoGauge(operator);
     }
+    completionOperatorMap.remove(pipeID);
   }
 
   public void markRegionCommit(final String pipeID, final boolean isDataRegion) {

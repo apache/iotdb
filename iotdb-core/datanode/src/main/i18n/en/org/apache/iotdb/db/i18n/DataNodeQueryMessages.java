@@ -2261,8 +2261,9 @@ public final class DataNodeQueryMessages {
       "Type %s is not orderable, and therefore cannot be used in ORDER BY: %s";
   public static final String OFFSET_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
       "OFFSET row count must be greater or equal to 0 (actual value: %s)";
-  public static final String LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
-      "LIMIT row count must be greater or equal to 0 (actual value: %s)";
+  public static final String
+      EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3 =
+          "LIMIT row count must be greater than 0 (actual value: %s)";
   public static final String NON_CONSTANT_PARAMETER_VALUE_FOR_S_S =
       "Non constant parameter value for %s: %s";
   public static final String PARAMETER_VALUE_PROVIDED_FOR_S_IS_NULL_S =

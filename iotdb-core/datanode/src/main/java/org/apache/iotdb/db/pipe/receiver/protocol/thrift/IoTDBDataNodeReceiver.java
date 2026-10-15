@@ -69,6 +69,7 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConver
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
@@ -1148,7 +1149,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private PipeMemoryBlock tryAllocateReceiverMemory(final long requestedMemorySizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     return PipeDataNodeResourceManager.memory()
-        .forceAllocate(Math.max(requestedMemorySizeInBytes, 0));
+        .forceAllocate(
+            IoTDBDataNodeReceiver.class.getSimpleName() + "#request",
+            Math.max(requestedMemorySizeInBytes, 0),
+            PipeMemoryBlockCategory.RECEIVER,
+            IoTDBDataNodeReceiver.class.getSimpleName());
   }
 
   @Override
@@ -1353,7 +1358,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             allocatedMemoryBlock =
                 PipeDataNodeResourceManager.memory()
                     .forceAllocate(
-                        (long) (estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio));
+                        IoTDBDataNodeReceiver.class.getSimpleName() + "#statement",
+                        (long) (estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio),
+                        PipeMemoryBlockCategory.RECEIVER,
+                        IoTDBDataNodeReceiver.class.getSimpleName());
             break;
           } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
             if (i == tryCount - 1) {
