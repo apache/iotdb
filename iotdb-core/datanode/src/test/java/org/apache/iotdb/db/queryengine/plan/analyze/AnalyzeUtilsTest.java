@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
@@ -32,18 +33,23 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedNam
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -59,6 +65,53 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class AnalyzeUtilsTest {
+
+  @Test
+  public void testRejectedOnlyFieldStopsRowAndTabletBeforePartitionLookup() throws Exception {
+    final InsertRowStatement row = new InsertRowStatement();
+    row.setDevicePath(new PartialPath("root.sg.d1"));
+    row.setMeasurements(new String[] {"tag", "field"});
+    row.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT64});
+    row.setValues(new Object[] {"device", 1L});
+    row.setTime(1L);
+    assertRejectedFieldStopsBeforePartitionLookup(row);
+
+    final InsertTabletStatement tablet = new InsertTabletStatement();
+    tablet.setDevicePath(new PartialPath("root.sg.d1"));
+    tablet.setMeasurements(new String[] {"tag", "field"});
+    tablet.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT64});
+    tablet.setColumns(new Object[] {new String[] {"device"}, new long[] {1L}});
+    tablet.setTimes(new long[] {1L});
+    tablet.setRowCount(1);
+    assertRejectedFieldStopsBeforePartitionLookup(tablet);
+  }
+
+  private static void assertRejectedFieldStopsBeforePartitionLookup(InsertBaseStatement statement) {
+    statement.setColumnCategories(
+        new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+    statement.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("tag", TSDataType.STRING),
+          new MeasurementSchema("field", TSDataType.INT64)
+        });
+    final Analysis analysis = new Analysis();
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("rejected_field"));
+
+    AnalyzeUtils.analyzeInsert(
+        context,
+        statement,
+        () -> statement.markFailedMeasurement(1, new IllegalArgumentException("type mismatch")),
+        (params, userName) -> {
+          throw new AssertionError("Partition lookup must not run after every field fails");
+        },
+        AnalyzeUtils::computeTableDataPartitionParams,
+        analysis,
+        false);
+
+    assertTrue(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertTrue(analysis.getFailStatus().getMessage().contains("field"));
+  }
 
   @Test
   public void testParseDeletePredicateWithRenamedTimeColumn() {

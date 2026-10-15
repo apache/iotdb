@@ -173,6 +173,14 @@ public class AnalyzeUtils {
       return realStatement;
     }
     analysis.setRealStatement(realStatement);
+    // A failed row or tablet may retain TAG columns after every FIELD column was rejected.
+    if (analysis.isFailed()
+        && (realStatement instanceof InsertRowStatement
+            || realStatement instanceof InsertTabletStatement)
+        && !realStatement.hasValidMeasurements()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return realStatement;
+    }
 
     analyzeDataPartition(
         analysis,
