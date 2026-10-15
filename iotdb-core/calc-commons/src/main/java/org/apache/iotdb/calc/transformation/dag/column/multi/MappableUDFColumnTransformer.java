@@ -64,10 +64,20 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     }
     Column[] columns = new Column[inputColumnTransformers.length];
     for (int i = 0; i < inputColumnTransformers.length; i++) {
-      columns[i] =
-          inputColumnTransformers[i]
-              .getColumnWithSelection(selection)
-              .getPositions(positions, 0, selectedCount);
+      ColumnTransformer inputTransformer = inputColumnTransformers[i];
+      Column inputColumn = inputTransformer.getColumnWithSelection(selection);
+      // UDFs can read backing arrays directly. Materialize selected positions instead of passing
+      // dictionary or offset views whose arrays do not match their logical positions.
+      ColumnBuilder inputBuilder = inputTransformer.getType().createColumnBuilder(selectedCount);
+      for (int j = 0; j < selectedCount; j++) {
+        int position = positions[j];
+        if (inputColumn.isNull(position)) {
+          inputBuilder.appendNull();
+        } else {
+          inputBuilder.write(inputColumn, position);
+        }
+      }
+      columns[i] = inputBuilder.build();
     }
     ColumnBuilder builder = returnType.createColumnBuilder(selection.length);
     // A mappable UDF only sees selected rows, even when its inputs reuse full cached columns.

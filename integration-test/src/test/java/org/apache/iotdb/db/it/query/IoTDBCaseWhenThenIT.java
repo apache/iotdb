@@ -64,6 +64,13 @@ public class IoTDBCaseWhenThenIT {
         "INSERT INTO root.sg.d2(timestamp,s4) values(1000000,   55)",
         "INSERT INTO root.sg.d2(timestamp,s4) values(20000000,  66)",
         "INSERT INTO root.sg.d2(timestamp,s4) values(210000000, 77)",
+        "CREATE TIMESERIES root.sg.case_udf.x WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.case_udf.txt WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.case_udf.selector WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.sg.case_udf(time, x, txt, selector) VALUES "
+            + "(1, -1.0, 'sKiP', 0), (2, -2.0, 'mIxEd', 1), "
+            + "(3, -3.0, 'ThIrD', 2), (5, -5.0, 'lAsT', 0)",
+        "INSERT INTO root.sg.case_udf(time, selector) VALUES (4, 3)",
       };
 
   @BeforeClass
@@ -943,5 +950,60 @@ public class IoTDBCaseWhenThenIT {
             + "FROM root.sg.case_null",
         new String[] {TIMESTAMP_STR, "result"},
         new String[] {"1,3.0,", "2,2.0,", "3,3.0,", "4,1.0,"});
+  }
+
+  @Test
+  public void testMappableUdfInCaseMultipleSelectedRows() {
+    resultSetEqualTest(
+        "SELECT CASE WHEN selector > 0 THEN abs(x) ELSE 0.0 END AS abs_result, "
+            + "CASE WHEN selector > 0 THEN upper(txt) ELSE 'skipped' END AS upper_result, "
+            + "CASE WHEN selector > 0 THEN lower(txt) ELSE 'skipped' END AS lower_result "
+            + "FROM root.sg.case_udf",
+        new String[] {TIMESTAMP_STR, "abs_result", "upper_result", "lower_result"},
+        new String[] {
+          "1,0.0,skipped,skipped,",
+          "2,2.0,MIXED,mixed,",
+          "3,3.0,THIRD,third,",
+          "4,null,null,null,",
+          "5,0.0,skipped,skipped,"
+        });
+  }
+
+  @Test
+  public void testMappableUdfInCaseSingleNonFirstSelectedRow() {
+    resultSetEqualTest(
+        "SELECT CASE WHEN selector = 2 THEN abs(x) ELSE 0.0 END AS abs_result, "
+            + "CASE WHEN selector = 2 THEN upper(txt) ELSE 'skipped' END AS upper_result, "
+            + "CASE WHEN selector = 2 THEN lower(txt) ELSE 'skipped' END AS lower_result "
+            + "FROM root.sg.case_udf",
+        new String[] {TIMESTAMP_STR, "abs_result", "upper_result", "lower_result"},
+        new String[] {
+          "1,0.0,skipped,skipped,",
+          "2,0.0,skipped,skipped,",
+          "3,3.0,THIRD,third,",
+          "4,0.0,skipped,skipped,",
+          "5,0.0,skipped,skipped,"
+        });
+  }
+
+  @Test
+  public void testMappableUdfInCaseWithCachedNullableInputs() {
+    // Project the raw inputs first so the CASE branches borrow their complete cached columns.
+    resultSetEqualTest(
+        "SELECT x AS raw_x, txt AS raw_txt, "
+            + "CASE WHEN selector > 0 THEN abs(x) ELSE 0.0 END AS abs_result, "
+            + "CASE WHEN selector > 0 THEN upper(txt) ELSE 'skipped' END AS upper_result, "
+            + "CASE WHEN selector > 0 THEN lower(txt) ELSE 'skipped' END AS lower_result "
+            + "FROM root.sg.case_udf",
+        new String[] {
+          TIMESTAMP_STR, "raw_x", "raw_txt", "abs_result", "upper_result", "lower_result"
+        },
+        new String[] {
+          "1,-1.0,sKiP,0.0,skipped,skipped,",
+          "2,-2.0,mIxEd,2.0,MIXED,mixed,",
+          "3,-3.0,ThIrD,3.0,THIRD,third,",
+          "4,null,null,null,null,null,",
+          "5,-5.0,lAsT,0.0,skipped,skipped,"
+        });
   }
 }
