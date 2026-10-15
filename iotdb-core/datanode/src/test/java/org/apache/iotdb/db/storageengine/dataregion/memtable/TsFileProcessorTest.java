@@ -236,8 +236,9 @@ public class TsFileProcessorTest {
       TSRecord record = new TSRecord(deviceId, 1);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
+      // Queue an ordinary flush while keeping its execution under test control.
       processor.setManagedByFlushManager(true);
-      processor.asyncClose();
+      processor.asyncFlush();
       Assert.assertNull(processor.getWorkMemTable());
 
       MeasurementPath path = new MeasurementPath(deviceId + "." + measurementId);
@@ -284,6 +285,7 @@ public class TsFileProcessorTest {
     } finally {
       try {
         if (processor != null) {
+          processor.asyncCloseForFullFlush().get();
           processor.syncClose();
         }
       } finally {
@@ -330,10 +332,10 @@ public class TsFileProcessorTest {
       long memTableId = processor.getWorkMemTable().getMemTableId();
       logDeletionForTest(tableModel, 2);
 
-      // Use the production close path, while keeping flush execution under test control.
+      // Queue an ordinary flush while keeping its execution under test control.
       processor.setManagedByFlushManager(true);
       try {
-        processor.asyncClose();
+        processor.asyncFlush();
         Assert.assertNull(processor.getWorkMemTable());
         assertEquals(1, processor.getFlushingMemTableSize());
         processor.flushOneMemTable();
@@ -383,6 +385,7 @@ public class TsFileProcessorTest {
     } finally {
       try {
         if (processor != null) {
+          processor.asyncCloseForFullFlush().get();
           processor.syncClose();
         }
       } finally {
