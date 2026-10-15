@@ -88,6 +88,10 @@ public class TopicConstant {
   public static final String STRICT_KEY = "strict";
   public static final String STRICT_DEFAULT_VALUE = "true";
 
+  // Overrides subscription_recycle_uncommitted_event_interval_ms for this topic.
+  public static final String RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY =
+      "recycle-uncommitted-event-interval-ms";
+
   public static final String OWNER_ID_KEY = "owner-id";
   public static final String OWNER_EPOCH_KEY = "owner-epoch";
   // Highest owner epoch ever granted for this topic. Retained across clearOwner so that owner

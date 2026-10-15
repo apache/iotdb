@@ -2160,6 +2160,19 @@ pipe_all_sinks_rate_limit_bytes_per_second=-1
 ### Subscription Consensus Configuration
 ####################
 
+# Time without a poll or in-flight lease renewal before an uncommitted subscription event is
+# recycled for redelivery. Applies to all topic modes and both record and TsFile formats.
+# A zero or negative value disables automatic recycling. A topic can override this with a long value
+# in milliseconds; zero or negative topic values also disable automatic recycling, for example:
+# CREATE TOPIC t WITH ('recycle-uncommitted-event-interval-ms'='1200000');
+# ALTER TOPIC t WITH ('recycle-uncommitted-event-interval-ms'='300000');
+# ALTER TOPIC t WITH ('recycle-uncommitted-event-interval-ms'='0');
+# Disabling automatic recycling still allows explicit NACK redelivery and ACK commits.
+# Topics without an override use this server configuration (default: 600 seconds).
+# effectiveMode: restart
+# Datatype: int, Unit: ms
+subscription_recycle_uncommitted_event_interval_ms=600000
+
 # Maximum fraction of pipe non-floating memory used to cache serialized subscription poll responses.
 # Recommended starting value: 0.2, including large-field and large-batch workloads. This does not control
 # consensus subscription tablet materialization; size that budget using the ninth
