@@ -55,7 +55,8 @@ import static org.mockito.Mockito.when;
 
 public class ClientManagerTest {
 
-  private final TEndPoint endPoint = new TEndPoint("localhost", 10730);
+  private final TEndPoint endPoint =
+      new TEndPoint("localhost", Integer.getInteger("iotdb.test.client-manager.port", 10730));
 
   private static final int CONNECTION_TIMEOUT = 5_000;
 
