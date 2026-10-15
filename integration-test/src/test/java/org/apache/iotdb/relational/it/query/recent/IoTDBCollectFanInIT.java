@@ -36,7 +36,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -99,11 +99,11 @@ public class IoTDBCollectFanInIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE);
-      try (ResultSet result =
-          statement.executeQuery(
-              "SELECT device, zone, value FROM readings1 UNION ALL "
-                  + "SELECT device, zone, value FROM readings1")) {
-        assertResultSetEqualUnordered(result, "device,zone,value,", expectedRows);
+      String sql =
+          "SELECT device, zone, value FROM readings1 UNION ALL "
+              + "SELECT device, zone, value FROM readings1";
+      try (ResultSet result = statement.executeQuery(sql)) {
+        assertUnorderedQueryResult(sql, result, "device,zone,value,", expectedRows);
       }
     }
   }

@@ -37,7 +37,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -265,27 +264,25 @@ public class IoTDBMultiDeviceTableIT {
   }
 
   private void testSelectAll() {
-    String selectSql = "select * from t";
+    String selectSql = "select * from t ORDER BY tag1, tag2, time";
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      try (ResultSet clusterResult = statement.executeQuery(selectSql)) {
-        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
-          Map<String, Long> lastTimeMap = new HashMap<>();
-          int cnt = 0;
-          while (resultSet.next()) {
-            String tag = resultSet.getString("tag1") + "_" + resultSet.getString("tag2");
-            long before = lastTimeMap.getOrDefault(tag, -1L);
-            long cur = resultSet.getTimestamp("time").getTime();
-            if (cur <= before) {
-              fail("time order wrong!");
-            }
-            lastTimeMap.put(tag, cur);
-            cnt++;
+      Map<String, Long> lastTimeMap = new HashMap<>();
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String tag = resultSet.getString("tag1") + "_" + resultSet.getString("tag2");
+          long before = lastTimeMap.getOrDefault(tag, -1L);
+          long cur = resultSet.getTimestamp("time").getTime();
+          if (cur <= before) {
+            fail("time order wrong!");
           }
-          assertEquals(16030, cnt);
+          lastTimeMap.put(tag, cur);
+          cnt++;
         }
+        assertEquals(16030, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

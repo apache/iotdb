@@ -41,10 +41,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getExplainResultSets;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.buildHeaders;
 import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.repeatTest;
 
@@ -5904,7 +5904,8 @@ public class IoTDBTableAggregationIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       try (ResultSet clusterResult = statement.executeQuery("EXPLAIN (FORMAT JSON) " + query)) {
-        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+        for (ResultSet resultSet :
+            getExplainResultSets("EXPLAIN (FORMAT JSON) " + query, clusterResult)) {
           Assert.assertTrue(resultSet.next());
           String plan = resultSet.getString(1);
           // The PARTIAL/FINAL split only exists when the scanned data spans multiple DataRegions.
