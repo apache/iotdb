@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -336,7 +337,7 @@ public final class LoadTsFileSnapshot {
     final File tempTarget =
         new File(parent, target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
     try {
-      Files.copy(source.toPath(), tempTarget.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      LoadUtil.transferFile(source, tempTarget, true);
       atomicMoveOrFallback(tempTarget, target);
     } catch (final IOException e) {
       Files.deleteIfExists(tempTarget.toPath());
