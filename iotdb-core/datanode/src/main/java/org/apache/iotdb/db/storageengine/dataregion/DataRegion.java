@@ -176,7 +176,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -229,10 +228,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
 
-  // Covers a complete IoTConsensus apply, including its WAL separator. Keep this separate from
-  // insertLock so memory backpressure and retry waits do not prevent flushing memtables.
-  private final ReadWriteLock ioTConsensusWriteLock = new ReentrantReadWriteLock();
-  // Accessed only under ioTConsensusWriteLock; stopping a region permanently closes admission.
+  // Accessed only under insertLock's write lock; stopping permanently closes write admission.
   private boolean ioTConsensusWritesStopped;
 
   /** Condition to safely delete data region. */
@@ -1070,6 +1066,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("InsertRow");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -1098,6 +1095,7 @@ public class DataRegion implements IDataRegionForQuery {
               System.nanoTime() - startTime);
         }
       }
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
     }
@@ -1112,10 +1110,19 @@ public class DataRegion implements IDataRegionForQuery {
   public void insertTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
     StorageEngine.blockInsertionIfReject();
+    insertTablet(insertTabletNode, true);
+  }
+
+  private void insertTablet(InsertTabletNode insertTabletNode, boolean logSeparator)
+      throws BatchProcessException, WriteProcessException {
     long startTime = System.nanoTime();
     writeLock("insertTablet");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      // A multi-tablet batch has already passed admission under insertLock.
+      if (logSeparator) {
+        checkIoTConsensusWriteAllowed();
+      }
       if (deleted) {
         logger.info(
             "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
@@ -1206,6 +1213,9 @@ public class DataRegion implements IDataRegionForQuery {
 
       if (!noFailure) {
         throw new BatchProcessException(results);
+      }
+      if (logSeparator) {
+        logSeparatorToWAL();
       }
     } finally {
       writeUnlock();
@@ -1869,27 +1879,25 @@ public class DataRegion implements IDataRegionForQuery {
     WritingMetrics.getInstance().recordTimedFlushMemTableCount(count);
   }
 
-  public TSStatus executeIoTConsensusWrite(Supplier<TSStatus> write) {
-    ioTConsensusWriteLock.readLock().lock();
-    try {
-      if (ioTConsensusWritesStopped
-          || CommonDescriptor.getInstance().getConfig().isStopping()
-          || CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-        return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
-      }
-      return write.get();
-    } finally {
-      ioTConsensusWriteLock.readLock().unlock();
+  /** Called under insertLock's write lock, after any memory-backpressure wait. */
+  protected void checkIoTConsensusWriteAllowed() throws WriteProcessRejectException {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+        && (ioTConsensusWritesStopped
+            || CommonDescriptor.getInstance().getConfig().isStopping()
+            || CommonDescriptor.getInstance().getConfig().isReadOnly())) {
+      throw new WriteProcessRejectException(
+          StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY).getMessage(),
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
     }
   }
 
   /** Reject new IoTConsensus applies and drain admitted applies before closing storage or WAL. */
   public void stopIoTConsensusWrites() {
-    ioTConsensusWriteLock.writeLock().lock();
+    writeLock("stopIoTConsensusWrites");
     try {
       ioTConsensusWritesStopped = true;
     } finally {
-      ioTConsensusWriteLock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -2502,7 +2510,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @throws IOException
    */
   public void deleteByDevice(PartialPath pattern, long startTime, long endTime, long searchIndex)
-      throws IOException {
+      throws IOException, WriteProcessRejectException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
@@ -2515,6 +2523,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -2544,6 +2553,8 @@ public class DataRegion implements IDataRegionForQuery {
       hasReleasedLock = true;
 
       deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
+    } catch (WriteProcessRejectException e) {
+      throw e;
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2554,7 +2565,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDataDirectly(
-      PartialPath pathToDelete, long startTime, long endTime, long searchIndex) throws IOException {
+      PartialPath pathToDelete, long startTime, long endTime, long searchIndex)
+      throws IOException, WriteProcessRejectException {
     logger.info(
         "{} will delete data files directly for deleting data between {} and {}",
         databaseName + "-" + dataRegionIdString,
@@ -2565,6 +2577,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean releasedLock = false;
 
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -2586,6 +2599,8 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
       releasedLock = true;
       deleteDataDirectlyInFile(sealedTsFileResource, pathToDelete, startTime, endTime);
+    } catch (WriteProcessRejectException e) {
+      throw e;
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2638,18 +2653,27 @@ public class DataRegion implements IDataRegionForQuery {
   public void insertSeparatorToWAL() {
     writeLock("insertSeparatorToWAL");
     try {
-      if (deleted) {
+      if (deleted || ioTConsensusWritesStopped) {
         return;
       }
-      getWALNode()
-          .ifPresent(
-              walNode ->
-                  walNode.log(
-                      TsFileProcessor.MEMTABLE_NOT_EXIST,
-                      new ContinuousSameSearchIndexSeparatorNode()));
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
     }
+  }
+
+  /** Called under insertLock's write lock as part of an admitted write. */
+  private void logSeparatorToWAL() {
+    if (deleted
+        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      return;
+    }
+    getWALNode()
+        .ifPresent(
+            walNode ->
+                walNode.log(
+                    TsFileProcessor.MEMTABLE_NOT_EXIST,
+                    new ContinuousSameSearchIndexSeparatorNode()));
   }
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -3784,6 +3808,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("InsertRowsOfOneDevice");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -3872,11 +3897,12 @@ public class DataRegion implements IDataRegionForQuery {
               System.nanoTime() - startTime);
         }
       }
+      if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
+        throw new BatchProcessException("Partial failed inserting rows of one device");
+      }
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
-    }
-    if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      throw new BatchProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3887,6 +3913,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("InsertRows");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -3937,6 +3964,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (!insertRowsNode.getResults().isEmpty()) {
         throw new BatchProcessException("Partial failed inserting rows");
       }
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
     }
@@ -3959,34 +3987,45 @@ public class DataRegion implements IDataRegionForQuery {
    * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
-      throws BatchProcessException {
-    for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
-      InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
-      try {
-        insertTablet(insertTabletNode);
-      } catch (WriteProcessException e) {
-        insertMultiTabletsNode
-            .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      } catch (BatchProcessException e) {
-        // for each error
-        TSStatus firstStatus = null;
-        for (TSStatus status : e.getFailingStatus()) {
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            firstStatus = status;
-          }
-          // return WRITE_PROCESS_REJECT directly for the consensus retry logic
-          if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
-            insertMultiTabletsNode.getResults().put(i, status);
-            throw new BatchProcessException("Rejected inserting multi tablets");
-          }
-        }
-        insertMultiTabletsNode.getResults().put(i, firstStatus);
+      throws BatchProcessException, WriteProcessRejectException {
+    StorageEngine.blockInsertionIfReject();
+    writeLock("insertTablets");
+    try {
+      checkIoTConsensusWriteAllowed();
+      if (deleted) {
+        return;
       }
-    }
+      for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
+        InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+        try {
+          insertTablet(insertTabletNode, false);
+        } catch (WriteProcessException e) {
+          insertMultiTabletsNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        } catch (BatchProcessException e) {
+          // for each error
+          TSStatus firstStatus = null;
+          for (TSStatus status : e.getFailingStatus()) {
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              firstStatus = status;
+            }
+            // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+            if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+              insertMultiTabletsNode.getResults().put(i, status);
+              throw new BatchProcessException("Rejected inserting multi tablets");
+            }
+          }
+          insertMultiTabletsNode.getResults().put(i, firstStatus);
+        }
+      }
 
-    if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      throw new BatchProcessException("Partial failed inserting multi tablets");
+      if (!insertMultiTabletsNode.getResults().isEmpty()) {
+        throw new BatchProcessException("Partial failed inserting multi tablets");
+      }
+      logSeparatorToWAL();
+    } finally {
+      writeUnlock();
     }
   }
 
