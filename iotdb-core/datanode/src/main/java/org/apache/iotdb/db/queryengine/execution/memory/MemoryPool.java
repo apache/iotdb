@@ -174,7 +174,7 @@ public class MemoryPool {
     private final AtomicLong inputUsedBytes = new AtomicLong();
     private final AtomicLong outputUsedBytes = new AtomicLong();
     // Enabled by local planning before drivers start; request limits are supplied by handles.
-    private boolean sharedBudget;
+    private volatile boolean sharedBudget;
 
     private AtomicLong getUsedBytes(MemorySide side) {
       return side == MemorySide.INPUT ? inputUsedBytes : outputUsedBytes;
@@ -298,6 +298,18 @@ public class MemoryPool {
         // We should wait for them to be closed. Make sure this method is called again with
         // forceDeregister == true, after all LocalSourceChannel/LocalSourceHandles are closed.
         return;
+      }
+      // Pending requests must not outlive their FI registration. Cancel before removing the
+      // account so another query's free() cannot retry a request against a missing FI. Do not
+      // hold the registration lock while notifying cancellation listeners.
+      Iterator<MemoryReservationFuture<Void>> pending = memoryReservationFutures.iterator();
+      while (pending.hasNext()) {
+        MemoryReservationFuture<Void> future = pending.next();
+        if (queryId.equals(future.getQueryId())
+            && fragmentInstanceId.equals(future.getFragmentInstanceId())) {
+          tryCancel(future);
+          pending.remove();
+        }
       }
       synchronized (queryMemoryReservations) {
         queryRelatedMemory.remove(fragmentInstanceId);
@@ -451,10 +463,11 @@ public class MemoryPool {
           DataNodeQueryMessages
               .QUERY_EXCEPTION_RELATEDMEMORYRESERVED_CAN_T_BE_NULL_WHEN_FREEING_MEMORY_C80009F2);
     }
-    synchronized (fragment) {
-      PlanNodeReservation reservation =
-          requireReservation(
-              fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+    PlanNodeReservation reservation =
+        requireReservation(
+            fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+    Object accountingLock = fragment.sharedBudget ? fragment : reservation;
+    synchronized (accountingLock) {
       if (reservation.bytesReserved < bytes) {
         throw new IllegalArgumentException(
             DataNodeQueryMessages.FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED);
@@ -540,10 +553,12 @@ public class MemoryPool {
       long maxBytesCanReserve) {
     FragmentMemoryReservation fragment =
         getFragmentReservation(queryId, fragmentInstanceId, planNodeId);
-    synchronized (fragment) {
-      PlanNodeReservation reservation =
-          requireReservation(
-              fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+    PlanNodeReservation reservation =
+        requireReservation(
+            fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+    // Legacy quotas are independent per plan node. Only shared quotas require the FI lock.
+    Object accountingLock = fragment.sharedBudget ? fragment : reservation;
+    synchronized (accountingLock) {
       long usedBytes =
           fragment.sharedBudget
               ? fragment.getUsedBytes(reservation.side).get()
