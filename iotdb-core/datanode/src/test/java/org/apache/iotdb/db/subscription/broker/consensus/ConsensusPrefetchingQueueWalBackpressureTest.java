@@ -205,6 +205,15 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       }
       when(walNode.getCurrentSearchIndex()).thenReturn(5L);
       when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
+      // The factory must return an iterator that is ready for bounded replay at the requested
+      // cursor, without requiring a separate advanceTo call from its caller.
+      try (ProgressWALIterator createdIterator = queue.createSubscriptionWALIterator(4L)) {
+        final ProgressWALIterator.ScanBudget budget =
+            new ProgressWALIterator.ScanBudget(2, Long.MAX_VALUE);
+        assertTrue(createdIterator.hasNext(budget));
+        assertEquals(4L, createdIterator.next().getSearchIndex());
+        assertFalse(budget.hasYielded());
+      }
       final Method reset =
           ConsensusPrefetchingQueue.class.getDeclaredMethod(
               "resetSubscriptionWALPosition", long.class);

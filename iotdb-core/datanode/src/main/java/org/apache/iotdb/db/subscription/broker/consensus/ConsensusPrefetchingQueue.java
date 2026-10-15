@@ -2516,15 +2516,16 @@ public class ConsensusPrefetchingQueue {
     reportedSkippedBrokenWalFileCount = 0;
     reportedSkippedBrokenWalEntryCount = 0L;
     subscriptionWALIterator = createSubscriptionWALIterator(startSearchIndex);
-    if (Objects.nonNull(subscriptionWALIterator)) {
-      subscriptionWALIterator.advanceTo(
-          startSearchIndex, this::isWriterProgressCoveredForWalFastForward);
-    }
   }
 
   protected ProgressWALIterator createSubscriptionWALIterator(final long startSearchIndex) {
     if (consensusReqReader instanceof WALNode) {
-      return new ProgressWALIterator((WALNode) consensusReqReader, startSearchIndex);
+      final ProgressWALIterator iterator =
+          new ProgressWALIterator((WALNode) consensusReqReader, startSearchIndex);
+      // The constructor sets the local filtering lower bound. Complete initialization here by
+      // positioning past historical files only when every writer's progress is already covered.
+      iterator.advanceTo(startSearchIndex, this::isWriterProgressCoveredForWalFastForward);
+      return iterator;
     }
     return null;
   }
