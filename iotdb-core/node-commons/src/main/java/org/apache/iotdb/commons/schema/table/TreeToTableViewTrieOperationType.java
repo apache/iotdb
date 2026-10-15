@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.i18n.SchemaMessages;
 
-public enum TreeToTableViewOperationType {
+public enum TreeToTableViewTrieOperationType {
   /** Register the view, or replace the entry stored for the same view. */
   ADD((byte) 0),
   /** Unregister the view. */
@@ -36,7 +36,7 @@ public enum TreeToTableViewOperationType {
 
   private final byte operationType;
 
-  TreeToTableViewOperationType(final byte operationType) {
+  TreeToTableViewTrieOperationType(final byte operationType) {
     this.operationType = operationType;
   }
 
@@ -44,7 +44,7 @@ public enum TreeToTableViewOperationType {
     return operationType;
   }
 
-  public static TreeToTableViewOperationType getType(final byte type) {
+  public static TreeToTableViewTrieOperationType getType(final byte type) {
     switch (type) {
       case -1:
         return null;

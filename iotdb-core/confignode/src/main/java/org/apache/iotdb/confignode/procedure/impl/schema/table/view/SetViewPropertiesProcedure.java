@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
-import org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
@@ -56,12 +56,12 @@ public class SetViewPropertiesProcedure extends SetTablePropertiesProcedure {
 
   @Override
   protected TUpdateTableReq buildCommitReleaseTableReq(final @Nullable String oldName) {
-    final Optional<TreeToTableViewOperationType> type = tree2TableViewOperationType();
+    final Optional<TreeToTableViewTrieOperationType> type = tree2TableViewOperationType();
     if (type.isEmpty()) {
       return super.buildCommitReleaseTableReq(oldName);
     }
     final TUpdateTree2TableView viewInfo = new TUpdateTree2TableView(type.get().getOperationType());
-    if (TreeToTableViewOperationType.ALTER_AUTO_SYNC == type.get()) {
+    if (TreeToTableViewTrieOperationType.ALTER_AUTO_SYNC == type.get()) {
       // Turning the auto detection on mounts the view: the DataNode needs its whole definition.
       table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).ifPresent(viewInfo::setTreePath);
       viewInfo.setIsRestrict(TreeViewSchema.isRestrict(table));
@@ -76,7 +76,7 @@ public class SetViewPropertiesProcedure extends SetTablePropertiesProcedure {
     super.commitReleaseWithHA(env);
     // Turning the auto detection on mounts the view, so the series which already exist under its
     // path pattern need the same second detection as the ones of a newly created view.
-    if (TreeToTableViewOperationType.ALTER_AUTO_SYNC
+    if (TreeToTableViewTrieOperationType.ALTER_AUTO_SYNC
         == tree2TableViewOperationType().orElse(null)) {
       reconcileTree2TableViewColumns(env);
     }
@@ -104,11 +104,11 @@ public class SetViewPropertiesProcedure extends SetTablePropertiesProcedure {
    * change it. Turning auto_sync_schema on registers the view, turning it off unregisters it, and
    * any other property leaves the index alone.
    */
-  private Optional<TreeToTableViewOperationType> tree2TableViewOperationType() {
+  private Optional<TreeToTableViewTrieOperationType> tree2TableViewOperationType() {
     if (!updatedProperties.containsKey(AUTO_SYNC_SCHEMA)) {
       return Optional.empty();
     }
-    final TreeToTableViewOperationType type =
+    final TreeToTableViewTrieOperationType type =
         indexEffectOf(updatedProperties.get(AUTO_SYNC_SCHEMA));
     // An absent auto_sync_schema means false, so setting it to false is not a change.
     return type == indexEffectOf(originalProperties.get(AUTO_SYNC_SCHEMA))
@@ -116,10 +116,11 @@ public class SetViewPropertiesProcedure extends SetTablePropertiesProcedure {
         : Optional.of(type);
   }
 
-  private static TreeToTableViewOperationType indexEffectOf(final @Nullable String autoSyncSchema) {
+  private static TreeToTableViewTrieOperationType indexEffectOf(
+      final @Nullable String autoSyncSchema) {
     return Boolean.parseBoolean(autoSyncSchema)
-        ? TreeToTableViewOperationType.ALTER_AUTO_SYNC
-        : TreeToTableViewOperationType.REMOVE;
+        ? TreeToTableViewTrieOperationType.ALTER_AUTO_SYNC
+        : TreeToTableViewTrieOperationType.REMOVE;
   }
 
   @Override

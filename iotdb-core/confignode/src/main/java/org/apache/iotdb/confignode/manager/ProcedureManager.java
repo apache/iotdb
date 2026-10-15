@@ -152,6 +152,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsFailure;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -170,9 +173,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewFailure;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
@@ -2282,12 +2282,12 @@ public class ProcedureManager {
                 false));
   }
 
-  public TUpdateTree2TableViewsResp addColumnForTree2TableViews(TUpdateTree2TableViewsReq req) {
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
     if (req == null || !req.isSetViewInfos()) {
-      return new TUpdateTree2TableViewsResp(RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
+      return new TAutoSyncViewColumnsResp(RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
     }
 
-    final List<TUpdateTree2TableViewFailure> failedViews = new ArrayList<>();
+    final List<TAutoSyncViewColumnsFailure> failedViews = new ArrayList<>();
     final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures =
         new ArrayList<>();
     // The requests which overlapped with another task on the same table, together with the status
@@ -2316,13 +2316,13 @@ public class ProcedureManager {
       final TSStatus status = waitingProcedureFinished(procedure.getRight(), remainingWaitTime);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         failedViews.add(
-            new TUpdateTree2TableViewFailure(
+            new TAutoSyncViewColumnsFailure(
                 procedure.getLeft().database, procedure.getLeft().tableName, status));
       }
     }
 
     final TSStatus status = failedViews.isEmpty() ? StatusUtils.OK : StatusUtils.INTERNAL_ERROR;
-    final TUpdateTree2TableViewsResp response = new TUpdateTree2TableViewsResp(status);
+    final TAutoSyncViewColumnsResp response = new TAutoSyncViewColumnsResp(status);
     if (!failedViews.isEmpty()) {
       response.setFailedViews(failedViews);
     }
@@ -2343,9 +2343,9 @@ public class ProcedureManager {
         && addColumnReq.isIsView();
   }
 
-  private static TUpdateTree2TableViewFailure illegalAddViewColumnFailure(
+  private static TAutoSyncViewColumnsFailure illegalAddViewColumnFailure(
       final TAlterOrDropTableReq addColumnReq) {
-    return new TUpdateTree2TableViewFailure(
+    return new TAutoSyncViewColumnsFailure(
         Objects.isNull(addColumnReq) ? "" : Objects.toString(addColumnReq.getDatabase(), ""),
         Objects.isNull(addColumnReq) ? "" : Objects.toString(addColumnReq.getTableName(), ""),
         RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
@@ -2358,7 +2358,7 @@ public class ProcedureManager {
   private TSStatus submitAddViewColumn(
       final TAlterOrDropTableReq addColumnReq,
       final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures,
-      final List<TUpdateTree2TableViewFailure> failedViews) {
+      final List<TAutoSyncViewColumnsFailure> failedViews) {
     final AddViewColumnProcedure procedure;
     procedure =
         new AddViewColumnProcedure(
@@ -2386,7 +2386,7 @@ public class ProcedureManager {
       // null means the procedure could have finished at this moment
       if (Objects.isNull(repeatedProcedure)) {
         failedViews.add(
-            new TUpdateTree2TableViewFailure(
+            new TAutoSyncViewColumnsFailure(
                 addColumnReq.database,
                 addColumnReq.tableName,
                 RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR)));
@@ -2395,7 +2395,7 @@ public class ProcedureManager {
       }
     } else if (status.getCode() != TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
       failedViews.add(
-          new TUpdateTree2TableViewFailure(addColumnReq.database, addColumnReq.tableName, status));
+          new TAutoSyncViewColumnsFailure(addColumnReq.database, addColumnReq.tableName, status));
     }
     return status;
   }
@@ -2408,7 +2408,7 @@ public class ProcedureManager {
   private void processOverlappingTask(
       final List<Pair<TAlterOrDropTableReq, TSStatus>> overlappingReqs,
       final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures,
-      final List<TUpdateTree2TableViewFailure> failedViews) {
+      final List<TAutoSyncViewColumnsFailure> failedViews) {
     List<Pair<TAlterOrDropTableReq, TSStatus>> pending = overlappingReqs;
     for (int round = 0; round < OVERLAP_RETRY_ROUNDS && !pending.isEmpty(); round++) {
       try {
@@ -2430,7 +2430,7 @@ public class ProcedureManager {
 
     for (final Pair<TAlterOrDropTableReq, TSStatus> request : pending) {
       failedViews.add(
-          new TUpdateTree2TableViewFailure(
+          new TAutoSyncViewColumnsFailure(
               request.getLeft().database, request.getLeft().tableName, request.getRight()));
     }
   }

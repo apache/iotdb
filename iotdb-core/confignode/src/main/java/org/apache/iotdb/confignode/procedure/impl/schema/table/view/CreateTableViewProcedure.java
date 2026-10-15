@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
-import org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -137,7 +137,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     if (newAutoSync) {
       // Whether the view is a new one, or replace the old table, just add view
       final TUpdateTree2TableView viewInfo =
-          new TUpdateTree2TableView(TreeToTableViewOperationType.ADD.getOperationType());
+          new TUpdateTree2TableView(TreeToTableViewTrieOperationType.ADD.getOperationType());
       table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).ifPresent(viewInfo::setTreePath);
       viewInfo.setIsRestrict(TreeViewSchema.isRestrict(table));
       viewInfo.setTagNum(table.getTagNum());
@@ -156,7 +156,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
           database,
           table.getTableName(),
           null,
-          new TUpdateTree2TableView(TreeToTableViewOperationType.REMOVE.getOperationType()));
+          new TUpdateTree2TableView(TreeToTableViewTrieOperationType.REMOVE.getOperationType()));
     }
     return super.buildCommitReleaseTableReq();
   }
@@ -179,7 +179,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
       return super.buildRollbackTableReq();
     }
     final TUpdateTree2TableView viewInfo =
-        new TUpdateTree2TableView(TreeToTableViewOperationType.ADD.getOperationType());
+        new TUpdateTree2TableView(TreeToTableViewTrieOperationType.ADD.getOperationType());
     oldView.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).ifPresent(viewInfo::setTreePath);
     viewInfo.setIsRestrict(TreeViewSchema.isRestrict(oldView));
     viewInfo.setTagNum(oldView.getTagNum());

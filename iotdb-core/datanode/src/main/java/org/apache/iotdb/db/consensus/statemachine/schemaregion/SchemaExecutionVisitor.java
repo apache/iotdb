@@ -80,7 +80,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWrite
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.table.TreeToTableViewCache;
-import org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnManager;
+import org.apache.iotdb.db.schemaengine.table.ViewColumnAutoSync;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -492,7 +492,7 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     final String operationId = node.getPlanNodeId().getId();
     try {
       if (TreeToTableViewCache.getInstance().hasView()) {
-        TriggerAddViewColumnManager.addViewColumnsIfNeeded(createdMeasurements, operationId);
+        ViewColumnAutoSync.sync(createdMeasurements, operationId);
       }
     } catch (final Throwable e) {
       logger.error(DataNodeSchemaMessages.LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED, operationId, e);

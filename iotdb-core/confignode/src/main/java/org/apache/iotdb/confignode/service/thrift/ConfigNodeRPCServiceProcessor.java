@@ -108,6 +108,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -235,8 +237,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
@@ -1534,8 +1534,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req) {
-    return configManager.updateTree2TableViews(req);
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
+    return configManager.autoSyncViewColumns(req);
   }
 
   @Override

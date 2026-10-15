@@ -29,9 +29,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewFailure;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsFailure;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -62,16 +62,18 @@ import java.util.Set;
  * Adds to the tree-to-table views the columns which the measurements a schema write has created
  * need.
  *
- * <p>The addition is a best-effort side effect of the schema write, see addViewColumnsIfNeeded.
+ * <p>It is the automatic counterpart of the {@code ALTER VIEW ... ADD COLUMN} statement: the
+ * columns come from the measurements the schema write has just created, instead of from the
+ * statement itself.
  */
-public class TriggerAddViewColumnManager {
+public class ViewColumnAutoSync {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerAddViewColumnManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ViewColumnAutoSync.class);
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
   public static final String QUERY_ID_PREFIX = "tree_to_table_add_column";
-  public static final String ALTER_DEVICE_TEMPLATE_ID_PREFIX = "template_";
+  public static final String EXTEND_DEVICE_TEMPLATE_ID_PREFIX = "template_";
 
   /**
    * Adds the columns the views covering the given devices need.
@@ -87,7 +89,7 @@ public class TriggerAddViewColumnManager {
    * @param operationId the planNodeId of the plan which triggers this operation, for the log
    *     messages only: it is a per-query index, so it does not identify the operation
    */
-  public static void addViewColumnsIfNeeded(
+  public static void sync(
       final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements,
       final String operationId) {
     if (device2Measurements == null || device2Measurements.isEmpty()) {
@@ -104,12 +106,10 @@ public class TriggerAddViewColumnManager {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(AbstractConfigNodeInfo.CONFIG_REGION_ID)) {
       List<TAlterOrDropTableReq> updateViewReqs =
-          view2Measurements.entrySet().stream()
-              .map(TriggerAddViewColumnManager::toAlterTableReq)
-              .toList();
+          view2Measurements.entrySet().stream().map(ViewColumnAutoSync::toAlterTableReq).toList();
 
-      TUpdateTree2TableViewsResp resp =
-          configNodeClient.updateTree2TableViews(new TUpdateTree2TableViewsReq(updateViewReqs));
+      TAutoSyncViewColumnsResp resp =
+          configNodeClient.autoSyncViewColumns(new TAutoSyncViewColumnsReq(updateViewReqs));
       if (resp == null || resp.getStatus() == null) {
         LOGGER.error(DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE, operationId);
         return;
@@ -120,7 +120,7 @@ public class TriggerAddViewColumnManager {
       }
       // the views are updated one by one in ConfigNode, so the failed ones are reported one by one
       if (resp.getFailedViews() != null) {
-        for (TUpdateTree2TableViewFailure failedView : resp.getFailedViews()) {
+        for (TAutoSyncViewColumnsFailure failedView : resp.getFailedViews()) {
           LOGGER.error(
               DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW,
               failedView.getDatabase(),
@@ -167,9 +167,7 @@ public class TriggerAddViewColumnManager {
       Map.Entry<TreeToTableViewReference, Set<Pair<String, TSDataType>>> view2Measurements) {
     final TreeToTableViewReference view = view2Measurements.getKey();
     final List<TsTableColumnSchema> columnSchemas =
-        view2Measurements.getValue().stream()
-            .map(TriggerAddViewColumnManager::toColumnSchema)
-            .toList();
+        view2Measurements.getValue().stream().map(ViewColumnAutoSync::toColumnSchema).toList();
     TAlterOrDropTableReq tAlterOrDropTableReq =
         new TAlterOrDropTableReq(
             view.getDatabaseName(),

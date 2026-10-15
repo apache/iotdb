@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType.ALTER_TAG;
+import static org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType.ALTER_TAG;
 import static org.apache.iotdb.commons.schema.table.TreeViewSchema.AUTO_SYNC_SCHEMA;
 
 public class AddViewColumnProcedure extends AddTableColumnProcedure {
@@ -105,7 +105,7 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
 
   @Override
   protected TUpdateTableReq buildCommitReleaseTableReq(final @Nullable String oldName) {
-    final Optional<TreeToTableViewOperationType> type = tree2TableViewOperationType();
+    final Optional<TreeToTableViewTrieOperationType> type = tree2TableViewOperationType();
     if (type.isEmpty()) {
       return super.buildCommitReleaseTableReq(oldName);
     }
@@ -115,7 +115,7 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
     return SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), oldName, viewInfo);
   }
 
-  private Optional<TreeToTableViewOperationType> tree2TableViewOperationType() {
+  private Optional<TreeToTableViewTrieOperationType> tree2TableViewOperationType() {
     final Optional<String> propValue = table.getPropValue(AUTO_SYNC_SCHEMA);
     if (propValue.isPresent() && Boolean.parseBoolean(propValue.get())) {
       final boolean hasTagColumn =

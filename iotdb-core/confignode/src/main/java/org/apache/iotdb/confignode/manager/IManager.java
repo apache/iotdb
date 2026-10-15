@@ -72,6 +72,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -168,8 +170,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -921,7 +921,7 @@ public interface IManager {
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
 
-  TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req);
+  TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req);
 
   TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req);
 

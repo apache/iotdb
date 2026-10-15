@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
-import org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -50,7 +50,7 @@ public class DropViewProcedure extends DropTableProcedure {
         database,
         table.getTableName(),
         null,
-        new TUpdateTree2TableView(TreeToTableViewOperationType.REMOVE.getOperationType()));
+        new TUpdateTree2TableView(TreeToTableViewTrieOperationType.REMOVE.getOperationType()));
   }
 
   @Override

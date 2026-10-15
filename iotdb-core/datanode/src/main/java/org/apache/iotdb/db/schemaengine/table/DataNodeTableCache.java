@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
-import org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -432,8 +432,9 @@ public class DataNodeTableCache implements ITableCache {
     if (Objects.isNull(updateTree2TableViewInfo)) {
       return;
     }
-    final TreeToTableViewOperationType type =
-        TreeToTableViewOperationType.getType(updateTree2TableViewInfo.getTree2TableOperationType());
+    final TreeToTableViewTrieOperationType type =
+        TreeToTableViewTrieOperationType.getType(
+            updateTree2TableViewInfo.getTree2TableOperationType());
     try {
       switch (type) {
         case REMOVE:

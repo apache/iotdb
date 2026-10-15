@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
-import org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -54,7 +54,7 @@ public class RenameViewProcedure extends RenameTableProcedure {
     }
     // A rename does not move the view, so the old name is all the DataNode needs.
     final TUpdateTree2TableView viewInfo =
-        new TUpdateTree2TableView(TreeToTableViewOperationType.ALTER_RENAME.getOperationType());
+        new TUpdateTree2TableView(TreeToTableViewTrieOperationType.ALTER_RENAME.getOperationType());
     return SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), oldName, viewInfo);
   }
 

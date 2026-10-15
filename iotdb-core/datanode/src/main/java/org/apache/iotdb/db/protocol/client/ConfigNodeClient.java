@@ -63,6 +63,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -188,8 +190,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -1318,10 +1318,10 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   }
 
   @Override
-  public TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req)
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
       throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.updateTree2TableViews(req), status -> !updateConfigNodeLeader(status.status));
+        () -> client.autoSyncViewColumns(req), status -> !updateConfigNodeLeader(status.status));
   }
 
   @Override

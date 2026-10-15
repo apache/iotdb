@@ -158,6 +158,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -265,8 +267,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -3381,11 +3381,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req) {
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? procedureManager.addColumnForTree2TableViews(req)
-        : new TUpdateTree2TableViewsResp(status);
+        ? procedureManager.autoSyncViewColumns(req)
+        : new TAutoSyncViewColumnsResp(status);
   }
 
   @Override
