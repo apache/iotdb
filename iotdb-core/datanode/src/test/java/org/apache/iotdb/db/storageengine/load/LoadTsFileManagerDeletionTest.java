@@ -342,7 +342,7 @@ public class LoadTsFileManagerDeletionTest {
   private static List<File> modificationFilesOf(final TsFileWriterManager writerManager)
       throws Exception {
     final Field field =
-        TsFileWriterManager.class.getDeclaredField("dataPartition2ModificationFile");
+        TsFileWriterManager.class.getDeclaredField("timePartition2ModificationFile");
     field.setAccessible(true);
     final Map<?, ModificationFile> modificationFiles =
         (Map<?, ModificationFile>) field.get(writerManager);
@@ -365,7 +365,7 @@ public class LoadTsFileManagerDeletionTest {
         (Map<String, TsFileWriterManager>) writersField.get(manager);
     for (final TsFileWriterManager writerManager : writers.values()) {
       final Field partitionsField =
-          TsFileWriterManager.class.getDeclaredField("dataPartition2Writer");
+          TsFileWriterManager.class.getDeclaredField("timePartition2Writer");
       partitionsField.setAccessible(true);
       @SuppressWarnings("unchecked")
       final Map<?, TsFilePrecalculatedChunkWriter> partitionWriters =

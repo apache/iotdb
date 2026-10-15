@@ -268,7 +268,7 @@ public class LoadTsFileManagerTest {
         (Map<String, TsFileWriterManager>) writersField.get(manager);
     for (final TsFileWriterManager writerManager : writers.values()) {
       final Field partitionsField =
-          TsFileWriterManager.class.getDeclaredField("dataPartition2Writer");
+          TsFileWriterManager.class.getDeclaredField("timePartition2Writer");
       partitionsField.setAccessible(true);
       @SuppressWarnings("unchecked")
       final Map<?, TsFilePrecalculatedChunkWriter> partitionWriters =
