@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class LoadUtil {
 
@@ -342,7 +343,7 @@ public class LoadUtil {
     }
 
     final List<File> existingSourceFiles =
-        sourceFiles.stream().filter(File::isFile).collect(java.util.stream.Collectors.toList());
+        sourceFiles.stream().filter(File::isFile).collect(Collectors.toList());
     if (existingSourceFiles.isEmpty()) {
       // Sources are removed after a successful handoff. An atomically published directory with a
       // TsFile is therefore sufficient evidence on a retry where the sender regenerated its file
