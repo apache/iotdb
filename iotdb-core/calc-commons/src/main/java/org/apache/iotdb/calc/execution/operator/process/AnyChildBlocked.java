@@ -50,10 +50,13 @@ final class AnyChildBlocked implements Accountable {
   private final List<Operator> children;
   private final Object lock = new Object();
   private final ChildFutureListener[] listeners;
+  private ChildFutureListener readyHead;
+  private ChildFutureListener readyTail;
   private WaitRound currentRound;
   private Throwable firstFailure;
   private boolean closed;
-  private int nextChild;
+  private boolean initialized;
+  private int childToObserve = -1;
 
   AnyChildBlocked(List<Operator> children) {
     this.children = children;
@@ -62,65 +65,100 @@ final class AnyChildBlocked implements Accountable {
 
   ListenableFuture<Integer> getAnyChild() {
     WaitRound round;
+    WaitRound selection;
+    boolean initialize;
+    int invalidatedChild;
     synchronized (lock) {
       if (currentRound != null) {
         return currentRound.selected;
       }
       round = new WaitRound();
       currentRound = round;
-      for (ChildFutureListener listener : listeners) {
-        if (listener != null) {
-          listener.target = round;
-        }
-      }
+      initialize = !initialized;
+      initialized = true;
+      invalidatedChild = childToObserve;
+      childToObserve = -1;
+      selection = selectReadyChild();
     }
+    completeSelection(selection);
 
-    // Activate every live direct child, even if an earlier one has already become ready. Only
-    // invalidated records call child.isBlocked(); a long-pending future keeps its one listener.
-    for (int offset = 0; offset < children.size(); offset++) {
-      int childId = (nextChild + offset) % children.size();
-      Operator child;
-      ChildFutureListener listener;
-      synchronized (lock) {
-        if (closed) {
-          break;
-        }
-        child = children.get(childId);
-        listener = listeners[childId];
+    if (initialize) {
+      // Activate every direct input once, even if an earlier input is already ready. Pending
+      // listeners enqueue their completion without being retargeted or polled on every block.
+      for (int childId = 0; childId < children.size(); childId++) {
+        observeChild(childId);
       }
-      if (child == null) {
-        continue;
-      }
-      if (listener == null) {
-        ListenableFuture<?> observedFuture = child.isBlocked();
-        synchronized (lock) {
-          if (closed) {
-            break;
-          }
-          listener = new ChildFutureListener(childId, observedFuture, round);
-          listeners[childId] = listener;
-        }
-        // The target is published before registration. addListener also handles a future that
-        // finishes between isBlocked and registration, including inline completion.
-        observedFuture.addListener(listener, directExecutor());
-      } else if (listener.observedFuture.isDone()) {
-        // A completed record may have notified a previous round. Recheck it for this round.
-        listener.run();
-      }
-    }
-
-    Throwable failure;
-    boolean isClosed;
-    synchronized (lock) {
-      failure = firstFailure;
-      isClosed = closed;
-    }
-    if (isClosed || children.isEmpty()) {
-      round.selected.set(-1);
-    } else if (failure != null) {
-      round.selected.setException(failure);
+    } else if (invalidatedChild >= 0) {
+      // Only advancing an input invalidates its readiness. Requeue it behind inputs that are
+      // already ready so that a continuously ready input cannot starve its siblings.
+      observeChild(invalidatedChild);
     }
     return round.selected;
+  }
+
+  private void observeChild(int childId) {
+    Operator child;
+    synchronized (lock) {
+      if (closed) {
+        return;
+      }
+      child = children.get(childId);
+    }
+    if (child == null) {
+      return;
+    }
+    ListenableFuture<?> observedFuture = child.isBlocked();
+    ChildFutureListener listener = new ChildFutureListener(childId, observedFuture);
+    synchronized (lock) {
+      if (closed) {
+        return;
+      }
+      listeners[childId] = listener;
+    }
+    // Publish the record before registration, including when completion runs inline. Callbacks
+    // only update readiness; operator methods remain confined to the driver thread.
+    observedFuture.addListener(listener, directExecutor());
+  }
+
+  /** Called under lock; claiming a selection and removing its ready record are atomic. */
+  private WaitRound selectReadyChild() {
+    if (currentRound == null || currentRound.claimed) {
+      return null;
+    }
+    if (closed || children.isEmpty()) {
+      currentRound.childId = -1;
+    } else if (firstFailure != null) {
+      currentRound.failure = firstFailure;
+    } else {
+      ChildFutureListener listener;
+      do {
+        listener = readyHead;
+        if (listener == null) {
+          return null;
+        }
+        readyHead = listener.nextReady;
+        listener.nextReady = null;
+        if (readyHead == null) {
+          readyTail = null;
+        }
+        // Retired records are discarded once, rather than scanning closed input slots per block.
+      } while (listeners[listener.childId] != listener);
+      currentRound.childId = listener.childId;
+    }
+    currentRound.claimed = true;
+    return currentRound;
+  }
+
+  private static void completeSelection(WaitRound selection) {
+    if (selection == null) {
+      return;
+    }
+    // Completing the future can invoke downstream listeners synchronously. Do not hold lock.
+    if (selection.failure == null) {
+      selection.selected.set(selection.childId);
+    } else {
+      selection.selected.setException(selection.failure);
+    }
   }
 
   void checkFailure() throws Exception {
@@ -142,11 +180,8 @@ final class AnyChildBlocked implements Accountable {
   void invalidateChild(int childId) {
     synchronized (lock) {
       listeners[childId] = null;
-      if (currentRound != null) {
-        currentRound.valid = false;
-        currentRound = null;
-      }
-      nextChild = (childId + 1) % children.size();
+      currentRound = null;
+      childToObserve = childId;
     }
   }
 
@@ -160,14 +195,13 @@ final class AnyChildBlocked implements Accountable {
       closed = true;
       round = currentRound;
       currentRound = null;
-      if (round != null) {
-        round.valid = false;
+      childToObserve = -1;
+      while (readyHead != null) {
+        ChildFutureListener next = readyHead.nextReady;
+        readyHead.nextReady = null;
+        readyHead = next;
       }
-      for (ChildFutureListener listener : listeners) {
-        if (listener != null) {
-          listener.target = null;
-        }
-      }
+      readyTail = null;
       Arrays.fill(listeners, null);
     }
     if (round != null) {
@@ -193,18 +227,20 @@ final class AnyChildBlocked implements Accountable {
 
   private static final class WaitRound {
     private final SettableFuture<Integer> selected = SettableFuture.create();
-    private boolean valid = true;
+    private boolean claimed;
+    private int childId;
+    private Throwable failure;
   }
 
   private final class ChildFutureListener implements Runnable {
     private final int childId;
     private final ListenableFuture<?> observedFuture;
-    private WaitRound target;
+    private ChildFutureListener nextReady;
+    private boolean completed;
 
-    private ChildFutureListener(int childId, ListenableFuture<?> observedFuture, WaitRound target) {
+    private ChildFutureListener(int childId, ListenableFuture<?> observedFuture) {
       this.childId = childId;
       this.observedFuture = observedFuture;
-      this.target = target;
     }
 
     @Override
@@ -217,26 +253,26 @@ final class AnyChildBlocked implements Accountable {
       } catch (CancellationException e) {
         failure = e;
       }
-      WaitRound round;
+      WaitRound selection;
       synchronized (lock) {
-        if (closed || listeners[childId] != this) {
+        if (closed || listeners[childId] != this || completed) {
           return;
         }
+        completed = true;
         if (failure != null && firstFailure == null) {
           firstFailure = failure;
         }
-        round = target;
-        if (round == null || !round.valid || round != currentRound) {
-          return;
+        if (failure == null) {
+          if (readyTail == null) {
+            readyHead = this;
+          } else {
+            readyTail.nextReady = this;
+          }
+          readyTail = this;
         }
-        failure = firstFailure;
+        selection = selectReadyChild();
       }
-      // Completing a selection can invoke downstream listeners synchronously. Do not hold lock.
-      if (failure == null) {
-        round.selected.set(childId);
-      } else {
-        round.selected.setException(failure);
-      }
+      completeSelection(selection);
     }
   }
 }
