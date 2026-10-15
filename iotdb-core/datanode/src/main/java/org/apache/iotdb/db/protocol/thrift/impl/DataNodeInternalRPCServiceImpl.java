@@ -199,7 +199,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesS
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.TreeToTableViewCache;
-import org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnVisitor;
+import org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -411,7 +411,7 @@ import java.util.stream.Stream;
 import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE;
-import static org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnVisitor.ALTER_DEVICE_TEMPLATE_ID_PREFIX;
+import static org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnManager.ALTER_DEVICE_TEMPLATE_ID_PREFIX;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -2920,7 +2920,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           try {
             final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements =
                 collectDevicesUsingExtendedTemplate(oldTemplate, newTemplate);
-            TriggerAddViewColumnVisitor.addViewColumnsIfNeeded(
+            TriggerAddViewColumnManager.addViewColumnsIfNeeded(
                 device2Measurements, ALTER_DEVICE_TEMPLATE_ID_PREFIX + newTemplate.getId());
           } catch (final Exception e) {
             // todo
