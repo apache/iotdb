@@ -1617,7 +1617,14 @@ public class IoTConsensusServerImpl {
         for (int i = 0; i < insertNodes.size(); i++) {
           IConsensusRequest insertNode = insertNodes.get(i);
           insertNode.markAsGeneratedByRemoteConsensusLeader();
-          TSStatus status = stateMachine.write(insertNode);
+          // Reject requests that became read-only while queued. This is an early rejection only:
+          // the state machine must also fence the full apply against storage shutdown, since the
+          // replica can become read-only after this check.
+          TSStatus status =
+              isReadOnly()
+                  ? RpcUtils.getStatus(
+                      TSStatusCode.SYSTEM_READ_ONLY, ConsensusMessages.SYNC_LOG_SYSTEM_READ_ONLY)
+                  : stateMachine.write(insertNode);
           subStatus.add(status);
           if (RetryUtils.needRetryForWrite(status.getCode())) {
             for (int j = i + 1; j < insertNodes.size(); j++) {

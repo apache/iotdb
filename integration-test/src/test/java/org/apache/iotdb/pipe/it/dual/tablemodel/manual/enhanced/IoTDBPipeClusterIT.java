@@ -348,6 +348,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
         try (final SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+          // Distinguish a source-side write loss during the restart from a p2 transfer failure.
+          TableModelUtils.assertData("test1", "test1", 0, 300, senderEnv);
+
           // Create a new pipe and write new data
           final Map<String, String> sourceAttributes = new HashMap<>();
           final Map<String, String> processorAttributes = new HashMap<>();
@@ -449,6 +452,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
   private void waitForTableDataRegionReplicationComplete(
       final BaseEnv env, final List<String> databases) {
+    // IoTConsensus accepts writes on any replica, including a previous leader during failover.
+    // Check every replica's outgoing replication before flushing or restarting the cluster.
     await()
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .atMost(2, TimeUnit.MINUTES)
@@ -456,24 +461,23 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
             () -> {
               try (final SyncConfigNodeIServiceClient client =
                   (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
-                final List<TRegionInfo> leaderRegionInfoList =
-                    showTableDataRegionLeaders(databases, client);
+                final List<TRegionInfo> regionInfoList = showTableDataRegions(databases, client);
                 Assert.assertFalse(
-                    "No table DataRegion leader found for databases " + databases,
-                    leaderRegionInfoList.isEmpty());
+                    "No table DataRegion found for databases " + databases,
+                    regionInfoList.isEmpty());
 
-                for (final TRegionInfo regionInfo : leaderRegionInfoList) {
-                  final DataNodeWrapper leaderNode =
+                for (final TRegionInfo regionInfo : regionInfoList) {
+                  final DataNodeWrapper replicaNode =
                       findDataNodeWrapperByPort(env, regionInfo.getClientRpcPort());
                   final String metricsUrl =
                       "http://"
-                          + leaderNode.getIp()
+                          + replicaNode.getIp()
                           + ":"
-                          + leaderNode.getMetricPort()
+                          + replicaNode.getMetricPort()
                           + "/metrics";
                   final String metricsContent = env.getUrlContent(metricsUrl, null);
                   Assert.assertNotNull(
-                      "Failed to fetch metrics from leader DataNode at " + metricsUrl,
+                      "Failed to fetch metrics from replica DataNode at " + metricsUrl,
                       metricsContent);
                   assertSyncLagIsZero(metricsContent, buildDataRegionTag(regionInfo), metricsUrl);
                 }
@@ -483,6 +487,17 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
   private List<TRegionInfo> showTableDataRegionLeaders(
       final List<String> databases, final SyncConfigNodeIServiceClient client) throws TException {
+    final List<TRegionInfo> result = new ArrayList<>();
+    for (final TRegionInfo regionInfo : showTableDataRegions(databases, client)) {
+      if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+        result.add(regionInfo);
+      }
+    }
+    return result;
+  }
+
+  private List<TRegionInfo> showTableDataRegions(
+      final List<String> databases, final SyncConfigNodeIServiceClient client) throws TException {
     final TShowRegionResp showRegionResp =
         client.showRegion(
             new TShowRegionReq()
@@ -491,13 +506,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
                 .setIsTableModel(true));
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-    final List<TRegionInfo> result = new ArrayList<>();
-    for (final TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-      if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-        result.add(regionInfo);
-      }
-    }
-    return result;
+    return showRegionResp.getRegionInfoList();
   }
 
   private DataNodeWrapper findDataNodeWrapperByPort(final BaseEnv env, final int port) {
