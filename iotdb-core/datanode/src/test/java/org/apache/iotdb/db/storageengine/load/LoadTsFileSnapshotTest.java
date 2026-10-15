@@ -196,6 +196,29 @@ public class LoadTsFileSnapshotTest {
   }
 
   /**
+   * A configuration written before the V2 class was renamed still names it the old way, so the
+   * snapshot has to recognise it: the gate asks the factory for the canonical name.
+   */
+  @Test
+  public void testAStagingDirectoryIsSnapshottedForTheLegacyNameOfIoTConsensusV2()
+      throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.LEGACY_IOT_CONSENSUS_V2);
+    try {
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+      manager.writePiece(stagedPiece("legacy-v2-load", laidOutChunk()));
+
+      final File snapshotDir = new File(tempDir, "snapshot-legacy-v2");
+      assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+      assertFalse(LoadTsFileSnapshot.collectSnapshotFiles(snapshotDir).isEmpty());
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  /**
    * A DataNode can stage its tasks in several roots, and the snapshot has to bring every task back
    * to the root it was staged in - and, more importantly, the references it recorded have to keep
    * describing the files wherever they are restored.

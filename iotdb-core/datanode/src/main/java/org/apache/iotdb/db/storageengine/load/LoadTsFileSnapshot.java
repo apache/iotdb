@@ -73,14 +73,11 @@ public final class LoadTsFileSnapshot {
   private static final int MAX_STAGED_FILE_REPAIRS = 8;
   private static final long STAGED_FILE_CATCH_UP_WAIT_MS = 5L;
 
+  /** The protocols that stage through consensus, by the names the factory calls canonical. */
   private static final Set<String> SUPPORTED_PROTOCOLS =
       Collections.unmodifiableSet(
           new HashSet<>(
-              Arrays.asList(
-                  ConsensusFactory.IOT_CONSENSUS,
-                  ConsensusFactory.IOT_CONSENSUS_V2,
-                  ConsensusFactory.LEGACY_IOT_CONSENSUS_V2,
-                  ConsensusFactory.REAL_IOT_CONSENSUS_V2)));
+              Arrays.asList(ConsensusFactory.IOT_CONSENSUS, ConsensusFactory.IOT_CONSENSUS_V2)));
 
   private LoadTsFileSnapshot() {}
 
@@ -96,7 +93,8 @@ public final class LoadTsFileSnapshot {
         snapshotDir, StorageEngineMessages.EXCEPTION_SNAPSHOTDIR_CANNOT_BE_NULL_283211CB);
 
     if (!SUPPORTED_PROTOCOLS.contains(
-        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass()))) {
       return true;
     }
 
