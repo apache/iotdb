@@ -171,6 +171,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -2549,6 +2550,9 @@ public class ProcedureManager {
                     && !(procedure instanceof DropViewProcedure))
         .map(procedure -> (DropTableProcedure) procedure)
         .forEach(procedure -> dropProcedures.put(procedure.getProcId(), procedure));
+    dropProcedures.values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .forEach(DropTableProcedure::updateModFileProgress);
     return dropProcedures.values().stream()
         .map(
             procedure -> {
@@ -2559,6 +2563,13 @@ public class ProcedureManager {
                       procedure.getProcId(),
                       procedure.getState().name(),
                       procedure.getDropProgress());
+              final TDropTableModProgress modProgress = procedure.getModFileProgress();
+              if (modProgress != null) {
+                info.setWrittenModFileCount(modProgress.getWrittenModFileCount());
+                if (modProgress.isSetRemainingModFileCount()) {
+                  info.setRemainingModFileCount(modProgress.getRemainingModFileCount());
+                }
+              }
               if (procedure.hasException()) {
                 info.setErrorMessage(procedure.getException().getMessage());
               }

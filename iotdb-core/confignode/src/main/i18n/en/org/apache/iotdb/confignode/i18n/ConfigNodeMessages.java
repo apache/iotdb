@@ -20,6 +20,9 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2 =
+          "Failed to create or alter topic, illegal %s=%s, expected a long value in milliseconds";
 
   public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_A_CONFIGREGION_FOLLOWER_NEW_LEADER_NODEID_ARG_STOPPING_LEADER_SERVICES_A1962CD2 =
       "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] is a ConfigRegion follower; new leader nodeId: {}. Stopping leader services.";

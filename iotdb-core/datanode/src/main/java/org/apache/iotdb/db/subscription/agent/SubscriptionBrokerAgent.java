@@ -719,6 +719,16 @@ public class SubscriptionBrokerAgent {
     }
   }
 
+  public void wakeUpConsensusPrefetchingQueues(final String topicName, final boolean isTableModel) {
+    for (final List<ISubscriptionBroker> brokers : consumerGroupIdToBrokers.values()) {
+      final ConsensusSubscriptionBroker broker =
+          getBroker(brokers, ConsensusSubscriptionBroker.class);
+      if (Objects.nonNull(broker)) {
+        broker.wakeUpPrefetchingQueues(topicName, isTableModel);
+      }
+    }
+  }
+
   public void refreshColumnFilter(final String topicName, final TopicConfig topicConfig) {
     final ColumnFilterMatcher matcher;
     try {

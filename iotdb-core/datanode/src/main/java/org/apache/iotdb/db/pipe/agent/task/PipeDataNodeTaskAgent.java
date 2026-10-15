@@ -64,7 +64,10 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -76,6 +79,7 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -695,6 +699,69 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return pipeMeta == null
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
+  }
+
+  /**
+   * Returns current realtime DataRegion sources keyed by region ID. The left value is true only for
+   * a supported, running, healthy Pipe whose expected DataRegion tasks are all present and ready. A
+   * false value means completion is unproven; the map may be partial or empty and must not be
+   * interpreted as completed. Runtime state is sampled under the task read lock.
+   */
+  public Pair<Boolean, Map<Integer, PipeRealtimeDataRegionSource>> getPipeCompletionSnapshot(
+      final String pipeName, final long creationTime) {
+    if (!tryReadLockWithTimeOutInMs(10)) {
+      return new Pair<>(false, Collections.emptyMap());
+    }
+
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      if (pipeMeta == null) {
+        return new Pair<>(false, Collections.emptyMap());
+      }
+
+      final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+      boolean supported =
+          staticMeta.supportsCompletionMark()
+              && pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING
+              && pipeMeta.getRuntimeMeta().getNodeId2PipeRuntimeExceptionMap().isEmpty()
+              && pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()
+                  .noneMatch(PipeTaskMeta::hasExceptionMessages);
+
+      final Map<Integer, PipeRealtimeDataRegionSource> dataRegionId2Source = new HashMap<>();
+      final Map<Integer, PipeTask> pipeTaskMap = pipeTaskManager.getPipeTasks(staticMeta);
+      if (pipeTaskMap != null) {
+        for (final Map.Entry<Integer, PipeTask> entry : pipeTaskMap.entrySet()) {
+          if (!(entry.getValue() instanceof PipeDataNodeTask)) {
+            supported = false;
+            continue;
+          }
+          final PipeExtractor extractor = ((PipeDataNodeTask) entry.getValue()).getPipeExtractor();
+          if (!(extractor instanceof IoTDBDataRegionSource)) {
+            if (!(extractor instanceof IoTDBSchemaRegionSource)) {
+              supported = false;
+            }
+            continue;
+          }
+          final IoTDBDataRegionSource dataRegionSource = (IoTDBDataRegionSource) extractor;
+          final PipeRealtimeDataRegionSource realtimeSource =
+              dataRegionSource.getRealtimeSourceForCompletion();
+          if (realtimeSource == null) {
+            supported = false;
+          } else {
+            dataRegionId2Source.put(entry.getKey(), realtimeSource);
+          }
+          if (!dataRegionSource.isReadyForCompletion()) {
+            supported = false;
+          }
+        }
+      }
+      if (!dataRegionId2Source.keySet().equals(getExpectedDataRegionIds(pipeMeta))) {
+        supported = false;
+      }
+      return new Pair<>(supported, dataRegionId2Source);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
