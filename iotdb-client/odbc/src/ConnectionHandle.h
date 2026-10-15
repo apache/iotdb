@@ -31,6 +31,7 @@
 #include <TableSession.h>
 
 class StatementHandle;
+class DescriptorHandle;
 
 class ConnectionHandle : public ODBCHandle {
 public:
@@ -51,6 +52,7 @@ public:
   std::string database;
   std::string dataSourceName;
   std::vector<StatementHandle*> statements;
+  std::vector<DescriptorHandle*> descriptors;
   int logLevel;
   bool isTableModel;
   bool useRestful;
@@ -65,6 +67,7 @@ public:
   std::shared_ptr<TableSession> tableSessionPtr;
 
   void CloseSession();
+  void CloseChildren();
 
   bool LoadDsnFromOdbcIni(const std::string& dsnName);
 

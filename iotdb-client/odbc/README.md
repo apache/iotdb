@@ -98,6 +98,16 @@ parameters, stored procedures, asynchronous execution or bookmarks. Applications
 must use `SQLGetFunctions` and `SQLGetInfo` rather than infer optional support from
 exported symbols.
 
+`SQL_C_NUMERIC` conversion supports INT32, INT64 and epoch TIMESTAMP values,
+including INT64_MIN, with a default precision of 38 and scale of zero.
+Bound numeric columns and `SQLGetData(SQL_ARD_TYPE)` honor the application row
+descriptor's precision (1–38) and scale (-38–38). Fractional truncation returns
+`SQL_SUCCESS_WITH_INFO`/`01S07`; magnitude overflow returns `22003`.
+FLOAT/DOUBLE to `SQL_C_NUMERIC` is currently unsupported and returns `07006`
+without modifying the output. Retrieve approximate values as `SQL_C_FLOAT` or
+`SQL_C_DOUBLE` instead. `SQLDisconnect` drops all connection-owned statement and
+descriptor handles; applications must allocate new ones after reconnecting.
+
 ## Install
 
 Windows: extract the release, then run `install.bat "C:\Program Files\Apache IoTDB ODBC Driver"`

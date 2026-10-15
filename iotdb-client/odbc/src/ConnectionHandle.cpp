@@ -21,6 +21,7 @@
 //
 
 #include "ConnectionHandle.h"
+#include "StatementHandle.h"
 #include "Log.h"
 #include <odbcinst.h>
 #include <SessionBuilder.h>
@@ -34,6 +35,7 @@ ConnectionHandle::ConnectionHandle(EnvironmentHandle* environment)
       tableSessionPtr(nullptr) {}
 
 void ConnectionHandle::CloseSession() {
+  CloseChildren();
   if (sessionPtr) {
     sessionPtr->close();
     sessionPtr = nullptr;
@@ -42,6 +44,15 @@ void ConnectionHandle::CloseSession() {
     tableSessionPtr->close();
     tableSessionPtr = nullptr;
   }
+}
+
+void ConnectionHandle::CloseChildren() {
+  // Release result sets while their Session and parent connection still exist.
+  // Statement destruction also removes its four implicit descriptors.
+  while (!statements.empty())
+    delete statements.back();
+  while (!descriptors.empty())
+    delete descriptors.back();
 }
 
 ConnectionHandle::~ConnectionHandle() noexcept {

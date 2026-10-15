@@ -71,6 +71,10 @@ def main():
                     "STRING",
                 ]
                 rows = [["中文😀", "2024-02-29", "0x0001ff", ""]]
+            elif sql == "SELECT reviewed":
+                names = ["long_label", "flag", "minimum", "floating"]
+                types = ["STRING", "BOOLEAN", "INT64", "DOUBLE"]
+                rows = [["sample", True, -(2**63), 1.5]]
             body = {"column_names": names, "data_types": types, "values": rows}
             if "/rest/v2/" in self.path:
                 body["expressions"] = []
@@ -222,7 +226,77 @@ def main():
         assert get(stmt, 4, 1, empty, 1, c.byref(size)) == 0 and size.value == 0
         assert get(stmt, 4, 1, empty, 1, c.byref(size)) == 100
         assert fetch(stmt) == 100
-        print("ODBC catalog, Unicode and REST compatibility checks passed")
+
+        # Review regressions exercise exported entry points through the loaded
+        # library, including cleanup calls after SQLDisconnect dropped children.
+        assert direct(stmt, wide("SELECT reviewed"), -3) == 0
+        describe_a = api("SQLDescribeCol", *describe.argtypes)
+        attribute = api("SQLColAttribute", h, ushort, ushort, h, short, h, h)
+        diagnostic = api("SQLGetDiagRec", short, h, short, h, h, h, short, h)
+
+        def state():
+            text = c.create_string_buffer(6)
+            assert diagnostic(3, stmt, 1, text, None, None, 0, None) == 0
+            return text.value.decode()
+
+        column_size = c.c_size_t()
+        assert (
+            describe_a(stmt, 1, None, 0, None, None, c.byref(column_size), None, None)
+            == 0
+        )
+        assert column_size.value == 2147483647
+        for col, expected in ((1, -9), (2, -7), (3, -5)):
+            numeric = length(0x12345678)
+            assert attribute(stmt, col, 2, None, 0, None, c.byref(numeric)) == 0
+            assert numeric.value == expected
+        assert attribute(stmt, 1, 18, None, 0, c.byref(name_length), None) == 0
+        assert name_length.value == 10  # SQL_DESC_LABEL length-only request.
+        sentinel = c.create_string_buffer(b"XXXXXXXX")
+        assert attribute(stmt, 1, 18, sentinel, -1, None, None) == -1
+        assert state() == "HY090" and sentinel.raw == b"XXXXXXXX\0"
+        assert (
+            describe_a(
+                stmt,
+                1,
+                sentinel,
+                4,
+                c.byref(name_length),
+                None,
+                c.byref(column_size),
+                None,
+                None,
+            )
+            == 1
+        )
+        assert sentinel.value == b"lon" and name_length.value == 10
+        assert column_size.value == 2147483647 and state() == "01004"
+        assert attribute(stmt, 1, 18, sentinel, 1, None, None) == 1
+        assert state() == "01004"
+        assert fetch(stmt) == 0
+
+        class Numeric(c.Structure):
+            _fields_ = [
+                ("precision", c.c_ubyte),
+                ("scale", c.c_byte),
+                ("sign", c.c_ubyte),
+                ("val", c.c_ubyte * 16),
+            ]
+
+        number = Numeric()
+        assert get(stmt, 3, 2, c.byref(number), c.sizeof(number), c.byref(size)) == 0
+        assert number.sign == 0 and number.scale == 0
+        assert int.from_bytes(number.val, "little") == 2**63
+        c.memset(c.byref(number), 0x5A, c.sizeof(number))
+        before = bytes(number)
+        assert get(stmt, 4, 2, c.byref(number), c.sizeof(number), c.byref(size)) == -1
+        assert state() == "07006" and bytes(number) == before
+        descriptor = h()
+        assert alloc(4, dbc, c.byref(descriptor)) == 0
+        assert api("SQLDisconnect", h)(dbc) == 0
+        assert free(2, dbc) == 0
+        assert free(3, stmt) == -2 and free(4, descriptor) == -2
+        dbc.value = stmt.value = None
+        print("ODBC catalog, Unicode, numeric, handle and REST checks passed")
     finally:
         for kind, value in ((3, stmt), (2, dbc), (1, env)):
             if value:

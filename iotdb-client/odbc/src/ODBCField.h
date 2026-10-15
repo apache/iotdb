@@ -89,7 +89,8 @@ public:
   bool toTimestamp(SQL_TIMESTAMP_STRUCT* target) const; // SQL_C_TYPE_TIMESTAMP
 
   // Numeric type
-  bool toNumeric(SQL_NUMERIC_STRUCT* target) const; // SQL_C_NUMERIC
+  bool toNumeric(SQL_NUMERIC_STRUCT* target, SQLSMALLINT precision = 38, SQLSMALLINT scale = 0,
+                 bool* truncated = nullptr) const; // SQL_C_NUMERIC
 
   // GUID type
   bool toGUID(SQLGUID* target) const; // SQL_C_GUID

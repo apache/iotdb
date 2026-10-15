@@ -447,13 +447,37 @@ SQLRETURN CopyFieldToTarget(StatementHandle* stmt, const ODBCField& value, SQLSM
     break;
   }
   case SQL_C_NUMERIC: {
-    if (!value.toNumeric(static_cast<SQL_NUMERIC_STRUCT*>(targetValuePtr))) {
-      logMessage(cnct, "CopyFieldToTarget: Error converting to SQL_C_NUMERIC", LOG_LEVEL_ERROR);
-      stmt->addDiagnostic("22005", "Error converting to SQL_C_NUMERIC");
+    const auto type = value.getDataType();
+    if (type != TSDataType::INT32 && type != TSDataType::INT64 && type != TSDataType::TIMESTAMP) {
+      stmt->addDiagnostic("07006",
+                          "Conversion to SQL_C_NUMERIC is supported only for integer types");
+      return SQL_ERROR;
+    }
+    SQLSMALLINT precision = 38, scale = 0;
+    if (col) {
+      const auto* record = static_cast<DescriptorHandle*>(stmt->appRowDesc)->findRecord(col);
+      if (record) {
+        if (record->precision)
+          precision = record->precision;
+        scale = record->scale;
+      }
+    }
+    if (precision < 1 || precision > 38 || scale < -38 || scale > 38) {
+      stmt->addDiagnostic("HY104", "Invalid precision or scale for SQL_C_NUMERIC");
+      return SQL_ERROR;
+    }
+    bool truncated = false;
+    if (!value.toNumeric(static_cast<SQL_NUMERIC_STRUCT*>(targetValuePtr), precision, scale,
+                         &truncated)) {
+      stmt->addDiagnostic("22003", "Numeric value out of range");
       return SQL_ERROR;
     }
     if (strLen_or_IndPtr) {
       *strLen_or_IndPtr = sizeof(SQL_NUMERIC_STRUCT);
+    }
+    if (truncated) {
+      stmt->addDiagnostic("01S07", "Fractional truncation");
+      return SQL_SUCCESS_WITH_INFO;
     }
     break;
   }

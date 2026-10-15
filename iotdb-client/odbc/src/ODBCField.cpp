@@ -702,80 +702,72 @@ bool ODBCField::toTime(SQL_TIME_STRUCT* target) const {
   return false;
 }
 
-bool ODBCField::toNumeric(SQL_NUMERIC_STRUCT* target) const {
-  // Convert to SQL_C_NUMERIC
-  if (!target || isNull())
+bool ODBCField::toNumeric(SQL_NUMERIC_STRUCT* target, SQLSMALLINT precision, SQLSMALLINT scale,
+                          bool* truncated) const {
+  if (!target || isNull() || precision < 1 || precision > 38 || scale < -38 || scale > 38)
     return false;
+  int64_t value;
+  if (field_.dataType == TSDataType::INT32)
+    value = field_.intV.value();
+  else if (field_.dataType == TSDataType::INT64 || field_.dataType == TSDataType::TIMESTAMP)
+    value = field_.longV.value();
+  else
+    return false; // Approximate-to-fixed conversion is not implemented.
 
-  // Initialize the numeric struct
-  target->precision = 0;
-  target->scale = 0;
-  target->sign = 1; // Positive by default
-  std::memset(target->val, 0, SQL_MAX_NUMERIC_LEN);
-
-  bool success = false;
-  switch (field_.dataType) {
-  case TSDataType::INT32: {
-    int32_t value = field_.intV.value();
-    target->sign = (value < 0) ? 0 : 1;
-    int64_t absValue = std::abs(static_cast<int64_t>(value));
-
-    // Convert to scaled integer in little-endian format
-    target->precision = 10; // Default precision for 32-bit int
-    target->scale = 0;
-
-    for (int i = 0; i < SQL_MAX_NUMERIC_LEN && absValue > 0; ++i) {
-      target->val[i] = absValue % 256;
-      absValue /= 256;
-    }
-    success = true;
-    break;
+  SQL_NUMERIC_STRUCT numeric{};
+  numeric.precision = static_cast<SQLCHAR>(precision);
+  numeric.scale = static_cast<SQLSCHAR>(scale);
+  numeric.sign = value < 0 ? 0 : 1;
+  // Unsigned subtraction also represents abs(INT64_MIN), without signed overflow.
+  uint64_t magnitude =
+      value < 0 ? uint64_t(0) - static_cast<uint64_t>(value) : static_cast<uint64_t>(value);
+  for (size_t i = 0; i < sizeof(magnitude); ++i) {
+    numeric.val[i] = static_cast<SQLCHAR>(magnitude & 0xff);
+    magnitude >>= 8;
   }
-  case TSDataType::INT64:
-  case TSDataType::TIMESTAMP: {
-    int64_t value = field_.longV.value();
-    target->sign = (value < 0) ? 0 : 1;
-    int64_t absValue = std::abs(value);
-
-    // Convert to scaled integer in little-endian format
-    target->precision = 19; // Default precision for 64-bit int
-    target->scale = 0;
-
-    for (int i = 0; i < SQL_MAX_NUMERIC_LEN && absValue > 0; ++i) {
-      target->val[i] = absValue % 256;
-      absValue /= 256;
-    }
-    success = true;
-    break;
-  }
-  case TSDataType::FLOAT:
-  case TSDataType::DOUBLE:
-    // For simplicity, convert floating point to string then to numeric
-    // This is a basic implementation - real implementation would need proper decimal handling
-    {
-      double value =
-          (field_.dataType == TSDataType::FLOAT) ? field_.floatV.value() : field_.doubleV.value();
-      target->sign = (value < 0) ? 0 : 1;
-      double absValue = std::abs(value);
-
-      // Very basic conversion - just store as integer part
-      target->precision = 15;
-      target->scale = 0;
-
-      int64_t intPart = static_cast<int64_t>(absValue);
-      for (int i = 0; i < SQL_MAX_NUMERIC_LEN && intPart > 0; ++i) {
-        target->val[i] = intPart % 256;
-        intPart /= 256;
+  bool lostFraction = false;
+  for (int digit = 0; digit < std::abs(static_cast<int>(scale)); ++digit) {
+    unsigned carry = 0;
+    if (scale > 0) {
+      for (auto& byte : numeric.val) {
+        unsigned product = static_cast<unsigned>(byte) * 10 + carry;
+        byte = static_cast<SQLCHAR>(product & 0xff);
+        carry = product >> 8;
       }
-      success = true;
-      break;
+      if (carry)
+        return false;
+    } else {
+      for (int i = SQL_MAX_NUMERIC_LEN - 1; i >= 0; --i) {
+        unsigned dividend = carry * 256 + numeric.val[i];
+        numeric.val[i] = static_cast<SQLCHAR>(dividend / 10);
+        carry = dividend % 10;
+      }
+      lostFraction = lostFraction || carry != 0;
     }
-  default:
-    break;
   }
-  return success;
+  // Count decimal digits without converting the 128-bit magnitude through a
+  // floating-point type. This keeps precision checks exact on MSVC as well.
+  SQL_NUMERIC_STRUCT remaining = numeric;
+  int digits = 0;
+  bool nonzero;
+  do {
+    unsigned carry = 0;
+    nonzero = false;
+    for (int i = SQL_MAX_NUMERIC_LEN - 1; i >= 0; --i) {
+      unsigned dividend = carry * 256 + remaining.val[i];
+      remaining.val[i] = static_cast<SQLCHAR>(dividend / 10);
+      carry = dividend % 10;
+      nonzero = nonzero || remaining.val[i] != 0;
+    }
+    ++digits;
+  } while (nonzero);
+  if (digits > precision)
+    return false;
+  *target = numeric;
+  if (truncated)
+    *truncated = lostFraction;
+  return true;
 }
-
 bool ODBCField::toGUID(SQLGUID* target) const {
   // Convert to SQL_C_GUID
   // GUID conversion is only supported for string representations of GUIDs
@@ -1007,12 +999,11 @@ bool ODBCField::canConvert(TSDataType::TSDataType tsDataType, SQLSMALLINT cDataT
         std::unordered_set<SQLSMALLINT> timestampSet = int64Set;
         map[TSDataType::TIMESTAMP] = timestampSet;
 
-        std::unordered_set<SQLSMALLINT> floatSet = {SQL_C_CHAR,   SQL_C_WCHAR, SQL_C_FLOAT,
-                                                    SQL_C_DOUBLE, SQL_C_BIT,   SQL_C_NUMERIC};
+        std::unordered_set<SQLSMALLINT> floatSet = {SQL_C_CHAR, SQL_C_WCHAR, SQL_C_FLOAT,
+                                                    SQL_C_DOUBLE, SQL_C_BIT};
         map[TSDataType::FLOAT] = floatSet;
 
-        std::unordered_set<SQLSMALLINT> doubleSet = {SQL_C_CHAR,   SQL_C_WCHAR, SQL_C_FLOAT,
-                                                     SQL_C_DOUBLE, SQL_C_BIT,   SQL_C_NUMERIC};
+        std::unordered_set<SQLSMALLINT> doubleSet = floatSet;
         map[TSDataType::DOUBLE] = doubleSet;
 
         std::unordered_set<SQLSMALLINT> textSet = {SQL_C_CHAR, SQL_C_WCHAR, SQL_C_BIT};

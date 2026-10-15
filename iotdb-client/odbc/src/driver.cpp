@@ -432,6 +432,10 @@ SQLRETURN getColName(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
                      const SQLPOINTER stringBuffer, const SQLSMALLINT bufferLength,
                      SQLSMALLINT* stringLength) {
   ConnectionHandle* cnct = stmt->getConnection();
+  if (bufferLength < 0) {
+    stmt->addDiagnostic("HY090", "Invalid string or buffer length");
+    return SQL_ERROR;
+  }
   logMessage(cnct, "Entering getColName", LOG_LEVEL_TRACE);
 
   // Use ODBCResultSet to get column names (columnNumber is 1-based, getColumnName uses 0-based)
@@ -447,7 +451,8 @@ SQLRETURN getColName(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
     return SQL_ERROR;
   }
 
-  SQLSMALLINT actualLength = static_cast<SQLSMALLINT>(columnExpression.size());
+  SQLSMALLINT actualLength = static_cast<SQLSMALLINT>(std::min(
+      columnExpression.size(), static_cast<size_t>(std::numeric_limits<SQLSMALLINT>::max())));
   // Set StringLength to the length of the column name
   if (stringLength != nullptr) {
     *stringLength = actualLength;
@@ -468,13 +473,15 @@ SQLRETURN getColName(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
       static_cast<char*>(stringBuffer)[lengthToCopy] = '\0';
     }
 
-    if (lengthToCopy < actualLength) {
+    if (static_cast<size_t>(lengthToCopy) < columnExpression.size()) {
       std::string truncatedString =
           lengthToCopy == 0 ? "[Empty string]" : columnExpression.substr(0, lengthToCopy);
       logMessage(cnct,
                  "Returning Column name truncated: " + truncatedString + " (original: '" +
                      columnExpression + "')",
                  LOG_LEVEL_WARN);
+      stmt->addDiagnostic("01004", "String data, right truncated");
+      return SQL_SUCCESS_WITH_INFO;
     } else {
       logMessage(cnct, "Returning column name: " + std::string(static_cast<char*>(stringBuffer)),
                  LOG_LEVEL_DEBUG);
@@ -999,6 +1006,12 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
     return SQL_INVALID_HANDLE;
   }
 
+  stmt->clearDiagnostics();
+  if (bufferLength < 0) {
+    stmt->addDiagnostic("HY090", "Invalid string or buffer length");
+    return SQL_ERROR;
+  }
+
   if (stmt->resultSetPtr == nullptr) {
     logMessage(cnct, "SQLColAttribute: Missing result set", LOG_LEVEL_ERROR);
     stmt->addDiagnostic("HY000", "No query result available");
@@ -1034,14 +1047,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
   switch (fieldIdentifier) {
   case SQL_DESC_LABEL:
     logMessage(cnct, "SQLColAttribute: Processing SQL_DESC_LABEL", LOG_LEVEL_DEBUG);
-    if (characterAttribute) {
-      // Get column name as label
-      sqlreturn = getColName(stmt, columnNumber, characterAttribute, bufferLength, stringLength);
-      if (sqlreturn != SQL_SUCCESS) {
-        logMessage(cnct, "SQLColAttribute: Failed to get column name for label", LOG_LEVEL_ERROR);
-        return sqlreturn;
-      }
-    }
+    return getColName(stmt, columnNumber, characterAttribute, bufferLength, stringLength);
     break;
 
   case SQL_DESC_COUNT:
@@ -1075,11 +1081,12 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
       stmt->addDiagnostic("HY009", "Invalid use of null pointer");
       return SQL_ERROR;
     }
-    sqlreturn = getColType(stmt, columnNumber, reinterpret_cast<SQLSMALLINT*>(numericAttribute));
+    sqlreturn = getColType(stmt, columnNumber, &columnType);
     if (sqlreturn != SQL_SUCCESS) {
       logMessage(cnct, "SQLColAttribute: Failed to get column type", LOG_LEVEL_ERROR);
       return sqlreturn;
     }
+    *numericAttribute = columnType;
     break;
 
   case SQL_COLUMN_DISPLAY_SIZE:
@@ -1608,15 +1615,11 @@ SQLRETURN SQL_API SQLDescribeCol(SQLHSTMT statementHandle, SQLUSMALLINT columnNu
     std::stringstream logStream;
     logStream << "SQLDescribeCol parameters: "
               << "StatementHandle = " << handleToString(statementHandle)
-              << ", ColumnNumber = " << columnNumber << ", ColumnName = "
-              << (columnName ? reinterpret_cast<const char*>(columnName) : "nullptr")
-              << ", BufferLength = " << bufferLength
-              << ", NameLength = " << (nameLength ? std::to_string(*nameLength) : "nullptr")
-              << ", DataType = " << (dataType ? std::to_string(*dataType) : "nullptr")
-              << ", ColumnSize = " << (columnSize ? std::to_string(*columnSize) : "nullptr")
-              << ", DecimalDigits = "
-              << (decimalDigits ? std::to_string(*decimalDigits) : "nullptr")
-              << ", Nullable = " << (nullable ? std::to_string(*nullable) : "nullptr");
+              << ", ColumnNumber = " << columnNumber
+              << ", ColumnName = " << static_cast<void*>(columnName)
+              << ", BufferLength = " << bufferLength << ", NameLength = " << nameLength
+              << ", DataType = " << dataType << ", ColumnSize = " << columnSize
+              << ", DecimalDigits = " << decimalDigits << ", Nullable = " << nullable;
     logMessage(cnct, logStream.str(), LOG_LEVEL_TRACE);
   }
 
@@ -1641,27 +1644,30 @@ SQLRETURN SQL_API SQLDescribeCol(SQLHSTMT statementHandle, SQLUSMALLINT columnNu
     return SQL_ERROR;
   }
 
+  stmt->clearDiagnostics();
   // Column name
   SQLRETURN sqlreturn = getColName(stmt, columnNumber, columnName, bufferLength, nameLength);
-  if (sqlreturn != SQL_SUCCESS) {
+  if (!SQL_SUCCEEDED(sqlreturn)) {
     logMessage(cnct, "SQLDescribeCol: Failed to get column name", LOG_LEVEL_ERROR);
     return sqlreturn;
   }
+  const SQLRETURN nameResult = sqlreturn;
 
   // Data type
-  if (dataType) {
-    sqlreturn = getColType(stmt, columnNumber, dataType);
-    logMessage(cnct, "SQLDescribeCol: Data type set to " + std::to_string(*dataType),
-               LOG_LEVEL_TRACE);
+  SQLSMALLINT localType = SQL_UNKNOWN_TYPE;
+  if (dataType || columnSize) {
+    sqlreturn = getColType(stmt, columnNumber, &localType);
     if (sqlreturn != SQL_SUCCESS) {
       logMessage(cnct, "SQLDescribeCol: Failed to get column type", LOG_LEVEL_ERROR);
       return sqlreturn;
     }
+    if (dataType)
+      *dataType = localType;
   }
 
   // Column size
   if (columnSize) {
-    sqlreturn = getColumnSize(*dataType, columnSize);
+    sqlreturn = getColumnSize(localType, columnSize);
     if (sqlreturn != SQL_SUCCESS) {
       logMessage(cnct, "SQLDescribeCol: Failed to get column size", LOG_LEVEL_ERROR);
       return sqlreturn;
@@ -1694,7 +1700,7 @@ SQLRETURN SQL_API SQLDescribeCol(SQLHSTMT statementHandle, SQLUSMALLINT columnNu
   }
 
   logMessage(cnct, "SQLDescribeCol: Exiting successfully", LOG_LEVEL_TRACE);
-  return SQL_SUCCESS;
+  return nameResult;
 }
 
 SQLRETURN SQL_API SQLDisconnect(SQLHDBC connectionHandle) {
@@ -2762,7 +2768,7 @@ SQLRETURN SQL_API SQLFreeHandle(SQLSMALLINT handleType, SQLHANDLE handle) {
   logMessage("Entering SQLFreeHandle");
 
   // Check if handle is NULL
-  if (!handle) {
+  if (!ODBCHandle::isLiveHandle(handle, handleType)) {
     logMessage("SQLFreeHandle: handle is already NULL.");
     return SQL_INVALID_HANDLE; // Invalid handle
   }
@@ -3170,6 +3176,16 @@ SQLRETURN SQL_API SQLGetData(const SQLHSTMT statementHandle, const SQLUSMALLINT 
   SQLSMALLINT effectiveTargetType = (targetType == SQL_C_DEFAULT)
                                         ? stmt->resultSetPtr->getDefaultCTypeForColumn(columnNumber)
                                         : targetType;
+  if (targetType == SQL_ARD_TYPE) {
+    const auto* record = static_cast<DescriptorHandle*>(stmt->appRowDesc)->findRecord(columnNumber);
+    if (!record) {
+      stmt->addDiagnostic("07009", "Invalid descriptor index");
+      return SQL_ERROR;
+    }
+    effectiveTargetType = record->conciseType;
+    if (effectiveTargetType == SQL_C_DEFAULT)
+      effectiveTargetType = stmt->resultSetPtr->getDefaultCTypeForColumn(columnNumber);
+  }
 
   SQLRETURN copyResult = SQL_SUCCESS;
   if (effectiveTargetType == SQL_C_CHAR || effectiveTargetType == SQL_C_WCHAR ||
@@ -3178,9 +3194,9 @@ SQLRETURN SQL_API SQLGetData(const SQLHSTMT statementHandle, const SQLUSMALLINT 
                                            const_cast<SQLPOINTER>(targetValue), bufferLength,
                                            strLenOrInd, columnNumber);
   } else {
-    copyResult =
-        CopyFieldToTarget(stmt, *valuePtr, effectiveTargetType, const_cast<SQLPOINTER>(targetValue),
-                          bufferLength, strLenOrInd, false, 0);
+    copyResult = CopyFieldToTarget(stmt, *valuePtr, effectiveTargetType,
+                                   const_cast<SQLPOINTER>(targetValue), bufferLength, strLenOrInd,
+                                   false, targetType == SQL_ARD_TYPE ? columnNumber : 0);
   }
   if (copyResult != SQL_SUCCESS && copyResult != SQL_SUCCESS_WITH_INFO &&
       copyResult != SQL_NO_DATA) {
@@ -3951,7 +3967,7 @@ SQLRETURN SQL_API SQLGetInfo(SQLHDBC connectionHandle, SQLUSMALLINT infoType,
       SQLGetInfoSetString(cnct, "SQL_IDENTIFIER_QUOTE_CHAR", "\"", infoValuePtr, bufferLength,
                           stringLengthPtr);
     } else {
-      SQLGetInfoSetString(cnct, "SQL_IDENTIFIER_QUOTE_CHAR", " ", infoValuePtr, bufferLength,
+      SQLGetInfoSetString(cnct, "SQL_IDENTIFIER_QUOTE_CHAR", "`", infoValuePtr, bufferLength,
                           stringLengthPtr);
     }
     break;

@@ -120,8 +120,190 @@ static bool invalid(const ConnectionHandle& c) {
     return true;
   }
 }
+
+static bool hasState(ODBCHandle& handle, const std::string& expected) {
+  std::string state, message;
+  int native = 0;
+  return handle.getDiagnostic(1, state, message, native) && state == expected;
+}
+
+static void checkReviewedMetadata() {
+  ConnectionHandle connection(nullptr);
+  StatementHandle statement(&connection);
+  statement.AllocateSessionResultSet();
+  statement.resultSetPtr->columnNames = {"long_label", "flag", "large"};
+  statement.resultSetPtr->columnTypes = {"STRING", "BOOLEAN", "INT64"};
+  statement.resultSetPtr->numColumns = 3;
+  SQLULEN size = 0;
+  check(SQLDescribeCol(&statement, 1, nullptr, 0, nullptr, nullptr, &size, nullptr, nullptr) ==
+            SQL_SUCCESS &&
+        size == 2147483647);
+  const SQLSMALLINT types[] = {SQL_WVARCHAR, SQL_BIT, SQL_BIGINT};
+  for (SQLUSMALLINT col = 1; col <= 3; ++col) {
+    SQLLEN type = 0x12345678;
+    check(SQLColAttribute(&statement, col, SQL_DESC_CONCISE_TYPE, nullptr, 0, nullptr, &type) ==
+              SQL_SUCCESS &&
+          type == types[col - 1]);
+    check(SQLColAttribute(&statement, col, SQL_DESC_TYPE, nullptr, 0, nullptr, &type) ==
+              SQL_SUCCESS &&
+          type == types[col - 1]);
+  }
+  SQLSMALLINT length = 0;
+  check(SQLColAttribute(&statement, 1, SQL_DESC_LABEL, nullptr, 0, &length, nullptr) ==
+            SQL_SUCCESS &&
+        length == 10);
+  char sentinel[8];
+  std::memset(sentinel, 'X', sizeof(sentinel));
+  check(SQLColAttribute(&statement, 1, SQL_DESC_LABEL, sentinel, -1, &length, nullptr) ==
+            SQL_ERROR &&
+        hasState(statement, "HY090"));
+  for (char byte : sentinel)
+    check(byte == 'X');
+  check(SQLDescribeCol(&statement, 1, reinterpret_cast<SQLCHAR*>(sentinel), -1, &length, nullptr,
+                       nullptr, nullptr, nullptr) == SQL_ERROR &&
+        hasState(statement, "HY090"));
+  for (char byte : sentinel)
+    check(byte == 'X');
+  SQLSMALLINT type = 0;
+  check(SQLDescribeCol(&statement, 1, reinterpret_cast<SQLCHAR*>(sentinel), 4, &length, &type,
+                       &size, nullptr, nullptr) == SQL_SUCCESS_WITH_INFO &&
+        std::string(sentinel) == "lon" && length == 10 && type == SQL_WVARCHAR &&
+        size == 2147483647 && hasState(statement, "01004"));
+  check(SQLColAttribute(&statement, 1, SQL_DESC_LABEL, sentinel, 1, &length, nullptr) ==
+            SQL_SUCCESS_WITH_INFO &&
+        sentinel[0] == 0 && length == 10 && hasState(statement, "01004"));
+  check(SQLColAttribute(&statement, 1, SQL_DESC_NAME, sentinel, 0, &length, nullptr) ==
+            SQL_SUCCESS_WITH_INFO &&
+        hasState(statement, "01004"));
+  SQLWCHAR wide[3]{};
+  check(SQLDescribeColW(&statement, 1, wide, 3, &length, nullptr, &size, nullptr, nullptr) ==
+            SQL_SUCCESS_WITH_INFO &&
+        wide[0] == 'l' && wide[1] == 'o' && wide[2] == 0 && size == 2147483647 && length == 10 &&
+        hasState(statement, "01004"));
+  check(SQLColAttributeW(&statement, 1, SQL_DESC_LABEL, nullptr, 0, &length, nullptr) ==
+            SQL_SUCCESS &&
+        length == 10 * sizeof(SQLWCHAR));
+  char quote[4]{};
+  connection.isTableModel = false;
+  check(SQLGetInfo(&connection, SQL_IDENTIFIER_QUOTE_CHAR, quote, sizeof(quote), &length) ==
+            SQL_SUCCESS &&
+        std::string(quote) == "`" && length == 1);
+  connection.isTableModel = true;
+  check(SQLGetInfo(&connection, SQL_IDENTIFIER_QUOTE_CHAR, quote, sizeof(quote), &length) ==
+            SQL_SUCCESS &&
+        std::string(quote) == "\"");
+}
+
+static uint64_t numericMagnitude(const SQL_NUMERIC_STRUCT& value) {
+  uint64_t result = 0;
+  for (int i = 7; i >= 0; --i)
+    result = (result << 8) | value.val[i];
+  for (int i = 8; i < SQL_MAX_NUMERIC_LEN; ++i)
+    check(value.val[i] == 0);
+  return result;
+}
+
+static void checkReviewedNumeric() {
+  SQL_NUMERIC_STRUCT value{};
+  check(ODBCField(std::numeric_limits<int64_t>::min()).toNumeric(&value) && value.sign == 0 &&
+        numericMagnitude(value) == (uint64_t(1) << 63));
+  check(ODBCField(std::numeric_limits<int64_t>::max()).toNumeric(&value) && value.sign == 1 &&
+        numericMagnitude(value) == static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
+  check(ODBCField(std::numeric_limits<int32_t>::min()).toNumeric(&value) && value.sign == 0 &&
+        numericMagnitude(value) == (uint64_t(1) << 31));
+  ConnectionHandle connection(nullptr);
+  StatementHandle statement(&connection);
+  statement.AllocateSessionResultSet();
+  statement.resultSetPtr->columnNames = {"n"};
+  statement.resultSetPtr->columnTypes = {"INT64"};
+  statement.resultSetPtr->numColumns = 1;
+  statement.resultSetPtr->numRows = 1;
+  statement.resultSetPtr->data = {{ODBCField(int64_t(123))}};
+  statement.curRow = 0;
+  SQLLEN length = 0;
+  check(SQLGetData(&statement, 1, SQL_C_NUMERIC, &value, sizeof(value), &length) == SQL_SUCCESS &&
+        value.scale == 0 && value.precision == 38 && numericMagnitude(value) == 123 &&
+        length == sizeof(value));
+  check(SQLBindCol(&statement, 1, SQL_C_NUMERIC, &value, sizeof(value), &length) == SQL_SUCCESS);
+  check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_PRECISION,
+                        reinterpret_cast<SQLPOINTER>(5), 0) == SQL_SUCCESS);
+  check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_SCALE, reinterpret_cast<SQLPOINTER>(2),
+                        0) == SQL_SUCCESS);
+  check(SQLGetData(&statement, 1, SQL_ARD_TYPE, &value, sizeof(value), &length) == SQL_SUCCESS &&
+        value.scale == 2 && value.precision == 5 && numericMagnitude(value) == 12300);
+  check(SQLGetData(&statement, 1, SQL_C_NUMERIC, &value, sizeof(value), &length) == SQL_SUCCESS &&
+        value.scale == 0 && numericMagnitude(value) == 123);
+  statement.curRow = -1;
+  check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_DATA_PTR, &value, 0) == SQL_SUCCESS);
+  check(SQLFetch(&statement) == SQL_SUCCESS && value.scale == 2 &&
+        numericMagnitude(value) == 12300);
+  check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_SCALE, reinterpret_cast<SQLPOINTER>(-1),
+                        0) == SQL_SUCCESS);
+  check(SQLGetData(&statement, 1, SQL_ARD_TYPE, &value, sizeof(value), &length) ==
+            SQL_SUCCESS_WITH_INFO &&
+        value.scale == -1 && numericMagnitude(value) == 12 && hasState(statement, "01S07"));
+  check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_PRECISION,
+                        reinterpret_cast<SQLPOINTER>(2), 0) == SQL_SUCCESS);
+  check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_SCALE, nullptr, 0) == SQL_SUCCESS);
+  check(SQLGetData(&statement, 1, SQL_ARD_TYPE, &value, sizeof(value), &length) == SQL_ERROR &&
+        hasState(statement, "22003"));
+  check(SQLFreeStmt(&statement, SQL_UNBIND) == SQL_SUCCESS);
+  for (const auto& approximate :
+       {ODBCField(1.5), ODBCField(float(-1.5)), ODBCField(std::numeric_limits<double>::infinity()),
+        ODBCField(std::numeric_limits<double>::quiet_NaN())}) {
+    statement.resultSetPtr->data = {{approximate}};
+    std::memset(&value, 0x5a, sizeof(value));
+    auto unchanged = value;
+    check(SQLGetData(&statement, 1, SQL_C_NUMERIC, &value, sizeof(value), &length) == SQL_ERROR &&
+          hasState(statement, "07006") && std::memcmp(&value, &unchanged, sizeof(value)) == 0);
+    check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_CONCISE_TYPE,
+                          reinterpret_cast<SQLPOINTER>(SQL_C_NUMERIC), 0) == SQL_SUCCESS);
+    check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_SCALE, reinterpret_cast<SQLPOINTER>(1),
+                          0) == SQL_SUCCESS);
+    check(SQLGetData(&statement, 1, SQL_ARD_TYPE, &value, sizeof(value), &length) == SQL_ERROR &&
+          hasState(statement, "07006") && std::memcmp(&value, &unchanged, sizeof(value)) == 0);
+  }
+  check(!ODBCField::canConvert(TSDataType::DOUBLE, SQL_C_NUMERIC));
+  check(!ODBCField::canConvert(TSDataType::FLOAT, SQL_C_NUMERIC));
+}
+
+static void checkReviewedHandleLifetime() {
+  SQLHANDLE env = nullptr, dbc = nullptr, first = nullptr, second = nullptr, descriptor = nullptr;
+  check(SQLAllocHandle(SQL_HANDLE_ENV, nullptr, &env) == SQL_SUCCESS);
+  check(SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc) == SQL_SUCCESS);
+  check(SQLAllocHandle(SQL_HANDLE_STMT, dbc, &first) == SQL_SUCCESS);
+  check(SQLAllocHandle(SQL_HANDLE_STMT, dbc, &second) == SQL_SUCCESS);
+  check(SQLAllocHandle(SQL_HANDLE_DESC, dbc, &descriptor) == SQL_SUCCESS);
+  check(SQLSetStmtAttr(first, SQL_ATTR_APP_ROW_DESC, descriptor, 0) == SQL_SUCCESS);
+  check(SQLSetStmtAttr(second, SQL_ATTR_APP_PARAM_DESC, descriptor, 0) == SQL_SUCCESS);
+  auto implicit = static_cast<StatementHandle*>(first)->impRowDesc;
+  auto* connection = static_cast<ConnectionHandle*>(dbc);
+  check(connection->statements.size() == 2 && connection->descriptors.size() == 9);
+  std::weak_ptr<ODBCResultSet> result;
+  static_cast<StatementHandle*>(first)->AllocateSessionResultSet();
+  result = static_cast<StatementHandle*>(first)->resultSetPtr;
+  check(SQLDisconnect(dbc) == SQL_SUCCESS && result.expired());
+  check(connection->statements.empty() && connection->descriptors.empty());
+  check(!ODBCHandle::isLiveHandle(implicit, SQL_HANDLE_DESC));
+  check(SQLFreeHandle(SQL_HANDLE_DBC, dbc) == SQL_SUCCESS);
+  check(SQLFreeHandle(SQL_HANDLE_STMT, first) == SQL_INVALID_HANDLE);
+  check(SQLFreeHandle(SQL_HANDLE_STMT, second) == SQL_INVALID_HANDLE);
+  check(SQLFreeHandle(SQL_HANDLE_DESC, descriptor) == SQL_INVALID_HANDLE);
+  check(SQLFreeHandle(SQL_HANDLE_DESC, implicit) == SQL_INVALID_HANDLE);
+  check(SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc) == SQL_SUCCESS);
+  check(SQLAllocHandle(SQL_HANDLE_STMT, dbc, &first) == SQL_SUCCESS);
+  check(SQLAllocHandle(SQL_HANDLE_DESC, dbc, &descriptor) == SQL_SUCCESS);
+  check(SQLFreeHandle(SQL_HANDLE_DBC, dbc) == SQL_SUCCESS);
+  check(SQLFreeHandle(SQL_HANDLE_STMT, first) == SQL_INVALID_HANDLE);
+  check(SQLFreeHandle(SQL_HANDLE_DESC, descriptor) == SQL_INVALID_HANDLE);
+  check(SQLFreeHandle(SQL_HANDLE_ENV, env) == SQL_SUCCESS);
+}
+
 int main() {
   try {
+    checkReviewedMetadata();
+    checkReviewedNumeric();
+    checkReviewedHandleLifetime();
     checkDescriptorBindings();
     ConnectionHandle c(nullptr);
     check(!invalid(c));

@@ -25,6 +25,8 @@
 
 #include "Pch.h"
 #include "DiagnosticManager.h"
+#include <mutex>
+#include <unordered_map>
 
 class ODBCHandle : public DiagnosticManager {
   // Common fields for all handles
@@ -33,7 +35,26 @@ protected:
   bool isFreed;
 
 public:
-  explicit ODBCHandle(int type) : handleType(type), isFreed(false) {}
+  explicit ODBCHandle(int type) : handleType(type), isFreed(false) {
+    std::lock_guard<std::mutex> lock(registryMutex());
+    registry()[this] = type;
+  }
+
+  ~ODBCHandle() {
+    std::lock_guard<std::mutex> lock(registryMutex());
+    registry().erase(this);
+  }
+
+  ODBCHandle(const ODBCHandle&) = delete;
+  ODBCHandle& operator=(const ODBCHandle&) = delete;
+
+  // SQLDisconnect drops child handles. A later cleanup call must reject their
+  // old addresses without dereferencing already released storage.
+  static bool isLiveHandle(SQLHANDLE handle, int type) {
+    std::lock_guard<std::mutex> lock(registryMutex());
+    auto entry = registry().find(handle);
+    return entry != registry().end() && entry->second == type;
+  }
 
   int getHandleType() const {
     return handleType;
@@ -44,6 +65,16 @@ public:
   }
   bool isHandleFreed() const {
     return isFreed;
+  }
+
+private:
+  static std::mutex& registryMutex() {
+    static std::mutex mutex;
+    return mutex;
+  }
+  static std::unordered_map<SQLHANDLE, int>& registry() {
+    static std::unordered_map<SQLHANDLE, int> handles;
+    return handles;
   }
 };
 

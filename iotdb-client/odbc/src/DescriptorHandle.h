@@ -20,6 +20,7 @@
 #define DESCRIPTORHANDLE_H
 
 #include "ODBCHandle.h"
+#include "ConnectionHandle.h"
 
 class ConnectionHandle;
 class StatementHandle;
@@ -71,7 +72,18 @@ public:
   DescriptorHandle(ConnectionHandle* connection, DescriptorRole role,
                    StatementHandle* owner = nullptr)
       : ODBCHandle(SQL_HANDLE_DESC), connection(connection), owner(owner), role(role),
-        implicit(role != DescriptorRole::EXPLICIT) {}
+        implicit(role != DescriptorRole::EXPLICIT) {
+    if (connection)
+      connection->descriptors.push_back(this);
+  }
+
+  ~DescriptorHandle() {
+    if (connection) {
+      auto& descriptors = connection->descriptors;
+      descriptors.erase(std::remove(descriptors.begin(), descriptors.end(), this),
+                        descriptors.end());
+    }
+  }
 
   DescriptorRecord& record(SQLSMALLINT number) {
     if (records.size() < static_cast<size_t>(number))
