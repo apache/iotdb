@@ -180,8 +180,7 @@ public class EnvUtils {
    */
   public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
       throws IOException {
-    // The last column is the socket state (e.g. LISTEN); the address precedes it.
-    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 8, 1);
+    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 9, 1);
   }
 
   private static Pair<Integer, Integer> getClusterNodesNum(final int index) {

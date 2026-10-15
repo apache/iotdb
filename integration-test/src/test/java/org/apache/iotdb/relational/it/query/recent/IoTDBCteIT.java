@@ -58,9 +58,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getExplainResultSets;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -363,7 +363,7 @@ public class IoTDBCteIT {
 
       // explain
       try (ResultSet clusterResult = statement.executeQuery(sql)) {
-        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+        for (ResultSet resultSet : getExplainResultSets(sql, clusterResult)) {
           ResultSetMetaData metaData = resultSet.getMetaData();
           assertEquals(metaData.getColumnCount(), 1);
           assertEquals(metaData.getColumnName(1), "distribution plan");
@@ -393,7 +393,7 @@ public class IoTDBCteIT {
 
       // explain
       try (ResultSet clusterResult = statement.executeQuery(sql)) {
-        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+        for (ResultSet resultSet : getExplainResultSets(sql, clusterResult)) {
           ResultSetMetaData metaData = resultSet.getMetaData();
           assertEquals(metaData.getColumnCount(), 1);
           assertEquals(metaData.getColumnName(1), "distribution plan");
@@ -423,7 +423,7 @@ public class IoTDBCteIT {
 
       // explain
       try (ResultSet clusterResult = statement.executeQuery(sql)) {
-        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+        for (ResultSet resultSet : getExplainResultSets(sql, clusterResult)) {
           ResultSetMetaData metaData = resultSet.getMetaData();
           assertEquals(metaData.getColumnCount(), 1);
           assertEquals(metaData.getColumnName(1), "distribution plan");

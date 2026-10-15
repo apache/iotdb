@@ -186,10 +186,12 @@ public class LocalExecutionPlanContextBudgetTest {
   @Test
   public void testPureCollectUsesSharedSideBudgets() {
     ISourceHandle source = addSource(context);
+    ISourceHandle secondSource = addSource(context);
     ISinkHandle sink = mock(ISinkHandle.class);
     context.setISink(sink);
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(source).setMaxBytesCanReserve(512);
+    verify(secondSource).setMaxBytesCanReserve(512);
     verify(sink).setMaxBytesCanReserve(512);
     assertAdmissionIsShared(true, MemorySide.INPUT, 512);
     assertAdmissionIsShared(true, MemorySide.OUTPUT, 512);

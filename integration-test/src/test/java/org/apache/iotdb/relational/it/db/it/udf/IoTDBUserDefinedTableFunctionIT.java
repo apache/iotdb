@@ -39,9 +39,9 @@ import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getUnorderedResultSets;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -204,14 +204,14 @@ public class IoTDBUserDefinedTableFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
-      try (ResultSet clusterResult =
-          statement.executeQuery(
-              "SELECT * FROM large_result(vehicle, "
-                  + LARGE_RESULT_REPEAT_COUNT
-                  + ", "
-                  + LARGE_RESULT_PAYLOAD_SIZE
-                  + ")")) {
-        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+      String sql =
+          "SELECT * FROM large_result(vehicle, "
+              + LARGE_RESULT_REPEAT_COUNT
+              + ", "
+              + LARGE_RESULT_PAYLOAD_SIZE
+              + ")";
+      try (ResultSet clusterResult = statement.executeQuery(sql)) {
+        for (ResultSet resultSet : getUnorderedResultSets(sql, clusterResult)) {
           Set<String> returnedRows = new HashSet<>();
           while (resultSet.next()) {
             int repeatIndex = resultSet.getInt("repeat_index");

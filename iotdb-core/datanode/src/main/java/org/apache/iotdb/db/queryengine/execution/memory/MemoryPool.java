@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -60,8 +59,8 @@ public class MemoryPool {
 
     /**
      * MemoryReservationFuture is created when an exchange handle tries to reserve memory from the
-     * pool. This is the per-plan-node limit for legacy fragments. Shared fragments always use their
-     * initialized FI-side limit, including when retrying a pending reservation.
+     * pool. Local planning gives handles their FI-side limit in shared mode or their independent
+     * plan-node limit in legacy mode. Retain the supplied limit when retrying this request.
      */
     private final long maxBytesCanReserve;
 
@@ -155,7 +154,6 @@ public class MemoryPool {
 
   private final String id;
   private final IMemoryBlock memoryBlock;
-  private final long maxBytesPerFragmentInstance;
 
   private static class PlanNodeReservation {
     private final MemorySide side;
@@ -175,20 +173,8 @@ public class MemoryPool {
     private final Map<String, PlanNodeReservation> planNodes = new ConcurrentHashMap<>();
     private final AtomicLong inputUsedBytes = new AtomicLong();
     private final AtomicLong outputUsedBytes = new AtomicLong();
-    // Registered after local planning; the FI context owns the initialized shared limits.
-    private FragmentInstanceContext instanceContext;
-
-    private boolean isSharedBudget() {
-      return instanceContext != null;
-    }
-
-    private long getMaxBytesCanReserve(PlanNodeReservation reservation, long legacyLimit) {
-      return isSharedBudget()
-          ? (reservation.side == MemorySide.INPUT
-              ? instanceContext.getInputMaxBytes()
-              : instanceContext.getOutputMaxBytes())
-          : legacyLimit;
-    }
+    // Enabled by local planning before drivers start; request limits are supplied by handles.
+    private boolean sharedBudget;
 
     private AtomicLong getUsedBytes(MemorySide side) {
       return side == MemorySide.INPUT ? inputUsedBytes : outputUsedBytes;
@@ -217,7 +203,6 @@ public class MemoryPool {
             .EXCEPTION_MAX_BYTES_PER_FI_SHOULD_BE_IN_LEFT_PAREN_0_COMMA_MAXBYTES_RIGHT_BRACKET_DOT_MAXB_4D37C457,
         maxBytesPerFragmentInstance,
         this.memoryBlock.getTotalMemorySizeInBytes());
-    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
 
   public String getId() {
@@ -269,17 +254,15 @@ public class MemoryPool {
     }
   }
 
-  /** Register the FI-owned shared limits after local planning and before drivers start. */
-  public void registerFragmentInstanceSharedBudget(FragmentInstanceContext instanceContext) {
-    String queryId = instanceContext.getId().getQueryId().getId();
-    String fragmentInstanceId = instanceContext.getId().getFullId();
+  /** Enable shared accounting after the complete FI has been checked by local planning. */
+  public void registerFragmentInstanceSharedBudget(String queryId, String fragmentInstanceId) {
     synchronized (queryMemoryReservations) {
       FragmentMemoryReservation fragment =
           queryMemoryReservations
               .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
               .computeIfAbsent(fragmentInstanceId, x -> new FragmentMemoryReservation());
       synchronized (fragment) {
-        fragment.instanceContext = instanceContext;
+        fragment.sharedBudget = true;
       }
     }
   }
@@ -364,19 +347,10 @@ public class MemoryPool {
     Validate.notNull(
         planNodeId, DataNodeQueryMessages.EXCEPTION_PLANNODEID_CAN_NOT_BE_NULL_DOT_44027620);
     Validate.isTrue(
-        bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        DataNodeQueryMessages
-            .EXCEPTION_BYTESTORESERVE_SHOULD_BE_IN_LEFT_PAREN_0_COMMA_MAXBYTESPERFI_RIGHT_BRACKET_DOT_M_0753BB69,
-        maxBytesPerFragmentInstance,
-        bytesToReserve);
-    FragmentMemoryReservation fragment =
-        getFragmentReservation(queryId, fragmentInstanceId, planNodeId);
-    synchronized (fragment) {
-      PlanNodeReservation reservation =
-          requireReservation(
-              fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
-      maxBytesCanReserve = fragment.getMaxBytesCanReserve(reservation, maxBytesCanReserve);
-    }
+        bytesToReserve > 0L,
+        DataNodeQueryMessages.EXCEPTION_BYTESTORESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_56D15DE0);
+    // A request must fit both the caller's FI/handle limit and the physical global pool.
+    maxBytesCanReserve = Math.min(maxBytesCanReserve, getMaxBytes());
     if (bytesToReserve > maxBytesCanReserve) {
       LOGGER.warn(
           DataNodeQueryMessages
@@ -430,11 +404,8 @@ public class MemoryPool {
     Validate.notNull(
         planNodeId, DataNodeQueryMessages.EXCEPTION_PLANNODEID_CAN_NOT_BE_NULL_DOT_44027620);
     Validate.isTrue(
-        bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        DataNodeQueryMessages
-            .EXCEPTION_BYTESTORESERVE_SHOULD_BE_IN_LEFT_PAREN_0_COMMA_MAXBYTESPERFI_RIGHT_BRACKET_DOT_M_0753BB69,
-        maxBytesPerFragmentInstance,
-        bytesToReserve);
+        bytesToReserve > 0L,
+        DataNodeQueryMessages.EXCEPTION_BYTESTORESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_56D15DE0);
 
     return tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
   }
@@ -573,9 +544,8 @@ public class MemoryPool {
       PlanNodeReservation reservation =
           requireReservation(
               fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
-      maxBytesCanReserve = fragment.getMaxBytesCanReserve(reservation, maxBytesCanReserve);
       long usedBytes =
-          fragment.isSharedBudget()
+          fragment.sharedBudget
               ? fragment.getUsedBytes(reservation.side).get()
               : reservation.bytesReserved;
       // Do not publish speculative charges. Two competing requests must not reject one another

@@ -297,12 +297,15 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     instanceContext.initializeExchangeMemoryBudget(
         sharedBudget ? inputMaxBytes : 0, sharedBudget ? outputMaxBytes : 0);
     if (sharedBudget) {
-      memoryPool.registerFragmentInstanceSharedBudget(instanceContext);
+      memoryPool.registerFragmentInstanceSharedBudget(
+          instanceContext.getId().getQueryId().getId(), instanceContext.getId().getFullId());
     }
     legacySinkLimits.forEach(
         (sink, legacyLimit) ->
-            sink.setMaxBytesCanReserve(sharedBudget ? outputMaxBytes : legacyLimit));
-    long sourceLimit = sharedBudget ? inputMaxBytes : getMaxBytesOneHandleCanReserve();
+            sink.setMaxBytesCanReserve(
+                sharedBudget ? instanceContext.getOutputMaxBytes() : legacyLimit));
+    long sourceLimit =
+        sharedBudget ? instanceContext.getInputMaxBytes() : getMaxBytesOneHandleCanReserve();
     exchangeOperatorList.forEach(
         exchangeOperator -> exchangeOperator.getSourceHandle().setMaxBytesCanReserve(sourceLimit));
   }

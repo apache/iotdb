@@ -208,7 +208,6 @@ public class CollectOperator implements ProcessOperator {
     return INSTANCE_SIZE
         + anyChildBlocked.ramBytesUsed()
         + children.stream()
-            .filter(java.util.Objects::nonNull)
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);

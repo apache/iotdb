@@ -41,14 +41,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
@@ -134,23 +131,20 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
   }
 
   @Test
-  public void unionAllSiblingTopKOrderByTimeLimit() throws SQLException {
-    // Each branch has an ORDER BY, but UNION ALL does not order the combined result.
-    String sql =
+  public void unionAllSiblingTopKOrderByTimeLimit() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.030Z,d1,111,", "1970-01-01T00:00:00.032Z,d3,333,",
+        };
+    tableResultSetEqualTest(
         "(SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd1' ORDER BY time DESC LIMIT 1)"
             + " UNION ALL"
-            + " (SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd3' ORDER BY time DESC LIMIT 1)";
-    try (Connection connection = EnvFactory.getEnv().getTableConnection();
-        Statement statement = connection.createStatement()) {
-      connection.setClientInfo("time_zone", "+00:00");
-      statement.execute("USE " + TABLE_DATABASE);
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        assertResultSetEqualUnordered(
-            resultSet,
-            "time,device_id,s1,",
-            Arrays.asList("1970-01-01T00:00:00.030Z,d1,111,", "1970-01-01T00:00:00.032Z,d3,333,"));
-      }
-    }
+            + " (SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd3' ORDER BY time DESC LIMIT 1)"
+            + " ORDER BY time, device_id, s1",
+        expectedHeader,
+        retArray,
+        TABLE_DATABASE);
   }
 
   @Test
