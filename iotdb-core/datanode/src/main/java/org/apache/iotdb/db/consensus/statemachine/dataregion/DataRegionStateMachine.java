@@ -251,7 +251,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     TSStatus result = null;
     int retryTime = 0;
     while (retryTime < MAX_WRITE_RETRY_TIMES) {
-      result = planNode.accept(new DataExecutionVisitor(), region);
+      result = executeWrite(planNode);
       // Let pipe retry with the original event instead of retrying a possibly mutated node here.
       if (needRetryForSpecificCases(result.getCode(), planNode)) {
         retryTime++;
@@ -282,6 +282,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
     }
     return result;
+  }
+
+  protected TSStatus executeWrite(PlanNode planNode) {
+    return planNode.accept(new DataExecutionVisitor(), region);
   }
 
   protected void waitBeforeNextWriteRetry() throws InterruptedException {

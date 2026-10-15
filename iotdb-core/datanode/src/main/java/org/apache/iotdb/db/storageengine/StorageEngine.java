@@ -435,6 +435,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    stopIoTConsensusWrites();
     loadTsFileManager.stop();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -455,6 +456,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
+    stopIoTConsensusWrites();
     loadTsFileManager.stop();
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
@@ -524,6 +526,17 @@ public class StorageEngine implements IService {
   public synchronized void reset() {
     dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     dataRegionMap.clear();
+  }
+
+  public void stopIoTConsensusWrites() {
+    if (!CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      return;
+    }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.stopIoTConsensusWrites();
+      }
+    }
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
