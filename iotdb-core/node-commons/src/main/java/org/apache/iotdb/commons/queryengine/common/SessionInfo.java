@@ -46,12 +46,15 @@ public class SessionInfo {
 
   private ClientVersion version = ClientVersion.V_1_0;
 
+  private final boolean enableAutoCreateSchema;
+
   public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
     this.sessionId = sessionId;
     this.userEntity = userEntity;
     this.zoneId = zoneId;
     this.databaseName = null;
     this.sqlDialect = SqlDialect.TREE;
+    this.enableAutoCreateSchema = true;
   }
 
   public SessionInfo(
@@ -60,7 +63,7 @@ public class SessionInfo {
       ZoneId zoneId,
       @Nullable String databaseName,
       SqlDialect sqlDialect) {
-    this(sessionId, userEntity, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect);
+    this(sessionId, userEntity, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect, true);
   }
 
   public SessionInfo(
@@ -70,12 +73,24 @@ public class SessionInfo {
       ClientVersion version,
       @Nullable String databaseName,
       SqlDialect sqlDialect) {
+    this(sessionId, userEntity, zoneId, version, databaseName, sqlDialect, true);
+  }
+
+  public SessionInfo(
+      long sessionId,
+      UserEntity userEntity,
+      ZoneId zoneId,
+      ClientVersion version,
+      @Nullable String databaseName,
+      SqlDialect sqlDialect,
+      boolean enableAutoCreateSchema) {
     this.sessionId = sessionId;
     this.userEntity = userEntity;
     this.zoneId = zoneId;
     this.version = version;
     this.databaseName = databaseName;
     this.sqlDialect = sqlDialect;
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 
   @TestOnly
@@ -142,6 +157,10 @@ public class SessionInfo {
 
   public SqlDialect getSqlDialect() {
     return sqlDialect;
+  }
+
+  public boolean isEnableAutoCreateSchema() {
+    return enableAutoCreateSchema;
   }
 
   public static SessionInfo deserializeFrom(final ByteBuffer buffer) {
