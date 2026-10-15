@@ -59,6 +59,9 @@ public abstract class EnrichedEvent implements Event {
 
   protected final PipeTaskMeta pipeTaskMeta;
 
+  // Identifies the source instance that produced this event, including across task restarts.
+  protected long sourceId = Long.MIN_VALUE;
+
   protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
@@ -315,6 +318,17 @@ public abstract class EnrichedEvent implements Event {
 
   public final long getCreationTime() {
     return creationTime;
+  }
+
+  @Override
+  public void bindSource(final long sourceId) {
+    if (this.sourceId == Long.MIN_VALUE) {
+      this.sourceId = sourceId;
+    }
+  }
+
+  public final long getSourceId() {
+    return sourceId;
   }
 
   public final int getRegionId() {
