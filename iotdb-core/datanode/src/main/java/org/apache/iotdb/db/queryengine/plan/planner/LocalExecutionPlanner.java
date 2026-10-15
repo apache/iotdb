@@ -116,6 +116,9 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
@@ -132,14 +135,6 @@ public class LocalExecutionPlanner {
         getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
-
-    // Choose the accounting policy only after all FI operators and pipelines are known.
-    context.setExchangeMemoryLimits(
-        plan,
-        MPPDataExchangeService.getInstance()
-            .getMPPDataExchangeManager()
-            .getLocalMemoryManager()
-            .getQueryPool());
 
     return context.getPipelineDriverFactories();
   }
@@ -161,6 +156,9 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
@@ -170,14 +168,6 @@ public class LocalExecutionPlanner {
     checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
-
-    // Choose the accounting policy only after all FI operators and pipelines are known.
-    context.setExchangeMemoryLimits(
-        plan,
-        MPPDataExchangeService.getInstance()
-            .getMPPDataExchangeManager()
-            .getLocalMemoryManager()
-            .getQueryPool());
 
     return context.getPipelineDriverFactories();
   }
@@ -205,6 +195,22 @@ public class LocalExecutionPlanner {
             String.format(DataNodeQueryMessages.UNKNOWN_SQL_DIALECT, sqlDialect));
     }
     return root;
+  }
+
+  private void setExchangeMemoryLimits(PlanNode plan, LocalExecutionPlanContext context) {
+    FragmentInstanceContext instanceContext = context.getInstanceContext();
+    if (instanceContext.getSessionInfo() == null
+        || instanceContext.getSessionInfo().getSqlDialect() == TREE) {
+      context.setMaxBytesOneHandleCanReserve();
+      return;
+    }
+    // Choose the table FI policy only after all operators and pipelines are known.
+    context.setExchangeMemoryLimits(
+        plan,
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool());
   }
 
   private long checkMemory(

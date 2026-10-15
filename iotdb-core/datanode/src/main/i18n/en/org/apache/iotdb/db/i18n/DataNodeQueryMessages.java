@@ -3943,4 +3943,5 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
   public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
+  public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "Shared exchange budget for FI {}: INPUT={}, OUTPUT={}";
 }

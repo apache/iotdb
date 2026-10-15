@@ -39,7 +39,9 @@ public class CollectOperator implements ProcessOperator {
 
   private final CommonOperatorContext operatorContext;
   protected final List<Operator> children;
-  private final AnyChildBlocked anyChildBlocked;
+  private AnyChildBlocked anyChildBlocked;
+  private boolean inited;
+  protected int currentIndex;
   private ListenableFuture<Integer> selectionFuture;
   private ListenableFuture<Integer> exposedFuture;
   private int remainingChildren;
@@ -48,17 +50,36 @@ public class CollectOperator implements ProcessOperator {
   public CollectOperator(CommonOperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
-    this.anyChildBlocked = new AnyChildBlocked(children);
     this.remainingChildren = children.size();
+  }
+
+  /**
+   * Enable only after the complete table FI has passed eligibility checks, before drivers start.
+   */
+  public void enableReadyInputConsumption() {
+    if (anyChildBlocked == null) {
+      anyChildBlocked = new AnyChildBlocked(children);
+    }
   }
 
   @Override
   public boolean hasNext() {
-    return !closed && remainingChildren > 0;
+    return anyChildBlocked == null
+        ? currentIndex < children.size()
+        : !closed && remainingChildren > 0;
   }
 
   @Override
   public TsBlock next() throws Exception {
+    if (anyChildBlocked == null) {
+      if (children.get(currentIndex).hasNextWithTimer()) {
+        TsBlock block = children.get(currentIndex).nextWithTimer();
+        return block == null ? null : transformBlock(currentIndex, block);
+      }
+      closeCurrentChild(currentIndex);
+      currentIndex++;
+      return null;
+    }
     anyChildBlocked.checkFailure();
     if (!hasNext()) {
       return null;
@@ -98,6 +119,11 @@ public class CollectOperator implements ProcessOperator {
   }
 
   protected void closeCurrentChild(int index) throws Exception {
+    if (anyChildBlocked == null) {
+      children.get(index).close();
+      children.set(index, null);
+      return;
+    }
     Operator child = children.get(index);
     if (child == null) {
       return;
@@ -111,6 +137,15 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    if (anyChildBlocked == null) {
+      if (!inited) {
+        inited = true;
+        for (Operator child : children) {
+          child.isBlocked();
+        }
+      }
+      return currentIndex >= children.size() ? NOT_BLOCKED : children.get(currentIndex).isBlocked();
+    }
     if (!hasNext()) {
       return NOT_BLOCKED;
     }
@@ -135,6 +170,14 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
+    if (anyChildBlocked == null) {
+      for (int i = currentIndex; i < children.size(); i++) {
+        if (children.get(i) != null) {
+          closeCurrentChild(i);
+        }
+      }
+      return;
+    }
     if (closed) {
       return;
     }
@@ -161,6 +204,13 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
+    if (anyChildBlocked == null) {
+      long maxPeekMemory = 0;
+      for (Operator child : children) {
+        maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemoryWithCounter());
+      }
+      return maxPeekMemory;
+    }
     long retained = calculateRetainedSizeAfterCallingNext();
     long peak = retained;
     for (Operator child : children) {
@@ -189,6 +239,9 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
+    if (anyChildBlocked == null) {
+      return 0;
+    }
     long retained = 0;
     for (Operator child : children) {
       if (child != null) {
@@ -206,7 +259,7 @@ public class CollectOperator implements ProcessOperator {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + anyChildBlocked.ramBytesUsed()
+        + (anyChildBlocked == null ? 0 : anyChildBlocked.ramBytesUsed())
         + children.stream()
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()

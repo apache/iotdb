@@ -20,8 +20,9 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -37,20 +38,16 @@ final class SharedExchangeMemoryEligibility {
     nodes.push(root);
     while (!nodes.isEmpty()) {
       PlanNode node = nodes.pop();
-      if (node instanceof ExchangeNode
-          || node
-              instanceof
-              org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode) {
+      if (node instanceof ExchangeNode) {
         // An upstream plan, if still attached, belongs to a different FI.
         continue;
       }
+      // TopK's input ordering assumptions remain unchanged, including its single-child form.
+      if (node instanceof TopKNode) {
+        return false;
+      }
       // Core relational nodes need not implement the serialization-only PlanNode.getType().
-      boolean anyReady =
-          node instanceof CollectNode
-              || node instanceof UnionNode
-              || node
-                  instanceof
-                  org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
+      boolean anyReady = node instanceof CollectNode || node instanceof UnionNode;
       hasCollect |= anyReady;
       List<PlanNode> children = node.getChildren();
       // Unknown multi-input operators are not implicitly safe. In particular, sequential sinks

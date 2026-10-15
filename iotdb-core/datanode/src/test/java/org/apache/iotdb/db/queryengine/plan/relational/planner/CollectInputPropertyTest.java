@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Collect
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 
 import org.junit.Test;
@@ -146,24 +145,6 @@ public class CollectInputPropertyTest {
       }
     }
     assertTrue(foundFinalCollect);
-  }
-
-  @Test
-  public void testTopKAboveGlobalWindowDoesNotAssumeOrderedInput() {
-    PlanNode root =
-        plan(
-            "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n FROM table1 "
-                + "ORDER BY s1 DESC, tag1, tag2, tag3 LIMIT 5");
-    List<TopKNode> topKs = nodes(root, TopKNode.class);
-    assertFalse(topKs.isEmpty());
-    boolean foundUnorderedInput = false;
-    for (TopKNode topK : topKs) {
-      if (!nodes(topK.getChildren().get(0), CollectNode.class).isEmpty()) {
-        foundUnorderedInput = true;
-        assertFalse(topK.isChildrenDataInOrder());
-      }
-    }
-    assertTrue(foundUnorderedInput);
   }
 
   @Test

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.plan.planner.ITableOperatorGeneratorContext;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
@@ -51,6 +52,8 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
@@ -73,6 +76,8 @@ import static java.util.Objects.requireNonNull;
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
+
   // Save operators in this pipeline, a new one will be created when creating another pipeline
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
@@ -87,6 +92,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private int exchangeSumNum = 0;
   private final long fragmentExchangeMaxBytes;
   private Map<ISink, Long> legacySinkLimits = new IdentityHashMap<>();
+  private List<CollectOperator> collectOperators = new ArrayList<>();
 
   private List<TSDataType> cachedDataTypes;
 
@@ -129,6 +135,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   public LocalExecutionPlanContext(LocalExecutionPlanContext parentContext) {
     this.fragmentExchangeMaxBytes = parentContext.fragmentExchangeMaxBytes;
     this.legacySinkLimits = parentContext.legacySinkLimits;
+    this.collectOperators = parentContext.collectOperators;
     this.nextOperatorId = parentContext.nextOperatorId;
     this.typeProvider = parentContext.typeProvider;
     this.allSensorsMap = parentContext.allSensorsMap;
@@ -257,6 +264,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.exchangeSumNum = exchangeSumNum;
   }
 
+  /** Original per-handle quota for tree planning and independent table FI accounting. */
   public long getMaxBytesOneHandleCanReserve() {
     return exchangeSumNum == 0
         ? fragmentExchangeMaxBytes
@@ -271,6 +279,23 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.exchangeOperatorList.add(exchangeOperator);
   }
 
+  public void addCollectOperator(CollectOperator collectOperator) {
+    collectOperators.add(collectOperator);
+  }
+
+  public void setMaxBytesOneHandleCanReserve() {
+    long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
+    LOGGER.debug(
+        DataNodeQueryMessages
+            .MAXBYTESONEHANDLECANRESERVE_FOR_EXCHANGEOPERATOR_IS_ARG_EXCHANGESUMNUM_IS_ARG,
+        maxBytesOneHandleCanReserve,
+        exchangeSumNum);
+    exchangeOperatorList.forEach(
+        exchangeOperator ->
+            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
+  }
+
+  /** Called after operator generation, before root memory estimation and factory registration. */
   public void setExchangeMemoryLimits(PlanNode plan, MemoryPool memoryPool) {
     // Only remote sources charge this FI's INPUT. Local inputs are owned by the producing FI;
     // internal pipeline queues cannot enable sharing because of the pipeline check below.
@@ -288,9 +313,10 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     boolean sharedBudget =
         (inputMaxBytes > 0 || outputMaxBytes > 0)
             && SharedExchangeMemoryEligibility.isEligible(plan)
-            // Internal pipeline queues and their downstream sinks must not compete for OUTPUT.
-            && pipelineDriverFactories.size() == 1
-            && pipelineDriverFactories.get(0).getDependencyPipelineIndex() == -1
+            // Only the root pipeline may exist. Child factories are registered during generation;
+            // the root factory is registered after its memory has been estimated below.
+            && pipelineDriverFactories.isEmpty()
+            && driverContext.getDependencyDriverIndex() == -1
             && (inputExchangeCount == 0 || inputMaxBytes >= maxBlockBytes)
             && (outputSinkCount == 0 || outputMaxBytes >= maxBlockBytes);
     FragmentInstanceContext instanceContext = driverContext.getFragmentInstanceContext();
@@ -299,6 +325,18 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     if (sharedBudget) {
       memoryPool.registerFragmentInstanceSharedBudget(
           instanceContext.getId().getQueryId().getId(), instanceContext.getId().getFullId());
+      collectOperators.forEach(CollectOperator::enableReadyInputConsumption);
+      LOGGER.debug(
+          DataNodeQueryMessages.LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109,
+          instanceContext.getId(),
+          instanceContext.getInputMaxBytes(),
+          instanceContext.getOutputMaxBytes());
+    } else {
+      LOGGER.debug(
+          DataNodeQueryMessages
+              .MAXBYTESONEHANDLECANRESERVE_FOR_EXCHANGEOPERATOR_IS_ARG_EXCHANGESUMNUM_IS_ARG,
+          getMaxBytesOneHandleCanReserve(),
+          exchangeSumNum);
     }
     legacySinkLimits.forEach(
         (sink, legacyLimit) ->

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
@@ -47,7 +48,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchem
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -299,6 +302,20 @@ public class DataNodeTableOperatorGenerator
     return context
         .getDriverContext()
         .addOperatorContext(context.getNextOperatorId(), planNodeId, operatorType);
+  }
+
+  @Override
+  public Operator visitCollect(CollectNode node, LocalExecutionPlanContext context) {
+    CollectOperator collect = (CollectOperator) super.visitCollect(node, context);
+    context.addCollectOperator(collect);
+    return collect;
+  }
+
+  @Override
+  public Operator visitUnion(UnionNode node, LocalExecutionPlanContext context) {
+    CollectOperator collect = (CollectOperator) super.visitUnion(node, context);
+    context.addCollectOperator(collect);
+    return collect;
   }
 
   @Override

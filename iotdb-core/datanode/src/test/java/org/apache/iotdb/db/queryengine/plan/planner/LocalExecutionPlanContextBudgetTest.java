@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.memory.MemoryManager;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -45,8 +47,10 @@ import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -63,6 +67,8 @@ import java.util.Comparator;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -99,7 +105,6 @@ public class LocalExecutionPlanContextBudgetTest {
             mock(MemoryReservationManager.class));
     LocalExecutionPlanContext result =
         new LocalExecutionPlanContext(new TypeProvider(), instance, (DataNodeQueryContext) null);
-    result.addPipelineDriverFactory(mock(Operator.class), result.getDriverContext(), 0);
     result.setExchangeSumNum(4);
     return result;
   }
@@ -116,6 +121,9 @@ public class LocalExecutionPlanContextBudgetTest {
         break;
       case TABLE_COLLECT_NODE:
         nodeClass = CollectNode.class;
+        break;
+      case TABLE_TOPK_NODE:
+        nodeClass = TopKNode.class;
         break;
       case TREE_COLLECT:
         nodeClass =
@@ -137,6 +145,21 @@ public class LocalExecutionPlanContextBudgetTest {
         Arrays.asList(
             node(PlanNodeType.TABLE_EXCHANGE_NODE), node(PlanNodeType.TABLE_EXCHANGE_NODE)),
         Collections.emptyList());
+  }
+
+  private CollectOperator generateTableCollect(PlanNode plan) {
+    Operator first = mock(Operator.class);
+    Operator second = mock(Operator.class);
+    when(first.isBlocked()).thenReturn(SettableFuture.create());
+    doReturn(Operator.NOT_BLOCKED).when(second).isBlocked();
+    when(first.calculateMaxPeekMemoryWithCounter()).thenReturn(100L);
+    when(first.calculateRetainedSizeAfterCallingNext()).thenReturn(30L);
+    when(second.calculateMaxPeekMemoryWithCounter()).thenReturn(80L);
+    when(second.calculateRetainedSizeAfterCallingNext()).thenReturn(50L);
+    doReturn(first).when(plan.getChildren().get(0)).accept(any(), same(context));
+    doReturn(second).when(plan.getChildren().get(1)).accept(any(), same(context));
+    return (CollectOperator)
+        plan.accept(new DataNodeTableOperatorGenerator(mock(Metadata.class)), context);
   }
 
   private ISourceHandle addSource(LocalExecutionPlanContext target) {
@@ -296,12 +319,80 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   @Test
-  public void testTreeCollectUsesSharedBudget() {
+  public void testTreePlanningRetainsLegacySourceQuota() {
+    ISourceHandle source = addSource(context);
+    context.setMaxBytesOneHandleCanReserve();
+    verify(source).setMaxBytesCanReserve(256);
+    assertFalse(
+        SharedExchangeMemoryEligibility.isEligible(
+            node(
+                PlanNodeType.TREE_COLLECT,
+                node(PlanNodeType.EXCHANGE),
+                node(PlanNodeType.EXCHANGE))));
+    assertAdmissionIsShared(false);
+  }
+
+  @Test
+  public void testTableCollectEnablesReadyConsumptionOnlyForEligibleFragment() {
+    PlanNode plan = collect();
+    CollectOperator collect = generateTableCollect(plan);
     addSource(context);
-    context.setExchangeMemoryLimits(
-        node(PlanNodeType.TREE_COLLECT, node(PlanNodeType.EXCHANGE), node(PlanNodeType.EXCHANGE)),
-        pool);
+    context.setExchangeMemoryLimits(plan, pool);
+    assertTrue(collect.isBlocked().isDone());
+    assertEquals(80, collect.calculateRetainedSizeAfterCallingNext());
+    assertEquals(150, collect.calculateMaxPeekMemory());
     assertAdmissionIsShared(true);
+  }
+
+  @Test
+  public void testTableUnionEnablesReadyConsumptionOnlyForEligibleFragment() {
+    PlanNode union =
+        new UnionNode(
+            new PlanNodeId("union"),
+            Arrays.asList(
+                node(PlanNodeType.TABLE_EXCHANGE_NODE), node(PlanNodeType.TABLE_EXCHANGE_NODE)),
+            ArrayListMultimap.create(),
+            Collections.emptyList());
+    CollectOperator collect = generateTableCollect(union);
+    addSource(context);
+    context.setExchangeMemoryLimits(union, pool);
+    assertTrue(collect.isBlocked().isDone());
+    assertEquals(80, collect.calculateRetainedSizeAfterCallingNext());
+    assertEquals(150, collect.calculateMaxPeekMemory());
+    assertAdmissionIsShared(true);
+  }
+
+  @Test
+  public void testSingleChildTopKRetainsLegacyBudgetAndConsumption() {
+    PlanNode child = collect();
+    CollectOperator collect = generateTableCollect(child);
+    ISourceHandle source = addSource(context);
+    PlanNode topK = node(PlanNodeType.TABLE_TOPK_NODE, child);
+    context.setExchangeMemoryLimits(topK, pool);
+    verify(source).setMaxBytesCanReserve(256);
+    assertFalse(collect.isBlocked().isDone());
+    assertAdmissionIsShared(false);
+    assertFalse(
+        SharedExchangeMemoryEligibility.isEligible(
+            node(PlanNodeType.TABLE_COLLECT_NODE, topK, collect())));
+    assertTrue(
+        SharedExchangeMemoryEligibility.isEligible(
+            node(
+                PlanNodeType.TABLE_COLLECT_NODE,
+                node(PlanNodeType.TABLE_EXCHANGE_NODE, topK),
+                node(PlanNodeType.TABLE_EXCHANGE_NODE))));
+  }
+
+  @Test
+  public void testMultiplePipelinesRetainSequentialCollectConsumption() {
+    PlanNode plan = collect();
+    CollectOperator collect = generateTableCollect(plan);
+    LocalExecutionPlanContext child = context.createSubContext();
+    child.addPipelineDriverFactory(mock(Operator.class), child.getDriverContext(), 0);
+    addSource(context);
+    context.setExchangeMemoryLimits(plan, pool);
+    assertFalse(collect.isBlocked().isDone());
+    assertAdmissionIsShared(false);
   }
 
   @Test
@@ -393,7 +484,7 @@ public class LocalExecutionPlanContextBudgetTest {
 
   @Test
   public void testPipelineSchedulingDependencyDisablesSharing() {
-    context.getCurrentPipelineDriverFactory().setDependencyPipeline(0);
+    context.getDriverContext().setDependencyDriverIndex(0);
     context.setExchangeMemoryLimits(collect(), pool);
     assertAdmissionIsShared(false);
   }
