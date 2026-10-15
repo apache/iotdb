@@ -124,10 +124,12 @@ public final class CommonMessages {
   public static final String REPAIR_SYSTEM_PROPERTIES = "repair system.properties, lack {}";
   public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
       "%s can't be modified after first startup";
-  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "Serialize mutable system properties successfully, which takes {} ms.";
-  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
+  public static final String
+      MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+          "Serialize mutable system properties successfully, which takes {} ms.";
+  public static final String
+      MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+          "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
 
   private CommonMessages() {}
 
@@ -341,4 +343,10 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
           "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
+          "Column '%s' in table '%s.%s' is being deleted. Please wait for deletion to finish, or retry dropping the column if it is stuck.";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
+          "Column '%s' in table '%s.%s' is being altered. Please wait for alteration to finish, or retry altering the column if it is stuck.";
 }
