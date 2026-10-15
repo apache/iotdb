@@ -526,6 +526,111 @@ public class FilterAndProjectOperatorTest {
   }
 
   @Test
+  public void testFilterReleasesBorrowedColumnsBeforeProjection() throws Exception {
+    Graph filter = new Graph();
+    ColumnTransformer shared = filter.add(filter.input(0), 1);
+    ColumnTransformer caseWhen =
+        filter.caseWhen(filter.greaterThan(shared, 0), shared, filter.constant(0));
+    ColumnTransformer predicate = filter.greaterThan(caseWhen, 1);
+    Graph projection = new Graph();
+    ColumnTransformer output =
+        projection.leaf(
+            new IdentityColumnTransformer(DOUBLE, 0) {
+              @Override
+              protected void evaluate() {
+                assertEquals(0, shared.getColumnCachePositionCount());
+                super.evaluate();
+              }
+            });
+    try (Operator operator =
+        operator(
+            new TsBlock[] {block(1, 2, 3), block(-2, 0, 5)},
+            filter,
+            predicate,
+            Collections.emptyList(),
+            projection,
+            output)) {
+      assertBlock(operator.next(), new Double[] {1.0, 2.0, 3.0});
+      assertEquals(0, shared.getColumnCachePositionCount());
+      assertBlock(operator.next(), new Double[] {5.0});
+      assertEquals(0, shared.getColumnCachePositionCount());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+    }
+  }
+
+  @Test
+  public void testProjectionReleasesBorrowedColumnsAfterReturningOutput() throws Exception {
+    Graph graph = new Graph();
+    ColumnTransformer shared = graph.add(graph.input(0), 1);
+    ColumnTransformer caseWhen =
+        graph.caseWhen(graph.greaterThan(shared, 0), shared, graph.constant(0));
+    try (Operator operator =
+        project(graph, new TsBlock[] {block(1, 2, 3), block(-2, 0, 5)}, caseWhen)) {
+      TsBlock first = operator.next();
+      assertBlock(first, new Double[] {2.0, 3.0, 4.0});
+      assertEquals(0, shared.getColumnCachePositionCount());
+      assertBlock(operator.next(), new Double[] {0.0, 1.0, 6.0});
+      assertEquals(0, shared.getColumnCachePositionCount());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+      // Releasing transformer caches does not invalidate columns already returned to callers.
+      assertBlock(first, new Double[] {2.0, 3.0, 4.0});
+    }
+  }
+
+  @Test
+  public void testLargeDiffColumnsAreIncludedInMemoryEstimates() throws Exception {
+    TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+    int oldMaxRows = config.getMaxTsBlockLineNumber();
+    int oldMaxBytes = config.getMaxTsBlockSizeInBytes();
+    int rowCount = 20_000;
+    try {
+      config.setMaxTsBlockLineNumber(rowCount);
+      config.setMaxTsBlockSizeInBytes(1024 * 1024);
+      double[] values = new double[rowCount];
+      for (int i = 0; i < rowCount; i++) {
+        values[i] = i;
+      }
+      boolean[] ignoreNull = new boolean[rowCount];
+      Arrays.fill(ignoreNull, true);
+      TsBlock input =
+          new TsBlock(
+              new TimeColumn(rowCount, new long[rowCount]),
+              doubleColumn(values),
+              new BooleanColumn(rowCount, Optional.empty(), ignoreNull));
+      Graph graph = new Graph();
+      ColumnTransformer output = graph.input(0);
+      ColumnTransformer flags = graph.leaf(new IdentityColumnTransformer(BOOLEAN, 1));
+      List<ColumnTransformer> diffs = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        output =
+            i % 2 == 0
+                ? new DiffFunctionColumnTransformer(DOUBLE, reference(output), true)
+                : new DiffColumnTransformer(DOUBLE, reference(output), reference(flags));
+        diffs.add(output);
+      }
+      try (Operator operator = project(graph, new TsBlock[] {input}, output)) {
+        long estimatedPeak = operator.calculateMaxPeekMemory();
+        TsBlock result = operator.next();
+        assertEquals(rowCount, result.getPositionCount());
+        long retainedBytes = 0;
+        boolean[] mask = new boolean[rowCount];
+        for (ColumnTransformer diff : diffs) {
+          Column retained = diff.getColumnWithSelection(mask);
+          // Phase cleanup must retain DIFF's original result rather than advance state again.
+          assertTrue(retained.isNull(0));
+          retainedBytes += retained.getRetainedSizeInBytes();
+        }
+        assertTrue(retainedBytes > 8L * config.getPageSizeInByte());
+        assertTrue(operator.calculateRetainedSizeAfterCallingNext() >= retainedBytes);
+        assertTrue(estimatedPeak >= retainedBytes + input.getRetainedSizeInBytes());
+      }
+    } finally {
+      config.setMaxTsBlockLineNumber(oldMaxRows);
+      config.setMaxTsBlockSizeInBytes(oldMaxBytes);
+    }
+  }
+
+  @Test
   public void testDiffRetainedMemoryDeduplicatesSharedNodesAcrossPhases() throws Exception {
     Graph filter = new Graph();
     ColumnTransformer input = filter.input(0);

@@ -159,8 +159,16 @@ public abstract class ColumnTransformer {
   protected abstract void checkType();
 
   public void close() {
-    columnCache.clear();
+    clearColumnCache();
+  }
+
+  /**
+   * Releases only this node's ordinary cached columns after all consumers in an evaluation phase
+   * finish. Stateful per-input results remain valid until {@link #clearCacheForNewInput()}.
+   */
+  public final void clearColumnCache() {
     selectedColumnCache = null;
+    columnCache.clear();
   }
 
   /**
@@ -174,8 +182,7 @@ public abstract class ColumnTransformer {
    * <p>Kept non-final so existing Mockito-based tests can stub it.
    */
   public void clearCache() {
-    selectedColumnCache = null;
-    this.columnCache.clear();
+    clearColumnCache();
     forEachChild(ColumnTransformer::clearCache);
   }
 
@@ -185,8 +192,7 @@ public abstract class ColumnTransformer {
    * the new block, when no sibling expression can still need a cached column.
    */
   public final void clearCacheForNewInput() {
-    selectedColumnCache = null;
-    this.columnCache.clear();
+    clearColumnCache();
     resetForNewInput();
   }
 

@@ -43,6 +43,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Pair;
@@ -55,10 +56,16 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.Set;
 
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfBooleanArray;
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfDoubleArray;
+
 public class FilterAndProjectOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(FilterAndProjectOperator.class);
+
+  private static final long DIFF_COLUMN_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DoubleColumn.class);
 
   private final Operator inputOperator;
 
@@ -170,7 +177,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
 
     long inputRowCount = input.getPositionCount();
-    TsBlock filterResult = getFilterTsBlock(input);
+    TsBlock filterResult;
+    try {
+      filterResult = getFilterTsBlock(input);
+    } finally {
+      // Materialization and compaction have consumed every filter result before projection starts.
+      clearColumnCaches(filterCacheTransformers);
+    }
     filteredRowCount += inputRowCount - filterResult.getPositionCount();
     operatorContext.recordSpecifiedInfo("Filtered Rows", Long.toString(filteredRowCount));
 
@@ -179,6 +192,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
       return filterResult;
     }
     return getTransformedTsBlock(filterResult);
+  }
+
+  private static void clearColumnCaches(ColumnTransformer[] transformers) {
+    for (ColumnTransformer transformer : transformers) {
+      transformer.clearColumnCache();
+    }
   }
 
   /**
@@ -330,13 +349,18 @@ public class FilterAndProjectOperator implements ProcessOperator {
       leafColumnTransformer.initFromTsBlock(input);
     }
 
-    List<Column> resultColumns = new ArrayList<>(projectOutputTransformerList.size());
-    for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
-      columnTransformer.tryEvaluate();
-      resultColumns.add(columnTransformer.getColumn());
+    try {
+      List<Column> resultColumns = new ArrayList<>(projectOutputTransformerList.size());
+      for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
+        columnTransformer.tryEvaluate();
+        resultColumns.add(columnTransformer.getColumn());
+      }
+      return TsBlock.wrapBlocksWithoutCopy(
+          positionCount, originTimeColumn, resultColumns.toArray(new Column[0]));
+    } finally {
+      // Returned columns are retained by the TsBlock, not by ordinary transformer caches.
+      clearColumnCaches(projectCacheTransformers);
     }
-    return TsBlock.wrapBlocksWithoutCopy(
-        positionCount, originTimeColumn, resultColumns.toArray(new Column[0]));
   }
 
   @Override
@@ -417,8 +441,16 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // consumed.
     // Filter and projection results can coexist, so count distinct nodes across both phases.
     return inputOperator.calculateRetainedSizeAfterCallingNext()
-        + (long) retainedInputColumnCount
-            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+        + (long) retainedInputColumnCount * getMaxRetainedDiffColumnSize();
+  }
+
+  private static long getMaxRetainedDiffColumnSize() {
+    int maxRows = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    // DIFF always builds a DoubleColumn. A larger TsBlock can exceed a storage page, so account
+    // for the value array, NULL flags, and object/array headers using the column's sizing rules.
+    return Math.max(
+        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+        DIFF_COLUMN_INSTANCE_SIZE + sizeOfBooleanArray(maxRows) + sizeOfDoubleArray(maxRows));
   }
 
   private int getMaxLevelOfColumnTransformerTree(ColumnTransformer columnTransformer) {
