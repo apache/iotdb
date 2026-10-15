@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
@@ -81,6 +83,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
@@ -2881,6 +2884,163 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testTopicRecycleIntervalOverridesGlobalAndAppliesUpdates() throws Exception {
+    final String topicName = "consensus_recycle_topic";
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalRecycleInterval =
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSubscriptionRecycleUncommittedEventIntervalMs();
+    final long originalWatermarkInterval =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusWatermarkIntervalMs();
+    final File systemDir = temporaryFolder.newFolder("system-topic-recycle-interval");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionRecycleUncommittedEventIntervalMs(600000);
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusWatermarkIntervalMs(0L);
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      java.util.Map.of(
+                          SystemConstant.SQL_DIALECT_KEY,
+                          SystemConstant.SQL_DIALECT_TABLE_VALUE,
+                          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
+                          "1200000"))));
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenReturn(Collections.singletonList(createTablet()), Collections.emptyList());
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.isTableModel()).thenReturn(true);
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              topicName,
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  topicName,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      queue.setSubscriptionMemoryManager(
+          new SubscriptionMemoryManager(createTablet().ramBytesUsed() * 2L));
+      reader.currentSearchIndex = 2L;
+      assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+      assertTrue(pendingEntries(queue).offer(createRequest(2L)));
+      assertNull(queue.poll("oldConsumer"));
+      queue.drivePrefetchOnce();
+      final SubscriptionEvent event = queue.poll("oldConsumer");
+      assertNotNull(event);
+      final Field timestampField = SubscriptionEvent.class.getDeclaredField("lastPolledTimestamp");
+      timestampField.setAccessible(true);
+      ((AtomicLong) timestampField.get(event)).set(System.currentTimeMillis() - 900000L);
+      assertTrue(event.pollable());
+
+      final PrefetchRoundResult result = queue.drivePrefetchOnce();
+      assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
+      assertEquals(0, queue.getPrefetchedEventCount());
+      assertEquals(PrefetchRoundResult.Type.RESCHEDULE_LATER, result.getType());
+      assertEquals(1200000L, result.getDelayMs());
+
+      for (final long intervalMs : new long[] {0L, -1L, Long.MIN_VALUE}) {
+        assertNull(
+            SubscriptionAgent.topic()
+                .handleSingleTopicMetaChanges(
+                    new TopicMeta(
+                        topicName,
+                        1L,
+                        java.util.Map.of(
+                            SystemConstant.SQL_DIALECT_KEY,
+                            SystemConstant.SQL_DIALECT_TABLE_VALUE,
+                            TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
+                            Long.toString(intervalMs)))));
+        assertEquals(PrefetchRoundResult.Type.DORMANT, queue.drivePrefetchOnce().getType());
+        assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
+        assertEquals(0, queue.getPrefetchedEventCount());
+        assertEquals(0L, event.getNackCount());
+      }
+
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      java.util.Map.of(
+                          SystemConstant.SQL_DIALECT_KEY,
+                          SystemConstant.SQL_DIALECT_TABLE_VALUE))));
+      for (final int intervalMs : new int[] {0, -1, Integer.MIN_VALUE}) {
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setSubscriptionRecycleUncommittedEventIntervalMs(intervalMs);
+        assertFalse(event.pollable());
+        assertEquals(PrefetchRoundResult.Type.DORMANT, queue.drivePrefetchOnce().getType());
+        assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
+        assertEquals(0, queue.getPrefetchedEventCount());
+      }
+
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      java.util.Map.of(
+                          SystemConstant.SQL_DIALECT_KEY,
+                          SystemConstant.SQL_DIALECT_TABLE_VALUE,
+                          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
+                          "300000"))));
+      queue.drivePrefetchOnce();
+      assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
+      assertEquals(1, queue.getPrefetchedEventCount());
+      assertSame(event, queue.poll("newConsumer"));
+      assertEquals(1L, event.getNackCount());
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      java.util.Map.of(
+                          SystemConstant.SQL_DIALECT_KEY,
+                          SystemConstant.SQL_DIALECT_TABLE_VALUE,
+                          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
+                          "0"))));
+      assertTrue(queue.nack("newConsumer", event.getCommitContext()));
+      queue.drivePrefetchOnce();
+      assertSame(event, queue.poll("newConsumer"));
+      assertTrue(queue.ack("newConsumer", event.getCommitContext()));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      SubscriptionAgent.topic().handleDropTopic(topicName, true);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionRecycleUncommittedEventIntervalMs(originalRecycleInterval);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusWatermarkIntervalMs(originalWatermarkInterval);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testLateAckAfterRecycleReleasesQueuedTabletMemory() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final int originalRecycleInterval =
@@ -2892,7 +3052,7 @@ public class ConsensusPrefetchingQueueTest {
     try {
       CommonDescriptor.getInstance()
           .getConfig()
-          .setSubscriptionRecycleUncommittedEventIntervalMs(-1);
+          .setSubscriptionRecycleUncommittedEventIntervalMs(1);
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -2936,6 +3096,9 @@ public class ConsensusPrefetchingQueueTest {
       assertTrue(queue.getRetainedTabletBytes() > 0L);
       assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
 
+      final Field timestampField = SubscriptionEvent.class.getDeclaredField("lastPolledTimestamp");
+      timestampField.setAccessible(true);
+      ((AtomicLong) timestampField.get(event)).set(System.currentTimeMillis() - 900000L);
       queue.drivePrefetchOnce();
       assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
       assertEquals(1, queue.getPrefetchedEventCount());
@@ -2967,7 +3130,7 @@ public class ConsensusPrefetchingQueueTest {
     try {
       CommonDescriptor.getInstance()
           .getConfig()
-          .setSubscriptionRecycleUncommittedEventIntervalMs(-1);
+          .setSubscriptionRecycleUncommittedEventIntervalMs(1);
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -3011,6 +3174,9 @@ public class ConsensusPrefetchingQueueTest {
       final long retainedBytes = queue.getRetainedTabletBytes();
       assertTrue(retainedBytes > 0L);
 
+      final Field timestampField = SubscriptionEvent.class.getDeclaredField("lastPolledTimestamp");
+      timestampField.setAccessible(true);
+      ((AtomicLong) timestampField.get(event)).set(System.currentTimeMillis() - 900000L);
       queue.drivePrefetchOnce();
       assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
       assertEquals(1, queue.getPrefetchedEventCount());
