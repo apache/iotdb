@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
+import org.apache.iotdb.commons.service.NoopServerContext;
 import org.apache.iotdb.commons.service.metric.MetricService;
 
 import org.apache.thrift.protocol.TProtocol;
@@ -44,7 +45,7 @@ public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler 
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
     thriftConnectionNumber.incrementAndGet();
-    return null;
+    return NoopServerContext.INSTANCE;
   }
 
   @Override

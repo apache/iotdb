@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -50,6 +51,36 @@ public class IoTDBDataRegionSourceTest {
                   })));
     } catch (final Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testTsFileParserParameter() throws Exception {
+    for (final String parser : new String[] {"query", "scan"}) {
+      try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+        extractor.validate(
+            new PipeParameterValidator(
+                new PipeParameters(
+                    new HashMap<String, String>() {
+                      {
+                        put(PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY, parser);
+                      }
+                    })));
+      }
+    }
+
+    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+      Assert.assertThrows(
+          PipeParameterNotValidException.class,
+          () ->
+              extractor.validate(
+                  new PipeParameterValidator(
+                      new PipeParameters(
+                          new HashMap<String, String>() {
+                            {
+                              put(PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY, "invalid");
+                            }
+                          }))));
     }
   }
 

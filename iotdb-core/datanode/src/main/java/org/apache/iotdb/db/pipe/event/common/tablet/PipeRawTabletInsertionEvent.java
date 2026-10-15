@@ -92,6 +92,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.treeModelDatabaseName = treeModelDatabaseName;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+    inheritSourceEventReportSkippingIfNecessary();
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
@@ -342,6 +343,18 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
           });
     }
     this.needToReport = true;
+    inheritSourceEventReportSkippingIfNecessary();
+  }
+
+  private void inheritSourceEventReportSkippingIfNecessary() {
+    if (needToReport && shouldSkipReportOnCommitBecauseOfSourceEvent()) {
+      skipReportOnCommit();
+    }
+  }
+
+  private boolean shouldSkipReportOnCommitBecauseOfSourceEvent() {
+    return sourceEvent instanceof PipeTsFileInsertionEvent
+        && !((PipeTsFileInsertionEvent) sourceEvent).shouldReportGeneratedEventsOnCommit();
   }
 
   // This getter is reserved for user-defined plugins

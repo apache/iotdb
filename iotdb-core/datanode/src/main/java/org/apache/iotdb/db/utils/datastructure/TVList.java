@@ -540,11 +540,6 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTvListByColumnIndex(
-      List<Integer> columnIndexList, List<TSDataType> dataTypeList) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
   public long getMaxTime() {
     return maxTime;
   }
@@ -936,9 +931,10 @@ public abstract class TVList implements WALEntryValue {
       int newIndex = getScanOrderIndex(indexInTVList);
       if (newIndex > index) {
         index = newIndex;
+        // If the cursor does not move, a duplicate-timestamp group prepared for the current
+        // position remains valid. Invalidate it only after the cursor actually advances.
+        probeNext = false;
       }
-
-      probeNext = false;
     }
 
     protected void prepareNext() {
@@ -1243,6 +1239,7 @@ public abstract class TVList implements WALEntryValue {
       // been applied when constructing the tsBlock
       TsBlock tsBlock = builder.build();
       addTsBlock(tsBlock);
+      probeNext = false;
       return tsBlock;
     }
 

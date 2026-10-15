@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
@@ -40,6 +41,36 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVListTest {
 
+  // A null-only column keeps a null array slot while a populated column materializes its array.
+  @Test
+  public void testPrimitiveArraysAreMaterializedOnlyForNonNullColumns() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.DOUBLE));
+
+    tvList.putAlignedValue(1, new Object[] {null, 2.0D});
+    Assert.assertNull(tvList.getValues().get(0).get(0));
+    Assert.assertNotNull(tvList.getValues().get(1).get(0));
+
+    // A row containing only nulls must not allocate another value array.
+    tvList.putAlignedValue(2, new Object[] {null, null});
+    Assert.assertNull(tvList.getValues().get(0).get(0));
+    Assert.assertEquals(1, tvList.getValues().get(1).stream().filter(Objects::nonNull).count());
+  }
+
+  // Tablet writes allocate arrays only for input columns that carry a column vector.
+  @Test
+  public void testBatchWriteMaterializesOnlyColumnsWithValues() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT32));
+    long[] times = {1, 2, 3};
+    Object[] columns = {null, new int[] {1, 2, 3}};
+
+    tvList.putAlignedValues(times, columns, null, 0, times.length);
+    Assert.assertTrue(tvList.getValues().get(0).stream().allMatch(Objects::isNull));
+    Assert.assertNotNull(tvList.getValues().get(1).get(0));
+  }
+
+  // Value-array cost excludes bitmap storage because bitmaps are allocated independently.
   @Test
   public void testValueListArrayMemCostExcludesBitmapReservation() {
     long expected = (long) ARRAY_SIZE * Long.BYTES + NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF;
@@ -50,6 +81,23 @@ public class AlignedTVListTest {
             + RamUsageEstimator.sizeOfByteArray(ARRAY_SIZE / Byte.SIZE + 1),
         AlignedTVList.bitmapRamCost());
     Assert.assertEquals(NUM_BYTES_OBJECT_REF, AlignedTVList.bitmapReferenceRamCost());
+  }
+
+  @Test
+  public void testStaticNewAlignedListMemoryCosts() {
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.INT64, TSDataType.INT32);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+
+    Assert.assertEquals(
+        tvList.getRamSize(), AlignedTVList.alignedTvListInitialMemCost(dataTypes.size()));
+    long primitiveArrayMemCost =
+        dataTypes.stream()
+            .mapToLong(
+                dataType -> AlignedTVList.valueListArrayMemCost(dataType) - NUM_BYTES_OBJECT_REF)
+            .sum();
+    Assert.assertEquals(
+        tvList.alignedTvListArrayMemCost() - primitiveArrayMemCost,
+        AlignedTVList.alignedTvListArrayMemCostWithoutPrimitiveArrays(dataTypes.size()));
   }
 
   @Test
@@ -163,6 +211,7 @@ public class AlignedTVListTest {
     }
   }
 
+  // A null first appears in the third block, so only that block receives a compact bitmap.
   @Test
   public void testBitmapIsAllocatedLazilyWithCompactBackingArray() {
     AlignedTVList tvList =
@@ -184,18 +233,16 @@ public class AlignedTVListTest {
         ARRAY_SIZE / Byte.SIZE + 1, firstColumnBitMaps.get(2).getByteArray().length);
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 1, 0));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE * 2, 0));
-    long primitiveArrayAndBitmapCost =
-        3L * tvList.alignedTvListArrayMemCost()
-            + 3L * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost();
-    Assert.assertTrue(tvList.getRamSize() > primitiveArrayAndBitmapCost);
+    Assert.assertEquals(3, tvList.getValues().get(0).stream().filter(Objects::nonNull).count());
+    Assert.assertEquals(3, tvList.getValues().get(1).stream().filter(Objects::nonNull).count());
     Assert.assertEquals(tvList.getRamSize(), tvList.calculateRamSize().getRamSize());
     Assert.assertEquals(tvList.getRamSize(), tvList.clone().getRamSize());
     Assert.assertEquals(tvList.getRamSize(), tvList.cloneForFlushSort().getRamSize());
   }
 
+  // Extending a populated TVList creates null slots but no value arrays or bitmap structures.
   @Test
-  public void testExtendedColumnRamCostIncludesActualBitmaps() {
+  public void testExtendColumnDoesNotMaterializeArraysOrBitmaps() {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(new ArrayList<>(Arrays.asList(TSDataType.INT64)));
     for (int i = 0; i <= ARRAY_SIZE; i++) {
@@ -203,18 +250,28 @@ public class AlignedTVListTest {
     }
 
     long ramSizeBeforeExtension = tvList.getRamSize();
+    int oldColumnCount = tvList.getTsDataTypes().size();
+    long expectedExtensionCost =
+        (long) tvList.getTimestamps().size() * NUM_BYTES_OBJECT_REF
+            + 2L
+                * (RamUsageEstimator.sizeOfObjectArray(oldColumnCount + 1)
+                    - RamUsageEstimator.sizeOfObjectArray(oldColumnCount))
+            + RamUsageEstimator.sizeOfLongArray(oldColumnCount + 1)
+            - RamUsageEstimator.sizeOfLongArray(oldColumnCount)
+            + RamUsageEstimator.sizeOfIntArray(oldColumnCount + 1)
+            - RamUsageEstimator.sizeOfIntArray(oldColumnCount)
+            + RamUsageEstimator.shallowSizeOf(new ArrayList<>())
+            + RamUsageEstimator.sizeOfObjectArray(0);
     tvList.extendColumn(TSDataType.INT32);
 
-    Assert.assertTrue(
-        tvList.getRamSize() - ramSizeBeforeExtension
-            >= 2L
-                * (AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
-                    + AlignedTVList.bitmapReferenceRamCost()
-                    + AlignedTVList.bitmapRamCost()));
+    Assert.assertEquals(expectedExtensionCost, tvList.getRamSize() - ramSizeBeforeExtension);
+    Assert.assertTrue(tvList.getValues().get(1).stream().allMatch(Objects::isNull));
+    Assert.assertNull(tvList.getBitMaps());
     tvList.clear();
     Assert.assertTrue(tvList.getRamSize() > 0);
   }
 
+  // An input bitmap without marked values must not create a retained TVList bitmap.
   @Test
   public void testEmptyInputBitmapsDoNotMaterializeMemTableBitmaps() {
     AlignedTVList tvList = AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64));
@@ -368,6 +425,47 @@ public class AlignedTVListTest {
     Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
     Assert.assertTrue(clonedTvList.isNullValue(0, 2));
     Assert.assertEquals(retainedRamSize, tvList.calculateRamSize().getRamSize());
+  }
+
+  // After a partial ownership transfer the new working list keeps the full pre-clone RAM
+  // (retained columns are copied, remaining columns are moved), and its write-cost estimator must
+  // match the actual RAM delta when a new block is written.
+  @Test
+  public void testPartialCloneKeepsWorkingListRamAndWriteCostMatchesActual() {
+    List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.INT64, TSDataType.INT32, TSDataType.DOUBLE);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+
+    // Fill exactly one block so the next write crosses a block boundary.
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, i, (double) i});
+    }
+
+    long fullRamBeforeClone = tvList.getRamSize();
+
+    AlignedTVList.PartialClonePlan plan = tvList.preparePartialClone(Collections.singleton(0));
+    AlignedTVList workingClone = plan.getCloneList();
+    plan.commit();
+
+    // The new working list still carries all columns, so its complete RAM must equal the
+    // pre-clone working-list RAM.
+    Assert.assertEquals(fullRamBeforeClone, workingClone.getRamSize());
+
+    // Write a new block into the working list. The incremental write estimate must equal the
+    // actual RAM increase.
+    long ramBeforeWrite = workingClone.getRamSize();
+    long nextTime = ARRAY_SIZE;
+    Object[] rowValues = {nextTime, (int) nextTime, (double) nextTime};
+    long estimatedWriteCost =
+        workingClone.alignedWriteRowMemCost(
+            new int[] {0, 1, 2},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.DOUBLE},
+            rowValues,
+            0);
+    workingClone.putAlignedValue(nextTime, rowValues);
+    long ramAfterWrite = workingClone.getRamSize();
+
+    Assert.assertEquals(estimatedWriteCost, ramAfterWrite - ramBeforeWrite);
   }
 
   @Test

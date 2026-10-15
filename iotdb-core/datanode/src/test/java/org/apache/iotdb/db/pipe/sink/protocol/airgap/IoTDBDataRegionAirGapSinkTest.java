@@ -104,7 +104,8 @@ public class IoTDBDataRegionAirGapSinkTest {
       }
 
       Assert.assertTrue(requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_PIECE.getType()));
-      Assert.assertTrue(requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_SEAL.getType()));
+      Assert.assertTrue(
+          requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD.getType()));
       Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_RAW.getType()));
       Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_BATCH.getType()));
       Assert.assertEquals(transferredTsFileBytes, sink.rateLimitedBytes.get());
@@ -132,6 +133,7 @@ public class IoTDBDataRegionAirGapSinkTest {
     final Tablet tablet = new Tablet("root.db.d1", schemaList, 1);
     tablet.addTimestamp(0, value);
     tablet.addValue("s1", 0, value);
+    tablet.rowSize = 1;
     return new PipeRawTabletInsertionEvent(
         tablet, false, pipeName, creationTime, null, null, false);
   }

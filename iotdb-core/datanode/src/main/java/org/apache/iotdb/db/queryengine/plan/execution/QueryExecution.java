@@ -192,10 +192,6 @@ public class QueryExecution implements IQueryExecution {
     doLogicalPlan();
     doDistributedPlan();
 
-    // update timeout after finishing plan stage
-    context.setTimeOut(
-        context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));
-
     stateMachine.transitionToPlanned();
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();

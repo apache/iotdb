@@ -64,18 +64,51 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  public synchronized void onSuccess() {
-    clearBatchData();
-
-    super.onSuccess();
-  }
-
-  @Override
   protected void clearBatchData() {
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
     pipe2BytesAccumulated.clear();
+  }
+
+  @Override
+  protected Object captureBatchState() {
+    return new BatchState(
+        insertNodeBuffers.size(), tabletBuffers.size(), new HashMap<>(pipe2BytesAccumulated));
+  }
+
+  @Override
+  protected void rollbackBatchState(final Object state) {
+    if (!(state instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) state;
+    truncate(insertNodeBuffers, batchState.insertNodeBuffersSize);
+    truncate(tabletBuffers, batchState.tabletBuffersSize);
+
+    pipe2BytesAccumulated.clear();
+    pipe2BytesAccumulated.putAll(batchState.pipe2BytesAccumulated);
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final int insertNodeBuffersSize;
+    private final int tabletBuffersSize;
+    private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated;
+
+    private BatchState(
+        final int insertNodeBuffersSize,
+        final int tabletBuffersSize,
+        final Map<Pair<String, Long>, Long> pipe2BytesAccumulated) {
+      this.insertNodeBuffersSize = insertNodeBuffersSize;
+      this.tabletBuffersSize = tabletBuffersSize;
+      this.pipe2BytesAccumulated = pipe2BytesAccumulated;
+    }
   }
 
   public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {

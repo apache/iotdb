@@ -136,7 +136,7 @@ public class DataNodeRegionManager {
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
     } catch (ConsensusGroupAlreadyExistException e) {
-      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode());
       tsStatus.setMessage(String.format("SchemaRegion %d already exists.", schemaRegionId.getId()));
     } catch (ConsensusException e) {
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
@@ -166,7 +166,7 @@ public class DataNodeRegionManager {
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     } catch (ConsensusGroupAlreadyExistException e) {
-      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode());
       tsStatus.setMessage(String.format("DataRegion %d already exists.", dataRegionId.getId()));
     } catch (ConsensusException e) {
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
@@ -200,17 +200,21 @@ public class DataNodeRegionManager {
   }
 
   public TSStatus deleteDataRegion(DataRegionId dataRegionId) {
-    storageEngine.deleteDataRegion(dataRegionId);
-    dataRegionLockMap.remove(dataRegionId);
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    TSStatus status = storageEngine.deleteDataRegion(dataRegionId);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataRegionLockMap.remove(dataRegionId);
+    }
+    return status;
   }
 
   public TSStatus deleteSchemaRegion(SchemaRegionId schemaRegionId) {
     try {
-      schemaEngine.deleteSchemaRegion(schemaRegionId);
+      if (!schemaEngine.deleteSchemaRegion(schemaRegionId)) {
+        return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
+      }
       PipeDataNodeAgent.runtime().schemaListener(schemaRegionId).close();
       schemaRegionLockMap.remove(schemaRegionId);
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
       LOGGER.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());

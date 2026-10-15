@@ -27,6 +27,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -40,6 +41,24 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class ResourceByPathUtilsTest {
+
+  @Test
+  public void testCountDataTypes() {
+    Map<TSDataType, Integer> dataTypeCounts =
+        ResourceByPathUtils.countDataTypes(
+            Arrays.asList(
+                TSDataType.INT64,
+                TSDataType.INT32,
+                TSDataType.INT64,
+                TSDataType.BOOLEAN,
+                TSDataType.INT32,
+                TSDataType.INT64));
+
+    Assert.assertEquals(3, dataTypeCounts.size());
+    Assert.assertEquals(Integer.valueOf(3), dataTypeCounts.get(TSDataType.INT64));
+    Assert.assertEquals(Integer.valueOf(2), dataTypeCounts.get(TSDataType.INT32));
+    Assert.assertEquals(Integer.valueOf(1), dataTypeCounts.get(TSDataType.BOOLEAN));
+  }
 
   @Test
   public void testFlushingQueryLocksTemporaryTVListBeforeRegistration() throws Exception {

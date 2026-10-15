@@ -58,7 +58,7 @@ public class LoadTsFileDataTypeConverter {
     return TabletConversionSemaphoreHolder.INSTANCE;
   }
 
-  private static int getTabletConversionPermitCount() {
+  static int getTabletConversionPermitCount() {
     final int configuredThreadCount =
         Math.max(
             1,

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
+import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
@@ -70,7 +71,7 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     try {
       memoryBlock =
           memoryManager.forceAllocateForTabletWithRetry(
-              PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes());
+              memoryManager.getTotalNonFloatingMemorySizeInBytes());
       Assert.assertFalse(memoryManager.isEnough4TabletParsing());
 
       final File tsFile =
@@ -143,7 +144,10 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     }
 
     private boolean executeOnceForTest() throws Exception {
-      return executeOnce();
+      subtaskScheduler = mock(PipeSubtaskScheduler.class);
+      when(subtaskScheduler.schedule()).thenReturn(true, false);
+      allowSubmittingSelf();
+      return call();
     }
   }
 }

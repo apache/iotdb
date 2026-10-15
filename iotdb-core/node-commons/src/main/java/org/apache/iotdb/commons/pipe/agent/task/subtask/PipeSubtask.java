@@ -25,6 +25,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,7 @@ public abstract class PipeSubtask
 
   public abstract void bindExecutors(
       ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      ListeningScheduledExecutorService subtaskWorkerScheduledExecutor,
       ExecutorService subtaskCallbackListeningExecutor,
       PipeSubtaskScheduler subtaskScheduler);
 
@@ -128,7 +130,12 @@ public abstract class PipeSubtask
 
   public void allowSubmittingSelf() {
     retryCount.set(0);
+    onAllowSubmittingSelf();
     shouldStopSubmittingSelf.set(false);
+  }
+
+  protected void onAllowSubmittingSelf() {
+    // Do nothing by default.
   }
 
   /**
@@ -139,7 +146,15 @@ public abstract class PipeSubtask
    *     {@code false} to {@code true}, {@code false} otherwise
    */
   public boolean disallowSubmittingSelf() {
-    return !shouldStopSubmittingSelf.getAndSet(true);
+    final boolean isChanged = !shouldStopSubmittingSelf.getAndSet(true);
+    if (isChanged) {
+      onDisallowSubmittingSelf();
+    }
+    return isChanged;
+  }
+
+  protected void onDisallowSubmittingSelf() {
+    // Do nothing by default.
   }
 
   public boolean isSubmittingSelf() {

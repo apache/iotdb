@@ -23,8 +23,8 @@ import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
 

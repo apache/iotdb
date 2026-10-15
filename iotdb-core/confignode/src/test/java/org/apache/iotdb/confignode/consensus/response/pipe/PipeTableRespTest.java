@@ -25,9 +25,11 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -144,6 +146,25 @@ public class PipeTableRespTest {
 
     PipeTableResp allPipeTableResp = pipeTableResp.filter(true, null);
     Assert.assertEquals(3, allPipeTableResp.getAllPipeMeta().size());
+  }
+
+  @Test
+  public void testConvertToTShowPipeRespAggregatesRecentFailures() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    final PipeTemporaryMetaInCoordinator temporaryMeta =
+        (PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(0).getTemporaryMeta();
+    final Map<String, Long> firstNodeFailures = new HashMap<>();
+    firstNodeFailures.put("network_timeout", 10L);
+    firstNodeFailures.put("memory_timeout", 15L);
+    temporaryMeta.setRecentFailures(1, firstNodeFailures);
+    final Map<String, Long> secondNodeFailures = new HashMap<>();
+    secondNodeFailures.put("network_timeout", 2L);
+    temporaryMeta.setRecentFailures(2, secondNodeFailures);
+
+    final TShowPipeInfo showPipeInfo =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList().get(0);
+    Assert.assertEquals(Long.valueOf(12), showPipeInfo.getRecentFailures().get("network_timeout"));
+    Assert.assertEquals(Long.valueOf(15), showPipeInfo.getRecentFailures().get("memory_timeout"));
   }
 
   @Test

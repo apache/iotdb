@@ -806,6 +806,10 @@ SYSTEM
     : S Y S T E M
     ;
 
+TABLE
+    : T A B L E
+    ;
+
 TAGS
     : T A G S
     ;
@@ -1080,6 +1084,10 @@ MAINTAIN
 
 REPAIR
     : R E P A I R
+    ;
+
+PROGRESS
+    : P R O G R E S S
     ;
 
 SCHEMA_REPLICATION_FACTOR

@@ -30,7 +30,12 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -60,11 +65,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
-import java.sql.Date;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -120,6 +125,79 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       transferTabletForClientServerModel(tablet, sink, this::transferTabletRowForClientServerModel);
     } else {
       transferTabletForPubSubModel(tablet);
+    }
+  }
+
+  /**
+   * Transfers the last value of every measurement in a TsFile device without materializing a {@link
+   * Tablet}. The TsFile last-value reader obtains the values from metadata (and reads only the last
+   * chunk when a data type does not keep a value in statistics).
+   */
+  public void transferLastValues(
+      final IDeviceID deviceID,
+      final List<Pair<MeasurementSchema, TimeValuePair>> lastValues,
+      final OpcUaSink sink)
+      throws Exception {
+    transferLastValues(deviceID, lastValues, sink, this::transferTabletRowForClientServerModel);
+  }
+
+  public static void transferLastValues(
+      final IDeviceID deviceID,
+      final List<Pair<MeasurementSchema, TimeValuePair>> lastValues,
+      final OpcUaSink sink,
+      final TabletRowConsumer consumer)
+      throws Exception {
+    // The 1.3 branch only supports tree-model device IDs.
+    final String[] segments = ((PlainDeviceID) deviceID).toStringID().split("\\.");
+
+    final List<MeasurementSchema> schemas = new ArrayList<>(lastValues.size());
+    final List<Long> timestamps = new ArrayList<>(lastValues.size());
+    final List<Object> values = new ArrayList<>(lastValues.size());
+    for (final Pair<MeasurementSchema, TimeValuePair> lastValue : lastValues) {
+      if (Objects.isNull(lastValue)
+          || Objects.isNull(lastValue.getLeft())
+          || Objects.isNull(lastValue.getLeft().getMeasurementId())
+          || TsFileConstant.TIME_COLUMN_ID.equals(lastValue.getLeft().getMeasurementId())
+          || Objects.isNull(lastValue.getRight())
+          || Objects.isNull(lastValue.getRight().getValue())) {
+        continue;
+      }
+
+      final TimeValuePair timeValuePair = lastValue.getRight();
+      final TSDataType dataType = lastValue.getLeft().getType();
+      schemas.add(lastValue.getLeft());
+      timestamps.add(timeValuePair.getTimestamp());
+      values.add(getObjectValue4Opc(timeValuePair, dataType));
+    }
+
+    if (!schemas.isEmpty()) {
+      consumer.accept(segments, schemas, timestamps, values, sink);
+    }
+  }
+
+  private static Object getObjectValue4Opc(
+      final TimeValuePair timeValuePair, final TSDataType dataType) {
+    final Object value = timeValuePair.getValue().getValue();
+    switch (dataType) {
+      case DATE:
+        return new DateTime(
+            new Date(DateUtils.parseIntToDate(((Number) value).intValue()).getTime()));
+      case TIMESTAMP:
+        return new DateTime(timestampToUtc(((Number) value).longValue()));
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return value instanceof Binary ? value.toString() : String.valueOf(value);
+      case BOOLEAN:
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        return value;
+      case VECTOR:
+      case UNKNOWN:
+      default:
+        throw new UnSupportedDataTypeException("UnSupported dataType " + dataType);
     }
   }
 
@@ -323,7 +401,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       case INT32:
         return ((int[]) column)[rowIndex];
       case DATE:
-        return new DateTime(Date.valueOf(((LocalDate[]) column)[rowIndex]));
+        return new DateTime(
+            Date.from(
+                ((LocalDate[]) column)[rowIndex].atStartOfDay(ZoneId.systemDefault()).toInstant()));
       case INT64:
         return ((long[]) column)[rowIndex];
       case TIMESTAMP:

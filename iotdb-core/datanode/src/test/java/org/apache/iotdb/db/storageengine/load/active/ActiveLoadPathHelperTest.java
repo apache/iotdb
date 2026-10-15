@@ -36,7 +36,7 @@ public class ActiveLoadPathHelperTest {
     final File pendingDir = Files.createTempDirectory("active-load-schema").toFile();
     try {
       final Map<String, String> attributes =
-          ActiveLoadPathHelper.buildAttributes(null, null, null, true, false, null, true);
+          ActiveLoadPathHelper.buildAttributes(null, null, null, true, false, null, true, null);
       final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
       Assert.assertTrue(targetDir.mkdirs());
       final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
@@ -58,6 +58,102 @@ public class ActiveLoadPathHelperTest {
     }
   }
 
+  @Test
+  public void testUserAttributeShouldBeMaskedInPathAndDecodedWhenParsing() throws Exception {
+    final String userName = "active_load_user";
+    final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
+    try {
+      final File targetDir =
+          ActiveLoadPathHelper.resolveTargetDir(
+              pendingDir,
+              ActiveLoadPathHelper.buildAttributes(
+                  null, null, null, null, null, null, null, userName));
+      final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
+
+      Assert.assertTrue(targetDir.getAbsolutePath().contains("user-v1-"));
+      Assert.assertFalse(targetDir.getAbsolutePath().contains(userName));
+      Assert.assertFalse(targetDir.getAbsolutePath().contains("b64%3A"));
+
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertEquals(userName, attributes.get(ActiveLoadPathHelper.USER_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testRawUserAttributeShouldBeIgnored() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
+    try {
+      final File tsFile = new File(new File(pendingDir, "user-active_load_user"), "1-0-0-0.tsfile");
+
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertFalse(attributes.containsKey(ActiveLoadPathHelper.USER_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testNonV1UserAttributeShouldBeIgnored() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
+    try {
+      final File tsFile =
+          new File(new File(pendingDir, "user-v2-active_load_user"), "1-0-0-0.tsfile");
+
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertFalse(attributes.containsKey(ActiveLoadPathHelper.USER_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testUnknownRawAttributeDirectoryShouldBeIgnoredForDowngradeCompatibility()
+      throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
+    try {
+      final File tsFile =
+          new File(new File(pendingDir, "future-load-param-future-value"), "1-0-0-0.tsfile");
+      createFile(tsFile);
+
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertFalse(attributes.containsKey("future-load-param"));
+
+      final LoadTsFileStatement statement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, true);
+      Assert.assertTrue(statement.isVerifySchema());
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testKnownPrefixWithInvalidFutureLikeValueShouldBeIgnoredForDowngradeCompatibility()
+      throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
+    try {
+      final File tsFile = new File(new File(pendingDir, "verify-future-value"), "1-0-0-0.tsfile");
+      createFile(tsFile);
+
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertFalse(attributes.containsKey(LoadTsFileConfigurator.VERIFY_KEY));
+
+      final LoadTsFileStatement statement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, true);
+      Assert.assertTrue(statement.isVerifySchema());
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
   private static void deleteRecursively(final File file) {
     if (file == null || !file.exists()) {
       return;
@@ -69,5 +165,10 @@ public class ActiveLoadPathHelperTest {
       }
     }
     Assert.assertTrue(file.delete());
+  }
+
+  private static void createFile(final File file) throws Exception {
+    Assert.assertTrue(file.getParentFile().mkdirs());
+    Assert.assertTrue(file.createNewFile());
   }
 }

@@ -123,6 +123,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -176,6 +177,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.Show
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
@@ -1218,6 +1220,47 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       future.setException(new IoTDBException(tsStatus));
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> repairDataPartitionTable() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to ConfigNode to trigger DataPartitionTableIntegrityCheckProcedure
+      tsStatus = client.dataPartitionTableIntegrityCheck();
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRepairDataPartitionTableProgress() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowRepairDataPartitionTableProgressResp resp =
+          client.showRepairDataPartitionTableProgress();
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        ShowRepairDataPartitionTableProgressTask.buildTsBlock(resp, future);
+      } else {
+        future.setException(new IoTDBException(resp.getStatus()));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
     return future;
   }
 

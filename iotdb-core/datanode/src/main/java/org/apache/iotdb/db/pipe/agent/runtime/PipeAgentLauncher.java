@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
@@ -38,14 +37,16 @@ import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 class PipeAgentLauncher {
@@ -69,6 +70,7 @@ class PipeAgentLauncher {
 
     final List<PipePluginMeta> uninstalledOrConflictedPipePluginMetaList =
         getUninstalledOrConflictedPipePluginMetaList(resourcesInformationHolder);
+    final Set<String> unavailablePipePluginNameSet = new HashSet<>();
     int index = 0;
     while (index < uninstalledOrConflictedPipePluginMetaList.size()) {
       List<PipePluginMeta> curList = new ArrayList<>();
@@ -79,20 +81,26 @@ class PipeAgentLauncher {
         offset++;
       }
       index += offset;
-      fetchAndSavePipePluginJars(curList);
+      unavailablePipePluginNameSet.addAll(fetchAndSavePipePluginJars(curList));
     }
 
     // create instances of pipe plugins and do registration
-    try {
-      for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
-        if (meta.isBuiltin()) {
-          continue;
-        }
-        PipeDataNodeAgent.plugin().doRegister(meta);
+    for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
+      if (meta.isBuiltin()) {
+        continue;
       }
-    } catch (Exception e) {
-      // Ignore the pipe plugin errors and continue to start
-      LOGGER.warn("Failure when register pipe plugins, will ignore.", e);
+      if (unavailablePipePluginNameSet.contains(meta.getPluginName())) {
+        continue;
+      }
+      try {
+        PipeDataNodeAgent.plugin().doRegister(meta);
+      } catch (Throwable e) {
+        // Ignore a single broken plugin and continue startup.
+        LOGGER.error(
+            "Failure when register pipe plugin {}. Skip this plugin and continue startup.",
+            meta.getPluginName(),
+            e);
+      }
     }
   }
 
@@ -132,28 +140,140 @@ class PipeAgentLauncher {
     return pipePluginMetaList;
   }
 
-  private static void fetchAndSavePipePluginJars(List<PipePluginMeta> pipePluginMetaList)
-      throws StartupException {
+  static Set<String> fetchAndSavePipePluginJars(List<PipePluginMeta> pipePluginMetaList) {
+    if (pipePluginMetaList.isEmpty()) {
+      return Collections.emptySet();
+    }
+
+    final List<String> pluginNameList =
+        pipePluginMetaList.stream().map(PipePluginMeta::getPluginName).collect(Collectors.toList());
+    final List<String> jarNameList =
+        pipePluginMetaList.stream().map(PipePluginMeta::getJarName).collect(Collectors.toList());
+    final TGetJarInListResp resp;
+
     try (ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final List<String> jarNameList =
-          pipePluginMetaList.stream().map(PipePluginMeta::getJarName).collect(Collectors.toList());
-      final TGetJarInListResp resp =
-          configNodeClient.getPipePluginJar(new TGetJarInListReq(jarNameList));
-      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
-        throw new StartupException("Failed to get pipe plugin jar from config node.");
+      resp = configNodeClient.getPipePluginJar(new TGetJarInListReq(jarNameList));
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to fetch pipe plugin jars from ConfigNode. Plugins: {}, jars: {}, status: {}. "
+              + "Retrying each plugin individually.",
+          pluginNameList,
+          jarNameList,
+          null,
+          e);
+      return fetchAndSavePipePluginJarsIndividually(pipePluginMetaList);
+    }
+
+    if (resp == null
+        || resp.getStatus() == null
+        || resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.error(
+          "Failed to fetch pipe plugin jars from ConfigNode. Plugins: {}, jars: {}, status: {}. "
+              + "Retrying each plugin individually.",
+          pluginNameList,
+          jarNameList,
+          resp == null ? null : resp.getStatus());
+      return fetchAndSavePipePluginJarsIndividually(pipePluginMetaList);
+    }
+
+    final List<ByteBuffer> jarList = resp.getJarList();
+    if (jarList == null || jarList.size() != pipePluginMetaList.size()) {
+      LOGGER.error(
+          "ConfigNode returned {} pipe plugin jars for {} requested plugins. "
+              + "Plugins: {}, jars: {}. Retrying each plugin individually.",
+          jarList == null ? 0 : jarList.size(),
+          pipePluginMetaList.size(),
+          pluginNameList,
+          jarNameList);
+      return fetchAndSavePipePluginJarsIndividually(pipePluginMetaList);
+    }
+
+    return savePipePluginJars(pipePluginMetaList, jarList);
+  }
+
+  private static Set<String> fetchAndSavePipePluginJarsIndividually(
+      List<PipePluginMeta> pipePluginMetaList) {
+    final Set<String> unavailablePipePluginNameSet = new HashSet<>();
+    for (PipePluginMeta pipePluginMeta : pipePluginMetaList) {
+      if (!fetchAndSavePipePluginJarIndividually(pipePluginMeta)) {
+        unavailablePipePluginNameSet.add(pipePluginMeta.getPluginName());
       }
-      final List<ByteBuffer> jarList = resp.getJarList();
-      for (int i = 0; i < pipePluginMetaList.size(); i++) {
+    }
+    return unavailablePipePluginNameSet;
+  }
+
+  private static boolean fetchAndSavePipePluginJarIndividually(PipePluginMeta pipePluginMeta) {
+    final String pluginName = pipePluginMeta.getPluginName();
+    final String jarName = pipePluginMeta.getJarName();
+    final TGetJarInListResp resp;
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      resp =
+          configNodeClient.getPipePluginJar(
+              new TGetJarInListReq(Collections.singletonList(jarName)));
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to fetch pipe plugin jar {} for pipe plugin {} from ConfigNode.",
+          jarName,
+          pluginName,
+          e);
+      return false;
+    }
+
+    if (resp == null
+        || resp.getStatus() == null
+        || resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final PipeException exception =
+          new PipeException(
+              String.format(
+                  "Failed to fetch pipe plugin jar from ConfigNode for plugin %s (jar %s). "
+                      + "Status: %s.",
+                  pluginName, jarName, resp == null ? null : resp.getStatus()));
+      LOGGER.error(exception.getMessage(), exception);
+      return false;
+    }
+
+    final List<ByteBuffer> jarList = resp.getJarList();
+    if (jarList == null || jarList.size() != 1) {
+      final PipeException exception =
+          new PipeException(
+              String.format(
+                  "ConfigNode returned %d jars for pipe plugin %s while one was requested.",
+                  jarList == null ? 0 : jarList.size(), pluginName));
+      LOGGER.error(exception.getMessage(), exception);
+      return false;
+    }
+
+    try {
+      PipePluginExecutableManager.getInstance()
+          .savePluginToInstallDir(jarList.get(0), pluginName, jarName);
+      return true;
+    } catch (Exception e) {
+      LOGGER.error("Failed to save jar {} for pipe plugin {}.", jarName, pluginName, e);
+      return false;
+    }
+  }
+
+  private static Set<String> savePipePluginJars(
+      List<PipePluginMeta> pipePluginMetaList, List<ByteBuffer> jarList) {
+    final Set<String> unavailablePipePluginNameSet = new HashSet<>();
+    for (int i = 0; i < pipePluginMetaList.size(); i++) {
+      final PipePluginMeta pipePluginMeta = pipePluginMetaList.get(i);
+      try {
         PipePluginExecutableManager.getInstance()
             .savePluginToInstallDir(
-                jarList.get(i),
-                pipePluginMetaList.get(i).getPluginName(),
-                pipePluginMetaList.get(i).getJarName());
+                jarList.get(i), pipePluginMeta.getPluginName(), pipePluginMeta.getJarName());
+      } catch (Exception e) {
+        LOGGER.error(
+            "Failed to save jar {} for pipe plugin {}.",
+            pipePluginMeta.getJarName(),
+            pipePluginMeta.getPluginName(),
+            e);
+        unavailablePipePluginNameSet.add(pipePluginMeta.getPluginName());
       }
-    } catch (IOException | TException | ClientManagerException e) {
-      throw new StartupException(e);
     }
+    return unavailablePipePluginNameSet;
   }
 
   public static synchronized void launchPipeTaskAgent() {

@@ -80,6 +80,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private final boolean transferMod;
   private final String dataBaseName;
+  private final String conversionTaskId;
 
   private final int readFileBufferSize;
   private PipeTsFileMemoryBlock memoryBlock;
@@ -103,6 +104,31 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final boolean transferMod,
       final String dataBaseName)
       throws InterruptedException {
+    this(
+        connector,
+        pipeName2WeightMap,
+        events,
+        eventsReferenceCount,
+        eventsHadBeenAddedToRetryQueue,
+        tsFile,
+        modFile,
+        transferMod,
+        dataBaseName,
+        0);
+  }
+
+  public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncSink connector,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
+      final File tsFile,
+      final File modFile,
+      final boolean transferMod,
+      final String dataBaseName,
+      final int outputIndex)
+      throws InterruptedException {
     super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
@@ -115,6 +141,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.modFile = modFile;
     this.transferMod = transferMod;
     this.dataBaseName = dataBaseName;
+    conversionTaskId =
+        connector.shouldAsyncLoadTsFileOnTypeMismatch()
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                connector.getSinkTaskId(), events, dataBaseName, outputIndex, transferMod)
+            : null;
     currentFile = transferMod ? modFile : tsFile;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
@@ -189,23 +220,33 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
 
-        final TPipeTransferReq uncompressedReq =
-            transferMod
-                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName,
-                    sink.shouldWaitForSchemaBeforeLoad())
-                : dataBaseName == null && !sink.shouldWaitForSchemaBeforeLoad()
-                    ? PipeTransferTsFileSealReq.toTPipeTransferReq(
-                        tsFile.getName(), tsFile.length())
-                    : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(),
-                        tsFile.length(),
-                        dataBaseName,
-                        sink.shouldWaitForSchemaBeforeLoad());
+        final TPipeTransferReq uncompressedReq;
+        if (transferMod) {
+          uncompressedReq =
+              PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                      modFile.getName(),
+                      modFile.length(),
+                      tsFile.getName(),
+                      tsFile.length(),
+                      dataBaseName,
+                      sink.shouldWaitForSchemaBeforeLoad())
+                  .setConversionTaskInfo(
+                      conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
+        } else if (conversionTaskId != null
+            || dataBaseName != null
+            || sink.shouldWaitForSchemaBeforeLoad()) {
+          uncompressedReq =
+              PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                      tsFile.getName(),
+                      tsFile.length(),
+                      dataBaseName,
+                      sink.shouldWaitForSchemaBeforeLoad())
+                  .setConversionTaskInfo(
+                      conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
+        } else {
+          uncompressedReq =
+              PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+        }
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
@@ -267,13 +308,12 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void onComplete(final TPipeTransferResp response) {
+  public synchronized void onComplete(final TPipeTransferResp response) {
     try {
       super.onComplete(response);
     } finally {
       if (sink.isClosed()) {
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
+        releaseReadBufferAndReturnClient();
       }
     }
   }
@@ -299,21 +339,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       }
 
       try {
-        if (reader != null) {
-          reader.close();
-        }
-
-        // Delete current file when using tsFile as batch
-        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.delete(currentFile);
-                return null;
-              });
-        }
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "Failed to close file reader or delete tsFile when successfully transferred file.", e);
+        closeReaderAndDeleteBatchFile(true);
       } finally {
         final int referenceCount = eventsReferenceCount.decrementAndGet();
         if (referenceCount <= 0) {
@@ -336,8 +362,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               referenceCount);
         }
 
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
+        releaseReadBufferAndReturnClient();
       }
 
       return true;
@@ -375,12 +400,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void onError(final Exception exception) {
+  public synchronized void onError(final Exception exception) {
     try {
       super.onError(exception);
     } finally {
-      releaseReadBufferMemoryBlock();
-      returnClientIfNecessary();
+      releaseReadBufferAndReturnClient();
     }
   }
 
@@ -415,27 +439,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     try {
-      if (reader != null) {
-        reader.close();
-      }
-
-      // Delete current file when using tsFile as batch
-      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(currentFile);
-              return null;
-            });
-      }
-    } catch (final IOException e) {
-      LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
+      closeReaderAndDeleteBatchFile(false);
     } finally {
       try {
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
+        releaseReadBufferAndReturnClient();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          sink.addFailureEventsToRetryQueue(events, exception);
+          sink.addFailureEventsToRetryQueue(events, exception, this);
         }
       }
     }
@@ -486,34 +496,66 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     try {
-      if (reader != null) {
-        reader.close();
-        reader = null;
+      closeReaderAndDeleteBatchFile(false);
+    } finally {
+      try {
+        super.close();
+      } finally {
+        releaseReadBufferMemoryBlock();
       }
+    }
+  }
 
-      if (currentFile.exists()
-          && events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+  private void closeReaderAndDeleteBatchFile(final boolean transferSucceeded) {
+    final String errorMessage =
+        transferSucceeded
+            ? "Failed to close file reader or delete tsFile after successful transfer."
+            : "Failed to close file reader or delete tsFile.";
+    final RandomAccessFile readerToClose = reader;
+    if (readerToClose != null) {
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              readerToClose.close();
+              return null;
+            });
+        if (reader == readerToClose) {
+          reader = null;
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(errorMessage, e);
+      }
+    }
+    if (currentFile.exists()
+        && events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+      try {
         RetryUtils.retryOnException(
             () -> {
               FileUtils.delete(currentFile);
               return null;
             });
+      } catch (final IOException e) {
+        LOGGER.warn(errorMessage, e);
       }
-    } catch (final IOException e) {
-      LOGGER.warn("Failed to close file reader or delete generated batch file.", e);
-    } finally {
-      super.close();
+    }
+  }
+
+  private void releaseReadBufferAndReturnClient() {
+    try {
       releaseReadBufferMemoryBlock();
+    } finally {
+      returnClientIfNecessary();
     }
   }
 
   private void releaseReadBufferMemoryBlock() {
-    if (memoryBlock != null) {
-      memoryBlock.close();
-      memoryBlock = null;
-      readBuffer = null;
+    final PipeTsFileMemoryBlock block = memoryBlock;
+    memoryBlock = null;
+    readBuffer = null;
+    if (block != null) {
+      block.close();
     }
   }
 

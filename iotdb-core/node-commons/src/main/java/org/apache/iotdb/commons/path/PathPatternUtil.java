@@ -33,7 +33,8 @@ public class PathPatternUtil {
    * patternNode that can match batch explicit node names. e.g. *, e.g. *, **, d*, *d*.
    */
   public static boolean hasWildcard(String node) {
-    return node.startsWith(ONE_LEVEL_PATH_WILDCARD) || node.endsWith(ONE_LEVEL_PATH_WILDCARD);
+    return node != null
+        && (node.startsWith(ONE_LEVEL_PATH_WILDCARD) || node.endsWith(ONE_LEVEL_PATH_WILDCARD));
   }
 
   public static boolean isMultiLevelMatchWildcard(String node) {

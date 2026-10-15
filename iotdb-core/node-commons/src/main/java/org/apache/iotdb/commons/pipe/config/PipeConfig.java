@@ -66,6 +66,7 @@ public class PipeConfig {
   }
 
   public double getPipeTotalFloatingMemoryProportion() {
+    // This is the upper limit of floating memory, not a statically reserved partition.
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 

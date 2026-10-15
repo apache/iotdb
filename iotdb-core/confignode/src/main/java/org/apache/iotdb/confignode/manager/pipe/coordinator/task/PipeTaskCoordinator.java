@@ -102,6 +102,12 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus alterPipe(TAlterPipeReq req) {
+    final String pipeName = req.getPipeName();
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format("Failed to alter pipe %s, the pipe is being dropped", pipeName));
+    }
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to alter pipe {}. Result status: {}.", req.getPipeName(), status);
@@ -111,6 +117,11 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(String pipeName) {
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format("Failed to start pipe %s, the pipe is being dropped", pipeName));
+    }
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
@@ -120,6 +131,11 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(String pipeName) {
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format("Failed to stop pipe %s, the pipe is being dropped", pipeName));
+    }
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);

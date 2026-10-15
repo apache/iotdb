@@ -81,6 +81,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
     // init fields of PipeTsFileInsertionEvent
     flushPointCount = bindFlushPointCount(originalEvents);
     overridingProgressIndex = bindOverridingProgressIndex(originalEvents);
+    setTsFileParser(anyOfOriginalEvents.getTsFileParser());
   }
 
   private static boolean bindIsWithMod(Set<PipeTsFileInsertionEvent> originalEvents) {

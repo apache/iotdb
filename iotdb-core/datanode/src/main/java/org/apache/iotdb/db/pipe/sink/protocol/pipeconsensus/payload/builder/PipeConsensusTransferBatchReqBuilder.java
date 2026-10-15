@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.builder;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -162,7 +163,16 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
 
     final long newTotalBufferSize =
         Math.min(totalBufferSize + bufferSize, getMaxBatchSizeInBytes());
-    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, newTotalBufferSize);
+    if (!PipeDataNodeResourceManager.memory().tryResize(allocatedMemoryBlock, newTotalBufferSize)) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              "forceResize: failed to allocate memory after %d retries, total memory size %d bytes, "
+                  + "used memory size %d bytes, requested memory size %d bytes",
+              0,
+              PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes(),
+              PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+              newTotalBufferSize - totalBufferSize));
+    }
     totalBufferSize = newTotalBufferSize;
   }
 

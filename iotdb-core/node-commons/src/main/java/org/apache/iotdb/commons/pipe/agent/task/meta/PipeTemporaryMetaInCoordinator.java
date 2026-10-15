@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.resource.PipeRecentFailureCounter;
+
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -32,6 +37,8 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final ConcurrentMap<Integer, Long> nodeId2RemainingEventMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Double> nodeId2RemainingTimeMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, RecentFailureSnapshot> nodeId2RecentFailuresMap =
+      new ConcurrentHashMap<>();
 
   public void markDataNodeCompleted(final int dataNodeId) {
     completedDataNodeIds.add(dataNodeId);
@@ -49,6 +56,27 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     nodeId2RemainingTimeMap.put(dataNodeId, remainingTime);
   }
 
+  public void setRecentFailures(final int dataNodeId, final Map<String, Long> recentFailures) {
+    if (Objects.isNull(recentFailures) || recentFailures.isEmpty()) {
+      nodeId2RecentFailuresMap.remove(dataNodeId);
+      return;
+    }
+
+    final Map<String, Long> sanitizedFailures = new HashMap<>();
+    recentFailures.forEach(
+        (failureType, count) -> {
+          if (Objects.nonNull(failureType) && Objects.nonNull(count) && count > 0) {
+            sanitizedFailures.put(failureType, count);
+          }
+        });
+    if (sanitizedFailures.isEmpty()) {
+      nodeId2RecentFailuresMap.remove(dataNodeId);
+    } else {
+      nodeId2RecentFailuresMap.put(
+          dataNodeId, new RecentFailureSnapshot(sanitizedFailures, System.currentTimeMillis()));
+    }
+  }
+
   public Set<Integer> getCompletedDataNodeIds() {
     return completedDataNodeIds;
   }
@@ -59,6 +87,23 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
 
   public double getGlobalRemainingTime() {
     return nodeId2RemainingTimeMap.values().stream().reduce(Math::max).orElse(0d);
+  }
+
+  public Map<String, Long> getGlobalRecentFailures() {
+    final long earliestIncludedTime =
+        System.currentTimeMillis() - PipeRecentFailureCounter.WINDOW_MILLIS;
+    nodeId2RecentFailuresMap
+        .entrySet()
+        .removeIf(entry -> entry.getValue().reportTime < earliestIncludedTime);
+
+    final Map<String, Long> result = new TreeMap<>();
+    nodeId2RecentFailuresMap
+        .values()
+        .forEach(
+            snapshot ->
+                snapshot.recentFailures.forEach(
+                    (failureType, count) -> result.merge(failureType, count, Long::sum)));
+    return result;
   }
 
   @Override
@@ -72,12 +117,17 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     final PipeTemporaryMetaInCoordinator that = (PipeTemporaryMetaInCoordinator) o;
     return Objects.equals(this.completedDataNodeIds, that.completedDataNodeIds)
         && Objects.equals(this.nodeId2RemainingEventMap, that.nodeId2RemainingEventMap)
-        && Objects.equals(this.nodeId2RemainingTimeMap, that.nodeId2RemainingTimeMap);
+        && Objects.equals(this.nodeId2RemainingTimeMap, that.nodeId2RemainingTimeMap)
+        && Objects.equals(this.nodeId2RecentFailuresMap, that.nodeId2RecentFailuresMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(completedDataNodeIds, nodeId2RemainingEventMap, nodeId2RemainingTimeMap);
+    return Objects.hash(
+        completedDataNodeIds,
+        nodeId2RemainingEventMap,
+        nodeId2RemainingTimeMap,
+        nodeId2RecentFailuresMap);
   }
 
   @Override
@@ -89,6 +139,36 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
         + nodeId2RemainingEventMap
         + ", nodeId2RemainingTimeMap"
         + nodeId2RemainingTimeMap
+        + ", nodeId2RecentFailuresMap="
+        + nodeId2RecentFailuresMap
         + '}';
+  }
+
+  private static class RecentFailureSnapshot {
+
+    private final Map<String, Long> recentFailures;
+    private final long reportTime;
+
+    private RecentFailureSnapshot(final Map<String, Long> recentFailures, final long reportTime) {
+      this.recentFailures = recentFailures;
+      this.reportTime = reportTime;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      final RecentFailureSnapshot that = (RecentFailureSnapshot) o;
+      return Objects.equals(recentFailures, that.recentFailures);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(recentFailures);
+    }
   }
 }

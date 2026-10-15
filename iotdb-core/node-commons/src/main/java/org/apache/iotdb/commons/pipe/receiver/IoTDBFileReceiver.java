@@ -780,6 +780,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
     final List<String> fileNames = req.getFileNames();
+    TSStatus loadStatus = null;
     try {
       final List<File> files =
           fileNames.stream()
@@ -844,6 +845,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
+      loadStatus = status;
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.debug(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePaths);
@@ -878,8 +880,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       closeCurrentWritingFileWriter(false);
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
-      IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
+      if (shouldDeleteSealedFilesOnFailure(req, loadStatus)) {
+        IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
+      }
     }
+  }
+
+  /**
+   * Decides whether files in the receiver's staging directory should be removed after a V2 seal.
+   * The default keeps the historical behavior. A receiver may retain files when a conversion task
+   * is retryable so that a sender retry can resume the same task without losing its input.
+   */
+  protected boolean shouldDeleteSealedFilesOnFailure(
+      final PipeTransferFileSealReqV2 req, final TSStatus loadStatus) {
+    return true;
   }
 
   private TPipeTransferResp checkNonFinalFileSeal(

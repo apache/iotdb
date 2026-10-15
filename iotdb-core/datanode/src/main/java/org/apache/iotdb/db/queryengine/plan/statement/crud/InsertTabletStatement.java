@@ -181,9 +181,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   public boolean isEmpty() {
     return rowCount == 0
+        || times == null
         || times.length == 0
+        || measurements == null
         || measurements.length == 0
+        || dataTypes == null
         || dataTypes.length == 0
+        || columns == null
         || columns.length == 0;
   }
 
@@ -211,8 +215,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
-    for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!isColumnPresent(i)) {
+        continue;
+      }
+      PartialPath fullPath = devicePath.concatNode(measurements[i]);
       ret.add(fullPath);
     }
     return ret;
@@ -230,6 +237,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (dataTypes == null || columnIndex < 0 || columnIndex >= dataTypes.length) {
+      return false;
+    }
     if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
       columns[columnIndex] =
           CommonUtils.castArray(dataTypes[columnIndex], dataType, columns[columnIndex]);
@@ -241,7 +251,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public void markFailedMeasurement(int index, Exception cause) {
-    if (measurements[index] == null) {
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null) {
       return;
     }
 
@@ -251,12 +264,19 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
         new InsertBaseStatement.FailedMeasurementInfo(
-            measurements[index], dataTypes[index], columns[index], cause);
+            measurements[index],
+            getDataType(index),
+            columns != null && index < columns.length ? columns[index] : null,
+            cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
-    dataTypes[index] = null;
-    columns[index] = null;
+    if (dataTypes != null && index < dataTypes.length) {
+      dataTypes[index] = null;
+    }
+    if (columns != null && index < columns.length) {
+      columns[index] = null;
+    }
   }
 
   @Override
@@ -266,9 +286,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          measurements[index] = info.getMeasurement();
-          dataTypes[index] = info.getDataType();
-          columns[index] = info.getValue();
+          if (measurements != null && index < measurements.length) {
+            measurements[index] = info.getMeasurement();
+          }
+          if (dataTypes != null && index < dataTypes.length) {
+            dataTypes[index] = info.getDataType();
+          }
+          if (columns != null && index < columns.length) {
+            columns[index] = info.getValue();
+          }
         });
     failedMeasurementIndex2Info.clear();
   }
@@ -276,7 +302,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   public void semanticCheck() {
     super.semanticCheck();
-    if (measurements.length != columns.length) {
+    if (measurements != null && columns != null && measurements.length != columns.length) {
       throw new SemanticException(
           String.format(
               "the measurementList's size %d is not consistent with the columnList's size %d",
@@ -356,6 +382,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public Object getFirstValueOfIndex(int index) {
+    if (dataTypes == null
+        || columns == null
+        || index < 0
+        || index >= dataTypes.length
+        || index >= columns.length
+        || dataTypes[index] == null
+        || columns[index] == null) {
+      return null;
+    }
     Object value;
     switch (dataTypes[index]) {
       case INT32:
@@ -395,7 +430,12 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public TSDataType getDataType(int index) {
-    return dataTypes[index];
+    return super.getDataType(index);
+  }
+
+  @Override
+  public boolean isColumnPresent(final int index) {
+    return super.isColumnPresent(index) && columns != null && index < columns.length;
   }
 
   @Override

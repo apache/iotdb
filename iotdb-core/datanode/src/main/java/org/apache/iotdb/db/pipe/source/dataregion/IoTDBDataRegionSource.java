@@ -57,6 +57,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
@@ -70,16 +71,21 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_SCAN_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_WATERMARK_INTERVAL_KEY;
 
 public class IoTDBDataRegionSource extends IoTDBSource {
@@ -121,6 +127,19 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
+    // If unset, the parser is selected automatically.
+    validator
+        .validateAttributeValueRange(
+            EXTRACTOR_TSFILE_PARSER_KEY,
+            true,
+            EXTRACTOR_TSFILE_PARSER_QUERY_VALUE,
+            EXTRACTOR_TSFILE_PARSER_SCAN_VALUE)
+        .validateAttributeValueRange(
+            SOURCE_TSFILE_PARSER_KEY,
+            true,
+            EXTRACTOR_TSFILE_PARSER_QUERY_VALUE,
+            EXTRACTOR_TSFILE_PARSER_SCAN_VALUE);
+
     // Get the pattern format to check whether the pattern is legal
     final PipePattern pattern =
         PipePattern.parsePipePatternFromSourceParameters(validator.getParameters());
@@ -138,6 +157,16 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             SOURCE_HISTORY_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
         .validateAttributeValueRange(
             SOURCE_REALTIME_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
+        .validateAttributeValueRange(
+            EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY,
+            true,
+            Boolean.TRUE.toString(),
+            Boolean.FALSE.toString())
+        .validateAttributeValueRange(
+            SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY,
+            true,
+            Boolean.TRUE.toString(),
+            Boolean.FALSE.toString())
         .validate(
             args -> (boolean) args[0] || (boolean) args[1],
             "Should not set both history.enable and realtime.enable to false.",

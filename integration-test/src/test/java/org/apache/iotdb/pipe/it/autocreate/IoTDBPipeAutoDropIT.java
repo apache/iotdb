@@ -145,7 +145,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           senderEnv,
           "show pipes",
-          "ID,CreationTime,State,PipeSource,PipeProcessor,PipeSink,ExceptionMessage,RemainingEventCount,EstimatedRemainingSeconds,",
+          "ID,CreationTime,State,PipeSource,PipeProcessor,PipeSink,ExceptionMessage,RemainingEventCount,EstimatedRemainingSeconds,RecentFailures,",
           Collections.emptySet());
     }
   }

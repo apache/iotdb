@@ -52,7 +52,7 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
     // Put response
     responseMap.put(requestId, response);
 
-    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (isRequestCompleted(requestType, response)) {
       // Remove only if success
       nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
@@ -66,6 +66,18 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
 
     // Always CountDown
     countDownLatch.countDown();
+  }
+
+  static boolean isRequestCompleted(CnToDnAsyncRequestType requestType, TSStatus response) {
+    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    }
+    if (requestType == CnToDnAsyncRequestType.DELETE_REGION) {
+      return response.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode();
+    }
+    return (requestType == CnToDnAsyncRequestType.CREATE_DATA_REGION
+            || requestType == CnToDnAsyncRequestType.CREATE_SCHEMA_REGION)
+        && response.getCode() == TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode();
   }
 
   @Override

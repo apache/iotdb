@@ -27,9 +27,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryManager;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -65,7 +66,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFileInsertionQueryDataContainer.class);
 
-  private final PipeMemoryBlock allocatedMemoryBlock;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlock;
   private final TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
@@ -145,6 +146,35 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
       final boolean isWithMod)
       throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        deviceIsAlignedMap,
+        deviceMeasurementsMapOverride,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionQueryDataContainer(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap,
+      final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException {
     super(
         tsFile,
         pipeName,
@@ -154,7 +184,8 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         endTime,
         pipeTaskMeta,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        memoryManager);
 
     try {
       currentModifications =
@@ -162,8 +193,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
 
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
@@ -224,8 +254,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         memoryRequiredInBytes +=
             PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
-      allocatedMemoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
+      allocatedMemoryBlock = memoryManager.forceAllocate(memoryRequiredInBytes);
 
       final Iterator<Map.Entry<IDeviceID, List<String>>> iterator =
           deviceMeasurementsMap.entrySet().iterator();
@@ -302,6 +331,25 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final boolean isWithMod)
       throws IOException {
     this(
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        deviceMeasurementsMapOverride,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionQueryDataContainer(
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException {
+    this(
         null,
         0,
         tsFile,
@@ -312,7 +360,8 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         null,
         null,
         deviceMeasurementsMapOverride,
-        isWithMod);
+        isWithMod,
+        memoryManager);
   }
 
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(

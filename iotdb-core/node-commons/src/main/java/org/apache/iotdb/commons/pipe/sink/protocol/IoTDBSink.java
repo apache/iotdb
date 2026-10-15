@@ -72,6 +72,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_DEFAULT_VALUE;
@@ -118,6 +120,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_FORMAT_KEY;
@@ -176,9 +179,12 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
   protected boolean shouldReceiverConvertOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
+  protected boolean shouldAsyncLoadTsFileOnTypeMismatch =
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE;
   private final AtomicLong totalUncompressedSize = new AtomicLong(0);
   private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
+  protected String sinkTaskId;
   protected Timer compressionTimer;
   protected boolean isRealtimeFirst;
 
@@ -378,6 +384,7 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     if (environment instanceof PipeTaskSinkRuntimeEnvironment) {
       attributeSortedString =
           ((PipeTaskSinkRuntimeEnvironment) environment).getAttributeSortedString();
+      sinkTaskId = ((PipeTaskSinkRuntimeEnvironment) environment).getSinkTaskId();
     }
 
     nodeUrls.clear();
@@ -468,10 +475,20 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
                 CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
                 SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY),
             CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE);
+    shouldAsyncLoadTsFileOnTypeMismatch =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY,
+                SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY),
+            CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE);
     LOGGER.info(
         "IoTDBSink {} = {}",
         CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
         shouldReceiverConvertOnTypeMismatch);
+    LOGGER.info(
+        "IoTDBSink {} = {}",
+        CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY,
+        shouldAsyncLoadTsFileOnTypeMismatch);
     isRealtimeFirst =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -636,6 +653,14 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
 
   public boolean shouldWaitForSchemaBeforeLoad() {
     return shouldWaitForSchemaBeforeLoad;
+  }
+
+  public boolean shouldAsyncLoadTsFileOnTypeMismatch() {
+    return shouldAsyncLoadTsFileOnTypeMismatch;
+  }
+
+  public String getSinkTaskId() {
+    return sinkTaskId;
   }
 
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {

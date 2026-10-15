@@ -213,9 +213,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -3396,6 +3398,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
     startRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return startRepairDataStatement;
+  }
+
+  // Repair Data Partition Table
+
+  @Override
+  public Statement visitRepairDataPartitionTable(
+      IoTDBSqlParser.RepairDataPartitionTableContext ctx) {
+    return new RepairDataPartitionTable();
+  }
+
+  @Override
+  public Statement visitShowRepairDataPartitionTableProgress(
+      IoTDBSqlParser.ShowRepairDataPartitionTableProgressContext ctx) {
+    return new ShowRepairDataPartitionTableProgressStatement();
   }
 
   // Stop Repair Data

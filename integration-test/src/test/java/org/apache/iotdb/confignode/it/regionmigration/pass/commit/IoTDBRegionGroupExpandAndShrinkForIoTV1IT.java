@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass.commit;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -38,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -118,6 +122,50 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
         }
       }
     }
+  }
+
+  @Test
+  public void rejectInvalidTargetDataNodeTest() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
+
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = makeItCloseQuietly(connection.createStatement());
+        SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      statement.execute(INSERTION1);
+      statement.execute(FLUSH_COMMAND);
+
+      Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
+      Set<Integer> allDataNodeIds = getAllDataNodes(statement);
+      Assert.assertFalse(regionMap.isEmpty());
+
+      int selectedRegion = regionMap.keySet().iterator().next();
+      int unknownDataNodeId = Collections.max(allDataNodeIds) + 1000;
+      int configNodeId = client.showCluster().getConfigNodeList().get(0).getConfigNodeId();
+      Assert.assertFalse(allDataNodeIds.contains(configNodeId));
+
+      assertExtendRegionRejected(client, selectedRegion, unknownDataNodeId);
+      assertExtendRegionRejected(client, selectedRegion, configNodeId);
+      Assert.assertEquals(regionMap, getAllRegionMap(statement));
+    }
+  }
+
+  private void assertExtendRegionRejected(
+      SyncConfigNodeIServiceClient client, int regionId, int dataNodeId) throws Exception {
+    TSStatus status =
+        client.extendRegion(new TExtendRegionReq(Collections.singletonList(regionId), dataNodeId));
+    Assert.assertEquals(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format("Target DataNode %s does not exist in the cluster", dataNodeId),
+        status.getMessage());
   }
 
   private void regionGroupExpand(

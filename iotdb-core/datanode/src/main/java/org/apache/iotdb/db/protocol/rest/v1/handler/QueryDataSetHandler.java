@@ -36,7 +36,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.List;

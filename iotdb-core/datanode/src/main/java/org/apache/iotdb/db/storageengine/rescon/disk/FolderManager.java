@@ -40,10 +40,18 @@ public class FolderManager {
 
   private final List<String> folders;
   private final DirectoryStrategy selectStrategy;
+  private final boolean changeSystemStatusToReadOnly;
 
   public FolderManager(List<String> folders, DirectoryStrategyType type)
       throws DiskSpaceInsufficientException {
+    this(folders, type, true);
+  }
+
+  public FolderManager(
+      List<String> folders, DirectoryStrategyType type, boolean changeSystemStatusToReadOnly)
+      throws DiskSpaceInsufficientException {
     this.folders = folders;
+    this.changeSystemStatusToReadOnly = changeSystemStatusToReadOnly;
     switch (type) {
       case SEQUENCE_STRATEGY:
         this.selectStrategy = new SequenceStrategy();
@@ -60,15 +68,11 @@ public class FolderManager {
       default:
         throw new RuntimeException();
     }
+    this.selectStrategy.setChangeSystemStatusToReadOnly(changeSystemStatusToReadOnly);
     try {
       this.selectStrategy.setFolders(folders);
     } catch (DiskSpaceInsufficientException e) {
-      if (LoggerPeriodicalLogReducer.shouldLog(
-          "All folders are full, change system mode to read-only.")) {
-        logger.error("All folders are full, change system mode to read-only.", e);
-      }
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      changeToReadOnlyIfDiskFull(e);
       throw e;
     }
   }
@@ -77,14 +81,22 @@ public class FolderManager {
     try {
       return folders.get(selectStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
-      if (LoggerPeriodicalLogReducer.shouldLog(
-          "All folders are full, change system mode to read-only.")) {
-        logger.error("All folders are full, change system mode to read-only.", e);
-      }
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      changeToReadOnlyIfDiskFull(e);
       throw e;
     }
+  }
+
+  private void changeToReadOnlyIfDiskFull(DiskSpaceInsufficientException e) {
+    if (!changeSystemStatusToReadOnly) {
+      return;
+    }
+
+    if (LoggerPeriodicalLogReducer.shouldLog(
+        "All folders are full, change system mode to read-only.")) {
+      logger.error("All folders are full, change system mode to read-only.", e);
+    }
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
   }
 
   public List<String> getFolders() {
