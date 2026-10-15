@@ -92,6 +92,14 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
   /** The progress index to adopt per time partition this transaction wrote. */
   private Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex = new HashMap<>();
 
+  /**
+   * The end offset of the data zone of the staged file of every time partition, as the coordinator
+   * computed it from the chunks it dispatched. A replica can then tell whether a staged file was
+   * written completely without trusting only its own records, which a piece that never reached the
+   * replica leaves no trace in: such a file still looks continuous, just shorter.
+   */
+  private Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd = new HashMap<>();
+
   /** Whether the staged file was produced by a pipe, which selects the import path of the data. */
   private boolean isGeneratedByPipe;
 
@@ -217,12 +225,26 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       final long totalBytes,
       final boolean isGeneratedByPipe,
       final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
+    return prepare(
+        id, loadId, pieceCount, totalBytes, isGeneratedByPipe, timePartition2ProgressIndex, null);
+  }
+
+  /** PREPARE, telling every replica how far the staged file of each time partition has to be. */
+  public static LoadTsFileConsensusNode prepare(
+      final PlanNodeId id,
+      final String loadId,
+      final int pieceCount,
+      final long totalBytes,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex,
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd) {
     final LoadTsFileConsensusNode node =
         new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.PREPARE, loadId, null, -1L);
     node.pieceCount = pieceCount;
     node.totalBytes = totalBytes;
     node.isGeneratedByPipe = isGeneratedByPipe;
     node.timePartition2ProgressIndex = copyProgressIndexes(timePartition2ProgressIndex);
+    node.timePartition2ExpectedDataEnd = copyExpectedDataEnds(timePartition2ExpectedDataEnd);
     return node;
   }
 
@@ -232,19 +254,44 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       final String loadId,
       final boolean isGeneratedByPipe,
       final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
+    return commit(id, loadId, isGeneratedByPipe, timePartition2ProgressIndex, null);
+  }
+
+  /** COMMIT, carrying the same expectation PREPARE announced. */
+  public static LoadTsFileConsensusNode commit(
+      final PlanNodeId id,
+      final String loadId,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex,
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd) {
     final LoadTsFileConsensusNode node =
         new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.COMMIT, loadId, null, -1L);
     node.isGeneratedByPipe = isGeneratedByPipe;
     node.timePartition2ProgressIndex = copyProgressIndexes(timePartition2ProgressIndex);
+    node.timePartition2ExpectedDataEnd = copyExpectedDataEnds(timePartition2ExpectedDataEnd);
     return node;
   }
 
   /** ABORT: discards the staged data. Idempotent, so it settles a COMMIT answer that was lost. */
   public static LoadTsFileConsensusNode abort(
       final PlanNodeId id, final String loadId, final boolean isGeneratedByPipe) {
+    return abort(id, loadId, isGeneratedByPipe, null);
+  }
+
+  /**
+   * ABORT, telling every replica how far it was expected to get: a piece whose dispatch failed is
+   * not part of the expectation, so a replica that stopped there is still allowed to mark the
+   * directory as ended.
+   */
+  public static LoadTsFileConsensusNode abort(
+      final PlanNodeId id,
+      final String loadId,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd) {
     final LoadTsFileConsensusNode node =
         new LoadTsFileConsensusNode(id, LoadTsFileConsensusOp.ABORT, loadId, null, -1L);
     node.isGeneratedByPipe = isGeneratedByPipe;
+    node.timePartition2ExpectedDataEnd = copyExpectedDataEnds(timePartition2ExpectedDataEnd);
     return node;
   }
 
@@ -253,6 +300,13 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     return timePartition2ProgressIndex == null
         ? new HashMap<>()
         : new HashMap<>(timePartition2ProgressIndex);
+  }
+
+  private static Map<TTimePartitionSlot, Long> copyExpectedDataEnds(
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd) {
+    return timePartition2ExpectedDataEnd == null
+        ? new HashMap<>()
+        : new HashMap<>(timePartition2ExpectedDataEnd);
   }
 
   public LoadTsFileConsensusOp getOp() {
@@ -326,6 +380,10 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
 
   public Map<TTimePartitionSlot, byte[]> getTimePartition2ProgressIndex() {
     return timePartition2ProgressIndex;
+  }
+
+  public Map<TTimePartitionSlot, Long> getTimePartition2ExpectedDataEnd() {
+    return timePartition2ExpectedDataEnd;
   }
 
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
@@ -462,15 +520,18 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     ReadWriteIOUtils.write(totalBytes, stream);
     ReadWriteIOUtils.write(isGeneratedByPipe, stream);
     writeProgressIndexes(stream);
+    writeExpectedDataEnds(stream);
   }
 
   private void serializeCommitBody(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(isGeneratedByPipe, stream);
     writeProgressIndexes(stream);
+    writeExpectedDataEnds(stream);
   }
 
   private void serializeAbortBody(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(isGeneratedByPipe, stream);
+    writeExpectedDataEnds(stream);
   }
 
   private void writeProgressIndexes(DataOutputStream stream) throws IOException {
@@ -483,6 +544,18 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       ReadWriteIOUtils.write(entry.getKey().getStartTime(), stream);
       ReadWriteIOUtils.write(entry.getValue().length, stream);
       stream.write(entry.getValue());
+    }
+  }
+
+  private void writeExpectedDataEnds(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(timePartition2ExpectedDataEnd.size(), stream);
+    // Sorted for the same reason as the progress indexes: a retry must log the same bytes.
+    final List<Map.Entry<TTimePartitionSlot, Long>> sortedExpectedDataEnds =
+        new ArrayList<>(timePartition2ExpectedDataEnd.entrySet());
+    sortedExpectedDataEnds.sort(Comparator.comparingLong(entry -> entry.getKey().getStartTime()));
+    for (final Map.Entry<TTimePartitionSlot, Long> entry : sortedExpectedDataEnds) {
+      ReadWriteIOUtils.write(entry.getKey().getStartTime(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
     }
   }
 
@@ -557,6 +630,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     node.totalBytes = totalBytes;
     node.isGeneratedByPipe = isGeneratedByPipe;
     node.timePartition2ProgressIndex = progressIndexes;
+    node.timePartition2ExpectedDataEnd = readExpectedDataEnds(stream);
     return node;
   }
 
@@ -569,6 +643,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
             new PlanNodeId(""), LoadTsFileConsensusOp.COMMIT, loadId, null, -1L);
     node.isGeneratedByPipe = isGeneratedByPipe;
     node.timePartition2ProgressIndex = progressIndexes;
+    node.timePartition2ExpectedDataEnd = readExpectedDataEnds(stream);
     return node;
   }
 
@@ -579,6 +654,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
         new LoadTsFileConsensusNode(
             new PlanNodeId(""), LoadTsFileConsensusOp.ABORT, loadId, null, -1L);
     node.isGeneratedByPipe = isGeneratedByPipe;
+    node.timePartition2ExpectedDataEnd = readExpectedDataEnds(stream);
     return node;
   }
 
@@ -608,6 +684,18 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       timePartition2ProgressIndex.put(new TTimePartitionSlot(startTime), bytes);
     }
     return timePartition2ProgressIndex;
+  }
+
+  private static Map<TTimePartitionSlot, Long> readExpectedDataEnds(final InputStream stream)
+      throws IOException {
+    final int count = readCount(stream, "expected data end");
+    final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd = new HashMap<>(count);
+    for (int i = 0; i < count; i++) {
+      timePartition2ExpectedDataEnd.put(
+          new TTimePartitionSlot(ReadWriteIOUtils.readLong(stream)),
+          ReadWriteIOUtils.readLong(stream));
+    }
+    return timePartition2ExpectedDataEnd;
   }
 
   /** Reads a length-prefixed element count, rejecting one that cannot describe a body. */
@@ -704,9 +792,15 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
   private long phaseSerializedSize() {
     return switch (op) {
       case PIECE -> pieceSerializedSize();
-      case PREPARE -> Integer.BYTES + Long.BYTES + Byte.BYTES + progressIndexesSerializedSize();
-      case COMMIT -> Byte.BYTES + progressIndexesSerializedSize();
-      case ABORT -> Byte.BYTES;
+      case PREPARE ->
+          Integer.BYTES
+              + Long.BYTES
+              + Byte.BYTES
+              + progressIndexesSerializedSize()
+              + expectedDataEndsSerializedSize();
+      case COMMIT ->
+          Byte.BYTES + progressIndexesSerializedSize() + expectedDataEndsSerializedSize();
+      case ABORT -> Byte.BYTES + expectedDataEndsSerializedSize();
     };
   }
 
@@ -729,6 +823,10 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       size += Long.BYTES + Integer.BYTES + progressIndex.length;
     }
     return size;
+  }
+
+  private long expectedDataEndsSerializedSize() {
+    return Integer.BYTES + (long) timePartition2ExpectedDataEnd.size() * (Long.BYTES + Long.BYTES);
   }
 
   public static LoadTsFileConsensusNode deserializeFromWAL(DataInputStream stream)

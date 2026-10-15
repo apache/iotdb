@@ -689,20 +689,37 @@ public class LoadTsFileManagerTest {
     final LoadTsFileProgress progress = Mockito.mock(LoadTsFileProgress.class);
 
     Mockito.when(progress.isReady(128L)).thenReturn(true);
-    assertTrue(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L));
+    assertTrue(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L, -1L));
     Mockito.when(progress.isReady(128L)).thenReturn(false);
-    assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L));
+    assertFalse(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L, -1L));
 
     // An aborted task never imports its bytes, so it only has to be continuous and to reach the end
     // of its records: a file shorter than them has a chunk that was never fully written.
     Mockito.when(progress.getFirstHoleOffset()).thenReturn(-1L);
     Mockito.when(progress.getTotalLength()).thenReturn(128L);
-    assertTrue(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L));
-    assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 127L));
+    assertTrue(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L, -1L));
+    assertFalse(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 127L, -1L));
 
     Mockito.when(progress.getFirstHoleOffset()).thenReturn(160L);
     Mockito.when(progress.getTotalLength()).thenReturn(96L);
-    assertFalse(TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L));
+    assertFalse(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L, -1L));
+
+    // The end the coordinator announced decides, whatever the records of the replica say: they
+    // cannot know about a piece that never arrived.
+    Mockito.when(progress.getFirstHoleOffset()).thenReturn(-1L);
+    Mockito.when(progress.getTotalLength()).thenReturn(96L);
+    Mockito.when(progress.isReady(128L)).thenReturn(true);
+    assertTrue(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L, 128L));
+    assertFalse(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.COMMIT, progress, 128L, 160L));
+    assertFalse(
+        TsFileWriterManager.canMarkTerminal(LoadTsFileConsensusOp.ABORT, progress, 128L, 160L));
   }
 
   @Test

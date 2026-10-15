@@ -209,13 +209,21 @@ final class TsFileWriterManager {
    * file of every staged file: that tail is what a restart reads to release the directory instead
    * of resuming the finished task.
    */
-  void recordTerminal(final LoadTsFileConsensusOp terminalOp, final long searchIndex)
+  void recordTerminal(
+      final LoadTsFileConsensusOp terminalOp,
+      final long searchIndex,
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd)
       throws IOException {
     for (final Map.Entry<DataPartitionInfo, LoadTsFileProgress> entry :
         dataPartition2Progress.entrySet()) {
       final TsFilePrecalculatedChunkWriter writer = dataPartition2Writer.get(entry.getKey());
       final LoadTsFileProgress progress = entry.getValue();
-      if (writer == null || !canMarkTerminal(terminalOp, progress, writer.getFile().length())) {
+      final long expectedDataEnd =
+          timePartition2ExpectedDataEnd == null
+              ? -1L
+              : timePartition2ExpectedDataEnd.getOrDefault(entry.getKey().timePartitionSlot(), -1L);
+      if (writer == null
+          || !canMarkTerminal(terminalOp, progress, writer.getFile().length(), expectedDataEnd)) {
         LOGGER.warn(
             StorageEngineMessages
                 .LOG_STAGED_FILE_ARG_OF_THE_LOAD_TASK_IS_NOT_CONTINUOUS_SO_IT_CANNOT_BE_MARKED_ARG_AND_THE_TERMINAL_RECORD_IS_WITHHELD_7B21F365,
@@ -235,8 +243,14 @@ final class TsFileWriterManager {
   static boolean canMarkTerminal(
       final LoadTsFileConsensusOp terminalOp,
       final LoadTsFileProgress progress,
-      final long fileLength)
+      final long fileLength,
+      final long expectedDataEnd)
       throws IOException {
+    // The expectation of the coordinator is what this replica cannot work out on its own: a piece
+    // that never arrived leaves no record behind, so the file only looks shorter, not torn.
+    if (expectedDataEnd >= 0L && fileLength < expectedDataEnd) {
+      return false;
+    }
     // The bytes of an aborted task are never imported, so only a committed one has to be complete.
     // An aborted one still has to reach the end of its records, so that no recorded chunk is left
     // half-written, and to be continuous, so that no piece was skipped.
@@ -449,7 +463,8 @@ final class TsFileWriterManager {
    */
   void prepare(
       final boolean isGeneratedByPipe,
-      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap,
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd)
       throws IOException, LoadFileException {
     checkNotClosed();
     touch();
@@ -470,14 +485,20 @@ final class TsFileWriterManager {
       final LoadTsFileProgress progress = dataPartition2Progress.get(entry.getKey());
       if (progress != null && progress.exists() && progress.getTotalLength() > 0) {
         final long fileLength = writer.getFile().length();
-        if (!progress.isReady(fileLength)) {
+        final long expectedDataEnd =
+            timePartition2ExpectedDataEnd == null
+                ? -1L
+                : timePartition2ExpectedDataEnd.getOrDefault(
+                    entry.getKey().timePartitionSlot(), -1L);
+        if (!progress.isReady(fileLength)
+            || (expectedDataEnd >= 0L && fileLength < expectedDataEnd)) {
           throw new LoadFileException(
               String.format(
                   StorageEngineMessages
                       .EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19,
                   writer.getFile().getAbsolutePath(),
                   uuidDirName(writer.getFile()),
-                  progress.getTotalLength(),
+                  Math.max(progress.getTotalLength(), expectedDataEnd),
                   fileLength));
         }
       }

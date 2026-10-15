@@ -197,14 +197,24 @@ public class LoadTsFileConsensusNodeTest {
                 new LoadTsFileConsensusNode.PieceRef("task/other.tsfile", 4096L, 512L)),
             99L,
             5L);
+    final Map<TTimePartitionSlot, Long> expectedDataEnd = new HashMap<>();
+    expectedDataEnd.put(new TTimePartitionSlot(10L), 4096L);
+    expectedDataEnd.put(new TTimePartitionSlot(20L), 2048L);
     final LoadTsFileConsensusNode prepare =
         LoadTsFileConsensusNode.prepare(
-            new PlanNodeId("size-prepare"), "load-size", 7, 12345L, true, progressIndexes);
+            new PlanNodeId("size-prepare"),
+            "load-size",
+            7,
+            12345L,
+            true,
+            progressIndexes,
+            expectedDataEnd);
     final LoadTsFileConsensusNode commit =
         LoadTsFileConsensusNode.commit(
-            new PlanNodeId("size-commit"), "load-size", true, progressIndexes);
+            new PlanNodeId("size-commit"), "load-size", true, progressIndexes, expectedDataEnd);
     final LoadTsFileConsensusNode abort =
-        LoadTsFileConsensusNode.abort(new PlanNodeId("size-abort"), "load-size", false);
+        LoadTsFileConsensusNode.abort(
+            new PlanNodeId("size-abort"), "load-size", false, expectedDataEnd);
 
     for (final LoadTsFileConsensusNode node :
         Arrays.asList(piece, pieceWithRefs, prepare, commit, abort)) {
@@ -212,6 +222,21 @@ public class LoadTsFileConsensusNodeTest {
       node.serializeBody(new DataOutputStream(body));
       Assert.assertEquals(Short.BYTES + Long.BYTES + body.size(), node.serializedSize());
     }
+  }
+
+  @Test
+  public void testExpectedDataEndSerializeRoundTrip() {
+    final Map<TTimePartitionSlot, Long> expectedDataEnd = new HashMap<>();
+    expectedDataEnd.put(new TTimePartitionSlot(11L), 4096L);
+
+    final LoadTsFileConsensusNode abort =
+        LoadTsFileConsensusNode.abort(new PlanNodeId("n4"), "load-4", false, expectedDataEnd);
+    final LoadTsFileConsensusNode node =
+        (LoadTsFileConsensusNode) PlanNodeType.deserialize(abort.serializeToByteBuffer());
+
+    Assert.assertEquals(
+        Long.valueOf(4096L),
+        node.getTimePartition2ExpectedDataEnd().get(new TTimePartitionSlot(11L)));
   }
 
   /** A record that writes a fixed number of bytes, so that a PIECE can be sized without chunks. */

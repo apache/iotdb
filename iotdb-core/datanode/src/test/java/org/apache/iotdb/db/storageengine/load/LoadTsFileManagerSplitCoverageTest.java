@@ -643,7 +643,7 @@ public class LoadTsFileManagerSplitCoverageTest {
 
       // The resumed writers have to seal files that can still be read, which is only possible if
       // the chunk metadata was restored from the records as well.
-      recovered.prepare(false, Collections.emptyMap());
+      recovered.prepare(false, Collections.emptyMap(), Collections.emptyMap());
       for (final File staged : stagedFiles(taskDir)) {
         try (final TsFileSequenceReader reader =
             new TsFileSequenceReader(staged.getAbsolutePath())) {

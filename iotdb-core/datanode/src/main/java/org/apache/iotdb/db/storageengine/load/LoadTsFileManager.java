@@ -439,7 +439,10 @@ public class LoadTsFileManager {
         node.getTotalBytes());
     uuid2WriterManager
         .get(node.getLoadId())
-        .prepare(node.isGeneratedByPipe(), timePartitionProgressIndexMap);
+        .prepare(
+            node.isGeneratedByPipe(),
+            timePartitionProgressIndexMap,
+            node.getTimePartition2ExpectedDataEnd());
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     reclaimIdleTasks();
@@ -523,7 +526,8 @@ public class LoadTsFileManager {
     // The command is only recorded on files it can describe: complete for a commit, continuous for
     // an abort. A directory that does not qualify keeps no record, so a restart treats it as
     // unfinished and the idle timeout releases it instead.
-    writerManager.recordTerminal(terminalOp, node.getSearchIndex());
+    writerManager.recordTerminal(
+        terminalOp, node.getSearchIndex(), node.getTimePartition2ExpectedDataEnd());
     writerManager.close(true);
     retention.retain(node.getLoadId(), taskDir, terminalOp, node.getSearchIndex());
   }

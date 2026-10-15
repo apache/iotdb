@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCon
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -116,6 +119,14 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private final Map<TConsensusGroupId, Long> regionTotalBytes = new LinkedHashMap<>();
 
   /**
+   * Where the staged file of every time partition of a region has to end, over the pieces whose
+   * dispatch succeeded: a piece that could not be sent is not expected of any replica, so an
+   * aborted task can still reach its expectation.
+   */
+  private final Map<TConsensusGroupId, Map<TTimePartitionSlot, Long>> regionExpectedDataEnd =
+      new LinkedHashMap<>();
+
+  /**
    * Progress index per time partition, assigned while the file is being split. Kept for the
    * upcoming progress-index sync with the consensus prepare phase.
    */
@@ -143,6 +154,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     regionLoadIds.clear();
     regionPieceCounts.clear();
     regionTotalBytes.clear();
+    regionExpectedDataEnd.clear();
     timePartitionSlotToProgressIndex.clear();
 
     long startTime = System.nanoTime();
@@ -373,6 +385,17 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         piece.getDataSize());
     regionPieceCounts.merge(regionId, 1L, Long::sum);
     regionTotalBytes.merge(regionId, piece.getDataSize(), Long::sum);
+    final Map<TTimePartitionSlot, Long> expectedDataEnd =
+        regionExpectedDataEnd.computeIfAbsent(regionId, id -> new HashMap<>());
+    for (final TsFileData data : pieceNode.getAllTsFileData()) {
+      if (data instanceof ChunkData chunkData && chunkData.getChunkLayout() != null) {
+        // The chunk group occupies [offset, offset + length) of the staged file of its partition.
+        expectedDataEnd.merge(
+            chunkData.getTimePartitionSlot(),
+            chunkData.getChunkLayout().offset() + chunkData.getChunkLayout().length(),
+            Math::max);
+      }
+    }
     return true;
   }
 
@@ -399,7 +422,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
       final String loadId = regionLoadIds.get(replicaSet.getRegionId());
       final LoadTsFileConsensusNode abort =
           LoadTsFileConsensusNode.abort(
-              new PlanNodeId("load-abort-" + loadId), loadId, isGeneratedByPipe);
+              new PlanNodeId("load-abort-" + loadId),
+              loadId,
+              isGeneratedByPipe,
+              regionExpectedDataEnd.getOrDefault(replicaSet.getRegionId(), Collections.emptyMap()));
       final TSStatus status = submitTerminalCommandWithRetry(replicaSet.getRegionId(), abort);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
@@ -442,7 +468,8 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
               Math.toIntExact(regionPieceCounts.getOrDefault(regionId, 0L)),
               regionTotalBytes.getOrDefault(regionId, 0L),
               isGeneratedByPipe,
-              timePartition2ProgressIndex);
+              timePartition2ProgressIndex,
+              regionExpectedDataEnd.getOrDefault(regionId, Collections.emptyMap()));
       final TSStatus prepareStatus = submitConsensusWithRetry(regionId, prepare);
       if (prepareStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
@@ -492,7 +519,8 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
               new PlanNodeId("load-commit-" + loadId),
               loadId,
               isGeneratedByPipe,
-              timePartition2ProgressIndex);
+              timePartition2ProgressIndex,
+              regionExpectedDataEnd.getOrDefault(regionId, Collections.emptyMap()));
       final TSStatus commitStatus = submitTerminalCommandWithRetry(regionId, commit);
       if (commitStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
@@ -519,7 +547,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private void resolveTheCommitOutcomeOf(final TConsensusGroupId regionId, final String loadId) {
     final LoadTsFileConsensusNode abort =
         LoadTsFileConsensusNode.abort(
-            new PlanNodeId("load-abort-unresolved-commit-" + loadId), loadId, isGeneratedByPipe);
+            new PlanNodeId("load-abort-unresolved-commit-" + loadId),
+            loadId,
+            isGeneratedByPipe,
+            regionExpectedDataEnd.getOrDefault(regionId, Collections.emptyMap()));
     final TSStatus abortStatus = submitTerminalCommandWithRetry(regionId, abort);
     if (abortStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
