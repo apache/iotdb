@@ -202,14 +202,6 @@ public final class ManagerMessages {
       "将模板 {} 的扩展信息同步到 DataNode {} 失败";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "同步 topic 元数据失败。结果状态：{}。";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
-      "从 pipe config region connector 指标解绑失败，connector map 不为空";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
-      "从 pipe config region extractor 指标解绑失败，extractor map 不为空";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP =
-      "从 pipe remaining time 指标解绑失败，RemainingTimeOperator map 不为空";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP =
-      "从 pipe temporary meta 指标解绑失败，PipeTemporaryMeta map 不为空";
   public static final String FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST =
       "更新 pipe procedure timer 失败，PipeProcedure({}) 不存在";
   public static final String FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE =
@@ -293,6 +285,20 @@ public final class ManagerMessages {
   public static final String
       LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
           "跳过 ReconstructRegion 请求中不存在的 Region ID {}，目标 DataNode 为 {}。";
+  public static final String MESSAGE_DUPLICATE_REGION_ID_ARG_IN_THE_REQUEST_B6FFCCFC =
+      "请求中包含重复的 Region ID %d";
+  public static final String MESSAGE_REGION_IDS_MUST_NOT_BE_EMPTY_B42DAAFD =
+      "Region ID 列表不能为空";
+  public static final String MESSAGE_SOURCE_AND_TARGET_DATANODE_IDS_MUST_BE_DIFFERENT_ARG_286D3838 =
+      "源和目标 DataNode ID 不能相同：%d";
+  public static final String LOG_SUBMIT_REGION_OPERATION_PROCEDURE_SUCCESSFULLY_ARG_90468B38 =
+      "成功提交 Region 运维 procedure：{}";
+  public static final String MESSAGE_REGION_ARG_DOES_NOT_EXIST_3C8400C9 =
+      "Region %d 不存在";
+  public static final String MESSAGE_SOURCE_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_2255633C =
+      "源 DataNode %s 不存在于集群中";
+  public static final String MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF =
+      "目标 DataNode %s 不存在于集群中";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] 成功提交 RegionMigrateProcedure，Region：{}，原 DataNode：{}，目标 DataNode：{}，新增 Coordinator：{}，移除 Coordinator：{}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
@@ -472,8 +478,8 @@ public final class ManagerMessages {
       "成功传输 config region 快照 {}。";
   public static final String THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ =
       "没有处于 RUNNING 状态的 DataNode 可用于执行 CQ {}";
-  public static final String THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "ConfigNode-{} 即将关闭，将其标记为 Unknown";
+  public static final String LOG_NODE_ARG_REPORTED_SHUTDOWN_CURRENT_STATUS_IS_ARG_A375D665 =
+      "节点 {} 已报告停止；当前状态为 {}。";
   public static final String THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING =
       "config region air gap connector 不支持传输单文件分片字节。";
   public static final String THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE =
@@ -482,8 +488,6 @@ public final class ManagerMessages {
       "无法解析 config region 快照 %s。";
   public static final String THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE =
       "Database: {} 不存在，可能已被预删除。";
-  public static final String THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "DataNode-{} 即将关闭，将其标记为 Unknown";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_GREEDYREGIONGROUPALLOCATOR_IS_YET =
       "GreedyRegionGroupAllocator 的 removeNodeReplicaSelect 方法尚未实现。";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR =
@@ -596,6 +600,7 @@ public final class ManagerMessages {
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template 需要两个文件";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "反序列化 use&role 文件时发生 IOException，类型：{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "反序列化 roleList 时发生 IOException";
+  public static final String LOG_UNSUPPORTED_USER_ROLE_PROFILE_VERSION_ARG_THIS_NODE_SUPPORTS_UP_TO_ARG_2ABBF4FA = "不支持的用户/角色 profile 版本 %d，当前节点最高支持到 %d";
   public static final String LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40 = "反序列化 ttl 文件时发生异常";
   public static final String LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B = "无法识别节点类型，无法从给定缓冲区反序列化 MTree";
   public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "构建数据库树时发生 IOException";
@@ -689,4 +694,6 @@ public final class ManagerMessages {
       MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
           "%s 请稍后手动检查该 Procedure 是否执行成功。";
 
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
+      "ConfigNode leader 正在等待节点状态持久化。";
 }

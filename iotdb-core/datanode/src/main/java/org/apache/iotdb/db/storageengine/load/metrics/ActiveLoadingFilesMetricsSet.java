@@ -147,6 +147,12 @@ public abstract class ActiveLoadingFilesMetricsSet implements IMetricSet {
 
     // Dir2PendingFileCounters' binding is triggered by updatePendingDirList
     // FailedDirCounter's binding is triggered by updateFailedDir
+    // Both are only triggered by changes, so bind them again for the existing dirs, e.g. when the
+    // metric service restarts
+    rebindDir2PendingFileCounters();
+    if (Objects.nonNull(failedDir.get())) {
+      rebindFailedDirCounter();
+    }
     bindOtherCounters(metricService);
   }
 

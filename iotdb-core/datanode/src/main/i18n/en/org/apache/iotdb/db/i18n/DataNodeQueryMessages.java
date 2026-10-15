@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
+      "Schema region is unavailable. Please retry later.";
 
   public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
       "Fragment instance %s is already %s";
@@ -278,6 +280,10 @@ public final class DataNodeQueryMessages {
       "getPageReader() shouldn't be called here";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "Unsupported column type: ";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "Unsupported column property: ";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "The column property value must be a string literal.";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "Fail to close CteDataReader";
   public static final String UNKNOWN_TABLE =
@@ -799,6 +805,12 @@ public final class DataNodeQueryMessages {
       "Show Index statement is not supported yet.";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "Update can only specify attribute columns.";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "Cannot update %s column '%s'. UPDATE can only specify ATTRIBUTE columns.";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -859,6 +871,7 @@ public final class DataNodeQueryMessages {
       "Duplicate argument name: %s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "Setting monthly intervals is not supported.";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "The parameter %s cannot be actively filled with null.";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "Filter push down does not support CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =
@@ -2248,8 +2261,9 @@ public final class DataNodeQueryMessages {
       "Type %s is not orderable, and therefore cannot be used in ORDER BY: %s";
   public static final String OFFSET_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
       "OFFSET row count must be greater or equal to 0 (actual value: %s)";
-  public static final String LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
-      "LIMIT row count must be greater or equal to 0 (actual value: %s)";
+  public static final String
+      EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3 =
+          "LIMIT row count must be greater than 0 (actual value: %s)";
   public static final String NON_CONSTANT_PARAMETER_VALUE_FOR_S_S =
       "Non constant parameter value for %s: %s";
   public static final String PARAMETER_VALUE_PROVIDED_FOR_S_IS_NULL_S =

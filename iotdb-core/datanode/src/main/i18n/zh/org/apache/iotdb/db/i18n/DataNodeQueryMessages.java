@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
+      "SchemaRegion 不可用，请稍后重试。";
 
   public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
       "Fragment instance %s 已处于 %s 状态";
@@ -263,6 +265,10 @@ public final class DataNodeQueryMessages {
       "此处不应调用 getPageReader()";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "不支持的列类型：";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "不支持的列属性：";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "列属性值必须是字符串字面量。";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "关闭 CteDataReader 失败";
   public static final String UNKNOWN_TABLE =
@@ -779,6 +785,12 @@ public final class DataNodeQueryMessages {
       "暂不支持 Show Index 语句。";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "UPDATE 只能指定属性列。";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "无法更新 %s 列 '%s'。UPDATE 只能指定 ATTRIBUTE 列。";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "无法在 UPDATE 值中引用 %s 列 '%s'。UPDATE 值只能引用 ATTRIBUTE 或 TAG 列。";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "暂不支持 Drop Function 语句。";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -839,6 +851,7 @@ public final class DataNodeQueryMessages {
       "重复的参数名：%s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持设置按月间隔。";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "参数 %s 不能主动填null值";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "过滤下推不支持 CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =
@@ -2505,9 +2518,10 @@ public final class DataNodeQueryMessages {
   public static final String OFFSET_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
 
       "OFFSET 行数必须大于或等于 0（实际值：%s）";
-  public static final String LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
+  public static final String
+      EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3 =
 
-      "LIMIT 行数必须大于或等于 0（实际值：%s）";
+          "LIMIT 行数必须大于 0（实际值：%s）";
   public static final String NON_CONSTANT_PARAMETER_VALUE_FOR_S_S =
 
       "%s 的参数值不是常量：%s";

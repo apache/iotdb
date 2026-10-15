@@ -348,6 +348,11 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CREATE_WAL_NODE_DISKS_FULL = "Fail to create wal node because all disks of wal folders are full.";
   public static final String FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES = "Failed to create WAL node after retries for identifier: ";
   public static final String FAIL_TO_CREATE_WAL_NODE = "Fail to create wal node";
+  public static final String OVER_SIZED_WAL_ENTRY = "The wal entry size %d exceeds the limit %d, which may be a result of file corruption or configuration change."
+      + "Please increase wal_entry_size_limit_in_byte or quarantine the file %s";
+  public static final String
+      EXCEPTION_THE_WAL_ENTRY_SIZE_ARG_EXCEEDS_WAL_ENTRY_SIZE_LIMIT_IN_BYTE_ARG_691BB408 =
+          "The WAL entry size %d exceeds wal_entry_size_limit_in_byte %d.";
 
   // ======================== Flush ========================
 
@@ -1490,8 +1495,10 @@ public final class StorageEngineMessages {
       "Current chunk %s cannot be aligned with time chunk: %s, all time chunk in first batch is %s";
   public static final String WAL_NODE_CLOSED_FMT = "wal node-%s has been closed";
   public static final String BROKEN_WAL_FILE_FMT = "Broken wal file %s, size %d";
-  public static final String TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE =
-      "{} TsFileReader is closed because of no reference.";
+  public static final String LOG_READER_FOR_CLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_C3B71A85 =
+      "Reader for closed TsFile {} is closed because its reference count reached zero.";
+  public static final String LOG_READER_FOR_UNCLOSED_TSFILE_ARG_IS_CLOSED_BECAUSE_ITS_REFERENCE_COUNT_REACHED_ZERO_088BDEF8 =
+      "Reader for unclosed TsFile {} is closed because its reference count reached zero.";
   public static final String CLOSED_TSFILE_READER_CLOSED =
       "{} closedTsFileReader is closed.";
   public static final String UNCLOSED_TSFILE_READER_CLOSED =

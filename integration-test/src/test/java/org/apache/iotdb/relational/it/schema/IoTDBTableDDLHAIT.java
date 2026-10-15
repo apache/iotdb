@@ -27,7 +27,9 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
+import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -41,6 +43,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
@@ -228,11 +231,11 @@ public class IoTDBTableDDLHAIT {
         "DELETE DEVICES must succeed with one DataNode down");
 
     LOGGER.info("6. start to test high availability of dropping table procedure");
-    assertStatementEffect(
-        statement,
-        "DROP TABLE " + tableName,
-        () -> !tableExists(statement, tableName),
-        "DROP TABLE must succeed with one DataNode down");
+    statement.execute("DROP TABLE " + tableName);
+    // DROP TABLE acknowledges submission before the table has been fully removed.
+    awaitDropTableProcedure(statement, databaseName, tableName);
+    assertTrue(
+        "DROP TABLE must succeed with one DataNode down", !tableExists(statement, tableName));
 
     LOGGER.info("7. start to test high availability of dropping database procedure");
     assertStatementEffect(
@@ -272,6 +275,30 @@ public class IoTDBTableDDLHAIT {
       throws Exception {
     statement.execute(sql);
     assertTrue(message, effect.call());
+  }
+
+  private void awaitDropTableProcedure(
+      final Statement statement, final String databaseName, final String tableName)
+      throws Exception {
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInSameThread()
+        // Progress snapshots can differ between cluster nodes while deletion is running.
+        .ignoreException(InconsistentDataException.class)
+        .untilAsserted(
+            () -> {
+              try (final ResultSet resultSet =
+                  statement.executeQuery(
+                      "SELECT state, error_message FROM information_schema.drop_table_procedures "
+                          + "WHERE database = '"
+                          + databaseName
+                          + "' AND table_name = '"
+                          + tableName
+                          + "' ORDER BY procedure_id DESC LIMIT 1")) {
+                assertTrue("DROP TABLE procedure should be visible", resultSet.next());
+                Assert.assertEquals(resultSet.getString(2), "SUCCESS", resultSet.getString(1));
+              }
+            });
   }
 
   private boolean tableExists(final Statement statement, final String tableName) throws Exception {

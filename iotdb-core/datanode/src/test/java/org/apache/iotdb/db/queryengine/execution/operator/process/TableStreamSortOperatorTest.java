@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
@@ -53,6 +54,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -61,7 +63,10 @@ import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanc
 import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class TableStreamSortOperatorTest {
 
@@ -192,6 +197,64 @@ public class TableStreamSortOperatorTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testPartialOutputWaitsForCompleteNextGroup() throws Exception {
+    int originalLimit = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
+    List<TSDataType> types = Arrays.asList(TSDataType.INT32, TSDataType.INT32);
+    Iterator<TsBlock> blocks =
+        Arrays.asList(
+                groupedBlock(0, 1, 0, 2),
+                groupedBlock(0, 3, 1, 1),
+                groupedBlock(1, 2),
+                groupedBlock(1, 3, 2, 1),
+                groupedBlock(2, 2),
+                groupedBlock(2, 3))
+            .iterator();
+    Operator input = mock(Operator.class);
+    when(input.hasNextWithTimer()).thenAnswer(invocation -> blocks.hasNext());
+    when(input.nextWithTimer()).thenAnswer(invocation -> blocks.next());
+    CommonOperatorContext context = mock(CommonOperatorContext.class);
+    Comparator<SortKey> prefix =
+        Comparator.comparingInt(key -> key.tsBlock.getColumn(0).getInt(key.rowIndex));
+    Comparator<SortKey> ordering =
+        prefix.thenComparing(
+            key -> key.tsBlock.getColumn(1).getInt(key.rowIndex), Comparator.reverseOrder());
+    try (TableStreamSortOperator operator =
+        new TableStreamSortOperator(
+            context, input, types, SORT_TMP_PREFIX_PATH, ordering, prefix, 2)) {
+      int rows = 0;
+      int calls = 0;
+      while (operator.hasNext()) {
+        assertTrue("Stream sort must finish", ++calls < 100);
+        TsBlock block = operator.next();
+        if (block == null) {
+          continue;
+        }
+        for (int position = 0; position < block.getPositionCount(); position++) {
+          assertEquals(rows / 3, block.getColumn(0).getInt(position));
+          assertEquals(3 - rows % 3, block.getColumn(1).getInt(position));
+          rows++;
+        }
+      }
+      assertEquals(9, rows);
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(originalLimit);
+    }
+  }
+
+  private static TsBlock groupedBlock(int... values) {
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+    for (int i = 0; i < values.length; i += 2) {
+      builder.getColumnBuilder(0).writeInt(values[i]);
+      builder.getColumnBuilder(1).writeInt(values[i + 1]);
+      builder.declarePosition();
+    }
+    return builder.build(
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
   }
 
   @Test
