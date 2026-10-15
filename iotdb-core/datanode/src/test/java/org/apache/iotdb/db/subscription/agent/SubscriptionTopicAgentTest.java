@@ -48,6 +48,14 @@ public class SubscriptionTopicAgentTest {
     Assert.assertEquals(
         1200000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
 
+    for (final long intervalMs : new long[] {0L, -1L, Long.MIN_VALUE}) {
+      Assert.assertNull(
+          agent.handleSingleTopicMetaChanges(
+              createRecycleTopicMeta(false, Long.toString(intervalMs))));
+      Assert.assertEquals(
+          intervalMs, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+    }
+
     Assert.assertNull(agent.handleSingleTopicMetaChanges(createRecycleTopicMeta(false, "300000")));
     Assert.assertEquals(
         300000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
@@ -83,13 +91,12 @@ public class SubscriptionTopicAgentTest {
   @Test
   public void testRecycleIntervalSnapshotPreservesCurrentOverride() {
     final SubscriptionTopicAgent agent = new SubscriptionTopicAgent();
-    final TopicMeta topicMeta = spy(createRecycleTopicMeta(false, "1200000"));
+    final TopicMeta topicMeta = spy(createRecycleTopicMeta(false, "0"));
     Assert.assertNull(agent.handleSingleTopicMetaChanges(topicMeta));
     doAnswer(
             invocation -> {
               Assert.assertEquals(
-                  1200000L,
-                  agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+                  0L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
               return invocation.callRealMethod();
             })
         .when(topicMeta)

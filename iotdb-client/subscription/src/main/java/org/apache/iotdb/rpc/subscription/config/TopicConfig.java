@@ -190,7 +190,10 @@ public class TopicConfig extends PipeParameters {
     return ORDER_MODE_VALUE_SET.contains(normalizeOrderMode(orderMode));
   }
 
-  /** Returns the topic's recycle timeout in milliseconds, or null to use the server config. */
+  /**
+   * Returns the topic's recycle timeout in milliseconds, or null to use the server config. A zero
+   * or negative timeout disables automatic recycling of uncommitted events.
+   */
   public Long getRecycleUncommittedEventIntervalMs() {
     return containsKeyIgnoreCase(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY)
         ? Long.parseLong(

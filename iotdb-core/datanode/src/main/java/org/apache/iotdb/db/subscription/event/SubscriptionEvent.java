@@ -263,8 +263,9 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   private boolean canRecycle(final long recycleUncommittedEventIntervalMs) {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp.get()
-        > recycleUncommittedEventIntervalMs;
+    return recycleUncommittedEventIntervalMs > 0L
+        && System.currentTimeMillis() - lastPolledTimestamp.get()
+            > recycleUncommittedEventIntervalMs;
   }
 
   public void nack() {

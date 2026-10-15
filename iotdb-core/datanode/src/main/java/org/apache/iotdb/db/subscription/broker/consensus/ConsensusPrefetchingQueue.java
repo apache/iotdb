@@ -1931,7 +1931,10 @@ public class ConsensusPrefetchingQueue {
     }
 
     if (!inFlightEvents.isEmpty()) {
-      delayMs = Math.min(delayMs, getRecycleUncommittedEventIntervalMs());
+      final long recycleIntervalMs = getRecycleUncommittedEventIntervalMs();
+      if (recycleIntervalMs > 0L) {
+        delayMs = Math.min(delayMs, recycleIntervalMs);
+      }
     }
 
     return delayMs == Long.MAX_VALUE

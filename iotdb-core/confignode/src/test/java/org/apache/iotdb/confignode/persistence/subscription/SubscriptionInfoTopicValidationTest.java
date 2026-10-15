@@ -337,14 +337,35 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
+  public void testAcceptDisablingRecycleUncommittedEvents() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String mode :
+        new String[] {
+          TopicConstant.MODE_INITIAL_VALUE,
+          TopicConstant.MODE_INCREMENTAL_VALUE,
+          TopicConstant.MODE_SNAPSHOT_VALUE
+        }) {
+      for (final String value : new String[] {"0", "-1", "-9223372036854775808"}) {
+        final Map<String, String> attributes = newInitialTableTopicAttributes();
+        attributes.put(TopicConstant.MODE_KEY, mode);
+        attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
+        Assert.assertTrue(
+            subscriptionInfo.validateBeforeCreatingTopic(
+                new TCreateTopicReq("disabled_recycle_topic").setTopicAttributes(attributes)));
+      }
+    }
+  }
+
+  @Test
   public void testRejectInvalidRecycleUncommittedEventInterval() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     for (final String value :
-        new String[] {"0", "-1", "not-a-number", "", " ", "1.5", "9223372036854775808", null}) {
+        new String[] {
+          "not-a-number", "", " ", "1.5", "9223372036854775808", "-9223372036854775809", null
+        }) {
       final Map<String, String> attributes = newInitialTableTopicAttributes();
       attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
-      assertCreateRejected(
-          subscriptionInfo, attributes, "expected a positive long value in milliseconds");
+      assertCreateRejected(subscriptionInfo, attributes, "expected a long value in milliseconds");
     }
   }
 
@@ -358,9 +379,11 @@ public class SubscriptionInfoTopicValidationTest {
       attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1200000");
       subscriptionInfo.createTopic(new CreateTopicPlan(new TopicMeta(mode, 1L, attributes)));
 
-      final Map<String, String> updatedAttributes = new HashMap<>(attributes);
-      updatedAttributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "300000");
-      subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta(mode, 1L, updatedAttributes));
+      for (final String value : new String[] {"300000", "0", "-1", "-9223372036854775808"}) {
+        final Map<String, String> updatedAttributes = new HashMap<>(attributes);
+        updatedAttributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
+        subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta(mode, 1L, updatedAttributes));
+      }
     }
   }
 
@@ -369,12 +392,12 @@ public class SubscriptionInfoTopicValidationTest {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newInitialTableTopicAttributes();
     subscriptionInfo.createTopic(new CreateTopicPlan(new TopicMeta("table_topic", 1L, attributes)));
-    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "0");
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "not-a-number");
     try {
       subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta("table_topic", 1L, attributes));
       Assert.fail("Expected an invalid recycle interval to be rejected");
     } catch (final SubscriptionException e) {
-      Assert.assertTrue(e.getMessage().contains("expected a positive long value in milliseconds"));
+      Assert.assertTrue(e.getMessage().contains("expected a long value in milliseconds"));
     }
   }
 

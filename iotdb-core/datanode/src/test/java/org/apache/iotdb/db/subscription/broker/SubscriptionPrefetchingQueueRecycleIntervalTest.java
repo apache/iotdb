@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -76,6 +77,7 @@ public class SubscriptionPrefetchingQueueRecycleIntervalTest {
               SubscriptionPollResponseType.TERMINATION.getType(),
               new TerminationPayload(),
               new SubscriptionCommitContext(1, 1, topicName, "recycle_group", 1));
+      assertTrue(event.pollable(0L));
       queue.prefetchEvent(event);
       assertSame(event, poll(queue, useV2));
 
@@ -87,12 +89,37 @@ public class SubscriptionPrefetchingQueueRecycleIntervalTest {
       assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
       assertEquals(0, queue.getPrefetchedEventCount());
 
+      for (final long intervalMs : new long[] {0L, -1L, Long.MIN_VALUE}) {
+        updateInterval(topicName, Long.toString(intervalMs));
+        executePrefetch(queue, useV2);
+        assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
+        assertEquals(0, queue.getPrefetchedEventCount());
+        assertEquals(0L, event.getNackCount());
+      }
+
+      updateInterval(topicName, null);
+      for (final int intervalMs : new int[] {0, -1, Integer.MIN_VALUE}) {
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setSubscriptionRecycleUncommittedEventIntervalMs(intervalMs);
+        assertFalse(event.pollable());
+        executePrefetch(queue, useV2);
+        assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
+        assertEquals(0, queue.getPrefetchedEventCount());
+      }
+
       updateInterval(topicName, "300000");
       executePrefetch(queue, useV2);
       assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
       assertEquals(1, queue.getPrefetchedEventCount());
       assertEquals(1L, event.getNackCount());
       assertSame(event, poll(queue, useV2));
+
+      updateInterval(topicName, "0");
+      assertTrue(queue.nack("consumer", event.getCommitContext()));
+      executePrefetch(queue, useV2);
+      assertSame(event, poll(queue, useV2));
+      assertTrue(queue.ack("consumer", event.getCommitContext()));
     } finally {
       queue.cleanUp();
       SubscriptionAgent.topic().handleDropTopic(topicName, false);
@@ -109,8 +136,10 @@ public class SubscriptionPrefetchingQueueRecycleIntervalTest {
                 new TopicMeta(
                     topicName,
                     1L,
-                    Collections.singletonMap(
-                        TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, interval))));
+                    interval == null
+                        ? Collections.emptyMap()
+                        : Collections.singletonMap(
+                            TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, interval))));
   }
 
   private static SubscriptionEvent poll(

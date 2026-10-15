@@ -592,17 +592,15 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private void validateRecycleUncommittedEventInterval(final TopicConfig topicConfig)
       throws SubscriptionException {
     try {
-      final Long intervalMs = topicConfig.getRecycleUncommittedEventIntervalMs();
-      if (Objects.isNull(intervalMs) || intervalMs > 0L) {
-        return;
-      }
+      topicConfig.getRecycleUncommittedEventIntervalMs();
+      return;
     } catch (final NumberFormatException ignored) {
-      // Report malformed values together with non-positive timeouts below.
+      // Non-positive values disable automatic recycling; only malformed values are rejected.
     }
     final String exceptionMessage =
         String.format(
             ConfigNodeMessages
-                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_POSITIVE_LONG_VALUE_IN_MILLISECONDS_8A5C0D8C,
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2,
             TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
             topicConfig.getAttribute().entrySet().stream()
                 .filter(

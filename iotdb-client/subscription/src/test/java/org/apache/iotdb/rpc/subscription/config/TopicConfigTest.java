@@ -62,6 +62,13 @@ public class TopicConfigTest {
     attributes.put("RECYCLE-UNCOMMITTED-EVENT-INTERVAL-MS", "300000");
     Assert.assertEquals(
         Long.valueOf(300000L), new TopicConfig(attributes).getRecycleUncommittedEventIntervalMs());
+
+    for (final long intervalMs : new long[] {0L, -1L, Long.MIN_VALUE}) {
+      attributes.put("RECYCLE-UNCOMMITTED-EVENT-INTERVAL-MS", " " + intervalMs + " ");
+      Assert.assertEquals(
+          Long.valueOf(intervalMs),
+          new TopicConfig(attributes).getRecycleUncommittedEventIntervalMs());
+    }
   }
 
   @SuppressWarnings("deprecation")
