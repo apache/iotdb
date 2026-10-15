@@ -184,9 +184,9 @@ final class TsFileWriterManager {
       }
     }
 
-    // Hand the piece to the files, so that a reader of a staged file sees it, but do not fsync
-    // either side: a tail that a crash kept off the disk is truncated and staged again.
-    flush();
+    // The bytes of a piece go straight to the file, so there is nothing to flush before the records
+    // that describe them follow. Neither side is fsynced: a tail that a crash kept off the disk is
+    // truncated and staged again.
     flushRecordedChunks();
     return createPieceRefs(taskDir, previousLengths);
   }
@@ -399,15 +399,8 @@ final class TsFileWriterManager {
               });
 
       if (modificationFile != null) {
-        writer.getOutput().flush();
         deletionData.writeToModificationFile(modificationFile);
       }
-    }
-  }
-
-  private void flush() throws IOException {
-    for (final TsFilePrecalculatedChunkWriter writer : dataPartition2Writer.values()) {
-      writer.getOutput().flush();
     }
   }
 

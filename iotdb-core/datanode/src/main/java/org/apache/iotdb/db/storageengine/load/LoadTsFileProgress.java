@@ -594,7 +594,7 @@ public class LoadTsFileProgress {
   // -------------------------------------------------------------------------
 
   /** Serializes the chunk header body, that is the header without its leading chunk-type byte. */
-  private static ByteBuffer serializeChunkHeader(final Chunk chunk) throws IOException {
+  static ByteBuffer serializeChunkHeader(final Chunk chunk) throws IOException {
     // The size is known before serializing, so the buffer neither grows nor keeps spare room.
     try (final PublicBAOS out = new PublicBAOS(chunk.getHeader().getSerializedSize())) {
       chunk.getHeader().serializeTo(out);
@@ -615,7 +615,7 @@ public class LoadTsFileProgress {
     }
   }
 
-  private static ByteBuffer serializeStatistics(final Chunk chunk) throws IOException {
+  static ByteBuffer serializeStatistics(final Chunk chunk) throws IOException {
     try (final PublicBAOS out = new PublicBAOS(chunk.getChunkStatistic().getSerializedSize())) {
       chunk.getChunkStatistic().serialize(out);
       return ByteBuffer.wrap(out.getBuf(), 0, out.size());

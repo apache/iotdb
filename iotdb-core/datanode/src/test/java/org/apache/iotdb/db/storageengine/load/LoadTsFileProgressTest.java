@@ -164,6 +164,22 @@ public class LoadTsFileProgressTest {
     }
   }
 
+  @Test
+  public void testChunkBodiesAreSizedBeforeTheyAreSerialized() throws Exception {
+    final Chunk chunk = createChunk();
+
+    final ByteBuffer headerBody = LoadTsFileProgress.serializeChunkHeader(chunk);
+    final ByteBuffer statisticsBody = LoadTsFileProgress.serializeStatistics(chunk);
+
+    // The announced size is the capacity the buffer was created with, so serializing never had to
+    // grow it, and the record keeps a view over that buffer instead of a copy of it.
+    Assert.assertEquals(chunk.getHeader().getSerializedSize(), headerBody.array().length);
+    Assert.assertEquals(
+        chunk.getChunkStatistic().getSerializedSize(), statisticsBody.array().length);
+    Assert.assertEquals(chunk.getHeader().getSerializedSize() - 1, headerBody.remaining());
+    Assert.assertEquals(chunk.getChunkStatistic().getSerializedSize(), statisticsBody.remaining());
+  }
+
   private static Chunk createChunk() {
     final ChunkHeader chunkHeader =
         new ChunkHeader(
