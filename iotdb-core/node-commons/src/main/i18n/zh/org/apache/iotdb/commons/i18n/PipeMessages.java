@@ -931,5 +931,7 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable 生成已成功完成";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
+  public static final String LOG_PIPE_RATE_LIMIT_IS_SMALLER_THAN_THE_SINGLE_REQUEST_SIZE_SO_ARG_BYTES_WILL_BE_TRANSFERRED_IN_ARG_SIZED_PIECES_AT_ARG_BYTES_PER_SECOND_CONSIDER_SETTING_A_LARGER_RATE_LIMIT_FOR_BETTER_PERFORMANCE_4450D4DC =
+      "Pipe 限速值小于单次请求大小，因此 %s 字节将按 %s 大小的分片以 %s 字节每秒的速度传输。建议设置更大的限速值以获得更好的性能。";
 
 }

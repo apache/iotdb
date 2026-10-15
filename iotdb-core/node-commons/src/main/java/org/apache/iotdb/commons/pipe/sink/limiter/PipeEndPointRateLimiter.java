@@ -28,7 +28,6 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 
 public class PipeEndPointRateLimiter {
 
@@ -64,30 +63,15 @@ public class PipeEndPointRateLimiter {
         endPointRateLimiterMap.computeIfAbsent(
             endPoint, e -> RateLimiter.create(bytesPerSecondLimit));
 
-    while (bytes > 0) {
-      if (bytes > Integer.MAX_VALUE) {
-        if (!tryAcquireWithPipeCheck(rateLimiter, Integer.MAX_VALUE)) {
-          return;
-        }
-        bytes -= Integer.MAX_VALUE;
-      } else {
-        tryAcquireWithPipeCheck(rateLimiter, (int) bytes);
-        return;
-      }
-    }
+    RateLimitUtils.acquireWithRateLimit(
+        rateLimiter,
+        bytes,
+        () -> isPipeExisted(),
+        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs());
   }
 
-  private boolean tryAcquireWithPipeCheck(final RateLimiter rateLimiter, final int bytes) {
-    while (!rateLimiter.tryAcquire(
-        bytes,
-        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
-        TimeUnit.MILLISECONDS)) {
-      final PipeTaskAgent finalTaskAgent = taskAgent;
-      if (Objects.nonNull(finalTaskAgent)
-          && !finalTaskAgent.isPipeExisted(pipeName, creationTime)) {
-        return false;
-      }
-    }
-    return true;
+  private boolean isPipeExisted() {
+    final PipeTaskAgent finalTaskAgent = taskAgent;
+    return Objects.isNull(finalTaskAgent) || finalTaskAgent.isPipeExisted(pipeName, creationTime);
   }
 }
