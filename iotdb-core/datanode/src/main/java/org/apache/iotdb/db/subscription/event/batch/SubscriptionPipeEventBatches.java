@@ -108,6 +108,8 @@ public class SubscriptionPipeEventBatches {
                   ? new SubscriptionPipeTabletEventBatch(
                       regionId,
                       (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
+                      new TableViewTabletProjectorProvider(
+                          (SubscriptionPrefetchingTabletQueue) prefetchingQueue),
                       maxDelayInMs,
                       maxBatchSizeInBytes)
                   : new SubscriptionPipeTsFileEventBatch(
