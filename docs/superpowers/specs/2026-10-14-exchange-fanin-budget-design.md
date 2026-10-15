@@ -26,21 +26,25 @@
 
 ## 已确认范围
 
-实现 FI 输入输出共享账目、Collect/MappingCollect 任意就绪消费，以及由无序汇集引起的计划属性修正。
+实现仅针对无输入依赖 FI 的输入输出共享账目、Collect/MappingCollect 任意就绪消费，以及由无序汇集引起的计划属性修正。
 聚合使用 HashAggregation：只清空实际输入已失去连续性的 preGroupedSymbols；有效分支内的流式聚合保留。
-MergeSort、Join、ASOF、CrossJoin 只作依赖验证，不修改其消费算法，不新增进度保障机制。
+MergeSort、Join、ASOF、CrossJoin 不修改消费算法。FI 内只要存在需要特定输入推进的算子，就整组使用原有按 plan node 限额；Collect 下方或上方出现这些算子也不例外。
 TableTopK、CountMerge 的任意就绪消费留到后续；有序输入标志仍需匹配实际输入。
 
 ## 额度与账目
 
-F 为配置的单 FI 交换预算。INPUT=F/2，OUTPUT=F-INPUT；同 FI 的所有 pipeline 继承相同固定值。
+共享采用 FI 级显式启用，默认保留原有配额。整个 FI 必须包含 CollectOperator 或 MappingCollectOperator，且所有多输入汇集都能消费任意就绪输入；顺序消费的 IdentitySink/CountMerge、MergeSort、Join、TopK 及未明确支持的多输入算子都禁止共享。检查在 Exchange 处停止，不跨到其他 FI。
+
+在生成全部 pipeline 后再决定预算模式。内部 pipeline 队列具有转发依赖，因此存在多个 pipeline 或调度依赖时整组回退原策略。只含 Collect 的某个子树不会绕过 FI 级否决。
+
+通过上述检查后，F 为配置的单 FI 交换预算，INPUT=F/2，OUTPUT=F-INPUT。两侧均须容纳配置的最大 TsBlock，否则回退原配额，避免仅有输出的 FI 因预算减半而无法打开 SinkChannel。未启用共享的 FI 恢复原有 exchangeSumNum 配额计算和按 plan node 的申请上限；不能只恢复限额数值却仍按同侧总量进行准入。
 远端 SourceHandle 计入接收 FI 的 INPUT；SinkChannel 和 SharedTsBlockQueue 计入生产 FI 的 OUTPUT。
 本地共享队列只计费一次，创建先后不改变所有者。
 
 MemoryPool 维护 query→FI→planNode 明细，注册时固定 side。
-FI 两侧使用 AtomicLong；planNode 字节明细通过 compute 增减。
-申请、回滚、释放均对应修改全局池、FI 单侧与 planNode 三层账目。
-额度判断使用本次增加后的单侧总数；稳定快照中的总数等于同侧明细之和。
+FI 两侧保留 AtomicLong 统计，plan node 保留字节明细。申请和释放在 FI 的记账锁内更新；全局池采用有界原子申请。申请前先检查适用的同侧总量或 plan node 限额，失败不产生临时计费，也不需要回滚，避免并发请求分别撞到不同限额后全部挂起。
+
+释放后在 FI 记账锁外完成等待 Future；保留入队后的重试和每个 Future 的完成/取消同步。稳定快照中的 FI 同侧总量等于同侧明细之和。
 保留现有最高优先级查询的零计费兜底与交换组件的收发、等待、释放机制。
 
 ## Collect 生命周期
@@ -65,7 +69,8 @@ SortElimination 在各汇集分支独立优化，并阻止跨无序汇集删除�
 
 ## 验证
 
-覆盖共享额度并发、INPUT/OUTPUT 隔离、所有者、奇数 F、超大申请、回滚释放取消及稳定账目一致性；
+覆盖纯 Collect/MappingCollect 显式启用、混合 FI 全组回退、Exchange 边界、内部 pipeline 否决、单块预算边界，以及共享/原配额 FI 共存；
+覆盖共享额度并发、INPUT/OUTPUT 隔离、所有者、奇数 F、超大申请、失败准入无计费、释放取消及稳定账目一致性；
 覆盖 100/1000 child、A 阻塞 B 就绪、listener 复用、注册竞争、输出背压、空块、结束、异常取消、关闭和映射；
 覆盖文档 SQL 对应的聚合、Group/Window、StreamSort、Union 与 Fill 计划及实际结果。
 运行 Spotless、英文/中文全 reactor test-compile、针对性单测，以及本分支新增或修改的 IT。
@@ -117,3 +122,31 @@ Collect 后 TopK 不误用有序输入，以及有效分支保留流式聚合。
 重新执行 `mvn -o install -DskipTests -pl integration-test,iotdb-core/confignode,iotdb-client/cli -am -P with-integration-tests`
 后运行前述两条 verify 命令；IoTDBCollectFanInIT 的 7 项测试在单节点和三 DataNode 集群中分别全部通过。
 Spotless、Checkstyle、许可证与 `git diff --check` 检查通过。
+
+## FI 共享范围修正验证（2026-10-15）
+
+共享改为完整 FI 的显式启用：仅支持 Collect/MappingCollect 的任意就绪汇集；
+同一 FI 内的多输入依赖算子、内部 pipeline 队列或调度依赖会使整组回退。
+Exchange 边界之外的上游 FI 不参与本 FI 的判断。回退同时恢复 handle 限额和按 plan node 准入。
+
+107 项定向单元测试通过，包括纯 Collect/Union、混合 FI、pipeline 依赖、单块额度边界、
+共享与独立配额共存、并发准入，以及真实 TableMergeSort 配合模拟输入和 MemoryPool 的回归。
+本地双队列转发回归也通过。Spotless、Checkstyle、许可证和 `git diff --check` 检查通过。
+
+```sh
+mvn -o test -pl iotdb-core/datanode -Dtest=LocalExecutionPlanContextBudgetTest,MemoryPoolTest,SharedTsBlockQueueTest,SourceHandleTest,SinkChannelTest,LocalSourceHandleTest,LocalSinkChannelTest,MPPDataExchangeManagerTest,PipelineBuilderTest,CollectInputPropertyTest
+mvn -o verify -DskipUTs -Dit.test=IoTDBCollectFanInIT -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -P TableSimpleIT -P with-integration-tests
+mvn -o failsafe:integration-test@integration-test failsafe:verify@verify -DskipUTs -Dit.test=IoTDBCollectFanInIT -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -P TableClusterIT -P with-integration-tests
+```
+
+单节点 verify 从当前源码构建依赖和测试节点；集群运行复用同一份节点模板。
+IoTDBCollectFanInIT 的 8 项测试在两种环境中均通过，零失败、零跳过。
+
+提交前再次执行完整 reactor 的中英文编译，两者均通过：
+
+```sh
+mvn -o test-compile -DskipTests -P with-zh-locale
+mvn -o test-compile -DskipTests
+```
+
+本次生产代码没有新增未本地化的字符串，且没有修改中英文消息常量。

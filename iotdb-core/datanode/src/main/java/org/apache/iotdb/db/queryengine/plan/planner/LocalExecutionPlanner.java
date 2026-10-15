@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -132,8 +133,13 @@ public class LocalExecutionPlanner {
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setExchangeMemoryLimits();
+    // Choose the accounting policy only after all FI operators and pipelines are known.
+    context.setExchangeMemoryLimits(
+        plan,
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool());
 
     return context.getPipelineDriverFactories();
   }
@@ -165,8 +171,13 @@ public class LocalExecutionPlanner {
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setExchangeMemoryLimits();
+    // Choose the accounting policy only after all FI operators and pipelines are known.
+    context.setExchangeMemoryLimits(
+        plan,
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool());
 
     return context.getPipelineDriverFactories();
   }
