@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.PipelineSourceH
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -58,6 +60,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
@@ -89,9 +92,11 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   private LocalExecutionPlanContext newContext() {
-    FragmentInstanceContext instance = mock(FragmentInstanceContext.class);
-    when(instance.getId())
-        .thenReturn(new FragmentInstanceId(new PlanFragmentId(new QueryId("budget"), 0), "0"));
+    FragmentInstanceContext instance =
+        FragmentInstanceContext.createFragmentInstanceContext(
+            new FragmentInstanceId(new PlanFragmentId(new QueryId("budget"), 0), "0"),
+            mock(FragmentInstanceStateMachine.class),
+            mock(MemoryReservationManager.class));
     LocalExecutionPlanContext result =
         new LocalExecutionPlanContext(new TypeProvider(), instance, (DataNodeQueryContext) null);
     result.addPipelineDriverFactory(mock(Operator.class), result.getDriverContext(), 0);
@@ -151,6 +156,15 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   private void assertAdmissionIsShared(boolean shared, MemorySide side, long limit) {
+    FragmentInstanceContext instance = context.getDriverContext().getFragmentInstanceContext();
+    if (shared) {
+      assertEquals(
+          limit,
+          side == MemorySide.INPUT ? instance.getInputMaxBytes() : instance.getOutputMaxBytes());
+    } else {
+      assertEquals(0, instance.getInputMaxBytes());
+      assertEquals(0, instance.getOutputMaxBytes());
+    }
     String fi = context.getFragmentInstanceId().getFullId();
     pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a" + side, side);
     pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b" + side, side);
@@ -204,6 +218,7 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setExchangeMemoryLimits(
         node(PlanNodeType.TABLE_COLLECT_NODE, node(PlanNodeType.TABLE_EXCHANGE_NODE)), pool);
     verify(source).setMaxBytesCanReserve(1024);
+    assertEquals(0, context.getDriverContext().getFragmentInstanceContext().getOutputMaxBytes());
     assertAdmissionIsShared(true);
   }
 
@@ -222,6 +237,7 @@ public class LocalExecutionPlanContextBudgetTest {
                 node(PlanNodeType.SERIES_SCAN))),
         pool);
     verify(sink).setMaxBytesCanReserve(1024);
+    assertEquals(0, context.getDriverContext().getFragmentInstanceContext().getInputMaxBytes());
     assertAdmissionIsShared(true, MemorySide.OUTPUT);
   }
 
@@ -239,6 +255,7 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setISink(sink);
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(sink).setMaxBytesCanReserve(1024);
+    assertEquals(0, context.getDriverContext().getFragmentInstanceContext().getInputMaxBytes());
     assertAdmissionIsShared(true, MemorySide.OUTPUT);
   }
 

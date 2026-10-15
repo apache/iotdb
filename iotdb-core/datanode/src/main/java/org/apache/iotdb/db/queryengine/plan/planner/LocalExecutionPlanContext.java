@@ -293,10 +293,11 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
             && pipelineDriverFactories.get(0).getDependencyPipelineIndex() == -1
             && (inputExchangeCount == 0 || inputMaxBytes >= maxBlockBytes)
             && (outputSinkCount == 0 || outputMaxBytes >= maxBlockBytes);
+    FragmentInstanceContext instanceContext = driverContext.getFragmentInstanceContext();
+    instanceContext.initializeExchangeMemoryBudget(
+        sharedBudget ? inputMaxBytes : 0, sharedBudget ? outputMaxBytes : 0);
     if (sharedBudget) {
-      FragmentInstanceId id = getFragmentInstanceId();
-      memoryPool.registerFragmentInstanceSharedBudget(
-          id.getQueryId().getId(), id.getFullId(), inputMaxBytes, outputMaxBytes);
+      memoryPool.registerFragmentInstanceSharedBudget(instanceContext);
     }
     legacySinkLimits.forEach(
         (sink, legacyLimit) ->
