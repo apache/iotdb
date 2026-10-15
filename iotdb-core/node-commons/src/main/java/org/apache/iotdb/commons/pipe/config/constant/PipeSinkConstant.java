@@ -83,6 +83,10 @@ public class PipeSinkConstant {
   public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
   public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_ENABLE_COMPACTION_KEY = "connector.enable-compaction";
+  public static final String SINK_ENABLE_COMPACTION_KEY = "sink.enable-compaction";
+  public static final boolean CONNECTOR_ENABLE_COMPACTION_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
   public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
   public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
