@@ -57,6 +57,7 @@ public class MemoryPoolTest {
   public void before() {
     MemoryManager memoryManager = Mockito.spy(new MemoryManager(1024L));
     pool = new MemoryPool("test", memoryManager, 512L);
+    pool.registerFragmentInstanceSharedBudget(QUERY_ID, FRAGMENT_INSTANCE_ID);
     pool.registerPlanNodeIdToQueryMemoryMap(
         QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, MemorySide.INPUT);
   }
@@ -766,5 +767,92 @@ public class MemoryPoolTest {
       executor.shutdownNow();
       Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
     }
+  }
+
+  @Test
+  public void testDefaultFragmentKeepsIndependentPlanNodeQuotas() {
+    MemoryPool legacy = new MemoryPool("legacy", new MemoryManager(1024), 512);
+    legacy.registerPlanNodeIdToQueryMemoryMap("q", "f", "a", MemorySide.INPUT);
+    legacy.registerPlanNodeIdToQueryMemoryMap("q", "f", "b", MemorySide.INPUT);
+    Assert.assertTrue(
+        legacy.reserveWithPriority("q", "f", "a", 256, 256, false).isReserveSuccess());
+    Assert.assertTrue(
+        legacy.reserveWithPriority("q", "f", "b", 256, 256, false).isReserveSuccess());
+    Assert.assertEquals(512, legacy.getFragmentMemoryReservedBytes("q", "f", MemorySide.INPUT));
+    legacy.free("q", "f", "a", 256);
+    legacy.free("q", "f", "b", 256);
+    Assert.assertEquals(0, legacy.getReservedBytes());
+  }
+
+  @Test
+  public void testSharedAndLegacyFragmentsDoNotChangeEachOthersPolicy() {
+    pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, "legacy", "a", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, "legacy", "b", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, "b", MemorySide.INPUT);
+    Assert.assertTrue(
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 256, false)
+            .isReserveSuccess());
+    MemoryReservationResult blocked =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, "b", 64, 256, false);
+    Assert.assertFalse(blocked.getFuture().isDone());
+    Assert.assertTrue(
+        pool.reserveWithPriority(QUERY_ID, "legacy", "a", 256, 256, false).isReserveSuccess());
+    Assert.assertTrue(
+        pool.reserveWithPriority(QUERY_ID, "legacy", "b", 256, 256, false).isReserveSuccess());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256);
+    Assert.assertTrue(blocked.getFuture().isDone());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, "b", 64);
+    pool.free(QUERY_ID, "legacy", "a", 256);
+    pool.free(QUERY_ID, "legacy", "b", 256);
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testConcurrentAdmissionAlwaysGrantsOneRequestWhenOneFits() throws Exception {
+    for (int i = 0; i < 3; i++) {
+      String fi = "other" + i;
+      pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, fi, PLAN_NODE_ID, MemorySide.OUTPUT);
+      Assert.assertTrue(
+          pool.reserveWithPriority(QUERY_ID, fi, PLAN_NODE_ID, 256, 256, false).isReserveSuccess());
+    }
+    pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, "b", MemorySide.INPUT);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      for (int i = 0; i < 100; i++) {
+        CountDownLatch start = new CountDownLatch(1);
+        Future<MemoryReservationResult> first =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return pool.reserveWithPriority(
+                      QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 256, false);
+                });
+        Future<MemoryReservationResult> second =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return pool.reserveWithPriority(
+                      QUERY_ID, FRAGMENT_INSTANCE_ID, "b", 256, 256, false);
+                });
+        start.countDown();
+        MemoryReservationResult a = first.get(10, TimeUnit.SECONDS);
+        MemoryReservationResult b = second.get(10, TimeUnit.SECONDS);
+        Assert.assertTrue(a.getFuture().isDone() ^ b.getFuture().isDone());
+        String granted = a.getFuture().isDone() ? PLAN_NODE_ID : "b";
+        String waiting = a.getFuture().isDone() ? "b" : PLAN_NODE_ID;
+        pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, granted, 256);
+        Assert.assertTrue(a.getFuture().isDone());
+        Assert.assertTrue(b.getFuture().isDone());
+        pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, waiting, 256);
+        Assert.assertEquals(256, pool.getRemainingBytes());
+        Assert.assertEquals(
+            0,
+            pool.getFragmentMemoryReservedBytes(QUERY_ID, FRAGMENT_INSTANCE_ID, MemorySide.INPUT));
+      }
+    } finally {
+      executor.shutdownNow();
+    }
+    for (int i = 0; i < 3; i++) pool.free(QUERY_ID, "other" + i, PLAN_NODE_ID, 256);
+    Assert.assertEquals(0, pool.getReservedBytes());
   }
 }

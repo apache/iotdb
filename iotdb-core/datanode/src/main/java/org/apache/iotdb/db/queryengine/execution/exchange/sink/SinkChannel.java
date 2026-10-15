@@ -132,8 +132,7 @@ public class SinkChannel implements ISinkChannel {
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
-      MemorySide.OUTPUT.getMaxBytes(
-          IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance());
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private final boolean isHighestPriority;
 

@@ -59,7 +59,8 @@ public class MemoryPool {
 
     /**
      * MemoryReservationFuture is created when an exchange handle tries to reserve memory from the
-     * pool. This limit is shared by all plan nodes registered on the same side of that fragment.
+     * pool. For opted-in fragments the limit is shared by all plan nodes on the same side;
+     * otherwise it applies independently to the plan node.
      */
     private final long maxBytesCanReserve;
 
@@ -173,6 +174,8 @@ public class MemoryPool {
     private final Map<String, PlanNodeReservation> planNodes = new ConcurrentHashMap<>();
     private final AtomicLong inputUsedBytes = new AtomicLong();
     private final AtomicLong outputUsedBytes = new AtomicLong();
+    // Set by local planning before this FI starts reserving exchange memory.
+    private boolean sharedBudget;
 
     private AtomicLong getUsedBytes(MemorySide side) {
       return side == MemorySide.INPUT ? inputUsedBytes : outputUsedBytes;
@@ -250,6 +253,19 @@ public class MemoryPool {
                 }
                 return reservation == null ? new PlanNodeReservation(side) : reservation;
               });
+    }
+  }
+
+  /** Opt in only after the complete FI has been checked for input and pipeline dependencies. */
+  public void registerFragmentInstanceSharedBudget(String queryId, String fragmentInstanceId) {
+    synchronized (queryMemoryReservations) {
+      FragmentMemoryReservation fragment =
+          queryMemoryReservations
+              .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
+              .computeIfAbsent(fragmentInstanceId, x -> new FragmentMemoryReservation());
+      synchronized (fragment) {
+        fragment.sharedBudget = true;
+      }
     }
   }
 
@@ -356,7 +372,6 @@ public class MemoryPool {
     if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {
       return new MemoryReservationResult(immediateVoidFuture(), true, bytesToReserve);
     } else {
-      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
       if (isHighestPriority) {
         // SHOW QUERIES: treat as success with zero bytes reserved from pool when insufficient.
         return new MemoryReservationResult(immediateVoidFuture(), true, 0L);
@@ -398,12 +413,7 @@ public class MemoryPool {
         maxBytesPerFragmentInstance,
         bytesToReserve);
 
-    if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {
-      return true;
-    } else {
-      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
-      return false;
-    }
+    return tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
   }
 
   /**
@@ -447,20 +457,19 @@ public class MemoryPool {
           DataNodeQueryMessages
               .QUERY_EXCEPTION_RELATEDMEMORYRESERVED_CAN_T_BE_NULL_WHEN_FREEING_MEMORY_C80009F2);
     }
-    fragment.planNodes.compute(
-        planNodeId,
-        (key, reservation) -> {
-          requireReservation(reservation, queryId, fragmentInstanceId, planNodeId);
-          if (reservation.bytesReserved < bytes) {
-            throw new IllegalArgumentException(
-                DataNodeQueryMessages.FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED);
-          }
-          reservation.bytesReserved -= bytes;
-          fragment.getUsedBytes(reservation.side).addAndGet(-bytes);
-          return reservation;
-        });
-
-    memoryBlock.release(bytes);
+    synchronized (fragment) {
+      PlanNodeReservation reservation =
+          requireReservation(
+              fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+      if (reservation.bytesReserved < bytes) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED);
+      }
+      reservation.bytesReserved -= bytes;
+      fragment.getUsedBytes(reservation.side).addAndGet(-bytes);
+      memoryBlock.release(bytes);
+    }
+    // Complete futures outside the accounting lock: listeners can reserve or free other inputs.
 
     if (memoryReservationFutures.isEmpty()) {
       return;
@@ -492,7 +501,6 @@ public class MemoryPool {
         future.set(null);
         return true;
       }
-      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
       return false;
     }
   }
@@ -538,33 +546,24 @@ public class MemoryPool {
       long maxBytesCanReserve) {
     FragmentMemoryReservation fragment =
         getFragmentReservation(queryId, fragmentInstanceId, planNodeId);
-    PlanNodeReservation reservation =
-        requireReservation(
-            fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
-    long tryUsedBytes = memoryBlock.forceAllocateWithoutLimitation(bytesToReserve);
-    long sideUsedBytes = fragment.getUsedBytes(reservation.side).addAndGet(bytesToReserve);
-    fragment.planNodes.compute(
-        planNodeId,
-        (key, value) -> {
-          value.bytesReserved += bytesToReserve;
-          return value;
-        });
-    return tryUsedBytes <= memoryBlock.getTotalMemorySizeInBytes()
-        && sideUsedBytes <= maxBytesCanReserve;
-  }
-
-  private void rollbackReserve(
-      String queryId, String fragmentInstanceId, String planNodeId, long bytesToReserve) {
-    FragmentMemoryReservation fragment =
-        getFragmentReservation(queryId, fragmentInstanceId, planNodeId);
-    fragment.planNodes.compute(
-        planNodeId,
-        (key, reservation) -> {
-          reservation.bytesReserved -= bytesToReserve;
-          fragment.getUsedBytes(reservation.side).addAndGet(-bytesToReserve);
-          return reservation;
-        });
-    memoryBlock.release(bytesToReserve);
+    synchronized (fragment) {
+      PlanNodeReservation reservation =
+          requireReservation(
+              fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+      long usedBytes =
+          fragment.sharedBudget
+              ? fragment.getUsedBytes(reservation.side).get()
+              : reservation.bytesReserved;
+      // Do not publish speculative charges. Two competing requests must not reject one another
+      // against different counters and then both wait after their rollbacks restore capacity.
+      if (bytesToReserve > maxBytesCanReserve - usedBytes
+          || !memoryBlock.allocate(bytesToReserve)) {
+        return false;
+      }
+      fragment.getUsedBytes(reservation.side).addAndGet(bytesToReserve);
+      reservation.bytesReserved += bytesToReserve;
+      return true;
+    }
   }
 
   private FragmentMemoryReservation getFragmentReservation(

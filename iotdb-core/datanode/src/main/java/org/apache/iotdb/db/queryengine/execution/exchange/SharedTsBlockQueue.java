@@ -86,8 +86,7 @@ public class SharedTsBlockQueue {
   private LocalSinkChannel sinkChannel;
 
   private long maxBytesCanReserve =
-      MemorySide.OUTPUT.getMaxBytes(
-          IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance());
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
   private final boolean isHighestPriority;
 
   private volatile Throwable abortedCause = null;
