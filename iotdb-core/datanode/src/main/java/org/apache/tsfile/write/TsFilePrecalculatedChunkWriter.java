@@ -73,6 +73,10 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
   private static final byte[] ZERO_CHUNK = new byte[ZERO_BUFFER_CAPACITY];
 
   private final TsFileOutput out;
+
+  /** Whether a chunk that would leave a hole has to be refused instead of padded up to. */
+  private boolean rejectHoles;
+
   private final File file;
   private final Map<IDeviceID, Map<String, List<IChunkMetadata>>> device2MetadataMap =
       new TreeMap<>();
@@ -206,8 +210,20 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
       // 1. Expand file with zeros if jumping past current physical maximum bound
       if (expectedOffset > maxPhysicalFileSize) {
         final long paddingStartOffset = maxPhysicalFileSize;
-        channelOutput.position(paddingStartOffset);
         final long paddingBytes = expectedOffset - paddingStartOffset;
+        if (rejectHoles) {
+          throw new IOException(
+              String.format(
+                  StorageEngineMessages
+                      .EXCEPTION_IOTCONSENSUSV2_DOES_NOT_SUPPORT_HOLES_THE_STAGED_FILE_ARG_HAS_A_GAP_OF_ARG_BYTES_BEFORE_THE_CHUNK_OF_ARG_ARG_AT_OFFSET_ARG_WHILE_THE_FILE_ENDS_AT_ARG_F8581A0D,
+                  getFileForLog(),
+                  paddingBytes,
+                  device,
+                  chunk.getHeader().getMeasurementID(),
+                  expectedOffset,
+                  paddingStartOffset));
+        }
+        channelOutput.position(paddingStartOffset);
         writeZeros(paddingBytes);
         maxPhysicalFileSize = expectedOffset;
         LOGGER.warn(
@@ -400,6 +416,11 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
   public boolean isSealed() {
     return sealed;
+  }
+
+  /** Rejects a chunk that does not follow the previous one, as IoTConsensusV2 requires. */
+  public void setRejectHoles(final boolean rejectHoles) {
+    this.rejectHoles = rejectHoles;
   }
 
   public TsFileOutput getOutput() {

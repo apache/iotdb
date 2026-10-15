@@ -69,6 +69,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.VALUE_COLUMN_MASK
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ChunkDataDirectWriteTest {
 
@@ -295,6 +296,40 @@ public class ChunkDataDirectWriteTest {
   // -------------------------------------------------------------------------
   // End-to-End Layout, Mixed-Device & Shuffled Dispatch Tests
   // -------------------------------------------------------------------------
+
+  // IoTConsensusV2 never leaves a hole behind: a chunk that does not follow the previous one is a
+  // failure, not something a later piece may fill in.
+  @Test
+  public void testAHoleIsRefusedWhenTheProtocolDoesNotAllowIt() throws Exception {
+    final File tsFile = tempFolder.newFile("rejected-hole" + TsFileConstant.TSFILE_SUFFIX);
+
+    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+    final NonAlignedChunkData firstChunkData =
+        createPopulatedNonAlignedChunkData(
+            new StringArrayDeviceID("root", "hole", "d0"), "s0", 0, 4);
+    final NonAlignedChunkData secondChunkData =
+        createPopulatedNonAlignedChunkData(
+            new StringArrayDeviceID("root", "hole", "d1"), "s0", 10, 4);
+    calculator.assign(firstChunkData);
+    calculator.assign(secondChunkData);
+    final ChunkLayout secondLayout = secondChunkData.getChunkLayout();
+
+    try (final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(tsFile)) {
+      writer.setRejectHoles(true);
+      try {
+        writer.writeChunk(
+            secondChunkData.getDevice(),
+            secondChunkData.isAligned(),
+            secondLayout.chunkGroupHeaderOffset(),
+            secondLayout.firstChunkOfGroup(),
+            secondChunkData.getChunks().get(0),
+            secondLayout.offset());
+        fail("a chunk that leaves a hole must be refused");
+      } catch (final IOException e) {
+        assertTrue(e.getMessage(), e.getMessage().contains("does not support holes"));
+      }
+    }
+  }
 
   // A chunk arriving after a later one is backfilled into its reserved range without growing the
   // file, and both series stay readable

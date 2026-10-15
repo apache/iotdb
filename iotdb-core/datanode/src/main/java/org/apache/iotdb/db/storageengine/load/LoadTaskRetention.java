@@ -62,6 +62,11 @@ final class LoadTaskRetention {
 
   /** Checks whether the staged directory must be retained for follower WAL synchronization. */
   boolean mustRetain(final long searchIndex) {
+    // IoTConsensusV2 replicates through pipe, so no replica reads these bytes back out of the WAL
+    // and there is no index to wait for: the staged directory can go as soon as the task ends.
+    if (LoadConsensusCompat.usesIoTConsensusV2()) {
+      return false;
+    }
     final long safelyDeletedSearchIndex = currentSafelyDeletedSearchIndex();
     return safelyDeletedSearchIndex != ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
         && safelyDeletedSearchIndex < searchIndex;

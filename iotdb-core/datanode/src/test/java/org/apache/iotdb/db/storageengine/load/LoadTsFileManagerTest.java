@@ -685,6 +685,19 @@ public class LoadTsFileManagerTest {
   }
 
   @Test
+  public void testIoTConsensusV2WaitsForNoIndexBeforeReleasing() {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(Boolean.TRUE);
+    try {
+      final LoadTaskRetention retention = new LoadTaskRetention(Mockito.mock(DataRegion.class));
+      assertFalse(
+          "IoTConsensusV2 replicates through pipe, so there is no index to wait for",
+          retention.mustRetain(10L));
+    } finally {
+      LoadConsensusCompat.setIoTConsensusV2ForTest(null);
+    }
+  }
+
+  @Test
   public void testATerminalIsOnlyMarkedOnFilesThatCanCarryIt() throws Exception {
     final LoadTsFileProgress progress = Mockito.mock(LoadTsFileProgress.class);
 

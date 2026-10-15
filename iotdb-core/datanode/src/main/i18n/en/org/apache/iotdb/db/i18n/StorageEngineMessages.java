@@ -119,6 +119,9 @@ public final class StorageEngineMessages {
       "Failed to write retained LOAD piece {} of load {} to {}: {}";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19 =
       "Staged file %s of load %s is not continuous: expected offset %d but current file length is %d.";
+  public static final String EXCEPTION_IOTCONSENSUSV2_DOES_NOT_SUPPORT_HOLES_THE_STAGED_FILE_ARG_HAS_A_GAP_OF_ARG_BYTES_BEFORE_THE_CHUNK_OF_ARG_ARG_AT_OFFSET_ARG_WHILE_THE_FILE_ENDS_AT_ARG_F8581A0D =
+      "IoTConsensusV2 does not support holes: the staged file %s has a gap of %d bytes before the chunk of %s.%s at offset %d, while the file ends at %d";
+
   public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_WITHOUT_STAGED_DATA_FE8ADC37 =
       "Cannot prepare load %s because no staged data exists on this node.";
   public static final String LOG_LOAD_CONSENSUS_RECOVER_RESUMED_WRITER_176BEE0F =

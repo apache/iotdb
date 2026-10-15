@@ -117,6 +117,9 @@ public final class StorageEngineMessages {
       "写入保留的 LOAD 分片 {}（load {}）失败，文件：{}，原因：{}";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19 =
       "load %s 的暂存文件 %s 不连续：期望偏移 %d，但当前文件长度为 %d。";
+  public static final String EXCEPTION_IOTCONSENSUSV2_DOES_NOT_SUPPORT_HOLES_THE_STAGED_FILE_ARG_HAS_A_GAP_OF_ARG_BYTES_BEFORE_THE_CHUNK_OF_ARG_ARG_AT_OFFSET_ARG_WHILE_THE_FILE_ENDS_AT_ARG_F8581A0D =
+      "IoTConsensusV2 不支持空洞：暂存文件 %s 存在 %d 字节的空隙，位于 %s.%s 的 chunk（offset %d）之前，而文件结束于 %d";
+
   public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_WITHOUT_STAGED_DATA_FE8ADC37 =
       "无法准备（PREPARE）load %s，因为该节点上不存在暂存数据。";
   public static final String LOG_LOAD_CONSENSUS_RECOVER_RESUMED_WRITER_176BEE0F =

@@ -404,7 +404,9 @@ final class TsFileWriterManager {
     try {
       dataPartition2Resource.put(partitionInfo, new TsFileResource(newTsFile));
       dataPartition2Progress.put(partitionInfo, new LoadTsFileProgress(newTsFile));
-      return new TsFilePrecalculatedChunkWriter(newTsFile);
+      final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(newTsFile);
+      writer.setRejectHoles(LoadConsensusCompat.usesIoTConsensusV2());
+      return writer;
     } catch (final IOException e) {
       throw new IOException(
           String.format(
@@ -725,6 +727,7 @@ final class TsFileWriterManager {
         channel.position(resumeOffset);
         final TsFilePrecalculatedChunkWriter writer =
             new TsFilePrecalculatedChunkWriter(tsFile, channel);
+        writer.setRejectHoles(LoadConsensusCompat.usesIoTConsensusV2());
         writer.restoreChunkMetadata(restoreChunkMetadata(records));
 
         dataPartition2Writer.put(partitionInfo, writer);
