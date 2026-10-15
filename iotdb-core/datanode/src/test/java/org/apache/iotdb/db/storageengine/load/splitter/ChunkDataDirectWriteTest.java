@@ -406,9 +406,8 @@ public class ChunkDataDirectWriteTest {
     calculator.assign(secondDeviceSecondChunk);
 
     try (final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(tsFile)) {
-      // 1. The piece that the layout puts furthest ahead is written first, which leaves the region
-      // of
-      //    the pieces behind it as zeros
+      // 1. The piece the layout puts furthest ahead is written first, so the pieces behind it are
+      //    left as zeros in the file
       writeSingleChunk(writer, secondDeviceFirstChunk);
       // 2. The piece behind it is written at its own offset, which moves the channel back
       writeSingleChunk(writer, firstDeviceChunk);

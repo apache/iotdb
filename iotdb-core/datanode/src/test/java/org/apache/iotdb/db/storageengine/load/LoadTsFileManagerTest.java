@@ -158,8 +158,25 @@ public class LoadTsFileManagerTest {
       }
     }
 
+    emulateStagedFileImport();
+
+    // The piece the layout puts furthest ahead arrives first, and the one that owns the hole it
+    // leaves fills that hole in afterwards.
     final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
-    File tsFile = null;
+    final List<LoadTsFileConsensusNode.PieceRef> laterRefs =
+        manager.writePiece(uuid, toTsFileDataList(laterChunks));
+    assertEquals(1, laterRefs.size());
+    manager.writePiece(uuid, toTsFileDataList(earlierChunks));
+
+    assertTrue(manager.prepare(prepareNode(uuid), Collections.emptyMap()));
+    final LoadTsFileConsensusNode commit = commitNode(uuid);
+    commit.setSearchIndex(10L);
+    assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+
+    final File staged = new File(tempDir, laterRefs.get(0).getRelativePath());
+    final File imported = new File(new File(tempDir, "data"), staged.getName());
+    assertTrue("the task must have been imported", imported.isFile());
+    assertAllSeriesReadable(imported, expectations);
   }
 
   /**
