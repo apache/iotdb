@@ -25,11 +25,9 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * What the consensus protocol of this node lets a LOAD task rely on. IoTConsensusV1 replicates the
- * WAL and keeps a staged directory until its safe deletion watermark passes the command that ended
- * the task; IoTConsensusV2 replicates through pipe instead, so there is no index to wait for, and
- * it never leaves a hole behind, because a piece that did not arrive is a failure rather than
- * something a later piece may fill in.
+ * What the consensus protocol lets a LOAD task rely on: V1 keeps a staged directory until its WAL
+ * watermark passes the command that ended the task, while V2 replicates through pipe, so nothing
+ * waits for an index and a hole is a failure rather than something a later piece fills in.
  */
 final class LoadConsensusCompat {
 

@@ -118,11 +118,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   /** How many payload bytes those pieces carried. */
   private final Map<TConsensusGroupId, Long> regionTotalBytes = new LinkedHashMap<>();
 
-  /**
-   * Where the staged file of every time partition of a region has to end, over the pieces whose
-   * dispatch succeeded: a piece that could not be sent is not expected of any replica, so an
-   * aborted task can still reach its expectation.
-   */
+  /** Where each staged file has to end, over the pieces whose dispatch succeeded. */
   private final Map<TConsensusGroupId, Map<TTimePartitionSlot, Long>> regionExpectedDataEnd =
       new LinkedHashMap<>();
 

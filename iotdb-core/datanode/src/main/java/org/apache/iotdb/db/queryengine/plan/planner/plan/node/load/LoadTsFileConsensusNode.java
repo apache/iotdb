@@ -92,12 +92,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
   /** The progress index to adopt per time partition this transaction wrote. */
   private Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex = new HashMap<>();
 
-  /**
-   * The end offset of the data zone of the staged file of every time partition, as the coordinator
-   * computed it from the chunks it dispatched. A replica can then tell whether a staged file was
-   * written completely without trusting only its own records, which a piece that never reached the
-   * replica leaves no trace in: such a file still looks continuous, just shorter.
-   */
+  /** Where the staged file of each time partition has to end, as the coordinator computed it. */
   private Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd = new HashMap<>();
 
   /** Whether the staged file was produced by a pipe, which selects the import path of the data. */

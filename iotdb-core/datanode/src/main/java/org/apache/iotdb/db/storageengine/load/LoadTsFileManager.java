@@ -524,8 +524,7 @@ public class LoadTsFileManager {
     // staged files are known to be complete.
     //
     // The command is only recorded on files it can describe: complete for a commit, continuous for
-    // an abort. A directory that does not qualify keeps no record, so a restart treats it as
-    // unfinished and the idle timeout releases it instead.
+    // an abort; a directory that does not qualify waits for the idle timeout instead.
     writerManager.recordTerminal(
         terminalOp, node.getSearchIndex(), node.getTimePartition2ExpectedDataEnd());
     writerManager.close(true);

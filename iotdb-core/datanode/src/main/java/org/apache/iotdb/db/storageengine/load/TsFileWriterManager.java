@@ -219,9 +219,7 @@ final class TsFileWriterManager {
       final TsFilePrecalculatedChunkWriter writer = dataPartition2Writer.get(entry.getKey());
       final LoadTsFileProgress progress = entry.getValue();
       final long expectedDataEnd =
-          timePartition2ExpectedDataEnd == null
-              ? -1L
-              : timePartition2ExpectedDataEnd.getOrDefault(entry.getKey().timePartitionSlot(), -1L);
+          expectedDataEndOf(timePartition2ExpectedDataEnd, entry.getKey().timePartitionSlot());
       if (writer == null
           || !canMarkTerminal(terminalOp, progress, writer.getFile().length(), expectedDataEnd)) {
         LOGGER.warn(
@@ -239,6 +237,15 @@ final class TsFileWriterManager {
     }
   }
 
+  /** The end the coordinator expects of a staged file, or -1 when it announced none. */
+  private static long expectedDataEndOf(
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd,
+      final TTimePartitionSlot timePartitionSlot) {
+    return timePartition2ExpectedDataEnd == null
+        ? -1L
+        : timePartition2ExpectedDataEnd.getOrDefault(timePartitionSlot, -1L);
+  }
+
   /** Whether a staged file is in the state the command a task ended with may describe. */
   static boolean canMarkTerminal(
       final LoadTsFileConsensusOp terminalOp,
@@ -246,14 +253,14 @@ final class TsFileWriterManager {
       final long fileLength,
       final long expectedDataEnd)
       throws IOException {
-    // The expectation of the coordinator is what this replica cannot work out on its own: a piece
-    // that never arrived leaves no record behind, so the file only looks shorter, not torn.
+    // The coordinator's expectation is what the replica cannot work out: a missing piece leaves no
+    // record behind, so the file only looks shorter.
     if (expectedDataEnd >= 0L && fileLength < expectedDataEnd) {
       return false;
     }
-    // The bytes of an aborted task are never imported, so only a committed one has to be complete.
-    // An aborted one still has to reach the end of its records, so that no recorded chunk is left
-    // half-written, and to be continuous, so that no piece was skipped.
+    // An aborted task never imports its bytes, so only a committed one has to be complete; both
+    // have
+    // to be continuous and to reach the end of their records.
     return terminalOp == LoadTsFileConsensusOp.COMMIT
         ? progress.isReady(fileLength)
         : progress.getFirstHoleOffset() < 0L && fileLength >= progress.getTotalLength();
@@ -488,10 +495,7 @@ final class TsFileWriterManager {
       if (progress != null && progress.exists() && progress.getTotalLength() > 0) {
         final long fileLength = writer.getFile().length();
         final long expectedDataEnd =
-            timePartition2ExpectedDataEnd == null
-                ? -1L
-                : timePartition2ExpectedDataEnd.getOrDefault(
-                    entry.getKey().timePartitionSlot(), -1L);
+            expectedDataEndOf(timePartition2ExpectedDataEnd, entry.getKey().timePartitionSlot());
         if (!progress.isReady(fileLength)
             || (expectedDataEnd >= 0L && fileLength < expectedDataEnd)) {
           throw new LoadFileException(
