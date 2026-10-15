@@ -148,6 +148,12 @@ public final class DataNodeMiscMessages {
       "tag-filter REGEXP pattern exceeds maximum length of %s characters";
   public static final String EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728 =
       "table schema is not available for tag-filter";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_ARG_ARG_IS_ABSENT_FROM_THIS_DATANODE_S_TABLE_CACHE_THE_TABLE_MAY_NOT_EXIST_OR_ITS_SCHEMA_HAS_NOT_BEEN_SYNCHRONIZED_YET_23975BDF =
+          "Table schema %s.%s is absent from this DataNode's table cache; the table may not exist or its schema has not been synchronized yet";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_KEPT_CHANGING_WHILE_BINDING_TAG_FILTER_FOR_DATABASE_PATTERN_ARG_AND_TABLE_PATTERN_ARG_RETRY_AFTER_SCHEMA_SYNCHRONIZATION_77A005E9 =
+          "Table schema kept changing while binding tag-filter for database pattern %s and table pattern %s; retry after schema synchronization";
   public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_ARG_F5300BEA =
       "referenced TAG column is missing: %s";
   public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_ARG_34D60881 =

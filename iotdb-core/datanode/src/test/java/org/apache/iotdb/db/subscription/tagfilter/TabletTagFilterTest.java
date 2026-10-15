@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.subscription.tagfilter;
 
+import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,6 +36,57 @@ import java.util.List;
 import java.util.Map;
 
 public class TabletTagFilterTest {
+
+  @Test
+  public void testPrefixSharesColumnDataWithoutChangingSourceWhenSorted() throws Exception {
+    final Tablet tablet = createTablet();
+    tablet.addValue(1, 0, "north");
+    tablet.addValue(1, 1, "d1");
+    tablet.getTimestamps()[0] = 2;
+    tablet.getTimestamps()[1] = 1;
+    final Tablet filtered =
+        TabletTagFilter.filter(tablet, matcher("region IS NOT NULL AND region != \"North\""));
+    Assert.assertNotNull(filtered);
+    Assert.assertEquals(2, filtered.getRowSize());
+    Assert.assertEquals(4, tablet.getRowSize());
+    Assert.assertSame(tablet.getSchemas(), filtered.getSchemas());
+    Assert.assertSame(tablet.getColumnTypes(), filtered.getColumnTypes());
+    Assert.assertSame(tablet.getTimestamps(), filtered.getTimestamps());
+    Assert.assertSame(tablet.getValues()[0], filtered.getValues()[0]);
+    Assert.assertNotSame(tablet.getValues(), filtered.getValues());
+    Assert.assertNotSame(tablet.getBitMaps(), filtered.getBitMaps());
+
+    // Sorting replaces columns and bitmap entries in place, so the outer arrays must be private.
+    final Object originalColumn = tablet.getValues()[0];
+    final BitMap originalBitMap = tablet.getBitMaps()[0];
+    new PipeTableModelTabletEventSorter(filtered).sortAndDeduplicateByDevIdTimestamp();
+    Assert.assertEquals(1, filtered.getTimestamp(0));
+    Assert.assertNotSame(originalColumn, filtered.getValues()[0]);
+    Assert.assertEquals(4, tablet.getRowSize());
+    Assert.assertSame(originalColumn, tablet.getValues()[0]);
+    Assert.assertSame(originalBitMap, tablet.getBitMaps()[0]);
+    Assert.assertEquals("north", tablet.getValue(0, 0).toString());
+    Assert.assertEquals(2, tablet.getTimestamp(0));
+  }
+
+  @Test
+  public void testCompactionRetainsAllNullColumnsWithoutValueArrays() throws Exception {
+    final Tablet tablet = createTablet();
+    tablet.getValues()[2] = null;
+    final BitMap allNull = new BitMap(tablet.getRowSize());
+    allNull.markAll();
+    tablet.getBitMaps()[2] = allNull;
+
+    final Tablet filtered =
+        TabletTagFilter.filter(tablet, matcher("region = \"south\" OR region IS NULL"));
+    Assert.assertNotNull(filtered);
+    Assert.assertEquals(2, filtered.getRowSize());
+    Assert.assertNull(filtered.getValues()[2]);
+    Assert.assertTrue(filtered.isNull(0, 2));
+    Assert.assertTrue(filtered.isNull(1, 2));
+    Assert.assertSame(tablet.getSchemas(), filtered.getSchemas());
+    Assert.assertSame(tablet.getColumnTypes(), filtered.getColumnTypes());
+  }
 
   @Test
   public void testFilterRowsAndPreserveValuesAndNulls() throws Exception {

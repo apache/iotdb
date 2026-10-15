@@ -22,8 +22,10 @@ package org.apache.iotdb.db.subscription.event.batch;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.columnfilter.TreeViewTabletProjector;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterEvaluationException;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -87,7 +89,13 @@ final class SubscriptionTreeViewProjector {
   }
 
   Tablet project(final Tablet tablet) {
-    return Objects.nonNull(projector) ? projector.project(tablet) : null;
+    if (Objects.isNull(projector)) {
+      throw new TagFilterEvaluationException(
+          DataNodeMiscMessages
+              .EXCEPTION_TREE_VIEW_PROJECTOR_IS_UNAVAILABLE_FOR_FILTERED_SUBSCRIPTION_DATA_B5F396A5);
+    }
+    // Only a prepared projector can return null to mean that this tablet does not match the view.
+    return projector.project(tablet);
   }
 
   boolean isAvailable() {

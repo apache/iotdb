@@ -119,6 +119,9 @@ public class SubscriptionTopicAgent {
     final boolean isTableModel = metaFromCoordinator.visibleUnderTableModel();
     final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
     TopicMeta.validateOwnerProgression(oldMeta, metaFromCoordinator);
+    metaFromCoordinator
+        .getConfig()
+        .inheritFilterVersion(Objects.isNull(oldMeta) ? null : oldMeta.getConfig());
     final Long recycleIntervalMs =
         metaFromCoordinator.getConfig().getRecycleUncommittedEventIntervalMs();
     topicMetaKeeper.removeTopicMeta(topicName, isTableModel);
@@ -191,20 +194,20 @@ public class SubscriptionTopicAgent {
     final TopicConfig oldConfig = oldMeta.getConfig();
     final TopicConfig newConfig = newMeta.getConfig();
     return !Objects.equals(
-            normalizeTagFilterValue(oldConfig.getTagFilter()),
-            normalizeTagFilterValue(newConfig.getTagFilter()))
+            trimFilterBindingValue(oldConfig.getTagFilter()),
+            trimFilterBindingValue(newConfig.getTagFilter()))
         || !Objects.equals(
-            normalizeTagFilterValue(
+            trimFilterBindingValue(
                 getAttributeIgnoreCase(
                     oldConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)),
-            normalizeTagFilterValue(
+            trimFilterBindingValue(
                 getAttributeIgnoreCase(
                     newConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)))
         || !Objects.equals(
-            normalizeTagFilterValue(
+            trimFilterBindingValue(
                 getAttributeIgnoreCase(
                     oldConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)),
-            normalizeTagFilterValue(
+            trimFilterBindingValue(
                 getAttributeIgnoreCase(
                     newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
   }
@@ -223,7 +226,7 @@ public class SubscriptionTopicAgent {
     return Objects.nonNull(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
   }
 
-  private static String normalizeTagFilterValue(final String value) {
+  private static String trimFilterBindingValue(final String value) {
     return Objects.nonNull(value) ? value.trim() : "";
   }
 
@@ -383,6 +386,16 @@ public class SubscriptionTopicAgent {
 
   public Map<String, TopicConfig> getTopicConfigs(final Set<String> topicNames) {
     return getTopicConfigs(topicNames, false);
+  }
+
+  public TopicConfig getTopicConfig(final String topicName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+      return Objects.isNull(topicMeta) ? null : topicMeta.getConfig();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public Map<String, TopicConfig> getTopicConfigs(

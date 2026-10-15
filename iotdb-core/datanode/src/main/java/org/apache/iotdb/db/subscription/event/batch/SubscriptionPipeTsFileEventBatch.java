@@ -202,7 +202,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
             pruneTableModelTablet(treeViewProjector.getDatabaseName(), projectedTablet, snapshot),
             treeViewProjector.getDatabaseName(),
             true,
-            false);
+            true);
   }
 
   private Tablet pruneTableModelTablet(

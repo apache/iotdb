@@ -95,7 +95,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
   }
 
   @Test
-  public void testFilteredTabletBatchIsAckedWithoutReturningEmptyMessage()
+  public void testFullyFilteredTabletBatchIsAcknowledgedAndPollReturnsNoMessages()
       throws SubscriptionException {
     final TestPullConsumer consumer = new TestPullConsumer(1, 0, true);
     try {

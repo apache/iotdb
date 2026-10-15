@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicProperty;
 import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -37,7 +38,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -405,6 +405,9 @@ public class TopicMeta {
     }
   }
 
+  // SQL accepts case-insensitive built-in keys, while runtime getters use canonical keys. Apply
+  // the same normalization on creation, ALTER merges, and deserialization so an ALTER cannot leave
+  // both "Tag-Filter" and "tag-filter" with different values. Extension keys remain unchanged.
   private static Map<String, String> canonicalizeTopicAttributes(
       final Map<String, String> topicAttributes) {
     final Map<String, String> canonicalAttributes = new HashMap<>();
@@ -423,54 +426,7 @@ public class TopicMeta {
   }
 
   private static String canonicalizeTopicAttributeKey(final String key) {
-    if (Objects.isNull(key)) {
-      return null;
-    }
-    final String normalizedKey = key.trim().toLowerCase(Locale.ROOT);
-    switch (normalizedKey) {
-      case TopicConstant.PATH_KEY:
-        return TopicConstant.PATH_KEY;
-      case TopicConstant.PATTERN_KEY:
-        return TopicConstant.PATTERN_KEY;
-      case TopicConstant.DATABASE_KEY:
-        return TopicConstant.DATABASE_KEY;
-      case TopicConstant.TABLE_KEY:
-        return TopicConstant.TABLE_KEY;
-      case TopicConstant.COLUMN_FILTER_KEY:
-        return TopicConstant.COLUMN_FILTER_KEY;
-      case TopicConstant.TAG_FILTER_KEY:
-        return TopicConstant.TAG_FILTER_KEY;
-      case TopicConstant.RETENTION_BYTES_KEY:
-        return TopicConstant.RETENTION_BYTES_KEY;
-      case TopicConstant.RETENTION_MS_KEY:
-        return TopicConstant.RETENTION_MS_KEY;
-      case TopicConstant.START_TIME_KEY:
-        return TopicConstant.START_TIME_KEY;
-      case TopicConstant.END_TIME_KEY:
-        return TopicConstant.END_TIME_KEY;
-      case TopicConstant.MODE_KEY:
-        return TopicConstant.MODE_KEY;
-      case TopicConstant.ORDER_MODE_KEY:
-        return TopicConstant.ORDER_MODE_KEY;
-      case TopicConstant.FORMAT_KEY:
-        return TopicConstant.FORMAT_KEY;
-      case TopicConstant.LOOSE_RANGE_KEY:
-        return TopicConstant.LOOSE_RANGE_KEY;
-      case TopicConstant.STRICT_KEY:
-        return TopicConstant.STRICT_KEY;
-      case TopicConstant.OWNER_ID_KEY:
-        return TopicConstant.OWNER_ID_KEY;
-      case TopicConstant.OWNER_EPOCH_KEY:
-        return TopicConstant.OWNER_EPOCH_KEY;
-      case TopicConstant.MAX_OWNER_EPOCH_KEY:
-        return TopicConstant.MAX_OWNER_EPOCH_KEY;
-      case TopicConstant.OWNER_LEASE_DURATION_MS_KEY:
-        return TopicConstant.OWNER_LEASE_DURATION_MS_KEY;
-      case "__system.sql-dialect":
-        return "__system.sql-dialect";
-      default:
-        return key;
-    }
+    return TopicProperty.canonicalizeKey(key);
   }
 
   private void initOwnerFromTopicAttributes(final Map<String, String> topicAttributes) {

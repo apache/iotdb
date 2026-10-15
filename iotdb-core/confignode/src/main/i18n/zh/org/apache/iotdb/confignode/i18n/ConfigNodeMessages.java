@@ -725,13 +725,13 @@ public final class ConfigNodeMessages {
           "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
-          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c\u4e0d\u5141\u8bb8\u91cd\u590d\u7684 %s \u5c5e\u6027";
+          "创建或修改 Topic 失败，不允许重复的 %s 属性";
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
-          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c%s \u4ec5\u652f\u6301\u8868\u6a21\u578b Topic";
+          "创建或修改 Topic 失败，%s 仅支持表模型 Topic";
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_SHOULD_NOT_BE_EMPTY_767B1148 =
-          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c%s \u4e0d\u5e94\u4e3a\u7a7a";
+          "创建或修改 Topic 失败，%s 不应为空";
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ATTRIBUTES_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_55CB0BF2 =
           "创建或修改 topic 失败，属性 %s 仅支持 incremental 模式的 topic";

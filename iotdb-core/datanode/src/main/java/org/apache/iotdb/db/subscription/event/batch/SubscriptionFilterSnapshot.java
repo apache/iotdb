@@ -26,12 +26,7 @@ import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.tagfilter.TagFilterEvaluationException;
 import org.apache.iotdb.db.subscription.tagfilter.TagFilterMatcher;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 
 /** Immutable topic-filter state used by every event in one subscription batch. */
@@ -41,7 +36,7 @@ final class SubscriptionFilterSnapshot {
 
   private final boolean tableModel;
   private final TopicConfig topicConfig;
-  private final Map<String, String> filteringAttributes;
+  private final long filterVersion;
   private final TagFilterMatcher tagFilterMatcher;
   private final ColumnFilterMatcher columnFilterMatcher;
 
@@ -52,7 +47,7 @@ final class SubscriptionFilterSnapshot {
       final ColumnFilterMatcher columnFilterMatcher) {
     this.tableModel = tableModel;
     this.topicConfig = topicConfig;
-    this.filteringAttributes = filteringAttributes(topicConfig);
+    this.filterVersion = topicConfig.getFilterVersion();
     this.tagFilterMatcher = tagFilterMatcher;
     this.columnFilterMatcher = columnFilterMatcher;
   }
@@ -73,20 +68,19 @@ final class SubscriptionFilterSnapshot {
       tagFilterMatcher.throwIfFailure();
       final ColumnFilterMatcher columnFilterMatcher =
           SubscriptionAgent.broker().getColumnFilterMatcher(queue.getTopicName(), tableModel);
+      // Column-filter binding failures are represented by a match-none matcher, not an exception
+      // state. Keeping that matcher also fails closed for every event in this batch.
 
       final TopicConfig currentTopicConfig = getCurrentTopicConfig(queue, tableModel);
       if (Objects.nonNull(currentTopicConfig)
-          && filteringAttributes(topicConfig).equals(filteringAttributes(currentTopicConfig))
+          && topicConfig.getFilterVersion() == currentTopicConfig.getFilterVersion()
           && tagFilterMatcher
               == SubscriptionAgent.broker().getTagFilterMatcher(queue.getTopicName(), tableModel)
           && columnFilterMatcher
               == SubscriptionAgent.broker()
                   .getColumnFilterMatcher(queue.getTopicName(), tableModel)) {
         return new SubscriptionFilterSnapshot(
-            tableModel,
-            new TopicConfig(new HashMap<>(topicConfig.getAttribute())),
-            tagFilterMatcher,
-            columnFilterMatcher);
+            tableModel, new TopicConfig(topicConfig), tagFilterMatcher, columnFilterMatcher);
       }
     }
 
@@ -101,7 +95,7 @@ final class SubscriptionFilterSnapshot {
     }
     final TopicConfig currentTopicConfig = getCurrentTopicConfig(queue, true);
     return Objects.nonNull(currentTopicConfig)
-        && filteringAttributes.equals(filteringAttributes(currentTopicConfig))
+        && filterVersion == currentTopicConfig.getFilterVersion()
         && tagFilterMatcher
             == SubscriptionAgent.broker().getTagFilterMatcher(queue.getTopicName(), true)
         && columnFilterMatcher
@@ -126,35 +120,6 @@ final class SubscriptionFilterSnapshot {
 
   private static TopicConfig getCurrentTopicConfig(
       final SubscriptionPrefetchingQueue queue, final boolean tableModel) {
-    return SubscriptionAgent.topic()
-        .getTopicConfigs(Collections.singleton(queue.getTopicName()), tableModel)
-        .get(queue.getTopicName());
-  }
-
-  private static Map<String, String> filteringAttributes(final TopicConfig topicConfig) {
-    if (Objects.isNull(topicConfig) || Objects.isNull(topicConfig.getAttribute())) {
-      return Collections.emptyMap();
-    }
-    final Map<String, String> result = new HashMap<>();
-    topicConfig
-        .getAttribute()
-        .forEach(
-            (key, value) -> {
-              if (Objects.isNull(key)) {
-                return;
-              }
-              final String normalizedKey = key.trim().toLowerCase(Locale.ROOT);
-              if (!isOwnerAttribute(normalizedKey)) {
-                result.put(normalizedKey, value);
-              }
-            });
-    return result;
-  }
-
-  private static boolean isOwnerAttribute(final String key) {
-    return TopicConstant.OWNER_ID_KEY.equals(key)
-        || TopicConstant.OWNER_EPOCH_KEY.equals(key)
-        || TopicConstant.MAX_OWNER_EPOCH_KEY.equals(key)
-        || TopicConstant.OWNER_LEASE_DURATION_MS_KEY.equals(key);
+    return SubscriptionAgent.topic().getTopicConfig(queue.getTopicName(), tableModel);
   }
 }

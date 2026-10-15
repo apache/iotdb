@@ -96,6 +96,8 @@ public class TagFilterEvaluator
   @Override
   public TruthValue visitLogicalExpression(
       final LogicalExpression node, final ValueProvider context) {
+    // UNKNOWN is not decisive: UNKNOWN AND FALSE is FALSE, and UNKNOWN OR TRUE is TRUE.
+    // This also matters under NOT, where returning UNKNOWN early could discard a matching row.
     boolean hasUnknown = false;
     if (node.getOperator() == LogicalExpression.Operator.AND) {
       for (final Expression term : node.getTerms()) {

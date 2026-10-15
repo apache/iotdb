@@ -32,9 +32,12 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /** Immutable parsed tag-filter cached per topic. */
@@ -208,15 +211,15 @@ public class TagFilterMatcher {
 
   private static TableBinding bindTable(
       final List<Identifier> referencedFields, final TsTable table) {
-    final java.util.Set<String> tagNames = new java.util.HashSet<>();
-    final java.util.Set<String> allNames = new java.util.HashSet<>();
+    final Set<String> tagNames = new HashSet<>();
+    final Set<String> allNames = new HashSet<>();
     for (final TsTableColumnSchema schema : table.getColumnList()) {
       if (schema == null || schema.getColumnName() == null) {
         continue;
       }
-      allNames.add(schema.getColumnName().toLowerCase(java.util.Locale.ROOT));
+      allNames.add(schema.getColumnName().toLowerCase(Locale.ROOT));
       if (schema.getColumnCategory() == TsTableColumnCategory.TAG) {
-        tagNames.add(schema.getColumnName().toLowerCase(java.util.Locale.ROOT));
+        tagNames.add(schema.getColumnName().toLowerCase(Locale.ROOT));
       }
     }
     for (final Identifier identifier : referencedFields) {
@@ -316,8 +319,7 @@ public class TagFilterMatcher {
 
   public void throwIfFailure() {
     if (isFailure()) {
-      throw new TagFilterEvaluationException(
-          DataNodeMiscMessages.EXCEPTION_MATCHER_IS_UNAVAILABLE_1A659D47, failure);
+      throw new TagFilterEvaluationException(getFailureMessage(), failure);
     }
   }
 
@@ -380,7 +382,7 @@ public class TagFilterMatcher {
     }
 
     private static String normalize(final String value) {
-      return Objects.nonNull(value) ? value.trim().toLowerCase(java.util.Locale.ROOT) : "";
+      return Objects.nonNull(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
     }
   }
 
@@ -388,14 +390,14 @@ public class TagFilterMatcher {
 
     private final boolean failed;
     private final String failureReason;
-    private final java.util.Set<String> tagNames;
-    private final java.util.Set<String> allNames;
+    private final Set<String> tagNames;
+    private final Set<String> allNames;
 
     TableBinding(
         final boolean failed,
         final String failureReason,
-        final java.util.Set<String> tagNames,
-        final java.util.Set<String> allNames) {
+        final Set<String> tagNames,
+        final Set<String> allNames) {
       this.failed = failed;
       this.failureReason = failureReason;
       this.tagNames = tagNames;
@@ -410,11 +412,11 @@ public class TagFilterMatcher {
       return failureReason;
     }
 
-    java.util.Set<String> getTagNames() {
+    Set<String> getTagNames() {
       return tagNames;
     }
 
-    java.util.Set<String> getAllNames() {
+    Set<String> getAllNames() {
       return allNames;
     }
   }

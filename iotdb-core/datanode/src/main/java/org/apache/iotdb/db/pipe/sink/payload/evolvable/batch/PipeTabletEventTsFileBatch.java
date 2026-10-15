@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
@@ -134,10 +135,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         }
         final TabletTransformResult transformedTablet =
             transformTablet(
-                isTableModel ? insertNodeTabletInsertionEvent.getTableModelDatabaseName() : null,
+                insertNodeTabletInsertionEvent.getTableModelDatabaseName(),
                 tablet,
                 isTableModel,
-                !isTableModel && insertNodeTabletInsertionEvent.isAligned(i));
+                isTableModel || insertNodeTabletInsertionEvent.isAligned(i));
         if (Objects.isNull(transformedTablet) || isTabletEmpty(transformedTablet.getTablet())) {
           continue;
         }
@@ -154,7 +155,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           calculateTabletsSizeInBytes(
               retainedTablets.stream()
                   .map(TabletTransformResult::getTablet)
-                  .collect(java.util.stream.Collectors.toList())));
+                  .collect(Collectors.toList())));
       for (final TabletTransformResult transformedTablet : retainedTablets) {
         if (transformedTablet.isTableModel()) {
           bufferTableModelTablet(
@@ -181,10 +182,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final boolean isTableModel = rawTabletInsertionEvent.isTableModelEvent();
       final TabletTransformResult transformedTablet =
           transformTablet(
-              isTableModel ? rawTabletInsertionEvent.getTableModelDatabaseName() : null,
+              rawTabletInsertionEvent.getTableModelDatabaseName(),
               tablet,
               isTableModel,
-              !isTableModel && rawTabletInsertionEvent.isAligned());
+              isTableModel || rawTabletInsertionEvent.isAligned());
       if (Objects.isNull(transformedTablet) || isTabletEmpty(transformedTablet.getTablet())) {
         return false;
       }

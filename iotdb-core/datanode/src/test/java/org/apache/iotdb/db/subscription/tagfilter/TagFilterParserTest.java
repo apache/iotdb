@@ -64,6 +64,10 @@ public class TagFilterParserTest {
     Assert.assertFalse(evaluate("NOT region = \"north\"", values));
     Assert.assertTrue(evaluate("region = \"north\" OR true", values));
     Assert.assertFalse(evaluate("region = \"north\" AND true", values));
+    Assert.assertTrue(evaluate("NOT (region = \"north\" AND false)", values));
+    Assert.assertFalse(evaluate("NOT (region = \"north\" OR true)", values));
+    Assert.assertTrue(evaluate("NOT (false AND region = \"north\")", values));
+    Assert.assertFalse(evaluate("NOT (true OR region = \"north\")", values));
   }
 
   @Test

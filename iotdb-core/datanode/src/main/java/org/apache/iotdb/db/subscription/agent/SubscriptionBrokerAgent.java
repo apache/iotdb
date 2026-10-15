@@ -857,23 +857,6 @@ public class SubscriptionBrokerAgent {
       try {
         final Map<String, Map<String, TsTable>> bindingTables =
             getTagFilterBindingTables(topicConfig);
-        if (bindingTables == null) {
-          if (versionBeforeBinding != tableCache.getInstanceVersion()) {
-            continue;
-          }
-          cacheTagFilterMatcher(
-              topicName,
-              TagFilterMatcher.failure(
-                  new SubscriptionException(
-                      DataNodeMiscMessages
-                          .EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728)),
-              versionBeforeBinding);
-          LOGGER.info(
-              DataNodeMiscMessages
-                  .LOG_SUBSCRIPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_TOPIC_ARG_E864C98F,
-              topicName);
-          return;
-        }
         matcher = TagFilterMatcher.fromTopicConfig(topicConfig, bindingTables);
       } catch (final Exception e) {
         if (versionBeforeBinding != tableCache.getInstanceVersion()) {
@@ -930,15 +913,12 @@ public class SubscriptionBrokerAgent {
       topicNameToTagFilterMatcherVersion.remove(topicName);
     }
 
-    final TopicConfig topicConfig =
-        SubscriptionAgent.topic()
-            .getTopicConfigs(Collections.singleton(topicName), true)
-            .get(topicName);
+    final TopicConfig topicConfig = SubscriptionAgent.topic().getTopicConfig(topicName, true);
     if (Objects.isNull(topicConfig)) {
       return TagFilterMatcher.failure(
           new SubscriptionException(
               DataNodeMiscMessages
-                  .EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728));
+                  .EXCEPTION_TOPIC_CONFIGURATION_IS_NOT_AVAILABLE_FOR_TAG_FILTER_1E023E3A));
     }
 
     refreshTagFilter(topicName, topicConfig);
@@ -952,8 +932,13 @@ public class SubscriptionBrokerAgent {
             && !topicConfig.isTagFilterTrivial()
         ? TagFilterMatcher.failure(
             new SubscriptionException(
-                DataNodeMiscMessages
-                    .EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728))
+                String.format(
+                    DataNodeMiscMessages
+                        .EXCEPTION_TABLE_SCHEMA_KEPT_CHANGING_WHILE_BINDING_TAG_FILTER_FOR_DATABASE_PATTERN_ARG_AND_TABLE_PATTERN_ARG_RETRY_AFTER_SCHEMA_SYNCHRONIZATION_77A005E9,
+                    topicConfig.getStringOrDefault(
+                        TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE),
+                    topicConfig.getStringOrDefault(
+                        TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE))))
         : TagFilterMatcher.matchAll();
   }
 
@@ -978,9 +963,15 @@ public class SubscriptionBrokerAgent {
     }
 
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
-    return Objects.isNull(table)
-        ? null
-        : Collections.singletonMap(database, Collections.singletonMap(tableName, table));
+    if (Objects.isNull(table)) {
+      throw new SubscriptionException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_TABLE_SCHEMA_ARG_ARG_IS_ABSENT_FROM_THIS_DATANODE_S_TABLE_CACHE_THE_TABLE_MAY_NOT_EXIST_OR_ITS_SCHEMA_HAS_NOT_BEEN_SYNCHRONIZED_YET_23975BDF,
+              database,
+              tableName));
+    }
+    return Collections.singletonMap(database, Collections.singletonMap(tableName, table));
   }
 
   public void dropTagFilter(final String topicName) {

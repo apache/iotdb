@@ -146,6 +146,12 @@ public final class DataNodeMiscMessages {
       "tag-filter IN \u5217\u8868\u8d85\u8fc7\u6700\u5927\u503c %s";
   public static final String EXCEPTION_TAG_FILTER_REGEXP_PATTERN_EXCEEDS_MAXIMUM_LENGTH_OF_ARG_CHARACTERS_67590971 =
       "tag-filter REGEXP \u6a21\u5f0f\u8d85\u8fc7\u6700\u5927\u957f\u5ea6 %s \u5b57\u7b26";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_ARG_ARG_IS_ABSENT_FROM_THIS_DATANODE_S_TABLE_CACHE_THE_TABLE_MAY_NOT_EXIST_OR_ITS_SCHEMA_HAS_NOT_BEEN_SYNCHRONIZED_YET_23975BDF =
+          "此 DataNode 的表缓存中没有表结构 %s.%s；该表可能不存在，或其结构尚未同步";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_KEPT_CHANGING_WHILE_BINDING_TAG_FILTER_FOR_DATABASE_PATTERN_ARG_AND_TABLE_PATTERN_ARG_RETRY_AFTER_SCHEMA_SYNCHRONIZATION_77A005E9 =
+          "为数据库模式 %s 和表模式 %s 绑定 tag-filter 时表结构持续变化；请在结构同步后重试";
   public static final String EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728 =
       "tag-filter \u6240\u9700\u8868\u7ed3\u6784\u4e0d\u53ef\u7528";
   public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_ARG_F5300BEA =
