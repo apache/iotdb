@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -35,14 +36,27 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -62,6 +76,7 @@ import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -80,6 +95,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,10 +104,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.apache.iotdb.db.storageengine.dataregion.DataRegionTest.buildInsertRowNodeByTSRecord;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -196,6 +216,203 @@ public class TsFileProcessorTest {
     Assert.assertEquals(2, supplierCalls.get());
     Assert.assertSame(
         updatedSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table1"));
+  }
+
+  @Test
+  public void testDeletionDuringFlushCompletionIsPersisted() throws Exception {
+    WALMode originalWalMode = config.getWalMode();
+    config.setWalMode(WALMode.SYNC);
+    try {
+      processor =
+          new TsFileProcessor(
+              storageGroup,
+              SystemFileFactory.INSTANCE.getFile(filePath),
+              sgInfo,
+              this::closeTsFileProcessor,
+              (tsFileProcessor, updateMap, systemFlushTime) -> {},
+              true);
+      processor.setTsFileProcessorInfo(new TsFileProcessorInfo(sgInfo));
+      sgInfo.initTsFileProcessorInfo(processor);
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
+      processor.setManagedByFlushManager(true);
+      processor.asyncClose();
+      Assert.assertNull(processor.getWorkMemTable());
+
+      MeasurementPath path = new MeasurementPath(deviceId + "." + measurementId);
+      TreeDeletionEntry deletion = new TreeDeletionEntry(path, Long.MIN_VALUE, Long.MAX_VALUE);
+      FutureTask<Void> flush =
+          new FutureTask<>(
+              () -> {
+                processor.flushOneMemTable();
+                return null;
+              });
+      Thread flushThread = new Thread(flush, "test-flush-deletion-completion");
+      Object flushingMemTables = processor.getFlushingMemTable();
+      long monitorOwner = Thread.currentThread().getId();
+      try {
+        synchronized (flushingMemTables) {
+          flushThread.start();
+          // On the old path the flush has already scanned modifications when it reaches this
+          // monitor. The fixed path reaches it before scanning and releasing the memtable.
+          await()
+              .atMost(30, TimeUnit.SECONDS)
+              .until(
+                  () -> {
+                    ThreadInfo info =
+                        ManagementFactory.getThreadMXBean().getThreadInfo(flushThread.getId());
+                    return info != null
+                        && info.getThreadState() == Thread.State.BLOCKED
+                        && info.getLockOwnerId() == monitorOwner
+                        && info.getLockInfo().getIdentityHashCode()
+                            == System.identityHashCode(flushingMemTables);
+                  });
+          assertTrue(processor.deleteDataInMemory(deletion));
+        }
+      } finally {
+        try {
+          flush.get(30, TimeUnit.SECONDS);
+        } finally {
+          processor.setManagedByFlushManager(false);
+        }
+      }
+      assertEquals(0, processor.getFlushingMemTableSize());
+      assertEquals(
+          Collections.singletonList(deletion),
+          ModificationFile.readAllModifications(new File(filePath), false));
+    } finally {
+      try {
+        if (processor != null) {
+          processor.syncClose();
+        }
+      } finally {
+        config.setWalMode(originalWalMode);
+      }
+    }
+  }
+
+  @Test
+  public void testTreeDeletionWALWithoutWorkingMemTable() throws Exception {
+    testDeletionWALWithoutWorkingMemTable(false);
+  }
+
+  @Test
+  public void testTableDeletionWALWithoutWorkingMemTable() throws Exception {
+    testDeletionWALWithoutWorkingMemTable(true);
+  }
+
+  private void testDeletionWALWithoutWorkingMemTable(boolean tableModel) throws Exception {
+    WALMode originalWalMode = config.getWalMode();
+    config.setWalMode(WALMode.SYNC);
+    try {
+      processor =
+          new TsFileProcessor(
+              storageGroup,
+              SystemFileFactory.INSTANCE.getFile(filePath),
+              sgInfo,
+              this::closeTsFileProcessor,
+              (tsFileProcessor, updateMap, systemFlushTime) -> {},
+              true);
+      processor.setTsFileProcessorInfo(new TsFileProcessorInfo(sgInfo));
+      sgInfo.initTsFileProcessorInfo(processor);
+      WALNode walNode =
+          (WALNode)
+              WALManager.getInstance()
+                  .applyForWALNode(WALManager.getApplicantUniqueId(storageGroup, true));
+
+      Assert.assertNull(processor.getWorkMemTable());
+      logDeletionForTest(tableModel, 1);
+
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
+      long memTableId = processor.getWorkMemTable().getMemTableId();
+      logDeletionForTest(tableModel, 2);
+
+      // Use the production close path, while keeping flush execution under test control.
+      processor.setManagedByFlushManager(true);
+      try {
+        processor.asyncClose();
+        Assert.assertNull(processor.getWorkMemTable());
+        assertEquals(1, processor.getFlushingMemTableSize());
+        processor.flushOneMemTable();
+      } finally {
+        processor.setManagedByFlushManager(false);
+      }
+      assertEquals(0, processor.getFlushingMemTableSize());
+      walNode.rollWALFile();
+
+      List<Long> memTableIds = new ArrayList<>();
+      List<Long> searchIndexes = new ArrayList<>();
+      File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
+      Assert.assertNotNull(walFiles);
+      WALFileUtils.ascSortByVersionId(walFiles);
+      for (File walFile : walFiles) {
+        try (WALReader reader = new WALReader(walFile)) {
+          while (reader.hasNext()) {
+            WALEntry entry = reader.next();
+            if (entry.getValue() instanceof DeleteDataNode) {
+              Assert.assertFalse(tableModel);
+              DeleteDataNode deletion = (DeleteDataNode) entry.getValue();
+              assertEquals(Long.MIN_VALUE, deletion.getDeleteStartTime());
+              assertEquals(Long.MAX_VALUE, deletion.getDeleteEndTime());
+              assertEquals(
+                  Collections.singletonList(new MeasurementPath(deviceId + "." + measurementId)),
+                  deletion.getPathList());
+              memTableIds.add(entry.getMemTableId());
+              searchIndexes.add(deletion.getSearchIndex());
+            } else if (entry.getValue() instanceof RelationalDeleteDataNode) {
+              Assert.assertTrue(tableModel);
+              RelationalDeleteDataNode deletion = (RelationalDeleteDataNode) entry.getValue();
+              assertEquals(
+                  Collections.singletonList(
+                      new TableDeletionEntry(
+                          new DeletionPredicate("t2"),
+                          new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))),
+                  deletion.getModEntries());
+              memTableIds.add(entry.getMemTableId());
+              searchIndexes.add(deletion.getSearchIndex());
+            }
+          }
+        }
+      }
+      assertEquals(
+          Arrays.asList((long) TsFileProcessor.MEMTABLE_NOT_EXIST, memTableId), memTableIds);
+      assertEquals(Arrays.asList(1L, 2L), searchIndexes);
+    } finally {
+      try {
+        if (processor != null) {
+          processor.syncClose();
+        }
+      } finally {
+        config.setWalMode(originalWalMode);
+      }
+    }
+  }
+
+  private void logDeletionForTest(boolean tableModel, long searchIndex) throws Exception {
+    WALFlushListener listener;
+    if (tableModel) {
+      RelationalDeleteDataNode deletion =
+          new RelationalDeleteDataNode(
+              new PlanNodeId(""),
+              new TableDeletionEntry(
+                  new DeletionPredicate("t2"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+              storageGroup);
+      deletion.setSearchIndex(searchIndex);
+      listener = processor.logDeleteDataNodeInWAL(deletion);
+    } else {
+      DeleteDataNode deletion =
+          new DeleteDataNode(
+              new PlanNodeId(""),
+              Collections.singletonList(new MeasurementPath(deviceId + "." + measurementId)),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      deletion.setSearchIndex(searchIndex);
+      listener = processor.logDeleteDataNodeInWAL(deletion);
+    }
+    assertEquals(WALFlushListener.Status.SUCCESS, listener.waitForResult());
   }
 
   @Test
