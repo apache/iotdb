@@ -71,7 +71,10 @@ public class CollectOperatorTest {
   }
 
   private static CollectOperator collect(Operator... children) {
-    return new CollectOperator(new TestContext(), new ArrayList<>(Arrays.asList(children)));
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Arrays.asList(children)));
+    collect.enableReadyInputConsumption();
+    return collect;
   }
 
   @Test
@@ -100,6 +103,7 @@ public class CollectOperatorTest {
         children.add(new Child(block(i)));
       }
       CollectOperator collect = new CollectOperator(new TestContext(), children);
+      collect.enableReadyInputConsumption();
       Child ready = (Child) children.get(count - 1);
       for (int round = 0; round < 5; round++) {
         ListenableFuture<?> wait = collect.isBlocked();
@@ -133,6 +137,7 @@ public class CollectOperatorTest {
     }
     CountingList countedChildren = new CountingList(children);
     CollectOperator collect = new CollectOperator(new TestContext(), countedChildren);
+    collect.enableReadyInputConsumption();
     try {
       for (int round = 0; round < rounds; round++) {
         assertTrue(collect.isBlocked().isDone());
@@ -178,6 +183,7 @@ public class CollectOperatorTest {
     }
     CountingList countedChildren = new CountingList(children);
     CollectOperator collect = new CollectOperator(new TestContext(), countedChildren);
+    collect.enableReadyInputConsumption();
     try {
       // Retire the first 999 children and consume one block from the remaining child.
       for (int i = 0; i < childCount; i++) {
@@ -379,6 +385,47 @@ public class CollectOperatorTest {
   }
 
   @Test
+  public void testDefaultCollectRetainsSequentialConsumption() throws Exception {
+    Child a = new Child(block(1));
+    Child b = new Child(block(2));
+    b.ready();
+    CollectOperator collect =
+        new CollectOperator(new TestContext(), new ArrayList<>(Arrays.asList(a, b)));
+    assertFalse(collect.isBlocked().isDone());
+    a.ready();
+    assertSame(a.output, collect.next());
+    a.hasNext = false;
+    a.finished = true;
+    assertNull(collect.next());
+    assertSame(b.output, collect.next());
+    assertEquals(0, collect.calculateRetainedSizeAfterCallingNext());
+    collect.close();
+    assertEquals(1, a.closes);
+    assertEquals(1, b.closes);
+  }
+
+  @Test
+  public void testDefaultMappingCollectRetainsSequentialConsumption() throws Exception {
+    Child a = new Child(block(10, 11));
+    Child b = new Child(block(20, 21));
+    b.ready();
+    List<List<Integer>> mappings = new ArrayList<>();
+    mappings.add(Collections.singletonList(0));
+    mappings.add(Collections.singletonList(1));
+    MappingCollectOperator collect =
+        new MappingCollectOperator(
+            new TestContext(), new ArrayList<>(Arrays.asList(a, b)), mappings);
+    assertFalse(collect.isBlocked().isDone());
+    a.ready();
+    assertEquals(10, collect.next().getColumn(0).getInt(0));
+    a.hasNext = false;
+    a.finished = true;
+    assertNull(collect.next());
+    assertEquals(21, collect.next().getColumn(0).getInt(0));
+    collect.close();
+  }
+
+  @Test
   public void testMappingUsesActualChildIdentity() throws Exception {
     Child a = new Child(block(10, 11));
     Child b = new Child(block(20, 21));
@@ -389,6 +436,7 @@ public class CollectOperatorTest {
     MappingCollectOperator collect =
         new MappingCollectOperator(
             new TestContext(), new ArrayList<>(Arrays.asList(a, b)), mappings);
+    collect.enableReadyInputConsumption();
     assertTrue(collect.isBlocked().isDone());
     assertEquals(21, collect.next().getColumn(0).getInt(0));
     a.ready();
@@ -473,6 +521,7 @@ public class CollectOperatorTest {
     List<Child> children = new ArrayList<>();
     for (int i = 0; i < count; i++) children.add(new Child(block(i)));
     CollectOperator collect = new CollectOperator(new TestContext(), new ArrayList<>(children));
+    collect.enableReadyInputConsumption();
     ListenableFuture<?> pending = collect.isBlocked();
     assertFalse(pending.isDone());
     ExecutorService executor = Executors.newFixedThreadPool(count);

@@ -630,27 +630,11 @@ public class TableDistributedPlanGenerator
       if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), childrenNodes.get(0))) {
         return childrenNodes;
       }
-      TopKNode physical =
-          new TopKNode(
-              node.getPlanNodeId(),
-              childrenNodes,
-              node.getOrderingScheme(),
-              node.getCount(),
-              node.getOutputSymbols(),
-              canSortEliminated(
-                  node.getOrderingScheme(),
-                  nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId())));
-      physical.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
-      return Collections.singletonList(physical);
+      node.setChildren(Collections.singletonList(childrenNodes.get(0)));
+      return Collections.singletonList(node);
     }
 
-    TopKNode newTopKNode =
-        new TopKNode(
-            node.getPlanNodeId(),
-            node.getOrderingScheme(),
-            node.getCount(),
-            node.getOutputSymbols(),
-            true);
+    TopKNode newTopKNode = (TopKNode) node.clone();
     // root TopK is not a runtime filter producer.
     newTopKNode.setTopKRuntimeFilterSourceId(null);
     for (PlanNode child : childrenNodes) {
@@ -665,8 +649,7 @@ public class TableDistributedPlanGenerator
                 node.getOrderingScheme(),
                 node.getCount(),
                 node.getOutputSymbols(),
-                canSortEliminated(
-                    node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId())));
+                node.isChildrenDataInOrder());
         regionTopK.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
         newChild = regionTopK;
       }

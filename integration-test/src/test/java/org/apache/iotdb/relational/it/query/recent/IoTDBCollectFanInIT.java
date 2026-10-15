@@ -34,7 +34,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
 import static org.junit.Assert.assertEquals;
@@ -109,7 +111,7 @@ public class IoTDBCollectFanInIT {
   }
 
   @Test
-  public void testSharedExchangePathsForTreeAndTreeToTable() throws Exception {
+  public void testLegacyTreeAndSharedTreeToTablePaths() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.collect_tree");
@@ -124,10 +126,25 @@ public class IoTDBCollectFanInIT {
       try (ResultSet result =
           statement.executeQuery("SELECT value FROM root.collect_tree.*.* ALIGN BY DEVICE")) {
         int rows = 0;
+        Set<String> seenDevices = new HashSet<>();
+        String currentDevice = null;
+        int deviceRows = 0;
         while (result.next()) {
+          String nextDevice = result.getString("Device");
+          if (!nextDevice.equals(currentDevice)) {
+            if (currentDevice != null) {
+              assertEquals(ROWS, deviceRows);
+            }
+            assertTrue("Tree results must retain contiguous devices", seenDevices.add(nextDevice));
+            currentDevice = nextDevice;
+            deviceRows = 0;
+          }
+          assertEquals(++deviceRows, result.getLong("Time"));
           assertEquals(result.getLong("Time"), result.getLong("value"));
           rows++;
         }
+        assertEquals(ROWS, deviceRows);
+        assertEquals(DEVICES, seenDevices.size());
         assertEquals(DEVICES * ROWS, rows);
       }
     }
@@ -300,7 +317,7 @@ public class IoTDBCollectFanInIT {
   }
 
   @Test
-  public void testTopKAfterGlobalWindowConsumesUnorderedInput() throws Exception {
+  public void testExcludedTopKPlanRetainsQueryResults() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE);
