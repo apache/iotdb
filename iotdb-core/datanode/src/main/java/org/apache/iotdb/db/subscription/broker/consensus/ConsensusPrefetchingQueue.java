@@ -3358,7 +3358,7 @@ public class ConsensusPrefetchingQueue {
             }
             ev.nack();
             nacked.set(true);
-            if (ev.isPoisoned()) {
+            if (ev.isPoisoned() && commitPoisonedEvent(ev)) {
               LOGGER.error(
                   DataNodePipeMessages
                       .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
@@ -3396,7 +3396,7 @@ public class ConsensusPrefetchingQueue {
 
           ev.nack();
           nacked.set(true);
-          if (ev.isPoisoned()) {
+          if (ev.isPoisoned() && commitPoisonedEvent(ev)) {
             LOGGER.error(
                 DataNodePipeMessages
                     .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
@@ -3417,6 +3417,15 @@ public class ConsensusPrefetchingQueue {
 
   // ======================== Recycle ========================
 
+  private boolean commitPoisonedEvent(final SubscriptionEvent event) {
+    // Forced ACKs must consume the outstanding mapping before discarding the event. Otherwise,
+    // later ACKs stay behind a gap that can no longer be redelivered. A failed commit leaves the
+    // event queued for retry, just as an ordinary ACK keeps its in-flight event on failure.
+    return commitAndRefreshWalRetention(
+        extractCommitWriterId(event.getCommitContext()),
+        extractCommitWriterProgress(event.getCommitContext()));
+  }
+
   /** Recycles in-flight events that are pollable (timed out) back to the prefetching queue. */
   private void recycleInFlightEvents() {
     for (final InFlightEventKey key : new ArrayList<>(inFlightEvents.keySet())) {
@@ -3432,7 +3441,7 @@ public class ConsensusPrefetchingQueue {
             }
             if (ev.pollable()) {
               ev.nack();
-              if (ev.isPoisoned()) {
+              if (ev.isPoisoned() && commitPoisonedEvent(ev)) {
                 LOGGER.error(
                     DataNodePipeMessages
                         .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_DURING_23159F02,
