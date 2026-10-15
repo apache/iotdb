@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -26,9 +28,123 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
+
 public class SubscriptionTopicAgentTest {
+
+  @Test
+  public void testRecycleIntervalUpdateAndFallback() {
+    final SubscriptionTopicAgent agent = new SubscriptionTopicAgent();
+    final long defaultInterval =
+        SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+    Assert.assertEquals(
+        defaultInterval, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+
+    Assert.assertNull(agent.handleSingleTopicMetaChanges(createRecycleTopicMeta(false, "1200000")));
+    Assert.assertEquals(
+        1200000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+
+    for (final long intervalMs : new long[] {0L, -1L, Long.MIN_VALUE}) {
+      Assert.assertNull(
+          agent.handleSingleTopicMetaChanges(
+              createRecycleTopicMeta(false, Long.toString(intervalMs))));
+      Assert.assertEquals(
+          intervalMs, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+    }
+
+    Assert.assertNull(agent.handleSingleTopicMetaChanges(createRecycleTopicMeta(false, "300000")));
+    Assert.assertEquals(
+        300000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+
+    Assert.assertNull(agent.handleSingleTopicMetaChanges(createRecycleTopicMeta(false, null)));
+    Assert.assertEquals(
+        defaultInterval, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+  }
+
+  @Test
+  public void testRecycleIntervalIsolationAndDrop() {
+    final SubscriptionTopicAgent agent = new SubscriptionTopicAgent();
+    final long defaultInterval =
+        SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+    Assert.assertNull(agent.handleSingleTopicMetaChanges(createRecycleTopicMeta(false, "1200000")));
+    Assert.assertNull(agent.handleSingleTopicMetaChanges(createRecycleTopicMeta(true, "300000")));
+
+    Assert.assertEquals(
+        1200000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+    Assert.assertEquals(
+        300000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", true));
+
+    Assert.assertNull(agent.handleDropTopic("recycle_topic"));
+    Assert.assertEquals(
+        defaultInterval, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+    Assert.assertEquals(
+        300000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", true));
+    Assert.assertNull(agent.handleDropTopic("recycle_topic", true));
+    Assert.assertEquals(
+        defaultInterval, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", true));
+  }
+
+  @Test
+  public void testRecycleIntervalSnapshotPreservesCurrentOverride() {
+    final SubscriptionTopicAgent agent = new SubscriptionTopicAgent();
+    final TopicMeta topicMeta = spy(createRecycleTopicMeta(false, "0"));
+    Assert.assertNull(agent.handleSingleTopicMetaChanges(topicMeta));
+    doAnswer(
+            invocation -> {
+              Assert.assertEquals(
+                  0L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+              return invocation.callRealMethod();
+            })
+        .when(topicMeta)
+        .getConfig();
+
+    Assert.assertNull(agent.handleTopicMetaChanges(List.of(topicMeta)));
+  }
+
+  @Test
+  public void testRecycleIntervalSnapshotRemovesAbsentOverride() {
+    final SubscriptionTopicAgent agent = new SubscriptionTopicAgent();
+    final long defaultInterval =
+        SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+    Assert.assertNull(
+        agent.handleTopicMetaChanges(
+            List.of(
+                createRecycleTopicMeta(false, "1200000"), createRecycleTopicMeta(true, "300000"))));
+    Assert.assertNull(agent.handleTopicMetaChanges(List.of(createRecycleTopicMeta(true, null))));
+
+    Assert.assertEquals(
+        defaultInterval, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+    Assert.assertEquals(
+        defaultInterval, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", true));
+  }
+
+  @Test
+  public void testInvalidSnapshotPreservesExistingRecycleInterval() {
+    final SubscriptionTopicAgent agent = new SubscriptionTopicAgent();
+    Assert.assertNull(agent.handleSingleTopicMetaChanges(createRecycleTopicMeta(false, "1200000")));
+    Assert.assertNotNull(
+        agent.handleTopicMetaChanges(List.of(createRecycleTopicMeta(false, "invalid"))));
+    Assert.assertEquals(
+        1200000L, agent.getTopicRecycleUncommittedEventIntervalMs("recycle_topic", false));
+  }
+
+  private static TopicMeta createRecycleTopicMeta(
+      final boolean tableModel, final String intervalMs) {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(
+        SystemConstant.SQL_DIALECT_KEY,
+        tableModel
+            ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+            : SystemConstant.SQL_DIALECT_TREE_VALUE);
+    if (intervalMs != null) {
+      attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, intervalMs);
+    }
+    return new TopicMeta("recycle_topic", 1L, attributes);
+  }
 
   @Test
   public void testColumnFilterRefreshSkippedForOwnerOnlyUpdate() {

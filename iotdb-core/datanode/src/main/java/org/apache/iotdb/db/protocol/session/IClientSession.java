@@ -165,6 +165,9 @@ public abstract class IClientSession {
   public abstract void addQueryId(Long statementId, long queryId);
 
   // statementId could be null
+  public abstract boolean containsQueryId(Long statementId, long queryId);
+
+  // statementId could be null
   public abstract void removeQueryId(Long statementId, Long queryId);
 
   public SqlDialect getSqlDialect() {

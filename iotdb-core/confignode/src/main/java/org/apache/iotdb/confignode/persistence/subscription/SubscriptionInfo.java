@@ -111,6 +111,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.TAG_FILTER_KEY,
           TopicConstant.RETENTION_BYTES_KEY,
           TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
           TopicConstant.START_TIME_KEY,
           TopicConstant.END_TIME_KEY,
           TopicConstant.MODE_KEY,
@@ -133,6 +135,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.TAG_FILTER_KEY,
           TopicConstant.RETENTION_BYTES_KEY,
           TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
           TopicConstant.MODE_KEY,
           TopicConstant.ORDER_MODE_KEY,
           TopicConstant.FORMAT_KEY,
@@ -407,6 +411,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     validateColumnFilter(topicConfig);
     validateTagFilter(topicConfig);
     validateIncrementalTopicRetentionConfig(topicConfig);
+    validateRecycleUncommittedEventInterval(topicConfig);
 
     final Long ownerLeaseDurationMs =
         topicConfig.getLong(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
@@ -621,10 +626,37 @@ public class SubscriptionInfo implements SnapshotProcessor {
     return topicConfig.isIncrementalMode();
   }
 
+  private void validateRecycleUncommittedEventInterval(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    try {
+      topicConfig.getRecycleUncommittedEventIntervalMs();
+      return;
+    } catch (final NumberFormatException ignored) {
+      // Non-positive values disable automatic recycling; only malformed values are rejected.
+    }
+    final String exceptionMessage =
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2,
+            TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
+            topicConfig.getAttribute().entrySet().stream()
+                .filter(
+                    entry ->
+                        TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY.equalsIgnoreCase(
+                            entry.getKey()))
+                .map(entry -> String.valueOf(entry.getValue()))
+                .findFirst()
+                .orElse(""));
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
+  }
+
   private void validateIncrementalTopicRetentionConfig(final TopicConfig topicConfig)
       throws SubscriptionException {
-    if (!topicConfig.hasAttribute(TopicConstant.RETENTION_BYTES_KEY)
-        && !topicConfig.hasAttribute(TopicConstant.RETENTION_MS_KEY)) {
+    if (!hasTopicAttributeIgnoreCase(topicConfig, TopicConstant.RETENTION_BYTES_KEY)
+        && !hasTopicAttributeIgnoreCase(topicConfig, TopicConstant.RETENTION_MS_KEY)
+        && !hasTopicAttributeIgnoreCase(
+            topicConfig, TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY)) {
       return;
     }
 
@@ -632,24 +664,48 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages
-                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E,
-              TopicConstant.RETENTION_BYTES_KEY,
-              TopicConstant.RETENTION_MS_KEY);
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ATTRIBUTES_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_55CB0BF2,
+              List.of(
+                  TopicConstant.RETENTION_BYTES_KEY,
+                  TopicConstant.RETENTION_MS_KEY,
+                  TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY));
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
 
     validateRetentionValue(topicConfig, TopicConstant.RETENTION_BYTES_KEY);
     validateRetentionValue(topicConfig, TopicConstant.RETENTION_MS_KEY);
+    validateRetainProgressAfterUnsubscribe(topicConfig);
+  }
+
+  private void validateRetainProgressAfterUnsubscribe(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    if (!hasTopicAttributeIgnoreCase(
+        topicConfig, TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY)) {
+      return;
+    }
+    final String value =
+        getTopicAttributeIgnoreCase(
+            topicConfig, TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY);
+    if (Objects.isNull(value)
+        || (!Boolean.TRUE.toString().equalsIgnoreCase(value.trim())
+            && !Boolean.FALSE.toString().equalsIgnoreCase(value.trim()))) {
+      throw new SubscriptionException(
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_TRUE_OR_FALSE_855A6926,
+              TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+              value));
+    }
   }
 
   private void validateRetentionValue(final TopicConfig topicConfig, final String key)
       throws SubscriptionException {
-    if (!topicConfig.hasAttribute(key)) {
+    if (!hasTopicAttributeIgnoreCase(topicConfig, key)) {
       return;
     }
 
-    final String rawValue = topicConfig.getAttribute().get(key);
+    final String rawValue = getTopicAttributeIgnoreCase(topicConfig, key);
     try {
       final long parsedValue = Long.parseLong(rawValue);
       if (parsedValue == 0 || parsedValue < -1) {
@@ -671,6 +727,23 @@ public class SubscriptionInfo implements SnapshotProcessor {
       LOGGER.warn(e.getMessage());
       throw e;
     }
+  }
+
+  private static boolean hasTopicAttributeIgnoreCase(
+      final TopicConfig topicConfig, final String expectedKey) {
+    return topicConfig.getAttribute().keySet().stream()
+        .filter(Objects::nonNull)
+        .anyMatch(expectedKey::equalsIgnoreCase);
+  }
+
+  private static String getTopicAttributeIgnoreCase(
+      final TopicConfig topicConfig, final String expectedKey) {
+    return topicConfig.getAttribute().entrySet().stream()
+        .filter(entry -> Objects.nonNull(entry.getKey()))
+        .filter(entry -> expectedKey.equalsIgnoreCase(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
   }
 
   private void validateUnsupportedHotUpdatedTopicConfig(
@@ -702,8 +775,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final String... retentionKeys)
       throws SubscriptionException {
     for (final String retentionKey : retentionKeys) {
-      final String existedValue = existedConfig.getAttribute().get(retentionKey);
-      final String updatedValue = updatedConfig.getAttribute().get(retentionKey);
+      final String existedValue = getTopicAttributeIgnoreCase(existedConfig, retentionKey);
+      final String updatedValue = getTopicAttributeIgnoreCase(updatedConfig, retentionKey);
       if (!Objects.equals(existedValue, updatedValue)) {
         final String exceptionMessage =
             String.format(
@@ -874,13 +947,27 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private TSStatus alterTopicInternal(final AlterTopicPlan plan) {
     final boolean isTableModel = plan.getTopicMeta().visibleUnderTableModel();
+    final TopicMeta oldTopicMeta =
+        topicMetaKeeper.getTopicMeta(plan.getTopicMeta().getTopicName(), isTableModel);
     try {
-      TopicMeta.validateOwnerProgression(
-          topicMetaKeeper.getTopicMeta(plan.getTopicMeta().getTopicName(), isTableModel),
-          plan.getTopicMeta());
+      TopicMeta.validateOwnerProgression(oldTopicMeta, plan.getTopicMeta());
     } catch (final IllegalArgumentException e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_CONFLICT.getStatusCode())
           .setMessage(e.getMessage());
+    }
+
+    if (Objects.nonNull(oldTopicMeta)
+        && oldTopicMeta.getConfig().isProgressRetainedAfterUnsubscribe()
+        && !plan.getTopicMeta().getConfig().isProgressRetainedAfterUnsubscribe()) {
+      for (final ConsumerGroupMeta consumerGroupMeta :
+          consumerGroupMetaKeeper.getAllConsumerGroupMeta()) {
+        if (consumerGroupMeta.visibleUnder(isTableModel)
+            && !consumerGroupMeta.isTopicSubscribedByConsumerGroup(
+                plan.getTopicMeta().getTopicName())) {
+          commitProgressKeeper.removeTopicProgress(
+              consumerGroupMeta.getConsumerGroupId(), plan.getTopicMeta().getTopicName());
+        }
+      }
     }
 
     topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName(), isTableModel);
@@ -916,6 +1003,13 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus dropTopic(DropTopicPlan plan) {
     acquireWriteLock();
     try {
+      for (final ConsumerGroupMeta consumerGroupMeta :
+          consumerGroupMetaKeeper.getAllConsumerGroupMeta()) {
+        if (!plan.isTableModelSet() || consumerGroupMeta.visibleUnder(plan.isTableModel())) {
+          commitProgressKeeper.removeTopicProgress(
+              consumerGroupMeta.getConsumerGroupId(), plan.getTopicName());
+        }
+      }
       if (plan.isTableModelSet()) {
         topicMetaKeeper.removeTopicMeta(plan.getTopicName(), plan.isTableModel());
       } else {
@@ -1089,10 +1183,21 @@ public class SubscriptionInfo implements SnapshotProcessor {
                 ? consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId)
                 : null;
         if (Objects.nonNull(currentConsumerGroupMeta)) {
-          ConsumerGroupMeta.getTopicsUnsubByGroup(currentConsumerGroupMeta, consumerGroupMeta)
-              .forEach(
-                  topicName ->
-                      commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName));
+          if (consumerGroupMeta.isEmpty()) {
+            commitProgressKeeper.removeConsumerGroupProgress(consumerGroupId);
+          } else {
+            ConsumerGroupMeta.getTopicsUnsubByGroup(currentConsumerGroupMeta, consumerGroupMeta)
+                .forEach(
+                    topicName -> {
+                      final TopicMeta topicMeta =
+                          topicMetaKeeper.getTopicMeta(
+                              topicName, currentConsumerGroupMeta.visibleUnder(true));
+                      if (Objects.isNull(topicMeta)
+                          || !topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
+                        commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName);
+                      }
+                    });
+          }
         }
         consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
         if (!consumerGroupMeta.isEmpty()) {
@@ -1181,12 +1286,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
         throw new SubscriptionException(exceptionMessage);
       }
 
-      // 2.2. check username
+      // 2.2. check consumer membership
       if (!consumerGroupMeta.allowSubscribeTopicForConsumer(topicName, consumerId)) {
         final String exceptionMessage =
             String.format(
-                "Failed to subscribe topic %s for consumer %s because inconsistent username under the same consumer group",
-                topicName, consumerId);
+                ManagerMessages
+                    .EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12,
+                topicName,
+                consumerId);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }

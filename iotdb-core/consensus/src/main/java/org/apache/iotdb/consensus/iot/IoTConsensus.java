@@ -117,6 +117,12 @@ public class IoTConsensus implements IConsensus {
   public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onNewPeerCreated;
 
   /**
+   * Optional callback invoked after a recovered local peer is constructed and before it starts.
+   * Used by the subscription system to restore WAL-retention guards before WAL cleanup is enabled.
+   */
+  public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onPeerRecovering;
+
+  /**
    * Optional callback invoked before a local peer is deleted via {@link #deleteLocalPeer}. Used by
    * the subscription system to unbind and clean up prefetching queues before the region is removed.
    */
@@ -244,7 +250,14 @@ public class IoTConsensus implements IConsensus {
               consensusGroupId ->
                   resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
     }
-    stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
+    stateMachineMap.forEach(
+        (consensusGroupId, consensus) -> {
+          final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onPeerRecovering;
+          if (callback != null) {
+            callback.accept(consensusGroupId, consensus);
+          }
+          consensus.start();
+        });
   }
 
   @Override

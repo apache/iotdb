@@ -19,6 +19,7 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
@@ -28,6 +29,9 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -59,6 +63,21 @@ public class DataMigrationExample {
   private static SessionPool writerPool;
   // concurrent thread of loading timeseries data
   private static final int CONCURRENCY = 5;
+
+  private static final TypeService<ColumnValueGetter> COLUMN_VALUE_GETTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> DataIterator::getBoolean;
+            case INT32 -> DataIterator::getInt;
+            case INT64, TIMESTAMP -> DataIterator::getLong;
+            case FLOAT -> DataIterator::getFloat;
+            case DOUBLE -> DataIterator::getDouble;
+            case TEXT, STRING -> DataIterator::getString;
+            case DATE, BLOB, OBJECT -> DataIterator::getObject;
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                    String.format(QueryMessages.UNSUPPORTED_DATA_TYPE, type.getTypeEnum()));
+          };
 
   public static void main(String[] args)
       throws IoTDBConnectionException,
@@ -148,41 +167,11 @@ public class DataMigrationExample {
               tablet.addValue(schemaList.get(j).getMeasurementName(), row, null);
               continue;
             }
-            switch (schemaList.get(j).getType()) {
-              case BOOLEAN:
-                tablet.addValue(
-                    schemaList.get(j).getMeasurementName(), row, dataIter.getBoolean(j + 2));
-                break;
-              case INT32:
-                tablet.addValue(
-                    schemaList.get(j).getMeasurementName(), row, dataIter.getInt(j + 2));
-                break;
-              case INT64:
-              case TIMESTAMP:
-                tablet.addValue(
-                    schemaList.get(j).getMeasurementName(), row, dataIter.getLong(j + 2));
-                break;
-              case FLOAT:
-                tablet.addValue(
-                    schemaList.get(j).getMeasurementName(), row, dataIter.getFloat(j + 2));
-                break;
-              case DOUBLE:
-                tablet.addValue(
-                    schemaList.get(j).getMeasurementName(), row, dataIter.getDouble(j + 2));
-                break;
-              case TEXT:
-              case STRING:
-                tablet.addValue(
-                    schemaList.get(j).getMeasurementName(), row, dataIter.getString(j + 2));
-                break;
-              case DATE:
-              case BLOB:
-                tablet.addValue(
-                    schemaList.get(j).getMeasurementName(), row, dataIter.getObject(j + 2));
-                break;
-              default:
-                LOGGER.info("Migration of this type of data is not supported");
-            }
+            Object value =
+                COLUMN_VALUE_GETTER_SERVICE
+                    .call(Type.fromTsDataType(schemaList.get(j).getType()))
+                    .get(dataIter, j + 2);
+            tablet.addValue(schemaList.get(j).getMeasurementName(), row, value);
           }
           if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
             writerPool.insertTablet(tablet, true);
@@ -209,5 +198,10 @@ public class DataMigrationExample {
       LOGGER.info("Loading the {}-th device: {}  success", i, device);
       return null;
     }
+  }
+
+  @FunctionalInterface
+  private interface ColumnValueGetter {
+    Object get(DataIterator dataIterator, int index) throws StatementExecutionException;
   }
 }

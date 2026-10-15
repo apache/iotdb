@@ -136,6 +136,14 @@ public class TopicConfig extends PipeParameters {
     return TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(getMode());
   }
 
+  public boolean isProgressRetainedAfterUnsubscribe() {
+    return Boolean.parseBoolean(
+        getStringIgnoreCase(
+                TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_DEFAULT_VALUE)
+            .trim());
+  }
+
   /**
    * @deprecated Use {@link #isInitialMode()}.
    */
@@ -180,6 +188,17 @@ public class TopicConfig extends PipeParameters {
 
   public static boolean isValidOrderMode(final String orderMode) {
     return ORDER_MODE_VALUE_SET.contains(normalizeOrderMode(orderMode));
+  }
+
+  /**
+   * Returns the topic's recycle timeout in milliseconds, or null to use the server config. A zero
+   * or negative timeout disables automatic recycling of uncommitted events.
+   */
+  public Long getRecycleUncommittedEventIntervalMs() {
+    return containsKeyIgnoreCase(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY)
+        ? Long.parseLong(
+            getStringIgnoreCase(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "").trim())
+        : null;
   }
 
   public static String normalizeOrderMode(final String orderMode) {

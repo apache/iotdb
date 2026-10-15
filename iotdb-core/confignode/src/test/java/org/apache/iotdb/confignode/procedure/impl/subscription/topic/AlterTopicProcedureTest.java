@@ -127,7 +127,8 @@ public class AlterTopicProcedureTest {
     requestAttributes.put("TAG-FILTER", "region = \"south\"");
     final AlterTopicProcedure procedure =
         new AlterTopicProcedure(
-            subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(topicName, requestAttributes),
+            subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(
+                topicName, requestAttributes, true),
             requestAttributes,
             new AtomicReference<>(subscriptionInfo));
 

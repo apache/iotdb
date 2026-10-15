@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
@@ -99,7 +100,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
   @Test
   public void testShowReceiversWithStoppedDataNode() throws Exception {
-    Assert.assertTrue(env.getDataNodeWrapperList().size() >= 3);
+    ensureDataNodeCount(3);
     createWriteBackPipe("root.show_receivers_ha", "show_receivers_ha_pipe");
 
     assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, "show_receivers_ha_pipe");
@@ -115,7 +116,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
     env.shutdownDataNode(stoppedDataNodeIndex);
     env.ensureNodeStatus(
-        Collections.singletonList(stoppedDataNode), Collections.singletonList(NodeStatus.Unknown));
+        Collections.singletonList(stoppedDataNode),
+        Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
 
     assertShowReceiversWithoutDataNode(
         "show receivers", BaseEnv.TREE_SQL_DIALECT, queryDataNode, stoppedDataNodeId);
@@ -227,7 +229,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
   @Test
   public void testReceiverRuntimeClearedAfterDataNodeRestartAndCanReconnect() throws Exception {
-    Assert.assertTrue(env.getDataNodeWrapperList().size() >= 2);
+    ensureDataNodeCount(2);
     final int restartedDataNodeIndex = 0;
     final DataNodeWrapper restartedDataNode = env.getDataNodeWrapper(restartedDataNodeIndex);
     final int restartedDataNodeId = getDataNodeId(restartedDataNode);
@@ -245,7 +247,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
     env.ensureNodeStatus(
         Collections.singletonList(restartedDataNode),
-        Collections.singletonList(NodeStatus.Unknown));
+        Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
     assertNoThriftReceiverRuntimeOnDataNode(
         "show receivers", BaseEnv.TREE_SQL_DIALECT, restartedDataNodeId);
 
@@ -648,6 +650,12 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       }
     }
     throw new AssertionError("Cannot find DataNodeId for " + targetDataNode.getIpAndPortString());
+  }
+
+  private void ensureDataNodeCount(final int dataNodeCount) {
+    while (env.getDataNodeWrapperList().size() < dataNodeCount) {
+      env.registerNewDataNode(true);
+    }
   }
 
   private static String getString(

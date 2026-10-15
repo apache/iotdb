@@ -74,7 +74,8 @@ public class PropertiesTest {
     final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
     final IoTDBConfig config = descriptor.getConfig();
     final int originalFrameSize = config.getThriftMaxFrameSize();
-    final long originalBatchSize = config.getTableQueryDeviceEntryBatchSizeInBytes();
+    final long originalBatchSize =
+        descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
 
     try {
       final TrimProperties properties = new TrimProperties();
@@ -83,7 +84,8 @@ public class PropertiesTest {
       descriptor.loadProperties(properties);
 
       Assert.assertEquals(4096, config.getThriftMaxFrameSize());
-      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          3072, descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes());
       Assert.assertEquals(
           "3072",
           ConfigurationFileUtils.getAppliedProperties()
@@ -102,7 +104,8 @@ public class PropertiesTest {
     final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
     final IoTDBConfig config = descriptor.getConfig();
     final int originalFrameSize = config.getThriftMaxFrameSize();
-    final long originalBatchSize = config.getTableQueryDeviceEntryBatchSizeInBytes();
+    final long originalBatchSize =
+        descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
 
     try {
       config.setThriftMaxFrameSize(4096);
@@ -110,7 +113,8 @@ public class PropertiesTest {
       properties.setProperty("table_query_device_entry_batch_size_in_bytes", "4096");
       descriptor.loadHotModifiedProps(properties);
 
-      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          3072, descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes());
       Assert.assertEquals(
           "3072",
           ConfigurationFileUtils.getAppliedProperties()
@@ -118,7 +122,8 @@ public class PropertiesTest {
 
       properties.setProperty("table_query_device_entry_batch_size_in_bytes", "512");
       descriptor.loadHotModifiedProps(properties);
-      Assert.assertEquals(512, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          512, descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes());
     } finally {
       config.setThriftMaxFrameSize(originalFrameSize);
       final TrimProperties properties = new TrimProperties();
@@ -287,6 +292,34 @@ public class PropertiesTest {
       restConfig.setRestServicePort(originalRestServicePort);
       restConfig.setEnableHttps(originalEnableHttps);
       IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
+    }
+  }
+
+  @Test
+  public void testMppDataExchangeMaxPayloadSizeHotReload() throws Exception {
+    IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    int originalPayloadSize = descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes();
+    try {
+      TrimProperties properties = new TrimProperties();
+
+      properties.setProperty("mpp_data_exchange_max_payload_size_in_bytes", "0");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          4 * 1024 * 1024, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+
+      properties.setProperty("mpp_data_exchange_max_payload_size_in_bytes", "1");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          128 * 1024, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+
+      int maximumPayloadSize = descriptor.getConfig().getThriftMaxFrameSize() - 1024;
+      properties.setProperty(
+          "mpp_data_exchange_max_payload_size_in_bytes", Integer.toString(Integer.MAX_VALUE));
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          maximumPayloadSize, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+    } finally {
+      descriptor.getConfig().setMppDataExchangeMaxPayloadSizeInBytes(originalPayloadSize);
     }
   }
 

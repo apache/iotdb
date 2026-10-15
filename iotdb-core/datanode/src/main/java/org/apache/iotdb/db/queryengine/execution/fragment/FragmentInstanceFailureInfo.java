@@ -166,8 +166,6 @@ public class FragmentInstanceFailureInfo implements Serializable {
   public static FragmentInstanceFailureInfo deserialize(ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
     FragmentInstanceFailureInfo cause;
-    List<FragmentInstanceFailureInfo> suppressed = new ArrayList<>();
-    List<String> stack = new ArrayList<>();
     int flag = ReadWriteIOUtils.readInt(byteBuffer);
     if (flag == 0) {
       cause = null;
@@ -175,10 +173,12 @@ public class FragmentInstanceFailureInfo implements Serializable {
       cause = deserialize(byteBuffer);
     }
     int suppressedSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<FragmentInstanceFailureInfo> suppressed = new ArrayList<>(suppressedSize);
     for (int i = 0; i < suppressedSize; i++) {
       suppressed.add(deserialize(byteBuffer));
     }
     int stackSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> stack = new ArrayList<>(stackSize);
     for (int i = 0; i < stackSize; i++) {
       stack.add(ReadWriteIOUtils.readString(byteBuffer));
     }

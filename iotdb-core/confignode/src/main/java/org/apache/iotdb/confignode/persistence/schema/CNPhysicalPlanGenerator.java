@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor;
+import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor.ExtraSegmentType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -203,6 +205,20 @@ public class CNPhysicalPlanGenerator
     try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int tag = dataInputStream.readInt();
+      // Refuse to parse a profile written by a newer version. Older versions used to silently
+      // misread the extra fields of an unknown version, so fail loudly instead of corrupting the
+      // privileges.
+      if (tag > LocalFileRoleAccessor.VERSION) {
+        final String message =
+            String.format(
+                ManagerMessages
+                    .LOG_UNSUPPORTED_USER_ROLE_PROFILE_VERSION_ARG_THIS_NODE_SUPPORTS_UP_TO_ARG_2ABBF4FA,
+                tag,
+                LocalFileRoleAccessor.VERSION);
+        logger.error(message);
+        latestException = new IOException(message);
+        return;
+      }
       String user;
       if (tag < 0) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
@@ -224,7 +240,7 @@ public class CNPhysicalPlanGenerator
         createUser.setPermissions(new HashSet<>());
         createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
-        if (tag == 2) {
+        if (tag >= 2) {
           final AuthorTreePlan updateUserMaxSession =
               new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMaxSession);
           updateUserMaxSession.setMaxSessionPerUser(dataInputStream.readInt());
@@ -296,6 +312,10 @@ public class CNPhysicalPlanGenerator
           }
         }
       }
+
+      if (tag >= 3) {
+        generateExtraSegmentPhysicalPlans(dataInputStream, user, isUser);
+      }
     } catch (IOException ioException) {
       logger.error(
           ManagerMessages.LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759,
@@ -304,6 +324,32 @@ public class CNPhysicalPlanGenerator
       latestException = ioException;
     } finally {
       strBufferLocal.remove();
+    }
+  }
+
+  /**
+   * Reads the extra segment region appended after the RBAC privileges of a user/role profile file.
+   * Each segment is encoded as {@code [type: int32][length: int32][payload: bytes]} and dispatched
+   * by its type. No extra segment types are handled in this branch, so every payload is ignored,
+   * while segments of unknown types written by newer versions stay forward compatible.
+   */
+  private void generateExtraSegmentPhysicalPlans(
+      final DataInputStream dataInputStream, final String granteeName, final boolean isUser)
+      throws IOException {
+    final int extraSegmentCount = dataInputStream.readInt();
+    for (int i = 0; i < extraSegmentCount; i++) {
+      final ExtraSegmentType segmentType = ExtraSegmentType.fromType(dataInputStream.readInt());
+      final int length = dataInputStream.readInt();
+      final byte[] segmentData = new byte[length];
+      dataInputStream.readFully(segmentData);
+      if (segmentType == null) {
+        continue;
+      }
+      switch (segmentType) {
+        default:
+          // No extra segment types are handled in this branch.
+          break;
+      }
     }
   }
 

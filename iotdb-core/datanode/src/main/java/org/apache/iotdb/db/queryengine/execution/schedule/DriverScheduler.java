@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
@@ -394,7 +395,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
           try {
             task.getDriver().failed(task.getAbortCause().get());
           } catch (Exception e) {
-            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
+            if (!CommonDescriptor.getInstance().getConfig().isStopping()) {
+              logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
+            }
           }
         }
         if (task.getStatus() == DriverTaskStatus.ABORTED) {
@@ -405,7 +408,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     task.getDriverTaskId().getFragmentId().getId(),
                     task.getDriverTaskId().getFragmentInstanceId().getInstanceId()));
           } catch (Exception e) {
-            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
+            if (!CommonDescriptor.getInstance().getConfig().isStopping()) {
+              logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
+            }
           }
         }
       } finally {
