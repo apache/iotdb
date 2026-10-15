@@ -164,8 +164,12 @@ public abstract class ColumnTransformer {
   }
 
   /**
-   * Clears cached results in this subgraph. Subclasses should define child edges via {@link
-   * #forEachChild(Consumer)} instead of overriding this method.
+   * Clears ordinary column caches in this subgraph. Input-specific retained results, such as DIFF's
+   * complete result, remain valid so another request for the same input cannot advance state again.
+   * This method does not mark a new input: before replacing leaf inputs, call {@link
+   * #clearCacheForNewInput()} on every node collected by {@link #collectTransformers(Iterable)}.
+   * Subclasses should define child edges via {@link #forEachChild(Consumer)} instead of overriding
+   * this method.
    *
    * <p>Kept non-final so existing Mockito-based tests can stub it.
    */

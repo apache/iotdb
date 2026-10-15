@@ -851,4 +851,58 @@ public class IoTDBCaseWhenThenTableIT {
         },
         DATABASE);
   }
+
+  @Test
+  public void testDynamicIgnoreNullDiffAcrossCaseFilterAndProjection() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_dynamic_diff "
+              + "(dev STRING TAG, x DOUBLE FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(1, 'd0', 1.0, true), (2, 'd0', 3.0, false), (3, 'd0', null, true), "
+              + "(4, 'd0', 10.0, null), (5, 'd0', null, false)",
+          "FLUSH",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(6, 'd0', 20.0, true), (7, 'd0', 25.0, false), "
+              + "(8, 'd0', null, true), (9, 'd0', 30.0, true)",
+          "FLUSH"
+        });
+    String diff = "diff(x, ignore_null)";
+    tableResultSetEqualTest(
+        "SELECT " + diff + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "null,", "7.0,", "null,", "null,", "5.0,", "null,", "5.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 5 THEN "
+            + diff
+            + " ELSE 100.0 END AS a, CASE WHEN x > 5 THEN 200.0 ELSE "
+            + diff
+            + " END AS b, "
+            + diff
+            + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"a", "b", "d"},
+        new String[] {
+          "100.0,null,null,",
+          "100.0,2.0,2.0,",
+          "100.0,null,null,",
+          "7.0,200.0,7.0,",
+          "100.0,null,null,",
+          "null,200.0,null,",
+          "5.0,200.0,5.0,",
+          "100.0,null,null,",
+          "5.0,200.0,5.0,"
+        },
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT "
+            + diff
+            + " AS d FROM case_dynamic_diff WHERE CASE WHEN x IS NULL THEN false WHEN "
+            + diff
+            + " > 1.0 THEN true ELSE false END ORDER BY time",
+        new String[] {"d"},
+        new String[] {"2.0,", "7.0,", "5.0,", "5.0,"},
+        DATABASE);
+  }
 }

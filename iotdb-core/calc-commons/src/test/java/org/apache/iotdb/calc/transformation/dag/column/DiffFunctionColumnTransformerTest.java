@@ -66,6 +66,10 @@ public class DiffFunctionColumnTransformerTest {
         diff.tryEvaluate();
         assertValues(diff.getColumn(), expected[i]);
         assertValues(diff.getColumnWithSelection(mask), expected[i]);
+        // Ordinary cache clearing does not mark the start of a new input.
+        diff.clearCache();
+        diff.tryEvaluate();
+        assertValues(diff.getColumn(), expected[i]);
       }
     }
   }
