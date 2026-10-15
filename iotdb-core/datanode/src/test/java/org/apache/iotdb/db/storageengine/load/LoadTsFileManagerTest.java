@@ -166,16 +166,23 @@ public class LoadTsFileManagerTest {
     final List<LoadTsFileConsensusNode.PieceRef> laterRefs =
         manager.writePiece(uuid, toTsFileDataList(laterChunks));
     assertEquals(1, laterRefs.size());
+    final File staged = new File(tempDir, laterRefs.get(0).getRelativePath());
     manager.writePiece(uuid, toTsFileDataList(earlierChunks));
 
+    // The hole the first piece left is filled: the file is continuous and holds every chunk.
+    final LoadTsFileProgress stagedProgress = new LoadTsFileProgress(staged);
+    assertEquals(deviceCount * measurementCount, stagedProgress.readAllRecords().size());
+    assertTrue(stagedProgress.isReady(staged.length()));
+
     assertTrue(manager.prepare(prepareNode(uuid), Collections.emptyMap()));
+    final long stagedLength = staged.length();
     final LoadTsFileConsensusNode commit = commitNode(uuid);
     commit.setSearchIndex(10L);
     assertTrue(manager.loadAll(commit, Collections.emptyMap()));
 
-    final File staged = new File(tempDir, laterRefs.get(0).getRelativePath());
     final File imported = new File(new File(tempDir, "data"), staged.getName());
     assertTrue("the task must have been imported", imported.isFile());
+    assertEquals("the import carries the file as it was staged", stagedLength, imported.length());
     assertAllSeriesReadable(imported, expectations);
   }
 
@@ -268,7 +275,7 @@ public class LoadTsFileManagerTest {
         (Map<String, TsFileWriterManager>) writersField.get(manager);
     for (final TsFileWriterManager writerManager : writers.values()) {
       final Field partitionsField =
-          TsFileWriterManager.class.getDeclaredField("dataPartition2Writer");
+          TsFileWriterManager.class.getDeclaredField("timePartition2Writer");
       partitionsField.setAccessible(true);
       @SuppressWarnings("unchecked")
       final Map<?, TsFilePrecalculatedChunkWriter> partitionWriters =
@@ -1079,13 +1086,17 @@ public class LoadTsFileManagerTest {
         while (dataSet.hasNext()) {
           final RowRecord row = dataSet.next();
           final org.apache.tsfile.read.common.Field field = row.getField(0);
-          final int value = field.getIntV();
-          if (count == 0) {
-            assertEquals(expectation.firstValue, value);
-          }
-          if (count == expectation.pointCount - 1) {
-            assertEquals(expectation.lastValue, value);
-          }
+          // Every point and not only the ends: a series whose middle was staged somewhere else
+          // would
+          // still have the right count, the right first value and the right last one.
+          assertEquals(
+              "value of point " + count + " of " + expectation.measurement,
+              expectation.firstValue + count,
+              field.getIntV());
+          assertEquals(
+              "time of point " + count + " of " + expectation.measurement,
+              count + 1L,
+              row.getTimestamp());
           count++;
         }
         assertEquals(expectation.pointCount, count);
