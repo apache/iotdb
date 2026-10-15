@@ -713,6 +713,17 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
+  public void wakeUpForTopicConfigChange(final boolean isTableModel) {
+    if (tableModel == isTableModel) {
+      requestPrefetch();
+    }
+  }
+
+  private long getRecycleUncommittedEventIntervalMs() {
+    return SubscriptionAgent.topic()
+        .getTopicRecycleUncommittedEventIntervalMs(topicName, tableModel);
+  }
+
   private void requestPrefetchForRealtimeEntry() {
     if (!hasReachedPrefetchLimit()) {
       requestPrefetch();
@@ -1467,7 +1478,7 @@ public class ConsensusPrefetchingQueue {
           continue;
         }
 
-        if (!event.pollable()) {
+        if (!event.pollable(getRecycleUncommittedEventIntervalMs())) {
           LOGGER.warn(
               DataNodePipeMessages
                   .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLL_NON_POLLABLE_EVENT_BROKEN_E9551325,
@@ -1900,10 +1911,10 @@ public class ConsensusPrefetchingQueue {
     }
 
     if (!inFlightEvents.isEmpty()) {
-      delayMs =
-          Math.min(
-              delayMs,
-              SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
+      final long recycleIntervalMs = getRecycleUncommittedEventIntervalMs();
+      if (recycleIntervalMs > 0L) {
+        delayMs = Math.min(delayMs, recycleIntervalMs);
+      }
     }
 
     return delayMs == Long.MAX_VALUE
@@ -3391,7 +3402,7 @@ public class ConsensusPrefetchingQueue {
               cleanUpEvent(ev, false);
               return null;
             }
-            if (ev.pollable()) {
+            if (ev.pollable(getRecycleUncommittedEventIntervalMs())) {
               ev.nack();
               if (ev.isPoisoned()) {
                 LOGGER.error(
