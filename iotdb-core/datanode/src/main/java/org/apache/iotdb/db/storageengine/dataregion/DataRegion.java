@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -175,6 +176,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -226,6 +228,12 @@ public class DataRegion implements IDataRegionForQuery {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+
+  // Covers a complete IoTConsensus apply, including its WAL separator. Keep this separate from
+  // insertLock so memory backpressure and retry waits do not prevent flushing memtables.
+  private final ReadWriteLock ioTConsensusWriteLock = new ReentrantReadWriteLock();
+  // Accessed only under ioTConsensusWriteLock; stopping a region permanently closes admission.
+  private boolean ioTConsensusWritesStopped;
 
   /** Condition to safely delete data region. */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
@@ -1859,6 +1867,30 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
     }
     WritingMetrics.getInstance().recordTimedFlushMemTableCount(count);
+  }
+
+  public TSStatus executeIoTConsensusWrite(Supplier<TSStatus> write) {
+    ioTConsensusWriteLock.readLock().lock();
+    try {
+      if (ioTConsensusWritesStopped
+          || CommonDescriptor.getInstance().getConfig().isStopping()
+          || CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+        return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+      }
+      return write.get();
+    } finally {
+      ioTConsensusWriteLock.readLock().unlock();
+    }
+  }
+
+  /** Reject new IoTConsensus applies and drain admitted applies before closing storage or WAL. */
+  public void stopIoTConsensusWrites() {
+    ioTConsensusWriteLock.writeLock().lock();
+    try {
+      ioTConsensusWritesStopped = true;
+    } finally {
+      ioTConsensusWriteLock.writeLock().unlock();
+    }
   }
 
   /** This method will be blocked until all tsfile processors are closed. */
