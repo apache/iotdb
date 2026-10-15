@@ -229,14 +229,16 @@ public class TsFileProcessorTest {
               SystemFileFactory.INSTANCE.getFile(filePath),
               sgInfo,
               this::closeTsFileProcessor,
-              (tsFileProcessor, updateMap, systemFlushTime) -> {},
+              (tsFileProcessor, updateMap, systemFlushTime) -> {
+                // Take over flushing after asyncClose's guard, before FlushManager registration.
+                tsFileProcessor.setManagedByFlushManager(true);
+              },
               true);
       processor.setTsFileProcessorInfo(new TsFileProcessorInfo(sgInfo));
       sgInfo.initTsFileProcessorInfo(processor);
       TSRecord record = new TSRecord(deviceId, 1);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
-      processor.setManagedByFlushManager(true);
       processor.asyncClose();
       Assert.assertNull(processor.getWorkMemTable());
 
@@ -312,7 +314,10 @@ public class TsFileProcessorTest {
               SystemFileFactory.INSTANCE.getFile(filePath),
               sgInfo,
               this::closeTsFileProcessor,
-              (tsFileProcessor, updateMap, systemFlushTime) -> {},
+              (tsFileProcessor, updateMap, systemFlushTime) -> {
+                // Take over flushing after asyncClose's guard, before FlushManager registration.
+                tsFileProcessor.setManagedByFlushManager(true);
+              },
               true);
       processor.setTsFileProcessorInfo(new TsFileProcessorInfo(sgInfo));
       sgInfo.initTsFileProcessorInfo(processor);
@@ -331,7 +336,6 @@ public class TsFileProcessorTest {
       logDeletionForTest(tableModel, 2);
 
       // Use the production close path, while keeping flush execution under test control.
-      processor.setManagedByFlushManager(true);
       try {
         processor.asyncClose();
         Assert.assertNull(processor.getWorkMemTable());
