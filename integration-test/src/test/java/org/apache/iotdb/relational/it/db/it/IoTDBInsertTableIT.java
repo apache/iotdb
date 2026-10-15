@@ -401,7 +401,7 @@ public class IoTDBInsertTableIT {
       statement.execute(
           "CREATE TABLE rejected_custom_time_expression "
               + "(device_id STRING TAG, event_time TIMESTAMP TIME, value INT64 FIELD)");
-      String[] expressions = {"?", "1.5", "true"};
+      String[] expressions = {"?", "1.5", "true", "abs(1)"};
       for (String expression : expressions) {
         for (String columns : new String[] {" (time, device_id, value)", ""}) {
           assertUnsupportedInsertExpression(
@@ -453,7 +453,10 @@ public class IoTDBInsertTableIT {
     SQLException exception = assertThrows(SQLException.class, () -> statement.execute(sql));
     assertEquals(sql, TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getErrorCode());
     String message = exception.getMessage();
-    assertTrue(message, message.contains("Unsupported expression:"));
+    assertTrue(
+        message,
+        message.contains("Unsupported expression:")
+            || message.contains("Insert expression must be constant after constant folding:"));
     assertFalse(message, message.contains("ClassCastException"));
     assertFalse(message, message.contains("cannot be cast"));
     assertFalse(message, message.contains("org.apache.iotdb"));
@@ -470,7 +473,6 @@ public class IoTDBInsertTableIT {
         "1735660800000",
         "'2025-01-01T00:00:00+08:00'",
         "1735660799000 + 1000",
-        "abs(-1735660800000)",
         "NOW()",
         "NOW() + 1d",
         "NOW() - 1d"
@@ -497,10 +499,10 @@ public class IoTDBInsertTableIT {
                       + "'")) {
             assertTrue(resultSet.next());
             long timestamp = resultSet.getLong(1);
-            if (i < 4) {
+            if (i < 3) {
               assertEquals(1735660800000L, timestamp);
             } else {
-              long offset = i == 5 ? 86400000L : i == 6 ? -86400000L : 0;
+              long offset = i == 4 ? 86400000L : i == 5 ? -86400000L : 0;
               // Allow clock skew between the test client and cluster nodes.
               assertTrue(timestamp >= before + offset - 10000);
               assertTrue(timestamp <= after + offset + 10000);

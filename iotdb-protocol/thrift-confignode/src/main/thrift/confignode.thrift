@@ -1326,6 +1326,8 @@ struct TDropTableProcedureInfo {
    4: required string state
    5: required string progress
    6: optional string errorMessage
+   7: optional i64 writtenModFileCount
+   8: optional i64 remainingModFileCount
 }
 
 struct TDescTableResp {

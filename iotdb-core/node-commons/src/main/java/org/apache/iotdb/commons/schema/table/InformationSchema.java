@@ -166,6 +166,12 @@ public class InformationSchema {
     dropTableProceduresTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.ERROR_MESSAGE_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.WRITTEN_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.REMAINING_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
     dropTableProceduresTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DROP_TABLE_PROCEDURES, dropTableProceduresTable);
 

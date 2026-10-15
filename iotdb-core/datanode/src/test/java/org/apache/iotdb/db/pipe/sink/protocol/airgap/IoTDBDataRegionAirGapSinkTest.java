@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -40,6 +41,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +51,31 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTDBDataRegionAirGapSinkTest {
+
+  @Test
+  public void testCompletionBarrierRetriesUnacknowledgedBatch() throws Exception {
+    try (final RecordingIoTDBDataRegionAirGapSink sink = new RecordingIoTDBDataRegionAirGapSink()) {
+      final PipeParameters parameters = buildParameters(false);
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY, "1");
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+      sink.prepareSocket();
+
+      final PipeRawTabletInsertionEvent tablet = createPipeRawTabletInsertionEvent("pipe", 1L, 1L);
+      sink.failNextSend = true;
+      Assert.assertThrows(PipeConnectionException.class, () -> sink.transfer(tablet));
+      Assert.assertFalse(tablet.isReleased());
+      Assert.assertEquals(1, sink.getBatchSize());
+
+      sink.transfer(new PipeHeartbeatEvent(1, false, true));
+      Assert.assertEquals(0, sink.getBatchSize());
+      Assert.assertTrue(tablet.isReleased());
+      Assert.assertEquals(2, sink.sentRequests.size());
+      Assert.assertArrayEquals(sink.sentRequests.get(0), sink.sentRequests.get(1));
+    }
+  }
 
   @Test
   public void testTransferTabletBatchOverAirGap() throws Exception {
@@ -162,6 +189,7 @@ public class IoTDBDataRegionAirGapSinkTest {
 
     private final List<byte[]> sentRequests = new ArrayList<>();
     private final AtomicLong rateLimitedBytes = new AtomicLong(0);
+    private boolean failNextSend;
 
     private void prepareSocket() {
       sockets.set(0, new TestingAirGapSocket());
@@ -173,8 +201,12 @@ public class IoTDBDataRegionAirGapSinkTest {
     }
 
     @Override
-    protected boolean sendBytes(final AirGapSocket socket, final byte[] bytes) {
+    protected boolean sendBytes(final AirGapSocket socket, final byte[] bytes) throws IOException {
       sentRequests.add(Arrays.copyOf(bytes, bytes.length));
+      if (failNextSend) {
+        failNextSend = false;
+        throw new IOException("Receiver ACK was lost");
+      }
       return true;
     }
 
