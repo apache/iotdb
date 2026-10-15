@@ -133,6 +133,12 @@ public abstract class ColumnTransformer {
   /** Clears this node only. Call on every collected node before feeding a new input block. */
   public final void clearCacheForNewInput() {
     this.columnCache.clear();
+    resetForNewInput();
+  }
+
+  /** Prepares per-input state while preserving state carried between input blocks. */
+  protected void resetForNewInput() {
+    // Most transformers keep no state outside the ordinary column cache.
   }
 
   /** Collects the DAG once, deduplicating by identity, for allocation-free block resets. */
