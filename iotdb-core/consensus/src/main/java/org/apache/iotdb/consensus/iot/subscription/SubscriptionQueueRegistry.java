@@ -45,6 +45,8 @@ public class SubscriptionQueueRegistry {
       new ConcurrentHashMap<>();
   private final Map<String, SubscriptionQueueRegistration> detachedRetentionRegistrations =
       new ConcurrentHashMap<>();
+  private final Map<String, BlockingQueue<IndexedConsensusRequest>> retentionOwners =
+      new ConcurrentHashMap<>();
   // offer is synchronized, so these counts remain scoped to one reason without extra atomics.
   private final long[] rejectedEntriesByReason =
       new long[SubscriptionQueueRejectionReason.values().length];
@@ -73,12 +75,25 @@ public class SubscriptionQueueRegistry {
       final SubscriptionWalRetentionPolicy retentionPolicy,
       final LongSupplier retainedMinVersionIdSupplier) {
     queues.put(
-        queue, new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier));
+        queue,
+        new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier, null));
+  }
+
+  public synchronized void register(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier retainedMinVersionIdSupplier,
+      final String retentionId) {
+    replaceDetachedRetentionWithQueue(
+        retentionId, queue, retentionPolicy, retainedMinVersionIdSupplier);
   }
 
   // Shares the monitor with offer() so unregister() is a real stop-receiving barrier.
   public synchronized void unregister(final BlockingQueue<IndexedConsensusRequest> queue) {
-    queues.remove(queue);
+    final SubscriptionQueueRegistration registration = queues.remove(queue);
+    if (registration != null && registration.retentionId != null) {
+      retentionOwners.remove(registration.retentionId, queue);
+    }
   }
 
   public synchronized void replaceQueueWithDetachedRetention(
@@ -86,10 +101,18 @@ public class SubscriptionQueueRegistry {
       final String retentionId,
       final SubscriptionWalRetentionPolicy retentionPolicy,
       final LongSupplier retainedMinVersionIdSupplier) {
-    queues.remove(queue);
+    final SubscriptionQueueRegistration registration = queues.remove(queue);
+    // A later unsubscribe cleanup or a new queue may have superseded this asynchronous close.
+    // The old queue must still stop receiving writes, but cannot recreate detached retention.
+    if (registration == null
+        || (registration.retentionId != null
+            && !retentionOwners.remove(registration.retentionId, queue))) {
+      return;
+    }
     detachedRetentionRegistrations.put(
         retentionId,
-        new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier));
+        new SubscriptionQueueRegistration(
+            retentionPolicy, retainedMinVersionIdSupplier, retentionId));
   }
 
   public synchronized void replaceDetachedRetentionWithQueue(
@@ -98,20 +121,26 @@ public class SubscriptionQueueRegistry {
       final SubscriptionWalRetentionPolicy retentionPolicy,
       final LongSupplier retainedMinVersionIdSupplier) {
     detachedRetentionRegistrations.remove(retentionId);
+    retentionOwners.put(retentionId, queue);
     queues.put(
-        queue, new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier));
+        queue,
+        new SubscriptionQueueRegistration(
+            retentionPolicy, retainedMinVersionIdSupplier, retentionId));
   }
 
   public synchronized void registerDetachedRetention(
       final String retentionId,
       final SubscriptionWalRetentionPolicy retentionPolicy,
       final LongSupplier retainedMinVersionIdSupplier) {
+    retentionOwners.remove(retentionId);
     detachedRetentionRegistrations.put(
         retentionId,
-        new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier));
+        new SubscriptionQueueRegistration(
+            retentionPolicy, retainedMinVersionIdSupplier, retentionId));
   }
 
   public synchronized void unregisterDetachedRetention(final String retentionId) {
+    retentionOwners.remove(retentionId);
     detachedRetentionRegistrations.remove(retentionId);
   }
 
@@ -230,12 +259,15 @@ public class SubscriptionQueueRegistry {
 
     private final SubscriptionWalRetentionPolicy retentionPolicy;
     private final LongSupplier retainedMinVersionIdSupplier;
+    private final String retentionId;
 
     private SubscriptionQueueRegistration(
         final SubscriptionWalRetentionPolicy retentionPolicy,
-        final LongSupplier retainedMinVersionIdSupplier) {
+        final LongSupplier retainedMinVersionIdSupplier,
+        final String retentionId) {
       this.retentionPolicy = retentionPolicy;
       this.retainedMinVersionIdSupplier = retainedMinVersionIdSupplier;
+      this.retentionId = retentionId;
     }
   }
 }

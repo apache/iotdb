@@ -952,6 +952,34 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   public static void cleanupRetainedProgressForConsumerGroup(final String consumerGroupId) {
+    cleanupConsumerGroupProgressExceptTopics(consumerGroupId, Collections.emptySet());
+  }
+
+  public static boolean retainConfiguredProgressForConsumerGroup(
+      final String consumerGroupId, final boolean isTableModel) {
+    final Set<String> topicNames = new LinkedHashSet<>();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        ConsensusSubscriptionCommitManager.getInstance().getPersistedStateKeys()) {
+      if (consumerGroupId.equals(stateKey.getConsumerGroupId())) {
+        topicNames.add(stateKey.getTopicName());
+      }
+    }
+    final Set<String> retainedTopicNames = new LinkedHashSet<>();
+    SubscriptionAgent.topic()
+        .getTopicConfigs(topicNames, isTableModel)
+        .forEach(
+            (topicName, topicConfig) -> {
+              if (topicConfig.isIncrementalMode()
+                  && topicConfig.isProgressRetainedAfterUnsubscribe()) {
+                retainedTopicNames.add(topicName);
+              }
+            });
+    cleanupConsumerGroupProgressExceptTopics(consumerGroupId, retainedTopicNames);
+    return !retainedTopicNames.isEmpty();
+  }
+
+  private static void cleanupConsumerGroupProgressExceptTopics(
+      final String consumerGroupId, final Set<String> retainedTopicNames) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     final IoTConsensus ioTConsensus =
         dataRegionConsensus instanceof IoTConsensus ? (IoTConsensus) dataRegionConsensus : null;
@@ -959,7 +987,8 @@ public class ConsensusSubscriptionSetupHandler {
         ConsensusSubscriptionCommitManager.getInstance();
     for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
         commitManager.getPersistedStateKeys()) {
-      if (!consumerGroupId.equals(stateKey.getConsumerGroupId())) {
+      if (!consumerGroupId.equals(stateKey.getConsumerGroupId())
+          || retainedTopicNames.contains(stateKey.getTopicName())) {
         continue;
       }
       final ConsensusGroupId groupId =
@@ -971,8 +1000,11 @@ public class ConsensusSubscriptionSetupHandler {
               consumerGroupId, stateKey.getTopicName(), groupId, serverImpl);
         }
       }
+      commitManager.removeState(consumerGroupId, stateKey.getTopicName(), groupId);
     }
-    commitManager.removeAllStatesForConsumerGroup(consumerGroupId);
+    if (retainedTopicNames.isEmpty()) {
+      commitManager.removeAllStatesForConsumerGroup(consumerGroupId);
+    }
   }
 
   public static void refreshDetachedRetentionsForTopic(

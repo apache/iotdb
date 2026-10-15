@@ -33,6 +33,7 @@ import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueAdmission;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRegistry;
 import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -278,6 +279,76 @@ public class ConsensusPrefetchingQueueTest {
   @Test
   public void testRetainingCloseDetachesBlockedConsensusQueueReplacement() throws Exception {
     assertCloseDetachesBlockedConsensusRegistration(true);
+  }
+
+  @Test
+  public void testRetainingAsyncCloseDoesNotRecreateCancelledWalRetention() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("DataRegion[1]");
+    final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+    when(serverImpl.getConsensusReqReader()).thenReturn(new FakeConsensusReqReader());
+    final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+    when(converter.isTableModel()).thenReturn(true);
+    doAnswer(
+            invocation -> {
+              registry.register(
+                  invocation.getArgument(0),
+                  invocation.getArgument(1),
+                  invocation.getArgument(2),
+                  invocation.getArgument(3));
+              return null;
+            })
+        .when(serverImpl)
+        .registerSubscriptionQueue(any(), any(), any(), any());
+    doAnswer(
+            invocation -> {
+              registry.replaceQueueWithDetachedRetention(
+                  invocation.getArgument(0),
+                  invocation.getArgument(1),
+                  invocation.getArgument(2),
+                  invocation.getArgument(3));
+              return null;
+            })
+        .when(serverImpl)
+        .replaceSubscriptionQueueWithDetachedRetention(any(), any(), any(), any());
+    ConsensusPrefetchingQueue queue = null;
+    ReentrantReadWriteLock queueLock = null;
+    try {
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy("topic", -1L, -1L),
+              converter,
+              newCommitManager(temporaryFolder.newFolder("cancelled-retention")),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      final Field lockField = ConsensusPrefetchingQueue.class.getDeclaredField("lock");
+      lockField.setAccessible(true);
+      queueLock = (ReentrantReadWriteLock) lockField.get(queue);
+      queueLock.readLock().lock();
+      queue.closeAsync(false, true);
+      registry.unregisterDetachedRetention(
+          ConsensusSubscriptionWalRetention.generateRetentionId(
+              "consumerGroup", "topic", new DataRegionId(1)));
+      queueLock.readLock().unlock();
+      awaitCloseFinished(queue);
+      assertTrue(registry.isEmpty());
+    } finally {
+      if (queueLock != null && queueLock.getReadHoldCount() > 0) {
+        queueLock.readLock().unlock();
+      }
+      if (queue != null) {
+        queue.close();
+        awaitCloseFinished(queue);
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
   private void assertCloseDetachesBlockedConsensusRegistration(
@@ -610,7 +681,7 @@ public class ConsensusPrefetchingQueueTest {
                 return null;
               })
           .when(serverImpl)
-          .registerSubscriptionQueue(any(), any(), any());
+          .registerSubscriptionQueue(any(), any(), any(), any());
 
       final ConsensusSubscriptionCommitManager commitManager =
           mock(ConsensusSubscriptionCommitManager.class);
@@ -702,7 +773,7 @@ public class ConsensusPrefetchingQueueTest {
                 return null;
               })
           .when(serverImpl)
-          .registerSubscriptionQueue(any(), any(), any());
+          .registerSubscriptionQueue(any(), any(), any(), any());
 
       final ConsensusSubscriptionCommitManager commitManager =
           mock(ConsensusSubscriptionCommitManager.class);

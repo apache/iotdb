@@ -690,7 +690,11 @@ public class ConsensusPrefetchingQueue {
           this::getRequiredRetainedMinVersionId);
     } else {
       serverImpl.registerSubscriptionQueue(
-          pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
+          pendingEntries,
+          retentionPolicy,
+          this::getRequiredRetainedMinVersionId,
+          ConsensusSubscriptionWalRetention.generateRetentionId(
+              consumerGroupId, topicName, consensusGroupId));
     }
 
     LOGGER.info(
