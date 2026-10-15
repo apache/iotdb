@@ -750,7 +750,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.1.2</version>
                     <configuration>
-                        <argLine>${argLine} -Xmx1024m</argLine>
+                        <argLine>${argLine} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
                         <!-- Force the working directory to be different for each fork, so forks don't trample each other -->
                         <workingDirectory>${project.build.directory}/fork_${surefire.forkNumber}</workingDirectory>
                     </configuration>
@@ -1878,7 +1878,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->
