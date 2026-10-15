@@ -20,6 +20,9 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2 =
+          "创建或修改 topic 失败，%s=%s 无效，需指定以毫秒为单位的 long 值";
 
   public static final String LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_A_CONFIGREGION_FOLLOWER_NEW_LEADER_NODEID_ARG_STOPPING_LEADER_SERVICES_A1962CD2 =
       "[ConfigRegion Update] ConfigNode [nodeId: {}, consensusEndpoint: {}] 为 ConfigRegion follower；新 leader 的 nodeId: {}。开始停止 leader 服务。";

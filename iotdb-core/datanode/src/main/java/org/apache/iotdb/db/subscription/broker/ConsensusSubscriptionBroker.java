@@ -751,6 +751,14 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     closeAndRemoveConsensusPrefetchingQueues(topicName, true, retainProgressAfterUnsubscribe);
   }
 
+  public void wakeUpPrefetchingQueues(final String topicName, final boolean isTableModel) {
+    final List<ConsensusPrefetchingQueue> queues =
+        topicNameToConsensusPrefetchingQueues.get(topicName);
+    if (Objects.nonNull(queues)) {
+      queues.forEach(queue -> queue.wakeUpForTopicConfigChange(isTableModel));
+    }
+  }
+
   @Override
   public void unbind(final String topicName) {
     unbindConsensusPrefetchingQueue(topicName, false);

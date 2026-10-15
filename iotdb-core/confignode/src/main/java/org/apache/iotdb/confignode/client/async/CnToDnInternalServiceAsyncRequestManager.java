@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.GetBuiltInExternalServiceRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.GetDropTableModProgressRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
@@ -78,6 +79,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
@@ -457,6 +459,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.invalidateTableCache(
                 (TInvalidateTableCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.GET_DROP_TABLE_MOD_PROGRESS,
+        (req, client, handler) ->
+            client.getDropTableModProgress(
+                (TGetDropTableModProgressReq) req, (GetDropTableModProgressRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
         (req, client, handler) ->
