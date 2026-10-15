@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
-import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -275,26 +274,29 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   public void setExchangeMemoryLimits(PlanNode plan, MemoryPool memoryPool) {
     // Only remote sources charge this FI's INPUT. Local inputs are owned by the producing FI;
     // internal pipeline queues cannot enable sharing because of the pipeline check below.
-    boolean hasInput =
+    long inputExchangeCount =
         exchangeOperatorList.stream()
-            .anyMatch(exchange -> exchange.getSourceHandle() instanceof SourceHandle);
-    boolean hasOutput = !legacySinkLimits.isEmpty();
+            .filter(exchange -> exchange.getSourceHandle() instanceof SourceHandle)
+            .count();
+    int outputSinkCount = legacySinkLimits.size();
     long inputMaxBytes =
-        MemorySide.INPUT.getMaxBytes(fragmentExchangeMaxBytes, hasInput, hasOutput);
-    long outputMaxBytes =
-        MemorySide.OUTPUT.getMaxBytes(fragmentExchangeMaxBytes, hasInput, hasOutput);
+        inputExchangeCount == 0
+            ? 0
+            : (outputSinkCount == 0 ? fragmentExchangeMaxBytes : fragmentExchangeMaxBytes / 2);
+    long outputMaxBytes = outputSinkCount == 0 ? 0 : fragmentExchangeMaxBytes - inputMaxBytes;
     long maxBlockBytes = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     boolean sharedBudget =
-        (hasInput || hasOutput)
+        (inputMaxBytes > 0 || outputMaxBytes > 0)
             && SharedExchangeMemoryEligibility.isEligible(plan)
             // Internal pipeline queues and their downstream sinks must not compete for OUTPUT.
             && pipelineDriverFactories.size() == 1
             && pipelineDriverFactories.get(0).getDependencyPipelineIndex() == -1
-            && (!hasInput || inputMaxBytes >= maxBlockBytes)
-            && (!hasOutput || outputMaxBytes >= maxBlockBytes);
+            && (inputExchangeCount == 0 || inputMaxBytes >= maxBlockBytes)
+            && (outputSinkCount == 0 || outputMaxBytes >= maxBlockBytes);
     if (sharedBudget) {
       FragmentInstanceId id = getFragmentInstanceId();
-      memoryPool.registerFragmentInstanceSharedBudget(id.getQueryId().getId(), id.getFullId());
+      memoryPool.registerFragmentInstanceSharedBudget(
+          id.getQueryId().getId(), id.getFullId(), inputMaxBytes, outputMaxBytes);
     }
     legacySinkLimits.forEach(
         (sink, legacyLimit) ->

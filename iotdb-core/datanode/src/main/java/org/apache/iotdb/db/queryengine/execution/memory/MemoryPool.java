@@ -59,8 +59,8 @@ public class MemoryPool {
 
     /**
      * MemoryReservationFuture is created when an exchange handle tries to reserve memory from the
-     * pool. For opted-in fragments the limit is shared by all plan nodes on the same side;
-     * otherwise it applies independently to the plan node.
+     * pool. This is the per-plan-node limit for legacy fragments. Shared fragments always use their
+     * initialized FI-side limit, including when retrying a pending reservation.
      */
     private final long maxBytesCanReserve;
 
@@ -176,6 +176,14 @@ public class MemoryPool {
     private final AtomicLong outputUsedBytes = new AtomicLong();
     // Set by local planning before this FI starts reserving exchange memory.
     private boolean sharedBudget;
+    private long inputMaxBytes;
+    private long outputMaxBytes;
+
+    private long getMaxBytesCanReserve(PlanNodeReservation reservation, long legacyLimit) {
+      return sharedBudget
+          ? (reservation.side == MemorySide.INPUT ? inputMaxBytes : outputMaxBytes)
+          : legacyLimit;
+    }
 
     private AtomicLong getUsedBytes(MemorySide side) {
       return side == MemorySide.INPUT ? inputUsedBytes : outputUsedBytes;
@@ -256,14 +264,20 @@ public class MemoryPool {
     }
   }
 
-  /** Opt in only after the complete FI has been checked for input and pipeline dependencies. */
-  public void registerFragmentInstanceSharedBudget(String queryId, String fragmentInstanceId) {
+  /**
+   * Initialize once after the complete FI has been checked for input and pipeline dependencies,
+   * before any driver starts reserving exchange memory. An unused direction has a zero budget.
+   */
+  public void registerFragmentInstanceSharedBudget(
+      String queryId, String fragmentInstanceId, long inputMaxBytes, long outputMaxBytes) {
     synchronized (queryMemoryReservations) {
       FragmentMemoryReservation fragment =
           queryMemoryReservations
               .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
               .computeIfAbsent(fragmentInstanceId, x -> new FragmentMemoryReservation());
       synchronized (fragment) {
+        fragment.inputMaxBytes = inputMaxBytes;
+        fragment.outputMaxBytes = outputMaxBytes;
         fragment.sharedBudget = true;
       }
     }
@@ -354,6 +368,14 @@ public class MemoryPool {
             .EXCEPTION_BYTESTORESERVE_SHOULD_BE_IN_LEFT_PAREN_0_COMMA_MAXBYTESPERFI_RIGHT_BRACKET_DOT_M_0753BB69,
         maxBytesPerFragmentInstance,
         bytesToReserve);
+    FragmentMemoryReservation fragment =
+        getFragmentReservation(queryId, fragmentInstanceId, planNodeId);
+    synchronized (fragment) {
+      PlanNodeReservation reservation =
+          requireReservation(
+              fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+      maxBytesCanReserve = fragment.getMaxBytesCanReserve(reservation, maxBytesCanReserve);
+    }
     if (bytesToReserve > maxBytesCanReserve) {
       LOGGER.warn(
           DataNodeQueryMessages
@@ -550,6 +572,7 @@ public class MemoryPool {
       PlanNodeReservation reservation =
           requireReservation(
               fragment.planNodes.get(planNodeId), queryId, fragmentInstanceId, planNodeId);
+      maxBytesCanReserve = fragment.getMaxBytesCanReserve(reservation, maxBytesCanReserve);
       long usedBytes =
           fragment.sharedBudget
               ? fragment.getUsedBytes(reservation.side).get()

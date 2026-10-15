@@ -147,21 +147,26 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   private void assertAdmissionIsShared(boolean shared, MemorySide side) {
+    assertAdmissionIsShared(shared, side, shared ? 1024 : 256);
+  }
+
+  private void assertAdmissionIsShared(boolean shared, MemorySide side, long limit) {
     String fi = context.getFragmentInstanceId().getFullId();
-    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a", side);
-    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b", side);
-    assertTrue(pool.reserveWithPriority("budget", fi, "a", 256, 256, false).isReserveSuccess());
+    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a" + side, side);
+    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b" + side, side);
+    assertTrue(
+        pool.reserveWithPriority("budget", fi, "a" + side, limit, limit, false).isReserveSuccess());
     MemoryPool.MemoryReservationResult second =
-        pool.reserveWithPriority("budget", fi, "b", 256, 256, false);
+        pool.reserveWithPriority("budget", fi, "b" + side, limit, limit, false);
     if (shared) {
       assertFalse(second.getFuture().isDone());
-      pool.free("budget", fi, "a", 256);
+      pool.free("budget", fi, "a" + side, limit);
       assertTrue(second.getFuture().isDone());
     } else {
       assertTrue(second.isReserveSuccess());
-      pool.free("budget", fi, "a", 256);
+      pool.free("budget", fi, "a" + side, limit);
     }
-    pool.free("budget", fi, "b", 256);
+    pool.free("budget", fi, "b" + side, limit);
   }
 
   @Test
@@ -172,7 +177,23 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(source).setMaxBytesCanReserve(512);
     verify(sink).setMaxBytesCanReserve(512);
-    assertAdmissionIsShared(true);
+    assertAdmissionIsShared(true, MemorySide.INPUT, 512);
+    assertAdmissionIsShared(true, MemorySide.OUTPUT, 512);
+  }
+
+  @Test
+  public void testOddBudgetIsInitializedAfterBothDirectionsAreKnown() {
+    IoTDBDescriptor.getInstance().getMemoryConfig().setMaxBytesPerFragmentInstance(1025);
+    pool = new MemoryPool("odd-budget", new MemoryManager(4096), 1025);
+    context = newContext();
+    ISourceHandle source = addSource(context);
+    ISinkHandle sink = mock(ISinkHandle.class);
+    context.setISink(sink);
+    context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
+    verify(source).setMaxBytesCanReserve(512);
+    verify(sink).setMaxBytesCanReserve(513);
+    assertAdmissionIsShared(true, MemorySide.INPUT, 512);
+    assertAdmissionIsShared(true, MemorySide.OUTPUT, 513);
   }
 
   @Test
@@ -230,7 +251,8 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(source).setMaxBytesCanReserve(512);
     verify(sink).setMaxBytesCanReserve(512);
-    assertAdmissionIsShared(true);
+    assertAdmissionIsShared(true, MemorySide.INPUT, 512);
+    assertAdmissionIsShared(true, MemorySide.OUTPUT, 512);
   }
 
   @Test
