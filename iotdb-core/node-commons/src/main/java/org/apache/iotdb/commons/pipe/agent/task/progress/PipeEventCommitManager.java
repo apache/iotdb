@@ -173,6 +173,21 @@ public class PipeEventCommitManager {
     return generateCommitterKey(pipeName, creationTime, regionId);
   }
 
+  /**
+   * Checks that the committer is still registered and its restart generation is current. The
+   * registration check rejects dropped tasks; comparing the generated key rejects a barrier from an
+   * older committer after the same Pipe/DataRegion task has been restarted.
+   */
+  public boolean isCurrentCommitterKey(final CommitterKey committerKey) {
+    return committerKey != null
+        && eventCommitterMap.containsKey(committerKey)
+        && committerKey.equals(
+            generateCommitterKey(
+                committerKey.getPipeName(),
+                committerKey.getCreationTime(),
+                committerKey.getRegionId()));
+  }
+
   private CommitterKey generateCommitterKey(
       final String pipeName, final long creationTime, final int regionId) {
     return taskAgent.getCommitterKey(

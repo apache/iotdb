@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.procedure.NoopProcedureStore;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -28,6 +32,8 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProc
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,10 +41,13 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -225,5 +234,152 @@ public class DropTableProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(dropTableProcedure, deserializedProcedure);
+    Assert.assertNull(deserializedProcedure.getModFileProgress());
+    Assert.assertFalse(byteBuffer.hasRemaining());
+  }
+
+  @Test
+  public void aggregateModProgressCountsEachRegionOnItsExecutingReplica() {
+    final TConsensusGroupId firstRegion = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
+    final TConsensusGroupId secondRegion = new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
+    final Map<TConsensusGroupId, TDataNodeLocation> targets =
+        Map.of(
+            firstRegion, new TDataNodeLocation().setDataNodeId(1),
+            secondRegion, new TDataNodeLocation().setDataNodeId(2));
+    final Map<Integer, TGetDropTableModProgressResp> responses =
+        Map.of(
+            1,
+                new TGetDropTableModProgressResp(StatusUtils.OK)
+                    .setRegionProgress(
+                        Map.of(1, new TDropTableModProgress(2).setRemainingModFileCount(3))),
+            2,
+                new TGetDropTableModProgressResp(StatusUtils.OK)
+                    .setRegionProgress(
+                        Map.of(
+                            1, new TDropTableModProgress(100).setRemainingModFileCount(100),
+                            2, new TDropTableModProgress(5).setRemainingModFileCount(7))));
+
+    Assert.assertEquals(
+        new TDropTableModProgress(7).setRemainingModFileCount(10),
+        DropTableProcedure.aggregateModFileProgress(targets, responses));
+  }
+
+  @Test
+  public void aggregateModProgressBeforeAllRegionsStart() {
+    final Map<TConsensusGroupId, TDataNodeLocation> targets =
+        Map.of(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+                new TDataNodeLocation().setDataNodeId(1),
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
+                new TDataNodeLocation().setDataNodeId(1));
+    final Map<Integer, TGetDropTableModProgressResp> responses =
+        Map.of(
+            1,
+            new TGetDropTableModProgressResp(StatusUtils.OK)
+                .setRegionProgress(
+                    Map.of(
+                        1,
+                        new TDropTableModProgress(2).setRemainingModFileCount(3),
+                        2,
+                        new TDropTableModProgress(0))));
+
+    final TDropTableModProgress progress =
+        DropTableProcedure.aggregateModFileProgress(targets, responses);
+    Assert.assertEquals(2, progress.getWrittenModFileCount());
+    Assert.assertFalse(progress.isSetRemainingModFileCount());
+  }
+
+  @Test
+  public void aggregateUnavailableModProgressIsUnknown() {
+    final Map<TConsensusGroupId, TDataNodeLocation> targets =
+        Map.of(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            new TDataNodeLocation().setDataNodeId(1));
+    Assert.assertNull(DropTableProcedure.aggregateModFileProgress(targets, Collections.emptyMap()));
+    Assert.assertNull(
+        DropTableProcedure.aggregateModFileProgress(
+            targets, Map.of(1, new TGetDropTableModProgressResp(StatusUtils.OK))));
+    Assert.assertNull(
+        DropTableProcedure.aggregateModFileProgress(
+            targets,
+            Map.of(
+                1,
+                new TGetDropTableModProgressResp(StatusUtils.OK)
+                    .setRegionProgress(Collections.emptyMap()))));
+  }
+
+  @Test
+  public void concurrentModProgressQueriesWaitForInFlightRefresh() throws Exception {
+    final DropTableProcedure procedure =
+        new DropTableProcedure("database", "table", "query", false);
+    final Field futureField = DropTableProcedure.class.getDeclaredField("modProgressRefreshFuture");
+    futureField.setAccessible(true);
+    final CountDownLatch waitingQueryStarted = new CountDownLatch(1);
+    final CompletableFuture<Void> refreshFuture =
+        new CompletableFuture<Void>() {
+          @Override
+          public Void join() {
+            waitingQueryStarted.countDown();
+            return super.join();
+          }
+        };
+    futureField.set(procedure, refreshFuture);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<?> waitingQuery = executor.submit(procedure::updateModFileProgress);
+      Assert.assertTrue(waitingQueryStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(waitingQuery.isDone());
+      refreshFuture.complete(null);
+      waitingQuery.get(10, TimeUnit.SECONDS);
+    } finally {
+      refreshFuture.complete(null);
+      futureField.set(procedure, null);
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void modProgressSurvivesSerialization() throws Exception {
+    for (final boolean isGeneratedByPipe : new boolean[] {false, true}) {
+      for (final TDropTableModProgress progress :
+          new TDropTableModProgress[] {
+            new TDropTableModProgress(4),
+            new TDropTableModProgress(4).setRemainingModFileCount(6),
+            new TDropTableModProgress(10).setRemainingModFileCount(0)
+          }) {
+        final DropTableProcedure procedure =
+            new DropTableProcedure("database", "table", "query", isGeneratedByPipe);
+        final Field progressField = DropTableProcedure.class.getDeclaredField("modFileProgress");
+        progressField.setAccessible(true);
+        progressField.set(procedure, progress);
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        procedure.serialize(new DataOutputStream(bytes));
+        final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray());
+        buffer.getShort();
+        final DropTableProcedure recovered = new DropTableProcedure(isGeneratedByPipe);
+        recovered.deserialize(buffer);
+        Assert.assertEquals(progress, recovered.getModFileProgress());
+        Assert.assertFalse(buffer.hasRemaining());
+        // Callers cannot mutate the stored snapshot.
+        recovered.getModFileProgress().setWrittenModFileCount(0);
+        Assert.assertEquals(progress, recovered.getModFileProgress());
+      }
+    }
+  }
+
+  @Test
+  public void deserializeProcedureWithoutModProgress() throws Exception {
+    final DropTableProcedure procedure =
+        new DropTableProcedure("database", "table", "query", false);
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    // The previous procedure format ended immediately after the superclass fields.
+    procedure.innerSerialize(new DataOutputStream(bytes));
+    final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray());
+    final DropTableProcedure recovered = new DropTableProcedure(false);
+    recovered.deserialize(buffer);
+    Assert.assertEquals(procedure, recovered);
+    Assert.assertNull(recovered.getModFileProgress());
+    Assert.assertFalse(buffer.hasRemaining());
   }
 }

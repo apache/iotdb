@@ -503,7 +503,18 @@ public class PipeMemoryManagerResizeTest {
       keeper.addPipeMeta(
           PipeMeta.deserialize4TaskAgent(
               new PipeMeta(tableMeta, new PipeRuntimeMeta()).serialize()));
-      final EnrichedEvent event = new PipeHeartbeatEvent(pipeName, 2, null, 1, 0, false);
+      final EnrichedEvent event =
+          new PipeHeartbeatEvent(
+              pipeName,
+              2,
+              null,
+              1,
+              0,
+              false,
+              false,
+              Long.MIN_VALUE,
+              Long.MIN_VALUE,
+              Long.MIN_VALUE);
       tableBlock.setAssigner(event);
       Assert.assertEquals("table", tableBlock.getPipeOwner().getPipeModel());
 
