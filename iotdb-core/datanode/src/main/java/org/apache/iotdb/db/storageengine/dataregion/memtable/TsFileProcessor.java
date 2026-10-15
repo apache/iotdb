@@ -162,6 +162,8 @@ public class TsFileProcessor {
    */
   private volatile boolean managedByFlushManager;
 
+  private volatile Future<?> closeFuture;
+
   /** A lock to mutual exclude read and read */
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
@@ -1345,9 +1347,31 @@ public class TsFileProcessor {
 
   /** async close one tsfile, register and close it by another thread */
   public Future<?> asyncClose() {
+    return asyncClose(false);
+  }
+
+  /**
+   * Tries to close this TsFile after any previous ordinary flush has finished.
+   *
+   * <p>If an ordinary flush is still being managed by the flush manager, this method only returns
+   * that flush's future. The caller must wait for it and retry until {@link
+   * #alreadyMarkedClosing()} becomes {@code true}. This avoids adding a close signal while the old
+   * flush task is about to leave the flush manager.
+   */
+  public Future<?> asyncCloseForFullFlush() {
+    return asyncClose(true);
+  }
+
+  private Future<?> asyncClose(final boolean ignorePreviousFlushFuture) {
     flushQueryLock.writeLock().lock();
     logFlushQueryWriteLocked();
     try {
+      if (shouldClose
+          || managedByFlushManager
+          || (!ignorePreviousFlushFuture && closeFuture != null)) {
+        return closeFuture;
+      }
+
       if (logger.isDebugEnabled()) {
         if (workMemTable != null) {
           logger.debug(
@@ -1390,6 +1414,7 @@ public class TsFileProcessor {
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
+        closeFuture = future;
         return future;
       } catch (Exception e) {
         logger.error(
@@ -1397,12 +1422,12 @@ public class TsFileProcessor {
             storageGroupName,
             tsFileResource.getTsFile().getName(),
             e);
+        return CompletableFuture.failedFuture(e);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
       logFlushQueryWriteUnlocked();
     }
-    return CompletableFuture.completedFuture(null);
   }
 
   /**
@@ -1462,7 +1487,7 @@ public class TsFileProcessor {
       }
       logger.info(
           "Async flush a memtable to tsfile: {}", tsFileResource.getTsFile().getAbsolutePath());
-      addAMemtableIntoFlushingList(workMemTable);
+      closeFuture = addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
       logger.error(
           "{}: {} add a memtable into flushing list failed",
@@ -1867,7 +1892,32 @@ public class TsFileProcessor {
   }
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {
-    this.managedByFlushManager = managedByFlushManager;
+    flushQueryLock.writeLock().lock();
+    try {
+      this.managedByFlushManager = managedByFlushManager;
+      if (!managedByFlushManager) {
+        closeFuture = CompletableFuture.completedFuture(null);
+      }
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
+    if (!managedByFlushManager) {
+      synchronized (this) {
+        notifyAll();
+      }
+    }
+  }
+
+  public Future<?> getCloseFuture() {
+    return closeFuture;
+  }
+
+  public void waitUntilFlushManagerReleased() throws InterruptedException {
+    synchronized (this) {
+      while (managedByFlushManager) {
+        wait();
+      }
+    }
   }
 
   /** Close this tsfile */

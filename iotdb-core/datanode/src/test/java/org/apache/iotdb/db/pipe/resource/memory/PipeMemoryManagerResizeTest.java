@@ -352,4 +352,305 @@ public class PipeMemoryManagerResizeTest {
       manager.release(nonFloatingMemory);
     }
   }
+
+  @Test
+  public void testMemoryBlockInfoIncludesNamesAndSeparatesFloatingMemory() {
+    final AtomicLong floatingMemoryUsageInBytes = new AtomicLong(0);
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC),
+            floatingMemoryUsageInBytes::get);
+    final PipeMemoryBlock normalMemory = manager.forceAllocate("normal", 100);
+    final PipeMemoryBlock zeroSizedMemory = manager.forceAllocate("zero", 0);
+
+    try {
+      floatingMemoryUsageInBytes.set(250);
+      final List<PipeMemoryManager.PipeMemoryBlockInfo> memoryBlockInfoList =
+          manager.getPipeMemoryBlockInfoList();
+
+      Assert.assertEquals(3, memoryBlockInfoList.size());
+      Assert.assertEquals("FloatingMemory", memoryBlockInfoList.get(0).getName());
+      Assert.assertEquals(250, memoryBlockInfoList.get(0).getMemoryUsageInBytes());
+      Assert.assertEquals("normal", memoryBlockInfoList.get(1).getName());
+      Assert.assertEquals(100, memoryBlockInfoList.get(1).getMemoryUsageInBytes());
+      Assert.assertEquals("zero", memoryBlockInfoList.get(2).getName());
+      Assert.assertEquals(0, memoryBlockInfoList.get(2).getMemoryUsageInBytes());
+      Assert.assertEquals(100, manager.getUsedMemorySizeInBytes());
+
+      manager.forceResize(normalMemory, 0);
+      final List<PipeMemoryManager.PipeMemoryBlockInfo> memoryBlockInfoListAfterResize =
+          manager.getPipeMemoryBlockInfoList();
+      Assert.assertEquals(3, memoryBlockInfoListAfterResize.size());
+      Assert.assertEquals("normal", memoryBlockInfoListAfterResize.get(1).getName());
+      Assert.assertEquals(0, memoryBlockInfoListAfterResize.get(1).getMemoryUsageInBytes());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+    } finally {
+      manager.release(normalMemory);
+      manager.release(zeroSizedMemory);
+    }
+
+    final List<PipeMemoryManager.PipeMemoryBlockInfo> memoryBlockInfoListAfterRelease =
+        manager.getPipeMemoryBlockInfoList();
+    Assert.assertEquals(1, memoryBlockInfoListAfterRelease.size());
+    Assert.assertEquals("FloatingMemory", memoryBlockInfoListAfterRelease.get(0).getName());
+    Assert.assertEquals(250, memoryBlockInfoListAfterRelease.get(0).getMemoryUsageInBytes());
+  }
+
+  @Test
+  public void testFixedModelBlockReportsCapacitySeparatelyFromPeak() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerFixedBlockTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeModelFixedMemoryBlock fixedBlock =
+        manager.forceAllocateForModelFixedMemoryBlock("fixed", 100, PipeMemoryBlockType.BATCH);
+
+    try {
+      final PipeMemoryManager.PipeMemoryBlockInfo fixedInfo =
+          manager.getPipeMemoryBlockInfoList().stream()
+              .filter(info -> "fixed".equals(info.getName()))
+              .findFirst()
+              .orElseThrow();
+      Assert.assertEquals(100, fixedInfo.getMemoryUsageInBytes());
+      Assert.assertEquals(100, fixedInfo.getPeakMemorySizeInBytes());
+      Assert.assertEquals(100, fixedInfo.getMaxMemorySizeInBytes());
+    } finally {
+      manager.release(fixedBlock);
+    }
+  }
+
+  @Test
+  public void testHierarchicalAccountingMetadataAndCascadeRelease() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerHierarchyTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final long allocationStart = System.currentTimeMillis();
+    final PipeMemoryBlock eventBlock =
+        manager.forceAllocate("event", 0, PipeMemoryBlockCategory.EVENT, "event-assigner", null);
+    final PipeMemoryBlock parserBlock =
+        manager.forceAllocate(
+            "parser", 100, PipeMemoryBlockCategory.PARSER, "parser-assigner", eventBlock);
+
+    try {
+      Assert.assertNotEquals(eventBlock.getBlockId(), parserBlock.getBlockId());
+      Assert.assertEquals(PipeMemoryBlockCategory.EVENT, eventBlock.getCategory());
+      Assert.assertEquals(PipeMemoryBlockCategory.PARSER, parserBlock.getCategory());
+      Assert.assertEquals(0, eventBlock.getHierarchyLevel());
+      Assert.assertEquals(1, parserBlock.getHierarchyLevel());
+      Assert.assertEquals(eventBlock.getBlockId(), parserBlock.getParentBlockId().longValue());
+      Assert.assertEquals("event-assigner", eventBlock.getAssigner());
+      Assert.assertEquals("parser-assigner", parserBlock.getAssigner());
+      Assert.assertTrue(eventBlock.getAllocationTimeInMillis() >= allocationStart);
+      Assert.assertTrue(parserBlock.getAllocationTimeInMillis() >= allocationStart);
+
+      // A child reserves the global pool once, while both rows expose the aggregate usage.
+      Assert.assertEquals(100, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(100, eventBlock.getMemoryUsageInBytes());
+      Assert.assertEquals(100, parserBlock.getMemoryUsageInBytes());
+      Assert.assertEquals(100, eventBlock.getAccountedMemoryUsageInBytes());
+      Assert.assertEquals(0, parserBlock.getAccountedMemoryUsageInBytes());
+      Assert.assertEquals(100, eventBlock.getPeakMemorySizeInBytes());
+      Assert.assertEquals(100, parserBlock.getPeakMemorySizeInBytes());
+      Assert.assertEquals(-1, eventBlock.getMaxMemorySizeInBytes());
+      Assert.assertEquals(-1, parserBlock.getMaxMemorySizeInBytes());
+
+      manager.forceResize(parserBlock, 160);
+      manager.forceResize(parserBlock, 40);
+      Assert.assertEquals(40, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(40, eventBlock.getMemoryUsageInBytes());
+      Assert.assertEquals(40, parserBlock.getMemoryUsageInBytes());
+      Assert.assertEquals(160, eventBlock.getPeakMemorySizeInBytes());
+      Assert.assertEquals(160, parserBlock.getPeakMemorySizeInBytes());
+
+      // A parent resize cannot release bytes still owned by a live child.
+      manager.forceResize(eventBlock, 0);
+      Assert.assertEquals(40, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(40, eventBlock.getMemoryUsageInBytes());
+
+      final Optional<PipeMemoryManager.PipeMemoryBlockInfo> parserInfo =
+          manager.getPipeMemoryBlockInfoList().stream()
+              .filter(info -> info.getBlockId() == parserBlock.getBlockId())
+              .findFirst();
+      Assert.assertTrue(parserInfo.isPresent());
+      Assert.assertEquals("PARSER", parserInfo.get().getCategory());
+      Assert.assertEquals(eventBlock.getBlockId(), parserInfo.get().getParentBlockId().longValue());
+      Assert.assertEquals(0, parserInfo.get().getAccountedMemoryUsageInBytes());
+    } finally {
+      // Closing the aggregate must recursively release all descendants and the global reservation.
+      manager.release(eventBlock);
+      parserBlock.close();
+    }
+
+    Assert.assertTrue(eventBlock.isReleased());
+    Assert.assertTrue(parserBlock.isReleased());
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+    Assert.assertEquals(1, manager.getPipeMemoryBlockInfoList().size());
+  }
+
+  @Test
+  public void testAssignerSnapshotIsBoundedAndFloatingPeakIsRetained() {
+    final AtomicLong floatingMemoryUsageInBytes = new AtomicLong(0);
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerMetadataTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC),
+            floatingMemoryUsageInBytes::get);
+    final PipeMemoryBlock block = manager.forceAllocate("metadata", 0);
+    final String longAssigner = "x".repeat(4096);
+
+    try {
+      block.setAssigner(longAssigner);
+      Assert.assertEquals(2048, block.getAssigner().length());
+
+      floatingMemoryUsageInBytes.set(300);
+      PipeMemoryManager.PipeMemoryBlockInfo floatingInfo =
+          manager.getPipeMemoryBlockInfoList().stream()
+              .filter(info -> PipeMemoryManager.FLOATING_MEMORY_BLOCK_NAME.equals(info.getName()))
+              .findFirst()
+              .orElseThrow();
+      Assert.assertEquals(0, floatingInfo.getBlockId());
+      Assert.assertEquals("FLOATING", floatingInfo.getCategory());
+      Assert.assertEquals(300, floatingInfo.getMemoryUsageInBytes());
+      Assert.assertEquals(300, floatingInfo.getPeakMemorySizeInBytes());
+      Assert.assertEquals(-1, floatingInfo.getMaxMemorySizeInBytes());
+      Assert.assertTrue(floatingInfo.getAllocationTime() > 0);
+      Assert.assertEquals("PipeMemoryManager", floatingInfo.getAssigner());
+
+      floatingMemoryUsageInBytes.set(10);
+      floatingInfo =
+          manager.getPipeMemoryBlockInfoList().stream()
+              .filter(info -> PipeMemoryManager.FLOATING_MEMORY_BLOCK_NAME.equals(info.getName()))
+              .findFirst()
+              .orElseThrow();
+      Assert.assertEquals(10, floatingInfo.getMemoryUsageInBytes());
+      Assert.assertEquals(300, floatingInfo.getPeakMemorySizeInBytes());
+      Assert.assertEquals(-1, floatingInfo.getMaxMemorySizeInBytes());
+    } finally {
+      block.close();
+    }
+  }
+
+  @Test
+  public void testEnrichedEventAssignerDoesNotBuildCoreReportMessage() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerAssignerTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final EnrichedEvent event =
+        Mockito.mock(
+            EnrichedEvent.class,
+            invocation -> {
+              if ("coreReportMessage".equals(invocation.getMethod().getName())) {
+                throw new AssertionError("coreReportMessage must not be called");
+              }
+              return Mockito.RETURNS_DEFAULTS.answer(invocation);
+            });
+    final PipeMemoryBlock block =
+        manager.forceAllocate("metadata", 0, PipeMemoryBlockCategory.EVENT, event, null);
+
+    try {
+      block.setAssigner(event);
+      Mockito.verify(event, Mockito.never()).coreReportMessage();
+      Assert.assertTrue(block.getAssigner().contains(event.getClass().getSimpleName()));
+    } finally {
+      block.close();
+    }
+  }
+
+  @Test
+  public void testPipeOwnershipAndInheritance() throws Exception {
+    final Field keeperField = PipeTaskAgent.class.getDeclaredField("pipeMetaKeeper");
+    keeperField.setAccessible(true);
+    final PipeMetaKeeper keeper = (PipeMetaKeeper) keeperField.get(PipeDataNodeAgent.task());
+    final String pipeName = "memory_ownership_test";
+    final PipeStaticMeta treeMeta =
+        new PipeStaticMeta(pipeName, 1, new HashMap<>(), new HashMap<>(), new HashMap<>());
+    final PipeStaticMeta tableMeta =
+        new PipeStaticMeta(
+            pipeName,
+            2,
+            new HashMap<>(Map.of(SystemConstant.SQL_DIALECT_KEY, "table")),
+            new HashMap<>(),
+            new HashMap<>());
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryOwnershipTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeMemoryBlock treeBlock =
+        manager.forceAllocate("treeCache", 0).setPipeOwner(pipeName, 1);
+    final PipeMemoryBlock tableBlock = manager.forceAllocate("tableEvent", 0);
+    final PipeMemoryBlock child =
+        manager.forceAllocate("parser", 10, PipeMemoryBlockCategory.PARSER, "parser", tableBlock);
+    final PipeMemoryBlock unowned = manager.forceAllocate("sharedCache", 0);
+    try {
+      // Resources may be allocated before the task metadata is registered.
+      keeper.addPipeMeta(
+          PipeMeta.deserialize4TaskAgent(
+              new PipeMeta(treeMeta, new PipeRuntimeMeta()).serialize()));
+      keeper.addPipeMeta(
+          PipeMeta.deserialize4TaskAgent(
+              new PipeMeta(tableMeta, new PipeRuntimeMeta()).serialize()));
+      final EnrichedEvent event =
+          new PipeHeartbeatEvent(
+              pipeName,
+              2,
+              null,
+              1,
+              0,
+              false,
+              false,
+              Long.MIN_VALUE,
+              Long.MIN_VALUE,
+              Long.MIN_VALUE);
+      tableBlock.setAssigner(event);
+      Assert.assertEquals("table", tableBlock.getPipeOwner().getPipeModel());
+
+      final Map<String, PipeMemoryManager.PipeMemoryBlockInfo> infos =
+          manager.getPipeMemoryBlockInfoList().stream()
+              .collect(
+                  Collectors.toMap(PipeMemoryManager.PipeMemoryBlockInfo::getName, info -> info));
+      Assert.assertEquals(pipeName, infos.get("treeCache").getPipeName());
+      Assert.assertEquals("tree", infos.get("treeCache").getPipeModel());
+      Assert.assertEquals(pipeName, infos.get("tableEvent").getPipeName());
+      Assert.assertEquals("table", infos.get("tableEvent").getPipeModel());
+      Assert.assertEquals(pipeName, infos.get("parser").getPipeName());
+      Assert.assertEquals("table", infos.get("parser").getPipeModel());
+      Assert.assertNull(infos.get("sharedCache").getPipeName());
+      Assert.assertNull(infos.get("sharedCache").getPipeModel());
+      Assert.assertNull(infos.get(PipeMemoryManager.FLOATING_MEMORY_BLOCK_NAME).getPipeName());
+      Assert.assertNull(infos.get(PipeMemoryManager.FLOATING_MEMORY_BLOCK_NAME).getPipeModel());
+
+      keeper.removePipeMeta(treeMeta);
+      keeper.removePipeMeta(tableMeta);
+      Assert.assertEquals("tree", treeBlock.getPipeOwner().getPipeModel());
+      Assert.assertEquals("table", child.getPipeOwner().getPipeModel());
+    } finally {
+      keeper.removePipeMeta(treeMeta);
+      keeper.removePipeMeta(tableMeta);
+      treeBlock.close();
+      tableBlock.close();
+      child.close();
+      unowned.close();
+    }
+  }
 }

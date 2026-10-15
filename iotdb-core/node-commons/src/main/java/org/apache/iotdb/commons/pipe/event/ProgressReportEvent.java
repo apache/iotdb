@@ -32,6 +32,11 @@ public class ProgressReportEvent extends EnrichedEvent {
 
   private ProgressIndex progressIndex;
 
+  @Override
+  public boolean isControlEvent() {
+    return true;
+  }
+
   public ProgressReportEvent(
       final String pipeName, final long creationTime, final PipeTaskMeta pipeTaskMeta) {
     super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);

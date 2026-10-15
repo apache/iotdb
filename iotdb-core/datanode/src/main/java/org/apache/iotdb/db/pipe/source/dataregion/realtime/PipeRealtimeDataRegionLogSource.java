@@ -116,6 +116,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
                     + "the data represented by this event is lost",
                 realtimeEvent.getEvent());
         LOGGER.error(errorMessage);
+        markDataRegionCompletionInvalid();
         PipeDataNodeAgent.runtime()
             .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }

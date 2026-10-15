@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -95,29 +96,37 @@ public class PipeInsertionDataNodeListener {
       final String dataRegionId, final TsFileResource tsFileResource, final boolean isLoaded) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
+    if (assigner == null) {
+      return;
+    }
     // only events from registered data region with tsfile listeners will be extracted
-    if (assigner == null || !assigner.shouldListenToTsFile()) {
+    if (!assigner.shouldListenToTsFile()) {
+      assigner.invalidateCompletion();
       return;
     }
 
-    assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded));
+    assigner.publishDataEventToAssign(
+        () -> PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded));
   }
 
   public void listenToInsertNode(
       final String dataRegionId, final InsertNode insertNode, final TsFileResource tsFileResource) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
+    if (assigner == null) {
+      return;
+    }
     // only events from registered data region with insert listeners will be extracted
-    if (assigner == null || !assigner.shouldListenToInsertNode()) {
+    if (!assigner.shouldListenToInsertNode()) {
+      assigner.invalidateCompletionBarrier();
       return;
     }
 
-    assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(insertNode, tsFileResource));
+    assigner.publishInsertDataEventToAssign(
+        () -> PipeRealtimeEventFactory.createRealtimeEvent(insertNode, tsFileResource));
   }
 
-  public void listenToHeartbeat(boolean shouldPrintMessage) {
+  public void listenToHeartbeat(final boolean shouldPrintMessage) {
     dataRegionId2Assigner.forEach(
         (key, value) ->
             value.publishToAssign(
@@ -126,7 +135,22 @@ public class PipeInsertionDataNodeListener {
 
   public void listenToDeleteData(DeleteDataNode node) {
     dataRegionId2Assigner.forEach(
-        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
+        (key, value) ->
+            value.publishDataEventToAssign(
+                () -> PipeRealtimeEventFactory.createRealtimeEvent(node)));
+  }
+
+  public CompletionToken invalidateDataRegionCompletion(final String dataRegionId) {
+    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+    return assigner == null ? null : assigner.invalidateCompletionAndGetToken();
+  }
+
+  public void listenToCompletionBarrier(
+      final String dataRegionId, final CompletionToken completionToken) {
+    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+    if (assigner != null) {
+      assigner.publishCompletionBarrier(completionToken);
+    }
   }
 
   public boolean isEmpty() {

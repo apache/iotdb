@@ -56,6 +56,11 @@ public class PipeRealtimeEventFactory {
         new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
   }
 
+  public static PipeRealtimeEvent createCompletionBarrierEvent(final String dataRegionId) {
+    return new PipeRealtimeEvent(
+        new PipeHeartbeatEvent(dataRegionId, false, true), null, null, null);
+  }
+
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
     return new PipeRealtimeEvent(event, null, null, null);
   }

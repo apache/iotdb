@@ -57,6 +57,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -113,6 +114,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -2218,5 +2227,181 @@ public class DataRegionTest {
     Assert.assertEquals(
         dataRegion.getTsFileManager().getTsFileList(true).size() + modFileNumWhenTestStart,
         FileMetrics.getInstance().getModFileNum());
+  }
+
+  @Test
+  public void testFullFlushClosesProcessorAfterOrdinaryAsyncFlush() throws Exception {
+    final TSRecord record = new TSRecord(deviceId, 100);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+
+    final TsFileProcessor tsFileProcessor =
+        dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+    final TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
+    tsFileProcessor.asyncFlush();
+    final Future<?> ordinaryFlushFuture = tsFileProcessor.getCloseFuture();
+    Assert.assertNotNull(ordinaryFlushFuture);
+    ordinaryFlushFuture.get();
+
+    Assert.assertFalse(tsFileProcessor.alreadyMarkedClosing());
+    Assert.assertFalse(tsFileResource.isClosed());
+
+    dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+
+    Assert.assertTrue(tsFileResource.isClosed());
+    Assert.assertFalse(dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileProcessor));
+  }
+
+  @Test
+  public void testFullFlushWaitsForRunningOrdinaryAsyncFlush() throws Exception {
+    final CountDownLatch ordinaryFlushBlocked = new CountDownLatch(1);
+    final CountDownLatch allowOrdinaryFlush = new CountDownLatch(1);
+    dataRegion.setCustomFlushListeners(
+        Collections.singletonList(
+            new FlushListener() {
+              @Override
+              public void onMemTableFlushStarted(final IMemTable memTable) {
+                // Do nothing.
+              }
+
+              @Override
+              public void onMemTableFlushed(final IMemTable memTable) {
+                ordinaryFlushBlocked.countDown();
+                try {
+                  allowOrdinaryFlush.await();
+                } catch (final InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new AssertionError(e);
+                }
+              }
+            }));
+
+    final TSRecord record = new TSRecord(deviceId, 100);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    final TsFileProcessor tsFileProcessor =
+        dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+    final TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
+
+    tsFileProcessor.asyncFlush();
+    Assert.assertTrue(ordinaryFlushBlocked.await(30, TimeUnit.SECONDS));
+    final CompletableFuture<Void> fullFlushFuture =
+        CompletableFuture.runAsync(
+            () -> {
+              try {
+                dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+              } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new CompletionException(e);
+              } catch (final ExecutionException e) {
+                throw new CompletionException(e);
+              }
+            });
+
+    try {
+      fullFlushFuture.get(200, TimeUnit.MILLISECONDS);
+      Assert.fail();
+    } catch (final TimeoutException expected) {
+      // The full flush must wait until the ordinary flush releases the processor.
+    } finally {
+      allowOrdinaryFlush.countDown();
+    }
+
+    fullFlushFuture.get(30, TimeUnit.SECONDS);
+    Assert.assertTrue(tsFileResource.isClosed());
+    Assert.assertFalse(dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileProcessor));
+  }
+
+  @Test
+  public void testFullFlushDoesNotChaseProcessorCreatedAfterSnapshot() throws Exception {
+    final CountDownLatch closeListenerBlocked = new CountDownLatch(1);
+    final CountDownLatch allowCloseListener = new CountDownLatch(1);
+    dataRegion.setCustomCloseFileListeners(
+        Collections.singletonList(
+            processor -> {
+              closeListenerBlocked.countDown();
+              try {
+                allowCloseListener.await();
+              } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new TsFileProcessorException(e);
+              }
+            }));
+
+    final TSRecord firstRecord = new TSRecord(deviceId, 100);
+    firstRecord.addTuple(
+        DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(firstRecord));
+    final TsFileProcessor initialProcessor =
+        dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+
+    final CompletableFuture<Void> fullFlushFuture =
+        CompletableFuture.runAsync(
+            () -> {
+              try {
+                dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+              } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new CompletionException(e);
+              } catch (final ExecutionException e) {
+                throw new CompletionException(e);
+              }
+            });
+
+    TsFileProcessor replacementProcessor;
+    try {
+      Assert.assertTrue(closeListenerBlocked.await(30, TimeUnit.SECONDS));
+      final TSRecord secondRecord = new TSRecord(deviceId, 101);
+      secondRecord.addTuple(
+          DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(101)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(secondRecord));
+      replacementProcessor = dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+      Assert.assertNotSame(initialProcessor, replacementProcessor);
+    } finally {
+      allowCloseListener.countDown();
+    }
+
+    fullFlushFuture.get(30, TimeUnit.SECONDS);
+    Assert.assertTrue(dataRegion.getWorkSequenceTsFileProcessors().contains(replacementProcessor));
+    Assert.assertFalse(replacementProcessor.alreadyMarkedClosing());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testSyncCloseWaitsForAlreadyClosingProcessor() throws Exception {
+    TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Future<?> closeFuture = Mockito.mock(Future.class);
+    CountDownLatch waitStarted = new CountDownLatch(1);
+    CountDownLatch allowClose = new CountDownLatch(1);
+    Mockito.doReturn(closeFuture).when(processor).getCloseFuture();
+    Mockito.when(closeFuture.get())
+        .thenAnswer(
+            invocation -> {
+              waitStarted.countDown();
+              assertTrue(allowClose.await(10, TimeUnit.SECONDS));
+              return null;
+            });
+
+    Field closingProcessorsField =
+        DataRegion.class.getDeclaredField("closingSequenceTsFileProcessor");
+    closingProcessorsField.setAccessible(true);
+    Set<TsFileProcessor> closingProcessors =
+        (Set<TsFileProcessor>) closingProcessorsField.get(dataRegion);
+    closingProcessors.add(processor);
+
+    CompletableFuture<Void> syncCloseTask = null;
+    try {
+      syncCloseTask = CompletableFuture.runAsync(dataRegion::syncCloseAllWorkingTsFileProcessors);
+      assertTrue(waitStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(syncCloseTask.isDone());
+      allowClose.countDown();
+      syncCloseTask.get(10, TimeUnit.SECONDS);
+    } finally {
+      allowClose.countDown();
+      closingProcessors.remove(processor);
+      if (syncCloseTask != null) {
+        syncCloseTask.get(10, TimeUnit.SECONDS);
+      }
+    }
   }
 }

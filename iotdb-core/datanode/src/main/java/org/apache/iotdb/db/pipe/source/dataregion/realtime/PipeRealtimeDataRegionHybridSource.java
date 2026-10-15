@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -352,8 +353,11 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private void markTsFileEpochDegradedUnderLock(final TsFileEpoch tsFileEpoch) {
     activeTsFileEpochs.add(tsFileEpoch);
-    if (degradedTsFileEpochs.add(tsFileEpoch) && isRegionLevelDowngradingEnabled) {
-      regionLevelDegradedTsFileEpochs.offer(tsFileEpoch);
+    if (degradedTsFileEpochs.add(tsFileEpoch)) {
+      markCompletionStateChanged();
+      if (isRegionLevelDowngradingEnabled) {
+        regionLevelDegradedTsFileEpochs.offer(tsFileEpoch);
+      }
     }
     if (isRegionLevelDowngradingEnabled) {
       isRegionLevelDegraded = true;
@@ -511,7 +515,9 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private void clearTsFileEpochUnderLock(final TsFileEpoch tsFileEpoch) {
     activeTsFileEpochs.remove(tsFileEpoch);
-    degradedTsFileEpochs.remove(tsFileEpoch);
+    if (degradedTsFileEpochs.remove(tsFileEpoch)) {
+      markCompletionStateChanged();
+    }
     regionLevelDegradedTsFileEpochs.remove(tsFileEpoch);
     if (regionLevelTailTsFileEpoch == tsFileEpoch) {
       regionLevelTailTsFileEpoch = null;
@@ -537,17 +543,23 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   private void reportTsFileEpochDegradedStatusUnderLock() {
     if (isRegionLevelDowngradingEnabled && isRegionLevelDegraded) {
       PipeDataNodeAgent.task()
-          .setPipeTsFileEpochDegraded(pipeName, creationTime, dataRegionId, true);
+          .setPipeTsFileEpochDegraded(pipeName, creationTime, Integer.parseInt(dataRegionId), true);
     } else if (activeTsFileEpochs.isEmpty()) {
-      PipeDataNodeAgent.task().clearPipeTsFileEpochDegraded(pipeName, creationTime, dataRegionId);
+      PipeDataNodeAgent.task()
+          .clearPipeTsFileEpochDegraded(pipeName, creationTime, Integer.parseInt(dataRegionId));
     } else {
       PipeDataNodeAgent.task()
           .setPipeTsFileEpochDegraded(
               pipeName,
               creationTime,
-              dataRegionId,
+              Integer.parseInt(dataRegionId),
               isRegionLevelDowngradingEnabled ? false : !degradedTsFileEpochs.isEmpty());
     }
+  }
+
+  @Override
+  public boolean isTsFileEpochDegraded() {
+    return !degradedTsFileEpochs.isEmpty();
   }
 
   @Override
@@ -560,13 +572,17 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       synchronized (regionLevelDowngradingLock) {
         clearRegionLevelBufferedEventsUnderLock();
         activeTsFileEpochs.clear();
+        if (!degradedTsFileEpochs.isEmpty()) {
+          markCompletionStateChanged();
+        }
         degradedTsFileEpochs.clear();
         regionLevelDegradedTsFileEpochs.clear();
         isRegionLevelDegraded = false;
         regionLevelTailTsFileEpoch = null;
         canSupplyEventsBeforeRegionLevelDowngrading = false;
         inFlightTsFileCount = 0;
-        PipeDataNodeAgent.task().clearPipeTsFileEpochDegraded(pipeName, creationTime, dataRegionId);
+        PipeDataNodeAgent.task()
+            .clearPipeTsFileEpochDegraded(pipeName, creationTime, Integer.parseInt(dataRegionId));
       }
     }
   }
@@ -901,6 +917,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
               DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
+      markDataRegionCompletionInvalid();
       PipeDataNodeAgent.runtime()
           .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       PipeTsFileEpochProgressIndexKeeper.getInstance()

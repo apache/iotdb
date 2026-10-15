@@ -45,6 +45,8 @@ public final class DataNodePipeMessages {
 
   public static final String EXCEPTION_INCREASE_REFERENCE_COUNT_ERROR_HOLDER_MESSAGE_ARG_7E1D032D =
       "Increase reference count error. Holder Message: %s";
+  public static final String EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST =
+      "Event %s can not be supplied because the reference count can not be increased, the data represented by this event is lost";
 
   // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
 

@@ -23,6 +23,9 @@ public final class StorageEngineMessages {
 
   private StorageEngineMessages() {}
 
+  public static final String STORAGE_LOG_ASYNC_CLOSE_TSFILE_FILE_START_TIME_FILE_END_TIME_65020832 =
+      "异步关闭 TsFile：{}，文件开始时间：{}，文件结束时间：{}";
+
   public static final String LOG_ERROR_OCCURRED_DURING_MOVING_FILE_ARG_TO_FAIL_DIRECTORY_F40610CE =
       "将文件 {} 移动到失败目录时发生错误。";
   public static final String LOG_FAILED_TO_READ_ACTIVE_LOAD_FAILURE_METADATA_ARG_E152544E =

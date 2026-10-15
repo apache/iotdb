@@ -44,6 +44,8 @@ public final class DataNodePipeMessages {
       "减少 TsFile {} 的引用计数时发生错误。";
   public static final String EXCEPTION_INCREASE_REFERENCE_COUNT_ERROR_HOLDER_MESSAGE_ARG_7E1D032D =
       "增加引用计数失败。持有者信息：%s";
+  public static final String EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST =
+      "Event %s 无法被提供，因为其引用计数无法增加，事件代表的数据已经丢失";
 
   // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
 

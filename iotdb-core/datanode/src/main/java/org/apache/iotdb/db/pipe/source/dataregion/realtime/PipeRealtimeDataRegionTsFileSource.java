@@ -236,6 +236,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
                     + "the data represented by this event is lost",
                 realtimeEvent.getEvent());
         LOGGER.error(errorMessage);
+        markDataRegionCompletionInvalid();
         PipeDataNodeAgent.runtime()
             .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
         PipeTsFileEpochProgressIndexKeeper.getInstance()
