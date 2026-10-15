@@ -224,7 +224,7 @@ public class ConsensusPrefetchingQueue {
    */
   private volatile long memoryBlockedEntryBytes = -1L;
 
-  /** Rejects the real-time fast path while this queue cannot safely materialize more data. */
+  /** Rejects the real-time fast path during lifecycle transitions or a blocked writer backlog. */
   private final AtomicBoolean realtimeAdmissionBlocked = new AtomicBoolean(false);
 
   private static final int MAX_PREFETCHING_QUEUE_SIZE =
@@ -405,6 +405,7 @@ public class ConsensusPrefetchingQueue {
     SUCCESS,
     MEMORY_BLOCKED,
     WAL_GAP,
+    WAL_SCAN_YIELDED,
     STALE
   }
 
@@ -552,8 +553,10 @@ public class ConsensusPrefetchingQueue {
       requestMemoryManager.free(request);
     }
 
-    private void release(final List<IndexedConsensusRequest> requests) {
-      requests.forEach(this::release);
+    private synchronized void consume(final IndexedConsensusRequest request) {
+      if (super.removeFirstOccurrence(request)) {
+        release(request);
+      }
     }
 
     private long getRetainedRequestBytes() {
@@ -635,6 +638,36 @@ public class ConsensusPrefetchingQueue {
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
       final boolean initialActive) {
+    this(
+        consumerGroupId,
+        topicName,
+        orderMode,
+        consensusGroupId,
+        serverImpl,
+        retentionPolicy,
+        converter,
+        commitManager,
+        fallbackCommittedRegionProgress,
+        tailStartSearchIndex,
+        initialRuntimeVersion,
+        initialActive,
+        false);
+  }
+
+  public ConsensusPrefetchingQueue(
+      final String consumerGroupId,
+      final String topicName,
+      final String orderMode,
+      final ConsensusGroupId consensusGroupId,
+      final IoTConsensusServerImpl serverImpl,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final ConsensusLogToTabletConverter converter,
+      final ConsensusSubscriptionCommitManager commitManager,
+      final RegionProgress fallbackCommittedRegionProgress,
+      final long tailStartSearchIndex,
+      final long initialRuntimeVersion,
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     this.consumerGroupId = consumerGroupId;
     this.topicName = topicName;
     this.consensusGroupId = consensusGroupId;
@@ -667,8 +700,17 @@ public class ConsensusPrefetchingQueue {
             this::requestPrefetchForRealtimeEntry,
             this::getRealtimeAdmissionRejectionReason,
             this::recordRealtimeAdmissionRejection);
-    serverImpl.registerSubscriptionQueue(
-        pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
+    if (replaceDetachedRetention) {
+      serverImpl.replaceDetachedSubscriptionRetentionWithQueue(
+          ConsensusSubscriptionWalRetention.generateRetentionId(
+              consumerGroupId, topicName, consensusGroupId),
+          pendingEntries,
+          retentionPolicy,
+          this::getRequiredRetainedMinVersionId);
+    } else {
+      serverImpl.registerSubscriptionQueue(
+          pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
+    }
 
     LOGGER.info(
         DataNodePipeMessages
@@ -729,10 +771,39 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private void requestPrefetchForRealtimeEntry() {
-    if (prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+  public void wakeUpForTopicConfigChange(final boolean isTableModel) {
+    if (tableModel == isTableModel) {
       requestPrefetch();
     }
+  }
+
+  private long getRecycleUncommittedEventIntervalMs() {
+    return SubscriptionAgent.topic()
+        .getTopicRecycleUncommittedEventIntervalMs(topicName, tableModel);
+  }
+
+  private void requestPrefetchForRealtimeEntry() {
+    if (!hasReachedPrefetchLimit()) {
+      requestPrefetch();
+    }
+  }
+
+  private boolean hasReachedPrefetchLimit() {
+    // Reserve half of the active queue's fair share for speculative read-ahead. Retained bytes
+    // include in-flight events, so polling without ACK cannot bypass the memory target. Allow an
+    // empty delivery queue to make progress even when a single entry exceeds the target; the
+    // shared memory manager still enforces the hard allocation limit.
+    return prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE
+        || (!prefetchingQueue.isEmpty()
+            && retainedTabletBytes.get()
+                >= Math.max(1L, subscriptionMemoryHandle.getMemoryQuotaInBytes() / 2L));
+  }
+
+  private boolean hasReachedPrefetchLimit(final DeliveryBatchState batchState) {
+    // The current batch becomes one more event when flushed. Stop conversion before that event
+    // fills the delivery queue so the unprocessed pending suffix stays queued.
+    return hasReachedPrefetchLimit()
+        || (!batchState.isEmpty() && prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE - 1);
   }
 
   private SubscriptionQueueRejectionReason getRealtimeAdmissionRejectionReason() {
@@ -742,13 +813,8 @@ public class ConsensusPrefetchingQueue {
     if (realtimeAdmissionBlocked.get()) {
       return realtimeAdmissionBlockReason;
     }
-    // Allow an empty queue to probe an entry even with a zero quota so materialization can report
-    // an explicit oversized-entry error. Pending requests have separate consensus memory
-    // accounting.
-    if (subscriptionMemoryHandle.getUsedMemorySizeInBytes() > 0L
-        && subscriptionMemoryHandle.getFreeMemorySizeInBytes() <= 0L) {
-      return toQueueRejectionReason(subscriptionMemoryHandle.inspectRejection(1L));
-    }
+    // Pending requests have their own bounded queue and consensus memory accounting. Subscription
+    // memory pressure must stop materialization without forcing admitted realtime data into WAL.
     return SubscriptionQueueRejectionReason.NONE;
   }
 
@@ -896,7 +962,7 @@ public class ConsensusPrefetchingQueue {
         return null;
       }
       final SubscriptionEvent event = pollInternal(consumerId);
-      if (Objects.nonNull(event) && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      if (Objects.nonNull(event) && !hasReachedPrefetchLimit()) {
         requestPrefetch();
       } else if (Objects.isNull(event) && shouldRecoverPrefetchBindingAfterEmptyPoll()) {
         requestPrefetch();
@@ -1470,7 +1536,7 @@ public class ConsensusPrefetchingQueue {
           continue;
         }
 
-        if (!event.pollable()) {
+        if (!event.pollable(getRecycleUncommittedEventIntervalMs())) {
           LOGGER.warn(
               DataNodePipeMessages
                   .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLL_NON_POLLABLE_EVENT_BROKEN_E9551325,
@@ -1583,6 +1649,8 @@ public class ConsensusPrefetchingQueue {
 
   private static final long WAL_GAP_RETRY_SLEEP_MS = 10L;
   private static final long MEMORY_RETRY_SLEEP_MS = 100L;
+  // Yield long WAL scans to other regions without closing readers or splitting writer requests.
+  private static final long WAL_SCAN_TIME_SLICE_NANOS = TimeUnit.MILLISECONDS.toNanos(50L);
   private static final long WAL_GAP_WAIT_LOG_INTERVAL_MS = 5_000L;
 
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
@@ -1656,6 +1724,7 @@ public class ConsensusPrefetchingQueue {
 
     acquireReadLock();
     try {
+      final ProgressWALIterator.ScanBudget walScanBudget = newWalScanBudget();
       if (isClosed || closeRequested || !prefetchInitialized) {
         return PrefetchRoundResult.dormant();
       }
@@ -1679,10 +1748,10 @@ public class ConsensusPrefetchingQueue {
 
       if (!isActive) {
         blockRealtimeAdmission(SubscriptionQueueRejectionReason.INACTIVE_OR_CLOSED);
-        return computeIdleRoundResult();
+        return computeIdleRoundResult(walScanBudget);
       }
       if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
-        return computeIdleRoundResult();
+        return computeIdleRoundResult(walScanBudget);
       }
 
       final SubscriptionConfig config = SubscriptionConfig.getInstance();
@@ -1698,24 +1767,22 @@ public class ConsensusPrefetchingQueue {
         resetRoundStateForSeek(seekGeneration.get());
         return PrefetchRoundResult.rescheduleNow();
       }
-      if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE
-          || !realtimeEntriesByWriter.isEmpty()) {
-        if (!realtimeEntriesByWriter.isEmpty()) {
-          blockRealtimeAdmission(SubscriptionQueueRejectionReason.WRITER_BACKLOG);
-        }
-        return computeIdleRoundResult();
+      if (!realtimeEntriesByWriter.isEmpty()) {
+        blockRealtimeAdmission(SubscriptionQueueRejectionReason.WRITER_BACKLOG);
+        return computeIdleRoundResult(walScanBudget);
+      }
+      unblockRealtimeAdmission();
+      if (hasReachedPrefetchLimit()) {
+        return computeIdleRoundResult(walScanBudget);
       }
       if (shouldWaitForSubscriptionMemory()) {
-        blockRealtimeAdmission(memoryBlockReason);
         if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
           resetRoundStateForSeek(seekGeneration.get());
           return PrefetchRoundResult.rescheduleNow();
         }
         return PrefetchRoundResult.rescheduleAfter(MEMORY_RETRY_SLEEP_MS);
       }
-      unblockRealtimeAdmission();
-
-      final List<IndexedConsensusRequest> batch = drainPendingEntries(maxWalEntries);
+      final List<IndexedConsensusRequest> batch = snapshotPendingEntries(maxWalEntries);
       if (!batch.isEmpty()) {
         LOGGER.debug(
             DataNodePipeMessages
@@ -1727,20 +1794,22 @@ public class ConsensusPrefetchingQueue {
             nextExpectedSearchIndex.get(),
             prefetchingQueue.size());
 
-        final MaterializationResult batchResult;
-        try {
-          batchResult =
-              accumulateFromPending(
-                  batch,
-                  lingerBatch,
-                  observedSeekGeneration,
-                  maxWalEntries,
-                  maxTablets,
-                  maxBatchBytes);
-        } finally {
-          pendingEntries.release(batch);
-        }
+        final MaterializationResult batchResult =
+            accumulateFromPending(
+                batch,
+                lingerBatch,
+                observedSeekGeneration,
+                maxWalEntries,
+                maxTablets,
+                maxBatchBytes,
+                walScanBudget);
         if (batchResult != MaterializationResult.SUCCESS) {
+          if (batchResult == MaterializationResult.WAL_SCAN_YIELDED) {
+            if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
+              resetRoundStateForSeek(seekGeneration.get());
+            }
+            return PrefetchRoundResult.rescheduleNow();
+          }
           if (batchResult == MaterializationResult.WAL_GAP) {
             if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
               resetRoundStateForSeek(seekGeneration.get());
@@ -1750,8 +1819,7 @@ public class ConsensusPrefetchingQueue {
           }
           if (batchResult == MaterializationResult.MEMORY_BLOCKED) {
             // Publish already reserved Tablets immediately so ACK can release their memory. The
-            // blocked request and the drained suffix are recovered from WAL on a later round.
-            blockRealtimeAdmission(memoryBlockReason);
+            // blocked request and the unprocessed suffix remain in the bounded pending queue.
             if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, observedSeekGeneration)) {
               resetRoundStateForSeek(seekGeneration.get());
               return PrefetchRoundResult.rescheduleNow();
@@ -1764,9 +1832,12 @@ public class ConsensusPrefetchingQueue {
       }
 
       if (batch.isEmpty() && lingerBatch.isEmpty()) {
-        final MaterializationResult walResult = tryCatchUpFromWAL(observedSeekGeneration);
+        final MaterializationResult walResult =
+            tryCatchUpFromWAL(observedSeekGeneration, walScanBudget);
+        if (walResult == MaterializationResult.WAL_SCAN_YIELDED) {
+          return PrefetchRoundResult.rescheduleNow();
+        }
         if (walResult == MaterializationResult.MEMORY_BLOCKED) {
-          blockRealtimeAdmission(memoryBlockReason);
           return PrefetchRoundResult.rescheduleAfter(MEMORY_RETRY_SLEEP_MS);
         }
         if (walResult == MaterializationResult.STALE) {
@@ -1779,6 +1850,15 @@ public class ConsensusPrefetchingQueue {
           lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes)) {
         resetRoundStateForSeek(seekGeneration.get());
         return PrefetchRoundResult.rescheduleNow();
+      }
+
+      // Publish reserved Tablets when read-ahead pauses. Leaving this batch lingering at the
+      // delivery limit would keep rescheduling pending work that cannot yet be materialized.
+      if (!lingerBatch.isEmpty() && hasReachedPrefetchLimit(lingerBatch)) {
+        if (!flushBatch(lingerBatch, observedSeekGeneration)) {
+          resetRoundStateForSeek(seekGeneration.get());
+          return PrefetchRoundResult.rescheduleNow();
+        }
       }
 
       if (!lingerBatch.isEmpty() && lingerBatch.firstTabletTimeMs > 0L) {
@@ -1800,7 +1880,7 @@ public class ConsensusPrefetchingQueue {
       }
 
       maybeInjectWatermark();
-      return computeIdleRoundResult();
+      return computeIdleRoundResult(walScanBudget);
     } catch (final Throwable fatal) {
       LOGGER.error(
           DataNodePipeMessages
@@ -1860,23 +1940,34 @@ public class ConsensusPrefetchingQueue {
     observedSeekGeneration = newSeekGeneration;
   }
 
-  private List<IndexedConsensusRequest> drainPendingEntries(final int maxWalEntries) {
+  private List<IndexedConsensusRequest> snapshotPendingEntries(final int maxWalEntries) {
+    // The queue read lock excludes lifecycle clears. Concurrent producers may only append, so
+    // retain each request and its consensus memory reservation until it is actually consumed.
     final List<IndexedConsensusRequest> batch = new ArrayList<>();
-    IndexedConsensusRequest next;
-    while (batch.size() < maxWalEntries && Objects.nonNull(next = pendingEntries.poll())) {
-      batch.add(next);
+    for (final IndexedConsensusRequest request : pendingEntries) {
+      if (batch.size() >= maxWalEntries) {
+        break;
+      }
+      batch.add(request);
     }
     return batch;
   }
 
-  private PrefetchRoundResult computeIdleRoundResult() {
+  private static ProgressWALIterator.ScanBudget newWalScanBudget() {
+    return new ProgressWALIterator.ScanBudget(
+        SubscriptionConfig.getInstance().getSubscriptionConsensusBatchMaxWalEntries(),
+        WAL_SCAN_TIME_SLICE_NANOS);
+  }
+
+  private PrefetchRoundResult computeIdleRoundResult(
+      final ProgressWALIterator.ScanBudget walScanBudget) {
     if (isClosed || !prefetchInitialized || !isActive) {
       return PrefetchRoundResult.dormant();
     }
-    if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+    if (hasReachedPrefetchLimit()) {
       return PrefetchRoundResult.dormant();
     }
-    if (hasImmediatePrefetchableWork()) {
+    if (hasImmediatePrefetchableWork(walScanBudget)) {
       return PrefetchRoundResult.rescheduleNow();
     }
     long delayMs = Long.MAX_VALUE;
@@ -1896,10 +1987,10 @@ public class ConsensusPrefetchingQueue {
     }
 
     if (!inFlightEvents.isEmpty()) {
-      delayMs =
-          Math.min(
-              delayMs,
-              SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
+      final long recycleIntervalMs = getRecycleUncommittedEventIntervalMs();
+      if (recycleIntervalMs > 0L) {
+        delayMs = Math.min(delayMs, recycleIntervalMs);
+      }
     }
 
     return delayMs == Long.MAX_VALUE
@@ -1924,9 +2015,13 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean hasImmediatePrefetchableWork() {
+    return hasImmediatePrefetchableWork(newWalScanBudget());
+  }
+
+  private boolean hasImmediatePrefetchableWork(final ProgressWALIterator.ScanBudget walScanBudget) {
     return !pendingEntries.isEmpty()
         || !realtimeEntriesByWriter.isEmpty()
-        || hasReadableWalEntries();
+        || hasReadableWalEntries(walScanBudget);
   }
 
   private boolean hasHistoricalWalLag() {
@@ -1996,7 +2091,10 @@ public class ConsensusPrefetchingQueue {
    * Accumulates tablets from pending entries into the linger buffer. When pending replay outruns
    * the local WAL reader, this method backfills the local-index gap from WAL before continuing.
    *
-   * @return the materialization result for the drained pending batch
+   * <p>Requests are removed only after materialization or deduplication. Memory pressure, delivery
+   * capacity, and temporary WAL gaps leave the unprocessed suffix available for realtime delivery.
+   *
+   * @return the materialization result for the pending batch
    */
   private MaterializationResult accumulateFromPending(
       final List<IndexedConsensusRequest> batch,
@@ -2004,7 +2102,8 @@ public class ConsensusPrefetchingQueue {
       final long expectedSeekGeneration,
       final int maxWalEntries,
       final int maxTablets,
-      final long maxBatchBytes) {
+      final long maxBatchBytes,
+      final ProgressWALIterator.ScanBudget walScanBudget) {
 
     int processedCount = 0;
     int skippedCount = 0;
@@ -2012,6 +2111,9 @@ public class ConsensusPrefetchingQueue {
 
     try {
       for (int index = 0; index < batch.size(); index++) {
+        if (hasReachedPrefetchLimit(lingerBatch)) {
+          break;
+        }
         final IndexedConsensusRequest request = batch.get(index);
         final long searchIndex = request.getSearchIndex();
 
@@ -2033,25 +2135,32 @@ public class ConsensusPrefetchingQueue {
                   expectedSeekGeneration,
                   maxWalEntries,
                   maxTablets,
-                  maxBatchBytes);
+                  maxBatchBytes,
+                  walScanBudget);
           if (gapFillResult != MaterializationResult.SUCCESS) {
             return gapFillResult;
+          }
+          if (hasReachedPrefetchLimit(lingerBatch)) {
+            break;
           }
         }
 
         if (isBeforeLocalCursor(request)) {
           skippedCount++;
+          pendingEntries.consume(request);
           continue;
         }
 
         if (shouldSkipForRecoveryProgress(request)) {
           skippedCount++;
           advanceLocalCursorIfPresent(request);
+          pendingEntries.consume(request);
           continue;
         }
         if (shouldSkipForMaterializedProgress(request)) {
           skippedCount++;
           advanceLocalCursorIfPresent(request);
+          pendingEntries.consume(request);
           continue;
         }
 
@@ -2064,7 +2173,8 @@ public class ConsensusPrefetchingQueue {
         markMaterializedProgress(request);
         processedCount++;
         advanceLocalCursorIfPresent(request);
-        if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+        pendingEntries.consume(request);
+        if (hasReachedPrefetchLimit(lingerBatch)) {
           break;
         }
       }
@@ -2098,10 +2208,9 @@ public class ConsensusPrefetchingQueue {
    * Fills a gap in the pending queue by reading entries from WAL so the internal local replay
    * cursor stays contiguous even when pending delivery jumps ahead of the WAL iterator.
    *
-   * <p>Temporary WAL visibility lag is treated as a normal back-pressure condition: once a drained
-   * pending batch encounters an unresolved local-index gap, the queue backs off and lets the
-   * affected suffix fall back to the WAL path on later rounds. This keeps replay contiguous without
-   * requeueing the drained batch back into the bounded pending queue.
+   * <p>Temporary WAL visibility lag is treated as a normal back-pressure condition: an unresolved
+   * local-index gap pauses materialization while the affected suffix remains in the bounded pending
+   * queue. Later rounds backfill the gap before resuming pending delivery.
    *
    * @return the materialization result for the WAL gap
    */
@@ -2112,7 +2221,8 @@ public class ConsensusPrefetchingQueue {
       final long expectedSeekGeneration,
       final int maxWalEntries,
       final int maxTablets,
-      final long maxBatchBytes) {
+      final long maxBatchBytes,
+      final ProgressWALIterator.ScanBudget walScanBudget) {
     pendingWalGapRetryRequested = false;
     if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
       return MaterializationResult.STALE;
@@ -2130,7 +2240,12 @@ public class ConsensusPrefetchingQueue {
     // queue read lock indefinitely and block unsubscribe from acquiring the close write lock.
     final MaterializationResult pumpResult =
         pumpFromSubscriptionWAL(
-            batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
+            batchState,
+            expectedSeekGeneration,
+            maxWalEntries,
+            maxTablets,
+            maxBatchBytes,
+            walScanBudget);
     if (pumpResult != MaterializationResult.SUCCESS) {
       return pumpResult;
     }
@@ -2169,7 +2284,8 @@ public class ConsensusPrefetchingQueue {
    * Try catch-up from WAL when the pending queue was empty. This handles cold-start or scenarios
    * where the subscription started after data was already written.
    */
-  private MaterializationResult tryCatchUpFromWAL(final long expectedSeekGeneration) {
+  private MaterializationResult tryCatchUpFromWAL(
+      final long expectedSeekGeneration, final ProgressWALIterator.ScanBudget walScanBudget) {
     final SubscriptionConfig config = SubscriptionConfig.getInstance();
     final int maxTablets = config.getSubscriptionConsensusBatchMaxTabletCount();
     final long maxBatchBytes = config.getSubscriptionConsensusBatchMaxSizeInBytes();
@@ -2183,8 +2299,14 @@ public class ConsensusPrefetchingQueue {
     // segment. Pending-path cursor advances and seek operations request explicit realignment.
     final MaterializationResult materializationResult =
         pumpFromSubscriptionWAL(
-            batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
-    if (materializationResult != MaterializationResult.SUCCESS) {
+            batchState,
+            expectedSeekGeneration,
+            maxWalEntries,
+            maxTablets,
+            maxBatchBytes,
+            walScanBudget);
+    if (materializationResult != MaterializationResult.SUCCESS
+        && materializationResult != MaterializationResult.WAL_SCAN_YIELDED) {
       if (materializationResult == MaterializationResult.MEMORY_BLOCKED && !batchState.isEmpty()) {
         if (!flushBatch(batchState, expectedSeekGeneration)) {
           discardBatch(batchState);
@@ -2200,7 +2322,7 @@ public class ConsensusPrefetchingQueue {
       discardBatch(batchState);
       return MaterializationResult.STALE;
     }
-    return MaterializationResult.SUCCESS;
+    return materializationResult;
   }
 
   private MaterializationResult pumpFromSubscriptionWAL(
@@ -2208,7 +2330,8 @@ public class ConsensusPrefetchingQueue {
       final long expectedSeekGeneration,
       final int maxWalEntries,
       final int maxTablets,
-      final long maxBatchBytes) {
+      final long maxBatchBytes,
+      final ProgressWALIterator.ScanBudget walScanBudget) {
     if (Objects.isNull(subscriptionWALIterator)) {
       return MaterializationResult.SUCCESS;
     }
@@ -2222,13 +2345,13 @@ public class ConsensusPrefetchingQueue {
           maxWalEntries,
           prefetchingQueue.size());
     }
-    ensureSubscriptionWalReadable();
+    ensureSubscriptionWalReadable(walScanBudget);
     reportUnreadableWalReplayIfNecessary();
 
     int entriesRead = 0;
     while (entriesRead < maxWalEntries
-        && subscriptionWALIterator.hasNext()
-        && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+        && !hasReachedPrefetchLimit(batchState)
+        && subscriptionWALIterator.hasNext(walScanBudget)) {
       reportUnreadableWalReplayIfNecessary();
       try {
         final IndexedConsensusRequest walEntry = subscriptionWALIterator.next();
@@ -2282,7 +2405,9 @@ public class ConsensusPrefetchingQueue {
           entriesRead,
           nextExpectedSearchIndex.get());
     }
-    return MaterializationResult.SUCCESS;
+    return walScanBudget.hasYielded()
+        ? MaterializationResult.WAL_SCAN_YIELDED
+        : MaterializationResult.SUCCESS;
   }
 
   private void reportUnreadableWalReplayIfNecessary() {
@@ -2335,11 +2460,11 @@ public class ConsensusPrefetchingQueue {
     nextExpectedSearchIndex.set(actualSearchIndex + 1);
   }
 
-  private void ensureSubscriptionWalReadable() {
+  private void ensureSubscriptionWalReadable(final ProgressWALIterator.ScanBudget walScanBudget) {
     if (Objects.isNull(subscriptionWALIterator)) {
       return;
     }
-    if (subscriptionWALIterator.hasNext()) {
+    if (subscriptionWALIterator.hasNext(walScanBudget) || walScanBudget.hasYielded()) {
       reportUnreadableWalReplayIfNecessary();
       return;
     }
@@ -2348,7 +2473,7 @@ public class ConsensusPrefetchingQueue {
     // Listing and sorting all retained WAL files is only necessary after the iterator is
     // exhausted. While it still has a readable request, refreshing cannot affect the next result.
     subscriptionWALIterator.refresh();
-    if (subscriptionWALIterator.hasNext()) {
+    if (subscriptionWALIterator.hasNext(walScanBudget) || walScanBudget.hasYielded()) {
       reportUnreadableWalReplayIfNecessary();
       return;
     }
@@ -2392,7 +2517,7 @@ public class ConsensusPrefetchingQueue {
 
   protected void onWalGapRetryScheduled() {}
 
-  private boolean hasReadableWalEntries() {
+  private boolean hasReadableWalEntries(final ProgressWALIterator.ScanBudget walScanBudget) {
     if (pendingSubscriptionWalResetSearchIndex != Long.MIN_VALUE) {
       // Do not advance the stale iterator only to discard its buffered request when the next round
       // applies the pending realignment. Returning true keeps the worker scheduled for that round.
@@ -2401,9 +2526,9 @@ public class ConsensusPrefetchingQueue {
     if (Objects.isNull(subscriptionWALIterator)) {
       return false;
     }
-    final boolean readable = subscriptionWALIterator.hasNext();
+    final boolean readable = subscriptionWALIterator.hasNext(walScanBudget);
     reportUnreadableWalReplayIfNecessary();
-    return readable;
+    return readable || walScanBudget.hasYielded();
   }
 
   private void requestSubscriptionWalReset(
@@ -3522,7 +3647,7 @@ public class ConsensusPrefetchingQueue {
               cleanUpEvent(ev, false);
               return null;
             }
-            if (ev.pollable()) {
+            if (ev.pollable(getRecycleUncommittedEventIntervalMs())) {
               ev.nack();
               if (ev.isPoisoned()) {
                 LOGGER.error(
@@ -4366,10 +4491,17 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void close(final boolean removeProgressAfterClose) {
+    close(removeProgressAfterClose, false);
+  }
+
+  public void close(
+      final boolean removeProgressAfterClose, final boolean retainProgressAfterUnsubscribe) {
     if (!lock.writeLock().tryLock()) {
       if (beginClose()) {
         CLOSE_CLEANUP_EXECUTOR.execute(
-            () -> finishCloseAfterWriteLock(removeProgressAfterClose, true));
+            () ->
+                finishCloseAfterWriteLock(
+                    removeProgressAfterClose, retainProgressAfterUnsubscribe, true));
       }
       return;
     }
@@ -4386,7 +4518,8 @@ public class ConsensusPrefetchingQueue {
     }
 
     try {
-      finishCloseRequest(seekRequestToFail, removeProgressAfterClose, false);
+      finishCloseRequest(
+          seekRequestToFail, removeProgressAfterClose, retainProgressAfterUnsubscribe, false);
     } catch (final Exception e) {
       handleCloseFailure(e);
     }
@@ -4394,9 +4527,16 @@ public class ConsensusPrefetchingQueue {
 
   /** Starts teardown without waiting for an active prefetch round or consensus queue writes. */
   public void closeAsync(final boolean removeProgressAfterClose) {
+    closeAsync(removeProgressAfterClose, false);
+  }
+
+  public void closeAsync(
+      final boolean removeProgressAfterClose, final boolean retainProgressAfterUnsubscribe) {
     if (beginClose()) {
       CLOSE_CLEANUP_EXECUTOR.execute(
-          () -> finishCloseAfterWriteLock(removeProgressAfterClose, true));
+          () ->
+              finishCloseAfterWriteLock(
+                  removeProgressAfterClose, retainProgressAfterUnsubscribe, true));
     }
   }
 
@@ -4413,7 +4553,9 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void finishCloseAfterWriteLock(
-      final boolean removeProgressAfterClose, final boolean backgroundCleanup) {
+      final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe,
+      final boolean backgroundCleanup) {
     try {
       final PendingSeekRequest seekRequestToFail;
       acquireWriteLock();
@@ -4423,7 +4565,11 @@ public class ConsensusPrefetchingQueue {
       } finally {
         releaseWriteLock();
       }
-      finishCloseRequest(seekRequestToFail, removeProgressAfterClose, backgroundCleanup);
+      finishCloseRequest(
+          seekRequestToFail,
+          removeProgressAfterClose,
+          retainProgressAfterUnsubscribe,
+          backgroundCleanup);
     } catch (final Exception e) {
       handleCloseFailure(e);
     }
@@ -4432,6 +4578,7 @@ public class ConsensusPrefetchingQueue {
   private void finishCloseRequest(
       final PendingSeekRequest seekRequestToFail,
       final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe,
       final boolean backgroundCleanup) {
     final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding =
         detachPrefetchSubtask();
@@ -4453,22 +4600,26 @@ public class ConsensusPrefetchingQueue {
         && Objects.nonNull(prefetchBinding.right)
         && prefetchBinding.right.isScheduledOrRunning()) {
       CLOSE_CLEANUP_EXECUTOR.execute(
-          () -> finishCloseInBackground(prefetchBinding, removeProgressAfterClose));
+          () ->
+              finishCloseInBackground(
+                  prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe));
       return;
     }
 
     if (backgroundCleanup) {
-      finishCloseInBackground(prefetchBinding, removeProgressAfterClose);
+      finishCloseInBackground(
+          prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe);
     } else {
-      finishClose(prefetchBinding, removeProgressAfterClose);
+      finishClose(prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe);
     }
   }
 
   private void finishCloseInBackground(
       final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding,
-      final boolean removeProgressAfterClose) {
+      final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe) {
     try {
-      finishClose(prefetchBinding, removeProgressAfterClose);
+      finishClose(prefetchBinding, removeProgressAfterClose, retainProgressAfterUnsubscribe);
     } catch (final Exception e) {
       handleCloseFailure(e);
     }
@@ -4487,12 +4638,13 @@ public class ConsensusPrefetchingQueue {
 
   private void finishClose(
       final Pair<ConsensusSubscriptionPrefetchExecutor, ConsensusPrefetchSubtask> prefetchBinding,
-      final boolean removeProgressAfterClose) {
+      final boolean removeProgressAfterClose,
+      final boolean retainProgressAfterUnsubscribe) {
     // Queue deregistration may wait for consensus-side WAL/index work. Metadata callers use
     // closeAsync so this cleanup cannot hold up the consumer-group metadata push.
     // Requests left in pendingEntries have not advanced subscription progress and can be replayed
     // from WAL if this queue is created again.
-    deregisterPendingEntriesFromConsensusServer();
+    deregisterPendingEntriesFromConsensusServer(retainProgressAfterUnsubscribe);
 
     if (Objects.nonNull(prefetchBinding.right)) {
       prefetchBinding.right.awaitIdle();
@@ -4537,9 +4689,24 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private void deregisterPendingEntriesFromConsensusServer() {
+  private void deregisterPendingEntriesFromConsensusServer(
+      final boolean retainProgressAfterUnsubscribe) {
     try {
-      serverImpl.deregisterSubscriptionQueue(pendingEntries);
+      if (retainProgressAfterUnsubscribe) {
+        serverImpl.replaceSubscriptionQueueWithDetachedRetention(
+            pendingEntries,
+            ConsensusSubscriptionWalRetention.generateRetentionId(
+                consumerGroupId, topicName, consensusGroupId),
+            retentionPolicy,
+            ConsensusSubscriptionWalRetention.createCommittedRetainedMinVersionIdSupplier(
+                consensusGroupId,
+                () -> consensusReqReader,
+                () ->
+                    commitManager.getCommittedRegionProgress(
+                        consumerGroupId, topicName, consensusGroupId)));
+      } else {
+        serverImpl.deregisterSubscriptionQueue(pendingEntries);
+      }
     } catch (final Exception e) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7,
