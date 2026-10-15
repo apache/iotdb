@@ -33,7 +33,10 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -80,6 +83,28 @@ public class IoTDBCollectFanInIT {
         }
       }
       statement.execute("FLUSH");
+    }
+  }
+
+  @Test
+  public void testUnorderedUnionPreservesEveryDuplicateOnEachNode() throws Exception {
+    List<String> expectedRows = new ArrayList<>();
+    for (int device = 0; device < DEVICES; device++) {
+      for (int value = 1; value <= ROWS; value++) {
+        String row = device(device) + "," + zone(device) + "," + value + ",";
+        expectedRows.add(row);
+        expectedRows.add(row);
+      }
+    }
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      try (ResultSet result =
+          statement.executeQuery(
+              "SELECT device, zone, value FROM readings1 UNION ALL "
+                  + "SELECT device, zone, value FROM readings1")) {
+        assertResultSetEqualUnordered(result, "device,zone,value,", expectedRows);
+      }
     }
   }
 
