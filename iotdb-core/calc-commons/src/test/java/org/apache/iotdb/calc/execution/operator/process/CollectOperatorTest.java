@@ -33,6 +33,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,6 +48,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -120,7 +122,98 @@ public class CollectOperatorTest {
   }
 
   @Test
-  public void testPendingListenerRetargetedAndStaleCompletionIgnored() throws Exception {
+  public void testAllReadyChildrenHaveLinearSelectionCost() throws Exception {
+    int childCount = 1000;
+    int rounds = 5;
+    List<Child> children = new ArrayList<>();
+    for (int i = 0; i < childCount; i++) {
+      Child child = new Child(block(i));
+      child.ready();
+      children.add(child);
+    }
+    CountingList countedChildren = new CountingList(children);
+    CollectOperator collect = new CollectOperator(new TestContext(), countedChildren);
+    try {
+      for (int round = 0; round < rounds; round++) {
+        assertTrue(collect.isBlocked().isDone());
+        // A completed future may notify more than once. It must occupy only one ready slot.
+        for (Child child : children) {
+          child.wait.listener.run();
+          child.wait.listener.run();
+        }
+        Set<Integer> consumed = new HashSet<>();
+        for (int i = 0; i < childCount; i++) {
+          assertTrue(collect.isBlocked().isDone());
+          TsBlock result = collect.next();
+          assertTrue(
+              "every ready child must be selected once per round",
+              consumed.add(result.getColumn(0).getInt(0)));
+        }
+        assertEquals(childCount, consumed.size());
+      }
+      for (Child child : children) {
+        assertEquals(rounds, child.advances);
+      }
+      long probes = countedChildren.getCalls + countFutureProbes(children);
+      long linearLimit = 20L * (childCount + childCount * rounds);
+      assertTrue(
+          "selection must use O(children + blocks) probes, observed " + probes,
+          probes <= linearLimit);
+    } finally {
+      collect.close();
+    }
+  }
+
+  @Test
+  public void testClosedChildrenDoNotIncreaseRemainingChildSelectionCost() throws Exception {
+    int childCount = 1000;
+    int remainingBlocks = 3000;
+    List<Child> children = new ArrayList<>();
+    for (int i = 0; i < childCount; i++) {
+      Child child = new Child(block(i));
+      child.hasNext = i == childCount - 1;
+      child.finished = !child.hasNext;
+      child.ready();
+      children.add(child);
+    }
+    CountingList countedChildren = new CountingList(children);
+    CollectOperator collect = new CollectOperator(new TestContext(), countedChildren);
+    try {
+      // Retire the first 999 children and consume one block from the remaining child.
+      for (int i = 0; i < childCount; i++) {
+        assertTrue(collect.isBlocked().isDone());
+        collect.next();
+      }
+      for (int i = 0; i < childCount - 1; i++) {
+        assertEquals(1, children.get(i).closes);
+      }
+      Child remaining = children.get(childCount - 1);
+      assertEquals(1, remaining.advances);
+      long initialProbes = countedChildren.getCalls + countFutureProbes(children);
+      for (int i = 0; i < remainingBlocks; i++) {
+        assertTrue(collect.isBlocked().isDone());
+        assertSame(remaining.output, collect.next());
+      }
+      assertEquals(remainingBlocks + 1, remaining.advances);
+      long probes = countedChildren.getCalls + countFutureProbes(children) - initialProbes;
+      assertTrue(
+          "retired children must not be visited for each remaining block, observed " + probes,
+          probes <= 20L * remainingBlocks);
+    } finally {
+      collect.close();
+    }
+  }
+
+  private static long countFutureProbes(List<Child> children) {
+    long probes = 0;
+    for (Child child : children) {
+      probes += child.wait.probes.get();
+    }
+    return probes;
+  }
+
+  @Test
+  public void testPendingListenerReusedAndStaleCompletionIgnored() throws Exception {
     Child a = new Child(block(1));
     Child b = new Child(block(2));
     CollectOperator collect = collect(a, b);
@@ -139,6 +232,29 @@ public class CollectOperatorTest {
     assertSame(a.output, collect.next());
     assertTrue(first.isDone());
     collect.close();
+  }
+
+  @Test
+  public void testCompletionBetweenSelectionsIsNotLost() throws Exception {
+    Child a = new Child(block(1));
+    Child b = new Child(block(2));
+    b.ready();
+    CollectOperator collect = collect(a, b);
+    try {
+      assertTrue(collect.isBlocked().isDone());
+      assertSame(b.output, collect.next());
+      b.reset();
+      // No selection is waiting yet: retain this completion until the next driver observation.
+      a.ready();
+      assertTrue(collect.isBlocked().isDone());
+      assertSame(a.output, collect.next());
+      a.reset();
+      assertFalse(collect.isBlocked().isDone());
+      assertEquals(1, a.advances);
+      assertEquals(1, b.advances);
+    } finally {
+      collect.close();
+    }
   }
 
   @Test
@@ -401,10 +517,36 @@ public class CollectOperatorTest {
     }
   }
 
+  private static final class CountingList extends AbstractList<Operator> {
+    private final List<Operator> delegate;
+    private long getCalls;
+
+    private CountingList(List<? extends Operator> children) {
+      delegate = new ArrayList<>(children);
+    }
+
+    @Override
+    public Operator get(int index) {
+      getCalls++;
+      return delegate.get(index);
+    }
+
+    @Override
+    public Operator set(int index, Operator child) {
+      return delegate.set(index, child);
+    }
+
+    @Override
+    public int size() {
+      return delegate.size();
+    }
+  }
+
   private static final class CountingFuture
       extends ForwardingListenableFuture.SimpleForwardingListenableFuture<Void> {
     private final SettableFuture<Void> delegate;
     private final AtomicInteger registrations = new AtomicInteger();
+    private final AtomicInteger probes = new AtomicInteger();
     private Runnable beforeRegistration;
     private Runnable listener;
 
@@ -415,6 +557,25 @@ public class CollectOperatorTest {
     private CountingFuture(SettableFuture<Void> delegate) {
       super(delegate);
       this.delegate = delegate;
+    }
+
+    @Override
+    public boolean isDone() {
+      probes.incrementAndGet();
+      return super.isDone();
+    }
+
+    @Override
+    public Void get() throws InterruptedException, ExecutionException {
+      probes.incrementAndGet();
+      return super.get();
+    }
+
+    @Override
+    public Void get(long timeout, TimeUnit unit)
+        throws InterruptedException, ExecutionException, TimeoutException {
+      probes.incrementAndGet();
+      return super.get(timeout, unit);
     }
 
     @Override
