@@ -184,8 +184,8 @@ final class TsFileWriterManager {
       }
     }
 
-    // One fsync per staged file of the piece, not per chunk, and the progress records follow it:
-    // a record must never be on disk while the bytes it describes are still in a buffer.
+    // Hand the piece to the files, so that a reader of a staged file sees it, but do not fsync
+    // either side: a tail that a crash kept off the disk is truncated and staged again.
     flush();
     flushRecordedChunks();
     return createPieceRefs(taskDir, previousLengths);
@@ -408,9 +408,6 @@ final class TsFileWriterManager {
   private void flush() throws IOException {
     for (final TsFilePrecalculatedChunkWriter writer : dataPartition2Writer.values()) {
       writer.getOutput().flush();
-      // Forced before the progress records are appended: their fsync only tells the truth if the
-      // bytes they describe are already on the disk.
-      writer.getOutput().force();
     }
   }
 

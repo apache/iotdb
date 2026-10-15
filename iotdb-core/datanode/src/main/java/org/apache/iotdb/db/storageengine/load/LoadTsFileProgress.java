@@ -230,9 +230,8 @@ public class LoadTsFileProgress {
         written++;
       }
       output.flush();
-      // The caller forced the bytes of the piece first, so a record never reaches the disk before
-      // the bytes it describes.
-      fos.getFD().sync();
+      // Deliberately not fsynced, like the staged bytes a piece writes: a crash can leave a tail
+      // that recovery truncates and stages again.
     } finally {
       queuedChunkRecords.subList(0, written).clear();
     }
@@ -596,7 +595,8 @@ public class LoadTsFileProgress {
 
   /** Serializes the chunk header body, that is the header without its leading chunk-type byte. */
   private static ByteBuffer serializeChunkHeader(final Chunk chunk) throws IOException {
-    try (final PublicBAOS out = new PublicBAOS()) {
+    // The size is known before serializing, so the buffer neither grows nor keeps spare room.
+    try (final PublicBAOS out = new PublicBAOS(chunk.getHeader().getSerializedSize())) {
       chunk.getHeader().serializeTo(out);
       // Drop the leading chunk-type byte: deserializeFrom takes it separately.
       final int bodySize = chunk.getHeader().getSerializedSize() - 1;
@@ -616,7 +616,7 @@ public class LoadTsFileProgress {
   }
 
   private static ByteBuffer serializeStatistics(final Chunk chunk) throws IOException {
-    try (final PublicBAOS out = new PublicBAOS()) {
+    try (final PublicBAOS out = new PublicBAOS(chunk.getChunkStatistic().getSerializedSize())) {
       chunk.getChunkStatistic().serialize(out);
       return ByteBuffer.wrap(out.getBuf(), 0, out.size());
     }
