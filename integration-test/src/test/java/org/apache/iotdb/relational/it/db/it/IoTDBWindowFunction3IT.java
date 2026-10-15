@@ -307,13 +307,13 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
         new String[] {
-          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
           "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
           "2021-01-01T09:08:00.000Z,d2,2.0,1,",
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY value) as rn FROM demo) WHERE rn <= 2 ORDER BY device, time",
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY value, time) as rn FROM demo) WHERE rn <= 2 ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -327,7 +327,7 @@ public class IoTDBWindowFunction3IT {
           "2021-01-01T09:05:00.000Z,d1,3.0,2,", "2021-01-01T09:07:00.000Z,d1,5.0,4,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY value) as rn FROM demo) ORDER BY device, time LIMIT 2 ",
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY value, time) as rn FROM demo) ORDER BY device, time LIMIT 2 ",
         expectedHeader,
         retArray,
         DATABASE_NAME);

@@ -49,12 +49,15 @@ public class SubscriptionSinkSubtask extends PipeSinkSubtask {
       final String topicName,
       final String consumerGroupId) {
     super(
+        null,
         taskID,
         creationTime,
         attributeSortedString,
+        attributeSortedString,
         connectorIndex,
         inputPendingQueue,
-        outputPipeConnector);
+        outputPipeConnector,
+        false);
     this.topicName = topicName;
     this.consumerGroupId = consumerGroupId;
   }
@@ -118,6 +121,7 @@ public class SubscriptionSinkSubtask extends PipeSinkSubtask {
   }
 
   private boolean isConsensusDrivenTopic() {
-    return ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
+    return ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+        topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
   }
 }

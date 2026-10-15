@@ -42,6 +42,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_SCAN_VALUE;
+
 public class TsFileInsertionEventParserProvider {
 
   private final String pipeName;
@@ -56,6 +59,7 @@ public class TsFileInsertionEventParserProvider {
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
   private final IAuditEntity entity;
+  private final String tsFileParser;
 
   public TsFileInsertionEventParserProvider(
       final String pipeName,
@@ -68,6 +72,32 @@ public class TsFileInsertionEventParserProvider {
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
       final PipeTsFileInsertionEvent sourceEvent) {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        null);
+  }
+
+  public TsFileInsertionEventParserProvider(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeTsFileInsertionEvent sourceEvent,
+      final String tsFileParser) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.tsFile = tsFile;
@@ -78,6 +108,7 @@ public class TsFileInsertionEventParserProvider {
     this.pipeTaskMeta = pipeTaskMeta;
     this.entity = entity;
     this.sourceEvent = sourceEvent;
+    this.tsFileParser = tsFileParser;
   }
 
   public TsFileInsertionEventParser provide(final boolean isWithMod)
@@ -97,6 +128,37 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           entity,
+          sourceEvent,
+          isWithMod);
+    }
+
+    if (EXTRACTOR_TSFILE_PARSER_QUERY_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionEventQueryParser(
+          pipeName,
+          creationTime,
+          tsFile,
+          treePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          null,
+          isWithMod);
+    }
+
+    if (EXTRACTOR_TSFILE_PARSER_SCAN_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionEventScanParser(
+          pipeName,
+          creationTime,
+          tsFile,
+          treePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent,
           isWithMod);
     }

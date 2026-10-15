@@ -41,7 +41,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -53,8 +55,20 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   private TopicMeta existedTopicMeta;
 
+  // Non-null only for client ALTER TOPIC requests. These are merged again after the procedure has
+  // acquired the subscription lock, so a request cannot overwrite attributes committed after its
+  // initial TopicMeta snapshot was built.
+  private Map<String, String> updatedTopicAttributes;
+
   public AlterTopicProcedure() {
     super();
+  }
+
+  public AlterTopicProcedure(final boolean shouldMergeUpdatedTopicAttributes) {
+    super();
+    if (shouldMergeUpdatedTopicAttributes) {
+      updatedTopicAttributes = new HashMap<>();
+    }
   }
 
   public AlterTopicProcedure(TopicMeta updatedTopicMeta) {
@@ -62,11 +76,28 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     this.updatedTopicMeta = updatedTopicMeta;
   }
 
+  public AlterTopicProcedure(
+      TopicMeta updatedTopicMeta, Map<String, String> updatedTopicAttributes) {
+    super();
+    this.updatedTopicMeta = updatedTopicMeta;
+    this.updatedTopicAttributes =
+        Objects.isNull(updatedTopicAttributes) ? null : new HashMap<>(updatedTopicAttributes);
+  }
+
   /** This is only used when the subscription info lock is held by another procedure. */
   public AlterTopicProcedure(
       TopicMeta updatedTopicMeta, AtomicReference<SubscriptionInfo> subscriptionInfo) {
     super();
     this.updatedTopicMeta = updatedTopicMeta;
+    this.subscriptionInfo = subscriptionInfo;
+  }
+
+  /** This is only used when the subscription info lock is held by another procedure. */
+  public AlterTopicProcedure(
+      TopicMeta updatedTopicMeta,
+      Map<String, String> updatedTopicAttributes,
+      AtomicReference<SubscriptionInfo> subscriptionInfo) {
+    this(updatedTopicMeta, updatedTopicAttributes);
     this.subscriptionInfo = subscriptionInfo;
   }
 
@@ -80,6 +111,10 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     return updatedTopicMeta;
   }
 
+  public boolean shouldMergeUpdatedTopicAttributes() {
+    return Objects.nonNull(updatedTopicAttributes);
+  }
+
   @Override
   protected SubscriptionOperation getOperation() {
     return SubscriptionOperation.ALTER_TOPIC;
@@ -89,9 +124,16 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   public boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info(ProcedureMessages.ALTERTOPICPROCEDURE_EXECUTEFROMVALIDATE);
 
-    subscriptionInfo.get().validateBeforeAlteringTopic(updatedTopicMeta);
+    existedTopicMeta =
+        subscriptionInfo
+            .get()
+            .deepCopyTopicMeta(
+                updatedTopicMeta.getTopicName(), updatedTopicMeta.visibleUnderTableModel());
+    if (Objects.nonNull(updatedTopicAttributes) && Objects.nonNull(existedTopicMeta)) {
+      updatedTopicMeta = existedTopicMeta.deepCopyWithUpdatedAttributes(updatedTopicAttributes);
+    }
 
-    existedTopicMeta = subscriptionInfo.get().getTopicMeta(updatedTopicMeta.getTopicName());
+    subscriptionInfo.get().validateBeforeAlteringTopic(updatedTopicMeta);
 
     return true;
   }
@@ -196,7 +238,11 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.ALTER_TOPIC_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        (shouldMergeUpdatedTopicAttributes()
+                ? ProcedureType.ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE
+                : ProcedureType.ALTER_TOPIC_PROCEDURE)
+            .getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(updatedTopicMeta != null, stream);
@@ -207,6 +253,10 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     ReadWriteIOUtils.write(existedTopicMeta != null, stream);
     if (existedTopicMeta != null) {
       existedTopicMeta.serialize(stream);
+    }
+
+    if (shouldMergeUpdatedTopicAttributes()) {
+      ReadWriteIOUtils.write(updatedTopicAttributes, stream);
     }
   }
 
@@ -220,6 +270,10 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       existedTopicMeta = TopicMeta.deserialize(byteBuffer);
+    }
+
+    if (shouldMergeUpdatedTopicAttributes()) {
+      updatedTopicAttributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
   }
 
@@ -236,12 +290,18 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
         && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && Objects.equals(updatedTopicMeta, that.updatedTopicMeta)
-        && Objects.equals(existedTopicMeta, that.existedTopicMeta);
+        && Objects.equals(existedTopicMeta, that.existedTopicMeta)
+        && Objects.equals(updatedTopicAttributes, that.updatedTopicAttributes);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), updatedTopicMeta, existedTopicMeta);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        updatedTopicMeta,
+        existedTopicMeta,
+        updatedTopicAttributes);
   }
 }

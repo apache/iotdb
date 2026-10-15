@@ -69,6 +69,39 @@ TSDataType::TSDataType getTSDataTypeFromString(const string& str) {
   return TSDataType::UNKNOWN;
 }
 
+Tablet::Tablet(const std::string& deviceId,
+               const std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas,
+               const std::vector<ColumnCategory> columnTypes, size_t maxRowNumber, bool isAligned,
+               WithoutValueColumnsTag)
+    : deviceId(deviceId), schemas(schemas), columnTypes(columnTypes), maxRowNumber(maxRowNumber),
+      isAligned(isAligned) {
+  timestamps.resize(maxRowNumber);
+  values.resize(schemas.size(), nullptr);
+  tagColumnIndexes.clear();
+  for (size_t i = 0; i < columnTypes.size(); i++) {
+    if (columnTypes[i] == ColumnCategory::TAG) {
+      tagColumnIndexes.push_back(static_cast<int>(i));
+    }
+  }
+  bitMaps.resize(schemas.size());
+  for (size_t i = 0; i < schemas.size(); i++) {
+    bitMaps[i].resize(maxRowNumber);
+  }
+  schemaNameIndex.clear();
+  for (size_t i = 0; i < schemas.size(); i++) {
+    schemaNameIndex[schemas[i].first] = i;
+  }
+  rowSize = 0;
+}
+
+std::shared_ptr<Tablet> Tablet::createWithoutValueColumns(
+    const std::string& deviceId,
+    const std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas,
+    const std::vector<ColumnCategory>& columnTypes, size_t maxRowNumber, bool isAligned) {
+  return std::shared_ptr<Tablet>(new Tablet(deviceId, schemas, columnTypes, maxRowNumber, isAligned,
+                                            WithoutValueColumnsTag{}));
+}
+
 void Tablet::createColumns() {
   for (size_t i = 0; i < schemas.size(); i++) {
     TSDataType::TSDataType dataType = schemas[i].second;
@@ -413,6 +446,64 @@ bool SessionUtils::isTabletContainsSingleDevice(Tablet tablet) {
   return true;
 }
 
+static bool isColumnAllNull(const BitMap& bitMap, size_t rowSize) {
+  if (rowSize == 0) {
+    return false;
+  }
+  // BitMap is sized to maxRowNumber; only [0, rowSize) are active rows.
+  return bitMap.isRangeAllMarked(0, rowSize);
+}
+
+std::shared_ptr<const Tablet> SessionUtils::filterNullColumns(const Tablet& tablet) {
+  const size_t columnCount = tablet.schemas.size();
+  if (columnCount == 0 || tablet.bitMaps.size() < columnCount) {
+    return std::shared_ptr<const Tablet>(&tablet, [](const Tablet*) {});
+  }
+
+  std::vector<size_t> keptIndices;
+  keptIndices.reserve(columnCount);
+
+  for (size_t i = 0; i < columnCount; i++) {
+    ColumnCategory category =
+        i < tablet.columnTypes.size() ? tablet.columnTypes[i] : ColumnCategory::FIELD;
+    bool isField = category == ColumnCategory::FIELD;
+    bool drop = isField && isColumnAllNull(tablet.bitMaps[i], tablet.rowSize);
+    if (drop) {
+      continue;
+    }
+    keptIndices.push_back(i);
+  }
+
+  if (keptIndices.size() == columnCount) {
+    return std::shared_ptr<const Tablet>(&tablet, [](const Tablet*) {});
+  }
+  if (keptIndices.empty()) {
+    return nullptr;
+  }
+
+  std::vector<std::pair<std::string, TSDataType::TSDataType>> keptSchemas;
+  std::vector<ColumnCategory> keptColumnTypes;
+  keptSchemas.reserve(keptIndices.size());
+  keptColumnTypes.reserve(keptIndices.size());
+  for (size_t idx : keptIndices) {
+    keptSchemas.push_back(tablet.schemas[idx]);
+    keptColumnTypes.push_back(idx < tablet.columnTypes.size() ? tablet.columnTypes[idx]
+                                                              : ColumnCategory::FIELD);
+  }
+
+  auto filteredOut = Tablet::createWithoutValueColumns(
+      tablet.deviceId, keptSchemas, keptColumnTypes, tablet.maxRowNumber, tablet.isAligned);
+  filteredOut->timestamps = tablet.timestamps;
+  filteredOut->rowSize = tablet.rowSize;
+  for (size_t ni = 0; ni < keptIndices.size(); ni++) {
+    size_t oi = keptIndices[ni];
+    Tablet::deepCopyTabletColValue(&tablet.values[oi], &filteredOut->values[ni],
+                                   keptSchemas[ni].second, static_cast<int>(tablet.maxRowNumber));
+    filteredOut->bitMaps[ni] = tablet.bitMaps[oi];
+  }
+  return filteredOut;
+}
+
 string MeasurementNode::serialize() const {
   MyStringBuffer buffer;
   buffer.putString(getName());
@@ -472,7 +563,6 @@ Session::Session(const std::string& host, int rpcPort) : impl_(new Impl()) {
   impl_->host_ = host;
   impl_->rpcPort_ = rpcPort;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(const std::vector<std::string>& nodeUrls, const std::string& username,
@@ -483,7 +573,6 @@ Session::Session(const std::vector<std::string>& nodeUrls, const std::string& us
   impl_->password_ = password;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier(impl_->nodeUrls_);
 }
 
 Session::Session(const std::string& host, int rpcPort, const std::string& username,
@@ -496,7 +585,6 @@ Session::Session(const std::string& host, int rpcPort, const std::string& userna
   impl_->fetchSize_ = iotdb::session::DEFAULT_FETCH_SIZE;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(const std::string& host, int rpcPort, const std::string& username,
@@ -510,7 +598,6 @@ Session::Session(const std::string& host, int rpcPort, const std::string& userna
   impl_->fetchSize_ = fetchSize;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(const std::string& host, const std::string& rpcPort, const std::string& username,
@@ -524,7 +611,6 @@ Session::Session(const std::string& host, const std::string& rpcPort, const std:
   impl_->fetchSize_ = fetchSize;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(AbstractSessionBuilder* builder) : impl_(new Impl()) {
@@ -541,10 +627,8 @@ Session::Session(AbstractSessionBuilder* builder) : impl_(new Impl()) {
   impl_->enableRedirection_ = builder->enableRedirections;
   impl_->connectTimeoutMs_ = builder->connectTimeoutMs;
   impl_->nodeUrls_ = builder->nodeUrls;
-  impl_->useSSL_ = builder->useSSL;
-  impl_->trustCertFilePath_ = builder->trustCertFilePath;
+  impl_->sslConfig_ = builder->getSslConfig();
   impl_->initZoneId();
-  impl_->initNodesSupplier(impl_->nodeUrls_);
 }
 
 void Session::setSqlDialect(const std::string& dialect) {
@@ -553,6 +637,14 @@ void Session::setSqlDialect(const std::string& dialect) {
 
 void Session::setDatabase(const std::string& database) {
   impl_->database_ = database;
+}
+
+void Session::setSslConfig(const SslConfig& sslConfig) {
+  if (!impl_->isClosed_) {
+    throw IoTDBException("SSL configuration cannot be changed after the Session is opened");
+  }
+  sslConfig.validate();
+  impl_->sslConfig_ = sslConfig;
 }
 
 std::string Session::getDatabase() {
@@ -870,8 +962,7 @@ void Session::Impl::initNodesSupplier(const std::vector<std::string>& nodeUrls) 
   }
 
   if (enableAutoFetch_) {
-    nodesSupplier_ =
-        NodesSupplier::create(endPoints, username_, password_, useSSL_, trustCertFilePath_);
+    nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_, sslConfig_);
   } else {
     nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
   }
@@ -1002,6 +1093,10 @@ void Session::Impl::insertTabletsWithLeaderCache(unordered_map<string, Tablet*>&
     }
     auto deviceId = item.first;
     auto tablet = item.second;
+    std::shared_ptr<const Tablet> toEncode = SessionUtils::filterNullColumns(*tablet);
+    if (!toEncode) {
+      continue;
+    }
     auto connection = getSessionConnection(deviceId);
     auto it = tabletsGroup.find(connection);
     if (it == tabletsGroup.end()) {
@@ -1009,18 +1104,22 @@ void Session::Impl::insertTabletsWithLeaderCache(unordered_map<string, Tablet*>&
       tabletsGroup[connection] = request;
     }
     TSInsertTabletsReq& existingReq = tabletsGroup[connection];
-    existingReq.prefixPaths.emplace_back(tablet->deviceId);
-    existingReq.timestampsList.emplace_back(move(SessionUtils::getTime(*tablet)));
-    existingReq.valuesList.emplace_back(move(SessionUtils::getValue(*tablet)));
-    existingReq.sizeList.emplace_back(tablet->rowSize);
+    existingReq.prefixPaths.emplace_back(toEncode->deviceId);
+    existingReq.timestampsList.emplace_back(move(SessionUtils::getTime(*toEncode)));
+    existingReq.valuesList.emplace_back(move(SessionUtils::getValue(*toEncode)));
+    existingReq.sizeList.emplace_back(toEncode->rowSize);
     vector<int> dataTypes;
     vector<string> measurements;
-    for (pair<string, TSDataType::TSDataType> schema : tablet->schemas) {
+    for (pair<string, TSDataType::TSDataType> schema : toEncode->schemas) {
       measurements.push_back(schema.first);
       dataTypes.push_back(schema.second);
     }
     existingReq.measurementsList.emplace_back(measurements);
     existingReq.typesList.emplace_back(dataTypes);
+  }
+
+  if (tabletsGroup.empty()) {
+    return;
   }
 
   std::function<void(std::shared_ptr<SessionConnection>, const TSInsertTabletsReq&)> consumer =
@@ -1048,8 +1147,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
   }
 
   try {
+    impl_->initNodesSupplier(impl_->nodeUrls_);
     impl_->initDefaultSessionConnection();
   } catch (const exception& e) {
+    impl_->nodesSupplier_.reset();
     log_debug(e.what());
     throw IoTDBException(e.what());
   }
@@ -1089,9 +1190,11 @@ void Session::close() {
       impl_->defaultSessionConnection_.reset();
     }
   } catch (...) {
+    impl_->nodesSupplier_.reset();
     impl_->isClosed_ = true;
     throw;
   }
+  impl_->nodesSupplier_.reset();
   impl_->isClosed_ = true;
 }
 
@@ -1444,27 +1547,41 @@ void Session::insertTablet(Tablet& tablet) {
   }
 }
 
-void Session::Impl::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted) {
+bool Session::Impl::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted) {
   if ((!sorted) && !checkSorted(tablet)) {
     sortTablet(tablet);
   }
 
-  request.__set_prefixPath(tablet.deviceId);
+  std::shared_ptr<const Tablet> toEncode = SessionUtils::filterNullColumns(tablet);
+  if (!toEncode) {
+    return false;
+  }
+
+  request.__set_prefixPath(toEncode->deviceId);
 
   std::vector<std::string> reqMeasurements;
-  reqMeasurements.reserve(tablet.schemas.size());
+  reqMeasurements.reserve(toEncode->schemas.size());
   std::vector<int32_t> types;
-  types.reserve(tablet.schemas.size());
-  for (pair<string, TSDataType::TSDataType> schema : tablet.schemas) {
+  types.reserve(toEncode->schemas.size());
+  for (pair<string, TSDataType::TSDataType> schema : toEncode->schemas) {
     reqMeasurements.push_back(schema.first);
     types.push_back(schema.second);
   }
   request.__set_measurements(reqMeasurements);
   request.__set_types(types);
-  request.__set_values(SessionUtils::getValue(tablet));
-  request.__set_timestamps(SessionUtils::getTime(tablet));
-  request.__set_size(tablet.rowSize);
-  request.__set_isAligned(tablet.isAligned);
+  request.__set_values(SessionUtils::getValue(*toEncode));
+  request.__set_timestamps(SessionUtils::getTime(*toEncode));
+  request.__set_size(toEncode->rowSize);
+  request.__set_isAligned(toEncode->isAligned);
+  if (!toEncode->columnTypes.empty()) {
+    std::vector<int8_t> columnCategories;
+    columnCategories.reserve(toEncode->columnTypes.size());
+    for (auto& category : toEncode->columnTypes) {
+      columnCategories.push_back(static_cast<int8_t>(category));
+    }
+    request.__set_columnCategories(columnCategories);
+  }
+  return true;
 }
 
 void Session::Impl::insertTablet(TSInsertTabletReq request) {
@@ -1488,7 +1605,9 @@ void Session::Impl::insertTablet(TSInsertTabletReq request) {
 
 void Session::insertTablet(Tablet& tablet, bool sorted) {
   TSInsertTabletReq request;
-  impl_->buildInsertTabletReq(request, tablet, sorted);
+  if (!impl_->buildInsertTabletReq(request, tablet, sorted)) {
+    return;
+  }
   impl_->insertTablet(request);
 }
 
@@ -1574,13 +1693,10 @@ void Session::Impl::insertRelationalTabletOnce(
   auto connection = iter->first;
   auto tablet = iter->second;
   TSInsertTabletReq request;
-  buildInsertTabletReq(request, tablet, sorted);
-  request.__set_writeToTable(true);
-  std::vector<int8_t> columnCategories;
-  for (auto& category : tablet.columnTypes) {
-    columnCategories.push_back(static_cast<int8_t>(category));
+  if (!buildInsertTabletReq(request, tablet, sorted)) {
+    return;
   }
-  request.__set_columnCategories(columnCategories);
+  request.__set_writeToTable(true);
   try {
     TSStatus respStatus;
     connection->getSessionClient()->insertTablet(respStatus, request);
@@ -1629,14 +1745,10 @@ void Session::Impl::insertRelationalTabletByGroup(
     futures.emplace_back(
         std::async(std::launch::async, [this, connection, tablet, sorted]() mutable {
           TSInsertTabletReq request;
-          buildInsertTabletReq(request, tablet, sorted);
-          request.__set_writeToTable(true);
-
-          std::vector<int8_t> columnCategories;
-          for (auto& category : tablet.columnTypes) {
-            columnCategories.push_back(static_cast<int8_t>(category));
+          if (!buildInsertTabletReq(request, tablet, sorted)) {
+            return;
           }
-          request.__set_columnCategories(columnCategories);
+          request.__set_writeToTable(true);
 
           try {
             TSStatus respStatus;
@@ -1702,18 +1814,25 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted
       if (!impl_->checkSorted(*(item.second))) {
         impl_->sortTablet(*(item.second));
       }
-      request.prefixPaths.push_back(item.second->deviceId);
+      std::shared_ptr<const Tablet> toEncode = SessionUtils::filterNullColumns(*(item.second));
+      if (!toEncode) {
+        continue;
+      }
+      request.prefixPaths.push_back(toEncode->deviceId);
       vector<string> measurements;
       vector<int> dataTypes;
-      for (pair<string, TSDataType::TSDataType> schema : item.second->schemas) {
+      for (pair<string, TSDataType::TSDataType> schema : toEncode->schemas) {
         measurements.push_back(schema.first);
         dataTypes.push_back(schema.second);
       }
       request.measurementsList.push_back(measurements);
       request.typesList.push_back(dataTypes);
-      request.timestampsList.push_back(move(SessionUtils::getTime(*(item.second))));
-      request.valuesList.push_back(move(SessionUtils::getValue(*(item.second))));
-      request.sizeList.push_back(item.second->rowSize);
+      request.timestampsList.push_back(move(SessionUtils::getTime(*toEncode)));
+      request.valuesList.push_back(move(SessionUtils::getValue(*toEncode)));
+      request.sizeList.push_back(toEncode->rowSize);
+    }
+    if (request.prefixPaths.empty()) {
+      return;
     }
     request.__set_isAligned(isAligned);
     try {
@@ -2007,9 +2126,10 @@ bool Session::checkTimeseriesExists(const string& path) {
 }
 
 shared_ptr<SessionConnection> Session::Impl::getQuerySessionConnection() {
+  auto defaultSessionConnection = getDefaultSessionConnection();
   auto endPoint = nodesSupplier_->getQueryEndPoint();
   if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
-    return getDefaultSessionConnection();
+    return defaultSessionConnection;
   }
 
   auto it = endPointToSessionConnection.find(endPoint.value());

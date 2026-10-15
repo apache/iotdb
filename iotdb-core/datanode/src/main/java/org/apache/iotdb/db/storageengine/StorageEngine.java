@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -58,6 +59,8 @@ import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -79,6 +82,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.LoadTsFilePieceNodeAssembler;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -97,6 +101,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -180,6 +185,8 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
+    TimePartitionUtils.setTimePartitionOrigin(
+        CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
     TimePartitionUtils.setTimePartitionInterval(
         CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
   }
@@ -398,7 +405,7 @@ public class StorageEngine implements IService {
       if (dataRegion != null) {
         List<Callable<Void>> asyncTsFileResourceRecoverTasks =
             dataRegion.getAsyncTsFileResourceRecoverTaskList();
-        if (asyncTsFileResourceRecoverTasks != null) {
+        if (asyncTsFileResourceRecoverTasks != null && !asyncTsFileResourceRecoverTasks.isEmpty()) {
           Callable<Void> taskOfRegion =
               () -> {
                 for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
@@ -435,6 +442,7 @@ public class StorageEngine implements IService {
       }
     }
     syncCloseAllProcessor();
+    dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     ThreadUtils.stopThreadPool(
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
@@ -457,6 +465,8 @@ public class StorageEngine implements IService {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);
+    } finally {
+      dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     }
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
@@ -512,6 +522,7 @@ public class StorageEngine implements IService {
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
+    dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     dataRegionMap.clear();
   }
 
@@ -524,7 +535,7 @@ public class StorageEngine implements IService {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
-                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  syncCloseAllProcessorAndPublishCompletionBarrier(dataRegion);
                   return null;
                 }));
       }
@@ -555,7 +566,7 @@ public class StorageEngine implements IService {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
-                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  syncCloseAllProcessorAndPublishCompletionBarrier(dataRegion);
                   return null;
                 }));
       }
@@ -570,7 +581,7 @@ public class StorageEngine implements IService {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
-                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  syncCloseAllProcessorAndPublishCompletionBarrier(dataRegion);
                   return null;
                 }));
       }
@@ -609,6 +620,15 @@ public class StorageEngine implements IService {
         throw new StorageEngineFailureException(errorMsg, e);
       }
     }
+  }
+
+  private void syncCloseAllProcessorAndPublishCompletionBarrier(final DataRegion dataRegion)
+      throws InterruptedException, ExecutionException {
+    final PipeInsertionDataNodeListener listener = PipeInsertionDataNodeListener.getInstance();
+    final int dataRegionId = dataRegion.getDataRegionId();
+    final CompletionToken completionToken = listener.invalidateDataRegionCompletion(dataRegionId);
+    dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+    listener.listenToCompletionBarrier(dataRegionId, completionToken);
   }
 
   /**
@@ -821,9 +841,9 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void deleteDataRegion(DataRegionId regionId) {
+  public TSStatus deleteDataRegion(DataRegionId regionId) {
     if (!dataRegionMap.containsKey(regionId) || deletingDataRegionMap.containsKey(regionId)) {
-      return;
+      return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
     }
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
@@ -880,10 +900,13 @@ public class StorageEngine implements IService {
             region.getDatabaseName(),
             region.getDataRegionIdString(),
             e);
+        return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
       } finally {
         deletingDataRegionMap.remove(regionId);
       }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
+    return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
   }
 
   /**
@@ -1059,6 +1082,35 @@ public class StorageEngine implements IService {
     }
 
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus writeLoadTsFileNodeSlice(
+      final DataRegionId dataRegionId,
+      final ByteBuffer body,
+      final String uuid,
+      final int sliceIndex,
+      final int sliceCount,
+      final int originBodySize) {
+    final LoadTsFilePieceNodeAssembler.Result result =
+        loadTsFileManager.appendPieceNodeSlice(
+            dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
+    if (!result.isValid()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
+    }
+    if (!result.isComplete()) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
+    try {
+      final Object planNode = PlanNodeType.deserialize(result.getBody());
+      if (!(planNode instanceof LoadTsFilePieceNode)) {
+        return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+      }
+      return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
+    } catch (final Exception e) {
+      return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+    }
   }
 
   public TSStatus executeLoadCommand(

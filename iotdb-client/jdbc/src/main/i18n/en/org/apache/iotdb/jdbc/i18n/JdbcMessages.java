@@ -91,6 +91,8 @@ public final class JdbcMessages {
 
   // IoTDBAbstractDatabaseMetadata
   public static final String NO_DATA_TYPE_MATCHED = "No data type was matched: {}";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E =
+      "Unsupported data type: %s";
   public static final String GET_READ_ONLY_ERROR = "Get is readOnly error: {}";
   public static final String CANNOT_GET_READ_ONLY_MODE = "Can not get the read-only mode";
   public static final String GET_SYSTEM_FUNCTIONS_ERROR = "Get system functions error: {}";
@@ -132,9 +134,6 @@ public final class JdbcMessages {
 
   // IoTDBDataSource
   public static final String GET_CONNECTION_ERROR = "get connection error:";
-
-  // IoTDBDataSourceFactory
-  public static final String REMAINING_PROPERTIES = "Remaining properties {}";
 
   // IoTDBJDBCResultSet
   public static final String CLOSE_SERVER_SIDE_ERROR =

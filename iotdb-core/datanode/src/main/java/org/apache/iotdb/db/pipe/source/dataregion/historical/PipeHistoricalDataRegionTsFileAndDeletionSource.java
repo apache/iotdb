@@ -71,7 +71,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +110,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
@@ -121,17 +121,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivileges;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class PipeHistoricalDataRegionTsFileAndDeletionSource
     implements PipeHistoricalDataRegionSource {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileAndDeletionSource.class);
-
-  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private String pipeName;
   private long creationTime;
@@ -163,6 +160,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private boolean shouldExtractInsertion;
   private boolean shouldExtractDeletion;
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
   protected String userId;
   protected String userName;
   protected String cliHostname;
@@ -243,13 +241,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       }
     }
 
+    // Historical data extraction is enabled in the following cases:
+    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
+    // enabled, the pipe will lose some historical data.
+    // 2. Historical extraction is enabled by the user or by default.
+    isHistoricalSourceEnabled =
+        parameters.getBooleanOrDefault(
+                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
+                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
+            || parameters.getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+
     if (parameters.hasAnyAttributes(
         SOURCE_START_TIME_KEY,
         EXTRACTOR_START_TIME_KEY,
         SOURCE_END_TIME_KEY,
         EXTRACTOR_END_TIME_KEY)) {
-      isHistoricalSourceEnabled = true;
-
       try {
         historicalDataExtractionStartTime =
             parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
@@ -283,19 +291,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       // return here
       return;
     }
-
-    // Historical data extraction is enabled in the following cases:
-    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
-    // enabled, the pipe will lose some historical data.
-    // 2. User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
-    // enabling the historical data extraction, which may affect the realtime data extraction.
-    isHistoricalSourceEnabled =
-        parameters.getBooleanOrDefault(
-                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
-                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
-            || parameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
 
     try {
       historicalDataExtractionStartTime =
@@ -369,6 +364,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -696,7 +693,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     resourceList.sort(
         (o1, o2) ->
-            startIndex instanceof TimeWindowStateProgressIndex
+            Objects.nonNull(getTimeWindowStateProgressIndex(startIndex))
                 ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                 : comparePersistentResourcesByProgressIndex(o1, o2));
   }
@@ -898,11 +895,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
-    final ProgressIndex innerStartIndex = getInnerProgressIndex(startIndex);
-    if (innerStartIndex instanceof TimeWindowStateProgressIndex) {
+    final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
+        getTimeWindowStateProgressIndex(startIndex);
+    if (Objects.nonNull(timeWindowStateProgressIndex)) {
       // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-      return ((TimeWindowStateProgressIndex) innerStartIndex).getMinTime()
-          <= resource.getFileEndTime();
+      return timeWindowStateProgressIndex.getMinTime() <= resource.getFileEndTime();
     }
 
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
@@ -939,6 +936,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     return progressIndex instanceof StateProgressIndex
         ? ((StateProgressIndex) progressIndex).getInnerProgressIndex()
         : Objects.isNull(progressIndex) ? MinimumProgressIndex.INSTANCE : progressIndex;
+  }
+
+  private TimeWindowStateProgressIndex getTimeWindowStateProgressIndex(
+      final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
   }
 
   private boolean isProgressIndexCoveredByTimePartitionProgressIndex(
@@ -1003,7 +1007,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-    } catch (final IOException e) {
+    } catch (final IOException | RuntimeException e) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_FAILED_TO_GET_DEVICES_FROM_TSFILE_1,
           pipeName,
@@ -1017,7 +1021,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         .anyMatch(
             deviceID -> {
               if (!isModelDetected) {
-                detectModel(resource, deviceID);
+                detectModel(resource);
                 isModelDetected = true;
               }
 
@@ -1030,13 +1034,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             });
   }
 
-  private void detectModel(final TsFileResource resource, final IDeviceID deviceID) {
-    this.isTableModel =
-        !(deviceID instanceof PlainDeviceID
-            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-            || deviceID.getTableName().equals(PATH_ROOT));
-
+  private void detectModel(final TsFileResource resource) {
+    // One source serves one data region, so the data model is decided by its database.
     final String databaseName = resource.getDatabaseName();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     isDbNameCoveredByPattern =
         isTableModel
             ? tablePattern.isTableModelDataAllowedToBeCaptured()
@@ -1281,6 +1282,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               skipIfNoPrivileges,
               historicalDataExtractionStartTime,
               historicalDataExtractionEndTime);
+      event.setTsFileParser(tsFileParser);
 
       if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
         event.skipReportOnCommitAndGeneratedEvents();

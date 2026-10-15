@@ -61,6 +61,9 @@ public enum PipeRequestType {
 
   // Fallback Handling
   TRANSFER_SLICE((short) 400),
+
+  // Lifecycle control
+  TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP((short) 500),
   ;
 
   private final short type;

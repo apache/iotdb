@@ -49,6 +49,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -67,6 +68,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -1703,6 +1705,21 @@ public class IoTDBSessionRelationalIT {
 
       session.executeNonQueryStatement("DROP TABLE db2.table" + testNum);
 
+      // DROP TABLE is asynchronous, so wait for deletion to finish instead of observing PRE_DELETE.
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInSameThread()
+          .untilAsserted(
+              () -> {
+                try (SessionDataSet ignored =
+                    session.executeQueryStatement(
+                        "select * from db2.table" + testNum + " order by time")) {
+                  fail("expected exception");
+                } catch (StatementExecutionException e) {
+                  assertEquals("550: Table 'db2.table16' does not exist.", e.getMessage());
+                }
+              });
+
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from db1.table" + testNum + " order by time");
       RowRecord rec = dataSet.next();
@@ -1710,13 +1727,6 @@ public class IoTDBSessionRelationalIT {
       assertEquals("d1", rec.getFields().get(1).toString());
       assertEquals(1, rec.getFields().get(2).getIntV());
       assertFalse(dataSet.hasNext());
-
-      try {
-        session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
-        fail("expected exception");
-      } catch (StatementExecutionException e) {
-        assertEquals("550: Table 'db2.table16' does not exist.", e.getMessage());
-      }
     }
   }
 

@@ -134,6 +134,15 @@ public class ColumnList {
     return columns.get(columnIndex).getObject(offsetInColumn);
   }
 
+  public boolean arePositionsEqual(int position1, int position2) {
+    ColumnListIndex columnListIndex1 = getColumnListIndex(position1);
+    ColumnListIndex columnListIndex2 = getColumnListIndex(position2);
+    Column column1 = columns.get(columnListIndex1.getColumnIndex());
+    Column column2 = columns.get(columnListIndex2.getColumnIndex());
+    return column1.arePositionsEqual(
+        columnListIndex1.getOffsetInColumn(), column2, columnListIndex2.getOffsetInColumn());
+  }
+
   public boolean isNull(int position) {
     ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();

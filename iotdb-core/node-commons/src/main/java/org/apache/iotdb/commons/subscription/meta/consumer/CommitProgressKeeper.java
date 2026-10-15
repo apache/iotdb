@@ -116,6 +116,21 @@ public class CommitProgressKeeper {
                         && isValidRegionAndDataNodeProgressKey(key, legacyTopicKeyPrefix)));
   }
 
+  public synchronized void removeConsumerGroupProgress(final String consumerGroupId) {
+    final String versionedConsumerGroupKeyPrefix =
+        VERSIONED_KEY_PREFIX + encodeKeyComponent(consumerGroupId) + KEY_COMPONENT_SEPARATOR;
+    final String consumerGroupString = String.valueOf(consumerGroupId);
+    final String legacyConsumerGroupKeyPrefix =
+        consumerGroupString.contains(KEY_SEPARATOR) ? null : consumerGroupString + KEY_SEPARATOR;
+    regionProgressMap
+        .keySet()
+        .removeIf(
+            key ->
+                key.startsWith(versionedConsumerGroupKeyPrefix)
+                    || (legacyConsumerGroupKeyPrefix != null
+                        && key.startsWith(legacyConsumerGroupKeyPrefix)));
+  }
+
   private static boolean isValidRegionAndDataNodeProgressKey(
       final String key, final String topicKeyPrefix) {
     if (!key.startsWith(topicKeyPrefix)) {

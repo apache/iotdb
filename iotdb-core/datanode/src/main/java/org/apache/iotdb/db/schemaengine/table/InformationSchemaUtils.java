@@ -75,10 +75,11 @@ public class InformationSchemaUtils {
     builder.getColumnBuilder(4).appendNull();
     if (details) {
       for (int columnIndex = 5;
-          columnIndex < builder.getValueColumnBuilders().length;
+          columnIndex < builder.getValueColumnBuilders().length - 1;
           columnIndex++) {
         builder.getColumnBuilder(columnIndex).appendNull();
       }
+      builder.getColumnBuilder(builder.getValueColumnBuilders().length - 1).writeBoolean(false);
     }
     builder.declarePosition();
   }
@@ -125,6 +126,7 @@ public class InformationSchemaUtils {
         builder
             .getColumnBuilder(4)
             .writeBinary(new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(5).writeBoolean(false);
       }
       builder.declarePosition();
     }

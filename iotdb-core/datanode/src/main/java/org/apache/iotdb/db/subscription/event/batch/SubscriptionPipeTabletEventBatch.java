@@ -259,7 +259,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
       final TopicConfig topicConfig =
           SubscriptionAgent.topic()
-              .getTopicConfigs(Collections.singleton(prefetchingQueue.getTopicName()))
+              .getTopicConfigs(
+                  Collections.singleton(prefetchingQueue.getTopicName()),
+                  SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()))
               .get(prefetchingQueue.getTopicName());
       if (Objects.isNull(topicConfig)) {
         return false;
@@ -331,7 +333,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
 
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(prefetchingQueue.getTopicName());
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                prefetchingQueue.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()));
 
     final List<Tablet> prunedTablets = new ArrayList<>(tablets.right.size());
     for (final Tablet tablet : tablets.right) {
@@ -400,9 +405,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       if (currentTabletInsertionEventsIterator.hasNext()) {
         return true;
       } else {
-        // reset
-        currentTabletInsertionEventsIterator = null;
-        currentTsFileInsertionEvent = null;
+        finishCurrentTsFileInsertionEvent();
         return hasNext();
       }
     }
@@ -462,12 +465,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
           }
         }
         if (!currentTabletInsertionEventsIterator.hasNext()) {
-          iterationSnapshot.addIteratedEnrichedEvent((EnrichedEvent) currentTsFileInsertionEvent);
+          finishCurrentTsFileInsertionEvent();
         }
         return convertToTablets(tabletInsertionEvent);
       } else {
-        currentTabletInsertionEventsIterator = null;
-        currentTsFileInsertionEvent = null;
+        finishCurrentTsFileInsertionEvent();
       }
     }
 
@@ -511,5 +513,17 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
           enrichedEvent);
       return null;
     }
+  }
+
+  private void finishCurrentTsFileInsertionEvent() {
+    final PipeTsFileInsertionEvent event = (PipeTsFileInsertionEvent) currentTsFileInsertionEvent;
+    iterationSnapshot.addIteratedEnrichedEvent(event);
+
+    // Release the parser reservation before opening the next file in the same region. Waiting for
+    // the whole batch to be ACKed can block that file behind this exhausted parser. The parsed
+    // tablet events remain referenced by the iteration snapshot until ACK or cleanup.
+    event.close();
+    currentTabletInsertionEventsIterator = null;
+    currentTsFileInsertionEvent = null;
   }
 }

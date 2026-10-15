@@ -20,8 +20,15 @@
 package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -30,18 +37,33 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongSupplier;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class ConsensusSubscriptionSetupHandlerTest {
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testRuntimeUpdatesAreIgnoredWhenSubscriptionIsDisabled() {
+    ConsensusSubscriptionSetupHandler.applyRuntimeState(null, null);
+    ConsensusSubscriptionSetupHandler.onRegionRouteChanged(null, 0);
+  }
 
   @Test
   public void testSingleTopicSetupFailurePropagates() {
@@ -129,6 +151,97 @@ public class ConsensusSubscriptionSetupHandlerTest {
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
+  }
+
+  @Test
+  public void testStartupDetachedRetentionProtectsPersistedProgress() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("startupDetachedRetention");
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+      final ConsensusSubscriptionCommitManager commitManager =
+          new ConsensusSubscriptionCommitManager(
+              (consumerGroupId, topicName, regionId) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      final DataRegionId regionId = new DataRegionId(41);
+      commitManager.receiveProgressBroadcast(
+          "consumerGroup",
+          "topic",
+          regionId.toString(),
+          new WriterId(regionId.toString(), 7),
+          new WriterProgress(100L, 1L));
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+
+      ConsensusSubscriptionSetupHandler.registerStartupDetachedRetentions(
+          regionId, serverImpl, commitManager);
+
+      verify(serverImpl)
+          .registerDetachedSubscriptionRetention(
+              eq(
+                  ConsensusSubscriptionWalRetention.generateRetentionId(
+                      "consumerGroup", "topic", regionId)),
+              argThat(
+                  policy ->
+                      policy.getRetentionBytes() == SubscriptionWalRetentionPolicy.UNBOUNDED
+                          && policy.getRetentionMs() == SubscriptionWalRetentionPolicy.UNBOUNDED),
+              any(LongSupplier.class));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testAuditDatabaseNeverMatchesTopic() {
+    final Map<String, String> tableTopicAttributes = new HashMap<>();
+    tableTopicAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    tableTopicAttributes.put(TopicConstant.DATABASE_KEY, ".*");
+    final TopicConfig tableTopicConfig = new TopicConfig(tableTopicAttributes);
+
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDatabase(tableTopicConfig, "__audit"));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDatabase(tableTopicConfig, "root.__audit"));
+    assertTrue(ConsensusSubscriptionSetupHandler.matchesTopicDatabase(tableTopicConfig, "user_db"));
+
+    final TopicConfig treeTopicConfig = new TopicConfig(Collections.emptyMap());
+    assertFalse(ConsensusSubscriptionSetupHandler.matchesTopicDatabase(treeTopicConfig, "__audit"));
+    assertTrue(ConsensusSubscriptionSetupHandler.matchesTopicDatabase(treeTopicConfig, "user_db"));
+  }
+
+  @Test
+  public void testTopicDataRegionModelIsolation() {
+    final TopicConfig treeTopicConfig = new TopicConfig(Collections.emptyMap());
+    final Map<String, String> tableTopicAttributes = new HashMap<>();
+    tableTopicAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    tableTopicAttributes.put(TopicConstant.DATABASE_KEY, "table_db");
+    final TopicConfig tableTopicConfig = new TopicConfig(tableTopicAttributes);
+
+    assertTrue(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "root.tree_db", treeTopicConfig, false));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "table_db", treeTopicConfig, false));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "table_db", treeTopicConfig, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "root.table_db", tableTopicConfig, true));
+    assertTrue(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "table_db", tableTopicConfig, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "other_table_db", tableTopicConfig, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "table_db", tableTopicConfig, false));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "root.table_db", tableTopicConfig, false));
   }
 
   private static void failOnSecondTopic(

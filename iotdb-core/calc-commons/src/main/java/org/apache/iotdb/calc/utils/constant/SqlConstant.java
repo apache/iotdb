@@ -89,6 +89,10 @@ public class SqlConstant {
   public static final String APPROX_MOST_FREQUENT = "approx_most_frequent";
   public static final String APPROX_PERCENTILE = "approx_percentile";
   public static final String PERCENTILE = "percentile";
+  public static final String RATE = "rate";
+  public static final String INCREASE = "increase";
+  public static final String IRATE = "irate";
+  public static final String DELTA = "delta";
 
   // names of scalar functions
   public static final String DIFF = "diff";

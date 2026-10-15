@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeMemoryManagerTest {
 
@@ -72,6 +73,35 @@ public class PipeMemoryManagerTest {
     commonConfig.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
     commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalPerPipeRegionLimit);
     commonConfig.setPipeTsFileParserMemory(originalParserMemoryInBytes);
+  }
+
+  @Test
+  public void testAdmissionNotificationOnlyWakesEligibleWaitingPipe() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final Reservation blocker = new Reservation("blocker", 0);
+    final Reservation pipeA = new Reservation("pipeA", 1);
+    final Reservation pipeB = new Reservation("pipeB", 2);
+    final AtomicInteger pipeAWakeUps = new AtomicInteger();
+    final AtomicInteger pipeBWakeUps = new AtomicInteger();
+    pipeA.key.setWakeUpCallback(pipeAWakeUps::incrementAndGet);
+    pipeB.key.setWakeUpCallback(pipeBWakeUps::incrementAndGet);
+    Assert.assertTrue(tryAcquire(blocker));
+    Assert.assertFalse(tryAcquire(pipeA));
+    Assert.assertFalse(tryAcquire(pipeB));
+    Assert.assertEquals(2, memoryManager.getWaitingTsFileParserCount());
+    Assert.assertEquals(0, pipeAWakeUps.get());
+    Assert.assertEquals(0, pipeBWakeUps.get());
+
+    release(blocker);
+    Assert.assertEquals(1, pipeAWakeUps.get());
+    Assert.assertEquals(0, pipeBWakeUps.get());
+    Assert.assertTrue(tryAcquire(pipeA));
+    Assert.assertEquals(1, memoryManager.getWaitingTsFileParserCount());
+    release(pipeA);
+    Assert.assertEquals(1, pipeBWakeUps.get());
+    Assert.assertTrue(tryAcquire(pipeB));
+    Assert.assertEquals(0, memoryManager.getWaitingTsFileParserCount());
   }
 
   @Test

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -83,6 +85,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   private final WALRecoverListener recoverListener;
   private final String databaseName;
   private final String dataRegionId;
+  private final boolean isTableModel;
 
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
@@ -91,6 +94,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     super(tsFileResource);
     this.databaseName = tsFileResource.getDatabaseName();
     this.dataRegionId = tsFileResource.getDataRegionId();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
     this.walRedoer = new TsFilePlanRedoer(tsFileResource);
@@ -182,24 +186,26 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               // delete data already flushed in the MemTable to avoid duplicates
               for (IDeviceID device : tsFileResource.getDevices()) {
                 // iterating the index, must present
-                if (device.isTableModel()) {
+                if (isTableModel) {
                   memTable.delete(
                       new TableDeletionEntry(
                           new DeletionPredicate(device.getTableName(), new FullExactMatch(device)),
                           new TimeRange(
                               tsFileResource.getStartTime(device).get(),
-                              tsFileResource.getEndTime(device).get())));
+                              tsFileResource.getEndTime(device).get())),
+                      !isTableModel);
                 } else {
                   memTable.delete(
                       new TreeDeletionEntry(
                           new MeasurementPath(device, "*"),
                           tsFileResource.getStartTime(device).get(),
-                          tsFileResource.getEndTime(device).get()));
+                          tsFileResource.getEndTime(device).get()),
+                      !isTableModel);
                 }
               }
             }
             for (IDeviceID deviceID : memTable.getMemTableMap().keySet()) {
-              if (deviceID.isTableModel()) {
+              if (isTableModel) {
                 registerToTsFile(deviceID.getTableName());
               }
             }
@@ -265,10 +271,10 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       for (Map.Entry<IDeviceID, IWritableMemChunkGroup> deviceEntry : memTableMap.entrySet()) {
         IDeviceID deviceId = deviceEntry.getKey();
         for (Map.Entry<String, IWritableMemChunk> measurementEntry :
-            deviceEntry.getValue().getMemChunkMap().entrySet()) {
+            deviceEntry.getValue().getMemChunkMap(!isTableModel).entrySet()) {
           IWritableMemChunk memChunk = measurementEntry.getValue();
           tsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
-          tsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
+          tsFileResource.updateEndTime(deviceId, memChunk.getLastPoint(!isTableModel));
         }
       }
       // flush memTable
@@ -279,7 +285,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
                   recoveryMemTable,
                   writer,
                   databaseName + FILE_NAME_SEPARATOR + dataRegionId,
-                  dataRegionId);
+                  dataRegionId,
+                  isTableModel);
           tableFlushTask.syncFlushMemTable();
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMinPlanIndex());
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMaxPlanIndex());
@@ -305,6 +312,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               databaseName,
               tsFileResource.getTsFile().getName(),
               e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         }
 
         // if we put following codes in the 'if' clause above, this file can be continued writing
@@ -314,6 +322,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         tsFileResource.serialize();
         FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
       } catch (IOException | ExecutionException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw new WALRecoverException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

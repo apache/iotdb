@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -45,6 +46,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
@@ -104,6 +106,8 @@ public class IoTConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
+  private final UserDataTransferAuditHandler userDataTransferAuditHandler;
+  private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
   private IoTConsensusConfig config;
 
   /**
@@ -111,6 +115,12 @@ public class IoTConsensus implements IConsensus {
    * by the subscription system to auto-bind prefetching queues to new DataRegions.
    */
   public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onNewPeerCreated;
+
+  /**
+   * Optional callback invoked after a recovered local peer is constructed and before it starts.
+   * Used by the subscription system to restore WAL-retention guards before WAL cleanup is enabled.
+   */
+  public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onPeerRecovering;
 
   /**
    * Optional callback invoked before a local peer is deleted via {@link #deleteLocalPeer}. Used by
@@ -131,8 +141,12 @@ public class IoTConsensus implements IConsensus {
     this.recvSnapshotDirs = config.getRecvSnapshotDirs();
     this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
+    this.userDataTransferAuditHandler = config.getUserDataTransferAuditHandler();
+    this.userDataTransferAuditClassifier = config.getUserDataTransferAuditClassifier();
     this.registry = registry;
-    this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
+    this.service =
+        new IoTConsensusRPCService(
+            thisNode, config.getIotConsensusConfig(), config.getTrustedChannelFailureHandler());
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(
@@ -205,7 +219,9 @@ public class IoTConsensus implements IConsensus {
                   backgroundTaskService,
                   clientManager,
                   syncClientManager,
-                  config);
+                  config,
+                  userDataTransferAuditHandler,
+                  userDataTransferAuditClassifier);
           stateMachineMap.put(consensusGroupId, consensus);
         }
       } catch (DiskSpaceInsufficientException e) {
@@ -234,7 +250,14 @@ public class IoTConsensus implements IConsensus {
               consensusGroupId ->
                   resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
     }
-    stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
+    stateMachineMap.forEach(
+        (consensusGroupId, consensus) -> {
+          final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onPeerRecovering;
+          if (callback != null) {
+            callback.accept(consensusGroupId, consensus);
+          }
+          consensus.start();
+        });
   }
 
   @Override
@@ -320,7 +343,9 @@ public class IoTConsensus implements IConsensus {
                             backgroundTaskService,
                             clientManager,
                             syncClientManager,
-                            config);
+                            config,
+                            userDataTransferAuditHandler,
+                            userDataTransferAuditClassifier);
                   } catch (DiskSpaceInsufficientException e) {
                     throw new RuntimeException(e);
                   }

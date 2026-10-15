@@ -65,9 +65,18 @@ public class FolderManager {
 
   private final DirectoryStrategy selectStrategy;
 
+  private final boolean changeSystemStatusToReadOnly;
+
   public FolderManager(List<String> folders, DirectoryStrategyType type)
       throws DiskSpaceInsufficientException {
+    this(folders, type, true);
+  }
+
+  public FolderManager(
+      List<String> folders, DirectoryStrategyType type, boolean changeSystemStatusToReadOnly)
+      throws DiskSpaceInsufficientException {
     this.folders = folders;
+    this.changeSystemStatusToReadOnly = changeSystemStatusToReadOnly;
     folders.forEach(dir -> foldersStates.put(dir, FolderState.HEALTHY));
     switch (type) {
       case SEQUENCE_STRATEGY:
@@ -85,13 +94,9 @@ public class FolderManager {
       default:
         throw new RuntimeException();
     }
-    try {
-      this.selectStrategy.setFolders(folders);
-      this.selectStrategy.setFoldersStates(foldersStates);
-    } catch (DiskSpaceInsufficientException e) {
-      changeToReadOnlyIfDiskFull(e);
-      throw e;
-    }
+    this.selectStrategy.setChangeSystemStatusToReadOnly(changeSystemStatusToReadOnly);
+    this.selectStrategy.setFolders(folders);
+    this.selectStrategy.setFoldersStates(foldersStates);
   }
 
   public void updateFolderState(String folder, FolderState state) {
@@ -124,12 +129,17 @@ public class FolderManager {
   }
 
   private void changeToReadOnlyIfDiskFull(DiskSpaceInsufficientException e) {
+    if (!changeSystemStatusToReadOnly) {
+      return;
+    }
+
     if (!hasFolderWithAvailableDiskSpace()) {
       if (LoggerPeriodicalLogReducer.shouldLog(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY)) {
         logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
       }
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
     } else {
       logger.warn(UtilMessages.CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE, e);
     }

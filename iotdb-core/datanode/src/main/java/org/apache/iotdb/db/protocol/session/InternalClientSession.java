@@ -91,6 +91,11 @@ public class InternalClientSession extends IClientSession {
   }
 
   @Override
+  public boolean containsQueryId(Long statementId, long queryId) {
+    return ClientSession.containsQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  @Override
   public void removeQueryId(Long statementId, Long queryId) {
     ClientSession.removeQueryId(statementIdToQueryId, statementId, queryId);
   }

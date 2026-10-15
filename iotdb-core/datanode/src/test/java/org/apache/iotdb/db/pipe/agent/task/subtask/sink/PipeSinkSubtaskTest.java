@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfi
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -87,7 +89,7 @@ public class PipeSinkSubtaskTest {
   }
 
   @Test
-  public void testDiscardEventsOfPipeNotBlockedByConnectionRetry() throws Exception {
+  public void testExternalSinkDiscardEventsOfPipeNotBlockedByConnectionRetry() throws Exception {
     final CountDownLatch handshakeEntered = new CountDownLatch(1);
     final CountDownLatch releaseHandshake = new CountDownLatch(1);
     final CountDownLatch discardEntered = new CountDownLatch(1);
@@ -143,7 +145,68 @@ public class PipeSinkSubtaskTest {
   }
 
   @Test
-  public void testCloseNotConcurrentWithConnectionRetry() throws Exception {
+  public void testBuiltinSinkDiscardEventsOfPipeWaitsForConnectionRetry() throws Exception {
+    final CountDownLatch handshakeEntered = new CountDownLatch(1);
+    final CountDownLatch releaseHandshake = new CountDownLatch(1);
+    final CountDownLatch discardEntered = new CountDownLatch(1);
+    final AtomicBoolean discardDuringHandshake = new AtomicBoolean(false);
+    final PipeConnector connector =
+        new BlockingHandshakeConnector(
+            handshakeEntered,
+            releaseHandshake,
+            new CountDownLatch(0),
+            new AtomicBoolean(false),
+            discardEntered,
+            discardDuringHandshake);
+    final UnboundedBlockingPendingQueue<?> pendingQueue = mock(UnboundedBlockingPendingQueue.class);
+
+    final PipeSinkSubtask subtask =
+        new PipeSinkSubtask(
+            null,
+            "PipeSinkSubtaskTest",
+            System.currentTimeMillis(),
+            "data_test",
+            "data_test",
+            0,
+            (UnboundedBlockingPendingQueue) pendingQueue,
+            connector,
+            false);
+
+    final Thread failureThread =
+        new Thread(() -> subtask.onFailure(new PipeConnectionException("connection broken")));
+    failureThread.start();
+    Assert.assertTrue(handshakeEntered.await(5, TimeUnit.SECONDS));
+
+    final CountDownLatch discardReturned = new CountDownLatch(1);
+    final Thread discardThread =
+        new Thread(
+            () -> {
+              try {
+                subtask.discardEventsOfPipe(new CommitterKey("pipe", 1L, 1, -1));
+              } finally {
+                discardReturned.countDown();
+              }
+            });
+    discardThread.start();
+
+    try {
+      Assert.assertFalse(discardReturned.await(100, TimeUnit.MILLISECONDS));
+      Assert.assertEquals(1L, discardEntered.getCount());
+      Assert.assertFalse(discardDuringHandshake.get());
+    } finally {
+      releaseHandshake.countDown();
+      discardThread.join(5000);
+      failureThread.join(5000);
+      subtask.close();
+    }
+
+    Assert.assertFalse(discardThread.isAlive());
+    Assert.assertTrue(discardEntered.await(1, TimeUnit.SECONDS));
+    Assert.assertFalse(discardDuringHandshake.get());
+  }
+
+  @Test
+  public void testExternalSinkCloseNotConcurrentWithConnectionRetry() throws Exception {
     final int originalTimeout =
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
     CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(30);
@@ -195,7 +258,7 @@ public class PipeSinkSubtaskTest {
   }
 
   @Test
-  public void testCloseDoesNotWaitForeverForConnectorClose() throws Exception {
+  public void testExternalSinkCloseDoesNotWaitForeverForConnectorClose() throws Exception {
     final int originalTimeout =
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
     CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(30);
@@ -234,6 +297,62 @@ public class PipeSinkSubtaskTest {
       releaseClose.countDown();
       CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
     }
+  }
+
+  @Test
+  public void testBuiltinSinkCloseWaitsForConnectorClose() throws Exception {
+    final int originalTimeout =
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
+    CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(30);
+
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<?> pendingQueue = mock(UnboundedBlockingPendingQueue.class);
+    final CountDownLatch closeEntered = new CountDownLatch(1);
+    final CountDownLatch releaseClose = new CountDownLatch(1);
+
+    doAnswer(
+            invocation -> {
+              closeEntered.countDown();
+              releaseClose.await(5, TimeUnit.SECONDS);
+              return null;
+            })
+        .when(connector)
+        .close();
+
+    final PipeSinkSubtask subtask =
+        new PipeSinkSubtask(
+            null,
+            "PipeSinkSubtaskTest",
+            System.currentTimeMillis(),
+            "data_test",
+            "data_test",
+            0,
+            (UnboundedBlockingPendingQueue) pendingQueue,
+            connector,
+            false);
+    final CountDownLatch closeReturned = new CountDownLatch(1);
+    final Thread closeThread =
+        new Thread(
+            () -> {
+              try {
+                subtask.close();
+              } finally {
+                closeReturned.countDown();
+              }
+            });
+
+    try {
+      closeThread.start();
+      Assert.assertTrue(closeEntered.await(5, TimeUnit.SECONDS));
+      Assert.assertFalse(closeReturned.await(100, TimeUnit.MILLISECONDS));
+    } finally {
+      releaseClose.countDown();
+      closeThread.join(5000);
+      CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+    }
+
+    Assert.assertFalse(closeThread.isAlive());
+    Assert.assertEquals(0L, closeReturned.getCount());
   }
 
   @Test
@@ -371,9 +490,42 @@ public class PipeSinkSubtaskTest {
     }
   }
 
+  @Test
+  public void testClientBorrowFailureRetriesLocallyWithoutReportingCriticalException() {
+    final long originalSleepIntervalInitMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalInitMs();
+    final long originalSleepIntervalMaxMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalMaxMs();
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalInitMs(1);
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalMaxMs(2);
+
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(pendingQueue, connector);
+
+    try {
+      subtask.handleExceptionForTest(
+          mock(EnrichedEvent.class), new ClientManagerException("client pool exhausted"));
+
+      Assert.assertEquals(
+          PipeResourceFailureType.NETWORK_TIMEOUT, subtask.getReportedResourceFailureType());
+      Assert.assertNull(subtask.getReportedException());
+    } finally {
+      subtask.close();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalInitMs(originalSleepIntervalInitMs);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalMaxMs(originalSleepIntervalMaxMs);
+    }
+  }
+
   private static class CapturingPipeSinkSubtask extends PipeSinkSubtask {
 
     private PipeRuntimeException reportedException;
+    private PipeResourceFailureType reportedResourceFailureType;
 
     private CapturingPipeSinkSubtask(
         final UnboundedBlockingPendingQueue<Event> pendingQueue, final PipeConnector connector) {
@@ -397,9 +549,23 @@ public class PipeSinkSubtaskTest {
       return reportedException;
     }
 
+    private PipeResourceFailureType getReportedResourceFailureType() {
+      return reportedResourceFailureType;
+    }
+
+    private void handleExceptionForTest(final EnrichedEvent event, final Exception exception) {
+      handleException(event, exception);
+    }
+
     @Override
     protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
       reportedException = exception;
+    }
+
+    @Override
+    protected void reportResourceFailure(
+        final EnrichedEvent event, final PipeResourceFailureType failureType) {
+      reportedResourceFailureType = failureType;
     }
   }
 

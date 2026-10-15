@@ -20,12 +20,20 @@
 package org.apache.iotdb.db.subscription.receiver;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqBuilder;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -67,6 +75,205 @@ public class SubscriptionReceiverV1Test {
 
     Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
     Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
+  public void testHandleTimeoutRetriesAfterInFlightRequestCompletes() throws Exception {
+    final AtomicLong closeAttemptCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            closeAttemptCount.incrementAndGet();
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+    setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+    final AtomicLong inFlightRequestCount = (AtomicLong) getField(receiver, "inFlightRequestCount");
+
+    inFlightRequestCount.set(1L);
+    receiver.handleTimeout();
+
+    Assert.assertEquals(0L, closeAttemptCount.get());
+    Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+
+    inFlightRequestCount.set(0L);
+    receiver.handleTimeout();
+
+    Assert.assertEquals(1L, closeAttemptCount.get());
+    Assert.assertNull(getField(receiver, "sharedConsumerConfig"));
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
+  public void testHandleTimeoutRetriesAfterCleanupFailure() throws Exception {
+    final AtomicLong closeAttemptCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            closeAttemptCount.incrementAndGet();
+            throw new RuntimeException("expected cleanup failure");
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+    setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+
+    receiver.handleTimeout();
+    receiver.handleTimeout();
+
+    Assert.assertEquals(2L, closeAttemptCount.get());
+    Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+    Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testHandleExitKeepsSharedConsumerStateForTimeoutCleanup() throws Exception {
+    final AtomicLong releaseCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+            releaseCount.incrementAndGet();
+            return 1;
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
+        (ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal");
+    consumerConfigThreadLocal.set(consumerConfig);
+
+    receiver.handleExit();
+
+    Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+    Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
+    Assert.assertTrue(receiver.hasActiveConsumer());
+    Assert.assertNull(consumerConfigThreadLocal.get());
+    Assert.assertEquals(1L, releaseCount.get());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testHandleExitClearsThreadLocalStateAfterInvalidation() throws Exception {
+    final AtomicLong releaseCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+            releaseCount.incrementAndGet();
+            return 1;
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
+        (ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal");
+    consumerConfigThreadLocal.set(consumerConfig);
+
+    receiver.invalidateConsumer();
+    receiver.handleExit();
+
+    Assert.assertFalse(receiver.hasActiveConsumer());
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+    Assert.assertNull(consumerConfigThreadLocal.get());
+    Assert.assertEquals(0L, releaseCount.get());
+  }
+
+  @Test
+  public void testInvalidatedConsumerReturnsFencedStatus() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+
+    receiver.invalidateConsumer();
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONSUMER_FENCED.getStatusCode(),
+        receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
+  }
+
+  @Test
+  public void testFencedConsumerCannotHandshakeAgain() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    receiver.invalidateConsumer();
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONSUMER_FENCED.getStatusCode(),
+        receiver
+            .handle(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig))
+            .getStatus()
+            .getCode());
+    Assert.assertTrue((boolean) getField(receiver, "consumerFenced"));
+  }
+
+  @Test
+  public void testNeverHandshakenConsumerStillReturnsMissingConsumerStatus() {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
+        receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
+  }
+
+  @Test
+  public void testHandleSlicesDispatchesReassembledRequest() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+
+    final TPipeSubscribeResp firstResp =
+        receiver.handle(
+            PipeSubscribeSliceReqBuilder.buildSliceReq(
+                heartbeatReq, 1, 0, sliceCount, bodySizeLimit));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), firstResp.getStatus().getCode());
+
+    final TPipeSubscribeResp lastResp =
+        receiver.handle(
+            PipeSubscribeSliceReqBuilder.buildSliceReq(
+                heartbeatReq, 1, 1, sliceCount, bodySizeLimit));
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(), lastResp.getStatus().getCode());
+  }
+
+  @Test
+  public void testNonSliceRequestClearsIncompleteSlices() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 1, 0, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
+        receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 1, 1, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
   }
 
   @Test
@@ -158,6 +365,63 @@ public class SubscriptionReceiverV1Test {
     }
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testFencedOwnerHeartbeatDoesNotRefreshBufferedEventLeases() throws Exception {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final String consumerGroupId = "group-" + UUID.randomUUID();
+    final String consumerId = "consumer-" + UUID.randomUUID();
+    final ConsumerConfig oldOwnerConsumer =
+        createConsumerConfig(1_000L, "owner1", 5L, consumerId, consumerGroupId);
+    final SubscriptionCommitContext bufferedContext =
+        new SubscriptionCommitContext(1, 0, topicName, consumerGroupId, 1L);
+
+    final TopicMeta topicMeta = createTopicMeta(topicName, "owner1", 5L);
+    SubscriptionAgent.topic().handleSingleTopicMetaChanges(topicMeta);
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId,
+            System.currentTimeMillis(),
+            new ConsumerMeta(
+                consumerId, System.currentTimeMillis(), oldOwnerConsumer.getAttribute()));
+    consumerGroupMeta.addSubscription(consumerId, Collections.singleton(topicName));
+    SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(consumerGroupMeta);
+
+    try {
+      final TopicMeta transferredTopicMeta = topicMeta.deepCopy();
+      transferredTopicMeta.transferOwner("owner2", 6L);
+      SubscriptionAgent.topic().handleSingleTopicMetaChanges(transferredTopicMeta);
+
+      final AtomicLong refreshCount = new AtomicLong();
+      final SubscriptionReceiverV1 receiver =
+          new SubscriptionReceiverV1() {
+            @Override
+            protected int refreshInFlightEventLeases(
+                final ConsumerConfig consumerConfig,
+                final java.util.List<SubscriptionCommitContext> processorBufferedCommitContexts) {
+              refreshCount.incrementAndGet();
+              return 1;
+            }
+          };
+      setField(receiver, "sharedConsumerConfig", oldOwnerConsumer);
+      final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
+          (ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal");
+      consumerConfigThreadLocal.set(oldOwnerConsumer);
+
+      Assert.assertEquals(
+          TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
+          receiver
+              .handle(
+                  SubscriptionHeartbeatReq.toThriftReq(Collections.singletonList(bufferedContext)))
+              .getStatus()
+              .getCode());
+      Assert.assertEquals(0L, refreshCount.get());
+    } finally {
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerGroupId);
+      SubscriptionAgent.topic().handleDropTopic(topicName);
+    }
+  }
+
   private long invokeCalculateConsumerInactivityTimeoutMs(
       final SubscriptionReceiverV1 receiver, final ConsumerConfig consumerConfig) throws Exception {
     final Method method =
@@ -181,9 +445,23 @@ public class SubscriptionReceiverV1Test {
 
   private ConsumerConfig createConsumerConfig(
       final long heartbeatIntervalMs, final String ownerId, final Long ownerEpoch) {
+    return createConsumerConfig(
+        heartbeatIntervalMs,
+        ownerId,
+        ownerEpoch,
+        "consumer-" + UUID.randomUUID(),
+        "group-" + UUID.randomUUID());
+  }
+
+  private ConsumerConfig createConsumerConfig(
+      final long heartbeatIntervalMs,
+      final String ownerId,
+      final Long ownerEpoch,
+      final String consumerId,
+      final String consumerGroupId) {
     final Map<String, String> attributes = new HashMap<>();
-    attributes.put(ConsumerConstant.CONSUMER_ID_KEY, "consumer-" + UUID.randomUUID());
-    attributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "group-" + UUID.randomUUID());
+    attributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    attributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     attributes.put(ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY, String.valueOf(heartbeatIntervalMs));
     if (ownerId != null) {
       attributes.put(ConsumerConstant.OWNER_ID_KEY, ownerId);
@@ -195,14 +473,14 @@ public class SubscriptionReceiverV1Test {
   }
 
   private Object getField(final Object target, final String fieldName) throws Exception {
-    final Field field = target.getClass().getDeclaredField(fieldName);
+    final Field field = SubscriptionReceiverV1.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     return field.get(target);
   }
 
   private void setField(final Object target, final String fieldName, final Object value)
       throws Exception {
-    final Field field = target.getClass().getDeclaredField(fieldName);
+    final Field field = SubscriptionReceiverV1.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(target, value);
   }

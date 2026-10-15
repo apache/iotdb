@@ -145,7 +145,7 @@ public class DropSubscriptionProcedureTest {
         .thenReturn(consumerGroupMeta);
     Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
         .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
-    Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic"))
+    Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false))
         .thenReturn(new TopicMeta("test_topic", 1, Collections.emptyMap()));
 
     final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);

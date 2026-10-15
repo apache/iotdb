@@ -29,6 +29,81 @@ import java.util.Map;
 public class TopicConfigTest {
 
   @Test
+  public void testModeDefaultsToInitial() {
+    final TopicConfig topicConfig = new TopicConfig();
+
+    Assert.assertEquals(TopicConstant.MODE_INITIAL_VALUE, topicConfig.getMode());
+    Assert.assertTrue(topicConfig.isInitialMode());
+    Assert.assertFalse(topicConfig.isSnapshotMode());
+    Assert.assertFalse(topicConfig.isIncrementalMode());
+  }
+
+  @Test
+  public void testCanonicalModeValues() {
+    Assert.assertTrue(TopicConfig.isValidMode(TopicConstant.MODE_INITIAL_VALUE));
+    Assert.assertTrue(TopicConfig.isValidMode(TopicConstant.MODE_SNAPSHOT_VALUE));
+    Assert.assertTrue(TopicConfig.isValidMode(TopicConstant.MODE_INCREMENTAL_VALUE));
+    Assert.assertFalse(TopicConfig.isValidMode("wal"));
+
+    Assert.assertTrue(topicConfigWithMode(" INITIAL ").isInitialMode());
+    Assert.assertTrue(topicConfigWithMode(" INCREMENTAL ").isIncrementalMode());
+  }
+
+  @Test
+  public void testRecycleUncommittedEventInterval() {
+    Assert.assertNull(new TopicConfig().getRecycleUncommittedEventIntervalMs());
+
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, " 120000 ");
+    Assert.assertEquals(
+        Long.valueOf(120000L), new TopicConfig(attributes).getRecycleUncommittedEventIntervalMs());
+
+    attributes.clear();
+    attributes.put("RECYCLE-UNCOMMITTED-EVENT-INTERVAL-MS", "300000");
+    Assert.assertEquals(
+        Long.valueOf(300000L), new TopicConfig(attributes).getRecycleUncommittedEventIntervalMs());
+
+    for (final long intervalMs : new long[] {0L, -1L, Long.MIN_VALUE}) {
+      attributes.put("RECYCLE-UNCOMMITTED-EVENT-INTERVAL-MS", " " + intervalMs + " ");
+      Assert.assertEquals(
+          Long.valueOf(intervalMs),
+          new TopicConfig(attributes).getRecycleUncommittedEventIntervalMs());
+    }
+  }
+
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testLegacyModeValues() {
+    final TopicConfig liveTopicConfig = topicConfigWithMode(TopicConstant.MODE_LIVE_VALUE);
+    Assert.assertTrue(TopicConfig.isValidMode(TopicConstant.MODE_LIVE_VALUE));
+    Assert.assertEquals(TopicConstant.MODE_INITIAL_VALUE, liveTopicConfig.getMode());
+    Assert.assertTrue(liveTopicConfig.isInitialMode());
+    Assert.assertTrue(liveTopicConfig.isLiveMode());
+
+    final TopicConfig consensusTopicConfig =
+        topicConfigWithMode(TopicConstant.MODE_CONSENSUS_VALUE);
+    Assert.assertTrue(TopicConfig.isValidMode(TopicConstant.MODE_CONSENSUS_VALUE));
+    Assert.assertEquals(TopicConstant.MODE_INCREMENTAL_VALUE, consensusTopicConfig.getMode());
+    Assert.assertTrue(consensusTopicConfig.isIncrementalMode());
+    Assert.assertTrue(consensusTopicConfig.isConsensusMode());
+  }
+
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testInitialModeMapsToPipeLiveMode() {
+    Assert.assertEquals(
+        TopicConstant.MODE_LIVE_VALUE,
+        topicConfigWithMode(TopicConstant.MODE_INITIAL_VALUE)
+            .getAttributesWithSourceMode()
+            .get(TopicConstant.MODE_KEY));
+    Assert.assertEquals(
+        TopicConstant.MODE_LIVE_VALUE,
+        topicConfigWithMode(TopicConstant.MODE_LIVE_VALUE)
+            .getAttributesWithSourceMode()
+            .get(TopicConstant.MODE_KEY));
+  }
+
+  @Test
   public void testColumnFilterKeyIsCaseInsensitive() {
     final TopicConfig topicConfig =
         new TopicConfig(Collections.singletonMap("Column-Filter", "column_name = \"s1\""));
@@ -55,5 +130,21 @@ public class TopicConfigTest {
     attributes.put("COLUMN-FILTER", " TRUE ");
 
     Assert.assertTrue(new TopicConfig(attributes).isColumnFilterTrivial());
+  }
+
+  @Test
+  public void testRetainProgressAfterUnsubscribeDefaultsToFalse() {
+    Assert.assertFalse(new TopicConfig().isProgressRetainedAfterUnsubscribe());
+  }
+
+  @Test
+  public void testRetainProgressAfterUnsubscribeIsCaseInsensitiveAndTrimmed() {
+    Assert.assertTrue(
+        new TopicConfig(Collections.singletonMap("Retain.Progress.After.Unsubscribe", " TRUE "))
+            .isProgressRetainedAfterUnsubscribe());
+  }
+
+  private static TopicConfig topicConfigWithMode(final String mode) {
+    return new TopicConfig(Collections.singletonMap(TopicConstant.MODE_KEY, mode));
   }
 }

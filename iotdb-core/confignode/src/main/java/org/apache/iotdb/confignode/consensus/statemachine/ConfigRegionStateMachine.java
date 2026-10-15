@@ -54,12 +54,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -297,8 +297,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     final int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     if (currentNodeId != newLeaderId) {
       LOGGER.info(
-          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-              + ConfigNodeMessages.LOG_NEW_LEADER_NODEID_ARG_0A63760B,
+          ConfigNodeMessages
+              .LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_A_CONFIGREGION_FOLLOWER_NEW_LEADER_NODEID_ARG_STOPPING_LEADER_SERVICES_A1962CD2,
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
@@ -312,8 +312,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // couldn't initialize earlier than the ConfigRegionStateMachine
     final int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     LOGGER.info(
-        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + ConfigNodeMessages.LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261,
+        ConfigNodeMessages
+            .LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_IS_NO_LONGER_THE_CONFIGREGION_LEADER_STOPPING_LEADER_SERVICES_5DB0DA66,
         currentNodeId,
         currentNodeTEndPoint);
     resignLeaderAsync();
@@ -469,8 +469,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
     LOGGER.info(
-        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + ConfigNodeMessages.LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F,
+        ConfigNodeMessages
+            .LOG_CONFIGREGION_UPDATE_CONFIGNODE_NODEID_ARG_CONSENSUSENDPOINT_ARG_COMPLETED_STOPPING_LEADER_SERVICES_62381EE1,
         currentNodeId,
         currentNodeTEndPoint);
   }
@@ -643,8 +643,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private boolean rollbackFailedPlanForSimpleConsensus(
       ConfigPhysicalPlan plan, SimpleConsensusPersistResult persistResult) {
     closeSimpleLogWriter();
-    try (FileOutputStream outputStream = new FileOutputStream(persistResult.logFile, true);
-        FileChannel channel = outputStream.getChannel()) {
+    try (FileChannel channel =
+        FileChannel.open(persistResult.logFile.toPath(), StandardOpenOption.WRITE)) {
       channel.truncate(persistResult.logFileSizeBeforeWrite);
       channel.force(true);
       simpleLogFile = persistResult.logFile;
@@ -776,8 +776,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         return;
       } catch (IOException e) {
         LOGGER.warn(
-            ConfigNodeMessages.CAN_T_CLOSE_STANDALONELOG_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE
-                + ConfigNodeMessages.LOG_FILEPATH_ARG_RETRY_ARG_16284354,
+            ConfigNodeMessages
+                .LOG_CONFIGREGION_UPDATE_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_FILEPATH_ARG_RETRY_ARG_188A702E,
             simpleLogFile == null ? null : simpleLogFile.getAbsolutePath(),
             retry);
         try {

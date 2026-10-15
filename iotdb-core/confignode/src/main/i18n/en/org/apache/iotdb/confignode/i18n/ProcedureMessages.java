@@ -93,6 +93,9 @@ public final class ProcedureMessages {
   public static final String AUTHENTICATION_FAILED = "Authentication failed.";
   public static final String AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY =
       "Auth procedure: clean datanode cache successfully";
+  public static final String AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED =
+      "Auth plan has been committed, but DataNode permission cache invalidation failed. "
+          + "Some DataNodes may have stale permissions; please clear their permission cache manually.";
   public static final String BEGIN_TO_CHANGE_DATANODE_STATUS_NODESTATUSMAP =
       "{}, Begin to change DataNode status, nodeStatusMap: {}";
   public static final String BEGIN_TO_STOP_DATANODES_AND_KILL_THE_DATANODE_PROCESS =
@@ -356,7 +359,7 @@ public final class ProcedureMessages {
   public static final String ERROR_IN_DESERIALIZE_PROCID_THIS_PROCEDURE_WILL_BE_IGNORED_IT =
       "Error in deserialize {} (procID {}). This procedure will be ignored. It may belong to old version and cannot be used now.";
   public static final String EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES =
-      "Execute auth plan {} success. To invalidate datanodes: {}";
+      "Execute auth plan {} success.";
   public static final String EXECUTING_ON_REGION_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN =
       "Executing on region for column {} in {}.{} when dropping column";
   public static final String FAILED_TO_ACTIVE_CQ_BECAUSE_OF_NO_SUCH_CQ =
@@ -551,8 +554,6 @@ public final class ProcedureMessages {
       "Fail to drop trigger [%s] at STATE [%s]";
   public static final String FAIL_TO_DROP_TRIGGER_ON_DATA_NODES =
       "Fail to drop trigger [%s] on Data Nodes";
-  public static final String FAIL_TO_EXECUTE_PLAN_AT_STATE =
-      "Fail to execute plan [%s] at state[%s]";
   public static final String FAIL_TO_REMOVE_AINODE_AT_STATE =
       "Fail to remove AINode [%s] at STATE [%s], %s";
   public static final String FAIL_TO_REMOVE_AINODE_ON_CONFIG_NODES =
@@ -632,16 +633,6 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] state {} failed";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_WILL_BE_DELETED =
-      "[pid{}][RemoveRegionGroup] started, region group {} will be deleted from DataNodes {}.";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_REPLICA_WILL_BE_DELETED_FROM_DATANODE =
-      "[pid{}][RemoveRegionGroup] region {} will be deleted from DataNode {}.";
-  public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
-      "[pid{}][RemoveRegionGroup] state {} failed";
-  public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
-      "[pid{}][RemoveRegionGroup] failed to delete a replica of region {} (attempt {}), will keep retrying until it is deleted. reason: {}";
-  public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
-      "[pid{}][RemoveRegionGroup] success, region group {} has been deleted. Procedure took {} (started at {}).";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE =
@@ -870,8 +861,6 @@ public final class ProcedureMessages {
       "Retrievable error trying to create pipe plugin [{}], state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_DROP_PIPE_PLUGIN_STATE =
       "Retrievable error trying to drop pipe plugin [{}], state: {}";
-  public static final String RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE =
-      "Retrievable error trying to execute plan {}, state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "Retrievable error trying to remove AINode [{}], state [{}]";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
@@ -1211,6 +1200,8 @@ public final class ProcedureMessages {
   public static final String LOG_FINISHED_SUBPROCEDURE_PID_ARG_RESUME_PROCESSING_PPID_ARG_93ED990B = "Finished subprocedure pid={}, resume processing ppid={}";
   public static final String LOG_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "Halt pid={}, activeCount={}";
   public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "Exception happened when worker {} execute procedure {}";
+  public static final String LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572 =
+      "Failed to commit-release {} for table {}.{} to DataNode, failure results: {}";
   public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 = "Worker stuck {}({}), run time {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D = "Procedure workers: {} is running, {} is running and stuck";
   public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 = "Add procedure {} as the {}th rollback step";
@@ -1229,6 +1220,9 @@ public final class ProcedureMessages {
       + " cache status is {}";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B = "Remove ConfigNode failed because update ConsensusGroup peer information failed.";
   public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 = "Can't remove datanode due to the limit of replication factor, ";
+  public static final String
+      MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6 =
+          "Submit RemoveDataNodesProcedure failed, because when there are other unknown, stopped or readonly nodes in the consensus group that are not remove nodes, the remove operation cannot be performed for security reasons. Please check the status of the node %s and ensure it is running.";
   public static final String MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C = "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s";
   public static final String EXCEPTION_NOT_SUPPORTED_0A83F963 = " is not supported";
   public static final String LOG_START_ADD_TRIGGER_ARG_TRIGGERTABLE_CONFIG_NODES_NEEDTOSAVEJAR_ARG_0C23D81E = "Start to add trigger [{}] in TriggerTable on Config Nodes, needToSaveJar[{}]";
@@ -1398,10 +1392,6 @@ public final class ProcedureMessages {
   public static final String LOG_ARG_8393DD4A = "{}";
   public static final String MESSAGE_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "Halt pid={}, activeCount={}";
   public static final String MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "Exception happened when worker {} execute procedure {}";
-  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_71B7046A =
-      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the ";
-  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_ARG_ARG_BIT_BUDGET_015C598D =
-      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the %d/%d-bit budget";
   public static final String MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694 = "Failed to show DataPartitionTable integrity check progress";
   public static final String MESSAGE_ENCOUNTERED_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_5FA2739F =
       "Encountered unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";
@@ -1436,4 +1426,8 @@ public final class ProcedureMessages {
       "rolling back after failure: %s.";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "rolling back after an earlier failure.";
+  public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
+      "DataNode setSystemStatus RPC failed: %s: %s: %s; ";
+  public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
+      "ConfigNode trySetNodeStatus failed: %s: %s: %s; ";
 }

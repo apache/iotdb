@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -355,6 +356,63 @@ public class IoTDBDeletionTableIT {
         assertEquals(6, resultSet.getInt(2));
         assertFalse(resultSet.next());
       }
+    }
+  }
+
+  /**
+   * Verifies that a deletion restricted by both an attribute and an exact timestamp remains
+   * effective after the affected data is flushed from the memtable.
+   */
+  @Test
+  public void testDeleteFromWhereAttributeAndTimeAfterFlush() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE ad_stor_001(device_id STRING TAG, color STRING ATTRIBUTE, value INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO ad_stor_001(time, device_id, color, value) VALUES (1, 'd1', 'red', 1)");
+      statement.execute(
+          "INSERT INTO ad_stor_001(time, device_id, color, value) VALUES (2, 'd1', 'red', 2)");
+      statement.execute(
+          "INSERT INTO ad_stor_001(time, device_id, color, value) VALUES (3, 'd1', 'red', 3)");
+      statement.execute(
+          "INSERT INTO ad_stor_001(time, device_id, color, value) VALUES (4, 'd1', 'red', 4)");
+      statement.execute(
+          "INSERT INTO ad_stor_001(time, device_id, color, value) VALUES (1, 'd2', 'blue', 5)");
+
+      assertEquals(5, countRows(statement, "SELECT COUNT(*) FROM ad_stor_001"));
+
+      statement.execute("DELETE FROM ad_stor_001 WHERE color = 'red' AND time = 2");
+      assertEquals(4, countRows(statement, "SELECT COUNT(*) FROM ad_stor_001"));
+
+      statement.execute("FLUSH");
+      assertEquals(4, countRows(statement, "SELECT COUNT(*) FROM ad_stor_001"));
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT device_id, time, color, value FROM ad_stor_001 "
+                  + "ORDER BY device_id, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString("device_id")
+                  + ","
+                  + resultSet.getLong("time")
+                  + ","
+                  + resultSet.getString("color")
+                  + ","
+                  + resultSet.getInt("value"));
+        }
+      }
+      assertEquals(List.of("d1,1,red,1", "d1,3,red,3", "d1,4,red,4", "d2,1,blue,5"), actual);
+    }
+  }
+
+  private int countRows(final Statement statement, final String query) throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(query)) {
+      assertTrue(resultSet.next());
+      return resultSet.getInt(1);
     }
   }
 
@@ -1303,6 +1361,25 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
 
       statement.execute("DROP TABLE vehicle" + testNum);
+
+      // DROP TABLE acknowledges submission before the table has been fully removed.
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInSameThread()
+          // Progress snapshots can differ between cluster nodes while deletion is running.
+          .ignoreException(InconsistentDataException.class)
+          .untilAsserted(
+              () -> {
+                try (ResultSet resultSet =
+                    statement.executeQuery(
+                        "SELECT state, error_message FROM information_schema.drop_table_procedures "
+                            + "WHERE database = 'test' AND table_name = 'vehicle"
+                            + testNum
+                            + "' ORDER BY procedure_id DESC LIMIT 1")) {
+                  assertTrue(resultSet.next());
+                  assertEquals(resultSet.getString(2), "SUCCESS", resultSet.getString(1));
+                }
+              });
 
       try (ResultSet ignored = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
         fail("Exception expected");

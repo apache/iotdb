@@ -28,12 +28,27 @@ public final class CalcMessages {
   public static final String ARRAYS_NOT_SAME_LENGTH = "数组长度不一致";
   public static final String CANNOT_ADD_NAN_TO_T_DIGEST = "不能将 NaN 添加到 t-digest";
   public static final String CANNOT_CAST_TO_BOOLEAN = "\"%s\" 无法转换为 [BOOLEAN]";
+  public static final String CANNOT_CAST_TO_TYPE = "\"%s\" 无法转换为 [%s]";
   public static final String CANNOT_PARSE_STRING_TO_DOUBLE = "无法将字符串解析为 double：";
   public static final String CANT_HAPPEN_LOOP_FELL_THROUGH = "不应发生……循环穿透";
   public static final String COUNT_ALL_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
       "CountAllAccumulator 不支持统计信息。";
   public static final String COUNT_IF_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
       "CountIfAccumulator 不支持统计信息";
+  public static final String PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "PercentileAccumulator 不支持统计信息";
+  public static final String PERCENTILE_REQUIRES_TWO_ARGUMENTS =
+      "PERCENTILE 需要 2 个参数，但收到 %d 个参数";
+  public static final String APPROX_PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxPercentileAccumulator 不支持统计信息";
+  public static final String APPROX_COUNT_DISTINCT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxCountDistinctAccumulator 不支持统计信息";
+  public static final String APPROX_MOST_FREQUENT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxMostFrequentAccumulator 不支持统计信息";
+  public static final String NO_EXACT_DOUBLE_REPRESENTATION_FOR_LONG =
+      "long 无法精确表示为 double：%s";
+  public static final String APPROX_PERCENTILE_REQUIRES_TWO_OR_THREE_ARGUMENTS =
+      "APPROX_PERCENTILE 需要 2 或 3 个参数，但收到 %d 个参数";
   public static final String CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN = "当前列不是对象列";
   public static final String CURRENT_TS_BLOCK_SIZE_IS = "当前 tsBlock 大小为：{}";
   public static final String DATA_TYPE_CANNOT_BE_ORDERED = "数据类型：%s 不能排序";
@@ -57,6 +72,8 @@ public final class CalcMessages {
   public static final String INITIAL_CAPACITY_EXCEEDS_LIMIT = "初始容量 (%d) 超过 %d";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils 不应被实例化。";
+  public static final String IN_LIST_LITERAL_FOR_TIMESTAMP_TYPE_RESTRICTION =
+      "TIMESTAMP 的 InList 字面量只能是 LongLiteral、DoubleLiteral 和 GenericLiteral，当前为 %s";
   public static final String INVALID_AGGREGATION_FUNCTION = "无效的聚合函数：";
   public static final String INVALID_TEXT_INPUT_FOR_BOOLEAN =
       "布尔类型的文本输入无效：%s";
@@ -126,6 +143,42 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_COLUMN_TRANSFORMER = "不支持的 ColumnTransformer";
   public static final String UNSUPPORTED_COMPARISON_OPERATOR = "不支持的比较运算符：";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG =
+      "AVG 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_SUM_AGGREGATION =
+      "SUM 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION =
+      "Percentile 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_PERCENTILE_AGGREGATION =
+      "APPROX_PERCENTILE 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_COUNT_DISTINCT_AGGREGATION =
+      "APPROX_COUNT_DISTINCT 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_AGGREGATION =
+      "FIRST 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_AGGREGATION =
+      "LAST 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION =
+      "MAX 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MIN_AGGREGATION =
+      "MIN 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION =
+      "FIRST_BY 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION =
+      "LAST_BY 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION =
+      "EXTREME 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION =
+      "MAX_BY/MIN_BY 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MODE_AGGREGATION =
+      "不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION =
+      "CentralMoment 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE =
+      "variance 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_VARIANCE_AGGREGATION =
+      "VARIANCE 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DEFAULT_VALUE_DATA_TYPE_IN_LAG =
+      "Lag 中不支持的默认值数据类型：";
   public static final String UNSUPPORTED_DATA_TYPE_LOWER = "不支持的数据类型：";
   public static final String UNSUPPORTED_FRAME_BOUND_TYPE = "不支持的帧边界类型：";
   public static final String UNSUPPORTED_FUNCTION_KIND = "不支持的函数类型：";
@@ -445,4 +498,64 @@ public final class CalcMessages {
       "PERCENTILE 聚合中不支持的数据类型：%s";
   public static final String EXCEPTION_PERCENTILEACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_66308C79 =
       "PercentileAccumulator 不支持统计信息";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_REQUIRES_AT_LEAST_TWO_VALID_SAMPLES_1A89901C =
+          "rate 系列聚合函数至少需要两个有效样本";
+  public static final String
+      EXCEPTION_THE_FIRST_SAMPLE_TIME_MUST_BE_LESS_THAN_THE_LAST_SAMPLE_TIME_FC4D3517 =
+          "第一个样本时间必须小于最后一个样本时间";
+  public static final String
+      EXCEPTION_THE_WINDOW_START_MUST_BE_LESS_THAN_THE_WINDOW_END_B1A38C98 =
+          "window_start 必须小于 window_end";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_REQUIRES_WINDOW_START_FIRST_TIME_LAST_TIME_WINDOW_END_60DE93C8 =
+          "rate 系列聚合函数要求 window_start <= first_time < last_time < window_end";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_INTERMEDIATE_RESULT_D46B30CD =
+          "rate 系列聚合函数产生了非有限中间结果";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_TIME_INTERVAL_B26C4162 =
+          "rate 系列聚合函数产生了非有限时间间隔";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_EXTRAPOLATION_RESULT_6482CF1D =
+          "rate 系列聚合函数产生了非有限外推结果";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC =
+          "聚合函数 [%s] 不支持同一聚合分组内出现重复的 time_col 值：%d";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_NON_FINITE_VALUE_COL_ARG_AC2AAC62 =
+          "聚合函数 [%s] 不支持非有限 value_col：%s";
+  public static final String
+      EXCEPTION_THE_VALUE_COL_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_MUST_BE_A_NON_NEGATIVE_NUMBER_BUT_GOT_ARG_4D5B7D74 =
+          "聚合函数 [%s] 的 value_col 参数必须是非负数，实际为：%s";
+  public static final String
+      EXCEPTION_THE_ARGUMENT_ARG_OF_AGGREGATE_FUNCTION_ARG_MUST_NOT_BE_NULL_WHEN_VALUE_COL_IS_NOT_NULL_7F087E99 =
+          "第 %d 个参数在聚合函数 [%s] 的 value_col 不为 NULL 时不得为 NULL";
+  public static final String
+      EXCEPTION_THE_WINDOW_START_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_MUST_BE_LESS_THAN_WINDOW_END_17D2A79A =
+          "聚合函数 [%s] 的 window_start 参数必须小于 window_end";
+  public static final String
+      EXCEPTION_THE_SAMPLE_TIME_OF_AGGREGATE_FUNCTION_ARG_MUST_SATISFY_WINDOW_START_TIME_COL_WINDOW_END_35014D15 =
+          "聚合函数 [%s] 的样本时间必须满足 window_start <= time_col < window_end";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_CONSISTENT_WINDOW_BOUNDARIES_IN_THE_SAME_AGGREGATION_GROUP_EXPECTED_ARG_ARG_BUT_GOT_ARG_ARG_38631886 =
+          "聚合函数 [%s] 要求同一聚合分组内的窗口边界一致：期望 [%d, %d)，实际为 [%d, %d)";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_EXPECTED_TIME_COL_IN_STRICTLY_ASCENDING_ORDER_BUT_GOT_ARG_AFTER_ARG_9289E0F9 =
+          "聚合函数 [%s] 要求 time_col 严格升序，但得到了 %d，前一个值为 %d";
+  public static final String
+      EXCEPTION_ORDERED_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_INTERMEDIATE_STATE_6B4B2B1B =
+          "有序聚合函数 [%s] 不支持 Intermediate State";
+  public static final String
+      EXCEPTION_INVALID_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_2999C30B =
+          "聚合函数 [%s] 的 Intermediate State 非法";
+  public static final String
+      EXCEPTION_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_EXCEEDS_THE_MAXIMUM_TSBLOCK_SIZE_OF_ARG_BYTES_D53A5546 =
+          "聚合函数 %s 的 Intermediate State 超过 TsBlock 最大大小 %d 字节";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D =
+          "聚合函数 [%s] 不支持值类型 %s";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
+          "聚合函数 [%s] 需要 %d 个参数，但实际传入 %d 个";
 }

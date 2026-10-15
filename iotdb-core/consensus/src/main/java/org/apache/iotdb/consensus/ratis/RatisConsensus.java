@@ -56,7 +56,6 @@ import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
-import org.apache.ratis.RaftConfigKeys;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
@@ -160,7 +159,6 @@ class RatisConsensus implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
-    RaftConfigKeys.Rpc.setType(properties, new RateLimitedGrpcRpcType());
     GrpcConfigKeys.Server.setHost(properties, config.getThisNodeEndPoint().getIp());
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
