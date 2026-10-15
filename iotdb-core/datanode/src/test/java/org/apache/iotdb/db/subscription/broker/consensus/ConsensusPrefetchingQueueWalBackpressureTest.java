@@ -197,7 +197,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
   }
 
   @Test
-  public void testAckRecoversDrainedSuffixFromWalWithoutReoffer() throws Exception {
+  public void testAckResumesPendingSuffixWithoutWalReplay() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final int originalBatchMaxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
@@ -213,7 +213,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       config.setSubscriptionConsensusBatchMaxWalEntries(128);
       config.setSubscriptionConsensusBatchMaxTabletCount(128);
       config.setSubscriptionConsensusBatchMaxSizeInBytes(oneTabletBytes * 16L);
-      config.setSubscriptionConsensusBatchMaxDelayInMs(60_000);
+      config.setSubscriptionConsensusBatchMaxDelayInMs(0);
 
       writeSealedWal(walDirectory);
 
@@ -272,8 +272,9 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       assertEquals(Arrays.asList(1L, 2L), conversionAttempts);
       assertEquals(2L, queue.getCurrentReadSearchIndex());
       assertEquals(1, queue.getPrefetchedEventCount());
-      assertEquals(0, pendingEntries(queue).size());
-      assertEquals("true", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
+      assertEquals(2, pendingEntries(queue).size());
+      assertTrue(queue.getRetainedRequestBytes() > 0L);
+      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
       assertEquals(oneTabletBytes, memoryManager.getUsedMemorySizeInBytes());
       assertMemoryBounded(queue, memoryManager);
 
@@ -302,8 +303,10 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
 
       assertEquals(Arrays.asList(1L, 2L, 3L), deliveredLocalSequences);
       assertEquals(Arrays.asList(1L, 2L, 2L, 3L, 3L), conversionAttempts);
-      assertEquals(1L, queue.getPendingPathAcceptedEntries());
-      assertEquals(2L, queue.getWalPathAcceptedEntries());
+      assertEquals(3L, queue.getPendingPathAcceptedEntries());
+      assertEquals(0L, queue.getWalPathAcceptedEntries());
+      assertEquals(0L, queue.getRetainedRequestBytes());
+      assertEquals(0L, queue.getRealtimeAdmissionRejectionCount());
       assertEquals(4L, queue.getCurrentReadSearchIndex());
       assertEquals(0, queue.getPrefetchedEventCount());
       assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
@@ -553,7 +556,8 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       assertNull(queue.poll("consumer"));
       // Admission failures leave a hole before newer pending requests. Keep a suffix queued so
       // every bounded round enters fillGapFromWAL, including after ACK releases Tablet memory.
-      for (long index = replayedRequests + 1L; index <= requestCount; index++) {
+      // Leave the gap unresolved through the last round so this test measures only WAL work.
+      for (long index = replayedRequests + 3L; index <= requestCount; index++) {
         assertTrue(pendingEntries(queue).offer(createRequest(index)));
       }
 
@@ -594,6 +598,8 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       assertEquals(0L, queue.getWalGapSkippedEntries());
       assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
       assertEquals(0L, queue.getRetainedTabletBytes());
+      assertEquals(2 * maxRounds - 2, pendingEntries(queue).size());
+      assertTrue(queue.getRetainedRequestBytes() > 0L);
       if (memoryBackpressure) {
         assertTrue(queue.getSubscriptionMemoryRejectionCount() > 0L);
       }
