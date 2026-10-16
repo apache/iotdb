@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.LogicAndColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.LogicOrColumnTransformer;
@@ -37,12 +38,21 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
 
 public class LogicBinaryColumnTransformerTest {
 
   private static final Type returnType = TypeFactory.getType(TSDataType.BOOLEAN);
 
   private static final int POSITION_COUNT = 4;
+
+  private static final Boolean[] AND_EXPECTED = {
+    null, false, null, false, false, false, null, false, true
+  };
+
+  private static final Boolean[] OR_EXPECTED = {
+    null, null, true, null, false, true, true, true, true
+  };
 
   private static final boolean[] leftInput = new boolean[] {true, false, true, false};
 
@@ -116,17 +126,37 @@ public class LogicBinaryColumnTransformerTest {
 
   @Test
   public void testLogicAndWithNullsAndSelection() {
-    assertSelectedAnd(false);
+    assertSelected(
+        (left, right) -> new LogicAndColumnTransformer(returnType, left, right),
+        AND_EXPECTED,
+        false);
   }
 
   @Test
   public void testLogicAndWithNullsAndPartialSelection() {
-    assertSelectedAnd(true);
+    assertSelected(
+        (left, right) -> new LogicAndColumnTransformer(returnType, left, right),
+        AND_EXPECTED,
+        true);
   }
 
-  private void assertSelectedAnd(boolean partial) {
+  @Test
+  public void testLogicOrWithNullsAndSelection() {
+    assertSelected(
+        (left, right) -> new LogicOrColumnTransformer(returnType, left, right), OR_EXPECTED, false);
+  }
+
+  @Test
+  public void testLogicOrWithNullsAndPartialSelection() {
+    assertSelected(
+        (left, right) -> new LogicOrColumnTransformer(returnType, left, right), OR_EXPECTED, true);
+  }
+
+  private void assertSelected(
+      BiFunction<ColumnTransformer, ColumnTransformer, BinaryColumnTransformer> transformerFactory,
+      Boolean[] expected,
+      boolean partial) {
     Boolean[] values = {null, false, true};
-    Boolean[] expected = {null, false, null, false, false, false, null, false, true};
     TsBlockBuilder builder =
         new TsBlockBuilder(9, Arrays.asList(TSDataType.BOOLEAN, TSDataType.BOOLEAN));
     for (Boolean left : values) {
@@ -152,19 +182,23 @@ public class LogicBinaryColumnTransformerTest {
     right.addReferenceCount();
     left.initFromTsBlock(block);
     right.initFromTsBlock(block);
-    LogicAndColumnTransformer transformer = new LogicAndColumnTransformer(returnType, left, right);
+    BinaryColumnTransformer transformer = transformerFactory.apply(left, right);
     transformer.addReferenceCount();
     boolean[] selection = new boolean[9];
     for (int i = 0; i < selection.length; i++) {
-      selection[i] = !partial || i % 2 == 0;
+      // Keep the right-FALSE rows (1 and 7) selected while excluding some left-FALSE rows.
+      selection[i] = !partial || (i != 3 && i != 5);
     }
+    boolean[] selected = selection.clone();
     transformer.evaluateWithSelection(selection);
+    Assert.assertArrayEquals(selected, selection);
     Column result = transformer.getColumn();
     Assert.assertEquals(expected.length, result.getPositionCount());
     for (int i = 0; i < expected.length; i++) {
-      if (!selection[i] || expected[i] == null) {
+      if (!selected[i] || expected[i] == null) {
         Assert.assertTrue(result.isNull(i));
       } else {
+        Assert.assertFalse(result.isNull(i));
         Assert.assertEquals(expected[i], result.getBoolean(i));
       }
     }

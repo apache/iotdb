@@ -943,5 +943,15 @@ public class IoTDBCaseWhenThenIT {
             + "FROM root.sg.case_null",
         new String[] {TIMESTAMP_STR, "result"},
         new String[] {"1,3.0,", "2,2.0,", "3,3.0,", "4,1.0,"});
+    resultSetEqualTest(
+        "SELECT CASE WHEN s1 > 100 THEN 1 WHEN NOT (s1 > 0 AND s2 > 0) THEN 2 ELSE 3 END AS result "
+            + "FROM root.sg.case_null",
+        new String[] {TIMESTAMP_STR, "result"},
+        new String[] {"1,3.0,", "2,3.0,", "3,2.0,", "4,1.0,"});
+    resultSetEqualTest(
+        "SELECT CASE WHEN s1 > 100 THEN false WHEN s2 > 0 THEN (s1 > 0 AND s2 > 0) END AS result "
+            + "FROM root.sg.case_null",
+        new String[] {TIMESTAMP_STR, "result"},
+        new String[] {"1,null,", "2,true,", "3,false,", "4,false,"});
   }
 }
