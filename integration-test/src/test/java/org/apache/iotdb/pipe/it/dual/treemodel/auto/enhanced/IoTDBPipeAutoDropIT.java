@@ -191,9 +191,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> pipeInfoList =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> pipeInfoList = response.getPipeInfoList();
                 Assert.assertFalse(
                     pipeInfoList.stream()
                         .anyMatch(info -> info.getId().equals("query_pipe_without_data_region")));
@@ -368,9 +370,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> showPipeResult =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
                 showPipeResult.removeIf(
                     i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
                 Assert.assertTrue(showPipeResult.isEmpty());
