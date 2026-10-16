@@ -46,7 +46,9 @@ public class SessionInfo {
 
   private ClientVersion version = ClientVersion.V_1_0;
 
-  private final boolean enableAutoCreateSchema;
+  // Only used during statement analysis on the coordinator. Analysis is complete before the
+  // SessionInfo is sent to execution nodes, so this field does not need serialization.
+  private final transient boolean enableAutoCreateSchema;
 
   public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
     this.sessionId = sessionId;
