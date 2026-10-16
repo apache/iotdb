@@ -254,4 +254,34 @@ public class SharedTsBlockQueueTest {
       }
     }
   }
+
+  @Test
+  public void testDependentQueuesKeepIndependentBudgetsByDefault() {
+    MemoryPool pool = new MemoryPool("pipeline-chain", new MemoryManager(1024), 512);
+    LocalMemoryManager manager = Mockito.mock(LocalMemoryManager.class);
+    Mockito.when(manager.getQueryPool()).thenReturn(pool);
+    ExecutorService executor = newDirectExecutorService();
+    TFragmentInstanceId id = new TFragmentInstanceId("pipeline-chain", 0, "0");
+    SharedTsBlockQueue upstream = new SharedTsBlockQueue(id, "a", manager, executor);
+    SharedTsBlockQueue downstream = new SharedTsBlockQueue(id, "b", manager, executor);
+    upstream.setMaxBytesCanReserve(256);
+    downstream.setMaxBytesCanReserve(256);
+    TsBlock block = Utils.createMockTsBlock(64);
+    try {
+      for (int i = 0; i < 4; i++) Assert.assertTrue(upstream.add(block).isDone());
+      ListenableFuture<Void> fifth = upstream.add(block);
+      Assert.assertFalse(fifth.isDone());
+      TsBlock forwarded = upstream.remove();
+      Assert.assertTrue(fifth.isDone());
+      Assert.assertTrue(downstream.add(forwarded).isDone());
+      Assert.assertEquals(4, upstream.getNumOfBufferedTsBlocks());
+      Assert.assertEquals(1, downstream.getNumOfBufferedTsBlocks());
+      Assert.assertEquals(320, pool.getReservedBytes());
+    } finally {
+      downstream.close();
+      upstream.close();
+      executor.shutdownNow();
+    }
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
 }

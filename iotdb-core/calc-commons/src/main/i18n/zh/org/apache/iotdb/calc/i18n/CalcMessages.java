@@ -558,4 +558,7 @@ public final class CalcMessages {
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "聚合函数 [%s] 需要 %d 个参数，但实际传入 %d 个";
+  public static final String
+      EXCEPTION_READY_INPUT_CONSUMPTION_MUST_BE_ENABLED_BEFORE_COLLECT_EXECUTION_STARTS_5FAF2DC4 =
+          "必须在 Collect 开始执行前启用就绪输入消费";
 }

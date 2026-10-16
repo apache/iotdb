@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOr
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -235,7 +236,10 @@ public class SinkChannel implements ISinkChannel {
     localMemoryManager
         .getQueryPool()
         .registerPlanNodeIdToQueryMemoryMap(
-            localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+            localFragmentInstanceId.queryId,
+            fullFragmentInstanceId,
+            localPlanNodeId,
+            MemorySide.OUTPUT);
   }
 
   @Override

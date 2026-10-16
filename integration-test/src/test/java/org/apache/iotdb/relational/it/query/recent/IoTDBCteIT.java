@@ -57,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getExplainResultSets;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
@@ -362,19 +363,22 @@ public class IoTDBCteIT {
       statement.execute("USE testdb");
 
       // explain
-      ResultSet resultSet = statement.executeQuery(sql);
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "distribution plan");
+      try (ResultSet clusterResult = statement.executeQuery(sql)) {
+        for (ResultSet resultSet : getExplainResultSets(sql, clusterResult)) {
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          assertEquals(metaData.getColumnCount(), 1);
+          assertEquals(metaData.getColumnName(1), "distribution plan");
 
-      StringBuilder sb = new StringBuilder();
-      while (resultSet.next()) {
-        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          StringBuilder sb = new StringBuilder();
+          while (resultSet.next()) {
+            sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          }
+          String result = sb.toString();
+          assertFalse(result.contains("CTE Query : 'cte1'"));
+          assertTrue(result.contains("CTE Query : 'cte2'"));
+          assertTrue(result.contains("Main Query"));
+        }
       }
-      String result = sb.toString();
-      assertFalse(result.contains("CTE Query : 'cte1'"));
-      assertTrue(result.contains("CTE Query : 'cte2'"));
-      assertTrue(result.contains("Main Query"));
     }
   }
 
@@ -389,19 +393,22 @@ public class IoTDBCteIT {
       statement.execute("USE testdb");
 
       // explain
-      ResultSet resultSet = statement.executeQuery(sql);
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "distribution plan");
+      try (ResultSet clusterResult = statement.executeQuery(sql)) {
+        for (ResultSet resultSet : getExplainResultSets(sql, clusterResult)) {
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          assertEquals(metaData.getColumnCount(), 1);
+          assertEquals(metaData.getColumnName(1), "distribution plan");
 
-      StringBuilder sb = new StringBuilder();
-      while (resultSet.next()) {
-        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          StringBuilder sb = new StringBuilder();
+          while (resultSet.next()) {
+            sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          }
+          String result = sb.toString();
+          assertTrue(result.contains("CTE Query : 'cte1'"));
+          assertTrue(result.contains("CTE Query : 'cte2'"));
+          assertTrue(result.contains("Main Query"));
+        }
       }
-      String result = sb.toString();
-      assertTrue(result.contains("CTE Query : 'cte1'"));
-      assertTrue(result.contains("CTE Query : 'cte2'"));
-      assertTrue(result.contains("Main Query"));
     }
   }
 
@@ -416,19 +423,22 @@ public class IoTDBCteIT {
       statement.execute("USE testdb");
 
       // explain
-      ResultSet resultSet = statement.executeQuery(sql);
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "distribution plan");
+      try (ResultSet clusterResult = statement.executeQuery(sql)) {
+        for (ResultSet resultSet : getExplainResultSets(sql, clusterResult)) {
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          assertEquals(metaData.getColumnCount(), 1);
+          assertEquals(metaData.getColumnName(1), "distribution plan");
 
-      StringBuilder sb = new StringBuilder();
-      while (resultSet.next()) {
-        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          StringBuilder sb = new StringBuilder();
+          while (resultSet.next()) {
+            sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          }
+          String result = sb.toString();
+          assertFalse(result.contains("CTE Query : 'cte1'"));
+          assertTrue(result.contains("CTE Query : 'cte2'"));
+          assertTrue(result.contains("Main Query"));
+        }
       }
-      String result = sb.toString();
-      assertFalse(result.contains("CTE Query : 'cte1'"));
-      assertTrue(result.contains("CTE Query : 'cte2'"));
-      assertTrue(result.contains("Main Query"));
     }
   }
 

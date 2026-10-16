@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -30,60 +31,145 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.util.concurrent.Futures.getDone;
+import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+
 public class CollectOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CollectOperator.class);
 
   private final CommonOperatorContext operatorContext;
   protected final List<Operator> children;
-  private boolean inited = false;
-
+  private AnyChildBlocked anyChildBlocked;
+  private boolean inited;
+  private boolean executionStarted;
   protected int currentIndex;
+  private ListenableFuture<Integer> selectionFuture;
+  private ListenableFuture<Integer> exposedFuture;
+  private int remainingChildren;
+  private boolean closed;
 
   public CollectOperator(CommonOperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
-    this.currentIndex = 0;
+    this.remainingChildren = children.size();
+  }
+
+  /**
+   * Enable only after the complete table FI has passed eligibility checks, before drivers start.
+   */
+  public void enableReadyInputConsumption() {
+    if (anyChildBlocked == null) {
+      checkState(
+          !executionStarted,
+          CalcMessages
+              .EXCEPTION_READY_INPUT_CONSUMPTION_MUST_BE_ENABLED_BEFORE_COLLECT_EXECUTION_STARTS_5FAF2DC4);
+      anyChildBlocked = new AnyChildBlocked(children);
+    }
   }
 
   @Override
-  public boolean hasNext() throws Exception {
-    return currentIndex < children.size();
+  public boolean hasNext() {
+    return anyChildBlocked == null
+        ? currentIndex < children.size()
+        : !closed && remainingChildren > 0;
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (children.get(currentIndex).hasNextWithTimer()) {
-      return children.get(currentIndex).nextWithTimer();
-    } else {
+    executionStarted = true;
+    if (anyChildBlocked == null) {
+      if (children.get(currentIndex).hasNextWithTimer()) {
+        TsBlock block = children.get(currentIndex).nextWithTimer();
+        return block == null ? null : transformBlock(currentIndex, block);
+      }
       closeCurrentChild(currentIndex);
       currentIndex++;
       return null;
     }
+    anyChildBlocked.checkFailure();
+    if (!hasNext()) {
+      return null;
+    }
+    if (selectionFuture == null) {
+      isBlocked();
+    }
+    anyChildBlocked.checkFailure();
+    if (!selectionFuture.isDone()) {
+      return null;
+    }
+    int childId = getDone(selectionFuture);
+    // Consume this selection before invoking any operator method. Another next must acquire a
+    // new readiness observation even when this advancement returns null or an empty block.
+    selectionFuture = null;
+    exposedFuture = null;
+    if (childId < 0 || closed || children.get(childId) == null) {
+      return null;
+    }
+    Operator child = children.get(childId);
+    try {
+      if (child.hasNextWithTimer()) {
+        TsBlock block = child.nextWithTimer();
+        return block == null ? null : transformBlock(childId, block);
+      }
+      if (child.isFinished()) {
+        closeCurrentChild(childId);
+      }
+      return null;
+    } finally {
+      anyChildBlocked.invalidateChild(childId);
+    }
+  }
+
+  protected TsBlock transformBlock(int childId, TsBlock block) {
+    return block;
   }
 
   protected void closeCurrentChild(int index) throws Exception {
-    children.get(index).close();
+    if (anyChildBlocked == null) {
+      children.get(index).close();
+      children.set(index, null);
+      return;
+    }
+    Operator child = children.get(index);
+    if (child == null) {
+      return;
+    }
+    // Retire the record even if closing its subtree throws.
+    anyChildBlocked.finishChild(index);
     children.set(index, null);
+    remainingChildren--;
+    child.close();
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (!inited) {
-      inited = true;
-      for (Operator child : children) {
-        child.isBlocked();
+    executionStarted = true;
+    if (anyChildBlocked == null) {
+      if (!inited) {
+        inited = true;
+        for (Operator child : children) {
+          child.isBlocked();
+        }
       }
+      return currentIndex >= children.size() ? NOT_BLOCKED : children.get(currentIndex).isBlocked();
     }
-    if (currentIndex >= children.size()) {
+    if (!hasNext()) {
       return NOT_BLOCKED;
     }
-    return children.get(currentIndex).isBlocked();
+    if (selectionFuture == null) {
+      selectionFuture = anyChildBlocked.getAnyChild();
+    }
+    if (exposedFuture == null || exposedFuture.isCancelled()) {
+      exposedFuture = nonCancellationPropagating(selectionFuture);
+    }
+    return exposedFuture;
   }
 
   @Override
-  public boolean isFinished() throws Exception {
-    return currentIndex >= children.size();
+  public boolean isFinished() {
+    return !hasNext();
   }
 
   @Override
@@ -93,35 +179,86 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (int i = currentIndex, n = children.size(); i < n; i++) {
-      Operator currentChild = children.get(i);
-      if (currentChild != null) {
-        closeCurrentChild(i);
+    executionStarted = true;
+    if (anyChildBlocked == null) {
+      for (int i = currentIndex; i < children.size(); i++) {
+        if (children.get(i) != null) {
+          closeCurrentChild(i);
+        }
       }
+      return;
+    }
+    if (closed) {
+      return;
+    }
+    closed = true;
+    anyChildBlocked.close();
+    selectionFuture = null;
+    exposedFuture = null;
+    Exception firstException = null;
+    for (int i = 0; i < children.size(); i++) {
+      try {
+        closeCurrentChild(i);
+      } catch (Exception e) {
+        if (firstException == null) {
+          firstException = e;
+        } else if (firstException != e) {
+          firstException.addSuppressed(e);
+        }
+      }
+    }
+    if (firstException != null) {
+      throw firstException;
     }
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    long maxPeekMemory = 0;
-    for (Operator child : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemoryWithCounter());
+    if (anyChildBlocked == null) {
+      long maxPeekMemory = 0;
+      for (Operator child : children) {
+        maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemoryWithCounter());
+      }
+      return maxPeekMemory;
     }
-    return maxPeekMemory;
+    long retained = calculateRetainedSizeAfterCallingNext();
+    long peak = retained;
+    for (Operator child : children) {
+      if (child != null) {
+        peak =
+            Math.max(
+                peak,
+                retained
+                    - child.calculateRetainedSizeAfterCallingNext()
+                    + child.calculateMaxPeekMemoryWithCounter());
+      }
+    }
+    return peak;
   }
 
   @Override
   public long calculateMaxReturnSize() {
     long maxReturnSize = 0;
     for (Operator child : children) {
-      maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
+      if (child != null) {
+        maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
+      }
     }
     return maxReturnSize;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
+    if (anyChildBlocked == null) {
+      return 0;
+    }
+    long retained = 0;
+    for (Operator child : children) {
+      if (child != null) {
+        retained += child.calculateRetainedSizeAfterCallingNext();
+      }
+    }
+    return retained;
   }
 
   @TestOnly
@@ -132,6 +269,7 @@ public class CollectOperator implements ProcessOperator {
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
+        + (anyChildBlocked == null ? 0 : anyChildBlocked.ramBytesUsed())
         + children.stream()
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()

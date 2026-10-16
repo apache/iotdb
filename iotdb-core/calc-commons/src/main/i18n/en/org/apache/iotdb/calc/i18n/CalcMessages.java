@@ -582,4 +582,7 @@ public final class CalcMessages {
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "Aggregate function [%s] requires %d arguments, but got %d";
 
+  public static final String
+      EXCEPTION_READY_INPUT_CONSUMPTION_MUST_BE_ENABLED_BEFORE_COLLECT_EXECUTION_STARTS_5FAF2DC4 =
+          "Ready input consumption must be enabled before Collect execution starts";
 }
