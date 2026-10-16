@@ -825,10 +825,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                   }
 
                   try {
-                    final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
+                    final ByteBuffer byteBuffer = event.getResponseByteBuffer(response);
 
                     // payload size control
-                    final long size = event.getCurrentResponseSize();
+                    final long size = byteBuffer.remaining();
                     if (totalSize.get() + size > maxBytes) {
                       throw new SubscriptionPayloadExceedException(
                           String.format(
@@ -868,6 +868,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           response,
                           req.getRequest());
                     }
+                    // The buffer now owns the serialized bytes. Notify outside the event monitor
+                    // so queue lifecycle locks always precede the event's payload lock.
+                    event.markResponseDelivered(response);
                     return byteBuffer;
                   } catch (final Exception e) {
                     final boolean isOutdated =

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.subscription.event.response.SubscriptionEventTsFileRe
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
@@ -43,10 +44,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -59,6 +62,9 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   private final SubscriptionPipeEvents pipeEvents;
   private final SubscriptionEventResponse<CachedSubscriptionPollResponse> response;
   private final SubscriptionCommitContext commitContext;
+
+  private volatile boolean payloadDetached;
+  private volatile Consumer<SubscriptionPollResponse> responseDeliveryListener;
 
   // lastPolledConsumerId is not used as a criterion for determining pollability
   private volatile String lastPolledConsumerId = null;
@@ -210,11 +216,51 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
    * {@link ConcurrentHashMap#compute} method of inFlightEvents in {@link
    * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUp}.
    */
-  public void cleanUp(final boolean force) {
+  public synchronized void cleanUp(final boolean force) {
     pipeEvents.cleanUp(force);
     response.cleanUp();
+    responseDeliveryListener = null;
 
     // TODO: clean more fields
+  }
+
+  /** Marks this event's serialized response as safe for a broker to detach, if supported. */
+  public void markResponseDelivered(final SubscriptionPollResponse deliveredResponse) {
+    final Consumer<SubscriptionPollResponse> listener = responseDeliveryListener;
+    if (listener != null) {
+      listener.accept(deliveredResponse);
+    }
+  }
+
+  public void setResponseDeliveryListener(final Consumer<SubscriptionPollResponse> listener) {
+    responseDeliveryListener = listener;
+  }
+
+  public boolean isPayloadDetached() {
+    return payloadDetached;
+  }
+
+  /** Detaches the tablet payload while preserving commit and response metadata. */
+  public synchronized boolean detachCurrentPayload(
+      final SubscriptionPollResponse deliveredResponse) {
+    final CachedSubscriptionPollResponse currentResponse = response.getCurrentResponse();
+    if (payloadDetached
+        || !(response instanceof SubscriptionEventSingleResponse)
+        || currentResponse != deliveredResponse
+        || !(currentResponse.getPayload() instanceof TabletsPayload)) {
+      return false;
+    }
+    final int nextOffset = ((TabletsPayload) currentResponse.getPayload()).getNextOffset();
+    ((SubscriptionEventSingleResponse) response)
+        .replaceCurrentPayload(new TabletsPayload(Collections.emptyMap(), nextOffset));
+    payloadDetached = true;
+    return true;
+  }
+
+  /** Restores a detached payload before redelivery. */
+  public synchronized void restorePayload(final SubscriptionPollPayload payload) {
+    ((SubscriptionEventSingleResponse) response).replaceCurrentPayload(payload);
+    payloadDetached = false;
   }
 
   //////////////////////////// pollable ////////////////////////////
@@ -268,7 +314,7 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
             > recycleUncommittedEventIntervalMs;
   }
 
-  public void nack() {
+  public synchronized void nack() {
     // nack response
     response.nack();
 
@@ -319,12 +365,26 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     response.trySerializeRemainingResponses();
   }
 
-  public void trySerializeCurrentResponse() {
-    response.trySerializeCurrentResponse();
+  public synchronized void trySerializeCurrentResponse() {
+    if (!payloadDetached) {
+      response.trySerializeCurrentResponse();
+    }
   }
 
-  public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
+  public synchronized ByteBuffer getCurrentResponseByteBuffer() throws IOException {
+    if (payloadDetached) {
+      throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
+    }
     return response.getCurrentResponseByteBuffer();
+  }
+
+  /** Serializes the selected response while fencing payload replacement and cleanup. */
+  public synchronized ByteBuffer getResponseByteBuffer(
+      final SubscriptionPollResponse selectedResponse) throws IOException {
+    if (selectedResponse != response.getCurrentResponse()) {
+      throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
+    }
+    return getCurrentResponseByteBuffer();
   }
 
   public void invalidateCurrentResponseByteBuffer() {
