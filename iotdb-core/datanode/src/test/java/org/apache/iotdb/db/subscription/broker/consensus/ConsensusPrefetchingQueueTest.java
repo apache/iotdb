@@ -36,6 +36,7 @@ import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueAdmission;
 import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRegistry;
 import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
@@ -57,6 +58,10 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
@@ -64,6 +69,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -112,6 +118,99 @@ public class ConsensusPrefetchingQueueTest {
   private static final long TEST_TIMEOUT_SECONDS = 5L;
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testReplayStallWarningIsThrottledAndResetsAfterProgress() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final Logger logger = (Logger) LoggerFactory.getLogger(ConsensusPrefetchingQueue.class);
+    final Level originalLevel = logger.getLevel();
+    logger.setLevel(Level.WARN);
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 10L;
+      final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
+      when(server.getConsensusReqReader()).thenReturn(reader);
+      when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              server,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(temporaryFolder.newFolder("replay-stall-warning")),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      final Field initialized =
+          ConsensusPrefetchingQueue.class.getDeclaredField("prefetchInitialized");
+      initialized.setAccessible(true);
+      initialized.setBoolean(queue, true);
+      final Method report =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "reportReplayStallIfNecessary", long.class);
+      report.setAccessible(true);
+      final Supplier<Long> warningCount =
+          () ->
+              appender.list.stream()
+                  .filter(
+                      event ->
+                          event
+                              .getMessage()
+                              .equals(
+                                  DataNodePipeMessages
+                                      .LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B))
+                  .count();
+      report.invoke(queue, 0L);
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(59L));
+      assertEquals(Long.valueOf(0L), warningCount.get());
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(60L));
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(89L));
+      assertEquals(Long.valueOf(1L), warningCount.get());
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(90L));
+      assertEquals(Long.valueOf(2L), warningCount.get());
+
+      final Field cursorField =
+          ConsensusPrefetchingQueue.class.getDeclaredField("nextExpectedSearchIndex");
+      cursorField.setAccessible(true);
+      ((AtomicLong) cursorField.get(queue)).incrementAndGet();
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(91L));
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(150L));
+      assertEquals(Long.valueOf(2L), warningCount.get());
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(151L));
+      assertEquals(Long.valueOf(3L), warningCount.get());
+
+      reader.currentSearchIndex = 0L;
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(250L));
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(350L));
+      reader.currentSearchIndex = 10L;
+      // A backlog appearing after an idle period starts a new observation window.
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(450L));
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(509L));
+      assertEquals(Long.valueOf(3L), warningCount.get());
+      queue.setActive(false);
+      report.invoke(queue, TimeUnit.SECONDS.toNanos(600L));
+      assertEquals(Long.valueOf(3L), warningCount.get());
+    } finally {
+      logger.detachAppender(appender);
+      logger.setLevel(originalLevel);
+      appender.stop();
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
 
   @Test
   public void testLateOldPrefetchDeregistrationKeepsReplacementTask() {

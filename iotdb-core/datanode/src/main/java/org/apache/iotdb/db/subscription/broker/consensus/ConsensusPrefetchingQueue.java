@@ -321,6 +321,17 @@ public class ConsensusPrefetchingQueue {
 
   private final SubscriptionQueueTimeTracker timeTracker = new SubscriptionQueueTimeTracker();
 
+  private volatile long lastPrefetchDurationMs;
+  private volatile PrefetchRoundResult.Type lastPrefetchResult;
+  private volatile String walReplayState = "NOT_SCANNED";
+
+  // Accessed only by the serialized prefetch worker while holding the queue read lock.
+  private boolean replayProgressObserved;
+  private long lastObservedReplayCursor;
+  private long lastReplayProgressNanos;
+  private boolean replayStallWarningLogged;
+  private long lastReplayStallWarningNanos;
+
   private volatile String lastConsumerId = "";
 
   private volatile long lastPendingAcceptedEntries = 0L;
@@ -1035,8 +1046,7 @@ public class ConsensusPrefetchingQueue {
     this.nextExpectedSearchIndex.set(resolvedStart.getStartSearchIndex());
     // Use the same factory as cursor resets; the default implementation still returns null for
     // readers without WAL support.
-    this.subscriptionWALIterator =
-        createSubscriptionWALIterator(resolvedStart.getStartSearchIndex());
+    resetSubscriptionWALPosition(resolvedStart.getStartSearchIndex());
     this.prefetchInitialized = true;
     timeTracker.start();
     this.observedSeekGeneration = seekGeneration.get();
@@ -1621,6 +1631,8 @@ public class ConsensusPrefetchingQueue {
   private static final long WAL_GAP_WAIT_LOG_INTERVAL_MS = 5_000L;
 
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
+  private static final long REPLAY_STALL_WARNING_THRESHOLD_NANOS = TimeUnit.SECONDS.toNanos(60L);
+  private static final long REPLAY_STALL_WARNING_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(30L);
 
   private static final long SLOW_PREFETCH_ROUND_THRESHOLD_MS = 10_000L;
 
@@ -1653,6 +1665,8 @@ public class ConsensusPrefetchingQueue {
       return result;
     } finally {
       final long durationMs = timeTracker.endPrefetch();
+      lastPrefetchDurationMs = durationMs;
+      lastPrefetchResult = Objects.nonNull(result) ? result.getType() : null;
       if (debugEnabled) {
         LOGGER.debug(
             DataNodePipeMessages
@@ -1863,6 +1877,8 @@ public class ConsensusPrefetchingQueue {
       }
       return PrefetchRoundResult.rescheduleAfter(100L);
     } finally {
+      final ProgressWALIterator iterator = subscriptionWALIterator;
+      walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
       releaseReadLock();
     }
   }
@@ -1872,6 +1888,8 @@ public class ConsensusPrefetchingQueue {
     if (nowMs - lastStatsLogTimeMs < PREFETCH_STATS_LOG_INTERVAL_MS) {
       return;
     }
+
+    reportReplayStallIfNecessary(System.nanoTime());
 
     final long currentPendingAcceptedEntries = pendingPathAcceptedEntries.get();
     final long currentWalAcceptedEntries = walPathAcceptedEntries.get();
@@ -1897,7 +1915,36 @@ public class ConsensusPrefetchingQueue {
     lastWalAcceptedEntries = currentWalAcceptedEntries;
   }
 
+  private void reportReplayStallIfNecessary(final long nowNanos) {
+    final long cursor = nextExpectedSearchIndex.get();
+    if (!prefetchInitialized || !isActive || isClosed || closeRequested || getLag() <= 0L) {
+      replayProgressObserved = false;
+      replayStallWarningLogged = false;
+      return;
+    }
+    if (!replayProgressObserved || cursor != lastObservedReplayCursor) {
+      replayProgressObserved = true;
+      lastObservedReplayCursor = cursor;
+      lastReplayProgressNanos = nowNanos;
+      replayStallWarningLogged = false;
+      return;
+    }
+    final long stalledNanos = nowNanos - lastReplayProgressNanos;
+    if (stalledNanos >= REPLAY_STALL_WARNING_THRESHOLD_NANOS
+        && (!replayStallWarningLogged
+            || nowNanos - lastReplayStallWarningNanos >= REPLAY_STALL_WARNING_INTERVAL_NANOS)) {
+      LOGGER.warn(
+          DataNodePipeMessages
+              .LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B,
+          TimeUnit.NANOSECONDS.toMillis(stalledNanos),
+          this);
+      lastReplayStallWarningNanos = nowNanos;
+      replayStallWarningLogged = true;
+    }
+  }
+
   private void resetRoundStateForSeek(final long newSeekGeneration) {
+    replayProgressObserved = false;
     restorePendingSubscriptionWalCursor(newSeekGeneration);
     discardRealtimeEntries();
     discardBatch(lingerBatch);
@@ -2477,7 +2524,12 @@ public class ConsensusPrefetchingQueue {
 
   protected ProgressWALIterator createSubscriptionWALIterator(final long startSearchIndex) {
     if (consensusReqReader instanceof WALNode) {
-      return new ProgressWALIterator((WALNode) consensusReqReader, startSearchIndex);
+      final ProgressWALIterator iterator =
+          new ProgressWALIterator((WALNode) consensusReqReader, startSearchIndex);
+      // The constructor sets the local filtering lower bound. Complete initialization here by
+      // positioning past historical files only when every writer's progress is already covered.
+      iterator.advanceTo(startSearchIndex, this::isWriterProgressCoveredForWalFastForward);
+      return iterator;
     }
     return null;
   }
@@ -5105,6 +5157,9 @@ public class ConsensusPrefetchingQueue {
     result.put("maxDeliveryIntervalMs", String.valueOf(getMaxDeliveryIntervalMs()));
     result.put("deliveryIdleTimeMs", String.valueOf(getDeliveryIdleTimeMs()));
     result.put("prefetchDurationMs", String.valueOf(getPrefetchDurationMs()));
+    result.put("lastPrefetchDurationMs", String.valueOf(lastPrefetchDurationMs));
+    result.put("lastPrefetchResult", String.valueOf(lastPrefetchResult));
+    result.put("walReplayState", walReplayState);
     result.put("maxPrefetchDurationMs", String.valueOf(getMaxPrefetchDurationMs()));
     result.put("prefetchIdleTimeMs", String.valueOf(getPrefetchIdleTimeMs()));
     result.put("realtimeAdmissionBlocked", String.valueOf(realtimeAdmissionBlocked.get()));
