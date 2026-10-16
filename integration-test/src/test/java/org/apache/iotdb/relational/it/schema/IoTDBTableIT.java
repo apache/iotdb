@@ -26,7 +26,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
@@ -85,7 +84,7 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement();
-        final Statement procedureStatement = createProcedureStatement(connection)) {
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
 
       statement.execute("create database test1");
       statement.execute("create database test2 with (ttl=3000000)");
@@ -1265,7 +1264,7 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement();
-        final Statement procedureStatement = createProcedureStatement(connection)) {
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
       statement.execute("create database async_drop_db");
       statement.execute("use async_drop_db");
       statement.execute("create table drop_target (device string tag, reading int32)");
@@ -1296,17 +1295,6 @@ public class IoTDBTableIT {
         assertFalse(resultSet.next());
       }
     }
-  }
-
-  private static Statement createProcedureStatement(final Connection connection)
-      throws SQLException {
-    // Procedure progress can change between queries on different DataNodes. Query a single node
-    // without the cluster connection's cross-node result verification.
-    final Connection procedureConnection =
-        connection instanceof ClusterTestConnection
-            ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
-            : connection;
-    return procedureConnection.createStatement();
   }
 
   private static void awaitDropProcedure(

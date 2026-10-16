@@ -26,6 +26,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -82,6 +83,21 @@ public class TestUtils {
   public static final String TIME_PRECISION_IN_US = "us";
 
   public static final String TIME_PRECISION_IN_NS = "ns";
+
+  /**
+   * Creates a statement on the write node without comparing results across DataNodes.
+   *
+   * <p>Use this for node-local diagnostics or changing progress snapshots. Closing the statement
+   * does not close the supplied connection.
+   */
+  public static Statement createSingleNodeStatement(final Connection connection)
+      throws SQLException {
+    final Connection singleNodeConnection =
+        connection instanceof ClusterTestConnection
+            ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
+            : connection;
+    return singleNodeConnection.createStatement();
+  }
 
   public static String defaultFormatDataTime(long time) {
     return RpcUtils.formatDatetime(
