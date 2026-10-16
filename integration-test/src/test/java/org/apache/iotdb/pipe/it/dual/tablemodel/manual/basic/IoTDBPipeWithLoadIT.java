@@ -415,6 +415,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
         statement.execute("flush");
         statement.execute("drop table t1");
+        // Start historical transfer only after the table and its data have been deleted.
+        TestUtils.awaitDropTableProcedure(connection, "db", "t1");
       } catch (Exception e) {
         fail(e.getMessage());
       }

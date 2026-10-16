@@ -83,8 +83,7 @@ public class IoTDBTableIT {
   public void testManageTable() {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement();
-        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
+        final Statement statement = connection.createStatement()) {
 
       statement.execute("create database test1");
       statement.execute("create database test2 with (ttl=3000000)");
@@ -547,7 +546,7 @@ public class IoTDBTableIT {
           Collections.singleton("null,"));
 
       statement.execute("drop table table2");
-      awaitDropProcedure(procedureStatement, "test2", "table2");
+      TestUtils.awaitDropTableProcedure(connection, "test2", "table2");
       try {
         statement.executeQuery("describe table2");
         fail();
@@ -1272,7 +1271,7 @@ public class IoTDBTableIT {
 
       // The drop may finish before the first query. Its completed result remains visible until
       // the procedure cleaner evicts it, so verify that result after waiting for completion.
-      awaitDropProcedure(procedureStatement, "async_drop_db", "drop_target");
+      TestUtils.awaitDropTableProcedure(connection, "async_drop_db", "drop_target");
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables from async_drop_db"),
           "TableName,TTL(ms),",
@@ -1295,38 +1294,5 @@ public class IoTDBTableIT {
         assertFalse(resultSet.next());
       }
     }
-  }
-
-  private static void awaitDropProcedure(
-      final Statement statement, final String database, final String tableName)
-      throws SQLException {
-    final long deadline = System.currentTimeMillis() + 60_000;
-    while (System.currentTimeMillis() < deadline) {
-      try (final ResultSet resultSet =
-          statement.executeQuery(
-              "select state, error_message from information_schema.drop_table_procedures "
-                  + "where database = '"
-                  + database
-                  + "' and table_name = '"
-                  + tableName
-                  + "'")) {
-        if (resultSet.next()) {
-          final String state = resultSet.getString(1);
-          if ("SUCCESS".equals(state)) {
-            return;
-          }
-          if ("ROLLEDBACK".equals(state)) {
-            throw new SQLException(resultSet.getString(2));
-          }
-        }
-      }
-      try {
-        Thread.sleep(20);
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new SQLException(e);
-      }
-    }
-    throw new SQLException("Timed out waiting for drop table procedure");
   }
 }
