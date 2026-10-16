@@ -3007,6 +3007,7 @@ public class Session implements ISession {
             .collect(Collectors.toList());
 
     StringBuilder errMsgBuilder = new StringBuilder();
+    List<Throwable> errors = new ArrayList<>();
     for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
         completableFuture.join();
@@ -3016,6 +3017,7 @@ public class Session implements ISession {
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          errors.add(cause);
           if (errMsgBuilder.length() > 0) {
             errMsgBuilder.append(";");
           }
@@ -3024,7 +3026,10 @@ public class Session implements ISession {
       }
     }
     if (errMsgBuilder.length() > 0) {
-      throw new StatementExecutionException(errMsgBuilder.toString());
+      StatementExecutionException exception =
+          new StatementExecutionException(errMsgBuilder.toString());
+      errors.forEach(exception::addSuppressed);
+      throw exception;
     }
   }
 

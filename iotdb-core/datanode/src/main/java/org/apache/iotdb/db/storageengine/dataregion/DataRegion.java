@@ -1563,7 +1563,7 @@ public class DataRegion implements IDataRegionForQuery {
     for (int i = insertMultiTabletsNode.getInsertTabletNodeList().size() - 1; i >= 0; i--) {
       final InsertTabletNode insertTabletNode =
           insertMultiTabletsNode.getInsertTabletNodeList().get(i);
-      if (insertTabletNode.getRowCount() <= 0 || insertTabletNode.allMeasurementFailed()) {
+      if (insertTabletNode.getRowCount() <= 0 || insertTabletNode.shouldSkipWrite()) {
         continue;
       }
       if (!insertTabletNode.shouldCheckTTL()) {
@@ -1613,7 +1613,7 @@ public class DataRegion implements IDataRegionForQuery {
       boolean noFailure,
       long[] infoForMetrics)
       throws DataTypeInconsistentException {
-    if (insertTabletNode.allMeasurementFailed()) {
+    if (insertTabletNode.shouldSkipWrite()) {
       if (logger.isDebugEnabled()) {
         logger.debug(
             StorageEngineMessages.STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_C2DC8032,
@@ -1821,7 +1821,7 @@ public class DataRegion implements IDataRegionForQuery {
   private TsFileProcessor insertToTsFileProcessor(
       InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
-    if (insertRowNode.allMeasurementFailed()) {
+    if (insertRowNode.shouldSkipWrite()) {
       return null;
     }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
@@ -1850,7 +1850,7 @@ public class DataRegion implements IDataRegionForQuery {
     Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
     for (int i = 0; i < areSequence.length; i++) {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-      if (insertRowNode.allMeasurementFailed()) {
+      if (insertRowNode.shouldSkipWrite()) {
         continue;
       }
       final TsFileProcessor tsFileProcessor;

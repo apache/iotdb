@@ -449,16 +449,19 @@ public class IoTDBSessionRelationalIT {
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from partial_insert order by time");
-      long[] timestamps = new long[] {10000, 20000, 40000, 50000};
-      Boolean[] values = new Boolean[] {true, false, false, true};
+      // Partial insertion retains timestamps even when the only FIELD value is rejected.
+      long[] timestamps =
+          new long[] {10000, 20000, 30000, 35000, 40000, 50000, 60000, 70000, 80000, 90000};
+      Boolean[] values =
+          new Boolean[] {true, false, null, null, false, true, null, null, null, null};
       int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rec = dataSet.next();
         assertEquals(timestamps[cnt], rec.getFields().get(0).getLongV());
-        assertEquals(values[cnt], rec.getFields().get(1).getBoolV());
+        assertEquals(values[cnt], rec.getFields().get(1).getObjectValue(TSDataType.BOOLEAN));
         cnt++;
       }
-      assertEquals(4, cnt);
+      assertEquals(timestamps.length, cnt);
 
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -769,14 +772,23 @@ public class IoTDBSessionRelationalIT {
             e.getMessage());
       }
       tablet.reset();
-      int cnt = 0;
-      SessionDataSet dataSet =
-          session.executeQueryStatement("select * from field_wrong_type order by time");
-      while (dataSet.hasNext()) {
-        dataSet.next();
-        cnt++;
+      for (int phase = 0; phase < 2; phase++) {
+        try (SessionDataSet dataSet =
+            session.executeQueryStatement("select * from field_wrong_type order by time")) {
+          for (int row = 0; row < 10; row++) {
+            assertTrue(dataSet.hasNext());
+            RowRecord record = dataSet.next();
+            assertEquals(row, record.getFields().get(0).getLongV());
+            assertEquals("tag:" + row, record.getFields().get(1).getStringValue());
+            assertNull(record.getFields().get(2).getDataType());
+            assertNull(record.getFields().get(3).getDataType());
+          }
+          assertFalse(dataSet.hasNext());
+        }
+        if (phase == 0) {
+          session.executeNonQueryStatement("flush");
+        }
       }
-      assertEquals(0, cnt);
     }
   }
 
@@ -1512,9 +1524,17 @@ public class IoTDBSessionRelationalIT {
                 e.getMessage());
           }
           // time, tag1, m1
-          SessionDataSet dataSet =
-              session.executeQueryStatement("select * from table" + testNum + " order by time");
-          assertFalse(dataSet.hasNext());
+          try (SessionDataSet dataSet =
+              session.executeQueryStatement("select * from table" + testNum + " order by time")) {
+            for (int row = 0; row < 2; row++) {
+              assertTrue(dataSet.hasNext());
+              RowRecord record = dataSet.next();
+              assertEquals(row, record.getFields().get(0).getLongV());
+              assertEquals("d1", record.getFields().get(1).getStringValue());
+              assertNull(record.getFields().get(2).getDataType());
+            }
+            assertFalse(dataSet.hasNext());
+          }
         } else {
           // cannot cast, expect an exception
           try {
