@@ -128,7 +128,7 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
     } catch (final IllegalPathException e) {
       LOGGER.warn(
           DataNodeSchemaMessages
-              .LOG_FAILED_TO_REGISTER_THE_TREE_TO_TABLE_VIEW_ARG_ARG_DURING_INIT_ILLEGAL_PATH_E9D65F63,
+              .LOG_FAILED_TO_REGISTER_THE_TREE_TO_TABLE_VIEW_ARG_ARG_DURING_INIT_ILLEGAL_PATH,
           database,
           table.getTableName(),
           e);
@@ -195,7 +195,7 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
       final RegisteredView registered = getRegisteredView(database, tableName);
       if (Objects.isNull(registered)) {
         LOGGER.warn(
-            DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_B3449FF3,
+            DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED,
             database,
             tableName);
         return false;
@@ -221,7 +221,7 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
       final RegisteredView registered = getRegisteredView(database, oldName);
       if (Objects.isNull(registered)) {
         LOGGER.warn(
-            DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_B3449FF3,
+            DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED,
             database,
             oldName);
         return false;
@@ -249,7 +249,7 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
       final RegisteredView registered = getRegisteredView(database, tableName);
       if (Objects.isNull(registered)) {
         LOGGER.warn(
-            DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_B3449FF3,
+            DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED,
             database,
             tableName);
         return false;
