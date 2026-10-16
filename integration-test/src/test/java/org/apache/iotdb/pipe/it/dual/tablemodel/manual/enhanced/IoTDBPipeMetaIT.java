@@ -184,8 +184,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           Collections.emptySet(),
           dbName);
 
-      TestUtils.executeNonQuery(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop database test", null);
+      // Receiver metadata can disappear before the sender's asynchronous drop has finished.
+      try (Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        TestUtils.dropDatabaseWithRetry(statement, dbName);
+      }
 
       // Will not include no-transfer database
       TestUtils.assertDataEventuallyOnEnv(

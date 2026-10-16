@@ -30,6 +30,7 @@ import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.Assert;
@@ -982,6 +983,29 @@ public class TestUtils {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  public static void dropDatabaseWithRetry(final Statement statement, final String database)
+      throws SQLException {
+    // Asynchronous DROP TABLE may still be running when a test starts database cleanup.
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+    while (true) {
+      try {
+        statement.execute("DROP DATABASE IF EXISTS " + database);
+        return;
+      } catch (final SQLException e) {
+        if (e.getErrorCode() != TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+            || System.nanoTime() >= deadline) {
+          throw e;
+        }
+      }
+      try {
+        Thread.sleep(100);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new SQLException(e);
+      }
     }
   }
 
