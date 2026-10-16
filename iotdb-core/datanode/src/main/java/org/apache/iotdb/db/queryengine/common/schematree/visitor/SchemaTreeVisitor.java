@@ -29,16 +29,20 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.TreeMap;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNode, R> {
 
   private Map<Integer, Template> templateMap;
+  // Reuse the ordered snapshot for devices that share a template.
+  private final Map<Integer, List<IMeasurementSchema>> templateMeasurements = new HashMap<>();
 
   protected SchemaTreeVisitor() {}
 
@@ -63,6 +67,7 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {
     this.templateMap = templateMap;
+    templateMeasurements.clear();
   }
 
   @Override
@@ -123,10 +128,12 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
         && parent.getAsEntityNode().getTemplateId() != NON_TEMPLATE) {
       return new Iterator<SchemaNode>() {
         private final Iterator<IMeasurementSchema> templateChildrenIterator =
-            templateMap
-                .get(parent.getAsEntityNode().getTemplateId())
-                .getSchemaMap()
-                .values()
+            templateMeasurements
+                .computeIfAbsent(
+                    parent.getAsEntityNode().getTemplateId(),
+                    templateId ->
+                        new ArrayList<>(
+                            new TreeMap<>(templateMap.get(templateId).getSchemaMap()).values()))
                 .iterator();
         private final Iterator<SchemaNode> directChildrenIterator = parent.getChildrenIterator();
 

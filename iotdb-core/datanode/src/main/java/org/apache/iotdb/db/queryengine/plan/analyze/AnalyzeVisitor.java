@@ -1214,7 +1214,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     List<String> tagKeys = queryStatement.getGroupByTagComponent().getTagKeys();
     Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
-        tagValuesToGroupedTimeseriesOperands = new HashMap<>();
+        tagValuesToGroupedTimeseriesOperands = new LinkedHashMap<>();
     LinkedHashMap<Expression, Set<Expression>> outputExpressionToRawExpressionsMap =
         new LinkedHashMap<>();
 
