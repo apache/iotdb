@@ -24,6 +24,8 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
@@ -43,11 +46,13 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.util.concurrent.SettableFuture;
@@ -55,6 +60,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,6 +69,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -188,7 +196,7 @@ public class LocalExecutionPlanContextBudgetTest {
       assertEquals(0, instance.getInputMaxBytes());
       assertEquals(0, instance.getOutputMaxBytes());
     }
-    String fi = context.getFragmentInstanceId().getFullId();
+    String fi = context.getFragmentInstanceId().getFragmentInstanceId();
     pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a" + side, side);
     pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b" + side, side);
     assertTrue(
@@ -204,6 +212,56 @@ public class LocalExecutionPlanContextBudgetTest {
       pool.free("budget", fi, "a" + side, limit);
     }
     pool.free("budget", fi, "b" + side, limit);
+  }
+
+  @Test
+  public void testRealSourceHandlesShareCanonicalFragmentAccountAndCleanup() throws Exception {
+    FragmentInstanceId id = context.getFragmentInstanceId();
+    String fi = FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(id.toThrift());
+    LocalMemoryManager manager = mock(LocalMemoryManager.class);
+    when(manager.getQueryPool()).thenReturn(pool);
+    SourceHandle first = realSourceHandle(id, "first", manager);
+    SourceHandle second = realSourceHandle(id, "second", manager);
+    for (SourceHandle source : Arrays.asList(first, second)) {
+      ExchangeOperator exchange = mock(ExchangeOperator.class);
+      when(exchange.getSourceHandle()).thenReturn(source);
+      context.addExchangeOperator(exchange);
+    }
+    try {
+      context.setExchangeMemoryLimits(collect(), pool);
+      assertEquals(1024, context.getInstanceContext().getInputMaxBytes());
+      first.isBlocked();
+      second.isBlocked();
+      first.updatePendingDataBlockInfo(0, List.of(1024L));
+      second.updatePendingDataBlockInfo(0, List.of(1024L));
+      assertEquals(1024, pool.getFragmentMemoryReservedBytes("budget", fi, MemorySide.INPUT));
+      assertEquals(0, pool.getPlanNodeMemoryReservedBytes("budget", fi, "second"));
+      assertEquals(1, pool.getMemoryReservationSize());
+      first.abort();
+      assertEquals(1024, pool.getPlanNodeMemoryReservedBytes("budget", fi, "second"));
+    } finally {
+      first.abort();
+      second.abort();
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap("budget", fi, true);
+    }
+    assertEquals(0, pool.getMemoryReservationSize());
+    assertEquals(0, pool.getReservedBytes());
+    assertEquals(0, pool.getQueryMemoryReservationSize());
+  }
+
+  private static SourceHandle realSourceHandle(
+      FragmentInstanceId id, String planNode, LocalMemoryManager manager) {
+    return new SourceHandle(
+        new TEndPoint("remote", 12345),
+        new TFragmentInstanceId(id.getQueryId().getId(), 1, "0"),
+        id.toThrift(),
+        planNode,
+        0,
+        manager,
+        mock(ExecutorService.class),
+        new TsBlockSerde(),
+        mock(SourceHandleListener.class),
+        mock(IClientManager.class));
   }
 
   @Test
@@ -515,7 +573,7 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setExchangeMemoryLimits(
         node(PlanNodeType.TABLE_MERGESORT_NODE, collect(), node(PlanNodeType.TABLE_EXCHANGE_NODE)),
         pool);
-    String fi = context.getFragmentInstanceId().getFullId();
+    String fi = context.getFragmentInstanceId().getFragmentInstanceId();
     pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a", MemorySide.INPUT);
     pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b", MemorySide.INPUT);
     for (int i = 0; i < 4; i++) {

@@ -130,7 +130,7 @@ public class LocalExecutionPlannerBudgetTest {
       verify(secondHandle).setMaxBytesCanReserve(1024);
 
       String query = instance.getId().getQueryId().getId();
-      String fi = instance.getId().getFullId();
+      String fi = instance.getId().getFragmentInstanceId();
       pool.registerPlanNodeIdToQueryMemoryMap(query, fi, "first", MemorySide.INPUT);
       pool.registerPlanNodeIdToQueryMemoryMap(query, fi, "second", MemorySide.INPUT);
       assertTrue(
@@ -144,7 +144,7 @@ public class LocalExecutionPlannerBudgetTest {
       collect.close();
     } finally {
       pool.deRegisterFragmentInstanceFromQueryMemoryMap(
-          instance.getId().getQueryId().getId(), instance.getId().getFullId(), true);
+          instance.getId().getQueryId().getId(), instance.getId().getFragmentInstanceId(), true);
       long reserved = freeBefore - planner.getFreeMemoryForOperators();
       if (reserved > 0) {
         planner.releaseToFreeMemoryForOperators(reserved);

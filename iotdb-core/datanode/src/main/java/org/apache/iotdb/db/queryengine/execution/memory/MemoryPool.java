@@ -37,9 +37,8 @@ import javax.annotation.Nullable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -56,6 +55,8 @@ public class MemoryPool {
     private final String fragmentInstanceId;
     private final String planNodeId;
     private final long bytesToReserve;
+    // Assigned once by the pool before publication. Zero denotes an untracked future.
+    private long reservationId;
 
     /**
      * MemoryReservationFuture is created when an exchange handle tries to reserve memory from the
@@ -173,6 +174,8 @@ public class MemoryPool {
     private final Map<String, PlanNodeReservation> planNodes = new ConcurrentHashMap<>();
     private final AtomicLong inputUsedBytes = new AtomicLong();
     private final AtomicLong outputUsedBytes = new AtomicLong();
+    private final Map<Long, MemoryReservationFuture<Void>> pendingReservations =
+        new ConcurrentHashMap<>();
     // Enabled by local planning before drivers start; request limits are supplied by handles.
     private volatile boolean sharedBudget;
 
@@ -185,8 +188,11 @@ public class MemoryPool {
   private final Map<String, Map<String, FragmentMemoryReservation>> queryMemoryReservations =
       new ConcurrentHashMap<>();
 
-  private final Queue<MemoryReservationFuture<Void>> memoryReservationFutures =
-      new ConcurrentLinkedQueue<>();
+  // Sequence keys retain FIFO wakeup order and allow removal without scanning unrelated requests.
+  // Only blocked reservations use these indexes; successful admission keeps its existing fast path.
+  private final Map<Long, MemoryReservationFuture<Void>> memoryReservationFutures =
+      new ConcurrentSkipListMap<>();
+  private final AtomicLong nextReservationId = new AtomicLong();
 
   public MemoryPool(String id, MemoryManager memoryManager, long maxBytesPerFragmentInstance) {
     this.id = Validate.notNull(id, DataNodeQueryMessages.EXCEPTION_ID_CAN_NOT_BE_NULL_DOT_BDD2AD7D);
@@ -302,13 +308,10 @@ public class MemoryPool {
       // Pending requests must not outlive their FI registration. Cancel before removing the
       // account so another query's free() cannot retry a request against a missing FI. Do not
       // hold the registration lock while notifying cancellation listeners.
-      Iterator<MemoryReservationFuture<Void>> pending = memoryReservationFutures.iterator();
-      while (pending.hasNext()) {
-        MemoryReservationFuture<Void> future = pending.next();
-        if (queryId.equals(future.getQueryId())
-            && fragmentInstanceId.equals(future.getFragmentInstanceId())) {
+      if (fragmentRelatedMemory != null) {
+        for (MemoryReservationFuture<Void> future :
+            fragmentRelatedMemory.pendingReservations.values()) {
           tryCancel(future);
-          pending.remove();
         }
       }
       synchronized (queryMemoryReservations) {
@@ -392,11 +395,21 @@ public class MemoryPool {
       MemoryReservationFuture<Void> result =
           MemoryReservationFuture.create(
               queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
-      memoryReservationFutures.add(result);
+      FragmentMemoryReservation fragment =
+          getFragmentReservation(queryId, fragmentInstanceId, planNodeId);
+      result.reservationId = nextReservationId.incrementAndGet();
+      fragment.pendingReservations.put(result.reservationId, result);
+      memoryReservationFutures.put(result.reservationId, result);
       // A concurrent free may have missed this request before it was published. Retry after
       // publication, under the same future lock used by free and tryCancel to avoid charging twice.
-      if (tryCompleteReservation(result)) {
-        memoryReservationFutures.remove(result);
+      try {
+        if (tryCompleteReservation(result)) {
+          removePendingReservation(result);
+        }
+      } catch (RuntimeException | Error e) {
+        // A concurrently removed registration must not leave a published request behind.
+        tryCancel(result);
+        throw e;
       }
       return new MemoryReservationResult(result, false, bytesToReserve);
     }
@@ -440,6 +453,9 @@ public class MemoryPool {
     synchronized (future) {
       // If the future is not a MemoryReservationFuture, it must have been completed.
       if (future.isDone()) {
+        if (future instanceof MemoryReservationFuture) {
+          removePendingReservation((MemoryReservationFuture<Void>) future);
+        }
         return 0L;
       }
       Validate.isTrue(
@@ -447,6 +463,7 @@ public class MemoryPool {
           DataNodeQueryMessages.EXCEPTION_INVALID_FUTURE_TYPE_14507EF5
               + future.getClass().getSimpleName());
       future.cancel(true);
+      removePendingReservation((MemoryReservationFuture<Void>) future);
     }
     return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
@@ -481,12 +498,23 @@ public class MemoryPool {
     if (memoryReservationFutures.isEmpty()) {
       return;
     }
-    Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
+    Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.values().iterator();
     while (iterator.hasNext()) {
       MemoryReservationFuture<Void> future = iterator.next();
       if (tryCompleteReservation(future)) {
-        iterator.remove();
+        removePendingReservation(future);
       }
+    }
+  }
+
+  private void removePendingReservation(MemoryReservationFuture<Void> future) {
+    memoryReservationFutures.remove(future.reservationId, future);
+    Map<String, FragmentMemoryReservation> fragments =
+        queryMemoryReservations.get(future.getQueryId());
+    FragmentMemoryReservation fragment =
+        fragments == null ? null : fragments.get(future.getFragmentInstanceId());
+    if (fragment != null) {
+      fragment.pendingReservations.remove(future.reservationId, future);
     }
   }
 

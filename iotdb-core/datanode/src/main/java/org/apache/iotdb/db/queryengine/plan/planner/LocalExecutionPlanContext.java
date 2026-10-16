@@ -324,7 +324,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
         sharedBudget ? inputMaxBytes : 0, sharedBudget ? outputMaxBytes : 0);
     if (sharedBudget) {
       memoryPool.registerFragmentInstanceSharedBudget(
-          instanceContext.getId().getQueryId().getId(), instanceContext.getId().getFullId());
+          instanceContext.getId().getQueryId().getId(),
+          instanceContext.getId().getFragmentInstanceId());
       collectOperators.forEach(CollectOperator::enableReadyInputConsumption);
       LOGGER.debug(
           DataNodeQueryMessages.LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109,
