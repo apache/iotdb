@@ -100,11 +100,12 @@ public class TestUtils {
     return singleNodeConnection.createStatement();
   }
 
-  /** Waits for the latest DROP TABLE procedure using a single DataNode's progress snapshot. */
-  public static void awaitDropTableProcedure(
+  /** Drops a table and waits for the asynchronous procedure to finish on a single DataNode. */
+  public static void dropTable(
       final Connection connection, final String database, final String tableName)
       throws SQLException {
     try (final Statement statement = createSingleNodeStatement(connection)) {
+      statement.execute("DROP TABLE " + database + "." + tableName);
       await()
           .atMost(60, TimeUnit.SECONDS)
           .pollInSameThread()

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -118,9 +119,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> showPipeResult =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
                 showPipeResult.removeIf(
                     i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
                 Assert.assertTrue(showPipeResult.isEmpty());
@@ -294,9 +297,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> showPipeResult =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
                 showPipeResult.removeIf(
                     i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
                 Assert.assertTrue(

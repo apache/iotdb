@@ -545,8 +545,7 @@ public class IoTDBTableIT {
           "speed,",
           Collections.singleton("null,"));
 
-      statement.execute("drop table table2");
-      TestUtils.awaitDropTableProcedure(connection, "test2", "table2");
+      TestUtils.dropTable(connection, "test2", "table2");
       try {
         statement.executeQuery("describe table2");
         fail();
@@ -1267,11 +1266,9 @@ public class IoTDBTableIT {
       statement.execute("create database async_drop_db");
       statement.execute("use async_drop_db");
       statement.execute("create table drop_target (device string tag, reading int32)");
-      statement.execute("drop table drop_target");
-
       // The drop may finish before the first query. Its completed result remains visible until
       // the procedure cleaner evicts it, so verify that result after waiting for completion.
-      TestUtils.awaitDropTableProcedure(connection, "async_drop_db", "drop_target");
+      TestUtils.dropTable(connection, "async_drop_db", "drop_target");
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables from async_drop_db"),
           "TableName,TTL(ms),",

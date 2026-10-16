@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
@@ -136,12 +137,14 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> showPipeResult =
+                final TShowPipeResp response =
                     client.showPipe(
-                            new TShowPipeReq()
-                                .setIsTableModel(true)
-                                .setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                        new TShowPipeReq()
+                            .setIsTableModel(true)
+                            .setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
                 Assert.assertTrue(
                     showPipeResult.stream()
                         .noneMatch(
@@ -215,12 +218,14 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> showPipeResult =
+                final TShowPipeResp response =
                     client.showPipe(
-                            new TShowPipeReq()
-                                .setIsTableModel(true)
-                                .setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                        new TShowPipeReq()
+                            .setIsTableModel(true)
+                            .setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
                 showPipeResult.removeIf(
                     i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
                 Assert.assertTrue(showPipeResult.isEmpty());

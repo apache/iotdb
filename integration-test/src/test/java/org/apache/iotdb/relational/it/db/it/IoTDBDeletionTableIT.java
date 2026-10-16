@@ -1359,10 +1359,7 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
 
-      statement.execute("DROP TABLE vehicle" + testNum);
-
-      // DROP TABLE acknowledges submission before the table has been fully removed.
-      TestUtils.awaitDropTableProcedure(connection, "test", "vehicle" + testNum);
+      TestUtils.dropTable(connection, "test", "vehicle" + testNum);
 
       try (ResultSet ignored = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
         fail("Exception expected");

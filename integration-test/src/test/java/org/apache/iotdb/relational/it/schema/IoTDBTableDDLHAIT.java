@@ -235,9 +235,7 @@ public class IoTDBTableDDLHAIT {
         "DELETE DEVICES must succeed with one DataNode down");
 
     LOGGER.info("6. start to test high availability of dropping table procedure");
-    statement.execute("DROP TABLE " + tableName);
-    // DROP TABLE acknowledges submission before the table has been fully removed.
-    TestUtils.awaitDropTableProcedure(connection, databaseName, tableName);
+    TestUtils.dropTable(connection, databaseName, tableName);
     assertTrue(
         "DROP TABLE must succeed with one DataNode down", !tableExists(statement, tableName));
 
