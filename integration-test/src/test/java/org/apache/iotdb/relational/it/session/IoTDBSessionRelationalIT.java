@@ -472,6 +472,45 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
+  public void disableAutoCreateSchemaForTableSessionTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    try (ITableSession session =
+        new TableSessionBuilder()
+            .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+            .database("db1")
+            .enableAutoCreateSchema(false)
+            .build()) {
+      final List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+      final Tablet tablet =
+          new Tablet(
+              "session_auto_create",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+              1);
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("tag1", 0, "d1");
+      tablet.addValue("s1", 0, 1L);
+      tablet.addValue("s2", 0, 2L);
+
+      assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE session_auto_create (tag1 string tag, s1 int64 field)");
+      assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM session_auto_create")) {
+        assertEquals(Arrays.asList("time", "tag1", "s1"), dataSet.getColumnNames());
+      }
+    }
+  }
+
+  @Test
   public void partialInsertRelationalTabletTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {

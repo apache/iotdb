@@ -270,6 +270,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -1633,8 +1634,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             parseUseEncryptedPassword(req));
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
-      clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (database.isPresent()) {
+        clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
+      }
+      clientSession.setEnableAutoCreateSchema(parseEnableAutoCreateSchema(req));
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     Map<String, String> configuration = new HashMap<>();
@@ -1676,6 +1680,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     Map<String, String> configuration = req.configuration;
     return configuration != null
         && Boolean.parseBoolean(configuration.get(USE_ENCRYPTED_PASSWORD_KEY));
+  }
+
+  private boolean parseEnableAutoCreateSchema(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration == null
+        || !configuration.containsKey(ENABLE_AUTO_CREATE_SCHEMA_KEY)
+        || Boolean.parseBoolean(configuration.get(ENABLE_AUTO_CREATE_SCHEMA_KEY));
   }
 
   @Override

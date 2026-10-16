@@ -2439,6 +2439,12 @@ model_inference_execution_thread_count=5
 # Datatype: int
 load_clean_up_task_execution_delay_time_seconds=1800
 
+# The time after which the staged data of a LOAD task that received no COMMIT or ABORT is reclaimed
+# (in seconds). A value less than or equal to 0 disables the reclamation.
+# effectiveMode: hot_reload
+# Datatype: int
+load_clean_up_task_idle_timeout_seconds=900
+
 # The maximum bytes per second of disk write throughput when loading tsfile.
 # When given a value less than or equal to 0, it means no limit.
 # Default value is -1, which means no limit.
