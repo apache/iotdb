@@ -85,7 +85,9 @@ public interface IMemTable extends WALEntryValue {
 
   WriteMemoryBlock getBinaryMemoryBlock();
 
-  /** Adds array/TVList structural memory; Binary payload has a separate block. */
+  WriteMemoryBlock getStructureMemoryBlock();
+
+  /** Adds TVList array memory; containers and Binary payload have separate blocks. */
   void addTVListRamCost(long cost);
 
   /** only used when mem control enabled */

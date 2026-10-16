@@ -105,6 +105,9 @@ public abstract class AbstractMemTable implements IMemTable {
   private final WriteMemoryBlock binaryMemoryBlock =
       new WriteMemoryBlock(
           "MemTable[" + memTableId + "].Binary", WriteMemoryBlock.Category.MEMTABLE_BINARY);
+  private final WriteMemoryBlock structureMemoryBlock =
+      new WriteMemoryBlock(
+          "MemTable[" + memTableId + "].Structure", WriteMemoryBlock.Category.MEMTABLE_STRUCTURE);
   private final WriteMemoryBlock recoveredMemoryBlock =
       new WriteMemoryBlock(
           "MemTable[" + memTableId + "].Recovered", WriteMemoryBlock.Category.MEMTABLE_RECOVERED);
@@ -592,6 +595,7 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNumThreshold = 0;
     arrayMemoryBlock.clear();
     binaryMemoryBlock.clear();
+    structureMemoryBlock.clear();
     recoveredMemoryBlock.clear();
     maxPlanIndex = 0;
     minPlanIndex = 0;
@@ -955,6 +959,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void setWriteMemoryManager(WriteMemoryManager manager) {
     arrayMemoryBlock.attachTo(manager);
     binaryMemoryBlock.attachTo(manager);
+    structureMemoryBlock.attachTo(manager);
     recoveredMemoryBlock.attachTo(manager);
   }
 
@@ -966,6 +971,11 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public WriteMemoryBlock getBinaryMemoryBlock() {
     return binaryMemoryBlock;
+  }
+
+  @Override
+  public WriteMemoryBlock getStructureMemoryBlock() {
+    return structureMemoryBlock;
   }
 
   @Override
@@ -982,6 +992,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public long getTVListsRamCost() {
     return arrayMemoryBlock.getUsedMemoryInBytes()
         + binaryMemoryBlock.getUsedMemoryInBytes()
+        + structureMemoryBlock.getUsedMemoryInBytes()
         + recoveredMemoryBlock.getUsedMemoryInBytes();
   }
 
@@ -1017,6 +1028,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // pool retain their existing resource ownership; this is not a measurement of heap liveness.
     arrayMemoryBlock.close();
     binaryMemoryBlock.close();
+    structureMemoryBlock.close();
     recoveredMemoryBlock.close();
   }
 

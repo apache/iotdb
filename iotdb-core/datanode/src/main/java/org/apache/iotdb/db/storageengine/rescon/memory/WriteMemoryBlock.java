@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class WriteMemoryBlock implements AutoCloseable {
   public enum Category {
     MEMTABLE_ARRAY,
+    MEMTABLE_STRUCTURE,
     MEMTABLE_BINARY,
     // WAL snapshots contain only a total; do not guess an array/Binary breakdown on recovery.
     MEMTABLE_RECOVERED,

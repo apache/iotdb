@@ -140,6 +140,40 @@ public class PrimitiveArrayManagerTest {
   }
 
   @Test
+  public void cachedCalculatorsCoverAllSupportedTypes() {
+    PrimitiveArrayManager.close();
+    try {
+      for (TSDataType type : TSDataTypeTestUtils.getSupportedTypes()) {
+        Object array = PrimitiveArrayManager.allocate(type);
+        long bytes = RamUsageEstimator.shallowSizeOf(array);
+        PrimitiveArrayManager.release(array);
+        Assert.assertEquals(bytes, PrimitiveArrayManager.getMemoryBlock().getUsedMemoryInBytes());
+        // Alias types return to their primitive pool (e.g. DATE -> INT32, STRING -> TEXT).
+        TSDataType poolType;
+        switch (type) {
+          case DATE:
+            poolType = TSDataType.INT32;
+            break;
+          case TIMESTAMP:
+            poolType = TSDataType.INT64;
+            break;
+          case STRING:
+          case BLOB:
+          case OBJECT:
+            poolType = TSDataType.TEXT;
+            break;
+          default:
+            poolType = type;
+        }
+        Assert.assertSame(array, PrimitiveArrayManager.allocate(poolType));
+        Assert.assertEquals(0, PrimitiveArrayManager.getMemoryBlock().getUsedMemoryInBytes());
+      }
+    } finally {
+      PrimitiveArrayManager.close();
+    }
+  }
+
+  @Test
   public void concurrentBorrowReturnAndSnapshotsKeepExactTotal() throws Exception {
     PrimitiveArrayManager.close();
     TSDataType[] types = {TSDataType.INT64, TSDataType.INT32, TSDataType.BOOLEAN, TSDataType.TEXT};

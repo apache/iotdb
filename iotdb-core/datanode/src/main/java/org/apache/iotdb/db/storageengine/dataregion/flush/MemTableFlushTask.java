@@ -54,6 +54,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -411,6 +412,7 @@ public class MemTableFlushTask {
   private final class FlushSubTask implements Runnable {
     private final Runnable task;
     private final CompletableFuture<Void> finished = new CompletableFuture<>();
+    private final CountDownLatch exited = new CountDownLatch(1);
     private Thread runner;
     private boolean cancelled;
 
@@ -437,6 +439,7 @@ public class MemTableFlushTask {
         synchronized (this) {
           runner = null;
           finished.complete(null);
+          exited.countDown();
         }
       }
     }
@@ -451,6 +454,7 @@ public class MemTableFlushTask {
         runner.interrupt();
       } else {
         finished.complete(null);
+        exited.countDown();
       }
     }
 
@@ -458,12 +462,13 @@ public class MemTableFlushTask {
       boolean interrupted = false;
       while (true) {
         try {
-          finished.get();
+          exited.await();
           return interrupted;
         } catch (InterruptedException e) {
+          // Cancellation has already interrupted the worker. It may still own buffers or the
+          // writer, so cleanup must wait for its actual exit before releasing the reservation.
+          // Restore the caller's interrupt flag after both workers have exited.
           interrupted = true;
-        } catch (ExecutionException e) {
-          throw new AssertionError(e);
         }
       }
     }

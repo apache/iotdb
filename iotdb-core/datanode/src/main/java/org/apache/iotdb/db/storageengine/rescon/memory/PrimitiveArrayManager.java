@@ -41,6 +41,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
+import java.util.function.ToLongFunction;
 
 /** Manage all primitive data lists in memory, including get and release operations. */
 public class PrimitiveArrayManager {
@@ -75,6 +76,28 @@ public class PrimitiveArrayManager {
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];
+
+  // Indexed by TSDataType#serialize(), like POOLED_ARRAYS. Resolve the array type once at startup.
+  private static final ToLongFunction<Object>[] ARRAY_SIZE_CALCULATORS =
+      createArraySizeCalculators();
+
+  @SuppressWarnings("unchecked")
+  private static ToLongFunction<Object>[] createArraySizeCalculators() {
+    ToLongFunction<Object>[] calculators = new ToLongFunction[TSDataType.values().length];
+    calculators[TSDataType.BOOLEAN.serialize()] = a -> RamUsageEstimator.sizeOf((boolean[]) a);
+    calculators[TSDataType.INT32.serialize()] = a -> RamUsageEstimator.sizeOf((int[]) a);
+    calculators[TSDataType.DATE.serialize()] = calculators[TSDataType.INT32.serialize()];
+    calculators[TSDataType.INT64.serialize()] = a -> RamUsageEstimator.sizeOf((long[]) a);
+    calculators[TSDataType.TIMESTAMP.serialize()] = calculators[TSDataType.INT64.serialize()];
+    calculators[TSDataType.FLOAT.serialize()] = a -> RamUsageEstimator.sizeOf((float[]) a);
+    calculators[TSDataType.DOUBLE.serialize()] = a -> RamUsageEstimator.sizeOf((double[]) a);
+    // Binary[] entries are cleared on return; only the shallow reference array belongs to the pool.
+    calculators[TSDataType.TEXT.serialize()] = a -> RamUsageEstimator.shallowSizeOf((Binary[]) a);
+    calculators[TSDataType.STRING.serialize()] = calculators[TSDataType.TEXT.serialize()];
+    calculators[TSDataType.BLOB.serialize()] = calculators[TSDataType.TEXT.serialize()];
+    calculators[TSDataType.OBJECT.serialize()] = calculators[TSDataType.TEXT.serialize()];
+    return calculators;
+  }
 
   // Each entry is guarded by the corresponding queue's monitor.
   private static final long[] POOLED_ARRAY_BYTES = new long[TSDataType.values().length];
@@ -172,7 +195,7 @@ public class PrimitiveArrayManager {
     synchronized (POOLED_ARRAYS[order]) {
       array = POOLED_ARRAYS[order].poll();
       if (array != null) {
-        POOLED_ARRAY_BYTES[order] -= arraySize(array);
+        POOLED_ARRAY_BYTES[order] -= ARRAY_SIZE_CALCULATORS[order].applyAsLong(array);
       }
     }
     StorageEngineMemoryMetrics.getInstance().incPamAllocation();
@@ -283,7 +306,7 @@ public class PrimitiveArrayManager {
       ArrayDeque<Object> arrays = POOLED_ARRAYS[order];
       if (arrays.size() < LIMITS[order]) {
         arrays.add(array);
-        POOLED_ARRAY_BYTES[order] += arraySize(array);
+        POOLED_ARRAY_BYTES[order] += ARRAY_SIZE_CALCULATORS[order].applyAsLong(array);
       } else {
         StorageEngineMemoryMetrics.getInstance().incPamReleaseFailure();
       }
@@ -303,23 +326,6 @@ public class PrimitiveArrayManager {
     synchronized (POOLED_ARRAYS[order]) {
       return POOLED_ARRAY_BYTES[order] + getPooledArrayMemoryInBytes(order + 1);
     }
-  }
-
-  private static long arraySize(Object array) {
-    // Use typed array lengths on this hot path instead of reflective shallowSizeOf(Object).
-    if (array instanceof long[]) {
-      return RamUsageEstimator.sizeOf((long[]) array);
-    } else if (array instanceof int[]) {
-      return RamUsageEstimator.sizeOf((int[]) array);
-    } else if (array instanceof boolean[]) {
-      return RamUsageEstimator.sizeOf((boolean[]) array);
-    } else if (array instanceof float[]) {
-      return RamUsageEstimator.sizeOf((float[]) array);
-    } else if (array instanceof double[]) {
-      return RamUsageEstimator.sizeOf((double[]) array);
-    }
-    // Binary[] entries have been cleared; only the shallow reference array belongs to the pool.
-    return RamUsageEstimator.shallowSizeOf((Binary[]) array);
   }
 
   public static void close() {

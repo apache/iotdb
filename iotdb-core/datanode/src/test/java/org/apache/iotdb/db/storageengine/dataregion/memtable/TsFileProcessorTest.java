@@ -1582,6 +1582,8 @@ public class TsFileProcessorTest {
     long regionBefore = sgInfo.getMemCost();
     long ramBefore = memTable.getTVListsRamCost();
     long logicalBefore = memTable.memSize();
+    long structureBefore = memTable.getStructureMemoryBlock().getUsedMemoryInBytes();
+    assertTrue(structureBefore > 0);
     Field field = TsFileProcessor.class.getDeclaredField("walNode");
     field.setAccessible(true);
     Object originalWal = field.get(processor);
@@ -1596,6 +1598,7 @@ public class TsFileProcessorTest {
       row.setAligned(true);
       Assert.assertThrows(WriteProcessException.class, () -> processor.insert(row, new long[5]));
       assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
 
       InsertRowsNode rows = new InsertRowsNode(new PlanNodeId("mixed"));
       rows.addOneInsertRowNode(row, 0);
@@ -1605,6 +1608,7 @@ public class TsFileProcessorTest {
       Assert.assertThrows(
           WriteProcessException.class, () -> processor.insertRows(rows, new long[5]));
       assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
 
       InsertTabletNode tablet = genSingleMeasurementTablet(10, true);
       TSStatus[] results = new TSStatus[10];
@@ -1618,6 +1622,7 @@ public class TsFileProcessorTest {
                   true,
                   new long[5]));
       assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
     } finally {
       field.set(processor, originalWal);
       processor.syncClose();
@@ -1763,9 +1768,13 @@ public class TsFileProcessorTest {
   }
 
   private void assertAlignedTvListRamCostMatchesActual(String targetDevice) {
+    AlignedTVList list = getAlignedMemChunk(targetDevice).getWorkingTVList();
+    IMemTable table = processor.getWorkMemTable();
+    Assert.assertEquals(list.calculateRamSize().getRamSize(), table.getTVListsRamCost());
+    Assert.assertEquals(list.getArrayRamSize(), table.getArrayMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(
-        getAlignedMemChunk(targetDevice).getWorkingTVList().calculateRamSize().getRamSize(),
-        processor.getWorkMemTable().getTVListsRamCost());
+        list.getStructureRamSize(), table.getStructureMemoryBlock().getUsedMemoryInBytes());
+    assertTrue(table.getStructureMemoryBlock().getUsedMemoryInBytes() > 0);
   }
 
   private InsertTabletNode genSingleMeasurementTablet(int rowCount, boolean isAligned)

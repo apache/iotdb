@@ -91,8 +91,9 @@ public class MemTableMemoryBlockTest {
     metadata.add(11);
     IMemTable memTable = new PrimitiveMemTable("root.sg", "0");
     memTable.setWriteMemoryManager(manager);
-    memTable.getArrayMemoryBlock().add(80);
+    memTable.getArrayMemoryBlock().add(70);
     memTable.getBinaryMemoryBlock().add(20);
+    memTable.getStructureMemoryBlock().add(10);
     assertEquals(100, memTable.getTVListsRamCost());
     assertEquals(111, manager.getMemoryUsageInBytes());
     memTable.setFlushStatus(FlushStatus.FLUSHING);
@@ -110,8 +111,9 @@ public class MemTableMemoryBlockTest {
   @Test
   public void walSnapshotRetainsTotalAndFormatWithoutInventingCategories() throws Exception {
     IMemTable original = new PrimitiveMemTable("root.sg", "0");
-    original.getArrayMemoryBlock().add(80);
+    original.getArrayMemoryBlock().add(70);
     original.getBinaryMemoryBlock().add(20);
+    original.getStructureMemoryBlock().add(10);
     ByteBuffer bytes = ByteBuffer.allocate(original.serializedSize());
     original.serializeToWAL(new WALByteBufferForTest(bytes));
     assertEquals(0, bytes.remaining());
@@ -127,6 +129,7 @@ public class MemTableMemoryBlockTest {
       assertEquals(100, restored.getTVListsRamCost());
       assertEquals(0, restored.getArrayMemoryBlock().getUsedMemoryInBytes());
       assertEquals(0, restored.getBinaryMemoryBlock().getUsedMemoryInBytes());
+      assertEquals(0, restored.getStructureMemoryBlock().getUsedMemoryInBytes());
       WriteMemoryManager manager = new WriteMemoryManager();
       restored.setWriteMemoryManager(manager);
       assertEquals(100, manager.getMemoryUsageInBytes());
@@ -147,7 +150,8 @@ public class MemTableMemoryBlockTest {
     IMemTable table = new PrimitiveMemTable("root.sg", "0");
     WriteMemoryManager manager = new WriteMemoryManager();
     table.setWriteMemoryManager(manager);
-    table.addTVListRamCost(80);
+    table.addTVListRamCost(70);
+    table.getStructureMemoryBlock().add(10);
     table.getBinaryMemoryBlock().add(20);
     table.addTextDataSize(20);
     assertEquals(20, table.memSize());
@@ -155,6 +159,7 @@ public class MemTableMemoryBlockTest {
     table.clear();
     assertEquals(0, manager.getMemoryUsageInBytes());
     assertEquals(0, table.memSize());
+    assertEquals(0, table.getStructureMemoryBlock().getUsedMemoryInBytes());
     table.addTVListRamCost(5);
     assertEquals(5, manager.getMemoryUsageInBytes());
     table.release();

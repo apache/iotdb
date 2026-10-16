@@ -1401,12 +1401,22 @@ public class TsFileProcessor {
       return;
     }
 
-    long correction = snapshot.getMemoryCorrection(estimatedMemTableIncrement);
+    long totalCorrection = snapshot.getMemoryCorrection(estimatedMemTableIncrement);
+    long structureIncrement = snapshot.structureRamCost - snapshot.structureRamCostBeforeWrite;
+    WriteMemoryBlock structureBlock = snapshot.memTable.getStructureMemoryBlock();
+    if (structureIncrement > 0) {
+      structureBlock.add(structureIncrement);
+    } else if (structureIncrement < 0) {
+      structureBlock.release(-structureIncrement);
+    }
+    long correction = totalCorrection - structureIncrement;
     if (correction > 0) {
       snapshot.memTable.addTVListRamCost(correction);
     } else if (correction < 0) {
       long releasedMemory = -correction;
       snapshot.memTable.releaseTVListRamCost(releasedMemory);
+    }
+    if (totalCorrection < 0) {
       SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
     }
   }
@@ -1473,12 +1483,15 @@ public class TsFileProcessor {
     private final IDeviceID deviceId;
     private final Set<IDeviceID> deviceIds;
     private final long ramCostBeforeWrite;
+    private final long structureRamCostBeforeWrite;
+    private long structureRamCost;
 
     AlignedTVListRamCostSnapshot(IMemTable memTable, IDeviceID deviceId) {
       this.memTable = memTable;
       this.deviceId = deviceId;
       this.deviceIds = null;
       this.ramCostBeforeWrite = getRamCost(memTable, deviceId);
+      this.structureRamCostBeforeWrite = structureRamCost;
     }
 
     AlignedTVListRamCostSnapshot(IMemTable memTable, Set<IDeviceID> deviceIds) {
@@ -1486,15 +1499,17 @@ public class TsFileProcessor {
       this.deviceId = null;
       this.deviceIds = deviceIds;
       this.ramCostBeforeWrite = getRamCost(memTable, deviceIds);
+      this.structureRamCostBeforeWrite = structureRamCost;
     }
 
     long getMemoryCorrection(long estimatedMemTableIncrement) {
+      structureRamCost = 0;
       return (deviceId == null ? getRamCost(memTable, deviceIds) : getRamCost(memTable, deviceId))
           - ramCostBeforeWrite
           - estimatedMemTableIncrement;
     }
 
-    private static long getRamCost(IMemTable memTable, Set<IDeviceID> deviceIds) {
+    private long getRamCost(IMemTable memTable, Set<IDeviceID> deviceIds) {
       long ramCost = 0;
       for (IDeviceID currentDeviceId : deviceIds) {
         ramCost += getRamCost(memTable, currentDeviceId);
@@ -1502,7 +1517,7 @@ public class TsFileProcessor {
       return ramCost;
     }
 
-    private static long getRamCost(IMemTable memTable, IDeviceID deviceId) {
+    private long getRamCost(IMemTable memTable, IDeviceID deviceId) {
       IWritableMemChunk memChunk =
           memTable.getWritableMemChunk(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (!(memChunk instanceof AlignedWritableMemChunk)) {
@@ -1510,11 +1525,19 @@ public class TsFileProcessor {
       }
 
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      long ramCost = alignedMemChunk.getWorkingTVList().getRamSize();
+      long ramCost = getRamCost(alignedMemChunk.getWorkingTVList());
       for (AlignedTVList sortedTVList : alignedMemChunk.getSortedList()) {
-        ramCost += sortedTVList.getRamSize();
+        ramCost += getRamCost(sortedTVList);
       }
       return ramCost;
+    }
+
+    private long getRamCost(AlignedTVList list) {
+      synchronized (list) {
+        long structureBytes = list.getStructureRamSize();
+        structureRamCost += structureBytes;
+        return list.getArrayRamSize() + structureBytes;
+      }
     }
   }
 

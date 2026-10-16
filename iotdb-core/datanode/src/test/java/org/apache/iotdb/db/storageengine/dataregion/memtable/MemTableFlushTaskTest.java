@@ -169,6 +169,8 @@ public class MemTableFlushTaskTest {
       assertTrue(entered.await(5, TimeUnit.SECONDS));
       caller.interrupt();
       assertTrue(interrupted.await(5, TimeUnit.SECONDS));
+      // Another interruption during cancellation must not let cleanup release live worker memory.
+      caller.interrupt();
       assertTrue(caller.isAlive());
       assertTrue(system.getFlushMemoryManager().getMemoryUsageInBytes() > before);
       mayExit.countDown();
