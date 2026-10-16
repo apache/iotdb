@@ -690,7 +690,11 @@ public class ConsensusPrefetchingQueue {
           this::getRequiredRetainedMinVersionId);
     } else {
       serverImpl.registerSubscriptionQueue(
-          pendingEntries, retentionPolicy, this::getRequiredRetainedMinVersionId);
+          pendingEntries,
+          retentionPolicy,
+          this::getRequiredRetainedMinVersionId,
+          ConsensusSubscriptionWalRetention.generateRetentionId(
+              consumerGroupId, topicName, consensusGroupId));
     }
 
     LOGGER.info(
@@ -4474,17 +4478,25 @@ public class ConsensusPrefetchingQueue {
       final boolean retainProgressAfterUnsubscribe) {
     try {
       if (retainProgressAfterUnsubscribe) {
+        // Detached retention outlives this queue. Capture only the reader and progress manager
+        // required for WAL retention calculation instead of capturing the queue through a field
+        // reference in either supplier.
+        final ConsensusReqReader retainedConsensusReqReader = consensusReqReader;
+        final ConsensusSubscriptionCommitManager retainedCommitManager = commitManager;
+        final String retainedConsumerGroupId = consumerGroupId;
+        final String retainedTopicName = topicName;
+        final ConsensusGroupId retainedConsensusGroupId = consensusGroupId;
         serverImpl.replaceSubscriptionQueueWithDetachedRetention(
             pendingEntries,
             ConsensusSubscriptionWalRetention.generateRetentionId(
                 consumerGroupId, topicName, consensusGroupId),
             retentionPolicy,
             ConsensusSubscriptionWalRetention.createCommittedRetainedMinVersionIdSupplier(
-                consensusGroupId,
-                () -> consensusReqReader,
+                retainedConsensusGroupId,
+                () -> retainedConsensusReqReader,
                 () ->
-                    commitManager.getCommittedRegionProgress(
-                        consumerGroupId, topicName, consensusGroupId)));
+                    retainedCommitManager.getCommittedRegionProgress(
+                        retainedConsumerGroupId, retainedTopicName, retainedConsensusGroupId)));
       } else {
         serverImpl.deregisterSubscriptionQueue(pendingEntries);
       }

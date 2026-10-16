@@ -38,6 +38,52 @@ import static org.junit.Assert.assertTrue;
 public class SubscriptionQueueRegistryTest {
 
   @Test
+  public void testCancelledRetentionCannotBeRestoredByDelayedQueueClose() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final InspectingQueue queue = new InspectingQueue();
+    final SubscriptionWalRetentionPolicy policy =
+        new SubscriptionWalRetentionPolicy("topic", -1, -1);
+    registry.register(queue, policy, () -> 3L, "retention");
+    registry.unregisterDetachedRetention("retention");
+    registry.replaceQueueWithDetachedRetention(queue, "retention", policy, () -> 3L);
+    assertTrue(registry.isEmpty());
+  }
+
+  @Test
+  public void testDelayedOldQueueCloseCannotReplaceNewQueueRetention() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final InspectingQueue oldQueue = new InspectingQueue();
+    final InspectingQueue newQueue = new InspectingQueue();
+    final SubscriptionWalRetentionPolicy policy =
+        new SubscriptionWalRetentionPolicy("topic", -1, -1);
+    registry.register(oldQueue, policy, () -> 3L, "retention");
+    registry.replaceDetachedRetentionWithQueue("retention", newQueue, policy, () -> 9L);
+    registry.replaceQueueWithDetachedRetention(oldQueue, "retention", policy, () -> 3L);
+    assertEquals(1, registry.size());
+    assertEquals(Collections.singletonList(9L), registry.getRetainedMinVersionIds());
+    registry.replaceQueueWithDetachedRetention(newQueue, "retention", policy, () -> 9L);
+    assertFalse(registry.hasQueues());
+    assertEquals(Collections.singletonList(9L), registry.getRetainedMinVersionIds());
+    registry.unregisterDetachedRetention("retention");
+    assertTrue(registry.isEmpty());
+  }
+
+  @Test
+  public void testUpdatedDetachedPolicyIsNotOverwrittenByOldQueueClose() {
+    final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
+    final InspectingQueue queue = new InspectingQueue();
+    final SubscriptionWalRetentionPolicy oldPolicy =
+        new SubscriptionWalRetentionPolicy("topic", -1, -1);
+    final SubscriptionWalRetentionPolicy newPolicy =
+        new SubscriptionWalRetentionPolicy("topic", 100, 200);
+    registry.register(queue, oldPolicy, () -> 3L, "retention");
+    registry.registerDetachedRetention("retention", newPolicy, () -> 9L);
+    registry.replaceQueueWithDetachedRetention(queue, "retention", oldPolicy, () -> 3L);
+    assertFalse(registry.hasQueues());
+    assertEquals(Collections.singletonList(newPolicy), registry.getRetentionPolicies());
+  }
+
+  @Test
   public void testOfferWithoutQueuesDoesNotSerializeRequest() {
     final SubscriptionQueueRegistry registry = new SubscriptionQueueRegistry("test");
     final IndexedConsensusRequest request = newRequest();
