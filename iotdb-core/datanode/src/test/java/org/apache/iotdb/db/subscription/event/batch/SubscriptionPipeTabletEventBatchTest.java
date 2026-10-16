@@ -21,15 +21,21 @@ package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMemoryReservation;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -81,6 +87,26 @@ public class SubscriptionPipeTabletEventBatchTest {
         Mockito.mock(SubscriptionPrefetchingTabletQueue.class);
     Mockito.when(queue.getTopicName()).thenReturn("topic");
     Mockito.when(queue.getConsumerGroupId()).thenReturn("group");
+    Assert.assertNull(
+        SubscriptionAgent.topic()
+            .handleSingleTopicMetaChanges(
+                new TopicMeta(
+                    "topic",
+                    1L,
+                    Collections.singletonMap(
+                        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE))));
+    Assert.assertNull(
+        SubscriptionAgent.consumer()
+            .handleSingleConsumerGroupMetaChanges(
+                new ConsumerGroupMeta(
+                    "group",
+                    1L,
+                    new ConsumerMeta(
+                        "consumer",
+                        1L,
+                        Collections.singletonMap(
+                            ConsumerConstant.SQL_DIALECT_KEY,
+                            SystemConstant.SQL_DIALECT_TABLE_VALUE)))));
     batch =
         new SubscriptionPipeTabletEventBatch(Integer.parseInt(REGION_ID), queue, 20, 1024 * 1024);
   }
@@ -93,6 +119,8 @@ public class SubscriptionPipeTabletEventBatchTest {
     for (final PipeTsFileInsertionEvent event : tsFileEvents) {
       event.close();
     }
+    Assert.assertNull(SubscriptionAgent.consumer().handleDropConsumerGroup("group"));
+    Assert.assertNull(SubscriptionAgent.topic().handleDropTopic("topic", true));
     config.setPipeTsFileParserMemory(originalParserMemory);
     config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
     config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
