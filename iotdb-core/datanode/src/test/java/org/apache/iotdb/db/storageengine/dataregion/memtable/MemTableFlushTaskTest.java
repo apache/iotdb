@@ -113,7 +113,7 @@ public class MemTableFlushTaskTest {
           assertThrows(
               ExecutionException.class,
               () ->
-                  new MemTableFlushTask(memTable, failing, storageGroup, dataRegionId)
+                  new MemTableFlushTask(memTable, failing, storageGroup, dataRegionId, true)
                       .syncFlushMemTable());
       assertSame(error, actual.getCause());
       assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
@@ -153,7 +153,7 @@ public class MemTableFlushTaskTest {
         new Thread(
             () -> {
               try {
-                new MemTableFlushTask(memTable, slow, storageGroup, dataRegionId)
+                new MemTableFlushTask(memTable, slow, storageGroup, dataRegionId, true)
                     .syncFlushMemTable();
                 failure.set(new AssertionError("flush should be interrupted"));
               } catch (InterruptedException expected) {
@@ -197,7 +197,7 @@ public class MemTableFlushTaskTest {
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(
@@ -234,7 +234,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -262,7 +262,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceNullableVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -292,7 +292,7 @@ public class MemTableFlushTaskTest {
     memChunk.sortTvListForFlush();
 
     BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, true);
 
     assertFalse(memChunk.isColumnMappingBuilt());
     assertFalse(ioTaskQueue.isEmpty());
@@ -306,7 +306,7 @@ public class MemTableFlushTaskTest {
     memChunk.sortTvListForFlush();
 
     BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, true);
 
     assertTrue(memChunk.isColumnMappingBuilt());
     assertFalse(ioTaskQueue.isEmpty());
@@ -328,7 +328,7 @@ public class MemTableFlushTaskTest {
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, true);
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
     String alignedFilePath =
         TestConstant.OUTPUT_DATA_DIR.concat(
             "duplicateAlignedRows-" + removeSecondMeasurement + ".tsfile");
@@ -345,7 +345,7 @@ public class MemTableFlushTaskTest {
       memChunk.sortTvListForFlush();
 
       BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, false);
       try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
         alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -404,7 +404,7 @@ public class MemTableFlushTaskTest {
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
     String alignedFilePath = TestConstant.OUTPUT_DATA_DIR.concat("testAlignedFastPath.tsfile");
 
     try {
@@ -420,7 +420,7 @@ public class MemTableFlushTaskTest {
       memChunk.sortTvListForFlush();
 
       BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, 1024);
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, 1024, true);
       try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
         alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -473,7 +473,7 @@ public class MemTableFlushTaskTest {
           Arrays.asList(
               new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN),
               new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
       String alignedFilePath =
           TestConstant.OUTPUT_DATA_DIR.concat("testAlignedTimeDeletion" + pageSize + ".tsfile");
       try {
@@ -489,7 +489,7 @@ public class MemTableFlushTaskTest {
 
         BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
         // Cover a single page and boundaries between pages and chunks.
-        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize);
+        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize, true);
         try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
           alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
           Object task;
@@ -564,7 +564,7 @@ public class MemTableFlushTaskTest {
       schemas.add(new MeasurementSchema("s" + column, types.get(column), TSEncoding.PLAIN));
     }
     schemas.add(new MeasurementSchema("empty", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas, true);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
     Object[][] expected = new Object[rowCount][types.size()];
     String path = TestConstant.OUTPUT_DATA_DIR.concat("unmaterialized-" + moved + ".tsfile");
     try {
@@ -602,7 +602,7 @@ public class MemTableFlushTaskTest {
       }
       chunk.sortTvListForFlush();
       BlockingQueue<Object> queue = new LinkedBlockingQueue<>();
-      chunk.encodeWorkingAlignedTVList(queue, ARRAY_SIZE * 5 + 3, ARRAY_SIZE + 3);
+      chunk.encodeWorkingAlignedTVList(queue, ARRAY_SIZE * 5 + 3, ARRAY_SIZE + 3, false);
       try (TsFileIOWriter fileWriter = new TsFileIOWriter(new File(path))) {
         fileWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -659,7 +659,7 @@ public class MemTableFlushTaskTest {
     private boolean columnMappingBuilt;
 
     private TrackingAlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
-      super(schemaList, false);
+      super(schemaList);
     }
 
     @Override

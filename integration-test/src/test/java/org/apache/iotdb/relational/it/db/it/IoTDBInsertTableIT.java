@@ -1380,6 +1380,68 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
+  public void testRejectedOnlyFieldStillWritesTime() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use \"test\"");
+      session.executeNonQueryStatement(
+          "create table rejected_only_field_time (tag1 string tag, s1 int64 field)");
+
+      Tablet tablet =
+          new Tablet(
+              "rejected_only_field_time",
+              Arrays.asList("tag1", "s1"),
+              Arrays.asList(TSDataType.STRING, TSDataType.BOOLEAN),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+              2);
+      for (int i = 0; i < 2; i++) {
+        int row = tablet.getRowSize();
+        tablet.addTimestamp(row, i + 1);
+        tablet.addValue("tag1", row, "d" + i);
+        tablet.addValue("s1", row, true);
+      }
+
+      StatementExecutionException error =
+          assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+      assertTrue(error.getMessage().contains("s1"));
+
+      Tablet withoutTag =
+          new Tablet(
+              "rejected_only_field_time",
+              Arrays.asList("s1"),
+              Arrays.asList(TSDataType.BOOLEAN),
+              Arrays.asList(ColumnCategory.FIELD),
+              1);
+      withoutTag.addTimestamp(0, 3);
+      withoutTag.addValue("s1", 0, true);
+      error = assertThrows(StatementExecutionException.class, () -> session.insert(withoutTag));
+      assertTrue(error.getMessage().contains("s1"));
+      assertRejectedFieldTimeRows(session);
+
+      session.executeNonQueryStatement("flush");
+      assertRejectedFieldTimeRows(session);
+    }
+  }
+
+  private static void assertRejectedFieldTimeRows(ITableSession session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet =
+        session.executeQueryStatement(
+            "select time, tag1, s1 from rejected_only_field_time order by time");
+    for (int i = 0; i < 3; i++) {
+      assertTrue(dataSet.hasNext());
+      RowRecord row = dataSet.next();
+      assertEquals(i + 1, row.getFields().get(0).getLongV());
+      if (i < 2) {
+        assertEquals("d" + i, row.getFields().get(1).getStringValue());
+      } else {
+        assertNull(row.getFields().get(1).getObjectValue(TSDataType.STRING));
+      }
+      assertNull(row.getFields().get(2).getObjectValue(TSDataType.INT64));
+    }
+    assertFalse(dataSet.hasNext());
+  }
+
+  @Test
   public void testInsertWithChangedSchema() throws SQLException, IOException {
     SimpleEnv simpleEnv = new SimpleEnv();
     simpleEnv.initClusterEnvironment(1, 1);

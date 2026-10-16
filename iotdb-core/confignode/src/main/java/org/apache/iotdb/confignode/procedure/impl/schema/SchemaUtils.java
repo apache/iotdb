@@ -282,9 +282,12 @@ public class SchemaUtils {
       final ConfigManager configManager) {
     return configManager.getNodeManager().getRegisteredDataNodeLocations().entrySet().stream()
         .filter(
-            entry ->
-                configManager.getLoadManager().getNodeStatus(entry.getKey()) != NodeStatus.Unknown
-                    || !DataNodeContactTracker.getInstance().isDataNodeFenced(entry.getKey()))
+            entry -> {
+              final NodeStatus status =
+                  configManager.getLoadManager().getNodeStatus(entry.getKey());
+              return !status.isOffline()
+                  || !DataNodeContactTracker.getInstance().isDataNodeFenced(entry.getKey());
+            })
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 

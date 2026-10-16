@@ -164,6 +164,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -1272,6 +1273,12 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   public TShowTable4InformationSchemaResp showTables4InformationSchema() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showTables4InformationSchema(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TShowDropTableProceduresResp showDropTableProcedures() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDropTableProcedures(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

@@ -36,7 +36,7 @@ public class SimpleTsBlockWithPositionComparator implements TsBlockWithPositionC
 
   public SimpleTsBlockWithPositionComparator(
       List<TSDataType> types, List<Integer> sortChannels, List<SortOrder> sortOrders) {
-    List<TSDataType> sortedTypes = new ArrayList<>();
+    List<TSDataType> sortedTypes = new ArrayList<>(sortChannels.size());
     for (Integer sortChannel : sortChannels) {
       sortedTypes.add(types.get(sortChannel));
     }

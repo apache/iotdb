@@ -91,12 +91,35 @@ public class TElasticFramedTransport extends TTransport {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
+    alignUnderlyingConfiguration();
     try {
       readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
       writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
     } catch (IOException e) {
       closeAllocatedBuffers();
       throw new TTransportException(e);
+    }
+  }
+
+  private void alignUnderlyingConfiguration() throws TTransportException {
+    TConfiguration configuration = underlying.getConfiguration();
+    if (configuration == null) {
+      return;
+    }
+    long maxMessageSize = (long) thriftMaxFrameSize + Integer.BYTES;
+    if (maxMessageSize > Integer.MAX_VALUE) {
+      throw new TTransportException(
+          TTransportException.MESSAGE_SIZE_LIMIT,
+          String.format(
+              RpcMessages
+                  .EXCEPTION_FRAME_SIZE_ARG_EXCEEDS_THE_MAXIMUM_SUPPORTED_MESSAGE_SIZE_E83C0952,
+              thriftMaxFrameSize));
+    }
+    if (configuration.getMaxFrameSize() < thriftMaxFrameSize) {
+      configuration.setMaxFrameSize(thriftMaxFrameSize);
+    }
+    if (configuration.getMaxMessageSize() < maxMessageSize) {
+      configuration.setMaxMessageSize((int) maxMessageSize);
     }
   }
 
@@ -194,10 +217,14 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   protected void readFrame() throws TTransportException {
+    // Discard the previous frame's budget before reading the next frame header and payload.
+    resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
     readBuffer.fill(underlying, size);
+    // Bind subsequent protocol reads to the current frame size.
+    resetMessageSizeAndConsumedBytes(size);
   }
 
   protected void validateFrame(int size) throws TTransportException {
@@ -338,6 +365,11 @@ public class TElasticFramedTransport extends TTransport {
             : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
     close();
     error.throwException(numBytes, remoteInfo, limit);
+  }
+
+  @Override
+  public void resetMessageSizeAndConsumedBytes(long newSize) throws TTransportException {
+    underlying.resetMessageSizeAndConsumedBytes(newSize);
   }
 
   @Override

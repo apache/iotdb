@@ -769,14 +769,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final StringBuilder builder = new StringBuilder("root.");
     for (int i = 0; i < nodeNames.size(); i++) {
       if (nodeNames.get(i).nodeNameWithoutWildcard() != null) {
-        builder
-            .append("`")
-            .append(
-                parseNodeString(
-                    ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
-                        .getValue()))
-            .append("`")
-            .append(i == nodeNames.size() - 1 ? "" : ".");
+        final String nodeName =
+            parseNodeString(
+                ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                    .getValue());
+        if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+          builder.append(nodeName);
+        } else {
+          builder.append("`").append(nodeName).append("`");
+        }
+        builder.append(i == nodeNames.size() - 1 ? "" : ".");
       } else {
         builder.append(nodeNames.get(i).getText());
       }
@@ -1348,6 +1350,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
     final boolean hasWhereClause = ctx.WHERE() != null;
     return new ShowPipes(pipeName, hasWhereClause);
+  }
+
+  @Override
+  public Node visitShowPipeMemoryStatement(
+      final RelationalSqlParser.ShowPipeMemoryStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.PIPE_MEMORY,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override

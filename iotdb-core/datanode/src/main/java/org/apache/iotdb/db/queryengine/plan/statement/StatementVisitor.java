@@ -99,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -631,6 +632,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowPipes(ShowPipesStatement showPipesStatement, C context) {
     return visitStatement(showPipesStatement, context);
+  }
+
+  public R visitShowPipeMemory(ShowPipeMemoryStatement statement, C context) {
+    return visitStatement(statement, context);
   }
 
   public R visitCreatePipe(CreatePipeStatement createPipeStatement, C context) {

@@ -98,6 +98,7 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
                     removedAINode,
                     response.getMessage()));
           }
+          env.getConfigManager().getLoadManager().removeNodeCache(removedAINode.getAiNodeId());
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(

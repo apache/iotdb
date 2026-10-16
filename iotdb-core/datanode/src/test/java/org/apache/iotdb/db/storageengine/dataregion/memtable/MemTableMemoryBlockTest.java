@@ -57,7 +57,7 @@ public class MemTableMemoryBlockTest {
             .values()
             .iterator()
             .next()
-            .getMemChunkMap()
+            .getMemChunkMap(true)
             .values()
             .iterator()
             .next()

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceReq;
@@ -142,7 +143,12 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
     if (readBuffer == null) {
       memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTsFileWithRetry(
+                  IoTConsensusV2TsFileInsertionEventHandler.class.getSimpleName(),
+                  readFileBufferSize,
+                  PipeMemoryBlockCategory.SINK,
+                  IoTConsensusV2TsFileInsertionEventHandler.class.getSimpleName());
       readBuffer = new byte[readFileBufferSize];
     }
 

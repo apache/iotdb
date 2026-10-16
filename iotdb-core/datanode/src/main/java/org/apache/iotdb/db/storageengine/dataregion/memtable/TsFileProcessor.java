@@ -1638,6 +1638,11 @@ public class TsFileProcessor {
     }
   }
 
+  /** Whether the data region of this processor belongs to a table model database. */
+  private boolean isTableModel() {
+    return dataRegionInfo.getDataRegion().isTableModel();
+  }
+
   /**
    * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
    * <= 'timestamp' in the deletion. <br>
@@ -1653,7 +1658,7 @@ public class TsFileProcessor {
     try {
       boolean deleted = false;
       if (workMemTable != null) {
-        long pointDeleted = workMemTable.delete(deletion);
+        long pointDeleted = workMemTable.delete(deletion, !isTableModel());
         logger.info(
             StorageEngineMessages
                 .STORAGE_LOG_DELETION_DELETION_WITH_IN_WORKMEMTABLE_POINTS_DELETED_00EA995A,
@@ -1674,14 +1679,17 @@ public class TsFileProcessor {
     }
   }
 
+  // A processor may exist before its first memtable is created if table registration fails.
   public WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
     walEntryNum++;
-    return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
+    return walNode.log(
+        workMemTable == null ? MEMTABLE_NOT_EXIST : workMemTable.getMemTableId(), deleteDataNode);
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(RelationalDeleteDataNode deleteDataNode) {
     walEntryNum++;
-    return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
+    return walNode.log(
+        workMemTable == null ? MEMTABLE_NOT_EXIST : workMemTable.getMemTableId(), deleteDataNode);
   }
 
   public TsFileResource getTsFileResource() {
@@ -1729,10 +1737,28 @@ public class TsFileProcessor {
 
   /** async close one tsfile, register and close it by another thread */
   public Future<?> asyncClose() {
+    return asyncClose(false);
+  }
+
+  /**
+   * Tries to close this TsFile after any previous ordinary flush has finished.
+   *
+   * <p>If an ordinary flush is still being managed by the flush manager, this method only returns
+   * that flush's future. The caller must wait for it and retry until {@link
+   * #alreadyMarkedClosing()} becomes {@code true}. This avoids adding a close signal while the old
+   * flush task is about to leave the flush manager.
+   */
+  public Future<?> asyncCloseForFullFlush() {
+    return asyncClose(true);
+  }
+
+  private Future<?> asyncClose(final boolean ignorePreviousFlushFuture) {
     flushQueryLock.writeLock().lock();
     logFlushQueryWriteLocked();
     try {
-      if (closeFuture != null) {
+      if (shouldClose
+          || managedByFlushManager
+          || (!ignorePreviousFlushFuture && closeFuture != null)) {
         return closeFuture;
       }
 
@@ -1783,12 +1809,12 @@ public class TsFileProcessor {
             dataRegionName,
             tsFileResource.getTsFile().getName(),
             e);
+        return CompletableFuture.failedFuture(e);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
       logFlushQueryWriteUnlocked();
     }
-    return CompletableFuture.completedFuture(null);
   }
 
   /** Put the working memtable into flushing list and set the working memtable to null */
@@ -1821,7 +1847,7 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private Future<?> addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    final Map<IDeviceID, Long> lastTimeForEachDevice = tobeFlushed.getMaxTime();
+    final Map<IDeviceID, Long> lastTimeForEachDevice = tobeFlushed.getMaxTime(!isTableModel());
 
     // If some devices have been removed in MemTable, the number of device in MemTable and
     // tsFileResource will not be the same. And the endTime of these devices in resource will be
@@ -1964,7 +1990,8 @@ public class TsFileProcessor {
                   memTableToFlush,
                   writer,
                   dataRegionName,
-                  dataRegionInfo.getDataRegion().getDataRegionIdString());
+                  dataRegionInfo.getDataRegion().getDataRegionIdString(),
+                  isTableModel());
           flushTask.syncFlushMemTable();
           memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
@@ -1985,7 +2012,7 @@ public class TsFileProcessor {
                 tsFileResource.getTsFile().getAbsolutePath(),
                 e);
             DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-            CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+            CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
             try {
               logger.error(
                   StorageEngineMessages
@@ -2030,39 +2057,45 @@ public class TsFileProcessor {
       }
     }
 
-    try {
+    // Keep deletion registration atomic with writing modifications and releasing the memtable.
+    // Acquire the deque monitor first, matching syncReleaseFlushedMemTable's lock order.
+    synchronized (flushingMemTables) {
       flushQueryLock.writeLock().lock();
-      Iterator<Pair<ModEntry, IMemTable>> iterator = modsToMemtable.iterator();
-      while (iterator.hasNext()) {
-        Pair<ModEntry, IMemTable> entry = iterator.next();
-        if (entry.right.equals(memTableToFlush)) {
-          this.tsFileResource.getModFileForWrite().write(entry.left);
-          tsFileResource.getModFileForWrite().close();
-          iterator.remove();
-          logger.info(StorageEngineMessages.DELETION_WRITTEN_WHEN_FLUSH, entry.left);
+      try {
+        try {
+          Iterator<Pair<ModEntry, IMemTable>> iterator = modsToMemtable.iterator();
+          while (iterator.hasNext()) {
+            Pair<ModEntry, IMemTable> entry = iterator.next();
+            if (entry.right.equals(memTableToFlush)) {
+              this.tsFileResource.getModFileForWrite().write(entry.left);
+              tsFileResource.getModFileForWrite().close();
+              iterator.remove();
+              logger.info(StorageEngineMessages.DELETION_WRITTEN_WHEN_FLUSH, entry.left);
+            }
+          }
+        } catch (IOException e) {
+          logger.error(
+              StorageEngineMessages
+                  .STORAGE_LOG_MEET_ERROR_WHEN_WRITING_INTO_MODIFICATIONFILE_FILE_OF_63B5E24A,
+              tsFileResource.getTsFile().getAbsolutePath(),
+              e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         }
+
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              StorageEngineMessages.STORAGE_LOG_TRY_GET_LOCK_TO_RELEASE_A_MEMTABLE_SIGNAL_B9098E21,
+              dataRegionName,
+              tsFileResource.getTsFile().getAbsolutePath(),
+              memTableToFlush.isSignalMemTable());
+        }
+
+        // For sync flush
+        syncReleaseFlushedMemTable(memTableToFlush);
+      } finally {
+        flushQueryLock.writeLock().unlock();
       }
-    } catch (IOException e) {
-      logger.error(
-          StorageEngineMessages
-              .STORAGE_LOG_MEET_ERROR_WHEN_WRITING_INTO_MODIFICATIONFILE_FILE_OF_63B5E24A,
-          tsFileResource.getTsFile().getAbsolutePath(),
-          e);
-      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-    } finally {
-      flushQueryLock.writeLock().unlock();
     }
-
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          StorageEngineMessages.STORAGE_LOG_TRY_GET_LOCK_TO_RELEASE_A_MEMTABLE_SIGNAL_B9098E21,
-          dataRegionName,
-          tsFileResource.getTsFile().getAbsolutePath(),
-          memTableToFlush.isSignalMemTable());
-    }
-
-    // For sync flush
-    syncReleaseFlushedMemTable(memTableToFlush);
     try {
       writer.getTsFileOutput().force();
     } catch (IOException e) {
@@ -2133,7 +2166,7 @@ public class TsFileProcessor {
               dataRegionName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
           break;
         }
       }
@@ -2241,9 +2274,27 @@ public class TsFileProcessor {
   }
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {
-    this.managedByFlushManager = managedByFlushManager;
+    flushQueryLock.writeLock().lock();
+    try {
+      this.managedByFlushManager = managedByFlushManager;
+      if (!managedByFlushManager) {
+        closeFuture = CompletableFuture.completedFuture(null);
+      }
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
     if (!managedByFlushManager) {
-      closeFuture = CompletableFuture.completedFuture(null);
+      synchronized (this) {
+        notifyAll();
+      }
+    }
+  }
+
+  public void waitUntilFlushManagerReleased() throws InterruptedException {
+    synchronized (this) {
+      while (managedByFlushManager) {
+        wait();
+      }
     }
   }
 
@@ -2691,13 +2742,16 @@ public class TsFileProcessor {
   }
 
   private long getQueryTimeLowerBound(IDeviceID deviceID) {
-    long ttl;
-    if (deviceID.getTableName().startsWith("root.")) {
-      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-    } else {
+    final long ttl;
+    if (isTableModel()) {
+      // The table TTL is cached by the database and the table, both known from the data region of
+      // this processor.
       ttl =
           DataNodeTTLCache.getInstance()
-              .getTTLForTable(this.dataRegionName, deviceID.getTableName());
+              .getTTLForTable(
+                  dataRegionInfo.getDataRegion().getDatabaseName(), deviceID.getTableName());
+    } else {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     }
     return ttl != Long.MAX_VALUE ? CommonUtils.getTTLLowerBound(ttl) : Long.MIN_VALUE;
   }

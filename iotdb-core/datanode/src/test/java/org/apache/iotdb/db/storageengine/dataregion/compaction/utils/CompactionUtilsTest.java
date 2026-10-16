@@ -59,10 +59,11 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     IDeviceID deviceID = new StringArrayDeviceID(new String[] {"db.table1", null, "tag1"});
 
     Assert.assertArrayEquals(
-        new String[] {"db.table1", null, "tag1"}, CompactionPathUtils.getPath(deviceID).getNodes());
+        new String[] {"db.table1", null, "tag1"},
+        CompactionPathUtils.getPath(deviceID, true).getNodes());
     Assert.assertArrayEquals(
         new String[] {"db.table1", null, "tag1", "s1"},
-        CompactionPathUtils.getPath(deviceID, "s1").getNodes());
+        CompactionPathUtils.getPath(deviceID, "s1", true).getNodes());
   }
 
   @Test
@@ -71,9 +72,9 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     IDeviceID deviceID = deletionPath.getIDeviceID();
 
     Assert.assertArrayEquals(
-        new String[] {"root", "repro"}, CompactionPathUtils.getPath(deviceID).getNodes());
+        new String[] {"root", "repro"}, CompactionPathUtils.getPath(deviceID, false).getNodes());
     Assert.assertArrayEquals(
-        deletionPath.getNodes(), CompactionPathUtils.getPath(deviceID, "s1").getNodes());
+        deletionPath.getNodes(), CompactionPathUtils.getPath(deviceID, "s1", false).getNodes());
 
     TreeDeletionEntry deletion =
         new TreeDeletionEntry(deletionPath, Long.MIN_VALUE, Long.MAX_VALUE);
@@ -82,7 +83,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     modifications.append(deletion.keyOfPatternTree(), deletion);
 
     List<ModEntry> matchedModifications =
-        CompactionUtils.getMatchedModifications(modifications, deviceID, "s1", null);
+        CompactionUtils.getMatchedModifications(modifications, deviceID, "s1", null, false);
     Assert.assertEquals(1, matchedModifications.size());
     Assert.assertEquals(
         deletionPath, ((TreeDeletionEntry) matchedModifications.get(0)).getPathPattern());

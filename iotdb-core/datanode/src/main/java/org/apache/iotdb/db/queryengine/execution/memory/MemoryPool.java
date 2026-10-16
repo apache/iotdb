@@ -243,7 +243,10 @@ public class MemoryPool {
       }
       synchronized (queryMemoryReservations) {
         queryRelatedMemory.remove(fragmentInstanceId);
-        if (queryRelatedMemory.isEmpty()) {
+        // Another fragment may have recreated the query entry while this cleanup waited for the
+        // lock.
+        if (queryRelatedMemory.isEmpty()
+            && queryMemoryReservations.get(queryId) == queryRelatedMemory) {
           queryMemoryReservations.remove(queryId);
         }
       }

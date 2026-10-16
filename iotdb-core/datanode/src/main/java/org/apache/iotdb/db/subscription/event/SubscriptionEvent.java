@@ -235,13 +235,18 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
    *     are not pollable.
    */
   public boolean pollable() {
+    return pollable(
+        SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
+  }
+
+  public boolean pollable(final long recycleUncommittedEventIntervalMs) {
     if (isCommitted()) {
       return false;
     }
     if (lastPolledTimestamp.get() == INVALID_TIMESTAMP) {
       return true;
     }
-    return canRecycle();
+    return canRecycle(recycleUncommittedEventIntervalMs);
   }
 
   /**
@@ -255,11 +260,12 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     return lastPolledTimestamp.get() == INVALID_TIMESTAMP;
   }
 
-  private boolean canRecycle() {
+  private boolean canRecycle(final long recycleUncommittedEventIntervalMs) {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp.get()
-        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+    return recycleUncommittedEventIntervalMs > 0L
+        && System.currentTimeMillis() - lastPolledTimestamp.get()
+            > recycleUncommittedEventIntervalMs;
   }
 
   public void nack() {

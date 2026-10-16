@@ -215,6 +215,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -271,6 +272,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
@@ -285,6 +287,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataPartitionTableGeneratorProgressResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -2009,13 +2013,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .execute(
                     new DataRegionId(consensusGroupId.getId()),
                     new RelationalDeleteDataNode(
-                        new PlanNodeId(""),
+                        req.isSetProcedureId()
+                            ? DropTableModProgress.planNodeId(req.getProcedureId())
+                            : new PlanNodeId(""),
                         new TableDeletionEntry(
                             new DeletionPredicate(req.getTableName()),
                             new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
                         // the request is only sent to associated region
                         null))
                 .getStatus());
+  }
+
+  @Override
+  public TGetDropTableModProgressResp getDropTableModProgress(
+      final TGetDropTableModProgressReq req) {
+    final Map<Integer, TDropTableModProgress> progress = new HashMap<>();
+    for (final TConsensusGroupId regionId : req.getRegionIdList()) {
+      final DataRegion region =
+          StorageEngine.getInstance().getDataRegion(new DataRegionId(regionId.getId()));
+      if (region != null) {
+        final TDropTableModProgress regionProgress =
+            region.getDropTableModProgress(req.getProcedureId());
+        // Regions in the same deletion request execute sequentially. Report zero written and
+        // an unknown total until this region starts, so other regions' live counts are visible.
+        progress.put(
+            regionId.getId(),
+            regionProgress == null ? new TDropTableModProgress(0) : regionProgress);
+      }
+    }
+    return new TGetDropTableModProgressResp(StatusUtils.OK).setRegionProgress(progress);
   }
 
   @Override
@@ -2435,12 +2461,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(commonConfig.getNodeStatus().getStatus());
-    // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
-    // treat
-    // it as safely fenced when unreachable (older DataNodes that omit this are handled strictly).
-    if (commonConfig.getStatusReason() != null) {
-      resp.setStatusReason(commonConfig.getStatusReason());
+    // Read status and reason under the same monitor used by their setters.
+    synchronized (commonConfig) {
+      resp.setStatus(commonConfig.getNodeStatus().getStatus());
+      final String statusReason = commonConfig.getStatusReason();
+      if (statusReason != null) {
+        resp.setStatusReason(statusReason);
+      }
     }
     MetadataLeaseFencedException schemaUsageCollectionException = null;
     if (req.getSchemaRegionIds() != null) {
@@ -2620,12 +2647,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
-        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
-        commonConfig.setNodeStatus(NodeStatus.Running);
-        commonConfig.setStatusReason(null);
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+      } else {
+        synchronized (commonConfig) {
+          // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
+          if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+              && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
+            commonConfig.setNodeStatus(NodeStatus.Running);
+          }
+        }
       }
     }
   }
@@ -2800,7 +2830,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      commonConfig.setNodeStatus(NodeStatus.parse(status));
+      NodeStatus nodeStatus = NodeStatus.parse(status);
+      if (nodeStatus == NodeStatus.ReadOnly) {
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+      } else {
+        commonConfig.setNodeStatus(nodeStatus);
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

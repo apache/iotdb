@@ -30,6 +30,8 @@ public enum ConfigPhysicalPlanType {
   UpdateVersionInfo((short) 2),
   UpdateClusterId((short) 3),
 
+  UpdateNodeStatus((short) 4),
+
   /** DataNode. */
   RegisterDataNode((short) 100),
   GetDataNodeConfiguration((short) 101),
@@ -344,6 +346,8 @@ public enum ConfigPhysicalPlanType {
   REnableUserTotp((short) 2110),
   RResetUserTotp((short) 2111),
   RDisableUserTotp((short) 2112),
+  CreateUserWithTotp((short) 2113),
+  RCreateUserWithTotp((short) 2114),
 
   EnableSeparationOfAdminPowers((short) 2200),
 

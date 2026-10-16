@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -228,6 +229,55 @@ public class SubscriptionConsumerLifecycleTest {
     }
 
     Assert.assertTrue(consumer.isFenced());
+  }
+
+  @Test
+  public void testCriticalParallelPollErrorIsDeliveredAfterHealthySiblingMessages()
+      throws Exception {
+    for (final boolean failedTaskFirst : new boolean[] {false, true}) {
+      final TestPullConsumer consumer = new TestPullConsumer();
+      final SubscriptionRuntimeCriticalException gap =
+          new SubscriptionRuntimeCriticalException("WAL replay gap");
+      final SubscriptionMessage message =
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(0, 0, "healthy_topic", CONSUMER_GROUP_ID, 1L), 1L);
+      final CompletableFuture<List<SubscriptionMessage>> failed = new CompletableFuture<>();
+      failed.completeExceptionally(gap);
+      final CompletableFuture<List<SubscriptionMessage>> healthy =
+          CompletableFuture.completedFuture(Collections.singletonList(message));
+      Assert.assertEquals(
+          Collections.singletonList(message),
+          consumer.collectMultiplePollResults(
+              failedTaskFirst ? Arrays.asList(failed, healthy) : Arrays.asList(healthy, failed),
+              new HashSet<>(Arrays.asList("healthy_topic", "gap_topic"))));
+      try {
+        consumer.multiplePoll(Collections.singleton("healthy_topic"), 100L);
+        Assert.fail("A healthy topic must not hide the pending critical WAL replay error");
+      } catch (final SubscriptionRuntimeCriticalException expected) {
+        Assert.assertSame(gap, expected);
+      }
+      Assert.assertTrue(consumer.multiplePoll(Collections.emptySet(), 100L).isEmpty());
+      Assert.assertFalse(consumer.isFenced());
+    }
+  }
+
+  @Test
+  public void testCriticalParallelPollErrorWithoutMessagesIsDeliveredImmediately()
+      throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    final SubscriptionRuntimeCriticalException gap =
+        new SubscriptionRuntimeCriticalException("WAL replay gap");
+    final CompletableFuture<List<SubscriptionMessage>> failed = new CompletableFuture<>();
+    failed.completeExceptionally(gap);
+    try {
+      consumer.collectMultiplePollResults(
+          Arrays.asList(CompletableFuture.completedFuture(Collections.emptyList()), failed),
+          Collections.singleton("gap_topic"));
+      Assert.fail("A critical WAL replay error must fail an otherwise empty poll");
+    } catch (final SubscriptionRuntimeCriticalException expected) {
+      Assert.assertSame(gap, expected);
+    }
+    Assert.assertTrue(consumer.multiplePoll(Collections.emptySet(), 100L).isEmpty());
   }
 
   @Test
