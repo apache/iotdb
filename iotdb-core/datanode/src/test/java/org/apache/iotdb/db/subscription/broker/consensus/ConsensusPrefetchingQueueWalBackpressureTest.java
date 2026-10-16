@@ -56,6 +56,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -183,6 +184,56 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       }
       queue.drivePrefetchOnce();
       assertNull(queue.poll("consumer"));
+      for (int round = 0; round < 10 && queue.getPendingEventCount() > 0; round++) {
+        queue.drivePrefetchOnce();
+      }
+      assertEquals(0, queue.getPendingEventCount());
+
+      // Rebuilding at the unchanged cursor must position the reader past covered history. The
+      // fragmented prefix is larger than a whole scan budget and must not delay WAL takeover.
+      try (WALWriter writer = new WALWriter(liveWal, WALFileVersion.V3)) {
+        writeWalEntry(writer, 4L);
+        writeWalEntry(writer, 5L);
+      }
+      try (WALWriter ignored =
+          new WALWriter(
+              new File(
+                  walDirectory,
+                  WALFileUtils.getLogFileName(2L, 5L, WALFileStatus.CONTAINS_SEARCH_INDEX)),
+              WALFileVersion.V3)) {
+        // Seal the new data file so replay can take over at index 4.
+      }
+      when(walNode.getCurrentSearchIndex()).thenReturn(5L);
+      when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
+      // The factory must return an iterator that is ready for bounded replay at the requested
+      // cursor, without requiring a separate advanceTo call from its caller.
+      try (ProgressWALIterator createdIterator = queue.createSubscriptionWALIterator(4L)) {
+        final ProgressWALIterator.ScanBudget budget =
+            new ProgressWALIterator.ScanBudget(2, Long.MAX_VALUE);
+        assertTrue(createdIterator.hasNext(budget));
+        assertEquals(4L, createdIterator.next().getSearchIndex());
+        assertFalse(budget.hasYielded());
+      }
+      final Method reset =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "resetSubscriptionWALPosition", long.class);
+      reset.setAccessible(true);
+      reset.invoke(queue, 4L);
+      assertTrue(pendingEntries(queue).offer(createRequest(5L)));
+      queue.drivePrefetchOnce();
+      assertTrue(queue.toString(), queue.getCurrentReadSearchIndex() >= 5L);
+      for (int round = 0; round < 10 && queue.getCurrentReadSearchIndex() < 6L; round++) {
+        queue.drivePrefetchOnce();
+      }
+      assertEquals(6L, queue.getCurrentReadSearchIndex());
+      assertEquals(Arrays.asList(2L, 3L, 4L, 5L), conversions);
+      for (long expected = 4L; expected <= 5L; expected++) {
+        final SubscriptionEvent event = queue.poll("consumer");
+        assertNotNull(event);
+        assertEquals(expected, event.getCommitContext().getWriterProgress().getLocalSeq());
+        assertTrue(queue.ack("consumer", event.getCommitContext()));
+      }
+      assertEquals(0L, queue.getWalGapSkippedEntries());
       assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
       verify(walNode, never()).rollWALFile();
     } finally {
