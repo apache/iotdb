@@ -2288,7 +2288,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.setSchemaTemplate(
@@ -2370,7 +2370,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;

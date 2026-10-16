@@ -555,17 +555,27 @@ public class ProcedureManager {
       SetTemplateProcedure setTemplateProcedure;
       for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(runningProcedure);
-        if (type == null || !type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
+        if (Objects.isNull(type)) {
           continue;
         }
-        setTemplateProcedure = (SetTemplateProcedure) runningProcedure;
-        if (queryId.equals(setTemplateProcedure.getQueryId())) {
-          procedure = setTemplateProcedure;
-          break;
-        }
-        if (templateSetPath.equals(setTemplateProcedure.getTemplateSetPath())) {
-          hasOverlappedTask = true;
-          break;
+        if (type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
+          setTemplateProcedure = (SetTemplateProcedure) runningProcedure;
+          if (queryId.equals(setTemplateProcedure.getQueryId())) {
+            procedure = setTemplateProcedure;
+            break;
+          }
+          if (templateSetPath.equals(setTemplateProcedure.getTemplateSetPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
+        } else if (type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+          // A path is set with one template at a time, so setting and unsetting the same path
+          // overlap as well.
+          if (templateSetPath.equals(
+              ((UnsetTemplateProcedure) runningProcedure).getPath().getFullPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
         }
       }
 
@@ -573,7 +583,10 @@ public class ProcedureManager {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is setting template on target path.");
+              String.format(
+                  ProcedureMessages
+                      .MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F,
+                  templateSetPath));
         }
         procedure =
             new SetTemplateProcedure(queryId, templateName, templateSetPath, isGeneratedByPipe);
@@ -639,18 +652,28 @@ public class ProcedureManager {
       UnsetTemplateProcedure unsetTemplateProcedure;
       for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(runningProcedure);
-        if (type == null || !type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+        if (Objects.isNull(type)) {
           continue;
         }
-        unsetTemplateProcedure = (UnsetTemplateProcedure) runningProcedure;
-        if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
-          procedure = unsetTemplateProcedure;
-          break;
-        }
-        if (template.getId() == unsetTemplateProcedure.getTemplateId()
-            && path.equals(unsetTemplateProcedure.getPath())) {
-          hasOverlappedTask = true;
-          break;
+        if (type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+          unsetTemplateProcedure = (UnsetTemplateProcedure) runningProcedure;
+          if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
+            procedure = unsetTemplateProcedure;
+            break;
+          }
+          if (template.getId() == unsetTemplateProcedure.getTemplateId()
+              && path.equals(unsetTemplateProcedure.getPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
+        } else if (type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
+          // A path is set with one template at a time, so setting and unsetting the same path
+          // overlap as well.
+          if (path.getFullPath()
+              .equals(((SetTemplateProcedure) runningProcedure).getTemplateSetPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
         }
       }
 
@@ -658,8 +681,10 @@ public class ProcedureManager {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is unsetting target template from target path "
-                  + path.getFullPath());
+              String.format(
+                  ProcedureMessages
+                      .MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F,
+                  path.getFullPath()));
         }
         procedure = new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe);
         this.executor.submitProcedure(procedure);

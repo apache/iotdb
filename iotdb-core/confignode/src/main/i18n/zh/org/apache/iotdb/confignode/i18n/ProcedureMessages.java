@@ -1511,6 +1511,9 @@ public final class ProcedureMessages {
   public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "正在回滚此前发生的失败。";
+  public static final String
+      MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F =
+          "有其他任务正在目标路径 %s 上设置或卸载模板。";
   public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
       "DataNode setSystemStatus RPC 失败：%s：%s：%s； ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =

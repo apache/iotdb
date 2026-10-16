@@ -1621,6 +1621,9 @@ public final class ProcedureMessages {
       "rolling back after failure: %s.";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "rolling back after an earlier failure.";
+  public static final String
+      MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F =
+          "Some other task is setting or unsetting a template on target path %s.";
   public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
       "DataNode setSystemStatus RPC failed: %s: %s: %s; ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
