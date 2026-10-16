@@ -107,10 +107,10 @@ public class TableDeviceSchemaCacheTest {
         new FieldColumnSchema(
             measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable1, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null, null);
 
     DataNodeTableCache.getInstance().preUpdateTable(database2, testTable1, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database2, table1, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database2, table1, null, null);
 
     final TsTable testTable2 = new TsTable(table2);
     columnHeaderList.forEach(
@@ -139,7 +139,7 @@ public class TableDeviceSchemaCacheTest {
         new FieldColumnSchema(
             measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database1, table2, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database1, table2, null, null);
 
     final TsTable testTableNeedLastCacheDisabled = new TsTable(tableNeedLastCacheDisabled);
     columnHeaderList.forEach(
@@ -173,7 +173,8 @@ public class TableDeviceSchemaCacheTest {
         TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
     DataNodeTableCache.getInstance()
         .preUpdateTable(database1, testTableNeedLastCacheDisabled, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database1, tableNeedLastCacheDisabled, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(database1, tableNeedLastCacheDisabled, null, null);
   }
 
   @AfterClass
@@ -628,7 +629,7 @@ public class TableDeviceSchemaCacheTest {
         new TsTable(DataNodeTableCache.getInstance().getTable(database1, table1));
     disabledTable.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
     DataNodeTableCache.getInstance().preUpdateTable(database1, disabledTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null, null);
 
     try {
       Assert.assertNull(cache.getLastEntry(database1, deviceID, measurement1));
@@ -636,7 +637,7 @@ public class TableDeviceSchemaCacheTest {
       final TsTable enabledTable = new TsTable(disabledTable);
       enabledTable.removeProp(TsTable.NEED_LAST_CACHE_PROPERTY);
       DataNodeTableCache.getInstance().preUpdateTable(database1, enabledTable, null);
-      DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null);
+      DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null, null);
     }
   }
 
@@ -654,7 +655,7 @@ public class TableDeviceSchemaCacheTest {
         new TsTable(DataNodeTableCache.getInstance().getTable(database1, table1));
     enabledTable.renameTable(tableName);
     DataNodeTableCache.getInstance().preUpdateTable(database, enabledTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null, null);
 
     final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
     updateLastCache4Query(cache, database, deviceID, measurements, values);

@@ -188,6 +188,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -1313,6 +1315,13 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   public TSStatus createTableView(TCreateTableViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.updateTree2TableViews(req), status -> !updateConfigNodeLeader(status.status));
   }
 
   @Override

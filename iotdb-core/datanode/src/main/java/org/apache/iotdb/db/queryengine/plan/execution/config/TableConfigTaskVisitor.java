@@ -303,6 +303,7 @@ import static org.apache.iotdb.commons.schema.table.TsTable.NEED_LAST_CACHE_PROP
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.i18n.DataNodeQueryMessages.EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AbstractDatabaseTask.NEED_LAST_CACHE_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
@@ -631,8 +632,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
     final TsTable table = new TsTable(tableName);
-
-    table.setProps(convertPropertiesToMap(node.getProperties(), false));
+    table.setProps(convertPropertiesToMap(node.getProperties(), false, node instanceof CreateView));
     if (Objects.nonNull(node.getComment())) {
       table.addProp(TsTable.COMMENT_KEY, node.getComment());
     }
@@ -900,7 +900,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     return new AlterTableSetPropertiesTask(
         database,
         tableName,
-        convertPropertiesToMap(node.getProperties(), true),
+        convertPropertiesToMap(node.getProperties(), true, isTreeView),
         context.getQueryId().getId(),
         node.ifExists(),
         isTreeView);
@@ -983,8 +983,20 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     }
   }
 
+  /**
+   * Converts the property assignments of a CREATE TABLE/VIEW or a SET PROPERTIES statement into the
+   * props of the TsTable.
+   *
+   * @param propertyList the property assignments to convert
+   * @param serializeDefault whether a property assigned {@code DEFAULT} shall be kept in the result
+   *     as a null value, which resets the property, instead of being dropped
+   * @param allowAutoSyncSchema whether the statement targets a tree to table view, the only kind of
+   *     table whose schema can be synchronized from a tree path prefix
+   */
   private Map<String, String> convertPropertiesToMap(
-      final List<Property> propertyList, final boolean serializeDefault) {
+      final List<Property> propertyList,
+      final boolean serializeDefault,
+      final boolean allowAutoSyncSchema) {
     final Map<String, String> map = new HashMap<>();
     final Set<String> deduplicate = new HashSet<>();
     for (final Property property : propertyList) {
@@ -993,6 +1005,11 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         throw new SemanticException(DataNodeQueryMessages.DUPLICATED_PROPERTY + key);
       }
       if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
+        if (TreeViewSchema.AUTO_SYNC_SCHEMA.equals(key) && !allowAutoSyncSchema) {
+          // A property assigned DEFAULT is dropped or reset as well, so the check covers it too
+          throw new SemanticException(
+              EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215);
+        }
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
           switch (key) {

@@ -59,6 +59,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -196,9 +197,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.TreeToTableViewCache;
+import org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -410,6 +415,7 @@ import java.util.stream.Stream;
 import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE;
+import static org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnVisitor.ALTER_DEVICE_TEMPLATE_ID_PREFIX;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -1973,14 +1979,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo),
-                req.oldName);
+                req.oldName,
+                req.updateTree2TableViewInfo);
         break;
       case COMMIT_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo),
-                req.oldName);
+                req.oldName,
+                req.updateTree2TableViewInfo);
         break;
       default:
         LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_TYPE_UPDATING_TABLE, req.type);
@@ -2163,13 +2171,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               for (int i = 0; i < req.getPrefixPattern().size() - 1; ++i) {
                 nodes[i] = req.getPrefixPattern().get(i);
               }
+              final ExtendedPartialPath pathPattern =
+                  new ExtendedPartialPath(nodes, req.isRestrict());
               final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                   SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                      new ExtendedPartialPath(nodes, req.isRestrict()),
+                      pathPattern,
                       false,
                       // Does not support logical view currently
                       SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
-                      null,
+                      ClusterTemplateManager.getInstance().checkAllRelatedTemplate(pathPattern),
                       SchemaConstant.ALL_MATCH_SCOPE,
                       true,
                       true);
@@ -2187,11 +2197,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   }
                   if (!updateMap.containsKey(measurementName)) {
                     updateMap.put(measurementName, schema.getTypeInByte());
-                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)) {
+                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)
+                      && !req.isTolerateTypeMismatch()) {
                     return RpcUtils.getStatus(
                         TSStatusCode.DATA_TYPE_MISMATCH,
                         String.format(
-                            "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                            DataNodeMiscMessages
+                                .MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB,
                             measurementName));
                   }
                 }
@@ -2916,12 +2928,86 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           SchemaEngine.getInstance()
               .updateSubtreeMeasurementCountForTemplate(newTemplate.getId(), delta);
         }
+        if (TreeToTableViewCache.getInstance().hasView()) {
+          // addViewColumnsIfNeeded, which collects the views from the index and asks CN to add the
+          // columns.
+          try {
+            final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements =
+                collectDevicesUsingExtendedTemplate(oldTemplate, newTemplate);
+            TriggerAddViewColumnVisitor.addViewColumnsIfNeeded(
+                device2Measurements, ALTER_DEVICE_TEMPLATE_ID_PREFIX + newTemplate.getId());
+          } catch (final Exception e) {
+            // todo
+            LOGGER.warn(
+                DataNodeMiscMessages
+                    .LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_95856581,
+                newTemplate.getName(),
+                e);
+          }
+        }
+
         break;
       default:
         LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_TYPE_UPDATING_TEMPLATE, req.type);
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /**
+   * The devices which activated the template, each with the measurements the extension added to it:
+   * the tree-to-table views covering these devices need them as columns.
+   *
+   * <p>The measurements come from comparing the new template with the old one. The devices come
+   * from the schema regions, where every device which uses a template records its id, see {@code
+   * EntityTraverser}; the template manager only knows where a template is mounted, so it cannot
+   * tell which devices use it.
+   */
+  private Map<PartialPath, List<Pair<String, TSDataType>>> collectDevicesUsingExtendedTemplate(
+      final Template oldTemplate, final Template newTemplate) throws Exception {
+    final List<Pair<String, TSDataType>> extendedMeasurements =
+        newTemplate.getSchemaMap().values().stream()
+            .filter(
+                schema ->
+                    Objects.isNull(oldTemplate)
+                        || !oldTemplate.getSchemaMap().containsKey(schema.getMeasurementName()))
+            .map(schema -> new Pair<>(schema.getMeasurementName(), schema.getType()))
+            .toList();
+    final Pair<Template, List<PartialPath>> templateSetInfo =
+        ClusterTemplateManager.getInstance().getAllPathsSetTemplate(newTemplate.getName());
+    final List<PartialPath> setPaths =
+        Objects.isNull(templateSetInfo) ? null : templateSetInfo.getRight();
+    if (extendedMeasurements.isEmpty() || Objects.isNull(setPaths)) {
+      return Collections.emptyMap();
+    }
+
+    final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements = new HashMap<>();
+    Collection<ISchemaRegion> allSchemaRegions = SchemaEngine.getInstance().getAllSchemaRegions();
+    for (final PartialPath setPath : setPaths) {
+      final String setPathString = setPath.getFullPath();
+      for (final ISchemaRegion schemaRegion : allSchemaRegions) {
+        // A device under this path can only live in the region of the database the path belongs to.
+        if (!setPathString.startsWith(schemaRegion.getDatabaseFullPath())) {
+          continue;
+        }
+        try (final ISchemaReader<IDeviceSchemaInfo> deviceReader =
+            schemaRegion.getDeviceReader(
+                SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                    setPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                    0,
+                    0,
+                    false,
+                    newTemplate.getId(),
+                    SchemaConstant.ALL_MATCH_SCOPE))) {
+          while (deviceReader.hasNext()) {
+            device2Measurements
+                .computeIfAbsent(deviceReader.next().getPartialPath(), device -> new ArrayList<>())
+                .addAll(extendedMeasurements);
+          }
+        }
+      }
+    }
+    return device2Measurements;
   }
 
   @Override

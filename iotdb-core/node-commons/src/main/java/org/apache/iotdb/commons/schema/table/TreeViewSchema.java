@@ -35,6 +35,7 @@ public class TreeViewSchema {
   public static final String RESTRICT = "__restrict";
   public static final String UNSUPPORTED_NEED_LAST_CACHE_PROPERTY =
       "The tree view does not support need_last_cache property.";
+  public static final String AUTO_SYNC_SCHEMA = "auto_sync_schema";
 
   public static boolean isTreeViewTable(final TsTable table) {
     return table.getPropValue(TREE_PATH_PATTERN).isPresent();

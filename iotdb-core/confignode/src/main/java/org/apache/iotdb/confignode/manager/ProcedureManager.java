@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -169,6 +170,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewFailure;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
@@ -215,6 +219,15 @@ public class ProcedureManager {
   public static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
   private static final String PROCEDURE_TIMEOUT_MESSAGE =
       "Timed out to wait for procedure return. The procedure is still running.";
+
+  /** One addColumnForTree2TableViews call waits at most this long for its procedures to finish. */
+  private static final long ADD_VIEW_COLUMN_WAIT_TIME_OUT_MS = 30_000L;
+
+  /** How many times a request which overlapped with another task is submitted again. */
+  private static final int OVERLAP_RETRY_ROUNDS = 4;
+
+  /** How long a retry round waits for the overlapping task to finish before submitting again. */
+  private static final long OVERLAP_RETRY_WAIT_MS = 2_000L;
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -2269,6 +2282,159 @@ public class ProcedureManager {
                 false));
   }
 
+  public TUpdateTree2TableViewsResp addColumnForTree2TableViews(TUpdateTree2TableViewsReq req) {
+    if (req == null || !req.isSetViewInfos()) {
+      return new TUpdateTree2TableViewsResp(RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
+    }
+
+    final List<TUpdateTree2TableViewFailure> failedViews = new ArrayList<>();
+    final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures =
+        new ArrayList<>();
+    // The requests which overlapped with another task on the same table, together with the status
+    // of the last submission attempt, see processOverlappingTask.
+    final List<Pair<TAlterOrDropTableReq, TSStatus>> overlappingReqs = new ArrayList<>();
+
+    // Submit every view before waiting, so procedures for different views can run concurrently.
+    for (final TAlterOrDropTableReq addColumnReq : req.getViewInfos()) {
+      if (!isAddViewColumnReq(addColumnReq)) {
+        failedViews.add(illegalAddViewColumnFailure(addColumnReq));
+        continue;
+      }
+
+      final TSStatus submissionStatus = submitAddViewColumn(addColumnReq, procedures, failedViews);
+      if (submissionStatus.getCode() == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+        overlappingReqs.add(new Pair<>(addColumnReq, submissionStatus));
+      }
+    }
+
+    processOverlappingTask(overlappingReqs, procedures, failedViews);
+
+    final long waitDeadline = System.currentTimeMillis() + ADD_VIEW_COLUMN_WAIT_TIME_OUT_MS;
+    for (final Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>> procedure :
+        procedures) {
+      final long remainingWaitTime = Math.max(0, waitDeadline - System.currentTimeMillis());
+      final TSStatus status = waitingProcedureFinished(procedure.getRight(), remainingWaitTime);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failedViews.add(
+            new TUpdateTree2TableViewFailure(
+                procedure.getLeft().database, procedure.getLeft().tableName, status));
+      }
+    }
+
+    final TSStatus status = failedViews.isEmpty() ? StatusUtils.OK : StatusUtils.INTERNAL_ERROR;
+    final TUpdateTree2TableViewsResp response = new TUpdateTree2TableViewsResp(status);
+    if (!failedViews.isEmpty()) {
+      response.setFailedViews(failedViews);
+    }
+    return response;
+  }
+
+  /** Whether the request carries everything an add-column operation on a view needs. */
+  private static boolean isAddViewColumnReq(final @Nullable TAlterOrDropTableReq addColumnReq) {
+    return Objects.nonNull(addColumnReq)
+        && addColumnReq.isSetDatabase()
+        && addColumnReq.isSetTableName()
+        && addColumnReq.isSetQueryId()
+        && addColumnReq.isSetOperationType()
+        && addColumnReq.getOperationType()
+            == AlterOrDropTableOperationType.ADD_COLUMN.getTypeValue()
+        && addColumnReq.isSetUpdateInfo()
+        && addColumnReq.isSetIsView()
+        && addColumnReq.isIsView();
+  }
+
+  private static TUpdateTree2TableViewFailure illegalAddViewColumnFailure(
+      final TAlterOrDropTableReq addColumnReq) {
+    return new TUpdateTree2TableViewFailure(
+        Objects.isNull(addColumnReq) ? "" : Objects.toString(addColumnReq.getDatabase(), ""),
+        Objects.isNull(addColumnReq) ? "" : Objects.toString(addColumnReq.getTableName(), ""),
+        RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
+  }
+
+  /**
+   * Submits the add-column procedure of one view and settles everything but an overlap with another
+   * task on the same table.
+   */
+  private TSStatus submitAddViewColumn(
+      final TAlterOrDropTableReq addColumnReq,
+      final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures,
+      final List<TUpdateTree2TableViewFailure> failedViews) {
+    final AddViewColumnProcedure procedure;
+    procedure =
+        new AddViewColumnProcedure(
+            addColumnReq.database,
+            addColumnReq.tableName,
+            addColumnReq.queryId,
+            TsTableColumnSchemaUtil.deserializeColumnSchemaList(addColumnReq.updateInfo),
+            false);
+
+    final Pair<TSStatus, Long> submissionResult =
+        executeWithoutDuplicateWithoutWaiting(
+            addColumnReq.database,
+            null,
+            addColumnReq.tableName,
+            null,
+            addColumnReq.queryId,
+            ProcedureType.ADD_VIEW_COLUMN_PROCEDURE,
+            procedure);
+    final TSStatus status = submissionResult.getLeft();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      procedures.add(new Pair<>(addColumnReq, procedure));
+    } else if (status.getCode() == TSStatusCode.REPEATED_WITH_EXISTING_TASK.getStatusCode()) {
+      final Procedure<ConfigNodeProcedureEnv> repeatedProcedure =
+          executor.getProcedures().get(submissionResult.getRight());
+      // null means the procedure could have finished at this moment
+      if (Objects.isNull(repeatedProcedure)) {
+        failedViews.add(
+            new TUpdateTree2TableViewFailure(
+                addColumnReq.database,
+                addColumnReq.tableName,
+                RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR)));
+      } else {
+        procedures.add(new Pair<>(addColumnReq, repeatedProcedure));
+      }
+    } else if (status.getCode() != TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+      failedViews.add(
+          new TUpdateTree2TableViewFailure(addColumnReq.database, addColumnReq.tableName, status));
+    }
+    return status;
+  }
+
+  /**
+   * Retries the requests which overlapped with another task on the same table, A request which
+   * still overlaps after the last round is reported as a failure, with the status of its last
+   * attempt.
+   */
+  private void processOverlappingTask(
+      final List<Pair<TAlterOrDropTableReq, TSStatus>> overlappingReqs,
+      final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures,
+      final List<TUpdateTree2TableViewFailure> failedViews) {
+    List<Pair<TAlterOrDropTableReq, TSStatus>> pending = overlappingReqs;
+    for (int round = 0; round < OVERLAP_RETRY_ROUNDS && !pending.isEmpty(); round++) {
+      try {
+        Thread.sleep(OVERLAP_RETRY_WAIT_MS);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+      final List<Pair<TAlterOrDropTableReq, TSStatus>> stillOverlapping =
+          new ArrayList<>(pending.size());
+      for (final Pair<TAlterOrDropTableReq, TSStatus> request : pending) {
+        final TSStatus status = submitAddViewColumn(request.getLeft(), procedures, failedViews);
+        if (status.getCode() == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+          stillOverlapping.add(new Pair<>(request.getLeft(), status));
+        }
+      }
+      pending = stillOverlapping;
+    }
+
+    for (final Pair<TAlterOrDropTableReq, TSStatus> request : pending) {
+      failedViews.add(
+          new TUpdateTree2TableViewFailure(
+              request.getLeft().database, request.getLeft().tableName, request.getRight()));
+    }
+  }
+
   public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
@@ -2615,6 +2781,36 @@ public class ProcedureManager {
       }
     }
     return waitingProcedureFinished(procedureToWait);
+  }
+
+  public Pair<TSStatus, Long> executeWithoutDuplicateWithoutWaiting(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final @Nullable String newName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure) {
+    final long procedureId;
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          checkDuplicateTableTask(database, table, tableName, newName, queryId, thisType);
+      procedureId = procedureIdDuplicatePair.getLeft();
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          TSStatus status =
+              RpcUtils.getStatus(
+                  TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+                  "Some other task is operating table with same name.");
+          return new Pair<>(status, -1L);
+        }
+        this.executor.submitProcedure(procedure);
+        return new Pair<>(StatusUtils.OK, procedure.getProcId());
+      } else {
+        TSStatus status = RpcUtils.getStatus(TSStatusCode.REPEATED_WITH_EXISTING_TASK, "");
+        return new Pair<>(status, procedureId);
+      }
+    }
   }
 
   public Pair<Long, Boolean> checkDuplicateTableTask(
