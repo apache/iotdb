@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
@@ -72,6 +73,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -771,9 +773,17 @@ public class RegionMaintainHandler {
   }
 
   public Optional<TRegionReplicaSet> getRegionReplicaSet(TConsensusGroupId regionId) {
-    return configManager.getPartitionManager().getAllReplicaSets().stream()
-        .filter(rg -> rg.regionId.equals(regionId))
-        .findAny();
+    if (regionId == null) {
+      return Optional.empty();
+    }
+    PartitionManager partitionManager = configManager.getPartitionManager();
+    String database = partitionManager.getRegionDatabase(regionId);
+    if (database == null) {
+      return Optional.empty();
+    }
+    // Locate by Region ID before copying: unrelated replica sets need not be locked or copied.
+    return partitionManager.getReplicaSets(database, Collections.singletonList(regionId)).stream()
+        .findFirst();
   }
 
   public String getRegionReplicaSetString(TConsensusGroupId regionId) {
@@ -931,11 +941,15 @@ public class RegionMaintainHandler {
       return Optional.empty();
     }
 
-    // Choosing the RUNNING DataNodes to execute firstly
-    // If all DataNodes are not RUNNING, then choose the REMOVING DataNodes secondly
+    Set<Integer> regionDataNodeIds =
+        regionLocations.stream().map(TDataNodeLocation::getDataNodeId).collect(Collectors.toSet());
+    // Filter IDs before reading configurations, so unrelated DataNodes are not deep-copied.
     List<TDataNodeLocation> aliveDataNodes =
-        configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
-            .map(TDataNodeConfiguration::getLocation)
+        configManager.getLoadManager().filterDataNodeThroughStatus(allowingStatus).stream()
+            .filter(regionDataNodeIds::contains)
+            .map(
+                nodeId ->
+                    configManager.getNodeManager().getRegisteredDataNode(nodeId).getLocation())
             .collect(Collectors.toList());
     final int leaderId = getRegionLeaderId(regionId);
     Collections.shuffle(aliveDataNodes);
@@ -962,11 +976,11 @@ public class RegionMaintainHandler {
    */
   private int getRegionLeaderId(TConsensusGroupId regionId) {
     final LoadManager loadManager = configManager.getLoadManager();
-    Integer leaderId = loadManager.getRegionLeaderMap().get(regionId);
-    if (leaderId == null || leaderId == -1) {
+    int leaderId = loadManager.getRegionLeaderId(regionId);
+    if (leaderId == -1) {
       loadManager.waitForRegionGroupReady(Collections.singletonList(regionId));
-      leaderId = loadManager.getRegionLeaderMap().get(regionId);
+      leaderId = loadManager.getRegionLeaderId(regionId);
     }
-    return leaderId == null ? -1 : leaderId;
+    return leaderId;
   }
 }
