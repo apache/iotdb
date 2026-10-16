@@ -43,7 +43,8 @@ class DataPartitionResolver {
   private final String userName;
 
   /** The replica set resolved for every slot so far. */
-  private final Map<SlotKey, TRegionReplicaSet> resolvedPartitions = new HashMap<>();
+  private final Map<Pair<IDeviceID, TTimePartitionSlot>, TRegionReplicaSet> resolvedPartitions =
+      new HashMap<>();
 
   DataPartitionResolver(final DataPartitionBatchFetcher partitionFetcher, final String userName) {
     this.partitionFetcher =
@@ -63,7 +64,7 @@ class DataPartitionResolver {
     final List<Integer> indexesToFetch = new ArrayList<>();
     for (int i = 0; i < slotList.size(); i++) {
       final Pair<IDeviceID, TTimePartitionSlot> slot = slotList.get(i);
-      final TRegionReplicaSet resolved = resolvedPartitions.get(new SlotKey(slot.left, slot.right));
+      final TRegionReplicaSet resolved = resolvedPartitions.get(slot);
       replicaSets.add(resolved);
       if (resolved == null) {
         slotsToFetch.add(slot);
@@ -88,13 +89,10 @@ class DataPartitionResolver {
         final TRegionReplicaSet replicaSet = fetched.get(i);
         replicaSets.set(indexesToFetch.get(i), replicaSet);
         final Pair<IDeviceID, TTimePartitionSlot> slot = slotsToFetch.get(i);
-        resolvedPartitions.put(new SlotKey(slot.left, slot.right), replicaSet);
+        resolvedPartitions.put(slot, replicaSet);
       }
     }
 
     return replicaSets;
   }
-
-  /** One (device, time partition) pair, the key the partitions are resolved by. */
-  private record SlotKey(IDeviceID device, TTimePartitionSlot slot) {}
 }
