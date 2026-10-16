@@ -466,8 +466,7 @@ public class DataNodeTableCache implements ITableCache {
       }
     } catch (final IllegalPathException e) {
       LOGGER.warn(
-          DataNodeSchemaMessages
-              .LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG,
+          DataNodeSchemaMessages.LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG,
           database,
           tableName,
           e);

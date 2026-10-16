@@ -1630,5 +1630,5 @@ public final class ProcedureMessages {
       "ConfigNode trySetNodeStatus failed: %s: %s: %s; ";
   public static final String
       LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_9544E1D9 =
-          "Failed to detect the tree series under the new view %s.%s: %s";
+          "Failed to detect the tree series under the new view {}.{}: {}";
 }

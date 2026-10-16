@@ -1520,5 +1520,5 @@ public final class ProcedureMessages {
       "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
   public static final String
       LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_9544E1D9 =
-          "扫描新建视图 %s.%s 下的树序列失败：%s";
+          "扫描新建视图 {}.{} 下的树序列失败：{}";
 }

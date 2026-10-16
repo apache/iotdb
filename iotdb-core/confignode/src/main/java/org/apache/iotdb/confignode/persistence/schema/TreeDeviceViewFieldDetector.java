@@ -131,12 +131,16 @@ public class TreeDeviceViewFieldDetector {
     if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new Pair<>(result.getStatus(), Collections.emptyList());
     }
+    // A source measurement can only be referenced once, so a field whose source the view already
+    // references under another column name gets no column either.
+    final Set<String> sourceNames = TreeViewSchema.getSourceNames(table);
     final List<TsTableColumnSchema> columns = new ArrayList<>();
     result
         .getDeviewViewFieldTypeMap()
         .forEach(
             (field, type) -> {
-              if (Objects.isNull(table.getColumnSchema(field))) {
+              if (Objects.isNull(table.getColumnSchema(field))
+                  && !sourceNames.contains(lowerCase2OriginalMap.get(field))) {
                 columns.add(toFieldColumnSchemaWithOriginName(field, type));
               }
             });

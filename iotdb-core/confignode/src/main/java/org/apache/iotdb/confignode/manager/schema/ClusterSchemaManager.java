@@ -129,7 +129,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1622,23 +1621,11 @@ public class ClusterSchemaManager {
       final TsTable view,
       final List<TsTableColumnSchema> columnSchemaList,
       final AtomicBoolean hasObject) {
-    final Set<String> existingColumnNames = new HashSet<>();
-    final Set<String> originalNames = new HashSet<>();
-
-    for (final TsTableColumnSchema columnSchema : view.getColumnList()) {
-      existingColumnNames.add(columnSchema.getColumnName());
-      Map<String, String> props = columnSchema.getProps();
-      if (props == null) {
-        originalNames.add(columnSchema.getColumnName());
-        continue;
-      }
-      String originalName = props.get(TreeViewSchema.ORIGINAL_NAME);
-      if (originalName == null) {
-        originalNames.add(columnSchema.getColumnName());
-        continue;
-      }
-      originalNames.add(originalName);
-    }
+    Set<String> existingColumnNames =
+        view.getColumnList().stream()
+            .map(TsTableColumnSchema::getColumnName)
+            .collect(Collectors.toSet());
+    final Set<String> originalNames = TreeViewSchema.getSourceNames(view);
 
     columnSchemaList.removeIf(
         columnSchema -> {
