@@ -36,6 +36,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.TableSessionBuilder;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -98,9 +99,19 @@ public class IoTDBSessionRelationalIT {
   @After
   public void tearDown() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db3");
+      for (String database : Arrays.asList("db1", "db2", "db3")) {
+        // Asynchronous DROP TABLE procedures may still be running when the test finishes.
+        Awaitility.await()
+            .atMost(60, TimeUnit.SECONDS)
+            .pollInSameThread()
+            .ignoreExceptionsMatching(
+                e ->
+                    e instanceof StatementExecutionException
+                        && ((StatementExecutionException) e).getStatusCode()
+                            == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode())
+            .untilAsserted(
+                () -> session.executeNonQueryStatement("DROP DATABASE IF EXISTS " + database));
+      }
     }
   }
 
@@ -259,10 +270,11 @@ public class IoTDBSessionRelationalIT {
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
+      // Include a FIELD column so schema validation does not mask invalid timestamps.
       session.executeNonQueryStatement(
-          "create table wrong_time(color string tag, device_id string tag,city string attribute)");
+          "create table wrong_time(color string tag, device_id string tag,city string attribute, value int32 field)");
       try {
-        session.executeNonQueryStatement("insert into wrong_time values('aa','bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values('aa','bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals(
@@ -270,19 +282,19 @@ public class IoTDBSessionRelationalIT {
             e.getMessage());
       }
       try {
-        session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals("701: Unsupported expression: (1 + 1)", e.getMessage());
       }
       try {
-        session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals("701: Unsupported expression: 1E0", e.getMessage());
       }
       try {
-        session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals("701: Unsupported expression: true", e.getMessage());
