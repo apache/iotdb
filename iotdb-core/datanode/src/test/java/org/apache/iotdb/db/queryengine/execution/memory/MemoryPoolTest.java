@@ -32,8 +32,15 @@ import org.mockito.Mockito;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Field;
+import java.util.AbstractCollection;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,6 +48,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.awaitility.Awaitility.await;
 
@@ -257,6 +265,203 @@ public class MemoryPoolTest {
     pool.free(QUERY_ID, "other", PLAN_NODE_ID, 256);
     pool.free("healthy", "fi", "b", 512);
     Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testOwnerCancellationAndDeregistrationDoNotScanUnrelatedWaiters() throws Exception {
+    assertDeregistrationDoesNotScanUnrelatedWaiters(true);
+  }
+
+  @Test
+  public void testDeregistrationCancelsOnlyIndexedWaiters() throws Exception {
+    assertDeregistrationDoesNotScanUnrelatedWaiters(false);
+  }
+
+  private void assertDeregistrationDoesNotScanUnrelatedWaiters(boolean ownerCancels)
+      throws Exception {
+    AtomicInteger visits = countGlobalPendingVisits();
+    pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512, 512);
+    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "p", MemorySide.INPUT);
+    pool.tryReserve("holder", "fi", "p", 512, 512);
+    int count = 1024;
+    List<MemoryReservationResult> victims = new ArrayList<>();
+    List<MemoryReservationResult> unrelated = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      String fi = Integer.toString(i);
+      pool.registerPlanNodeIdToQueryMemoryMap("victim", fi, "p", MemorySide.INPUT);
+      pool.registerPlanNodeIdToQueryMemoryMap("unrelated", fi, "p", MemorySide.INPUT);
+      victims.add(pool.reserveWithPriority("victim", fi, "p", 8, 512, false));
+      unrelated.add(pool.reserveWithPriority("unrelated", fi, "p", 8, 512, false));
+    }
+    for (int i = 0; i < count; i++) {
+      if (ownerCancels) {
+        Assert.assertEquals(8, pool.tryCancel(victims.get(i).getFuture()));
+      }
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap("victim", Integer.toString(i), true);
+      Assert.assertTrue(victims.get(i).getFuture().isCancelled());
+      Assert.assertFalse(unrelated.get(i).getFuture().isDone());
+    }
+    // An operation-count assertion avoids timing noise and detects a global scan for every FI.
+    Assert.assertEquals(0, visits.get());
+    Assert.assertEquals(count, pool.getMemoryReservationSize());
+    for (int i = 0; i < count; i++) {
+      Assert.assertEquals(8, pool.tryCancel(unrelated.get(i).getFuture()));
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap("unrelated", Integer.toString(i), true);
+    }
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512);
+    pool.free("holder", "fi", "p", 512);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap("holder", "fi", true);
+    Assert.assertEquals(0, pool.getMemoryReservationSize());
+    Assert.assertEquals(0, pool.getQueryMemoryReservationSize());
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @SuppressWarnings("unchecked")
+  private AtomicInteger countGlobalPendingVisits() throws Exception {
+    AtomicInteger visits = new AtomicInteger();
+    Field field = MemoryPool.class.getDeclaredField("memoryReservationFutures");
+    field.setAccessible(true);
+    Object pending = field.get(pool);
+    if (pending instanceof Queue) {
+      // Keep this branch so the regression also runs against the former queue implementation.
+      Queue<MemoryPool.MemoryReservationFuture<Void>> counted =
+          new ConcurrentLinkedQueue<MemoryPool.MemoryReservationFuture<Void>>() {
+            @Override
+            public Iterator<MemoryPool.MemoryReservationFuture<Void>> iterator() {
+              return countVisits(super.iterator(), visits);
+            }
+          };
+      counted.addAll((Queue<MemoryPool.MemoryReservationFuture<Void>>) pending);
+      field.set(pool, counted);
+    } else {
+      Map<Long, MemoryPool.MemoryReservationFuture<Void>> counted =
+          new ConcurrentSkipListMap<Long, MemoryPool.MemoryReservationFuture<Void>>() {
+            @Override
+            public Collection<MemoryPool.MemoryReservationFuture<Void>> values() {
+              Collection<MemoryPool.MemoryReservationFuture<Void>> values = super.values();
+              return new AbstractCollection<MemoryPool.MemoryReservationFuture<Void>>() {
+                @Override
+                public Iterator<MemoryPool.MemoryReservationFuture<Void>> iterator() {
+                  return countVisits(values.iterator(), visits);
+                }
+
+                @Override
+                public int size() {
+                  return values.size();
+                }
+              };
+            }
+          };
+      counted.putAll((Map<Long, MemoryPool.MemoryReservationFuture<Void>>) pending);
+      field.set(pool, counted);
+    }
+    return visits;
+  }
+
+  private static <T> Iterator<T> countVisits(Iterator<T> delegate, AtomicInteger visits) {
+    return new Iterator<T>() {
+      @Override
+      public boolean hasNext() {
+        return delegate.hasNext();
+      }
+
+      @Override
+      public T next() {
+        visits.incrementAndGet();
+        return delegate.next();
+      }
+
+      @Override
+      public void remove() {
+        delegate.remove();
+      }
+    };
+  }
+
+  @Test
+  public void testCancellationKeepsFifoWakeupOrder() {
+    pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512, 512);
+    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "p", MemorySide.INPUT);
+    pool.tryReserve("holder", "fi", "p", 512, 512);
+    List<MemoryReservationResult> requests = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      String fi = Integer.toString(i);
+      pool.registerPlanNodeIdToQueryMemoryMap("waiting", fi, "p", MemorySide.INPUT);
+      requests.add(pool.reserveWithPriority("waiting", fi, "p", 64, 512, false));
+    }
+    Assert.assertEquals(64, pool.tryCancel(requests.get(1).getFuture()));
+    Assert.assertEquals(0, pool.tryCancel(requests.get(1).getFuture()));
+    Assert.assertEquals(2, pool.getMemoryReservationSize());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 64);
+    Assert.assertTrue(requests.get(0).getFuture().isDone());
+    Assert.assertFalse(requests.get(2).getFuture().isDone());
+    pool.free("waiting", "0", "p", 64);
+    Assert.assertTrue(requests.get(2).getFuture().isDone());
+    pool.free("waiting", "2", "p", 64);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 448);
+    pool.free("holder", "fi", "p", 512);
+    for (int i = 0; i < 3; i++) {
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap("waiting", Integer.toString(i), true);
+    }
+    Assert.assertEquals(0, pool.getMemoryReservationSize());
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testConcurrentCancellationAndGrantRemoveAllPendingIndexes() throws Exception {
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      for (int round = 0; round < 32; round++) {
+        MemoryPool concurrent = new MemoryPool("race", new MemoryManager(1024), 512);
+        concurrent.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "a", MemorySide.INPUT);
+        concurrent.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "b", MemorySide.INPUT);
+        concurrent.tryReserve("holder", "fi", "a", 512, 512);
+        concurrent.tryReserve("holder", "fi", "b", 512, 512);
+        List<MemoryReservationResult> requests = new ArrayList<>();
+        for (int i = 0; i < 16; i++) {
+          String fi = Integer.toString(i);
+          concurrent.registerPlanNodeIdToQueryMemoryMap("waiting", fi, "p", MemorySide.INPUT);
+          requests.add(concurrent.reserveWithPriority("waiting", fi, "p", 16, 512, false));
+        }
+        CountDownLatch start = new CountDownLatch(1);
+        Future<?> grant =
+            executor.submit(
+                () -> {
+                  start.await();
+                  concurrent.free("holder", "fi", "a", 512);
+                  return null;
+                });
+        Future<?> cancel =
+            executor.submit(
+                () -> {
+                  start.await();
+                  for (MemoryReservationResult request : requests) {
+                    concurrent.tryCancel(request.getFuture());
+                  }
+                  return null;
+                });
+        start.countDown();
+        grant.get(10, TimeUnit.SECONDS);
+        cancel.get(10, TimeUnit.SECONDS);
+        for (int i = 0; i < requests.size(); i++) {
+          Assert.assertTrue(requests.get(i).getFuture().isDone());
+          if (!requests.get(i).getFuture().isCancelled()) {
+            concurrent.free("waiting", Integer.toString(i), "p", 16);
+          }
+          concurrent.deRegisterFragmentInstanceFromQueryMemoryMap(
+              "waiting", Integer.toString(i), true);
+        }
+        concurrent.free("holder", "fi", "b", 512);
+        concurrent.deRegisterFragmentInstanceFromQueryMemoryMap("holder", "fi", true);
+        Assert.assertEquals(0, concurrent.getMemoryReservationSize());
+        Assert.assertEquals(0, concurrent.getQueryMemoryReservationSize());
+        Assert.assertEquals(0, concurrent.getReservedBytes());
+      }
+    } finally {
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
   }
 
   @Test
