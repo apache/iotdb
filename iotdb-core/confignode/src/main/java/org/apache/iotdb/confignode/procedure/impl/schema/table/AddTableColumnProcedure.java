@@ -242,6 +242,11 @@ public class AddTableColumnProcedure
         && Objects.equals(this.addedColumnList, ((AddTableColumnProcedure) o).addedColumnList);
   }
 
+  public void setAddedColumnList(List<TsTableColumnSchema> addedColumnList){
+    this.addedColumnList = addedColumnList;
+  }
+
+
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), addedColumnList);

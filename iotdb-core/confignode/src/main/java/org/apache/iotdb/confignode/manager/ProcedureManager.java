@@ -196,6 +196,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -205,6 +206,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -2390,7 +2392,7 @@ public class ProcedureManager {
             addColumnReq.database,
             addColumnReq.tableName,
             addColumnReq.queryId,
-            TsTableColumnSchemaUtil.deserializeColumnSchemaList(addColumnReq.updateInfo),
+            Collections.emptyList(),
             false);
 
     final Pair<TSStatus, Long> submissionResult =
@@ -2401,7 +2403,12 @@ public class ProcedureManager {
             null,
             addColumnReq.queryId,
             ProcedureType.ADD_VIEW_COLUMN_PROCEDURE,
-            procedure);
+            procedure,
+            proc -> {
+              if(proc instanceof AddViewColumnProcedure){
+                ((AddViewColumnProcedure)proc).setAddedColumnList(TsTableColumnSchemaUtil.deserializeColumnSchemaList(addColumnReq.updateInfo));
+              }
+    });
     final TSStatus status = submissionResult.getLeft();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       procedures.add(new Pair<>(addColumnReq, procedure));
@@ -2809,13 +2816,14 @@ public class ProcedureManager {
   }
 
   public Pair<TSStatus, Long> executeWithoutDuplicateWithoutWaiting(
-      final String database,
-      final TsTable table,
-      final String tableName,
-      final @Nullable String newName,
-      final String queryId,
-      final ProcedureType thisType,
-      final Procedure<ConfigNodeProcedureEnv> procedure) {
+    final String database,
+    final TsTable table,
+    final String tableName,
+    final @Nullable String newName,
+    final String queryId,
+    final ProcedureType thisType,
+    final Procedure<ConfigNodeProcedureEnv> procedure,
+    final Consumer<Procedure<ConfigNodeProcedureEnv>> consumer) {
     final long procedureId;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
@@ -2829,6 +2837,7 @@ public class ProcedureManager {
                   "Some other task is operating table with same name.");
           return new Pair<>(status, -1L);
         }
+        consumer.accept(procedure);
         this.executor.submitProcedure(procedure);
         return new Pair<>(StatusUtils.OK, procedure.getProcId());
       } else {
