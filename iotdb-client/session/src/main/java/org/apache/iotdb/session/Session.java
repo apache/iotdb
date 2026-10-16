@@ -204,6 +204,8 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
+  protected volatile boolean enableAutoCreateSchema = true;
+
   private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
       "times, measurementsList and valuesList's size should be equal";
 
@@ -484,6 +486,7 @@ public class Session implements ISession {
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
   }
 
   @Override
@@ -4525,6 +4528,11 @@ public class Session implements ISession {
 
     public Builder database(String database) {
       this.database = database;
+      return this;
+    }
+
+    public Builder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+      this.enableAutoCreateSchema = enableAutoCreateSchema;
       return this;
     }
 
