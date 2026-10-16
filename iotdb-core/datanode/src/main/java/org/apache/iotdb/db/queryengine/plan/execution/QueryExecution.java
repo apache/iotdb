@@ -124,7 +124,14 @@ public class QueryExecution implements IQueryExecution {
   public QueryExecution(IPlanner planner, MPPQueryContext context, ExecutorService executor) {
     this.context = context;
     this.planner = planner;
-    this.analysis = analyze(context);
+    planner.beginAnalysisAttempt();
+    try {
+      this.analysis = analyze(context);
+    } catch (RuntimeException | Error e) {
+      planner.rollbackAnalysisAttempt();
+      throw e;
+    }
+    context.setNeedSetHighestPriority(analysis.needSetHighestPriority());
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
     // We add the abort logic inside the QueryExecution.
@@ -158,6 +165,15 @@ public class QueryExecution implements IQueryExecution {
   }
 
   public void start() {
+    try {
+      startInternal();
+    } catch (RuntimeException | Error e) {
+      finishAnalysisAttemptForCurrentState();
+      throw e;
+    }
+  }
+
+  private void startInternal() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug("[SkipExecute]");
@@ -167,6 +183,7 @@ public class QueryExecution implements IQueryExecution {
         constructResultForMemorySource();
         stateMachine.transitionToRunning();
       }
+      finishAnalysisAttemptForCurrentState();
       return;
     }
 
@@ -174,10 +191,6 @@ public class QueryExecution implements IQueryExecution {
     checkTimeOutForQuery();
     doLogicalPlan();
     doDistributedPlan();
-
-    // update timeout after finishing plan stage
-    context.setTimeOut(
-        context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));
 
     stateMachine.transitionToPlanned();
     if (context.getQueryType() == QueryType.READ) {
@@ -199,6 +212,7 @@ public class QueryExecution implements IQueryExecution {
     if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
+    finishAnalysisAttemptForCurrentState();
   }
 
   private void checkTimeOutForQuery() {
@@ -216,12 +230,15 @@ public class QueryExecution implements IQueryExecution {
   private ExecutionResult retry() {
     if (retryCount >= MAX_RETRY_COUNT) {
       LOGGER.warn("[ReachMaxRetryCount]");
+      this.stopAndCleanup(stateMachine.getFailureException());
+      planner.rollbackAnalysisAttempt();
       stateMachine.transitionToFailed();
       return getStatus();
     }
     LOGGER.warn("error when executing query. {}", stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
     this.stopAndCleanup(stateMachine.getFailureException());
+    planner.rollbackAnalysisAttempt();
     LOGGER.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
@@ -240,10 +257,28 @@ public class QueryExecution implements IQueryExecution {
     this.stopped.compareAndSet(true, false);
     this.resultHandleCleanUp.compareAndSet(true, false);
     // re-analyze the query
-    this.analysis = analyze(context);
+    planner.beginAnalysisAttempt();
+    try {
+      this.analysis = analyze(context);
+    } catch (RuntimeException | Error e) {
+      planner.rollbackAnalysisAttempt();
+      throw e;
+    }
     // re-start the QueryExecution
     this.start();
     return getStatus();
+  }
+
+  private void finishAnalysisAttemptForCurrentState() {
+    QueryState state = stateMachine.getState();
+    if (state == QueryState.PENDING_RETRY) {
+      return;
+    }
+    if (state == QueryState.RUNNING || state == QueryState.FINISHED) {
+      planner.commitAnalysisAttempt();
+    } else {
+      planner.rollbackAnalysisAttempt();
+    }
   }
 
   private boolean skipExecute() {
@@ -587,7 +622,8 @@ public class QueryExecution implements IQueryExecution {
                     context.getResultNodeContext().getUpStreamPlanNodeId().getId(),
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
                     0, // Upstream of result ExchangeNode will only have one child.
-                    stateMachine::transitionToFailed)
+                    stateMachine::transitionToFailed,
+                    context.needSetHighestPriority())
             : MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
                 .createSourceHandle(
@@ -596,7 +632,8 @@ public class QueryExecution implements IQueryExecution {
                     0,
                     upstreamEndPoint,
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                    stateMachine::transitionToFailed);
+                    stateMachine::transitionToFailed,
+                    context.needSetHighestPriority());
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -703,6 +740,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getStatementType() {
     return analysis.getStatementType();
+  }
+
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
   }
 
   public MPPQueryContext getContext() {

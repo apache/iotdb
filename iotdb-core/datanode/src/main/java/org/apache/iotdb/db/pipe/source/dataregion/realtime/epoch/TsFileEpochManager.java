@@ -31,13 +31,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class TsFileEpochManager {
 
@@ -87,17 +89,58 @@ public class TsFileEpochManager {
         event.getPipePattern());
   }
 
-  private Map<String, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
+  static Map<String, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
       InsertRowsNode insertRowsNode) {
-    return insertRowsNode.getInsertRowNodeList().stream()
-        .collect(
-            Collectors.toMap(
-                insertRowNode -> insertRowNode.getDevicePath().getFullPath(),
-                InsertNode::getMeasurements,
-                (oldMeasurements, newMeasurements) ->
-                    Stream.of(Arrays.asList(oldMeasurements), Arrays.asList(newMeasurements))
-                        .flatMap(Collection::stream)
-                        .distinct()
-                        .toArray(String[]::new)));
+    final Map<String, String[]> device2Measurements = new HashMap<>();
+    final Map<String, Set<String>> device2DistinctMeasurements = new HashMap<>();
+
+    // This method runs synchronously in the write path. Rebuilding a stream, a hash set, and an
+    // array for every row is expensive when an InsertRowsNode contains many rows for one device.
+    // Keep one set per repeated device instead and materialize its array only once.
+    for (final InsertNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+      final String device = insertRowNode.getDevicePath().getFullPath();
+      final String[] measurements = Objects.requireNonNull(insertRowNode.getMeasurements());
+      final String[] firstMeasurements = device2Measurements.putIfAbsent(device, measurements);
+      if (firstMeasurements == null) {
+        continue;
+      }
+
+      final Set<String> distinctMeasurements =
+          device2DistinctMeasurements.computeIfAbsent(
+              device, key -> new LinkedHashSet<>(Arrays.asList(firstMeasurements)));
+      addDistinctMeasurements(firstMeasurements, measurements, distinctMeasurements);
+    }
+
+    device2DistinctMeasurements.forEach(
+        (device, measurements) ->
+            device2Measurements.put(device, measurements.toArray(new String[measurements.size()])));
+    return device2Measurements;
+  }
+
+  private static void addDistinctMeasurements(
+      final String[] firstMeasurements,
+      final String[] measurements,
+      final Set<String> distinctMeasurements) {
+    if (measurements.length >= firstMeasurements.length) {
+      if (!Arrays.equals(firstMeasurements, measurements)) {
+        Collections.addAll(distinctMeasurements, measurements);
+      }
+      return;
+    }
+
+    // Skip the longest prefix that is already present as an ordered subsequence of the first row.
+    int firstMeasurementIndex = 0;
+    int measurementIndex = 0;
+    while (firstMeasurementIndex < firstMeasurements.length
+        && measurementIndex < measurements.length) {
+      if (Objects.equals(
+          firstMeasurements[firstMeasurementIndex], measurements[measurementIndex])) {
+        ++measurementIndex;
+      }
+      ++firstMeasurementIndex;
+    }
+    while (measurementIndex < measurements.length) {
+      distinctMeasurements.add(measurements[measurementIndex++]);
+    }
   }
 }

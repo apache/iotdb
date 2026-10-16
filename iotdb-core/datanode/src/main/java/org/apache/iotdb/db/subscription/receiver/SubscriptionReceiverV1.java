@@ -113,6 +113,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
+  private volatile String authenticatedUsername;
   private volatile ConsumerConfig sharedConsumerConfig;
   private volatile boolean consumerInvalidated;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
@@ -168,6 +169,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   @Override
+  public void setAuthenticatedUsername(final String username) {
+    authenticatedUsername = username;
+  }
+
+  @Override
   public void handleExit() {
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.nonNull(consumerConfig)) {
@@ -183,6 +189,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       consumerConfigThreadLocal.remove();
     }
     clearSharedConsumerState();
+    authenticatedUsername = null;
   }
 
   @Override
@@ -322,17 +329,22 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
-    // TODO: do something
+    final Set<String> subscribedTopicNames =
+        SubscriptionAgent.consumer()
+            .getTopicNamesSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    final TSStatus readPermissionStatus =
+        SubscriptionAgent.topic()
+            .checkTopicReadPermissions(authenticatedUsername, subscribedTopicNames);
+    if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
 
     LOGGER.info("Subscription: consumer {} heartbeat successfully", consumerConfig);
 
     // fetch subscribed topics
     final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic()
-            .getTopicConfigs(
-                SubscriptionAgent.consumer()
-                    .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+        SubscriptionAgent.topic().getTopicConfigs(subscribedTopicNames);
 
     // fetch available endpoints
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
@@ -403,6 +415,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // subscribe topics
     final Set<String> topicNames = req.getTopicNames();
+    final TSStatus readPermissionStatus =
+        SubscriptionAgent.topic().checkTopicReadPermissions(authenticatedUsername, topicNames);
+    if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info("Subscription: consumer {} subscribe {} successfully", consumerConfig, topicNames);
@@ -494,16 +511,51 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
       switch (SubscriptionPollRequestType.valueOf(requestType)) {
         case POLL:
+          final Set<String> pollTopicNames = ((PollPayload) request.getPayload()).getTopicNames();
+          final Set<String> subscribedTopicNames =
+              SubscriptionAgent.consumer()
+                  .getTopicNamesSubscribedByConsumer(
+                      consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+          final Set<String> topicNamesToCheck = new HashSet<>(pollTopicNames);
+          topicNamesToCheck.removeIf(topicName -> !subscribedTopicNames.contains(topicName));
+          final TSStatus readPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(authenticatedUsername, topicNamesToCheck);
+          if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                readPermissionStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollRequest(
                   consumerConfig, (PollPayload) request.getPayload(), maxBytes);
           break;
         case POLL_FILE:
+          final String tsFileTopicName =
+              ((PollFilePayload) request.getPayload()).getCommitContext().getTopicName();
+          final TSStatus tsFileReadPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername, Collections.singleton(tsFileTopicName));
+          if (tsFileReadPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tsFileReadPermissionStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTsFileRequest(
                   consumerConfig, (PollFilePayload) request.getPayload());
           break;
         case POLL_TABLETS:
+          final String tabletsTopicName =
+              ((PollTabletsPayload) request.getPayload()).getCommitContext().getTopicName();
+          final TSStatus tabletsReadPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername, Collections.singleton(tabletsTopicName));
+          if (tabletsReadPermissionStatus.getCode()
+              != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tabletsReadPermissionStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTabletsRequest(
                   consumerConfig, (PollTabletsPayload) request.getPayload());

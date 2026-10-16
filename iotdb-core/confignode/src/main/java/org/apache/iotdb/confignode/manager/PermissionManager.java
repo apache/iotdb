@@ -110,6 +110,15 @@ public class PermissionManager {
     return authorInfo.login(username, password);
   }
 
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    return authorInfo.login(username, password, useEncryptedPassword);
+  }
+
+  public String login4Pipe(final String userName, final String password) {
+    return authorInfo.login4Pipe(userName, password);
+  }
+
   public TPermissionInfoResp checkUserPrivileges(
       String username, List<PartialPath> paths, int permission) {
     return authorInfo.checkUserPrivileges(username, paths, permission);

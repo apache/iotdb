@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
+import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -98,6 +100,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -321,7 +324,7 @@ public class ConfigPlanExecutor {
       case GetSeriesSlotList:
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       case SHOW_CQ:
-        return cqInfo.showCQ();
+        return cqInfo.showCQ((ShowCQPlan) req);
       case GetFunctionTable:
         return udfInfo.getUDFTable();
       case GetFunctionJar:
@@ -497,6 +500,9 @@ public class ConfigPlanExecutor {
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:
         return pipeInfo.setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
+      case SetPipeStatusWithStoppedByRuntimeExceptionV2:
+        return pipeInfo.setPipeStatusWithStoppedByRuntimeException(
+            (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2) physicalPlan);
       case DropPipeV2:
         return pipeInfo.dropPipe((DropPipePlanV2) physicalPlan);
       case AlterPipeV2:
@@ -658,9 +664,16 @@ public class ConfigPlanExecutor {
               }
             });
     if (result.get()) {
-      LOGGER.info(
-          "[ConfigNodeSnapshot] Load snapshot success, latestSnapshotRootDir: {}",
-          latestSnapshotRootDir);
+      try {
+        PipeConfigNodeAgent.runtime()
+            .reconcileListenerReferences(pipeInfo.getPipeTaskInfo().getPipeMetaList());
+        LOGGER.info(
+            "[ConfigNodeSnapshot] Load snapshot success, latestSnapshotRootDir: {}",
+            latestSnapshotRootDir);
+      } catch (final IllegalPathException e) {
+        result.set(false);
+        LOGGER.error(e.getMessage(), e);
+      }
     }
   }
 

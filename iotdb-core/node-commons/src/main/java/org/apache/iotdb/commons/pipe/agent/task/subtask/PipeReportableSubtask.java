@@ -26,15 +26,35 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigur
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 public abstract class PipeReportableSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeReportableSubtask.class);
+  private static final long DEFAULT_LOGIN_LOCK_WINDOW_MS = TimeUnit.MINUTES.toMillis(10);
+  private static final int DEFAULT_LOGIN_LOCK_FAILED_ATTEMPTS = 5;
+  private static final int AUTHENTICATION_FAILURE_IMMEDIATE_ATTEMPTS = 2;
+  // Keep the literal for compatibility because dev/1.3 does not define this status enum.
+  private static final int USER_LOGIN_LOCKED_STATUS_CODE = 822;
+  protected static final long AUTHENTICATION_FAILURE_RETRY_INTERVAL_MS =
+      DEFAULT_LOGIN_LOCK_WINDOW_MS
+              / (DEFAULT_LOGIN_LOCK_FAILED_ATTEMPTS - AUTHENTICATION_FAILURE_IMMEDIATE_ATTEMPTS)
+          + TimeUnit.SECONDS.toMillis(1);
+  private static final Pattern AUTHENTICATION_FAILURE_STATUS_CODE_PATTERN =
+      Pattern.compile(
+          String.format(
+              "(?i)(?:\\b(?:code|status code)\\s*[:=]\\s*(?:%d|%d)\\b|\\b(?:%d|%d):|\\b(?:WRONG_LOGIN_PASSWORD|USER_LOGIN_LOCKED)\\b)",
+              TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+              USER_LOGIN_LOCKED_STATUS_CODE,
+              TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+              USER_LOGIN_LOCKED_STATUS_CODE));
   // To ensure that high-priority tasks can obtain object locks first, a counter is now used to save
   // the number of high-priority tasks.
   protected final AtomicLong highPriorityLockTaskCount = new AtomicLong(0);
@@ -62,6 +82,26 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     // Because we need to keep it for the next retry. If user wants to restart the task,
     // the last event will be processed again. The last event will be released when the task
     // is dropped or the process is running normally.
+  }
+
+  protected long getSleepIntervalBasedOnThrowable(final Throwable throwable) {
+    long sleepInterval = retryCount.get() * PipeConfig.getInstance().getPipeSinkRetryIntervalMs();
+    if (isAuthenticationFailure(throwable)) {
+      sleepInterval = Math.max(sleepInterval, AUTHENTICATION_FAILURE_RETRY_INTERVAL_MS);
+    }
+    return sleepInterval;
+  }
+
+  protected static boolean isAuthenticationFailure(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      final String message = current.getMessage();
+      if (message != null && AUTHENTICATION_FAILURE_STATUS_CODE_PATTERN.matcher(message).find()) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   private void onReportEventFailure(final Throwable throwable) {
@@ -94,8 +134,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           maxRetryTimes,
           throwable.getMessage());
       try {
-        sleepIfNoHighPriorityTask(
-            retryCount.get() * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
+        sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
       } catch (final InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -163,8 +202,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable.getMessage(),
         throwable);
     try {
-      sleepIfNoHighPriorityTask(
-          retryCount.get() * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
+      sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
     } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -191,10 +229,13 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   }
 
   protected void sleepIfNoHighPriorityTask(long sleepMillis) throws InterruptedException {
+    if (sleepMillis <= 0) {
+      return;
+    }
     synchronized (highPriorityLockTaskCount) {
       // The wait operation will release the highPriorityLockTaskCount lock, so there will be
       // no deadlock.
-      if (highPriorityLockTaskCount.get() > 0) {
+      if (highPriorityLockTaskCount.get() == 0) {
         highPriorityLockTaskCount.wait(sleepMillis);
       }
     }

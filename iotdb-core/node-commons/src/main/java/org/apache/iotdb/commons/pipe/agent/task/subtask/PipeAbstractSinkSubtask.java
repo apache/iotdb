@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.commons.pipe.resource.PipeStopStrategy;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -35,7 +36,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
-import org.apache.commons.lang3.exception.ExceptionUtils;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +72,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ListeningScheduledExecutorService ignoredScheduledExecutor,
       final ExecutorService subtaskCallbackListeningExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
@@ -96,44 +98,24 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
     synchronized (this) {
       isSubmitted = false;
 
-      if (isClosed.get()) {
-        LOGGER.info(
-            "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
-            throwable);
-        clearReferenceCountAndReleaseLastEvent(null);
+      if (tryIgnoreFailure(throwable)) {
+        return;
+      }
+    }
+
+    if (throwable instanceof PipeConnectionException) {
+      // Retry to connect to the target system if the connection is broken. Do not hold the subtask
+      // lock here because handshaking with an external sink may block for a long time, while drop
+      // pipe needs the same lock to discard in-flight events.
+      if (onPipeConnectionException(throwable)) {
         return;
       }
 
-      // We assume that the event is cleared as the "lastEvent" in processor subtask and reaches the
-      // connector subtask. Then, it may fail because of released resource and block the other pipes
-      // using the same connector. We simply discard it.
-      if (lastExceptionEvent instanceof EnrichedEvent
-          && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
-        LOGGER.info(
-            "onFailure in pipe transfer, ignored because the failure event is released.",
-            throwable);
-        submitSelf();
-        return;
-      }
-
-      // If lastExceptionEvent != lastEvent, it indicates that the lastEvent's reference has been
-      // changed because the pipe of it has been dropped. In that case, we just discard the event.
-      if (lastEvent != lastExceptionEvent) {
-        LOGGER.info(
-            "onFailure in pipe transfer, ignored because the failure event's pipe is dropped.",
-            throwable);
-        clearReferenceCountAndReleaseLastExceptionEvent();
-        submitSelf();
-        return;
-      }
-
-      if (throwable instanceof PipeConnectionException) {
-        // Retry to connect to the target system if the connection is broken
-        // We should reconstruct the client before re-submit the subtask
-        if (onPipeConnectionException(throwable)) {
-          // return if the pipe task should be stopped
+      synchronized (this) {
+        if (tryIgnoreFailure(throwable)) {
           return;
         }
+
         if (PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()) {
           super.onFailure(
               new PipeRuntimeSinkNonReportTimeConfigurableException(
@@ -141,21 +123,67 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           return;
         }
       }
+    }
 
-      // Handle exceptions if any available clients exist
-      // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
-      // because the upper layer relies on this to stop all the related pipe tasks
-      // Other exceptions may cause the subtask to stop forever and can not be restarted
-      if (throwable instanceof PipeRuntimeSinkCriticalException) {
-        super.onFailure(throwable);
-      } else {
-        // Print stack trace for better debugging
-        PipeLogger.log(
-            LOGGER::warn,
-            throwable,
-            "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.");
-        super.onFailure(new PipeRuntimeSinkCriticalException(throwable.getMessage()));
+    synchronized (this) {
+      if (tryIgnoreFailure(throwable)) {
+        return;
       }
+      handleFailure(throwable);
+    }
+  }
+
+  private boolean tryIgnoreFailure(final Throwable throwable) {
+    if (isClosed.get()) {
+      LOGGER.info(
+          "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
+          throwable);
+      clearReferenceCountAndReleaseLastEvent(null);
+      return true;
+    }
+
+    // We assume that the event is cleared as the "lastEvent" in processor subtask and reaches the
+    // connector subtask. Then, it may fail because of released resource and block the other pipes
+    // using the same connector. We simply discard it.
+    if (lastExceptionEvent instanceof EnrichedEvent
+        && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
+      LOGGER.info(
+          "onFailure in pipe transfer, ignored because the failure event is released.", throwable);
+      submitSelf();
+      return true;
+    }
+
+    // If lastExceptionEvent != lastEvent, it indicates that the lastEvent's reference has been
+    // changed because the pipe of it has been dropped. In that case, we just discard the event.
+    if (lastEvent != lastExceptionEvent) {
+      LOGGER.info(
+          "onFailure in pipe transfer, ignored because the failure event's pipe is dropped.",
+          throwable);
+      clearReferenceCountAndReleaseLastExceptionEvent();
+      submitSelf();
+      return true;
+    }
+
+    return false;
+  }
+
+  private void handleFailure(final Throwable throwable) {
+    // Handle exceptions if any available clients exist
+    // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+    // because the upper layer relies on this to stop all the related pipe tasks
+    // Other exceptions may cause the subtask to stop forever and can not be restarted
+    if (throwable instanceof PipeRuntimeSinkCriticalException) {
+      super.onFailure(throwable);
+    } else {
+      // Print stack trace for better debugging
+      PipeLogger.log(
+          LOGGER::warn,
+          throwable,
+          "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.");
+      super.onFailure(
+          new PipeRuntimeSinkCriticalException(
+              throwable.getMessage() != null ? throwable.getMessage() : throwable.toString(),
+              throwable));
     }
   }
 
@@ -163,30 +191,34 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
    * @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise
    */
   private boolean onPipeConnectionException(final Throwable throwable) {
-    LOGGER.warn(
-        "PipeConnectionException occurred, {} retries to handshake with the target system.",
+    PipeLogger.log(
+        LOGGER::warn,
+        "PipeConnectionException occurred, {} retries to handshake with the target system. Root cause: {}.",
         outputPipeConnector.getClass().getName(),
-        throwable);
+        ErrorHandlingCommonUtils.getRootCause(throwable).toString());
 
     int retry = 0;
     while (retry < MAX_RETRY_TIMES) {
       try {
-        outputPipeConnector.handshake();
+        if (!handshakeOutputPipeConnector()) {
+          return false;
+        }
         LOGGER.info(
             "{} handshakes with the target system successfully.",
             outputPipeConnector.getClass().getName());
         break;
       } catch (final Exception e) {
         retry++;
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
             "{} failed to handshake with the target system for {} times, "
-                + "will retry at most {} times.",
+                + "will retry at most {} times. Root cause: {}.",
             outputPipeConnector.getClass().getName(),
             retry,
             MAX_RETRY_TIMES,
-            e);
+            ErrorHandlingCommonUtils.getRootCause(e).toString());
         try {
-          sleepIfNoHighPriorityTask(retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
+          sleepIfNoHighPriorityTask(getHandshakeRetrySleepInterval(e, retry));
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
@@ -204,7 +236,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       report(
           (EnrichedEvent) lastEvent,
           new PipeRuntimeSinkCriticalException(
-              throwable.getMessage() + ", root cause: " + getRootCause(throwable)));
+              throwable.getMessage() + ", root cause: " + getRootCause(throwable), throwable));
       LOGGER.warn(
           "{} failed to handshake with the target system after {} times, "
               + "stopping current subtask {} (creation time: {}, simple class: {}). "
@@ -229,6 +261,18 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
     // For non enriched event, forever retry.
     // For enriched event, retry if connection is set up successfully.
     return false;
+  }
+
+  protected boolean handshakeOutputPipeConnector() throws Exception {
+    outputPipeConnector.handshake();
+    return true;
+  }
+
+  private long getHandshakeRetrySleepInterval(final Throwable throwable, final int retry) {
+    final long defaultInterval = retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs();
+    return isAuthenticationFailure(throwable)
+        ? Math.max(defaultInterval, AUTHENTICATION_FAILURE_RETRY_INTERVAL_MS)
+        : defaultInterval;
   }
 
   /**
@@ -279,12 +323,18 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected void handleException(final Event event, final Exception e) {
-    if (e instanceof PipeRuntimeOutOfMemoryCriticalException
-        || ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
-      PipeLogger.log(
-          LOGGER::info,
-          e,
-          "Temporarily out of memory in pipe event transferring, will wait for the memory to release.");
+    if (!PipeStopStrategy.accept(e, null)) {
+      final PipeResourceFailureType failureType = PipeStopStrategy.getResourceFailureType(e, null);
+      if (event instanceof EnrichedEvent && !PipeStopStrategy.isResourceFailureRecorded(e)) {
+        reportResourceFailure((EnrichedEvent) event, failureType);
+      }
+      if (failureType == PipeResourceFailureType.MEMORY_TIMEOUT) {
+        PipeLogger.log(
+            LOGGER::info,
+            e,
+            "Temporarily out of memory in pipe event transferring, will wait for the memory to release.");
+      }
+      sleep4NonReportException();
     } else if (e instanceof PipeRuntimeSinkNonReportTimeConfigurableException) {
       if (lastExceptionTime == Long.MAX_VALUE) {
         lastExceptionTime = System.currentTimeMillis();
@@ -307,7 +357,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
                 event instanceof EnrichedEvent
                     ? ((EnrichedEvent) event).coreReportMessage()
                     : event,
-                ErrorHandlingCommonUtils.getRootCause(e).getMessage()),
+                ErrorHandlingCommonUtils.getRootCause(e).toString()),
             e);
       } else {
         LOGGER.info(
@@ -329,5 +379,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           e.getMessage() != null ? " Message: " + e.getMessage() : "");
       clearReferenceCountAndReleaseLastEvent(event);
     }
+  }
+
+  protected void reportResourceFailure(
+      final EnrichedEvent event, final PipeResourceFailureType failureType) {
+    // Do nothing by default for subtasks that do not expose resource failure metrics.
   }
 }

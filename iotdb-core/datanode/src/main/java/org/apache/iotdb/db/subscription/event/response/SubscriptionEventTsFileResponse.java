@@ -189,20 +189,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
           PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(bufferSize);
       final byte[] readBuffer = new byte[(int) bufferSize];
 
-      final int readLength = reader.read(readBuffer);
-      if (readLength != bufferSize) {
-        memoryBlock.close();
-        throw new SubscriptionException(
-            String.format(
-                "inconsistent read length (broken invariant), expected: %s, actual: %s",
-                bufferSize, readLength));
-      }
+      reader.readFully(readBuffer);
 
       // generate subscription poll response with piece payload
       final CachedSubscriptionPollResponse response =
           new CachedSubscriptionPollResponse(
               SubscriptionPollResponseType.FILE_PIECE.getType(),
-              new FilePiecePayload(tsFile.getName(), writingOffset + readLength, readBuffer),
+              new FilePiecePayload(tsFile.getName(), writingOffset + bufferSize, readBuffer),
               commitContext);
 
       // set fixed memory block for response

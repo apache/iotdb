@@ -21,10 +21,12 @@ package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.ainode.AsyncAINodeServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 public class AsyncAINodeHeartbeatClientPool {
 
@@ -34,15 +36,36 @@ public class AsyncAINodeHeartbeatClientPool {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncAINodeServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncAINodeHeartbeatServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncAINodeHeartbeatServiceClientPoolFactory(
+                    ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager()));
   }
 
   public void getAINodeHeartBeat(
       TEndPoint endPoint, TAIHeartbeatReq req, AINodeHeartbeatHandler handler) {
+    AsyncAINodeServiceClient client = null;
+    boolean dispatched = false;
     try {
-      clientManager.borrowClient(endPoint).getAIHeartbeat(req, handler);
-    } catch (Exception ignore) {
-      // Just ignore
+      client = clientManager.borrowClient(endPoint);
+      client.getAIHeartbeat(req, handler);
+      dispatched = true;
+    } catch (Exception e) {
+      handleError(handler, e);
+    } finally {
+      // After the async call is dispatched, the client's onComplete/onError callback is
+      // responsible for returning the client. If the RPC was not dispatched (exception
+      // before/during the call), the client must be returned here to prevent pool leakage.
+      if (!dispatched && client != null && clientManager instanceof ClientManager) {
+        ((ClientManager<TEndPoint, AsyncAINodeServiceClient>) clientManager)
+            .returnClient(endPoint, client);
+      }
+    }
+  }
+
+  private void handleError(final AINodeHeartbeatHandler handler, final Exception e) {
+    try {
+      handler.onError(e);
+    } catch (final Exception ignore) {
+      // Ignore handler failures in heartbeat best-effort path.
     }
   }
 

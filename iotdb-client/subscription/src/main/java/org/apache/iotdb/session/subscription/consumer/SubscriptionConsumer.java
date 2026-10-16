@@ -100,6 +100,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final String username;
   private final String password;
+  private final String encryptedPassword;
 
   protected String consumerId;
   protected String consumerGroupId;
@@ -177,6 +178,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.username = builder.username;
     this.password = builder.password;
+    this.encryptedPassword = builder.encryptedPassword;
 
     this.consumerId = builder.consumerId;
     this.consumerGroupId = builder.consumerGroupId;
@@ -206,6 +208,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 (String)
                     properties.getOrDefault(
                         ConsumerConstant.PASSWORD_KEY, SessionConfig.DEFAULT_PASSWORD))
+            .encryptedPassword((String) properties.get(ConsumerConstant.ENCRYPTED_PASSWORD_KEY))
             .consumerId((String) properties.get(ConsumerConstant.CONSUMER_ID_KEY))
             .consumerGroupId((String) properties.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY))
             .heartbeatIntervalMs(
@@ -386,6 +389,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             endPoint,
             this.username,
             this.password,
+            this.encryptedPassword,
             this.consumerId,
             this.consumerGroupId,
             this.thriftMaxFrameSize,
@@ -1401,6 +1405,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     protected String username = SessionConfig.DEFAULT_USER;
     protected String password = SessionConfig.DEFAULT_PASSWORD;
+    protected String encryptedPassword;
 
     protected String consumerId;
     protected String consumerGroupId;
@@ -1437,7 +1442,24 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     public Builder password(final String password) {
+      if (!Objects.equals(password, SessionConfig.DEFAULT_PASSWORD)
+          && Objects.nonNull(this.encryptedPassword)) {
+        throw new IllegalStateException(
+            "password and encryptedPassword are mutually exclusive; encryptedPassword is already set");
+      }
       this.password = password;
+      return this;
+    }
+
+    public Builder encryptedPassword(final String encryptedPassword) {
+      if (Objects.isNull(encryptedPassword)) {
+        return this;
+      }
+      if (!Objects.equals(this.password, SessionConfig.DEFAULT_PASSWORD)) {
+        throw new IllegalStateException(
+            "password and encryptedPassword are mutually exclusive; password is already set");
+      }
+      this.encryptedPassword = encryptedPassword;
       return this;
     }
 

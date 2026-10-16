@@ -47,6 +47,15 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(600);
+  }
+
   @Test
   public void testBasicAlterPipe() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -533,5 +542,89 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // Check database on receiver
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("3,"));
+  }
+
+  @Test
+  public void testAlterPipeRealtime() {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    // Insert data on sender
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)",
+            "flush"),
+        null);
+
+    // Create pipe
+    final String sql =
+        String.format(
+            "create pipe a2b with source ('history.enable'='false') with sink ('node-urls'='%s')",
+            receiverDataNode.getIpAndPortString());
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "count timeSeries root.db.**",
+        "count(timeseries),",
+        Collections.singleton("0,"));
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("alter pipe a2b modify source ('history.enable'='true')");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeSeries root.db.**",
+        "count(timeseries),",
+        Collections.singleton("1,"));
+  }
+
+  @Test
+  public void testAlterPipeDoesNotResendCommittedData() {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList("insert into root.db.d1(time, s1) values (1, 1), (2, 2)", "flush"),
+        null);
+
+    TestUtils.executeNonQuery(
+        senderEnv,
+        String.format(
+            "create pipe a2b with source ('source.realtime.mode'='stream') with sink ('node-urls'='%s', 'sink.batch.enable'='false')",
+            receiverDataNode.getIpAndPortString()),
+        null);
+
+    final Set<String> oldData = new HashSet<>(Arrays.asList("1,1.0,", "2,2.0,"));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", oldData);
+
+    TestUtils.executeNonQuery(
+        receiverEnv, "delete from root.db.d1.s1 where time >= 1 and time <= 2", null);
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", Collections.emptySet());
+
+    TestUtils.executeNonQuery(
+        senderEnv, "alter pipe a2b modify sink ('sink.batch.enable'='true')", null);
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", Collections.emptySet());
+
+    TestUtils.executeNonQueries(
+        senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"), null);
+    final Set<String> newData = Collections.singleton("3,3.0,");
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", newData);
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", newData);
   }
 }

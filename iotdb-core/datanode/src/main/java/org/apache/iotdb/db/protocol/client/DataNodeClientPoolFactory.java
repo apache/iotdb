@@ -61,32 +61,4 @@ public class DataNodeClientPoolFactory {
       return clientPool;
     }
   }
-
-  public static class ClusterDeletionConfigNodeClientPoolFactory
-      implements IClientPoolFactory<ConfigRegionId, ConfigNodeClient> {
-
-    @Override
-    public GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
-        ClientManager<ConfigRegionId, ConfigNodeClient> manager) {
-      GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> clientPool =
-          new GenericKeyedObjectPool<>(
-              new ConfigNodeClient.Factory(
-                  manager,
-                  new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS() * 10)
-                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
-                      .setSelectorNumOfAsyncClientManager(
-                          conf.getSelectorNumOfClientManager() / 10 > 0
-                              ? conf.getSelectorNumOfClientManager() / 10
-                              : 1)
-                      .build()),
-              new ClientPoolProperty.Builder<ConfigNodeClient>()
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
-                  .build()
-                  .getConfig());
-      ClientManagerMetrics.getInstance()
-          .registerClientManager(this.getClass().getSimpleName(), clientPool);
-      return clientPool;
-    }
-  }
 }

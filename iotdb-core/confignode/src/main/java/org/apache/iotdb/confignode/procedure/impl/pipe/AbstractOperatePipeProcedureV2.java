@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -46,7 +47,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -93,6 +95,18 @@ public abstract class AbstractOperatePipeProcedureV2
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
 
+  // Only used to release global locks before retrying the same state. Do not serialize it because a
+  // recovered procedure is already re-scheduled by the procedure framework.
+  private transient boolean shouldYieldAfterExecution;
+
+  // These fields only describe where a running Pipe procedure is blocked when the caller times out.
+  // They do not affect execution and do not need to be persisted.
+  private volatile PipeProcedureExecutionStage executionStage =
+      PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+  private volatile String lastExecutionExceptionMessage;
+  private volatile Procedure<?> nodeLockOwnerProcedure;
+  private volatile Set<Integer> pendingDataNodeIds = Collections.emptySet();
+
   private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
       "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
 
@@ -107,6 +121,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    executionStage = PipeProcedureExecutionStage.WAITING_FOR_PIPE_TASK_COORDINATOR_LOCK;
     LOGGER.debug("ProcedureId {} try to acquire pipe lock.", getProcId());
     pipeTaskInfo = acquireLockInternal(configNodeProcedureEnv);
     if (pipeTaskInfo == null) {
@@ -115,9 +130,12 @@ public abstract class AbstractOperatePipeProcedureV2
       LOGGER.debug("ProcedureId {} acquired pipe lock.", getProcId());
     }
 
+    executionStage = PipeProcedureExecutionStage.WAITING_FOR_NODE_LOCK;
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
     switch (procedureLockState) {
       case LOCK_ACQUIRED:
+        nodeLockOwnerProcedure = null;
+        updateExecutionStage(getCurrentState(), false);
         if (pipeTaskInfo == null) {
           LOGGER.warn(
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
@@ -129,16 +147,12 @@ public abstract class AbstractOperatePipeProcedureV2
         }
         break;
       case LOCK_EVENT_WAIT:
+        nodeLockOwnerProcedure = configNodeProcedureEnv.getNodeLock().getLockOwnerProcedure();
         if (pipeTaskInfo == null) {
           LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
         } else {
           LOGGER.debug("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
+          releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
         }
         break;
       default:
@@ -152,12 +166,7 @@ public abstract class AbstractOperatePipeProcedureV2
               "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.",
               getProcId(),
               procedureLockState);
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
+          releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
         }
         break;
     }
@@ -172,18 +181,28 @@ public abstract class AbstractOperatePipeProcedureV2
       LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
     } else {
       LOGGER.debug("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
-      if (this instanceof PipeMetaSyncProcedure) {
+      if (isSuccess() && this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
             .getConfigManager()
             .getPipeManager()
             .getPipeTaskCoordinator()
             .updateLastSyncedVersion();
       }
-      PipeProcedureMetrics.getInstance()
-          .updateTimer(this.getOperation().getName(), this.elapsedTime());
-      configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-      pipeTaskInfo = null;
+      if (isFinished()) {
+        PipeProcedureMetrics.getInstance()
+            .updateTimer(this.getOperation().getName(), this.elapsedTime());
+      }
+      releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
+      if (!isFinished()) {
+        executionStage = PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+      }
     }
+  }
+
+  private void releasePipeTaskCoordinatorLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    // Clear before releasing the semaphore to avoid clobbering a re-scheduled execution's marker.
+    pipeTaskInfo = null;
+    configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
   }
 
   protected abstract PipeTaskOperation getOperation();
@@ -201,7 +220,7 @@ public abstract class AbstractOperatePipeProcedureV2
   public abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
   /**
-   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.‘
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
    *
    * @throws PipeException if configNode consensus write failed
    */
@@ -220,6 +239,8 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws InterruptedException {
+    shouldYieldAfterExecution = false;
+    updateExecutionStage(state, false);
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
@@ -231,6 +252,7 @@ public abstract class AbstractOperatePipeProcedureV2
       switch (state) {
         case VALIDATE_TASK:
           if (!executeFromValidateTask(env)) {
+            lastExecutionExceptionMessage = null;
             LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
             // On client side, the message returned after the successful execution of the pipe
             // command corresponding to this procedure is "Msg: The statement is executed
@@ -250,12 +272,15 @@ public abstract class AbstractOperatePipeProcedureV2
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
+          lastExecutionExceptionMessage = null;
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
               String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
+      lastExecutionExceptionMessage = null;
     } catch (Exception e) {
+      lastExecutionExceptionMessage = getExceptionMessage(e);
       // Retry before rollback
       if (getCycles() < RETRY_THRESHOLD) {
         LOGGER.warn(
@@ -267,8 +292,7 @@ public abstract class AbstractOperatePipeProcedureV2
             RETRY_THRESHOLD,
             e);
         setNextState(getCurrentState());
-        // Wait 3s for next retry
-        TimeUnit.MILLISECONDS.sleep(3000L);
+        shouldYieldAfterExecution = true;
       } else {
         LOGGER.warn(
             "ProcedureId {}: All {} retries failed when trying to {} at state [{}], will rollback...",
@@ -289,6 +313,11 @@ public abstract class AbstractOperatePipeProcedureV2
   }
 
   @Override
+  protected boolean isYieldAfterExecution(final ConfigNodeProcedureEnv env) {
+    return shouldYieldAfterExecution;
+  }
+
+  @Override
   protected boolean isRollbackSupported(OperatePipeTaskState state) {
     return true;
   }
@@ -296,6 +325,7 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws IOException, InterruptedException, ProcedureException {
+    updateExecutionStage(state, true);
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, rollbackState({})'s execution will be skipped.",
@@ -382,6 +412,167 @@ public abstract class AbstractOperatePipeProcedureV2
     return OperatePipeTaskState.VALIDATE_TASK;
   }
 
+  public final String getTimeoutDiagnosticMessage() {
+    final PipeProcedureExecutionStage currentExecutionStage = executionStage;
+    return String.format(
+        "Pipe operation %s timed out (procedureId=%d). Stuck at %s. Reason: %s. "
+            + "The procedure is still running.",
+        getOperation().name(),
+        getProcId(),
+        currentExecutionStage.name(),
+        getTimeoutReason(currentExecutionStage));
+  }
+
+  private String getTimeoutReason(final PipeProcedureExecutionStage currentExecutionStage) {
+    final String failureMessage = getFailureMessage();
+    if (currentExecutionStage.isRollback()) {
+      return getRollbackTimeoutReason(failureMessage);
+    }
+    if (isFailed() && failureMessage != null) {
+      return String.format("the state failed with '%s' and rollback is pending.", failureMessage);
+    }
+    if (lastExecutionExceptionMessage != null) {
+      return String.format(
+          "the previous attempt failed with '%s' and this state is being retried.",
+          lastExecutionExceptionMessage);
+    }
+
+    switch (currentExecutionStage) {
+      case WAITING_FOR_PROCEDURE_WORKER:
+        return "no Procedure worker is currently available; "
+            + "workers may be busy or blocked by other procedures.";
+      case WAITING_FOR_PIPE_TASK_COORDINATOR_LOCK:
+        return "waiting to acquire the PipeTaskCoordinator lock because "
+            + "another Pipe operation is holding it.";
+      case WAITING_FOR_NODE_LOCK:
+        return getNodeLockTimeoutReason();
+      case VALIDATE_TASK:
+        return "Pipe request or plugin validation has not completed; "
+            + "a plugin check or metadata access may be slow.";
+      case CALCULATE_INFO_FOR_TASK:
+        return "Pipe metadata calculation has not completed; "
+            + "metadata access or local calculation may be slow.";
+      case WRITE_CONFIG_NODE_CONSENSUS:
+        return "the ConfigNode consensus write has not returned; "
+            + "run SHOW CLUSTER to check node status.";
+      case OPERATE_ON_DATA_NODES:
+        return getDataNodeTimeoutReason();
+      default:
+        return getRollbackTimeoutReason(failureMessage);
+    }
+  }
+
+  private static String getRollbackTimeoutReason(final String failureMessage) {
+    return failureMessage == null
+        ? "rolling back after an earlier failure."
+        : String.format("rolling back after failure: %s.", failureMessage);
+  }
+
+  private String getNodeLockTimeoutReason() {
+    final Procedure<?> lockOwnerProcedure = nodeLockOwnerProcedure;
+    if (lockOwnerProcedure == null) {
+      return "waiting to acquire the ConfigNode node lock because another node procedure is holding it.";
+    }
+    final String operation =
+        lockOwnerProcedure instanceof AbstractOperatePipeProcedureV2
+            ? ((AbstractOperatePipeProcedureV2) lockOwnerProcedure).getOperation().name()
+            : lockOwnerProcedure.getClass().getSimpleName();
+    return String.format(
+        "waiting to acquire the ConfigNode node lock held by %s (procedureId=%d).",
+        operation, lockOwnerProcedure.getProcId());
+  }
+
+  private String getFailureMessage() {
+    if (getException() != null) {
+      return getException().getMessage();
+    }
+    return lastExecutionExceptionMessage;
+  }
+
+  private static String getExceptionMessage(final Exception exception) {
+    return exception.getMessage() == null || exception.getMessage().isEmpty()
+        ? exception.getClass().getSimpleName()
+        : exception.getMessage();
+  }
+
+  private String getDataNodeTimeoutReason() {
+    final Set<Integer> currentPendingDataNodeIds = new TreeSet<>(pendingDataNodeIds);
+    return currentPendingDataNodeIds.isEmpty()
+        ? "the Pipe metadata push has not completed; run SHOW CLUSTER to check DataNode status."
+        : String.format(
+            "DataNodes %s have not responded to the Pipe metadata push; "
+                + "run SHOW CLUSTER to check their status.",
+            currentPendingDataNodeIds);
+  }
+
+  protected final void updateExecutionStage(
+      final OperatePipeTaskState state, final boolean isRollback) {
+    if (state == null) {
+      executionStage = PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+      return;
+    }
+    switch (state) {
+      case VALIDATE_TASK:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_VALIDATE_TASK
+                : PipeProcedureExecutionStage.VALIDATE_TASK;
+        break;
+      case CALCULATE_INFO_FOR_TASK:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_CALCULATE_INFO_FOR_TASK
+                : PipeProcedureExecutionStage.CALCULATE_INFO_FOR_TASK;
+        break;
+      case WRITE_CONFIG_NODE_CONSENSUS:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_WRITE_CONFIG_NODE_CONSENSUS
+                : PipeProcedureExecutionStage.WRITE_CONFIG_NODE_CONSENSUS;
+        break;
+      case OPERATE_ON_DATA_NODES:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_OPERATE_ON_DATA_NODES
+                : PipeProcedureExecutionStage.OPERATE_ON_DATA_NODES;
+        break;
+      default:
+        executionStage = PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+    }
+  }
+
+  protected final void setPendingDataNodeIds(final Set<Integer> pendingDataNodeIds) {
+    this.pendingDataNodeIds = pendingDataNodeIds;
+  }
+
+  private enum PipeProcedureExecutionStage {
+    WAITING_FOR_PROCEDURE_WORKER,
+    WAITING_FOR_PIPE_TASK_COORDINATOR_LOCK,
+    WAITING_FOR_NODE_LOCK,
+    VALIDATE_TASK,
+    CALCULATE_INFO_FOR_TASK,
+    WRITE_CONFIG_NODE_CONSENSUS,
+    OPERATE_ON_DATA_NODES,
+    ROLLBACK_VALIDATE_TASK(true),
+    ROLLBACK_CALCULATE_INFO_FOR_TASK(true),
+    ROLLBACK_WRITE_CONFIG_NODE_CONSENSUS(true),
+    ROLLBACK_OPERATE_ON_DATA_NODES(true);
+
+    private final boolean rollback;
+
+    PipeProcedureExecutionStage() {
+      this(false);
+    }
+
+    PipeProcedureExecutionStage(final boolean rollback) {
+      this.rollback = rollback;
+    }
+
+    private boolean isRollback() {
+      return rollback;
+    }
+  }
+
   /**
    * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the pipe's runtime state.
    *
@@ -396,7 +587,7 @@ public abstract class AbstractOperatePipeProcedureV2
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 
-    return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
+    return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList, this::setPendingDataNodeIds);
   }
 
   /**
@@ -464,10 +655,11 @@ public abstract class AbstractOperatePipeProcedureV2
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
+          final String statusMessage = resp.getStatus().getMessage();
           exceptionMessageBuilder.append(
               String.format(
-                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.",
-                  dataNodeId));
+                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.%s",
+                  dataNodeId, statusMessage == null ? "" : " " + statusMessage));
           continue;
         }
 
@@ -515,6 +707,24 @@ public abstract class AbstractOperatePipeProcedureV2
     }
   }
 
+  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodesBestEffortAndGetResponse(
+      ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaBinaryList.add(pipeMeta.serialize());
+    }
+    return env.pushAllPipeMetaToDataNodesBestEffort(
+        pipeMetaBinaryList, this::setPendingDataNodeIds);
+  }
+
+  protected void pushPipeMetaToDataNodesBestEffort(ConfigNodeProcedureEnv env) {
+    try {
+      pushPipeMetaToDataNodesBestEffortAndGetResponse(env);
+    } catch (Exception e) {
+      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
+    }
+  }
+
   /**
    * Pushing one pipeMeta to all the dataNodes, forcing an update to the pipe's runtime state.
    *
@@ -526,7 +736,8 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
       String pipeName, ConfigNodeProcedureEnv env) throws IOException {
     return env.pushSinglePipeMetaToDataNodes(
-        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize());
+        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize(),
+        this::setPendingDataNodeIds);
   }
 
   protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
@@ -542,7 +753,8 @@ public abstract class AbstractOperatePipeProcedureV2
                 Collections.singletonMap(
                     SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
     return env.pushSinglePipeMetaToDataNodes(
-        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize());
+        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize(),
+        this::setPendingDataNodeIds);
   }
 
   /**
@@ -554,7 +766,7 @@ public abstract class AbstractOperatePipeProcedureV2
    */
   protected Map<Integer, TPushPipeMetaResp> dropSinglePipeOnDataNodes(
       String pipeName, ConfigNodeProcedureEnv env) {
-    return env.dropSinglePipeOnDataNodes(pipeName);
+    return env.dropSinglePipeOnDataNodes(pipeName, this::setPendingDataNodeIds);
   }
 
   @Override

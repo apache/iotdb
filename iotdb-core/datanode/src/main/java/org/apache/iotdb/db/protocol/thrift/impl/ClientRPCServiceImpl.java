@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -114,6 +115,8 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -335,7 +338,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 partitionFetcher,
                 schemaFetcher,
                 req.getTimeout(),
-                true);
+                true,
+                s.isDebug());
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -431,7 +435,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -522,7 +527,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -612,7 +618,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -1008,7 +1015,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             if (timeValuePair == null) {
               allCached = false;
               break;
-            } else if (timeValuePair.getValue() == null) {
+            } else if (timeValuePair == DeviceLastCache.EMPTY_TIME_VALUE_PAIR
+                || timeValuePair.getValue() == null) {
               // there is no data for this sensor
               if (!canUseNullEntry) {
                 allCached = false;
@@ -1059,7 +1067,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -1510,6 +1519,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
+      if (path.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteTimeSeriesStatement statement =
           StatementGenerator.createDeleteTimeSeriesStatement(path);
@@ -1659,7 +1671,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     partitionFetcher,
                     schemaFetcher,
                     config.getQueryTimeoutThreshold(),
-                    false);
+                    false,
+                    s.isDebug());
           }
           results.add(result.status);
         } catch (Exception e) {
@@ -2045,9 +2058,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-
-      req.setMeasurementsList(
-          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      PathUtils.checkIsLegalSingleMeasurementListsAndUpdateInPlace(req.getMeasurementsList());
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement = StatementGenerator.createStatement(req);
@@ -2106,7 +2117,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+      PathUtils.checkIsLegalSingleMeasurementsAndUpdateInPlace(req.getMeasurements());
       // Step 1: transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement = StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -2515,7 +2526,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold(),
-              true);
+              true,
+              statement.isDebug());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -2745,24 +2757,62 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(final TSyncIdentityInfo info) throws TException {
-    return PipeDataNodeAgent.receiver()
-        .legacy()
-        .handshake(
-            info,
-            SESSION_MANAGER.getCurrSession().getClientAddress(),
-            partitionFetcher,
-            schemaFetcher);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .handshake(
+              info,
+              SESSION_MANAGER.getCurrSession().getClientAddress(),
+              partitionFetcher,
+              schemaFetcher);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendPipeData(final ByteBuffer buff) throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .transportPipeData(
+              buff, SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendFile(final TSyncTransportMetaInfo metaInfo, final ByteBuffer buff)
       throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TSStatus checkLegacyPipeReceiverPermission() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return getNotLoggedInStatus();
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(
+            clientSession.getUsername(), PrivilegeType.USE_PIPE.ordinal()),
+        PrivilegeType.USE_PIPE);
   }
 
   @Override
@@ -2772,17 +2822,51 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) {
-    return SubscriptionAgent.receiver().handle(req);
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInPipeSubscribeResp();
+      }
+
+      return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSBackupConfigurationResp getBackupConfiguration() {
-    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSBackupConfigurationResp(getNotLoggedInStatus());
+      }
+
+      return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() {
-    return SESSION_MANAGER.getAllConnectionInfo();
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSConnectionInfoResp(Collections.emptyList());
+      }
+
+      return SESSION_MANAGER.getAllConnectionInfo();
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TPipeSubscribeResp getNotLoggedInPipeSubscribeResp() {
+    return new TPipeSubscribeResp(
+        getNotLoggedInStatus(),
+        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+        PipeSubscribeResponseType.ACK.getType());
   }
 
   @Override
@@ -2910,6 +2994,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     ExecutionResult result = null;
     final List<? extends Statement> subStatements = statement.getSubStatements();
     final int totalSubStatements = subStatements.size();
+    boolean debug = statement.isDebug();
 
     LOGGER.info(
         "Start batch executing {} sub-statement(s) in tree model, queryId: {}",
@@ -2934,7 +3019,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               timeoutMs,
-              userQuery);
+              userQuery,
+              debug);
 
       // Exit early if any sub-statement execution fails
       if (result != null

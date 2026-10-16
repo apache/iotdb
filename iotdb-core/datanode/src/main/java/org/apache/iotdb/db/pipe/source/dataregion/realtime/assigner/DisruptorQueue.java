@@ -26,24 +26,22 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.Disruptor;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.EventHandler;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_EXTRACTOR_DISRUPTOR;
+import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_SOURCE_DISRUPTOR;
 
 public class DisruptorQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DisruptorQueue.class);
   private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
-      new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
+      new IoTDBDaemonThreadFactory(PIPE_SOURCE_DISRUPTOR.getName());
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final Disruptor<EventContainer> disruptor;
@@ -75,9 +73,8 @@ public class DisruptorQueue {
                 32,
                 Math.toIntExact(
                     allocatedMemoryBlock.getMemoryUsageInBytes() / ringBufferEntrySizeInBytes)),
-            THREAD_FACTORY,
-            ProducerType.MULTI,
-            new BlockingWaitStrategy());
+            THREAD_FACTORY);
+
     disruptor.handleEventsWith(
         (container, sequence, endOfBatch) -> {
           final PipeRealtimeEvent realtimeEvent = container.getEvent();
@@ -90,16 +87,29 @@ public class DisruptorQueue {
   }
 
   public void publish(final PipeRealtimeEvent event) {
+    publishOrDrop(event);
+  }
+
+  public boolean publishOrDrop(final PipeRealtimeEvent event) {
     final EnrichedEvent innerEvent = event.getEvent();
     if (innerEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) innerEvent).recordDisruptorSize(ringBuffer);
     }
-    ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
-    mayPrintExceedingLog();
+    final boolean published =
+        ringBuffer.publishEvent(
+            (container, sequence, o) -> container.setEvent(event), event, this::isClosed);
+    if (published) {
+      mayPrintExceedingLog();
+    }
+    return published;
+  }
+
+  public void closeInput() {
+    isClosed = true;
   }
 
   public void shutdown() {
-    isClosed = true;
+    closeInput();
     // use shutdown instead of halt to ensure all published events have been handled
     disruptor.shutdown();
     allocatedMemoryBlock.close();
@@ -127,7 +137,7 @@ public class DisruptorQueue {
 
   private static class EventContainer {
 
-    private PipeRealtimeEvent event;
+    private volatile PipeRealtimeEvent event;
 
     private EventContainer() {}
 

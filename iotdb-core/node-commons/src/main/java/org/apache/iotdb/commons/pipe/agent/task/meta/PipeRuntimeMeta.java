@@ -88,8 +88,8 @@ public class PipeRuntimeMeta {
    * <p>1. {@link PipeRuntimeCriticalException}, to record the failure of pushing {@link PipeMeta},
    * and will result in the halt of pipe execution.
    *
-   * <p>2. {@link PipeRuntimeSinkCriticalException}, to record the exception reported by other pipes
-   * sharing the same connector, and will stop the pipe likewise.
+   * <p>2. {@link PipeRuntimeSinkCriticalException}, retained for compatibility with runtime meta
+   * written before sink subtasks were isolated by pipe.
    */
   private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();
@@ -128,12 +128,30 @@ public class PipeRuntimeMeta {
     }
   }
 
+  public void clearExceptionMessagesBefore(final long exceptionsClearTime) {
+    nodeId2PipeRuntimeExceptionMap
+        .entrySet()
+        .removeIf(entry -> entry.getValue().getTimeStamp() <= exceptionsClearTime);
+    consensusGroupId2TaskMetaMap
+        .values()
+        .forEach(pipeTaskMeta -> pipeTaskMeta.clearExceptionMessagesBefore(exceptionsClearTime));
+  }
+
   public boolean getIsStoppedByRuntimeException() {
     return isStoppedByRuntimeException.get();
   }
 
   public void setIsStoppedByRuntimeException(boolean isStoppedByRuntimeException) {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
+  }
+
+  /**
+   * We use negative regionId to identify the external pipe source, which is not a consensus group
+   * id. Then we can reuse the regionId to schedule the external pipe source and store the progress
+   * information.
+   */
+  public static boolean isSourceExternal(int regionId) {
+    return regionId < 0;
   }
 
   public ByteBuffer serialize() throws IOException {

@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.Pi
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -107,13 +108,15 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
       final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
       /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
-      /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent) {
+      /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
+      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent) {
     pipeHeartbeatScheduler.parseHeartbeat(
         dataNodeId,
         new PipeHeartbeat(
             pipeMetaByteBufferListFromDataNode,
             pipeCompletedListFromAgent,
             pipeRemainingEventCountListFromAgent,
-            pipeRemainingTimeListFromAgent));
+            pipeRemainingTimeListFromAgent,
+            pipeRecentFailureListFromAgent));
   }
 }

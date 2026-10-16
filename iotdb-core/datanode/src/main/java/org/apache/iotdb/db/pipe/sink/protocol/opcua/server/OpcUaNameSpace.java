@@ -30,7 +30,12 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -45,7 +50,7 @@ import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
-import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
+import org.eclipse.milo.opcua.stack.core.AttributeId;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
@@ -55,32 +60,47 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.structured.ReadValueId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
-import java.sql.Date;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
-  private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
+
+  // Do not use subscription model because the original subscription model has some bugs
+  private final ConcurrentMap<NodeId, List<DataItem>> nodeSubscriptions = new ConcurrentHashMap<>();
+
+  // Debounce task cache: used to merge updates within a short period of time, avoiding unnecessary
+  // duplicate pushes
+  private final ConcurrentMap<NodeId, ScheduledFuture<?>> debounceTasks = new ConcurrentHashMap<>();
+  // Debounce interval: within 10ms, the same node is updated multiple times, and only the last one
+  // will be pushed (can be adjusted according to your site delay requirements, the minimum can be
+  // set to 1ms)
+  private final long debounceIntervalMs;
 
   public OpcUaNameSpace(final OpcUaServer server, final OpcUaServerBuilder builder) {
     super(server, NAMESPACE_URI);
     this.builder = builder;
+    debounceIntervalMs = builder.getDebounceTimeMs();
 
-    subscriptionModel = new SubscriptionModel(server, this);
-    getLifecycleManager().addLifecycle(subscriptionModel);
     getLifecycleManager()
         .addLifecycle(
             new Lifecycle() {
@@ -105,6 +125,79 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       transferTabletForClientServerModel(tablet, sink, this::transferTabletRowForClientServerModel);
     } else {
       transferTabletForPubSubModel(tablet);
+    }
+  }
+
+  /**
+   * Transfers the last value of every measurement in a TsFile device without materializing a {@link
+   * Tablet}. The TsFile last-value reader obtains the values from metadata (and reads only the last
+   * chunk when a data type does not keep a value in statistics).
+   */
+  public void transferLastValues(
+      final IDeviceID deviceID,
+      final List<Pair<MeasurementSchema, TimeValuePair>> lastValues,
+      final OpcUaSink sink)
+      throws Exception {
+    transferLastValues(deviceID, lastValues, sink, this::transferTabletRowForClientServerModel);
+  }
+
+  public static void transferLastValues(
+      final IDeviceID deviceID,
+      final List<Pair<MeasurementSchema, TimeValuePair>> lastValues,
+      final OpcUaSink sink,
+      final TabletRowConsumer consumer)
+      throws Exception {
+    // The 1.3 branch only supports tree-model device IDs.
+    final String[] segments = ((PlainDeviceID) deviceID).toStringID().split("\\.");
+
+    final List<MeasurementSchema> schemas = new ArrayList<>(lastValues.size());
+    final List<Long> timestamps = new ArrayList<>(lastValues.size());
+    final List<Object> values = new ArrayList<>(lastValues.size());
+    for (final Pair<MeasurementSchema, TimeValuePair> lastValue : lastValues) {
+      if (Objects.isNull(lastValue)
+          || Objects.isNull(lastValue.getLeft())
+          || Objects.isNull(lastValue.getLeft().getMeasurementId())
+          || TsFileConstant.TIME_COLUMN_ID.equals(lastValue.getLeft().getMeasurementId())
+          || Objects.isNull(lastValue.getRight())
+          || Objects.isNull(lastValue.getRight().getValue())) {
+        continue;
+      }
+
+      final TimeValuePair timeValuePair = lastValue.getRight();
+      final TSDataType dataType = lastValue.getLeft().getType();
+      schemas.add(lastValue.getLeft());
+      timestamps.add(timeValuePair.getTimestamp());
+      values.add(getObjectValue4Opc(timeValuePair, dataType));
+    }
+
+    if (!schemas.isEmpty()) {
+      consumer.accept(segments, schemas, timestamps, values, sink);
+    }
+  }
+
+  private static Object getObjectValue4Opc(
+      final TimeValuePair timeValuePair, final TSDataType dataType) {
+    final Object value = timeValuePair.getValue().getValue();
+    switch (dataType) {
+      case DATE:
+        return new DateTime(
+            new Date(DateUtils.parseIntToDate(((Number) value).intValue()).getTime()));
+      case TIMESTAMP:
+        return new DateTime(timestampToUtc(((Number) value).longValue()));
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return value instanceof Binary ? value.toString() : String.valueOf(value);
+      case BOOLEAN:
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        return value;
+      case VECTOR:
+      case UNKNOWN:
+      default:
+        throw new UnSupportedDataTypeException("UnSupported dataType " + dataType);
     }
   }
 
@@ -245,7 +338,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         measurementNode =
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                 .setNodeId(nodeId)
-                .setAccessLevel(AccessLevel.READ_WRITE)
+                .setAccessLevel(AccessLevel.READ_ONLY)
                 .setUserAccessLevel(AccessLevel.READ_ONLY)
                 .setBrowseName(newQualifiedName(nodeName))
                 .setDisplayName(LocalizedText.english(nodeName))
@@ -279,7 +372,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         if (Objects.isNull(measurementNode.getValue())
             || Objects.isNull(measurementNode.getValue().getSourceTime())
             || measurementNode.getValue().getSourceTime().getUtcTime() < utcTimestamp) {
-          measurementNode.setValue(dataValue);
+          notifyNodeValueChange(nodeId, dataValue, measurementNode);
         }
       } else {
         valueNode = measurementNode;
@@ -291,9 +384,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       if (Objects.isNull(valueNode.getValue())
           || Objects.isNull(valueNode.getValue().getSourceTime())
           || valueNode.getValue().getSourceTime().getUtcTime() < timestamp) {
-        valueNode.setValue(
+        notifyNodeValueChange(
+            valueNode.getNodeId(),
             new DataValue(
-                new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()));
+                new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()),
+            valueNode);
       }
     }
   }
@@ -306,7 +401,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       case INT32:
         return ((int[]) column)[rowIndex];
       case DATE:
-        return new DateTime(Date.valueOf(((LocalDate[]) column)[rowIndex]));
+        return new DateTime(
+            Date.from(
+                ((LocalDate[]) column)[rowIndex].atStartOfDay(ZoneId.systemDefault()).toInstant()));
       case INT64:
         return ((long[]) column)[rowIndex];
       case TIMESTAMP:
@@ -357,7 +454,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int rowIndex = 0; rowIndex < tablet.rowSize; ++rowIndex) {
         // Filter null value
-        if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+        if (tablet.bitMaps != null
+            && columnIndex < tablet.bitMaps.length
+            && tablet.bitMaps[columnIndex] != null
+            && tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
           continue;
         }
 
@@ -451,35 +551,150 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
   }
 
+  /**
+   * On point value changing, notify all subscribed clients proactively
+   *
+   * @param nodeId NodeId of the changing node
+   * @param newValue New value of the node (DataValue object containing value, status code, and
+   *     timestamp)
+   * @param variableNode Corresponding UaVariableNode instance, used to update the local cached
+   *     value of the node
+   */
+  public void notifyNodeValueChange(
+      NodeId nodeId, DataValue newValue, UaVariableNode variableNode) {
+    // 1. Update the local cached value of the node
+    variableNode.setValue(newValue);
+
+    // 2. If there are no subscribers, return directly without doing any extra operations
+    List<DataItem> subscribedItems = nodeSubscriptions.get(nodeId);
+    if (subscribedItems == null || subscribedItems.isEmpty()) {
+      return;
+    }
+
+    // 2. Debounce+Async Push: Asynchronously push the expensive push operation, while merging
+    // high-frequency repeated updates
+    debounceTasks.compute(
+        nodeId,
+        (k, oldTask) -> {
+          // If there is already a pending push task, cancel it, we only need the latest value
+          if (oldTask != null && !oldTask.isDone()) {
+            oldTask.cancel(false);
+          }
+
+          // Submit the push task to the Milo's scheduled thread pool, delay DEBOUNCE_INTERVAL_MS
+          // execution
+          return getServer()
+              .getScheduledExecutorService()
+              .schedule(
+                  () -> {
+                    try {
+                      // Batch push changes to all subscribers, this time-consuming operation is put
+                      // into the thread pool, not blocking your data update thread
+                      for (DataItem item : subscribedItems) {
+                        try {
+                          item.setValue(newValue);
+                        } catch (Exception e) {
+                          // Single client push failure does not affect other clients
+                          LOGGER.warn(
+                              "Failed to push value change to client, nodeId={}", nodeId, e);
+                        }
+                      }
+                    } finally {
+                      // Task execution completed, clean up the debounce cache
+                      debounceTasks.remove(nodeId);
+                    }
+                  },
+                  debounceIntervalMs,
+                  TimeUnit.MILLISECONDS);
+        });
+  }
+
   @Override
   public void onDataItemsCreated(final List<DataItem> dataItems) {
-    subscriptionModel.onDataItemsCreated(dataItems);
+    for (DataItem item : dataItems) {
+      final ReadValueId readValueId = item.getReadValueId();
+      // Only handle Value attribute subscription (align with the original SubscriptionModel logic,
+      // ignore other attribute subscriptions)
+      if (!AttributeId.Value.isEqual(readValueId.getAttributeId())) {
+        continue;
+      }
+      final NodeId nodeId = readValueId.getNodeId();
+
+      // 1. Add the new subscription item to the subscription mapping
+      nodeSubscriptions.compute(
+          nodeId,
+          (k, existingList) -> {
+            List<DataItem> list =
+                existingList != null ? existingList : new CopyOnWriteArrayList<>();
+            list.add(item);
+            return list;
+          });
+
+      // 2. 【Key Optimization】Proactively push the current node's initial value when the new
+      // subscription item is created
+      // Eliminate Bad_WaitingForInitialData, no need to wait for any polling
+      try {
+        UaVariableNode node = (UaVariableNode) getNodeManager().getNode(nodeId).orElse(null);
+        if (node != null && node.getValue() != null) {
+          // Immediately push the current value to the new subscriber, the client will instantly be
+          // able to get the initial data
+          item.setValue(node.getValue());
+        }
+      } catch (Exception e) {
+        LOGGER.warn("Failed to send initial value to new subscription, nodeId={}", nodeId, e);
+      }
+    }
   }
 
   @Override
   public void onDataItemsModified(final List<DataItem> dataItems) {
-    subscriptionModel.onDataItemsModified(dataItems);
+    // Push mode, client modifies subscription parameters (e.g. sampling interval) has no effect on
+    // our active push, no additional processing is needed
   }
 
   @Override
   public void onDataItemsDeleted(final List<DataItem> dataItems) {
-    subscriptionModel.onDataItemsDeleted(dataItems);
+    for (DataItem item : dataItems) {
+      final ReadValueId readValueId = item.getReadValueId();
+      if (!AttributeId.Value.isEqual(readValueId.getAttributeId())) {
+        continue;
+      }
+      final NodeId nodeId = readValueId.getNodeId();
+
+      // When the client cancels the subscription, remove this subscription item from the mapping
+      nodeSubscriptions.computeIfPresent(
+          nodeId,
+          (k, existingList) -> {
+            existingList.remove(item);
+            // Automatically clean up the key when there are no subscribers, save memory
+            return existingList.isEmpty() ? null : existingList;
+          });
+    }
   }
 
   @Override
   public void onMonitoringModeChanged(final List<MonitoredItem> monitoredItems) {
-    subscriptionModel.onMonitoringModeChanged(monitoredItems);
+    // Push mode, monitoring mode change has no effect on active push, no additional processing is
+    // needed
   }
 
   /////////////////////////////// Conflict detection ///////////////////////////////
 
   public void checkEquals(
+      final String advertisedHost,
       final String user,
       final String password,
       final String securityDir,
       final boolean enableAnonymousAccess,
-      final Set<SecurityPolicy> securityPolicies) {
+      final Set<SecurityPolicy> securityPolicies,
+      final long debounceTimeMs) {
     builder.checkEquals(
-        user, password, Paths.get(securityDir), enableAnonymousAccess, securityPolicies);
+        advertisedHost,
+        user,
+        password,
+        Paths.get(securityDir),
+        enableAnonymousAccess,
+        securityPolicies,
+        debounceTimeMs);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -218,14 +219,16 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   private void prepareTargetFiles() throws IOException {
     File sourceTsFile = unseqFileToInsert.getTsFile();
     File targetTsFile = targetFile.getTsFile();
-    Files.createLink(targetTsFile.toPath(), sourceTsFile.toPath());
-    Files.createLink(
+    FileUtils.createLink(targetTsFile.toPath(), sourceTsFile.toPath(), true);
+    FileUtils.createLink(
         new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-        new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
+        true);
     if (unseqFileToInsert.getModFile().exists()) {
-      Files.createLink(
+      FileUtils.createLink(
           new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
-          new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
+          new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
+          true);
     }
     targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndex());
     targetFile.deserialize();

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -35,8 +36,10 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 
 public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
@@ -44,6 +47,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   protected static long RETRY_INTERVAL_MS = 100L;
   protected static long MAX_WAIT_QUERY_MS = 60 * 1000L;
+
+  protected TVList workingListForFlush;
 
   /**
    * Release the TVList if there is no query on it. Otherwise, it should set the first query as the
@@ -98,19 +103,39 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  /**
+   * Try to release the TVList. If there are active queries, transfer memory ownership to the first
+   * query. For AlignedTVList, this will release non-query columns before transferring to reduce
+   * memory footprint.
+   */
   private void tryReleaseTvList(TVList tvList) {
-    long tvListRamSize = tvList.calculateRamSize();
     tvList.lockQueryList();
     try {
       if (tvList.getQueryContextSet().isEmpty()) {
         tvList.clear();
       } else {
         QueryContext firstQuery = tvList.getQueryContextSet().iterator().next();
+
+        // For AlignedTVList with active queries, release non-query columns before
+        // transferring memory ownership to reduce memory footprint.
+        if (tvList instanceof AlignedTVList) {
+          AlignedTVList alignedTVList = (AlignedTVList) tvList;
+
+          // Get the union of all columns accessed by queries
+          Set<Integer> accessedColumns = alignedTVList.getAccessedColumnsForQuery();
+
+          if (accessedColumns != null && !accessedColumns.isEmpty()) {
+            // Release non-query columns to reduce memory before ownership transfer
+            alignedTVList.releaseNonQueryColumns(accessedColumns);
+          }
+        }
+
         // transfer memory from write process to read process. Here it reserves read memory and
         // releaseFlushedMemTable will release write memory.
         if (firstQuery instanceof FragmentInstanceContext) {
           MemoryReservationManager memoryReservationManager =
               ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           memoryReservationManager.reserveMemoryCumulatively(tvListRamSize);
           tvList.setReservedMemoryBytes(tvListRamSize);
         }
@@ -194,7 +219,50 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   public abstract IMeasurementSchema getSchema();
 
   @Override
-  public abstract void sortTvListForFlush();
+  public void sortTvListForFlush() {
+    TVList workingList = getWorkingTVList();
+    if (workingList.isSorted()) {
+      workingListForFlush = workingList;
+      return;
+    }
+
+    /*
+     * Concurrency background:
+     *
+     * A query may start earlier and record the current row count (rows) of the TVList as its
+     * visible range. After that, new unseq writes may arrive and immediately trigger a flush, which
+     * will sort the TVList.
+     *
+     * During sorting, the underlying indices array of the TVList may be reordered.
+     * If the query continues to use the previously recorded rows as its upper bound,
+     * it may convert a logical index to a physical index via the updated indices array.
+     *
+     * In this case, the converted physical index may exceed the previously visible
+     * rows range, leading to invalid access or unexpected behavior.
+     *
+     * To avoid this issue, when there are active queries on the working TVList, we must
+     * clone the times and indices before sorting, so that the flush sort does not mutate
+     * the data structures that concurrent queries rely on.
+     *
+     * Flushing-memtable queries may also reuse workingListForFlush instead of the original working
+     * TVList for the same reason.
+     */
+    boolean needCloneTimesAndIndicesInWorkingTVList;
+    workingList.lockQueryList();
+    try {
+      needCloneTimesAndIndicesInWorkingTVList = !workingList.getQueryContextSet().isEmpty();
+    } finally {
+      workingList.unlockQueryList();
+    }
+    workingListForFlush =
+        initWorkingListForFlushIfNecessary(workingList, needCloneTimesAndIndicesInWorkingTVList);
+    workingListForFlush.sort();
+  }
+
+  @Override
+  public void releaseTemporaryTvListForFlush() {
+    workingListForFlush = null;
+  }
 
   @Override
   public abstract int delete(long lowerBound, long upperBound);
@@ -226,4 +294,24 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract int serializedSize();
+
+  protected static byte[] serializeSchemaToWALBytes(IMeasurementSchema schema) {
+    byte[] bytes = new byte[schema.serializedSize()];
+    schema.serializeTo(ByteBuffer.wrap(bytes));
+    return bytes;
+  }
+
+  protected static int getSerializedSchemaSize(IMeasurementSchema schema) {
+    return schema.serializedSize();
+  }
+
+  @Override
+  public synchronized TVList initWorkingListForFlushIfNecessary(
+      TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList) {
+    if (workingListForFlush == null) {
+      workingListForFlush =
+          needCloneTimesAndIndicesInWorkingTVList ? workingList.cloneForFlushSort() : workingList;
+    }
+    return workingListForFlush;
+  }
 }

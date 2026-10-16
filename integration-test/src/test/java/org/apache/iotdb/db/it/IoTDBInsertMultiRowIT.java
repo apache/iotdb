@@ -96,6 +96,23 @@ public class IoTDBInsertMultiRowIT {
   }
 
   @Test
+  public void testInsertAlignedSeriesAutoCreate() throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "insert into root.aligned_auto_create.d1 (time, s1, s2) aligned values (0, null, 15.2)");
+        fail();
+      } catch (SQLException e) {
+        assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "Timeseries [root.aligned_auto_create.d1.s1] does not exist and its data type cannot be inferred from the null value"));
+      }
+    }
+  }
+
+  @Test
   public void testInsertMultiRow() throws SQLException {
     Statement st0 = connection.createStatement();
     st0.execute("insert into root.t1.wf01.wt01(timestamp, status) values (1, true)");

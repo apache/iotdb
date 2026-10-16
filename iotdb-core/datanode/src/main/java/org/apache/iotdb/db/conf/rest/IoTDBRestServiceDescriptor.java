@@ -38,6 +38,16 @@ import java.nio.charset.StandardCharsets;
 public class IoTDBRestServiceDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRestServiceDescriptor.class);
 
+  private static final String REST_QUERY_DEFAULT_ROW_SIZE_LIMIT =
+      "rest_query_default_row_size_limit";
+  private static final String REST_MAX_REQUEST_BODY_SIZE_IN_BYTES =
+      "rest_max_request_body_size_in_bytes";
+  private static final String REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES =
+      "rest_max_total_concurrent_request_body_size_in_bytes";
+  private static final String REST_MAX_INSERT_ROWS = "rest_max_insert_rows";
+  private static final String REST_MAX_INSERT_COLUMNS = "rest_max_insert_columns";
+  private static final String REST_MAX_INSERT_VALUES = "rest_max_insert_values";
+
   private final IoTDBRestServiceConfig conf = new IoTDBRestServiceConfig();
 
   protected IoTDBRestServiceDescriptor() {
@@ -86,11 +96,7 @@ public class IoTDBRestServiceDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "rest_service_port", Integer.toString(conf.getRestServicePort()))));
-    conf.setRestQueryDefaultRowSizeLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "rest_query_default_row_size_limit",
-                Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+    loadRuntimeLimitProps(properties);
     conf.setEnableSwagger(
         Boolean.parseBoolean(
             properties.getProperty("enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
@@ -109,6 +115,72 @@ public class IoTDBRestServiceDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
+  }
+
+  public synchronized void loadHotModifiedProps(TrimProperties properties) {
+    loadRuntimeLimitProps(properties);
+  }
+
+  private void loadRuntimeLimitProps(TrimProperties properties) {
+    conf.setRestQueryDefaultRowSizeLimit(
+        Integer.parseInt(
+            properties.getProperty(
+                REST_QUERY_DEFAULT_ROW_SIZE_LIMIT,
+                Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+    conf.setRestMaxRequestBodySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                REST_MAX_REQUEST_BODY_SIZE_IN_BYTES,
+                Long.toString(conf.getRestMaxRequestBodySizeInBytes()))));
+    conf.setRestMaxTotalConcurrentRequestBodySizeInBytes(
+        parseMaxTotalConcurrentRequestBodySizeInBytes(properties));
+    conf.setRestMaxInsertRows(
+        Integer.parseInt(
+            properties.getProperty(
+                REST_MAX_INSERT_ROWS, Integer.toString(conf.getRestMaxInsertRows()))));
+    conf.setRestMaxInsertColumns(
+        Integer.parseInt(
+            properties.getProperty(
+                REST_MAX_INSERT_COLUMNS, Integer.toString(conf.getRestMaxInsertColumns()))));
+    conf.setRestMaxInsertValues(
+        Long.parseLong(
+            properties.getProperty(
+                REST_MAX_INSERT_VALUES, Long.toString(conf.getRestMaxInsertValues()))));
+  }
+
+  private long parseMaxTotalConcurrentRequestBodySizeInBytes(TrimProperties properties) {
+    long configuredLimit =
+        Long.parseLong(
+            properties.getProperty(
+                REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES,
+                Long.toString(conf.getRestMaxTotalConcurrentRequestBodySizeInBytes())));
+    return configuredLimit == 0
+        ? calculateRequestBodyMemoryLimitInBytes(properties)
+        : configuredLimit;
+  }
+
+  static long calculateRequestBodyMemoryLimitInBytes(TrimProperties properties) {
+    String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
+    if (memoryAllocateProportion == null) {
+      memoryAllocateProportion =
+          properties.getProperty("storage_query_schema_consensus_free_memory_proportion", null);
+    }
+    if (memoryAllocateProportion == null) {
+      return IoTDBRestServiceConfig.getDefaultRequestBodyMemoryLimitInBytes();
+    }
+
+    String[] proportions = memoryAllocateProportion.split(":");
+    int proportionSum = 0;
+    for (String proportion : proportions) {
+      proportionSum += Integer.parseInt(proportion.trim());
+    }
+    if (proportionSum == 0 || proportions.length < 6) {
+      return IoTDBRestServiceConfig.getDefaultRequestBodyMemoryLimitInBytes();
+    }
+    return Runtime.getRuntime().maxMemory()
+        * Integer.parseInt(proportions[proportions.length - 1].trim())
+        / proportionSum
+        / 2;
   }
 
   /**

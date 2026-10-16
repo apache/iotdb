@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.executable;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.trigger.exception.TriggerJarTooLargeException;
+import org.apache.iotdb.commons.utils.IOUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -214,7 +215,7 @@ public class ExecutableManager {
             String.format("Size of file exceed %d bytes", Integer.MAX_VALUE));
       }
       ByteBuffer byteBuffer = ByteBuffer.allocate((int) size);
-      fileChannel.read(byteBuffer);
+      IOUtils.readFully(fileChannel, byteBuffer);
       byteBuffer.flip();
       return byteBuffer;
     } catch (Exception e) {

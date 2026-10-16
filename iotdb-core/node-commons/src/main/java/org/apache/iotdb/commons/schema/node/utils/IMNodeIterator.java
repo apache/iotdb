@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 
 import java.util.Iterator;
 
-public interface IMNodeIterator<N extends IMNode<?>> extends Iterator<N> {
+public interface IMNodeIterator<N extends IMNode<?>> extends Iterator<N>, AutoCloseable {
 
   void skipTemplateChildren();
 

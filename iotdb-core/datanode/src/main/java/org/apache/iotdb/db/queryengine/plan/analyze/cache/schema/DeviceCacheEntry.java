@@ -26,11 +26,11 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
@@ -80,13 +80,22 @@ public class DeviceCacheEntry {
       return 0;
     }
     // Safe here because schema is invalidated by the whole entry
-    final int result =
-        (deviceSchema.compareAndSet(null, new DeviceNormalSchema(database, isAligned))
-            ? DeviceNormalSchema.INSTANCE_SIZE
-            : 0);
-    return deviceSchema.get() instanceof DeviceNormalSchema
-        ? result + ((DeviceNormalSchema) deviceSchema.get()).update(measurements, schemas)
-        : 0;
+    IDeviceSchema schema = deviceSchema.get();
+    int result = 0;
+    if (schema == null) {
+      final DeviceNormalSchema newSchema = new DeviceNormalSchema(database, isAligned);
+      if (deviceSchema.compareAndSet(null, newSchema)) {
+        schema = newSchema;
+        result = DeviceNormalSchema.INSTANCE_SIZE;
+      } else {
+        schema = deviceSchema.get();
+      }
+    }
+    if (!(schema instanceof DeviceNormalSchema)) {
+      return 0;
+    }
+    result += ((DeviceNormalSchema) schema).update(measurements, schemas);
+    return deviceSchema.get() == schema ? result : 0;
   }
 
   IDeviceSchema getDeviceSchema() {
@@ -94,15 +103,14 @@ public class DeviceCacheEntry {
   }
 
   int invalidateSchema() {
-    final AtomicInteger size = new AtomicInteger(0);
-    deviceSchema.updateAndGet(
-        schema -> {
-          if (Objects.nonNull(schema)) {
-            size.set(schema.estimateSize());
-          }
-          return null;
-        });
-    return size.get();
+    IDeviceSchema schema;
+    do {
+      schema = deviceSchema.get();
+      if (Objects.isNull(schema)) {
+        return 0;
+      }
+    } while (!deviceSchema.compareAndSet(schema, null));
+    return schema.estimateSize();
   }
 
   /////////////////////////////// Last Cache ///////////////////////////////
@@ -117,14 +125,43 @@ public class DeviceCacheEntry {
 
   int tryUpdateLastCache(
       final String[] measurements, final TimeValuePair[] timeValuePairs, boolean invalidateNull) {
+    return tryUpdateLastCache(measurements, null, timeValuePairs, invalidateNull);
+  }
+
+  int tryUpdateLastCache(
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs,
+      boolean invalidateNull) {
     final DeviceLastCache cache = lastCache.get();
     final int result =
-        Objects.nonNull(cache) ? cache.tryUpdate(measurements, timeValuePairs, invalidateNull) : 0;
+        Objects.nonNull(cache)
+            ? cache.tryUpdate(measurements, measurementSchemas, timeValuePairs, invalidateNull)
+            : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
   int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
     return tryUpdateLastCache(measurements, timeValuePairs, false);
+  }
+
+  int tryUpdateLastCache(
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final LastCacheUpdateSource updateSource) {
+    final DeviceLastCache cache = lastCache.get();
+    final int result =
+        Objects.nonNull(cache)
+            ? cache.tryUpdate(measurements, measurementSchemas, updateSource)
+            : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
+  }
+
+  int tryUpdateLastCache(
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs) {
+    return tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs, false);
   }
 
   int invalidateLastCache(final String measurement) {
@@ -150,15 +187,14 @@ public class DeviceCacheEntry {
   }
 
   int invalidateLastCache() {
-    final AtomicInteger size = new AtomicInteger(0);
-    lastCache.updateAndGet(
-        cacheEntry -> {
-          if (Objects.nonNull(cacheEntry)) {
-            size.set(cacheEntry.estimateSize());
-          }
-          return null;
-        });
-    return size.get();
+    DeviceLastCache cacheEntry;
+    do {
+      cacheEntry = lastCache.get();
+      if (Objects.isNull(cacheEntry)) {
+        return 0;
+      }
+    } while (!lastCache.compareAndSet(cacheEntry, null));
+    return cacheEntry.estimateSize();
   }
 
   /////////////////////////////// Management ///////////////////////////////

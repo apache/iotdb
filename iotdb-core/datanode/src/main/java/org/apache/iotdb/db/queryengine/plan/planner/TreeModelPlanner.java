@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.TreeAnalysisMutationJournal;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -48,15 +49,13 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class TreeModelPlanner implements IPlanner {
 
   private final Statement statement;
+  private final TreeAnalysisMutationJournal mutationJournal = new TreeAnalysisMutationJournal();
 
-  private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
 
   private final IPartitionFetcher partitionFetcher;
@@ -71,8 +70,6 @@ public class TreeModelPlanner implements IPlanner {
 
   public TreeModelPlanner(
       Statement statement,
-      ExecutorService executor,
-      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
@@ -80,8 +77,6 @@ public class TreeModelPlanner implements IPlanner {
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager) {
     this.statement = statement;
-    this.executor = executor;
-    this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
@@ -91,7 +86,23 @@ public class TreeModelPlanner implements IPlanner {
 
   @Override
   public IAnalysis analyze(MPPQueryContext context) {
-    return new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
+    return new Analyzer(context, partitionFetcher, schemaFetcher, mutationJournal)
+        .analyze(statement);
+  }
+
+  @Override
+  public void beginAnalysisAttempt() {
+    mutationJournal.begin();
+  }
+
+  @Override
+  public void rollbackAnalysisAttempt() {
+    mutationJournal.rollback();
+  }
+
+  @Override
+  public void commitAnalysisAttempt() {
+    mutationJournal.commit();
   }
 
   @Override
@@ -119,6 +130,10 @@ public class TreeModelPlanner implements IPlanner {
             && ((PipeEnrichedStatement) statement).getInnerStatement()
                 instanceof LoadTsFileStatement;
     if (statement instanceof LoadTsFileStatement || isPipeEnrichedTsFileLoad) {
+      final LoadTsFileStatement loadTsFileStatement =
+          statement instanceof LoadTsFileStatement
+              ? (LoadTsFileStatement) statement
+              : (LoadTsFileStatement) ((PipeEnrichedStatement) statement).getInnerStatement();
       scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -126,7 +141,8 @@ public class TreeModelPlanner implements IPlanner {
               stateMachine,
               syncInternalServiceClientManager,
               partitionFetcher,
-              isPipeEnrichedTsFileLoad);
+              isPipeEnrichedTsFileLoad,
+              loadTsFileStatement.getDatabase());
     } else {
       scheduler =
           new ClusterScheduler(
@@ -134,8 +150,6 @@ public class TreeModelPlanner implements IPlanner {
               stateMachine,
               distributedPlan,
               context.getQueryType(),
-              executor,
-              writeOperationExecutor,
               scheduledExecutor,
               syncInternalServiceClientManager,
               asyncInternalServiceClientManager);

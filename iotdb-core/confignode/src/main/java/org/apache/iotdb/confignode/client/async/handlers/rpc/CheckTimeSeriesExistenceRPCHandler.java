@@ -75,11 +75,11 @@ public class CheckTimeSeriesExistenceRPCHandler
             + e.getMessage();
     LOGGER.error(errorMsg);
 
-    countDownLatch.countDown();
     TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
     resp.setStatus(
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
     responseMap.put(requestId, resp);
+    countDownLatch.countDown();
   }
 }

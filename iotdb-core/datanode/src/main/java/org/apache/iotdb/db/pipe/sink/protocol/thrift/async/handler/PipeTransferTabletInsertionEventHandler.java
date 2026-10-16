@@ -54,7 +54,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     if (event instanceof EnrichedEvent) {
-      connector.rateLimitIfNeeded(
+      sink.rateLimitIfNeeded(
           ((EnrichedEvent) event).getPipeName(),
           ((EnrichedEvent) event).getCreationTime(),
           client.getEndPoint(),
@@ -77,15 +77,18 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector
-            .statusHandler()
+        sink.statusHandler()
             .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
       }
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)
             .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
       }
-      if (status.isSetRedirectNode()) {
+      // A multi-device InsertRowsNode response stores redirect endpoints in per-device
+      // sub-statuses instead of on the top-level status.
+      if (status.isSetRedirectNode()
+          || (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+              && status.isSetSubStatus())) {
         updateLeaderCache(status);
       }
     } catch (final Exception e) {
@@ -109,7 +112,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitIds() : null);
     } finally {
-      connector.addFailureEventToRetryQueue(event, exception);
+      sink.addFailureEventToRetryQueue(event, exception, this);
     }
   }
 

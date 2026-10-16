@@ -63,4 +63,11 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
   public ColumnTransformer getRightTransformer() {
     return rightTransformer;
   }
+
+  @Override
+  public void close() {
+    super.close();
+    this.leftTransformer.close();
+    this.rightTransformer.close();
+  }
 }

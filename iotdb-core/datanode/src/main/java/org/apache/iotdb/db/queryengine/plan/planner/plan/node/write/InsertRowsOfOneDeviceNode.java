@@ -216,7 +216,10 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       String[] measurements = insertRowNode.getMeasurements();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
-      for (int i = 0; i < measurements.length; i++) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
+        if (measurements[i] == null || dataTypes == null || i >= dataTypes.length) {
+          continue;
+        }
         if (!measurementSet.contains(measurements[i])) {
           measurementList.add(measurements[i]);
           dataTypeList.add(dataTypes[i]);
@@ -236,8 +239,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
     try {
       devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath((ReadWriteIOUtils.readString(byteBuffer)));
+          DataNodeDevicePathCache.getInstance().getPartialPath((deserializeString(byteBuffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertRowsOfOneDeviceNode", e);
     }
@@ -269,7 +271,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), byteBuffer);
+    serializeString(devicePath.getFullPath(), byteBuffer);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), byteBuffer);
 
@@ -285,7 +287,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(stream);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    serializeString(devicePath.getFullPath(), stream);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), stream);
 

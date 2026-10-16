@@ -393,6 +393,11 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show paths set device template aligned_template",
+          "Paths,",
+          Collections.singleton("root.sg_aligned.device_aligned,"));
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "count devices", "count(devices),", Collections.singleton("3,"));
     }
   }

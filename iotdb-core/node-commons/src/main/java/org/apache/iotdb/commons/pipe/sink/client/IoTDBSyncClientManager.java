@@ -259,7 +259,11 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             client.getIpAddress(),
             client.getPort(),
             resp.getStatus());
-        endPoint2HandshakeErrorMessage.put(client.getEndPoint(), resp.getStatus().getMessage());
+        endPoint2HandshakeErrorMessage.put(
+            client.getEndPoint(),
+            String.format(
+                "code: %d, message: %s",
+                resp.getStatus().getCode(), resp.getStatus().getMessage()));
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());

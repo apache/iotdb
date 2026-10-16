@@ -25,12 +25,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferPlanNodeReq extends TPipeTransferReq {
@@ -47,19 +47,24 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferPlanNodeReq toTPipeTransferReq(PlanNode planNode) {
+  public static PipeTransferPlanNodeReq toTPipeTransferReq(final PlanNode planNode) {
+    return toTPipeTransferReq(planNode, planNode.serializeToByteBuffer());
+  }
+
+  public static PipeTransferPlanNodeReq toTPipeTransferReq(
+      final PlanNode planNode, final ByteBuffer serializedPlanNode) {
     final PipeTransferPlanNodeReq req = new PipeTransferPlanNodeReq();
 
     req.planNode = planNode;
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_SCHEMA_PLAN.getType();
-    req.body = planNode.serializeToByteBuffer();
+    req.body = serializedPlanNode.duplicate();
 
     return req;
   }
 
-  public static PipeTransferPlanNodeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferPlanNodeReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
     final PipeTransferPlanNodeReq planNodeReq = new PipeTransferPlanNodeReq();
 
     planNodeReq.planNode = PlanNodeType.deserialize(transferReq.body);
@@ -72,27 +77,42 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(PlanNode planNode) throws IOException {
+  public static byte[] toTPipeTransferBytes(final PlanNode planNode) throws IOException {
+    return toTPipeTransferBytes(planNode.serializeToByteBuffer());
+  }
+
+  public static byte[] toTPipeTransferBytes(final ByteBuffer serializedPlanNode)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_SCHEMA_PLAN.getType(), outputStream);
-      return BytesUtils.concatByteArray(
-          byteArrayOutputStream.toByteArray(), planNode.serializeToByteBuffer().array());
+      return concatBytes(byteArrayOutputStream, serializedPlanNode);
     }
+  }
+
+  private static byte[] concatBytes(
+      final PublicBAOS byteArrayOutputStream, final ByteBuffer byteBuffer) {
+    final ByteBuffer duplicateBuffer = byteBuffer.duplicate();
+    final int headerSize = byteArrayOutputStream.size();
+    final int bodySize = duplicateBuffer.remaining();
+    final byte[] result = new byte[headerSize + bodySize];
+    System.arraycopy(byteArrayOutputStream.getBuf(), 0, result, 0, headerSize);
+    duplicateBuffer.get(result, headerSize, bodySize);
+    return result;
   }
 
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferPlanNodeReq that = (PipeTransferPlanNodeReq) obj;
+    final PipeTransferPlanNodeReq that = (PipeTransferPlanNodeReq) obj;
     return planNode.equals(that.planNode)
         && version == that.version
         && type == that.type

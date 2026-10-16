@@ -465,9 +465,10 @@ cn_rpc_max_concurrent_client_num=3000
 cn_connection_timeout_ms=60000
 
 # selector thread (TAsyncClientManager) nums for async thread in a clientManager
+# When <= 0, use max(1, CPU core number / 4).
 # effectiveMode: restart
 # Datatype: int
-cn_selector_thread_nums_of_client_manager=1
+cn_selector_thread_nums_of_client_manager=0
 
 # The maximum number of clients that can be allocated for a node in a clientManager.
 # when the number of the client to a single node exceeds this number, the thread for applying for a client will be blocked
@@ -475,6 +476,14 @@ cn_selector_thread_nums_of_client_manager=1
 # effectiveMode: restart
 # Datatype: int
 cn_max_client_count_for_each_node_in_client_manager=1000
+
+# The maximum number of idle clients that can be retained for a node in a clientManager.
+# When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
+# effectiveMode: restart
+# Datatype: int
+# cn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -494,25 +503,15 @@ dn_rpc_thrift_compression_enable=false
 # this feature is under development, set this as false before it is done.
 dn_rpc_advanced_compression_enable=false
 
-# the number of rpc selector
-# effectiveMode: restart
-# Datatype: int
-dn_rpc_selector_thread_count=1
-
-# The min number of concurrent clients that can be connected to the dataNode.
-# effectiveMode: restart
-# Datatype: int
-dn_rpc_min_concurrent_client_num=1
-
 # The maximum number of concurrent clients that can be connected to the dataNode.
 # effectiveMode: restart
 # Datatype: int
 dn_rpc_max_concurrent_client_num=1000
 
-# thrift max frame size, 512MB by default
+# thrift max frame size in bytes. When set to 0, use min(64MB, datanode heap memory / 64)
 # effectiveMode: restart
 # Datatype: int
-dn_thrift_max_frame_size=536870912
+dn_thrift_max_frame_size=0
 
 # thrift init buffer size
 # effectiveMode: restart
@@ -525,9 +524,10 @@ dn_thrift_init_buffer_size=1024
 dn_connection_timeout_ms=60000
 
 # selector thread (TAsyncClientManager) nums for async thread in a clientManager
+# When <= 0, use max(1, CPU core number / 4).
 # effectiveMode: restart
 # Datatype: int
-dn_selector_thread_count_of_client_manager=1
+dn_selector_thread_nums_of_client_manager=0
 
 # The maximum number of clients that can be allocated for a node in a clientManager.
 # When the number of the client to a single node exceeds this number, the thread for applying for a client will be blocked
@@ -535,6 +535,14 @@ dn_selector_thread_count_of_client_manager=1
 # effectiveMode: restart
 # Datatype: int
 dn_max_client_count_for_each_node_in_client_manager=1000
+
+# The maximum number of idle clients that can be retained for a node in a clientManager.
+# When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
+# effectiveMode: restart
+# Datatype: int
+# dn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -550,15 +558,44 @@ enable_rest_service=false
 # Datatype: int
 rest_service_port=18080
 
-# Whether to display rest service interface information through swagger. eg: http://ip:port/swagger.json
+# Whether to display rest service interface information through OpenAPI. eg: http://ip:port/openapi.json
 # effectiveMode: restart
 # Datatype: boolean
 enable_swagger=false
 
-# the default row limit to a REST query response when the rowSize parameter is not given in request
-# effectiveMode: restart
+# The maximum row limit for REST and Grafana query responses.
+# The request rowLimit/row_limit value cannot exceed this limit.
+# A non-positive value is invalid and falls back to the default (10000); it no longer means unlimited.
+# effectiveMode: hot_reload
 # Datatype: int
 rest_query_default_row_size_limit=10000
+
+# Maximum REST request body size in bytes. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_request_body_size_in_bytes=16777216
+
+# Maximum total in-flight REST request body size in bytes across concurrent requests.
+# When set to 0, use half of the free memory from datanode_memory_proportion.
+# Set to a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_total_concurrent_request_body_size_in_bytes=0
+
+# Maximum rows accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: int
+rest_max_insert_rows=100000
+
+# Maximum columns accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: int
+rest_max_insert_columns=1024
+
+# Maximum values accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_insert_values=1000000
 
 # Is client authentication required
 # effectiveMode: restart
@@ -712,6 +749,18 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
 
+# Purpose: for data partition repair
+# The number of threads used for parallel scanning in the partition table recovery
+# effectiveMode: restart
+# Datatype: Integer
+partition_table_recover_worker_num=10
+
+# Purpose: for data partition repair
+# Limit the number of bytes read per second from a file, the unit is MB
+# effectiveMode: restart
+# Datatype: Integer
+partition_table_recover_max_read_mb_per_sec=10
+
 ####################
 ### Memory Control Configuration
 ####################
@@ -721,6 +770,12 @@ disk_space_warning_threshold=0.05
 # If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:1:1:1
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
+
+# ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
+# The parameter form is a:b, where a and b are integers. Currently, ConfigNode Pipe uses
+# this memory for log reducer and receiver temporary buffers.
+# effectiveMode: restart
+confignode_memory_proportion=1:9
 
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1
@@ -1795,6 +1850,19 @@ pipe_lib_dir=ext/pipe
 # Datatype: int
 pipe_subtask_executor_max_thread_num=0
 
+# The maximum number of TsFile parsers that can run concurrently across all Pipes on this DataNode.
+# When <= 0, use max(1, CPU core number / 2).
+# effectiveMode: hot_reload
+# Datatype: int
+pipe_tsfile_parser_in_flight_max_num=0
+
+# The maximum number of TsFile parsers that can run concurrently for one DataRegion of one Pipe.
+# Different DataRegions of the same Pipe have independent limits.
+# When <= 0, use 1.
+# effectiveMode: hot_reload
+# Datatype: int
+pipe_tsfile_parser_in_flight_max_num_per_pipe_region=1
+
 # The connection timeout (in milliseconds) for the thrift client.
 # effectiveMode: restart
 # Datatype: int
@@ -2025,6 +2093,17 @@ load_clean_up_task_execution_delay_time_seconds=1800
 # Datatype: int
 load_write_throughput_bytes_per_second=-1
 
+# Whether the load_tsfile supports path allowed dirs check.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_source_path_check_enable=false
+
+# Comma-separated list of directories from which user-issued LOAD TSFILE statements can read.
+# If empty, IoTDB only permits LOAD sources under the internal load TsFile directories.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_allowed_dirs=
+
 # Whether to enable the active listening mode for tsfile loading.
 # effectiveMode: hot_reload
 # Datatype: Boolean
@@ -2042,6 +2121,18 @@ load_active_listening_enable=true
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_dirs=ext/load/pending
+
+# The directory to be actively listened for tsfile loading from Pipe.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_pipe_dir=ext\\load\\pipe
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_pipe_dir=ext/load/pipe
 
 # The directory where tsfile are moved if the active listening mode fails to load them.
 # Only one directory can be configured.

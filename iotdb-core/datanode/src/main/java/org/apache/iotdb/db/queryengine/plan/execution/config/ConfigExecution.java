@@ -43,7 +43,7 @@ import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -284,5 +284,10 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public String getStatementType() {
     return statementType.name();
+  }
+
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
   }
 }

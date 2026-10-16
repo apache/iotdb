@@ -25,10 +25,13 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOpera
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskExecutionGuard;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskYieldException;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -55,6 +58,9 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean skipParsing;
 
+  private PipeProcessorSubtaskExecutionGuard processorExecutionGuard =
+      PipeProcessorSubtaskExecutionGuard.disabled();
+
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
   private boolean isFailedToIncreaseReferenceCount = false;
@@ -70,6 +76,11 @@ public class PipeEventCollector implements EventCollector {
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
     this.skipParsing = skipParsing;
+  }
+
+  public void setProcessorExecutionGuard(
+      final PipeProcessorSubtaskExecutionGuard processorExecutionGuard) {
+    this.processorExecutionGuard = processorExecutionGuard;
   }
 
   @Override
@@ -90,6 +101,8 @@ public class PipeEventCollector implements EventCollector {
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
+    } catch (final PipeProcessorSubtaskYieldException e) {
+      throw e;
     } catch (final PipeException e) {
       throw e;
     } catch (final Exception e) {
@@ -122,7 +135,7 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
-    if (!sourceEvent.waitForTsFileClose()) {
+    if (!sourceEvent.waitForTsFileClose(processorExecutionGuard)) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
           sourceEvent.getTsFile());
@@ -131,14 +144,21 @@ public class PipeEventCollector implements EventCollector {
 
     if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
+      if (sourceEvent.isGeneratedByHistoricalExtractor()) {
+        PipeTerminateEvent.markHistoricalTsFileUnsplit(
+            sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
+      }
       return;
     }
 
-    try {
-      sourceEvent.consumeTabletInsertionEventsWithRetry(
-          this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
-    } finally {
-      sourceEvent.close();
+    sourceEvent.consumeTabletInsertionEventsWithRetry(
+        this::collectParsedRawTableEvent,
+        "PipeEventCollector::parseAndCollectEvent",
+        processorExecutionGuard);
+    sourceEvent.close();
+    if (sourceEvent.isGeneratedByHistoricalExtractor()) {
+      PipeTerminateEvent.markHistoricalTsFileSplit(
+          sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
     }
   }
 
@@ -178,7 +198,8 @@ public class PipeEventCollector implements EventCollector {
 
   private void collectEvent(final Event event) {
     if (event instanceof EnrichedEvent) {
-      if (!((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName())) {
+      final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+      if (!enrichedEvent.increaseReferenceCount(PipeEventCollector.class.getName())) {
         LOGGER.warn("PipeEventCollector: The event {} is already released, skipping it.", event);
         isFailedToIncreaseReferenceCount = true;
         return;
@@ -186,18 +207,28 @@ public class PipeEventCollector implements EventCollector {
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+          .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);
 
-      // Assign a rebootTime for pipeConsensus
-      ((EnrichedEvent) event).setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
+      // Assign a rebootTime for iotConsensusV2
+      enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
+
+      if (enrichedEvent.getPipeName() != null
+          && (pendingQueue.isEventFromDroppedPipe(enrichedEvent)
+              || (enrichedEvent.getCommitterKey() == null
+                  && pendingQueue.isPipeDropped(
+                      enrichedEvent.getPipeName(), creationTime, regionId)))) {
+        enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
+        return;
+      }
     }
 
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
     }
 
-    pendingQueue.offer(event);
-    collectInvocationCount.incrementAndGet();
+    if (pendingQueue.offer(event)) {
+      collectInvocationCount.incrementAndGet();
+    }
   }
 
   public void resetFlags() {

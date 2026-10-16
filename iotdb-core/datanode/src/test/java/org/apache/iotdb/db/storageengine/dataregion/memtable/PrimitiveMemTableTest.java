@@ -117,7 +117,7 @@ public class PrimitiveMemTableTest {
     tvListQueryMap.put(series.getWorkingTVList(), series.getWorkingTVList().rowCount());
     ReadOnlyMemChunk readableChunk =
         new ReadOnlyMemChunk(
-            new QueryContext(), "s1", dataType, TSEncoding.PLAIN, tvListQueryMap, null, null);
+            new QueryContext(false), "s1", dataType, TSEncoding.PLAIN, tvListQueryMap, null, null);
     IPointReader it = readableChunk.getPointReader();
     int i = 0;
     while (it.hasNextTimeValuePair()) {
@@ -162,7 +162,7 @@ public class PrimitiveMemTableTest {
             new AlignedPath("root.test.d1", Arrays.asList("s1", "s2", "s3"), measurementSchemas));
     ReadOnlyMemChunk readOnlyMemChunk =
         resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
-            new QueryContext(1), memTable, null, Long.MAX_VALUE, null);
+            new QueryContext(1, false), memTable, null, Long.MAX_VALUE, null);
 
     for (int i = 1; i <= 50; i++) {
       memTable.writeAlignedRow(
@@ -172,6 +172,108 @@ public class PrimitiveMemTableTest {
     readOnlyMemChunk.sortTvLists();
 
     MemPointIterator memPointIterator = readOnlyMemChunk.createMemPointIterator(Ordering.ASC, null);
+    while (memPointIterator.hasNextBatch()) {
+      memPointIterator.nextBatch();
+    }
+  }
+
+  @Test
+  public void testWriteAndFlushSortDuringQuerySortTVListAndActualQueryExecution()
+      throws QueryProcessException, IOException, IllegalPathException {
+
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "0");
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    for (int i = 1000; i < 2000; i++) {
+      memTable.writeAlignedRow(
+          new PlainDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
+    }
+    for (int i = 100; i < 200; i++) {
+      memTable.writeAlignedRow(
+          new PlainDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
+    }
+    MeasurementPath path = new MeasurementPath("root.test.d1.s1", TSDataType.INT32);
+    memTable.delete(path, path.getDevicePath(), 150, 160);
+    path = new MeasurementPath("root.test.d1.s2", TSDataType.INT32);
+    memTable.delete(path, path.getDevicePath(), 150, 160);
+    path = new MeasurementPath("root.test.d1.s3", TSDataType.INT32);
+    memTable.delete(path, path.getDevicePath(), 150, 160);
+    ResourceByPathUtils resourcesByPathUtils =
+        ResourceByPathUtils.getResourceInstance(
+            new AlignedPath("root.test.d1", Arrays.asList("s1", "s2", "s3"), measurementSchemas));
+    ReadOnlyMemChunk readOnlyMemChunk =
+        resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
+            new QueryContext(false), memTable, null, Long.MAX_VALUE, null);
+
+    for (int i = 1; i <= 50; i++) {
+      memTable.writeAlignedRow(
+          new PlainDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
+    }
+    memTable.getWritableMemChunk(new PlainDeviceID("root.test.d1"), "").sortTvListForFlush();
+
+    readOnlyMemChunk.sortTvLists();
+
+    MemPointIterator memPointIterator = readOnlyMemChunk.createMemPointIterator(Ordering.ASC, null);
+    while (memPointIterator.hasNextBatch()) {
+      memPointIterator.nextBatch();
+    }
+  }
+
+  @Test
+  public void testFlushingQueryDoesNotSortWorkingTVListUsedByPreviousQuery()
+      throws QueryProcessException, IOException, IllegalPathException {
+
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "0");
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    PlainDeviceID deviceID = new PlainDeviceID("root.test.d1");
+    for (int i = 1000; i < 2000; i++) {
+      memTable.writeAlignedRow(deviceID, measurementSchemas, i, new Object[] {i, i, i});
+    }
+
+    ResourceByPathUtils resourcesByPathUtils =
+        ResourceByPathUtils.getResourceInstance(
+            new AlignedPath("root.test.d1", Arrays.asList("s1", "s2", "s3"), measurementSchemas));
+    AlignedReadOnlyMemChunk firstQueryMemChunk =
+        (AlignedReadOnlyMemChunk)
+            resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
+                new QueryContext(1, false), memTable, null, Long.MAX_VALUE, null);
+    TVList originalWorkingList = memTable.getWritableMemChunk(deviceID, "").getWorkingTVList();
+    Assert.assertSame(
+        originalWorkingList,
+        firstQueryMemChunk.getAligendTvListQueryMap().keySet().iterator().next());
+
+    for (int i = 1; i <= 50; i++) {
+      memTable.writeAlignedRow(deviceID, measurementSchemas, i, new Object[] {i, i, i});
+    }
+    MeasurementPath path = new MeasurementPath("root.test.d1.s1", TSDataType.INT32);
+    memTable.delete(path, path.getDevicePath(), 1, 10);
+    path = new MeasurementPath("root.test.d1.s2", TSDataType.INT32);
+    memTable.delete(path, path.getDevicePath(), 1, 10);
+    path = new MeasurementPath("root.test.d1.s3", TSDataType.INT32);
+    memTable.delete(path, path.getDevicePath(), 1, 10);
+    Assert.assertFalse(originalWorkingList.isSorted());
+
+    AlignedReadOnlyMemChunk flushingQueryMemChunk =
+        (AlignedReadOnlyMemChunk)
+            resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
+                new QueryContext(2, false), memTable, new ArrayList<>(), Long.MAX_VALUE, null);
+    TVList flushingQueryList =
+        flushingQueryMemChunk.getAligendTvListQueryMap().keySet().iterator().next();
+    Assert.assertNotSame(originalWorkingList, flushingQueryList);
+
+    flushingQueryMemChunk.sortTvLists();
+    Assert.assertFalse(originalWorkingList.isSorted());
+
+    firstQueryMemChunk.sortTvLists();
+    MemPointIterator memPointIterator =
+        firstQueryMemChunk.createMemPointIterator(Ordering.ASC, null);
     while (memPointIterator.hasNextBatch()) {
       memPointIterator.nextBatch();
     }
@@ -241,7 +343,7 @@ public class PrimitiveMemTableTest {
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null);
+        memTable.query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
@@ -343,7 +445,7 @@ public class PrimitiveMemTableTest {
         new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable, null);
+        memTable.query(new QueryContext(false), fullPath, Long.MIN_VALUE, modsToMemtable, null);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -399,7 +501,7 @@ public class PrimitiveMemTableTest {
         new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable, null);
+        memTable.query(new QueryContext(false), fullPath, Long.MIN_VALUE, modsToMemtable, null);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -439,7 +541,9 @@ public class PrimitiveMemTableTest {
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
     IPointReader tvPair =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null).getPointReader();
+        memTable
+            .query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null)
+            .getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -485,7 +589,9 @@ public class PrimitiveMemTableTest {
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
     IPointReader tvPair =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null).getPointReader();
+        memTable
+            .query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null)
+            .getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
@@ -512,7 +618,9 @@ public class PrimitiveMemTableTest {
                     Collections.emptyMap())));
 
     tvPair =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null).getPointReader();
+        memTable
+            .query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null)
+            .getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
@@ -679,7 +787,7 @@ public class PrimitiveMemTableTest {
         Mockito.mock(MemoryReservationManager.class);
     Mockito.doThrow(new MemoryNotEnoughException(""))
         .when(memoryReservationManager)
-        .reserveMemoryCumulatively(list.calculateRamSize());
+        .reserveMemoryCumulatively(list.calculateRamSize().getRamSize());
 
     // create FragmentInstanceId
     QueryId queryId = new QueryId("stub_query");
@@ -698,7 +806,7 @@ public class PrimitiveMemTableTest {
     list.getQueryContextSet().add(queryContext);
     Map<TVList, Integer> tvlistMap = new HashMap<>();
     tvlistMap.put(list, 100);
-    queryContext.addTVListToSet(tvlistMap);
+    queryContext.addTVListToSet(tvlistMap.keySet());
 
     // fragment instance execution
     IDriverScheduler scheduler = Mockito.mock(IDriverScheduler.class);

@@ -30,14 +30,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -49,16 +49,20 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
   private final Map<Integer, Template> templateMap;
 
+  private final boolean includeSystemDatabase;
+
   public TimeSeriesCountNode(
       PlanNodeId id,
       PartialPath partialPath,
       boolean isPrefixPath,
       SchemaFilter schemaFilter,
       @NotNull Map<Integer, Template> templateMap,
-      @NotNull PathPatternTree scope) {
+      @NotNull PathPatternTree scope,
+      boolean includeSystemDatabase) {
     super(id, partialPath, isPrefixPath, scope);
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
+    this.includeSystemDatabase = includeSystemDatabase;
   }
 
   public SchemaFilter getSchemaFilter() {
@@ -69,6 +73,10 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     return templateMap;
   }
 
+  public boolean isIncludeSystemDatabase() {
+    return includeSystemDatabase;
+  }
+
   @Override
   public PlanNodeType getType() {
     return PlanNodeType.TIME_SERIES_COUNT;
@@ -77,7 +85,13 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
   @Override
   public PlanNode clone() {
     return new TimeSeriesCountNode(
-        getPlanNodeId(), path, isPrefixPath, schemaFilter, templateMap, scope);
+        getPlanNodeId(),
+        path,
+        isPrefixPath,
+        schemaFilter,
+        templateMap,
+        scope,
+        includeSystemDatabase);
   }
 
   @Override
@@ -94,6 +108,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     scope.serialize(byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     SchemaFilter.serialize(schemaFilter, byteBuffer);
+    ReadWriteIOUtils.write(includeSystemDatabase, byteBuffer);
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
     for (Template template : templateMap.values()) {
       template.serialize(byteBuffer);
@@ -107,6 +122,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     scope.serialize(stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
     SchemaFilter.serialize(schemaFilter, stream);
+    ReadWriteIOUtils.write(includeSystemDatabase, stream);
     ReadWriteIOUtils.write(templateMap.size(), stream);
     for (Template template : templateMap.values()) {
       template.serialize(stream);
@@ -124,9 +140,10 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     PathPatternTree scope = PathPatternTree.deserialize(buffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(buffer);
+    boolean includeSystemDatabase = ReadWriteIOUtils.readBool(buffer);
 
     int templateNum = ReadWriteIOUtils.readInt(buffer);
-    Map<Integer, Template> templateMap = new HashMap<>();
+    Map<Integer, Template> templateMap = Maps.newHashMapWithExpectedSize(templateNum);
     Template template;
     for (int i = 0; i < templateNum; i++) {
       template = new Template();
@@ -136,7 +153,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TimeSeriesCountNode(
-        planNodeId, path, isPrefixPath, schemaFilter, templateMap, scope);
+        planNodeId, path, isPrefixPath, schemaFilter, templateMap, scope, includeSystemDatabase);
   }
 
   @Override
@@ -153,11 +170,12 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     if (!super.equals(o)) return false;
     TimeSeriesCountNode that = (TimeSeriesCountNode) o;
     return Objects.equals(schemaFilter, that.schemaFilter)
-        && Objects.equals(templateMap, that.templateMap);
+        && Objects.equals(templateMap, that.templateMap)
+        && includeSystemDatabase == that.includeSystemDatabase;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), schemaFilter, templateMap);
+    return Objects.hash(super.hashCode(), schemaFilter, templateMap, includeSystemDatabase);
   }
 }

@@ -23,15 +23,27 @@ import org.apache.commons.lang3.SystemUtils;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 public class WindowsOSUtils {
   private static final String ILLEGAL_WINDOWS_CHARS = "\\/:*?\"<>|";
   private static final Set<String> ILLEGAL_WINDOWS_NAMES =
-      new HashSet<>(Arrays.asList("CON", "PRN", "AUX", "NUL", "COM1-COM9, LPT1-LPT9"));
+      new HashSet<>(
+          Arrays.asList(
+              "CON",
+              "PRN",
+              "AUX",
+              "NUL",
+              "COM\u00B9",
+              "COM\u00B2",
+              "COM\u00B3",
+              "LPT\u00B9",
+              "LPT\u00B2",
+              "LPT\u00B3"));
 
   static {
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 1; i < 10; ++i) {
       ILLEGAL_WINDOWS_NAMES.add("COM" + i);
       ILLEGAL_WINDOWS_NAMES.add("LPT" + i);
     }
@@ -39,26 +51,39 @@ public class WindowsOSUtils {
 
   public static final String OS_SEGMENT_ERROR =
       String.format(
-          "In Windows System, the path shall not contains %s, equals one of %s, or ends with '.' or ' '.",
+          "In Windows System, the path shall not contain %s or ASCII control characters, equals one of %s with or without an extension, or ends with '.' or ' '.",
           ILLEGAL_WINDOWS_CHARS, ILLEGAL_WINDOWS_NAMES);
 
   public static boolean isLegalPathSegment4Windows(final String pathSegment) {
     if (!SystemUtils.IS_OS_WINDOWS) {
       return true;
     }
-    for (final char illegalChar : ILLEGAL_WINDOWS_CHARS.toCharArray()) {
-      if (pathSegment.indexOf(illegalChar) != -1) {
-        return false;
-      }
+    if (containsIllegalWindowsChar(pathSegment)) {
+      return false;
     }
     if (pathSegment.endsWith(".") || pathSegment.endsWith(" ")) {
       return false;
     }
-    for (final String illegalName : ILLEGAL_WINDOWS_NAMES) {
-      if (pathSegment.equalsIgnoreCase(illegalName)) {
-        return false;
-      }
+    if (isIllegalWindowsName(pathSegment)) {
+      return false;
     }
     return true;
+  }
+
+  private static boolean containsIllegalWindowsChar(final String pathSegment) {
+    for (int i = 0; i < pathSegment.length(); ++i) {
+      final char ch = pathSegment.charAt(i);
+      if (ch < ' ' || ILLEGAL_WINDOWS_CHARS.indexOf(ch) != -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isIllegalWindowsName(final String pathSegment) {
+    final int extensionStartIndex = pathSegment.indexOf('.');
+    final String nameWithoutExtension =
+        extensionStartIndex < 0 ? pathSegment : pathSegment.substring(0, extensionStartIndex);
+    return ILLEGAL_WINDOWS_NAMES.contains(nameWithoutExtension.toUpperCase(Locale.ENGLISH));
   }
 }

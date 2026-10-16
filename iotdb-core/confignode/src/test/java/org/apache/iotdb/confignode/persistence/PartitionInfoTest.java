@@ -36,10 +36,12 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 
@@ -189,6 +191,23 @@ public class PartitionInfoTest {
         Optional.of(TConsensusGroupType.DataRegion),
         partitionInfo.getRegionType(dataRegionId.getId()));
     Assert.assertEquals(Optional.empty(), partitionInfo.getRegionType(-1));
+  }
+
+  @Test
+  public void testPollSpecificRegionMaintainTaskOnlyRemovesEachRegionHead() {
+    OfferRegionMaintainTasksPlan offerPlan = generateOfferRegionMaintainTasksPlan();
+    partitionInfo.offerRegionMaintainTasks(offerPlan);
+
+    TConsensusGroupId dataRegionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 0);
+    partitionInfo.pollSpecificRegionMaintainTask(
+        new PollSpecificRegionMaintainTaskPlan(Collections.singleton(dataRegionId)));
+
+    List<RegionMaintainTask> remainingTasks = partitionInfo.getRegionMaintainEntryList();
+    Assert.assertEquals(2, remainingTasks.size());
+    Assert.assertEquals(dataRegionId, remainingTasks.get(0).getRegionId());
+    Assert.assertEquals(
+        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2),
+        remainingTasks.get(1).getRegionId());
   }
 
   @Test

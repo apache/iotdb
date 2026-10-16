@@ -63,6 +63,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     receiverEnv
         .getConfig()
@@ -74,6 +76,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
     // 10 min, assert that the operations will not time out

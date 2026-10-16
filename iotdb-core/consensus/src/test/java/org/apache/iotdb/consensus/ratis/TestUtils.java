@@ -39,8 +39,16 @@ import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
+import org.apache.ratis.protocol.ClientId;
+import org.apache.ratis.protocol.LeaderElectionManagementRequest;
+import org.apache.ratis.protocol.RaftClientReply;
+import org.apache.ratis.protocol.RaftGroupId;
+import org.apache.ratis.protocol.TransferLeadershipRequest;
+import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
+import org.apache.ratis.util.ExitUtils;
 import org.apache.ratis.util.FileUtils;
+import org.apache.ratis.util.LifeCycle;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.ratis.util.Timestamp;
 import org.junit.Assert;
@@ -55,9 +63,11 @@ import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -70,6 +80,9 @@ import java.util.function.Supplier;
 public class TestUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+  private static final TimeDuration PORT_RELEASE_WAIT = TimeDuration.valueOf(10, TimeUnit.SECONDS);
+  private static final TimeDuration PORT_RELEASE_POLL =
+      TimeDuration.valueOf(100, TimeUnit.MILLISECONDS);
 
   public static class TestDataSet implements DataSet {
 
@@ -230,6 +243,7 @@ public class TestUtils {
     private final RatisConfig config;
     private final List<RatisConsensus> servers;
     private final ConsensusGroup group;
+    private final List<Integer> peerPorts;
     private Supplier<IStateMachine> smProvider;
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
@@ -250,9 +264,10 @@ public class TestUtils {
       this.peerStorage = new ArrayList<>();
       this.stateMachines = new ArrayList<>();
       this.servers = new ArrayList<>();
+      this.peerPorts = randomDistinctPorts(replicas);
 
       for (int i = 0; i < replicas; i++) {
-        peers.add(new Peer(gid, i, new TEndPoint("127.0.0.1", randomFreePort())));
+        peers.add(new Peer(gid, i, new TEndPoint("127.0.0.1", peerPorts.get(i))));
 
         final File storage = storageProvider.apply(i);
         FileUtils.deleteFileQuietly(storage);
@@ -297,10 +312,51 @@ public class TestUtils {
     }
 
     void stop() throws IOException {
-      for (RatisConsensus server : servers) {
-        server.stop();
+      if (isStopped.get()) {
+        return;
       }
+      try {
+        stepDownBeforeStopping();
+      } finally {
+        for (RatisConsensus server : servers) {
+          server.stop();
+        }
+      }
+      waitUntilPortsReleased(peerPorts);
       isStopped.set(true);
+    }
+
+    private void stepDownBeforeStopping() throws IOException {
+      final ClientId clientId = ClientId.randomId();
+      final List<RaftServer> runningServers = new ArrayList<>();
+      // Ratis 3.2.1 closes the log without joining the leader event processor. Step down through
+      // that processor first, so an in-flight leadership check cannot access an already closed log.
+      // Pause elections on every peer before stepping down to prevent a replacement leader.
+      for (RatisConsensus server : servers) {
+        final RaftServer raftServer = server.getServer();
+        if (raftServer.getLifeCycleState() != LifeCycle.State.RUNNING) {
+          continue;
+        }
+        runningServers.add(raftServer);
+        for (RaftGroupId groupId : raftServer.getGroupIds()) {
+          final RaftClientReply reply =
+              raftServer.leaderElectionManagement(
+                  LeaderElectionManagementRequest.newPause(
+                      clientId, raftServer.getId(), groupId, 0));
+          Assert.assertTrue(reply.toString(), reply.isSuccess());
+        }
+      }
+      for (RaftServer raftServer : runningServers) {
+        for (RaftGroupId groupId : raftServer.getGroupIds()) {
+          if (raftServer.getDivision(groupId).getInfo().isLeader()) {
+            final RaftClientReply reply =
+                raftServer.transferLeadership(
+                    new TransferLeadershipRequest(
+                        clientId, raftServer.getId(), groupId, 1, null, 10_000));
+            Assert.assertTrue(reply.toString(), reply.isSuccess());
+          }
+        }
+      }
     }
 
     void cleanUp() throws IOException {
@@ -492,6 +548,65 @@ public class TestUtils {
 
     MiniCluster create() {
       return new MiniCluster(gid, replicas, peerStorageProvider, smProvider, ratisConfig);
+    }
+  }
+
+  static void prepareJvmForRatisTest() {
+    ExitUtils.disableSystemExit();
+    ExitUtils.clear();
+  }
+
+  static void assertNoUnexpectedRatisExit() {
+    ExitUtils.assertNotTerminated();
+    ExitUtils.clear();
+  }
+
+  private static List<Integer> randomDistinctPorts(int count) {
+    final List<Integer> ports = new ArrayList<>(count);
+    final Set<Integer> uniquePorts = new HashSet<>();
+    while (ports.size() < count) {
+      final int port = randomFreePort();
+      if (uniquePorts.add(port)) {
+        ports.add(port);
+      }
+    }
+    return ports;
+  }
+
+  private static void waitUntilPortsReleased(List<Integer> ports) throws IOException {
+    final Timestamp start = Timestamp.currentTime();
+    while (true) {
+      boolean allReleased = true;
+      for (int port : ports) {
+        if (!isLocalPortAvailable(port)) {
+          allReleased = false;
+          break;
+        }
+      }
+
+      if (allReleased) {
+        return;
+      }
+
+      if (start.elapsedTime().compareTo(PORT_RELEASE_WAIT) > 0) {
+        throw new IOException("Timed out waiting for Ratis test ports to be released: " + ports);
+      }
+
+      try {
+        PORT_RELEASE_POLL.sleep();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IOException("Interrupted while waiting for Ratis test ports to be released", e);
+      }
+    }
+  }
+
+  private static boolean isLocalPortAvailable(int port) {
+    try (ServerSocket socket = new ServerSocket(port)) {
+      socket.setReuseAddress(true);
+      return true;
+    } catch (IOException e) {
+      return false;
     }
   }
 

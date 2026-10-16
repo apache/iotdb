@@ -777,6 +777,17 @@ public class SessionPoolTest {
   }
 
   @Test
+  public void testDeleteEmptyTimeseriesList()
+      throws IoTDBConnectionException, StatementExecutionException {
+    sessionPool.deleteTimeseries(Collections.emptyList());
+
+    Mockito.verify(session, Mockito.never()).deleteTimeseries(Mockito.<List<String>>any());
+    assertEquals(
+        1,
+        ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
+  }
+
+  @Test
   public void testDeleteData() throws IoTDBConnectionException, StatementExecutionException {
     String path = "root.device1.temperature";
     long time = 2L;

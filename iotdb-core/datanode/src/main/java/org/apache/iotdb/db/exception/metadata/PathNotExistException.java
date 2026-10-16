@@ -27,6 +27,8 @@ import java.util.List;
 public class PathNotExistException extends MetadataException {
 
   private static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
+  private static final String TIMESERIES_NOT_EXIST_AND_DATA_TYPE_CANNOT_BE_INFERRED_FROM_NULL =
+      "Timeseries [%s] does not exist and its data type cannot be inferred from the null value";
   private static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
       "The source path [%s] of view [%s] does not exist.";
 
@@ -45,6 +47,16 @@ public class PathNotExistException extends MetadataException {
   public PathNotExistException(String path) {
     super(
         String.format(PATH_NOT_EXIST_WRONG_MESSAGE, path),
+        TSStatusCode.PATH_NOT_EXIST.getStatusCode());
+  }
+
+  private PathNotExistException(String message, int errorCode) {
+    super(message, errorCode);
+  }
+
+  public static PathNotExistException forNullValue(String path) {
+    return new PathNotExistException(
+        String.format(TIMESERIES_NOT_EXIST_AND_DATA_TYPE_CANNOT_BE_INFERRED_FROM_NULL, path),
         TSStatusCode.PATH_NOT_EXIST.getStatusCode());
   }
 

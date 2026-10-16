@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.sink.util.PipeTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -82,6 +84,17 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.tablet =
+        PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
+    tabletReq.isAligned = ReadWriteIOUtils.readBool(buffer);
+
+    return tabletReq;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletRawReq toTPipeTransferReq(
@@ -105,10 +118,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
-
-    tabletReq.tablet = Tablet.deserialize(transferReq.body);
-    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
+    final PipeTransferTabletRawReq tabletReq =
+        toTPipeTransferRawReq(transferReq.body, new TabletStringInternPool());
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;

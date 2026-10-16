@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,10 @@ public class CnToCnInternalServiceAsyncRequestManager
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CnToCnInternalServiceAsyncRequestManager.class);
+
+  public CnToCnInternalServiceAsyncRequestManager(int selectorNumOfAsyncClientManager) {
+    super(selectorNumOfAsyncClientManager);
+  }
 
   @Override
   protected void initActionMapBuilder() {
@@ -71,7 +76,8 @@ public class CnToCnInternalServiceAsyncRequestManager
 
   private static class ClientPoolHolder {
     private static final CnToCnInternalServiceAsyncRequestManager INSTANCE =
-        new CnToCnInternalServiceAsyncRequestManager();
+        new CnToCnInternalServiceAsyncRequestManager(
+            ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager());
 
     private ClientPoolHolder() {
       // Empty constructor

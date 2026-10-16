@@ -25,13 +25,17 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import com.google.common.base.Supplier;
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -94,6 +98,26 @@ public class IOUtils {
     outputStream.write(encodingBuffer.array(), 0, Integer.BYTES);
   }
 
+  public static void readFully(FileChannel fileChannel, ByteBuffer buffer) throws IOException {
+    while (buffer.hasRemaining()) {
+      if (fileChannel.read(buffer) <= 0) {
+        throw new EOFException();
+      }
+    }
+  }
+
+  public static void readFully(FileChannel fileChannel, ByteBuffer buffer, long position)
+      throws IOException {
+    long currentPosition = position;
+    while (buffer.hasRemaining()) {
+      final int readBytes = fileChannel.read(buffer, currentPosition);
+      if (readBytes <= 0) {
+        throw new EOFException();
+      }
+      currentPosition += readBytes;
+    }
+  }
+
   /**
    * Read a string from the given stream.
    *
@@ -120,7 +144,7 @@ public class IOUtils {
         strBuffer = new byte[length];
       }
 
-      inputStream.read(strBuffer, 0, length);
+      inputStream.readFully(strBuffer, 0, length);
       return new String(strBuffer, 0, length, encoding);
     }
     return null;
@@ -210,7 +234,7 @@ public class IOUtils {
       throws IOException, IllegalPathException {
     role.setSysPrivilegeSet(0);
     int pathPriNum = inputStream.readInt();
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+    List<PathPrivilege> pathPrivilegeList = new ArrayList<>(pathPriNum);
     for (int i = 0; i < pathPriNum; i++) {
       String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
       PartialPath ppath = new PartialPath(path);
@@ -304,5 +328,38 @@ public class IOUtils {
       }
     }
     return Optional.empty();
+  }
+
+  public static class RatelimitedInputStream extends InputStream {
+    private RateLimiter rateLimiter;
+    private InputStream inner;
+
+    public RatelimitedInputStream(InputStream inner, RateLimiter limiter) {
+      this.inner = inner;
+      this.rateLimiter = limiter;
+    }
+
+    @Override
+    public int read() throws IOException {
+      rateLimiter.acquire(1);
+      return inner.read();
+    }
+
+    @Override
+    public int read(byte[] b) throws IOException {
+      rateLimiter.acquire(b.length);
+      return inner.read(b);
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len) throws IOException {
+      rateLimiter.acquire(len);
+      return inner.read(b, off, len);
+    }
+
+    @Override
+    public void close() throws IOException {
+      inner.close();
+    }
   }
 }

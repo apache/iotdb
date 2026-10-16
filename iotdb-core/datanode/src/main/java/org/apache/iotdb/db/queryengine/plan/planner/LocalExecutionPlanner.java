@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -97,7 +100,7 @@ public class LocalExecutionPlanner {
     context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
-    long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext.getStateMachine());
+    long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
@@ -128,7 +131,7 @@ public class LocalExecutionPlanner {
     context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
-    checkMemory(memoryEstimator, instanceContext.getStateMachine());
+    checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
@@ -139,7 +142,7 @@ public class LocalExecutionPlanner {
   }
 
   private long checkMemory(
-      final PipelineMemoryEstimator memoryEstimator, FragmentInstanceStateMachine stateMachine)
+      final PipelineMemoryEstimator memoryEstimator, FragmentInstanceContext instanceContext)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
@@ -152,43 +155,70 @@ public class LocalExecutionPlanner {
 
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
-    synchronized (this) {
-      if (estimatedMemorySize > freeMemoryForOperators) {
-        throw new MemoryNotEnoughException(
-            String.format(
-                "There is not enough memory to execute current fragment instance, "
-                    + "current remaining free memory is %dB, "
-                    + "estimated memory usage for current fragment instance is %dB",
-                freeMemoryForOperators, estimatedMemorySize));
-      } else {
-        freeMemoryForOperators -= estimatedMemorySize;
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
-              "[ConsumeMemory] consume: {}, current remaining memory: {}",
-              estimatedMemorySize,
-              freeMemoryForOperators);
-        }
-      }
+    long reservedBytes =
+        allocateOperatorsMemory(estimatedMemorySize, instanceContext.isHighestPriority());
+    if (reservedBytes < 0) {
+      throw new MemoryNotEnoughException(
+          String.format(
+              "There is not enough memory to execute current fragment instance, "
+                  + "current remaining free memory is %dB, "
+                  + "estimated memory usage for current fragment instance is %dB",
+              freeMemoryForOperators, estimatedMemorySize));
     }
-
-    stateMachine.addStateChangeListener(
-        newState -> {
-          if (newState.isDone()) {
-            try (SetThreadName fragmentInstanceName =
-                new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
-              synchronized (this) {
-                this.freeMemoryForOperators += estimatedMemorySize;
-                if (LOGGER.isDebugEnabled()) {
-                  LOGGER.debug(
-                      "[ReleaseMemory] release: {}, current remaining memory: {}",
-                      estimatedMemorySize,
-                      freeMemoryForOperators);
+    FragmentInstanceStateMachine stateMachine = instanceContext.getStateMachine();
+    if (reservedBytes > 0) {
+      stateMachine.addStateChangeListener(
+          newState -> {
+            if (newState.isDone()) {
+              try (SetThreadName fragmentInstanceName =
+                  new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
+                synchronized (this) {
+                  this.freeMemoryForOperators += reservedBytes;
+                  if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(
+                        "[ReleaseMemory] release: {}, current remaining memory: {}",
+                        reservedBytes,
+                        freeMemoryForOperators);
+                  }
                 }
               }
             }
-          }
-        });
-    return estimatedMemorySize;
+          });
+    }
+    return reservedBytes;
+  }
+
+  /**
+   * Try to reserve bytes from the operators free-memory pool.
+   *
+   * @return allocated bytes on success ({@code > 0}), {@code 0} if nothing to allocate or
+   *     highest-priority fallback applies, {@code -1} if allocation failed
+   */
+  private long allocateOperatorsMemory(final long memoryInBytes, final boolean isHighestPriority) {
+    if (memoryInBytes <= 0) {
+      return 0L;
+    }
+    synchronized (this) {
+      if (memoryInBytes <= freeMemoryForOperators) {
+        freeMemoryForOperators -= memoryInBytes;
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[ConsumeMemory] consume: {}, current remaining memory: {}",
+              memoryInBytes,
+              freeMemoryForOperators);
+        }
+        return memoryInBytes;
+      }
+    }
+    if (isHighestPriority) {
+      return 0L;
+    }
+    return -1L;
+  }
+
+  @TestOnly
+  long allocateOperatorsMemoryForTest(final long memoryInBytes, final boolean isHighestPriority) {
+    return allocateOperatorsMemory(memoryInBytes, isHighestPriority);
   }
 
   private QueryDataSourceType getQueryDataSourceType(DataDriverContext dataDriverContext) {
@@ -239,32 +269,33 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized void reserveFromFreeMemoryForOperators(
+  public long reserveFromFreeMemoryForOperators(
       final long memoryInBytes,
       final long reservedBytes,
       final String queryId,
-      final String contextHolder) {
+      final String contextHolder,
+      final boolean isHighestPriority)
+      throws MemoryNotEnoughException {
     if (memoryInBytes <= 0) {
       throw new IllegalArgumentException(
           "Bytes to reserve from free memory for operators should be larger than 0");
     }
-    if (memoryInBytes > freeMemoryForOperators) {
-      throw new MemoryNotEnoughException(
+    long allocated = allocateOperatorsMemory(memoryInBytes, isHighestPriority);
+    if (allocated < 0) {
+      long freeBytes = freeMemoryForOperators;
+      throw new OperatorMemoryNotEnoughException(
           String.format(
-              "There is not enough memory for Query %s, the contextHolder is %s,"
-                  + "current remaining free memory is %dB, "
-                  + "already reserved memory for this context in total is %dB, "
-                  + "the memory requested this time is %dB",
-              queryId, contextHolder, freeMemoryForOperators, reservedBytes, memoryInBytes));
-    } else {
-      freeMemoryForOperators -= memoryInBytes;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "[ConsumeMemory] consume: {}, current remaining memory: {}",
-            memoryInBytes,
-            freeMemoryForOperators);
-      }
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_FOR_QUERY_S_THE_CONTEXTHOLDER_546CDD02,
+              queryId,
+              contextHolder,
+              freeBytes,
+              reservedBytes,
+              memoryInBytes),
+          memoryInBytes,
+          freeBytes);
     }
+    return allocated;
   }
 
   public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {

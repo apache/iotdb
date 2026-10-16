@@ -27,12 +27,14 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaMetricManager;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
@@ -44,6 +46,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -54,7 +59,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -72,6 +79,9 @@ public class SchemaEngine {
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final PartialPath AUDIT_LOG_PATH_PATTERN =
+      new PartialPath(new String[] {"root", "__system", "audit", "**"});
 
   private final SchemaRegionLoader schemaRegionLoader;
 
@@ -192,7 +202,8 @@ public class SchemaEngine {
   @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
     // recover SchemaRegion concurrently
-    Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    final Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    validateNoDuplicatedSchemaRegionId(localSchemaRegionInfo);
     final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
@@ -221,6 +232,27 @@ public class SchemaEngine {
       }
     }
     schemaRegionRecoverPools.shutdown();
+  }
+
+  static void validateNoDuplicatedSchemaRegionId(
+      final Map<String, List<SchemaRegionId>> localSchemaRegionInfo) {
+    final Map<SchemaRegionId, String> databaseBySchemaRegionId = new HashMap<>();
+    localSchemaRegionInfo.forEach(
+        (database, schemaRegionIds) -> {
+          for (final SchemaRegionId schemaRegionId : schemaRegionIds) {
+            final String existingDatabase =
+                databaseBySchemaRegionId.putIfAbsent(schemaRegionId, database);
+            if (existingDatabase != null) {
+              throw new IllegalStateException(
+                  String.format(
+                      DataNodeSchemaMessages
+                          .EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05,
+                      schemaRegionId,
+                      existingDatabase,
+                      database));
+            }
+          }
+        });
   }
 
   private void initSchemaEngineStatistics() {
@@ -301,7 +333,6 @@ public class SchemaEngine {
     return () -> {
       long timeRecord = System.currentTimeMillis();
       try {
-        // TODO: handle duplicated regionId across different database
         ISchemaRegion schemaRegion =
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
@@ -330,12 +361,12 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
+  public synchronized boolean deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
-      return;
+      return false;
     }
     schemaRegion.deleteSchemaRegion();
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
@@ -359,19 +390,22 @@ public class SchemaEngine {
         FileUtils.deleteFileOrDirectory(sgDir);
       }
     }
+    return true;
   }
 
   public int getSchemaRegionNumber() {
     return schemaRegionMap.size();
   }
 
-  public Map<Integer, Long> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {
-    Map<Integer, Long> deviceNum = new HashMap<>();
+  public Map<Integer, Long> countDeviceNumBySchemaRegion(final List<Integer> schemaIds) {
+    final Map<Integer, Long> deviceNum = new HashMap<>();
+    final Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new HashSet<>(schemaIds) : schemaIds;
 
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
+                targetSchemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
@@ -381,19 +415,62 @@ public class SchemaEngine {
     return deviceNum;
   }
 
-  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(List<Integer> schemaIds) {
-    Map<Integer, Long> timeSeriesNum = new HashMap<>();
+  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(final List<Integer> schemaIds) {
+    final Map<Integer, Long> timeSeriesNum = new HashMap<>();
+    final Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new HashSet<>(schemaIds) : schemaIds;
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
+                targetSchemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
                 timeSeriesNum.put(
-                    entry.getKey().getId(),
-                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber(false)));
+                    entry.getKey().getId(), getTimeSeriesNumberForQuota(entry.getValue())));
     return timeSeriesNum;
+  }
+
+  /**
+   * Returns the series count used by schema quota. Audit series are stored below {@code
+   * root.__system.audit} in dev/1.3, while other internal series may share the same system database
+   * and must remain counted.
+   */
+  private long getTimeSeriesNumberForQuota(final ISchemaRegion schemaRegion) {
+    final long totalSeriesNumber = schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false);
+    if (!SchemaConstant.SYSTEM_DATABASE.equals(schemaRegion.getDatabaseFullPath())) {
+      return totalSeriesNumber;
+    }
+
+    long auditSeriesNumber = 0;
+    try {
+      try (ISchemaReader<ITimeSeriesSchemaInfo> reader =
+          schemaRegion.getTimeSeriesReader(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  AUDIT_LOG_PATH_PATTERN,
+                  Collections.emptyMap(),
+                  -1,
+                  0,
+                  false,
+                  null,
+                  false,
+                  SchemaConstant.ALL_MATCH_SCOPE))) {
+        while (reader.hasNext()) {
+          if (!reader.next().isLogicalView()) {
+            auditSeriesNumber++;
+          }
+        }
+        if (!reader.isSuccess()) {
+          logger.warn("Failed to count audit time series for schema quota", reader.getFailure());
+          return totalSeriesNumber;
+        }
+      }
+    } catch (Exception e) {
+      // Keep the heartbeat available if the audit-only scan fails; the next heartbeat retries it.
+      logger.warn("Failed to exclude audit time series from schema quota count", e);
+      return totalSeriesNumber;
+    }
+    return Math.max(0, totalSeriesNumber - auditSeriesNumber);
   }
 
   /**
@@ -442,9 +519,7 @@ public class SchemaEngine {
                   tmp.put(
                       consensusGroupId.getId(),
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
-                          .map(
-                              schemaRegion ->
-                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false))
+                          .map(this::getTimeSeriesNumberForQuota)
                           .orElse(0L)));
     }
   }

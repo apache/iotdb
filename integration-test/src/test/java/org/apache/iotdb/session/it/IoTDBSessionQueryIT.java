@@ -153,10 +153,13 @@ public class IoTDBSessionQueryIT {
 
   @Test
   public void lastQueryTest() throws IoTDBConnectionException {
-    String[] retArray = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
+    Set<String> retArray =
+        new HashSet<>(
+            Arrays.asList("-40,root.sg1.d2.s6,40.0,DOUBLE", "23,root.sg1.d1.s1,230000.0,FLOAT"));
 
-    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s1");
+    List<String> selectedPaths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d2.s6");
 
+    // Does not guarantee sequence
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);

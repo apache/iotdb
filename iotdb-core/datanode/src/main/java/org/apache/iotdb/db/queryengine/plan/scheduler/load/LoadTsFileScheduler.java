@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -136,6 +137,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+  private final String treeDatabaseForRetry;
   private final Map<TTimePartitionSlot, ProgressIndex> timePartitionSlotToProgressIndex;
   private final LoadTsFileDataCacheMemoryBlock block;
 
@@ -145,7 +147,8 @@ public class LoadTsFileScheduler implements IScheduler {
       QueryStateMachine stateMachine,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
       IPartitionFetcher partitionFetcher,
-      boolean isGeneratedByPipe) {
+      boolean isGeneratedByPipe,
+      String treeDatabaseForRetry) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
@@ -155,6 +158,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.treeDatabaseForRetry = treeDatabaseForRetry;
     this.timePartitionSlotToProgressIndex = new HashMap<>();
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
 
@@ -242,11 +246,19 @@ public class LoadTsFileScheduler implements IScheduler {
 
           if (isLoadSingleTsFileSuccess) {
             node.clean();
-            LOGGER.info(
-                "Load TsFile {} Successfully, load process [{}/{}]",
-                filePath,
-                i + 1,
-                tsFileNodeListSize);
+            if (isGeneratedByPipe) {
+              LOGGER.debug(
+                  "Load TsFile {} Successfully, load process [{}/{}]",
+                  filePath,
+                  i + 1,
+                  tsFileNodeListSize);
+            } else {
+              LOGGER.info(
+                  "Load TsFile {} Successfully, load process [{}/{}]",
+                  filePath,
+                  i + 1,
+                  tsFileNodeListSize);
+            }
           } else {
             isLoadSuccess = false;
             failedTsFileNodeIndexes.add(i);
@@ -299,6 +311,7 @@ public class LoadTsFileScheduler implements IScheduler {
         }
       }
     } finally {
+      dispatcher.close();
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
   }
@@ -339,7 +352,8 @@ public class LoadTsFileScheduler implements IScheduler {
             null,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
-            queryContext.getSession());
+            queryContext.getSession(),
+            queryContext.isDebug());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(null, Collections.singletonList(instance));
@@ -387,7 +401,11 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean secondPhase(
       boolean isFirstPhaseSuccess, String uuid, TsFileResource tsFileResource) {
-    LOGGER.info("Start dispatching Load command for uuid {}", uuid);
+    if (isGeneratedByPipe) {
+      LOGGER.debug("Start dispatching Load command for uuid {}", uuid);
+    } else {
+      LOGGER.info("Start dispatching Load command for uuid {}", uuid);
+    }
     final File tsFile = tsFileResource.getTsFile();
     final TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -473,7 +491,8 @@ public class LoadTsFileScheduler implements IScheduler {
               null,
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
-              queryContext.getSession());
+              queryContext.getSession(),
+              queryContext.isDebug());
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
@@ -551,9 +570,7 @@ public class LoadTsFileScheduler implements IScheduler {
         final TSStatus status =
             loadTsFileDataTypeConverter
                 .convertForTreeModel(
-                    new LoadTsFileStatement(filePath)
-                        .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
-                        .setConvertOnTypeMismatch(true))
+                    buildRetryTreeLoadStatement(filePath, failedNode.isDeleteAfterLoad()))
                 .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -592,9 +609,25 @@ public class LoadTsFileScheduler implements IScheduler {
     }
   }
 
+  private LoadTsFileStatement buildRetryTreeLoadStatement(
+      final String filePath, final boolean deleteAfterLoad) throws FileNotFoundException {
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(filePath)
+            .setDeleteAfterLoad(deleteAfterLoad)
+            .setConvertOnTypeMismatch(true);
+    if (treeDatabaseForRetry != null) {
+      statement.setDatabase(treeDatabaseForRetry);
+      statement.updateDatabaseLevelByTreeDatabase();
+    }
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
+    return statement;
+  }
+
   @Override
   public void stop(Throwable t) {
-    // Do nothing
+    dispatcher.abort();
   }
 
   @Override
@@ -687,8 +720,7 @@ public class LoadTsFileScheduler implements IScheduler {
                       singleTsFileNode
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
-          dataSize -= pieceNode.getDataSize();
-          block.reduceMemoryUsage(pieceNode.getDataSize());
+          releaseMemoryUsage(pieceNode.getDataSize());
 
           if (!isDispatchSuccess) {
             // Currently there is no retry, so return directly
@@ -709,18 +741,29 @@ public class LoadTsFileScheduler implements IScheduler {
         return;
       }
 
+      final List<Pair<IDeviceID, TTimePartitionSlot>> partitionSlotList = new ArrayList<>();
+      final int[] chunkPartitionIndexes = new int[nonDirectionalChunkData.size()];
+      final Map<IDeviceID, Map<TTimePartitionSlot, Integer>> partitionSlotIndexes = new HashMap<>();
+      for (int i = 0, size = nonDirectionalChunkData.size(); i < size; i++) {
+        final ChunkData chunkData = nonDirectionalChunkData.get(i);
+        final IDeviceID device = new PlainDeviceID(chunkData.getDevice());
+        final TTimePartitionSlot timePartitionSlot = chunkData.getTimePartitionSlot();
+        final Map<TTimePartitionSlot, Integer> slotIndexes =
+            partitionSlotIndexes.computeIfAbsent(device, key -> new HashMap<>());
+        Integer partitionSlotIndex = slotIndexes.get(timePartitionSlot);
+        if (partitionSlotIndex == null) {
+          partitionSlotIndex = partitionSlotList.size();
+          slotIndexes.put(timePartitionSlot, partitionSlotIndex);
+          partitionSlotList.add(new Pair<>(device, timePartitionSlot));
+        }
+        chunkPartitionIndexes[i] = partitionSlotIndex;
+      }
+
       List<TRegionReplicaSet> replicaSets =
           scheduler.partitionFetcher.queryDataPartition(
-              nonDirectionalChunkData.stream()
-                  .map(
-                      data ->
-                          new Pair<>(
-                              (IDeviceID) new PlainDeviceID(data.getDevice()),
-                              data.getTimePartitionSlot()))
-                  .collect(Collectors.toList()),
-              scheduler.queryContext.getSession().getUserName());
-      for (int i = 0; i < replicaSets.size(); i++) {
-        final TRegionReplicaSet replicaSet = replicaSets.get(i);
+              partitionSlotList, scheduler.queryContext.getSession().getUserName());
+      for (int i = 0, size = nonDirectionalChunkData.size(); i < size; i++) {
+        final TRegionReplicaSet replicaSet = replicaSets.get(chunkPartitionIndexes[i]);
         final TConsensusGroupId regionId = replicaSet.getRegionId();
         if (regionId2ReplicaSetAndNode.containsKey(regionId)
             && !Objects.equals(regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet)) {
@@ -762,7 +805,7 @@ public class LoadTsFileScheduler implements IScheduler {
       boolean isAllSuccess = true;
       for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, LoadTsFilePieceNode>> entry :
           regionId2ReplicaSetAndNode.entrySet()) {
-        block.reduceMemoryUsage(entry.getValue().getRight().getDataSize());
+        releaseMemoryUsage(entry.getValue().getRight().getDataSize());
         if (isAllSuccess
             && !scheduler.dispatchOnePieceNode(
                 entry.getValue().getRight(), entry.getValue().getLeft())) {
@@ -776,7 +819,17 @@ public class LoadTsFileScheduler implements IScheduler {
       return isAllSuccess;
     }
 
+    private void releaseMemoryUsage(final long memorySize) {
+      dataSize -= memorySize;
+      block.reduceMemoryUsage(memorySize);
+    }
+
     private void clear() {
+      if (dataSize > 0) {
+        block.reduceMemoryUsage(dataSize);
+        dataSize = 0;
+      }
+      nonDirectionalChunkData.clear();
       regionId2ReplicaSetAndNode.clear();
     }
   }
@@ -790,7 +843,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
     public List<TRegionReplicaSet> queryDataPartition(
         List<Pair<IDeviceID, TTimePartitionSlot>> slotList, String userName) {
-      List<TRegionReplicaSet> replicaSets = new ArrayList<>();
+      List<TRegionReplicaSet> replicaSets = new ArrayList<>(slotList.size());
       int size = slotList.size();
 
       for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
@@ -798,31 +851,34 @@ public class LoadTsFileScheduler implements IScheduler {
             slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
         DataPartition dataPartition =
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
-        replicaSets.addAll(
-            subSlotList.stream()
-                .map(
-                    pair ->
-                        dataPartition.getDataRegionReplicaSetForWriting(
-                            ((PlainDeviceID) pair.left).toStringID(), pair.right))
-                .collect(Collectors.toList()));
+        for (final Pair<IDeviceID, TTimePartitionSlot> pair : subSlotList) {
+          replicaSets.add(
+              dataPartition.getDataRegionReplicaSetForWriting(
+                  ((PlainDeviceID) pair.left).toStringID(), pair.right));
+        }
       }
       return replicaSets;
     }
 
     private List<DataPartitionQueryParam> toQueryParam(
         List<Pair<IDeviceID, TTimePartitionSlot>> slots) {
-      return slots.stream()
-          .collect(
-              Collectors.groupingBy(
-                  Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toSet())))
-          .entrySet()
-          .stream()
-          .map(
-              entry ->
-                  new DataPartitionQueryParam(
-                      ((PlainDeviceID) entry.getKey()).toStringID(),
-                      new ArrayList<>(entry.getValue())))
-          .collect(Collectors.toList());
+      final Map<IDeviceID, Set<TTimePartitionSlot>> device2TimePartitionSlots = new HashMap<>();
+      for (final Pair<IDeviceID, TTimePartitionSlot> slot : slots) {
+        device2TimePartitionSlots
+            .computeIfAbsent(slot.left, key -> new HashSet<>())
+            .add(slot.right);
+      }
+
+      final List<DataPartitionQueryParam> queryParams =
+          new ArrayList<>(device2TimePartitionSlots.size());
+      for (final Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry :
+          device2TimePartitionSlots.entrySet()) {
+        final DataPartitionQueryParam queryParam =
+            new DataPartitionQueryParam(
+                ((PlainDeviceID) entry.getKey()).toStringID(), new ArrayList<>(entry.getValue()));
+        queryParams.add(queryParam);
+      }
+      return queryParams;
     }
   }
 }

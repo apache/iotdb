@@ -145,13 +145,23 @@ public class DistributionPlanner {
         ExchangeNode exchangeNode = (ExchangeNode) child;
         TRegionReplicaSet regionOfChild =
             context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion();
-        MultiChildrenSinkNode newChild =
-            memo.computeIfAbsent(
-                regionOfChild,
-                tRegionReplicaSet ->
-                    needShuffleSinkNode
-                        ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
-                        : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId()));
+        MultiChildrenSinkNode newChild;
+        if (exchangeNode.isForcedExchange()) {
+          // Keep forced exchange branch isolated: do not merge into shared sink memo.
+          newChild =
+              needShuffleSinkNode
+                  ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                  : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
+        } else {
+          newChild =
+              memo.computeIfAbsent(
+                  regionOfChild,
+                  tRegionReplicaSet ->
+                      needShuffleSinkNode
+                          ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                          : new IdentitySinkNode(
+                              context.queryContext.getQueryId().genPlanNodeId()));
+        }
         newChild.addChild(exchangeNode.getChild());
         newChild.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));

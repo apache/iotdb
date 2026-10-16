@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -34,16 +37,22 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class LoadTsFileStatement extends Statement {
 
   private final File file;
   private int databaseLevel;
+  private String database;
   private boolean verifySchema = true;
+  private boolean autoCreateSchema = true;
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
   private long tabletConversionThresholdBytes = -1;
@@ -56,22 +65,41 @@ public class LoadTsFileStatement extends Statement {
   private List<Long> writePointCountList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
+    this(filePath, true);
+  }
+
+  public static LoadTsFileStatement createUnchecked(String filePath) throws FileNotFoundException {
+    return new LoadTsFileStatement(filePath, false);
+  }
+
+  private LoadTsFileStatement(String filePath, boolean validateSourcePath)
+      throws FileNotFoundException {
     this.file = new File(filePath).getAbsoluteFile();
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
+    this.autoCreateSchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
     this.tabletConversionThresholdBytes =
         IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
 
-    this.tsFiles = processTsFile(file);
+    this.tsFiles = processTsFile(file, validateSourcePath);
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
   public static List<File> processTsFile(final File file) throws FileNotFoundException {
+    return processTsFile(file, true);
+  }
+
+  public static List<File> processTsFile(final File file, final boolean validateSourcePath)
+      throws FileNotFoundException {
+    if (validateSourcePath) {
+      validateLoadSourcePath(file);
+    }
+
     final List<File> tsFiles = new ArrayList<>();
     if (file.isFile()) {
       tsFiles.add(file);
@@ -82,7 +110,7 @@ public class LoadTsFileStatement extends Statement {
                 "Can not find %s on this machine, notice that load can only handle files on this machine.",
                 file.getPath()));
       }
-      tsFiles.addAll(findAllTsFile(file));
+      tsFiles.addAll(findAllTsFile(file, validateSourcePath));
     }
     sortTsFiles(tsFiles);
     return tsFiles;
@@ -92,6 +120,7 @@ public class LoadTsFileStatement extends Statement {
     this.file = null;
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
+    this.autoCreateSchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
@@ -101,7 +130,8 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
-  private static List<File> findAllTsFile(File file) {
+  private static List<File> findAllTsFile(File file, boolean validateSourcePath)
+      throws FileNotFoundException {
     final File[] files = file.listFiles();
     if (files == null) {
       return Collections.emptyList();
@@ -109,13 +139,53 @@ public class LoadTsFileStatement extends Statement {
 
     final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
+      if (validateSourcePath) {
+        validateLoadSourcePath(nowFile);
+      }
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        tsFiles.addAll(findAllTsFile(nowFile));
+        tsFiles.addAll(findAllTsFile(nowFile, validateSourcePath));
       }
     }
     return tsFiles;
+  }
+
+  public static void validateLoadSourcePath(final String filePath) throws FileNotFoundException {
+    validateLoadSourcePath(new File(filePath));
+  }
+
+  private static void validateLoadSourcePath(final File file) throws FileNotFoundException {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (!config.isLoadTsFileSourcePathCheckEnabled()) {
+      return;
+    }
+
+    final Path sourcePath = canonicalPath(file);
+    final String[] allowedDirs = config.getLoadTsFileAllowedDirs();
+    final Path[] allowedDirCanonicalPaths = config.getLoadTsFileAllowedDirCanonicalPaths();
+
+    for (final Path allowedDirCanonicalPath : allowedDirCanonicalPaths) {
+      if (sourcePath.startsWith(allowedDirCanonicalPath)) {
+        return;
+      }
+    }
+
+    throw new FileNotFoundException(
+        String.format(
+            "Load TsFile source path %s is outside allowed directories %s.",
+            sourcePath, Arrays.toString(allowedDirs)));
+  }
+
+  private static Path canonicalPath(final File file) throws FileNotFoundException {
+    try {
+      return file.getCanonicalFile().toPath();
+    } catch (final IOException e) {
+      throw new FileNotFoundException(
+          String.format(
+              "Failed to resolve canonical path for Load TsFile source %s: %s",
+              file.getPath(), e.getMessage()));
+    }
   }
 
   private static void sortTsFiles(List<File> files) {
@@ -139,12 +209,28 @@ public class LoadTsFileStatement extends Statement {
     return databaseLevel;
   }
 
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
   public void setVerifySchema(boolean verifySchema) {
     this.verifySchema = verifySchema;
   }
 
   public boolean isVerifySchema() {
     return verifySchema;
+  }
+
+  public void setAutoCreateSchema(final boolean autoCreateSchema) {
+    this.autoCreateSchema = autoCreateSchema;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
   }
 
   public LoadTsFileStatement setDeleteAfterLoad(boolean deleteAfterLoad) {
@@ -219,16 +305,41 @@ public class LoadTsFileStatement extends Statement {
 
   private void initAttributes(final Map<String, String> loadAttributes) {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
+    this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verifySchema = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.autoCreateSchema =
+        LoadTsFileConfigurator.parseOrGetDefaultAutoCreateSchema(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
+  }
+
+  public void updateDatabaseLevelByTreeDatabase() {
+    final Integer databaseLevel = getDatabaseLevelByTreeDatabase(database);
+    if (databaseLevel != null) {
+      this.databaseLevel = databaseLevel;
+    }
+  }
+
+  public static Integer getDatabaseLevelByTreeDatabase(final String database) {
+    if (database == null) {
+      return null;
+    }
+    try {
+      final String[] nodes = PathUtils.splitPathToDetachedNodes(database);
+      if (nodes.length > 1 && PATH_ROOT.equals(nodes[0])) {
+        return nodes.length - 1;
+      }
+    } catch (final IllegalPathException ignored) {
+      // Keep the configured database level when database is not a legal tree path.
+    }
+    return null;
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
@@ -290,7 +401,9 @@ public class LoadTsFileStatement extends Statement {
 
       final LoadTsFileStatement statement = new LoadTsFileStatement();
       statement.databaseLevel = this.databaseLevel;
+      statement.database = this.database;
       statement.verifySchema = this.verifySchema;
+      statement.autoCreateSchema = this.autoCreateSchema;
       statement.deleteAfterLoad = this.deleteAfterLoad;
       statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
       statement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
@@ -333,8 +446,12 @@ public class LoadTsFileStatement extends Statement {
         + deleteAfterLoad
         + ", database-level="
         + databaseLevel
+        + ", database="
+        + database
         + ", verify-schema="
         + verifySchema
+        + ", auto-create-schema="
+        + autoCreateSchema
         + ", convert-on-type-mismatch="
         + convertOnTypeMismatch
         + ", tablet-conversion-threshold="

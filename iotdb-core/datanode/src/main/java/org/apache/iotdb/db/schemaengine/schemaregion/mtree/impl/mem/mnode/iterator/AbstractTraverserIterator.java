@@ -107,11 +107,14 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
       if (skipPreDeletedSchema
           && nextMatchedNode.isMeasurement()
           && nextMatchedNode.getAsMeasurementMNode().isPreDeleted()) {
+        releaseSkippedNode(nextMatchedNode);
         nextMatchedNode = null;
       }
     }
     return true;
   }
+
+  protected abstract void releaseSkippedNode(final N node);
 
   @Override
   public N next() {

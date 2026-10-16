@@ -65,8 +65,8 @@ public class SwingingDoorTrendingFilter<T> {
   }
 
   private void init(final long firstTimestamp, final T firstValue) {
-    upperDoor = Double.MIN_VALUE;
-    lowerDoor = Double.MAX_VALUE;
+    upperDoor = Double.NEGATIVE_INFINITY;
+    lowerDoor = Double.POSITIVE_INFINITY;
 
     lastReadTimestamp = firstTimestamp;
     lastReadValue = firstValue;
@@ -145,8 +145,8 @@ public class SwingingDoorTrendingFilter<T> {
   }
 
   private void reset(final long timestamp, final T value) {
-    upperDoor = Double.MIN_VALUE;
-    lowerDoor = Double.MAX_VALUE;
+    upperDoor = Double.NEGATIVE_INFINITY;
+    lowerDoor = Double.POSITIVE_INFINITY;
 
     lastStoredTimestamp = timestamp;
     lastStoredValue = value;

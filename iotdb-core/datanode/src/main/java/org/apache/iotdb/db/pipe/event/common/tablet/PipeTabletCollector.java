@@ -31,10 +31,44 @@ public class PipeTabletCollector extends PipeRawTabletEventConverter implements 
     super(pipeTaskMeta, sourceEvent);
   }
 
+  public PipeTabletCollector(
+      PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, boolean isAligned) {
+    this(pipeTaskMeta, sourceEvent);
+    this.isAligned = isAligned;
+  }
+
+  public PipeTabletCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel) {
+    super(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
+  }
+
+  public PipeTabletCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel,
+      String rawTableModelDataBaseName,
+      String rawTreeModelDataBaseName) {
+    super(
+        pipeTaskMeta,
+        sourceEvent,
+        sourceEventDataBase,
+        isTableModel,
+        rawTableModelDataBaseName,
+        rawTreeModelDataBaseName);
+  }
+
   @Override
   public void collectTablet(final Tablet tablet) {
     tabletInsertionEventList.add(
         new PipeRawTabletInsertionEvent(
+            isTableModel,
+            sourceEventDataBaseName,
+            rawTableModelDataBaseName,
+            rawTreeModelDataBaseName,
             tablet,
             isAligned,
             sourceEvent == null ? null : sourceEvent.getPipeName(),

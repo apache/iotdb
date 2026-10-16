@@ -39,6 +39,7 @@ public enum SchemaRegionPlanType {
   ACTIVATE_TEMPLATE_IN_CLUSTER((byte) 63),
   PRE_DELETE_TIMESERIES_IN_CLUSTER((byte) 64),
   ROLLBACK_PRE_DELETE_TIMESERIES((byte) 65),
+
   // endregion
 
   PRE_DEACTIVATE_TEMPLATE((byte) 0),

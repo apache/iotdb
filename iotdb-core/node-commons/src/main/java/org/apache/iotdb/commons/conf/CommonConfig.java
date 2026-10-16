@@ -146,12 +146,17 @@ public class CommonConfig {
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
-  private int selectorNumOfClientManager = 1;
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
 
   /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
 
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+  private int maxIdleClientNumForEachNode = DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE;
 
   /** What will the system do when unrecoverable error occurs. */
   private HandleSystemErrorStrategy handleSystemErrorStrategy =
@@ -215,10 +220,13 @@ public class CommonConfig {
 
   private int pipeDataStructureTabletRowSize = 2048;
 
-  // 128MB
-  private int pipeDataStructureTabletSizeInBytes = 60 * 1024 * 1024;
+  // 16MB
+  private int pipeDataStructureTabletSizeInBytes = 16 * 1024 * 1024;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.3;
+
+  // Maximum proportion for floating memory retained by InsertNode queues. Unused floating memory
+  // can be borrowed by non-floating Pipe allocations.
   private volatile double pipeTotalFloatingMemoryProportion = 0.5;
 
   // Check if memory check is enabled for Pipe
@@ -231,6 +239,13 @@ public class CommonConfig {
   // TSFile format to Tablet format
   // Note: Pipes that do not decompose pattern/time do not need this part of memory
   private long pipeTsFileParserMemory = 17 * MB;
+
+  // Limit concurrently active TsFile parsers globally and for each region task of a pipe. The
+  // per-pipe-region limit also serves as an approximate parser memory quota because every admitted
+  // parser reserves pipeTsFileParserMemory bytes.
+  private int pipeTsFileParserInFlightMaxNum =
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  private int pipeTsFileParserInFlightMaxNumPerPipeRegion = 1;
 
   // Memory for Sink batch sending (InsertNode/TsFile, choose one)
   // 1. InsertNode: 15MB, used for batch sending data to the downstream system
@@ -277,11 +292,13 @@ public class CommonConfig {
   private int pipeAsyncSinkForcedRetryTabletEventQueueSize = 20;
   private int pipeAsyncSinkForcedRetryTotalEventQueueSize = 30;
   private long pipeAsyncSinkMaxRetryExecutionTimeMsPerCall = 500;
-  private int pipeAsyncConnectorSelectorNumber =
+  private long pipeAsyncSinkRetryMaxDurationMs = 60 * 1000L;
+  private long pipeAsyncSinkRetryProbeIntervalMs = 30 * 1000L;
+  private int pipeAsyncSinkSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
-  private int pipeAsyncConnectorMaxClientNumber =
+  private int pipeAsyncSinkMaxClientNumber =
       Math.max(32, Runtime.getRuntime().availableProcessors() * 2);
-  private int pipeAsyncConnectorMaxTsFileClientNumber =
+  private int pipeAsyncSinkMaxTsFileClientNumber =
       Math.max(16, Runtime.getRuntime().availableProcessors());
   private boolean printLogWhenEncounterException = false;
 
@@ -289,8 +306,7 @@ public class CommonConfig {
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
 
-  private int pipeConnectorRequestSliceThresholdBytes =
-      (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
+  private int pipeSinkRequestSliceThresholdBytes = (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 3;
@@ -315,8 +331,8 @@ public class CommonConfig {
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
   private boolean pipeReceiverLoadConversionEnabled = false;
-  private volatile long pipePeriodicalLogMinIntervalSeconds = 60;
-  private volatile long pipeLoggerCacheMaxSizeInBytes = 16 * MB;
+  private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
+  private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
 
   private volatile double pipeMetaReportMaxLogNumPerRound = 0.1;
   private volatile int pipeMetaReportMaxLogIntervalRounds = 360;
@@ -325,6 +341,8 @@ public class CommonConfig {
 
   private volatile boolean pipeMemoryManagementEnabled = true;
   private volatile long pipeMemoryAllocateRetryIntervalMs = 50;
+  // Besides limiting allocation retries, this value also caps the TsFile parser memory admission
+  // backoff at pipeCheckMemoryEnoughIntervalMs * max(1, pipeMemoryAllocateMaxRetries).
   private volatile int pipeMemoryAllocateMaxRetries = 10;
   private volatile long pipeMemoryAllocateMinSizeInBytes = 32;
   private volatile long pipeMemoryAllocateForTsFileSequenceReaderInBytes =
@@ -630,6 +648,14 @@ public class CommonConfig {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
+  public int getMaxIdleClientNumForEachNode() {
+    return maxIdleClientNumForEachNode;
+  }
+
+  public void setMaxIdleClientNumForEachNode(int maxIdleClientNumForEachNode) {
+    this.maxIdleClientNumForEachNode = maxIdleClientNumForEachNode;
+  }
+
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
     return handleSystemErrorStrategy;
   }
@@ -662,7 +688,11 @@ public class CommonConfig {
     return status;
   }
 
-  public void setNodeStatus(NodeStatus newStatus) {
+  public synchronized void setNodeStatus(NodeStatus newStatus) {
+    if (status == newStatus) {
+      return;
+    }
+
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
     this.statusReason = null;
@@ -879,6 +909,36 @@ public class CommonConfig {
     logger.info("pipeTsFileParserMemory is set to {}.", pipeTsFileParserMemory);
   }
 
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return pipeTsFileParserInFlightMaxNum;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNum(final int pipeTsFileParserInFlightMaxNum) {
+    final int validatedValue =
+        pipeTsFileParserInFlightMaxNum > 0
+            ? pipeTsFileParserInFlightMaxNum
+            : Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+    if (this.pipeTsFileParserInFlightMaxNum == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNum = validatedValue;
+    logger.info("pipeTsFileParserInFlightMaxNum is set to {}.", validatedValue);
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return pipeTsFileParserInFlightMaxNumPerPipeRegion;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNumPerPipeRegion(
+      final int pipeTsFileParserInFlightMaxNumPerPipeRegion) {
+    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNumPerPipeRegion);
+    if (this.pipeTsFileParserInFlightMaxNumPerPipeRegion == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNumPerPipeRegion = validatedValue;
+    logger.info("pipeTsFileParserInFlightMaxNumPerPipeRegion is set to {}.", validatedValue);
+  }
+
   public long getPipeSinkBatchMemoryInsertNode() {
     return pipeSinkBatchMemoryInsertNode;
   }
@@ -1002,7 +1062,7 @@ public class CommonConfig {
   }
 
   public void setPipeSinkHandshakeTimeoutMs(long pipeSinkHandshakeTimeoutMs) {
-    final int fPipeConnectorHandshakeTimeoutMs = this.pipeSinkHandshakeTimeoutMs;
+    final int fPipeSinkHandshakeTimeoutMs = this.pipeSinkHandshakeTimeoutMs;
     try {
       this.pipeSinkHandshakeTimeoutMs = Math.toIntExact(pipeSinkHandshakeTimeoutMs);
     } catch (ArithmeticException e) {
@@ -1010,7 +1070,7 @@ public class CommonConfig {
       logger.warn(
           "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
     } finally {
-      if (fPipeConnectorHandshakeTimeoutMs != this.pipeSinkHandshakeTimeoutMs) {
+      if (fPipeSinkHandshakeTimeoutMs != this.pipeSinkHandshakeTimeoutMs) {
         logger.info("pipeSinkHandshakeTimeoutMs is set to {}.", this.pipeSinkHandshakeTimeoutMs);
       }
     }
@@ -1041,16 +1101,16 @@ public class CommonConfig {
   }
 
   public void setPipeSinkTransferTimeoutMs(long pipeSinkTransferTimeoutMs) {
-    final int fPipeConnectorTransferTimeoutMs = this.pipeSinkTransferTimeoutMs;
+    final int fPipeSinkTransferTimeoutMs = this.pipeSinkTransferTimeoutMs;
     try {
       this.pipeSinkTransferTimeoutMs = Math.toIntExact(pipeSinkTransferTimeoutMs);
     } catch (ArithmeticException e) {
       this.pipeSinkTransferTimeoutMs = Integer.MAX_VALUE;
       logger.warn(
-          "Given pipe connector transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+          "Given pipe sink transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
     } finally {
-      if (fPipeConnectorTransferTimeoutMs != this.pipeSinkTransferTimeoutMs) {
-        logger.info("pipeConnectorTransferTimeoutMs is set to {}.", pipeSinkTransferTimeoutMs);
+      if (fPipeSinkTransferTimeoutMs != this.pipeSinkTransferTimeoutMs) {
+        logger.info("pipeSinkTransferTimeoutMs is set to {}.", pipeSinkTransferTimeoutMs);
       }
     }
   }
@@ -1064,7 +1124,7 @@ public class CommonConfig {
       return;
     }
     this.pipeSinkReadFileBufferSize = pipeSinkReadFileBufferSize;
-    logger.info("pipeConnectorReadFileBufferSize is set to {}.", pipeSinkReadFileBufferSize);
+    logger.info("pipeSinkReadFileBufferSize is set to {}.", pipeSinkReadFileBufferSize);
   }
 
   public boolean isPipeSinkReadFileBufferMemoryControlEnabled() {
@@ -1163,61 +1223,84 @@ public class CommonConfig {
     return pipeAsyncSinkMaxRetryExecutionTimeMsPerCall;
   }
 
-  public int getPipeAsyncSinkSelectorNumber() {
-    return pipeAsyncConnectorSelectorNumber;
+  public void setPipeAsyncSinkRetryMaxDurationMs(long pipeAsyncSinkRetryMaxDurationMs) {
+    if (this.pipeAsyncSinkRetryMaxDurationMs == pipeAsyncSinkRetryMaxDurationMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryMaxDurationMs = pipeAsyncSinkRetryMaxDurationMs;
+    logger.info("pipeAsyncSinkRetryMaxDurationMs is set to {}.", pipeAsyncSinkRetryMaxDurationMs);
   }
 
-  public void setPipeAsyncConnectorSelectorNumber(int pipeAsyncConnectorSelectorNumber) {
-    if (pipeAsyncConnectorSelectorNumber <= 0) {
+  public long getPipeAsyncSinkRetryMaxDurationMs() {
+    return pipeAsyncSinkRetryMaxDurationMs;
+  }
+
+  public void setPipeAsyncSinkRetryProbeIntervalMs(long pipeAsyncSinkRetryProbeIntervalMs) {
+    if (this.pipeAsyncSinkRetryProbeIntervalMs == pipeAsyncSinkRetryProbeIntervalMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryProbeIntervalMs = Math.max(1, pipeAsyncSinkRetryProbeIntervalMs);
+    logger.info(
+        "pipeAsyncSinkRetryProbeIntervalMs is set to {}.", this.pipeAsyncSinkRetryProbeIntervalMs);
+  }
+
+  public long getPipeAsyncSinkRetryProbeIntervalMs() {
+    return pipeAsyncSinkRetryProbeIntervalMs;
+  }
+
+  public int getPipeAsyncSinkSelectorNumber() {
+    return pipeAsyncSinkSelectorNumber;
+  }
+
+  public void setPipeAsyncSinkSelectorNumber(int pipeAsyncSinkSelectorNumber) {
+    if (pipeAsyncSinkSelectorNumber <= 0) {
       logger.info(
-          "pipeAsyncConnectorSelectorNumber should be greater than 0, configuring it not to change.");
+          "pipeAsyncSinkSelectorNumber should be greater than 0, configuring it not to change.");
       return;
     }
-    pipeAsyncConnectorSelectorNumber = Math.max(4, pipeAsyncConnectorSelectorNumber);
-    if (this.pipeAsyncConnectorSelectorNumber == pipeAsyncConnectorSelectorNumber) {
+    pipeAsyncSinkSelectorNumber = Math.max(4, pipeAsyncSinkSelectorNumber);
+    if (this.pipeAsyncSinkSelectorNumber == pipeAsyncSinkSelectorNumber) {
       return;
     }
-    this.pipeAsyncConnectorSelectorNumber = pipeAsyncConnectorSelectorNumber;
-    logger.info("pipeAsyncConnectorSelectorNumber is set to {}.", pipeAsyncConnectorSelectorNumber);
+    this.pipeAsyncSinkSelectorNumber = pipeAsyncSinkSelectorNumber;
+    logger.info("pipeAsyncSinkSelectorNumber is set to {}.", pipeAsyncSinkSelectorNumber);
   }
 
   public int getPipeAsyncSinkMaxClientNumber() {
-    return pipeAsyncConnectorMaxClientNumber;
+    return pipeAsyncSinkMaxClientNumber;
   }
 
-  public void setPipeAsyncConnectorMaxClientNumber(int pipeAsyncConnectorMaxClientNumber) {
-    if (pipeAsyncConnectorMaxClientNumber <= 0) {
+  public void setPipeAsyncSinkMaxClientNumber(int pipeAsyncSinkMaxClientNumber) {
+    if (pipeAsyncSinkMaxClientNumber <= 0) {
       logger.info(
-          " pipeAsyncConnectorMaxClientNumber should be greater than 0, configuring it not to change.");
+          " pipeAsyncSinkMaxClientNumber should be greater than 0, configuring it not to change.");
       return;
     }
-    pipeAsyncConnectorMaxClientNumber = Math.max(32, pipeAsyncConnectorMaxClientNumber);
-    if (this.pipeAsyncConnectorMaxClientNumber == pipeAsyncConnectorMaxClientNumber) {
+    pipeAsyncSinkMaxClientNumber = Math.max(32, pipeAsyncSinkMaxClientNumber);
+    if (this.pipeAsyncSinkMaxClientNumber == pipeAsyncSinkMaxClientNumber) {
       return;
     }
-    this.pipeAsyncConnectorMaxClientNumber = pipeAsyncConnectorMaxClientNumber;
-    logger.info(
-        "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxClientNumber);
+    this.pipeAsyncSinkMaxClientNumber = pipeAsyncSinkMaxClientNumber;
+    logger.info("pipeAsyncSinkMaxClientNumber is set to {}.", pipeAsyncSinkMaxClientNumber);
   }
 
   public int getPipeAsyncSinkMaxTsFileClientNumber() {
-    return pipeAsyncConnectorMaxTsFileClientNumber;
+    return pipeAsyncSinkMaxTsFileClientNumber;
   }
 
-  public void setPipeAsyncConnectorMaxTsFileClientNumber(
-      int pipeAsyncConnectorMaxTsFileClientNumber) {
-    if (pipeAsyncConnectorMaxTsFileClientNumber <= 0) {
+  public void setPipeAsyncSinkMaxTsFileClientNumber(int pipeAsyncSinkMaxTsFileClientNumber) {
+    if (pipeAsyncSinkMaxTsFileClientNumber <= 0) {
       logger.info(
-          "pipeAsyncConnectorMaxTsFileClientNumber should be greater than 0, configuring it not to change.");
+          "pipeAsyncSinkMaxTsFileClientNumber should be greater than 0, configuring it not to change.");
       return;
     }
-    pipeAsyncConnectorMaxTsFileClientNumber = Math.max(16, pipeAsyncConnectorMaxTsFileClientNumber);
-    if (this.pipeAsyncConnectorMaxTsFileClientNumber == pipeAsyncConnectorMaxTsFileClientNumber) {
+    pipeAsyncSinkMaxTsFileClientNumber = Math.max(16, pipeAsyncSinkMaxTsFileClientNumber);
+    if (this.pipeAsyncSinkMaxTsFileClientNumber == pipeAsyncSinkMaxTsFileClientNumber) {
       return;
     }
-    this.pipeAsyncConnectorMaxTsFileClientNumber = pipeAsyncConnectorMaxTsFileClientNumber;
+    this.pipeAsyncSinkMaxTsFileClientNumber = pipeAsyncSinkMaxTsFileClientNumber;
     logger.info(
-        "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxTsFileClientNumber);
+        "pipeAsyncSinkMaxTsFileClientNumber is set to {}.", pipeAsyncSinkMaxTsFileClientNumber);
   }
 
   public boolean isPrintLogWhenEncounterException() {
@@ -1321,12 +1404,12 @@ public class CommonConfig {
     return pipeSinkRetryIntervalMs;
   }
 
-  public void setPipeSinkRetryIntervalMs(long pipeConnectorRetryIntervalMs) {
-    if (this.pipeSinkRetryIntervalMs == pipeConnectorRetryIntervalMs) {
+  public void setPipeSinkRetryIntervalMs(long pipeSinkRetryIntervalMs) {
+    if (this.pipeSinkRetryIntervalMs == pipeSinkRetryIntervalMs) {
       return;
     }
-    this.pipeSinkRetryIntervalMs = pipeConnectorRetryIntervalMs;
-    logger.info("pipeSinkRetryIntervalMs is set to {}", pipeConnectorRetryIntervalMs);
+    this.pipeSinkRetryIntervalMs = pipeSinkRetryIntervalMs;
+    logger.info("pipeSinkRetryIntervalMs is set to {}", pipeSinkRetryIntervalMs);
   }
 
   public boolean isPipeSinkRetryLocallyForConnectionError() {
@@ -1680,29 +1763,46 @@ public class CommonConfig {
     logger.info("pipeReceiverConversionEnabled is set to {}.", pipeReceiverLoadConversionEnabled);
   }
 
+  public long getLoggerPeriodicalLogMinIntervalSeconds() {
+    return loggerPeriodicalLogMinIntervalSeconds;
+  }
+
+  public void setLoggerPeriodicalLogMinIntervalSeconds(long loggerPeriodicalLogMinIntervalSeconds) {
+    if (this.loggerPeriodicalLogMinIntervalSeconds == loggerPeriodicalLogMinIntervalSeconds) {
+      return;
+    }
+    this.loggerPeriodicalLogMinIntervalSeconds = loggerPeriodicalLogMinIntervalSeconds;
+    logger.info(
+        "loggerPeriodicalLogMinIntervalSeconds is set to {}.",
+        loggerPeriodicalLogMinIntervalSeconds);
+  }
+
   public long getPipePeriodicalLogMinIntervalSeconds() {
-    return pipePeriodicalLogMinIntervalSeconds;
+    return getLoggerPeriodicalLogMinIntervalSeconds();
   }
 
   public void setPipePeriodicalLogMinIntervalSeconds(long pipePeriodicalLogMinIntervalSeconds) {
-    if (this.pipePeriodicalLogMinIntervalSeconds == pipePeriodicalLogMinIntervalSeconds) {
+    setLoggerPeriodicalLogMinIntervalSeconds(pipePeriodicalLogMinIntervalSeconds);
+  }
+
+  public long getLoggerCacheMaxSizeInBytes() {
+    return loggerCacheMaxSizeInBytes;
+  }
+
+  public void setLoggerCacheMaxSizeInBytes(long loggerCacheMaxSizeInBytes) {
+    if (this.loggerCacheMaxSizeInBytes == loggerCacheMaxSizeInBytes) {
       return;
     }
-    this.pipePeriodicalLogMinIntervalSeconds = pipePeriodicalLogMinIntervalSeconds;
-    logger.info(
-        "pipePeriodicalLogMinIntervalSeconds is set to {}.", pipePeriodicalLogMinIntervalSeconds);
+    this.loggerCacheMaxSizeInBytes = loggerCacheMaxSizeInBytes;
+    logger.info("loggerCacheMaxSizeInBytes is set to {}.", loggerCacheMaxSizeInBytes);
   }
 
   public long getPipeLoggerCacheMaxSizeInBytes() {
-    return pipeLoggerCacheMaxSizeInBytes;
+    return getLoggerCacheMaxSizeInBytes();
   }
 
   public void setPipeLoggerCacheMaxSizeInBytes(long pipeLoggerCacheMaxSizeInBytes) {
-    if (this.pipeLoggerCacheMaxSizeInBytes == pipeLoggerCacheMaxSizeInBytes) {
-      return;
-    }
-    this.pipeLoggerCacheMaxSizeInBytes = pipeLoggerCacheMaxSizeInBytes;
-    logger.info("pipeLoggerCacheMaxSizeInBytes is set to {}.", pipeLoggerCacheMaxSizeInBytes);
+    setLoggerCacheMaxSizeInBytes(pipeLoggerCacheMaxSizeInBytes);
   }
 
   public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
@@ -2127,18 +2227,16 @@ public class CommonConfig {
   }
 
   public int getPipeSinkRequestSliceThresholdBytes() {
-    return pipeConnectorRequestSliceThresholdBytes;
+    return pipeSinkRequestSliceThresholdBytes;
   }
 
-  public void setPipeConnectorRequestSliceThresholdBytes(
-      int pipeConnectorRequestSliceThresholdBytes) {
-    if (this.pipeConnectorRequestSliceThresholdBytes == pipeConnectorRequestSliceThresholdBytes) {
+  public void setPipeSinkRequestSliceThresholdBytes(int pipeSinkRequestSliceThresholdBytes) {
+    if (this.pipeSinkRequestSliceThresholdBytes == pipeSinkRequestSliceThresholdBytes) {
       return;
     }
-    this.pipeConnectorRequestSliceThresholdBytes = pipeConnectorRequestSliceThresholdBytes;
+    this.pipeSinkRequestSliceThresholdBytes = pipeSinkRequestSliceThresholdBytes;
     logger.info(
-        "pipeConnectorRequestSliceThresholdBytes is set to {}",
-        pipeConnectorRequestSliceThresholdBytes);
+        "pipeConnectorRequestSliceThresholdBytes is set to {}", pipeSinkRequestSliceThresholdBytes);
   }
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {

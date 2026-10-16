@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -50,7 +51,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -125,6 +125,10 @@ public abstract class PipeTaskAgent {
     }
   }
 
+  protected boolean tryReadLockWithTimeOutInMs(final long timeOutInMs) {
+    return tryReadLockWithTimeOut(convertMsToCeilSeconds(timeOutInMs));
+  }
+
   protected void releaseReadLock() {
     pipeMetaKeeper.releaseReadLock();
   }
@@ -143,15 +147,32 @@ public abstract class PipeTaskAgent {
     }
   }
 
+  protected boolean tryWriteLockWithTimeOutInMs(final long timeOutInMs) {
+    return tryWriteLockWithTimeOut(convertMsToCeilSeconds(timeOutInMs));
+  }
+
   protected void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
+  }
+
+  private long convertMsToCeilSeconds(final long timeOutInMs) {
+    return Math.max(1L, (Math.max(0L, timeOutInMs) + 999L) / 1000L);
   }
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       final PipeMeta pipeMetaFromCoordinator) {
-    acquireWriteLock();
+    final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when handling single pipe meta changes for pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator);
     } finally {
@@ -190,6 +211,12 @@ public abstract class PipeTaskAgent {
     // Do nothing with the subscription pipe if disable subscription
     if (PipeStaticMeta.isSubscriptionPipe(pipeName)
         && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
+    // PRE_DELETE is a coordinator-only marker. The drop procedure pushes DROPPED explicitly after
+    // persisting the marker, so task agents should retain their current runtime state here.
+    if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.PRE_DELETE) {
       return;
     }
 
@@ -290,6 +317,8 @@ public abstract class PipeTaskAgent {
       }
     }
 
+    syncRuntimeExceptionClearTime(runtimeMetaFromCoordinator, runtimeMetaInAgent);
+
     // 2. Handle pipe runtime meta status changes
     final PipeStatus statusFromCoordinator = runtimeMetaFromCoordinator.getStatus().get();
     final PipeStatus statusInAgent = runtimeMetaInAgent.getStatus().get();
@@ -330,12 +359,26 @@ public abstract class PipeTaskAgent {
     }
   }
 
+  private void syncRuntimeExceptionClearTime(
+      final PipeRuntimeMeta runtimeMetaFromCoordinator, final PipeRuntimeMeta runtimeMetaInAgent) {
+    runtimeMetaInAgent.setExceptionsClearTime(runtimeMetaFromCoordinator.getExceptionsClearTime());
+    runtimeMetaInAgent.clearExceptionMessagesBefore(runtimeMetaInAgent.getExceptionsClearTime());
+  }
+
   protected abstract void thawRate(final String pipeName, final long creationTime);
 
   protected abstract void freezeRate(final String pipeName, final long creationTime);
 
   public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
-    acquireWriteLock();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when dropping pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleDropPipeInternal(pipeName);
     } finally {
@@ -363,7 +406,7 @@ public abstract class PipeTaskAgent {
 
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
-    if (!tryWriteLockWithTimeOut(
+    if (!tryWriteLockWithTimeOutInMs(
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
       return null;
     }
@@ -490,11 +533,7 @@ public abstract class PipeTaskAgent {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
-    calculateMemoryUsage(
-        pipeMetaFromCoordinator.getStaticMeta(),
-        pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
-        pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
-        pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
+    calculateMemoryUsage(pipeMetaFromCoordinator);
 
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
@@ -532,8 +571,22 @@ public abstract class PipeTaskAgent {
 
     pipeMetaKeeper.addPipeMeta(pipeName, pipeMetaFromCoordinator);
 
+    pipeMetaFromCoordinator
+        .getRuntimeMeta()
+        .clearExceptionMessagesBefore(
+            pipeMetaFromCoordinator.getRuntimeMeta().getExceptionsClearTime());
+
     // If the pipe status from coordinator is RUNNING, we will start the pipe later.
     return needToStartPipe;
+  }
+
+  protected void calculateMemoryUsage(final PipeMeta pipeMetaFromCoordinator)
+      throws IllegalPathException {
+    calculateMemoryUsage(
+        pipeMetaFromCoordinator.getStaticMeta(),
+        pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
   }
 
   protected void calculateMemoryUsage(
@@ -955,6 +1008,21 @@ public abstract class PipeTaskAgent {
       final int currentNodeId,
       final PipeTaskMeta pipeTaskMeta,
       final PipeRuntimeException pipeRuntimeException) {
+    stopAllPipesWithCriticalException(
+        currentNodeId, null, Long.MIN_VALUE, pipeTaskMeta, pipeRuntimeException);
+  }
+
+  /**
+   * Stops the pipe associated with a critical exception. The explicit pipe identity is important
+   * for events whose task meta was deserialized and is therefore not the same object as the local
+   * task meta.
+   */
+  protected void stopAllPipesWithCriticalException(
+      final int currentNodeId,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
     // To avoid deadlock, we use a new thread to stop all pipes.
     CompletableFuture.runAsync(
         () -> {
@@ -963,8 +1031,40 @@ public abstract class PipeTaskAgent {
             while (true) {
               if (tryWriteLockWithTimeOut(5)) {
                 try {
-                  pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
-                  stopAllPipesWithCriticalExceptionInternal(currentNodeId);
+                  final PipeMeta failedPipeMeta =
+                      findPipeMeta(pipeName, creationTime, pipeTaskMeta);
+
+                  // An explicit identity is authoritative. A stale callback must not be mapped to
+                  // another pipe merely because its serialized task metadata happens to match.
+                  if (pipeName != null && failedPipeMeta == null) {
+                    return;
+                  }
+
+                  final PipeTaskMeta localFailedPipeTaskMeta =
+                      findLocalPipeTaskMeta(failedPipeMeta, pipeTaskMeta, currentNodeId);
+                  if (failedPipeMeta == null) {
+                    // Preserve the legacy behavior for a caller that supplied only a task meta.
+                    // If it is detached and ambiguous, it is deliberately not attached to any
+                    // local pipe.
+                    if (pipeTaskMeta != null) {
+                      pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+                    }
+                  } else if (localFailedPipeTaskMeta != null) {
+                    localFailedPipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+                  }
+
+                  if (failedPipeMeta != null
+                      && failedPipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING) {
+                    failedPipeMeta.getRuntimeMeta().setIsStoppedByRuntimeException(true);
+                  }
+
+                  stopAllPipesWithCriticalExceptionInternal(
+                      currentNodeId, failedPipeMeta, pipeRuntimeException);
+                  if (failedPipeMeta != null) {
+                    // stopPipe() can race with task removal and return without changing the
+                    // runtime status. The identified pipe still needs to be marked stopped.
+                    stopPipeWithRuntimeException(failedPipeMeta);
+                  }
                   LOGGER.info("Stopped all pipes with critical exception.");
                   return;
                 } finally {
@@ -992,72 +1092,34 @@ public abstract class PipeTaskAgent {
         });
   }
 
-  private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
-    // 1. track exception in all pipe tasks that share the same connector that have critical
-    // exceptions.
-    final Map<PipeParameters, PipeRuntimeSinkCriticalException>
-        reusedConnectorParameters2ExceptionMap = new HashMap<>();
+  private void stopAllPipesWithCriticalExceptionInternal(
+      final int currentNodeId,
+      final PipeMeta failedPipeMeta,
+      final PipeRuntimeException pipeRuntimeException) {
+    // A sink subtask is shared only by regions belonging to one pipe. Propagate its exception only
+    // to the other local leader tasks of that same pipe.
+    if (pipeRuntimeException instanceof PipeRuntimeSinkCriticalException
+        && failedPipeMeta != null) {
+      final PipeStaticMeta staticMeta = failedPipeMeta.getStaticMeta();
+      for (final PipeTaskMeta pipeTaskMeta :
+          failedPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values()) {
+        if (pipeTaskMeta.getLeaderNodeId() == currentNodeId
+            && !pipeTaskMeta.containsExceptionMessage(pipeRuntimeException)) {
+          pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+          PipeLogger.log(
+              LOGGER::warn,
+              "Pipe %s (creation time = %s) will be stopped because of critical exception "
+                  + "(occurred time %s) in connector %s.",
+              staticMeta.getPipeName(),
+              staticMeta.getCreationTime(),
+              pipeRuntimeException.getTimeStamp(),
+              staticMeta.getConnectorParameters());
+        }
+      }
+    }
 
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-              runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
-                  .values()
-                  .forEach(
-                      pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderNodeId() != currentNodeId) {
-                          return;
-                        }
-
-                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                          if (e instanceof PipeRuntimeSinkCriticalException) {
-                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
-                                staticMeta.getConnectorParameters(),
-                                (PipeRuntimeSinkCriticalException) e);
-                          }
-                        }
-                      });
-            });
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-              runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
-                  .values()
-                  .forEach(
-                      pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderNodeId() == currentNodeId
-                            && reusedConnectorParameters2ExceptionMap.containsKey(
-                                staticMeta.getConnectorParameters())
-                            && !pipeTaskMeta.containsExceptionMessage(
-                                reusedConnectorParameters2ExceptionMap.get(
-                                    staticMeta.getConnectorParameters()))) {
-                          final PipeRuntimeSinkCriticalException exception =
-                              reusedConnectorParameters2ExceptionMap.get(
-                                  staticMeta.getConnectorParameters());
-                          pipeTaskMeta.trackExceptionMessage(exception);
-                          PipeLogger.log(
-                              LOGGER::warn,
-                              "Pipe %s (creation time = %s) will be stopped because of critical exception "
-                                  + "(occurred time %s) in connector %s.",
-                              staticMeta.getPipeName(),
-                              staticMeta.getCreationTime(),
-                              exception.getTimeStamp(),
-                              staticMeta.getConnectorParameters());
-                        }
-                      });
-            });
-
-    // 2. stop all pipes that have critical exceptions.
+    // Stop every pipe that already has a critical exception. Sink exceptions added above are
+    // intentionally visible only inside failedPipeMeta.
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
@@ -1089,9 +1151,102 @@ public abstract class PipeTaskAgent {
             });
   }
 
+  private void stopPipeWithRuntimeException(final PipeMeta pipeMeta) {
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+    if (runtimeMeta.getStatus().get() != PipeStatus.RUNNING) {
+      return;
+    }
+
+    runtimeMeta.setIsStoppedByRuntimeException(true);
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    try {
+      stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+    } finally {
+      // stopPipe() can find no local task map during a drop race. Keep the runtime metadata
+      // consistent with the critical exception in that case.
+      if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+        runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+      }
+    }
+  }
+
+  private PipeMeta findPipeMeta(
+      final String pipeName, final long creationTime, final PipeTaskMeta pipeTaskMeta) {
+    if (pipeName != null) {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+      return pipeMeta != null && pipeMeta.getStaticMeta().getCreationTime() == creationTime
+          ? pipeMeta
+          : null;
+    }
+
+    // Object identity is the precise in-process path.
+    for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      if (pipeTaskMeta != null
+          && pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()
+              .anyMatch(taskMeta -> taskMeta == pipeTaskMeta)) {
+        return pipeMeta;
+      }
+    }
+
+    // A serialized task meta is safe only when it identifies one pipe uniquely. Equal task metas
+    // can legitimately occur in multiple pipes, so ambiguous matches are rejected.
+    PipeMeta matchedPipeMeta = null;
+    if (pipeTaskMeta != null) {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        if (pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()
+            .anyMatch(pipeTaskMeta::equals)) {
+          if (matchedPipeMeta != null) {
+            return null;
+          }
+          matchedPipeMeta = pipeMeta;
+        }
+      }
+    }
+    return matchedPipeMeta;
+  }
+
+  private PipeTaskMeta findLocalPipeTaskMeta(
+      final PipeMeta pipeMeta, final PipeTaskMeta pipeTaskMeta, final int currentNodeId) {
+    if (pipeMeta == null || pipeTaskMeta == null) {
+      return null;
+    }
+
+    final Collection<PipeTaskMeta> taskMetas =
+        pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values();
+    for (final PipeTaskMeta localTaskMeta : taskMetas) {
+      if (localTaskMeta == pipeTaskMeta) {
+        return localTaskMeta;
+      }
+    }
+
+    PipeTaskMeta matchedLocalLeaderTaskMeta = null;
+    for (final PipeTaskMeta localTaskMeta : taskMetas) {
+      if (localTaskMeta.getLeaderNodeId() == currentNodeId && localTaskMeta.equals(pipeTaskMeta)) {
+        if (matchedLocalLeaderTaskMeta != null) {
+          return null;
+        }
+        matchedLocalLeaderTaskMeta = localTaskMeta;
+      }
+    }
+    if (matchedLocalLeaderTaskMeta != null) {
+      return matchedLocalLeaderTaskMeta;
+    }
+
+    PipeTaskMeta matchedTaskMeta = null;
+    for (final PipeTaskMeta localTaskMeta : taskMetas) {
+      if (localTaskMeta.equals(pipeTaskMeta)) {
+        if (matchedTaskMeta != null) {
+          return null;
+        }
+        matchedTaskMeta = localTaskMeta;
+      }
+    }
+    return matchedTaskMeta;
+  }
+
   public void collectPipeMetaList(final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp)
       throws TException {
-    if (!tryReadLockWithTimeOut(
+    if (!tryReadLockWithTimeOutInMs(
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
       return;
     }
@@ -1192,6 +1347,15 @@ public abstract class PipeTaskAgent {
     if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
           .decreaseFloatingMemoryUsageInByte(sizeInByte);
+    }
+  }
+
+  public void recordPipeResourceFailure(
+      final String pipeName, final long creationTime, final PipeResourceFailureType failureType) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    // Avoid recording a failure for a stale pipe before alter.
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).recordResourceFailure(failureType);
     }
   }
 

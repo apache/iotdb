@@ -113,6 +113,58 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    if (!useEncryptedPassword) {
+      return login(username, password);
+    }
+
+    boolean status = false;
+    String loginMessage = null;
+    TSStatus tsStatus = new TSStatus();
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    try {
+      final User user = authorizer.getUser(username);
+      status = user != null && password != null && password.equals(user.getPassword());
+      if (status) {
+        result = getUserPermissionInfo(username);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
+      } else {
+        result = AuthUtils.generateEmptyPermissionInfoResp();
+      }
+    } catch (AuthException e) {
+      LOGGER.error("meet error while logging in.", e);
+      loginMessage = e.getMessage();
+    }
+    if (!status) {
+      tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+      result.setStatus(tsStatus);
+    }
+    return result;
+  }
+
+  public String login4Pipe(final String username, final String password) {
+    try {
+      final User user = authorizer.getUser(username);
+      if (user == null) {
+        return null;
+      }
+      if (password == null) {
+        return user.getPassword();
+      }
+      final TPermissionInfoResp loginResp = login(username, password);
+      if (loginResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && loginResp.isSetUserInfo()) {
+        return loginResp.getUserInfo().getPassword();
+      }
+      return null;
+    } catch (final AuthException e) {
+      LOGGER.error("meet error while logging in for pipe.", e);
+      return null;
+    }
+  }
+
   // if All paths fail, return No permission
   // if some paths fail, return SUCCESS and failed index list
   // if all path success, return success and empty index list

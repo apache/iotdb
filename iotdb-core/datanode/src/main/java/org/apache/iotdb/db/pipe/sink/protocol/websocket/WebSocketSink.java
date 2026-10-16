@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -39,7 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Optional;
 
-public class WebSocketSink implements PipeConnector {
+public class WebSocketSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketSink.class);
 
@@ -138,18 +140,15 @@ public class WebSocketSink implements PipeConnector {
       return;
     }
 
-    try {
-      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-          .consumeTabletInsertionEventsWithRetry(
-              event -> {
-                // Skip report if any tablet events is added
-                ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
-                transfer(event);
-              },
-              "WebSocketConnector::transfer");
-    } finally {
-      tsFileInsertionEvent.close();
-    }
+    ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+        .consumeTabletInsertionEventsWithRetry(
+            event -> {
+              // Skip report if any tablet events is added
+              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
+              transfer(event);
+            },
+            "WebSocketConnector::transfer");
+    tsFileInsertionEvent.close();
   }
 
   @Override
@@ -161,6 +160,21 @@ public class WebSocketSink implements PipeConnector {
   public void close() throws Exception {
     if (server != null) {
       server.unregister(this);
+    }
+  }
+
+  @Override
+  public void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    if (server != null) {
+      server.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+    }
+  }
+
+  @Override
+  public void discardEventsOfPipe(final CommitterKey committerKey) {
+    if (server != null) {
+      server.discardEventsOfPipe(committerKey);
     }
   }
 

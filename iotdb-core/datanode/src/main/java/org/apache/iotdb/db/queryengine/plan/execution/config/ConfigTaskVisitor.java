@@ -80,8 +80,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.MergeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.RepairDataPartitionTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
@@ -172,8 +174,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
@@ -303,6 +307,19 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   public IConfigTask visitStartRepairData(
       StartRepairDataStatement startRepairDataStatement, MPPQueryContext context) {
     return new StartRepairDataTask(startRepairDataStatement);
+  }
+
+  @Override
+  public IConfigTask visitRepairDataPartitionTable(
+      RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
+    return new RepairDataPartitionTableTask();
+  }
+
+  @Override
+  public IConfigTask visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      MPPQueryContext context) {
+    return new ShowRepairDataPartitionTableProgressTask();
   }
 
   @Override

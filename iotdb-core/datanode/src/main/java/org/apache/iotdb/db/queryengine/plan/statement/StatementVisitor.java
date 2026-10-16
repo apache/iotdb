@@ -123,9 +123,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -437,6 +439,17 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitStopRepairData(StopRepairDataStatement stopRepairDataStatement, C context) {
     return visitStatement(stopRepairDataStatement, context);
+  }
+
+  public R visitRepairDataPartitionTable(
+      RepairDataPartitionTable repairDataPartitionTable, C context) {
+    return visitStatement(repairDataPartitionTable, context);
+  }
+
+  public R visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      C context) {
+    return visitStatement(showRepairDataPartitionTableProgressStatement, context);
   }
 
   public R visitLoadConfiguration(

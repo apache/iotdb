@@ -54,6 +54,26 @@ public class ConsumerMeta {
     return consumerId;
   }
 
+  public String getConsumerGroupId() {
+    return config.getConsumerGroupId();
+  }
+
+  public String getUsername() {
+    return config.getUsername();
+  }
+
+  public String getPassword() {
+    return config.getPassword();
+  }
+
+  public String getEncryptedPassword() {
+    return config.getEncryptedPassword();
+  }
+
+  public String getSubscriptionAuthPassword() {
+    return Objects.nonNull(getEncryptedPassword()) ? getEncryptedPassword() : getPassword();
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);

@@ -44,6 +44,7 @@ import org.apache.tsfile.write.writer.TsFileIOWriter;
 import javax.annotation.Nonnull;
 
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -287,7 +288,7 @@ public class AlignedChunkData implements ChunkData {
   }
 
   protected void deserializeTsFileData(TsFileIOWriter writer) throws IOException, PageException {
-    final InputStream stream = new ByteArrayInputStream(chunkData);
+    final InputStream stream = createTsFileDataInputStream();
     if (needDecodeChunk) {
       buildChunkWriter(stream, writer);
     } else {
@@ -295,12 +296,16 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
+  private InputStream createTsFileDataInputStream() {
+    return chunkData == null
+        ? new ByteArrayInputStream(byteStream.getBuf(), 0, byteStream.size())
+        : new ByteArrayInputStream(chunkData);
+  }
+
   protected void deserializeTsFileDataByte(final InputStream stream) throws IOException {
     final int size = ReadWriteIOUtils.readInt(stream);
     this.chunkData = new byte[size];
-    if (size != stream.read(chunkData)) {
-      throw new IOException("TsFileData byte array read error, size mismatch.");
-    }
+    new DataInputStream(stream).readFully(chunkData);
   }
 
   private void deserializeEntireChunk(final InputStream stream, final TsFileIOWriter writer)
@@ -446,7 +451,7 @@ public class AlignedChunkData implements ChunkData {
     final long dataSize = ReadWriteIOUtils.readLong(stream);
     final boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     final int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);
-    final List<ChunkHeader> chunkHeaderList = new ArrayList<>();
+    final List<ChunkHeader> chunkHeaderList = new ArrayList<>(chunkHeaderListSize);
     for (int i = 0; i < chunkHeaderListSize; i++) {
       final byte chunkType = ReadWriteIOUtils.readByte(stream);
       ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
@@ -454,7 +459,7 @@ public class AlignedChunkData implements ChunkData {
       chunkHeader.setMeasurementID(MEASUREMENT_ID_CACHE.get(measurementID, m -> m));
       chunkHeaderList.add(chunkHeader);
     }
-    final List<Integer> pageNumbers = new ArrayList<>();
+    final List<Integer> pageNumbers = new ArrayList<>(needDecodeChunk ? chunkHeaderListSize : 0);
     if (needDecodeChunk) {
       for (int i = 0; i < chunkHeaderListSize; i++) {
         pageNumbers.add(ReadWriteIOUtils.readInt(stream));

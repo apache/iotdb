@@ -181,11 +181,22 @@ public class TopicMeta {
   /////////////////////////////// utilities ///////////////////////////////
 
   public Map<String, String> generateExtractorAttributes() {
+    return generateExtractorAttributes(null, null);
+  }
+
+  public Map<String, String> generateExtractorAttributes(
+      final String username, final String password) {
     final Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("inclusion", "data.insert");
     extractorAttributes.put("inclusion.exclusion", "data.delete");
+    if (Objects.nonNull(username)) {
+      extractorAttributes.put("username", username);
+    }
+    if (Objects.nonNull(password)) {
+      extractorAttributes.put("password", password);
+    }
     // path
     extractorAttributes.putAll(config.getAttributesWithPathOrPattern());
     // time

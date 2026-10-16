@@ -119,6 +119,35 @@ public class OperatorContext implements Accountable {
     return getInstanceContext().getSessionInfo();
   }
 
+  public boolean isHighestPriority() {
+    FragmentInstanceContext instanceContext = getInstanceContext();
+    return instanceContext != null && instanceContext.isHighestPriority();
+  }
+
+  public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
+    if (driverContext != null && driverContext.getFragmentInstanceContext() != null) {
+      driverContext
+          .getFragmentInstanceContext()
+          .recordScanAggregationFromRawDataCost(costTimeInNanos);
+    }
+  }
+
+  public void recordScanAggregationFromStatisticsCost(long costTimeInNanos) {
+    if (driverContext != null && driverContext.getFragmentInstanceContext() != null) {
+      driverContext
+          .getFragmentInstanceContext()
+          .recordScanAggregationFromStatisticsCost(costTimeInNanos);
+    }
+  }
+
+  public void recordAggregationOperatorFromRawDataCost(long costTimeInNanos) {
+    if (driverContext != null && driverContext.getFragmentInstanceContext() != null) {
+      driverContext
+          .getFragmentInstanceContext()
+          .recordAggregationOperatorFromRawDataCost(costTimeInNanos);
+    }
+  }
+
   public PlanNodeId getPlanNodeId() {
     return planNodeId;
   }

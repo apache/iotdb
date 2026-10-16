@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -35,6 +36,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -50,6 +53,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -64,6 +70,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -224,6 +231,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
               useSSL,
               trustStore,
               trustStorePwd);
+      openClientSession();
       final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
               pipeName, System.currentTimeMillis(), syncConnectorVersion, databaseName);
@@ -252,6 +260,29 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
             .trustStore(trustStore)
             .trustStorePwd(trustStorePwd)
             .build();
+  }
+
+  private void openClientSession() throws TException {
+    final TSOpenSessionReq openSessionReq = new TSOpenSessionReq();
+    openSessionReq.setClient_protocol(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+    openSessionReq.setUsername(user);
+    openSessionReq.setPassword(password);
+    openSessionReq.setZoneId(ZoneId.systemDefault().toString());
+    openSessionReq.putToConfiguration("version", IoTDBConstant.ClientVersion.V_1_0.toString());
+    openSessionReq.putToConfiguration("sql_dialect", "tree");
+
+    final TSOpenSessionResp openSessionResp = client.openSession(openSessionReq);
+    if (openSessionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final String errorMsg =
+          String.format(
+              "Failed to login to receiver %s:%s for legacy pipe transfer because code: %s, message: %s",
+              ipAddress,
+              port,
+              openSessionResp.getStatus().getCode(),
+              openSessionResp.getStatus().getMessage());
+      LOGGER.warn(errorMsg);
+      throw new PipeRuntimeCriticalException(errorMsg);
+    }
   }
 
   @Override
@@ -385,8 +416,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeSinkReadFileBufferSize()];
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
+      final byte[] buffer = new byte[readFileBufferSize];
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);
         if (dataLength == -1) {
@@ -420,6 +455,13 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
               ipAddress, port, e.getMessage()),
           e);
     }
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min(
+            (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+            Math.max(file.length(), 1L));
   }
 
   @Override

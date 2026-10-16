@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -32,9 +33,10 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -287,13 +289,23 @@ public class IoTDBDescriptor {
                     String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
 
-    conf.setSelectorNumOfClientManager(
+    int dnMaxIdleClientNumForEachNode =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "dn_selector_thread_count_of_client_manager",
-                    String.valueOf(conf.getSelectorNumOfClientManager()))
-                .trim()));
+            properties.getProperty(
+                "dn_max_idle_client_count_for_each_node_in_client_manager",
+                String.valueOf(conf.getMaxIdleClientNumForEachNode())));
+    if (dnMaxIdleClientNumForEachNode >= 0) {
+      conf.setMaxIdleClientNumForEachNode(dnMaxIdleClientNumForEachNode);
+    }
+
+    int dnSelectorNumOfClientManager =
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_selector_thread_nums_of_client_manager",
+                String.valueOf(conf.getSelectorNumOfClientManager())));
+    if (dnSelectorNumOfClientManager > 0) {
+      conf.setSelectorNumOfClientManager(dnSelectorNumOfClientManager);
+    }
 
     conf.setRpcPort(
         Integer.parseInt(
@@ -775,28 +787,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "0.13_data_insert_adapt", String.valueOf(conf.isEnable13DataInsertAdapt()))));
 
-    int rpcSelectorThreadNum =
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_rpc_selector_thread_count",
-                Integer.toString(conf.getRpcSelectorThreadCount()).trim()));
-    if (rpcSelectorThreadNum <= 0) {
-      rpcSelectorThreadNum = 1;
-    }
-
-    conf.setRpcSelectorThreadCount(rpcSelectorThreadNum);
-
-    int minConcurrentClientNum =
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_rpc_min_concurrent_client_num",
-                Integer.toString(conf.getRpcMinConcurrentClientNum()).trim()));
-    if (minConcurrentClientNum <= 0) {
-      minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-    }
-
-    conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
-
     int maxConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
@@ -860,10 +850,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
-
-    if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
-      conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
-    }
 
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
@@ -1028,11 +1014,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_read_executor_size",
                 Integer.toString(conf.getCoordinatorReadExecutorSize()))));
-    conf.setCoordinatorWriteExecutorSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "coordinator_write_executor_size",
-                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
     // Commons
     commonDescriptor.loadCommonProps(properties);
@@ -1109,6 +1090,34 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+    int partitionTableRecoverWorkerNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_worker_num",
+                String.valueOf(conf.getPartitionTableRecoverWorkerNum())));
+    if (partitionTableRecoverWorkerNum <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_worker_num should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverWorkerNum,
+          conf.getPartitionTableRecoverWorkerNum());
+      partitionTableRecoverWorkerNum = conf.getPartitionTableRecoverWorkerNum();
+    }
+    conf.setPartitionTableRecoverWorkerNum(partitionTableRecoverWorkerNum);
+    int partitionTableRecoverMaxReadMBsPerSecond =
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_max_read_mb_per_sec",
+                String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
+    if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_max_read_mb_per_sec should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverMaxReadMBsPerSecond,
+          conf.getPartitionTableRecoverMaxReadMBsPerSecond());
+      partitionTableRecoverMaxReadMBsPerSecond = conf.getPartitionTableRecoverMaxReadMBsPerSecond();
+    }
+    conf.setPartitionTableRecoverMaxReadMBsPerSecond(partitionTableRecoverMaxReadMBsPerSecond);
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -2082,6 +2091,9 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // update REST request limits
+      IoTDBRestServiceDescriptor.getInstance().loadHotModifiedProps(properties);
+
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(
           Integer.parseInt(
@@ -2447,6 +2459,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
+    conf.setLoadTsFileTabletConversionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_tablet_conversion_thread_count",
+                String.valueOf(conf.getLoadTsFileTabletConversionThreadCount()))));
     conf.setLoadChunkMetadataMemorySizeInBytes(
         Long.parseLong(
             Optional.ofNullable(
@@ -2470,6 +2487,17 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadTsFileAllowedDirs(
+        Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
+
     conf.setLoadTabletConversionThresholdBytes(
         Long.parseLong(
             properties.getProperty(
@@ -2494,6 +2522,9 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -2581,6 +2612,25 @@ public class IoTDBDescriptor {
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_write_throughput_bytes_per_second"))));
 
+    conf.setLoadTsFileAllowedDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_tsfile_allowed_dirs",
+                        Optional.ofNullable(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "load_tsfile_allowed_dirs"))
+                            .orElse(""))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
+
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2605,6 +2655,9 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
@@ -2627,7 +2680,8 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
-    PipePeriodicalLogReducer.update();
+    PipeDataNodeResourceManager.memory().notifyNextTsFileParserMemoryReservation();
+    LoggerPeriodicalLogReducer.update();
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

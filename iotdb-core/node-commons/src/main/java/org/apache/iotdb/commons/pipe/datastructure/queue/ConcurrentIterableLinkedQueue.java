@@ -136,6 +136,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       if (firstNode == null) {
         firstNode = pilotNode;
         lastNode = pilotNode;
+        pilotNode.next = null;
       }
 
       // Update iterators if necessary
@@ -207,9 +208,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     lock.writeLock().lock();
     try {
       this.firstIndex = firstIndex;
-      if (tailIndex < firstIndex) {
-        tailIndex = firstIndex;
-      }
+      tailIndex = firstIndex;
     } finally {
       lock.writeLock().unlock();
     }

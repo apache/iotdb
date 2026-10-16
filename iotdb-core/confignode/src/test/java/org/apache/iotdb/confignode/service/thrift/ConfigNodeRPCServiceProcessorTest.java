@@ -24,13 +24,16 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -47,6 +50,37 @@ import java.net.Socket;
 import java.util.Collections;
 
 public class ConfigNodeRPCServiceProcessorTest extends TestCase {
+
+  public void testSetSystemDatabaseRegionGroupQuota() {
+    CommonConfig commonConfig = Mockito.mock(CommonConfig.class);
+    ConfigNodeConfig configNodeConfig = Mockito.mock(ConfigNodeConfig.class);
+    ConfigNode configNode = Mockito.mock(ConfigNode.class);
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    Mockito.when(configNodeConfig.getDefaultSchemaRegionGroupNumPerDatabase()).thenReturn(3);
+    Mockito.when(configNodeConfig.getDefaultDataRegionGroupNumPerDatabase()).thenReturn(3);
+    Mockito.when(configManager.setDatabase(Mockito.any(DatabaseSchemaPlan.class)))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    ConfigNodeRPCServiceProcessor sut =
+        new ConfigNodeRPCServiceProcessor(
+            commonConfig, configNodeConfig, configNode, configManager);
+
+    TDatabaseSchema systemDatabase =
+        new TDatabaseSchema(SchemaConstant.SYSTEM_DATABASE)
+            .setMaxSchemaRegionGroupNum(1)
+            .setMaxDataRegionGroupNum(1);
+
+    TSStatus result = sut.setDatabase(systemDatabase);
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getCode());
+    ArgumentCaptor<DatabaseSchemaPlan> planCaptor =
+        ArgumentCaptor.forClass(DatabaseSchemaPlan.class);
+    Mockito.verify(configManager).setDatabase(planCaptor.capture());
+    TDatabaseSchema actualSchema = planCaptor.getValue().getSchema();
+    Assert.assertEquals(1, actualSchema.getMinSchemaRegionGroupNum());
+    Assert.assertEquals(1, actualSchema.getMaxSchemaRegionGroupNum());
+    Assert.assertEquals(1, actualSchema.getMinDataRegionGroupNum());
+    Assert.assertEquals(1, actualSchema.getMaxDataRegionGroupNum());
+  }
 
   /**
    * This test should be a normal data-node registration where a valid ip is used as address of the

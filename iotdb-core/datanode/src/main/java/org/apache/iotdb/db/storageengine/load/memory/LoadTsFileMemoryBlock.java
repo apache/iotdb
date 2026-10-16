@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileMemoryBlock.class);
 
-  private final long totalMemorySizeInBytes;
+  private long totalMemorySizeInBytes;
   private final AtomicLong memoryUsageInBytes;
 
   LoadTsFileMemoryBlock(long totalMemorySizeInBytes) {
@@ -79,13 +79,31 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
         .decr(memoryInBytes);
   }
 
+  synchronized long getMemoryUsageInBytes() {
+    return memoryUsageInBytes.get();
+  }
+
+  synchronized long getTotalMemorySizeInBytes() {
+    return totalMemorySizeInBytes;
+  }
+
+  synchronized void setTotalMemorySizeInBytes(final long totalMemorySizeInBytes) {
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+  }
+
+  public synchronized void forceResize(final long newSizeInBytes) {
+    MEMORY_MANAGER.forceResize(this, newSizeInBytes);
+  }
+
   @Override
   protected synchronized void releaseAllMemory() {
     if (memoryUsageInBytes.get() != 0) {
       LOGGER.warn(
           "Try to release memory from a memory block {} which has not released all memory", this);
     }
-    MEMORY_MANAGER.releaseToQuery(totalMemorySizeInBytes);
+    if (totalMemorySizeInBytes > 0) {
+      MEMORY_MANAGER.releaseToQuery(totalMemorySizeInBytes);
+    }
   }
 
   @Override

@@ -134,7 +134,7 @@ public class DeviceSchemaCache {
 
     dualKeyCache.update(
         device,
-        new DeviceCacheEntry(),
+        Objects.isNull(timeValuePairs) ? new DeviceCacheEntry() : null,
         initOrInvalidate
             ? entry ->
                 entry.setMeasurementSchema(
@@ -143,8 +143,27 @@ public class DeviceSchemaCache {
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, timeValuePairs),
+                    + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
+  }
+
+  void updateLastCache(
+      final String database,
+      final PartialPath device,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    final String previousDatabase = databasePool.putIfAbsent(database, database);
+    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
+
+    dualKeyCache.update(
+        device,
+        null,
+        entry ->
+            entry.setMeasurementSchema(database2Use, isAligned, measurements, measurementSchemas)
+                + entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
+        false);
   }
 
   public boolean getLastCache(final Map<PartialPath, Map<String, TimeValuePair>> inputMap) {
@@ -165,7 +184,7 @@ public class DeviceSchemaCache {
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
       dualKeyCache.update(
-          cachedDeviceID -> cachedDeviceID.matchFullPath(devicePath), updateFunction);
+          cachedDeviceID -> devicePath.matchFullPath(cachedDeviceID), updateFunction);
     }
   }
 

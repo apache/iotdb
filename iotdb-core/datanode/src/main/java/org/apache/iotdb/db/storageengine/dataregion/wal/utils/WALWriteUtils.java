@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -127,11 +128,18 @@ public class WALWriteUtils {
       return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
-    byte[] bytes = s.getBytes();
+    byte[] bytes = s.getBytes(TSFileConfig.STRING_CHARSET);
     len += write(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;
     return len;
+  }
+
+  public static int sizeToWrite(String s) {
+    if (s == null) {
+      return INT_LEN;
+    }
+    return INT_LEN + s.getBytes(TSFileConfig.STRING_CHARSET).length;
   }
 
   /**
@@ -196,15 +204,15 @@ public class WALWriteUtils {
 
   public static int sizeToWrite(MeasurementSchema measurementSchema) {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
+    byteLen += sizeToWrite(measurementSchema.getMeasurementId());
     byteLen += 3 * Byte.BYTES;
 
     Map<String, String> props = measurementSchema.getProps();
     byteLen += Integer.BYTES;
     if (props != null) {
       for (Map.Entry<String, String> entry : props.entrySet()) {
-        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
-        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
+        byteLen += sizeToWrite(entry.getKey());
+        byteLen += sizeToWrite(entry.getValue());
       }
     }
 

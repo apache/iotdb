@@ -56,13 +56,16 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
     checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
+    chunkPointNumArray[subTaskId] += batchSize;
+    if (hasVariableLengthTypeArray[subTaskId]) {
+      writtenPointTotalSizeArray[subTaskId] += estimateWrittenPointTotalSize(tsBlock);
+    }
     synchronized (this) {
       // we need to synchronized here to avoid multi-thread competition in sub-task
       TsFileResource resource = targetResources.get(seqFileIndexArray[subTaskId]);
       resource.updateStartTime(deviceId, timestamps.getStartTime());
       resource.updateEndTime(deviceId, timestamps.getEndTime());
     }
-    chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
     checkChunkSizeAndMayOpenANewChunk(
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriter, subTaskId);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;

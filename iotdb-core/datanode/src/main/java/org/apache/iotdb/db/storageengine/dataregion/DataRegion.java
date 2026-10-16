@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -226,6 +227,9 @@ public class DataRegion implements IDataRegionForQuery {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+
+  // Accessed only under insertLock's write lock; stopping permanently closes write admission.
+  private boolean ioTConsensusWritesStopped;
 
   /** Condition to safely delete data region. */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
@@ -675,9 +679,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
       logger.info(
           "The data region {}[{}] is created successfully", databaseName, dataRegionIdString);
-    } else {
-      logger.info(
-          "The data region {}[{}] is recovered successfully", databaseName, dataRegionIdString);
     }
   }
 
@@ -709,7 +710,7 @@ public class DataRegion implements IDataRegionForQuery {
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         long endTime = resource.getEndTime(deviceId).get();
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.merge(deviceId, endTime, Math::max);
       }
     }
     if (config.isEnableSeparateData()) {
@@ -1065,6 +1066,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("InsertRow");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -1093,6 +1095,7 @@ public class DataRegion implements IDataRegionForQuery {
               System.nanoTime() - startTime);
         }
       }
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
     }
@@ -1107,10 +1110,19 @@ public class DataRegion implements IDataRegionForQuery {
   public void insertTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
     StorageEngine.blockInsertionIfReject();
+    insertTablet(insertTabletNode, true);
+  }
+
+  private void insertTablet(InsertTabletNode insertTabletNode, boolean logSeparator)
+      throws BatchProcessException, WriteProcessException {
     long startTime = System.nanoTime();
     writeLock("insertTablet");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      // A multi-tablet batch has already passed admission under insertLock.
+      if (logSeparator) {
+        checkIoTConsensusWriteAllowed();
+      }
       if (deleted) {
         logger.info(
             "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
@@ -1193,7 +1205,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
           // disable updating last cache on follower
           startTime = System.nanoTime();
-          tryToUpdateInsertTabletLastCache(insertTabletNode);
+          tryToUpdateInsertTabletLastCache(insertTabletNode, results);
           PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
               System.nanoTime() - startTime);
         }
@@ -1201,6 +1213,9 @@ public class DataRegion implements IDataRegionForQuery {
 
       if (!noFailure) {
         throw new BatchProcessException(results);
+      }
+      if (logSeparator) {
+        logSeparatorToWAL();
       }
     } finally {
       writeUnlock();
@@ -1261,13 +1276,13 @@ public class DataRegion implements IDataRegionForQuery {
       return true;
     }
 
-    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
-    if (tsFileProcessor == null) {
+    final TsFileProcessor tsFileProcessor;
+    try {
+      tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
+    } catch (WriteProcessException e) {
+      final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       for (int i = start; i < end; i++) {
-        results[i] =
-            RpcUtils.getStatus(
-                TSStatusCode.INTERNAL_SERVER_ERROR,
-                "can not create TsFileProcessor, timePartitionId: " + timePartitionId);
+        results[i] = failureStatus;
       }
       return false;
     }
@@ -1275,6 +1290,10 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
     } catch (WriteProcessRejectException e) {
+      final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      for (int i = start; i < end; i++) {
+        results[i] = failureStatus;
+      }
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
     } catch (WriteProcessException e) {
@@ -1289,8 +1308,9 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
-  private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
-    node.updateLastCache(getDatabaseName());
+  private void tryToUpdateInsertTabletLastCache(
+      final InsertTabletNode node, final TSStatus[] results) {
+    node.updateLastCache(getDatabaseName(), results);
   }
 
   private TsFileProcessor insertToTsFileProcessor(
@@ -1300,9 +1320,6 @@ public class DataRegion implements IDataRegionForQuery {
       return null;
     }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
-    if (tsFileProcessor == null) {
-      return null;
-    }
     long[] costsForMetrics = new long[4];
     tsFileProcessor.insert(insertRowNode, costsForMetrics);
     PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
@@ -1325,9 +1342,11 @@ public class DataRegion implements IDataRegionForQuery {
       if (insertRowNode.allMeasurementFailed()) {
         continue;
       }
-      TsFileProcessor tsFileProcessor =
-          getOrCreateTsFileProcessor(timePartitionIds[i], areSequence[i]);
-      if (tsFileProcessor == null) {
+      final TsFileProcessor tsFileProcessor;
+      try {
+        tsFileProcessor = getOrCreateTsFileProcessor(timePartitionIds[i], areSequence[i]);
+      } catch (WriteProcessException e) {
+        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         continue;
       }
       int finalI = i;
@@ -1335,43 +1354,28 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileProcessor,
           (k, v) -> {
             if (v == null) {
-              v = new InsertRowsNode(insertRowsNode.getPlanNodeId());
-              v.setSearchIndex(insertRowNode.getSearchIndex());
-              v.setAligned(insertRowNode.isAligned());
-              if (insertRowNode.isGeneratedByPipe()) {
-                v.markAsGeneratedByPipe();
-              }
-              if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
-                v.markAsGeneratedByRemoteConsensusLeader();
-              }
+              v = createGroupedInsertRowsNode(insertRowsNode, insertRowNode);
             }
-            if (v.isAligned() != insertRowNode.isAligned()) {
-              v.setMixingAlignment(true);
-            }
-            v.addOneInsertRowNode(insertRowNode, finalI);
-            v.updateProgressIndex(insertRowNode.getProgressIndex());
+            appendInsertRowNode(v, insertRowNode, finalI);
             return v;
           });
     }
 
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
-      TsFileProcessor tsFileProcessor = entry.getKey();
       InsertRowsNode subInsertRowsNode = entry.getValue();
       try {
-        tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
+        List<TsFileProcessor> insertedProcessors =
+            insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, costsForMetrics);
+        executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
+        for (TsFileProcessor tsFileProcessor : insertedProcessors) {
+          // check memtable size and may asyncTryToFlush the work memtable
+          if (tsFileProcessor.shouldFlush()) {
+            fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+          }
+        }
       } catch (WriteProcessException e) {
-        insertRowsNode
-            .getResults()
-            .put(
-                subInsertRowsNode.getInsertRowNodeIndexList().get(0),
-                RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      }
-      executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
-
-      // check memtable size and may asyncTryToFlush the work memtable
-      if (entry.getKey().shouldFlush()) {
-        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        recordInsertRowsFailure(insertRowsNode, subInsertRowsNode, e);
       }
     }
 
@@ -1380,6 +1384,121 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
     return executedInsertRowNodeList;
+  }
+
+  private List<TsFileProcessor> insertRowsWithTypeConsistencyCheck(
+      TsFileProcessor tsFileProcessor, InsertRowsNode subInsertRowsNode, long[] costsForMetrics)
+      throws WriteProcessException {
+    tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
+    return Collections.singletonList(tsFileProcessor);
+  }
+
+  private InsertRowsNode createGroupedInsertRowsNode(
+      final InsertRowsNode sourceInsertRowsNode, final InsertRowNode firstInsertRowNode) {
+    final InsertRowsNode groupedInsertRowsNode =
+        new InsertRowsNode(sourceInsertRowsNode.getPlanNodeId());
+    initializeGroupedInsertRowsNode(groupedInsertRowsNode, firstInsertRowNode);
+    return groupedInsertRowsNode;
+  }
+
+  private InsertRowsNode createGroupedInsertRowsNode(
+      final InsertRowsOfOneDeviceNode sourceInsertRowsNode,
+      final InsertRowNode firstInsertRowNode) {
+    final InsertRowsNode groupedInsertRowsNode =
+        new InsertRowsNode(sourceInsertRowsNode.getPlanNodeId());
+    initializeGroupedInsertRowsNode(groupedInsertRowsNode, firstInsertRowNode);
+    return groupedInsertRowsNode;
+  }
+
+  private void initializeGroupedInsertRowsNode(
+      final InsertRowsNode groupedInsertRowsNode, final InsertRowNode firstInsertRowNode) {
+    groupedInsertRowsNode.setSearchIndex(firstInsertRowNode.getSearchIndex());
+    groupedInsertRowsNode.setAligned(firstInsertRowNode.isAligned());
+    if (firstInsertRowNode.isGeneratedByPipe()) {
+      groupedInsertRowsNode.markAsGeneratedByPipe();
+    }
+    if (firstInsertRowNode.isGeneratedByRemoteConsensusLeader()) {
+      groupedInsertRowsNode.markAsGeneratedByRemoteConsensusLeader();
+    }
+  }
+
+  private void appendInsertRowNode(
+      final InsertRowsNode groupedInsertRowsNode,
+      final InsertRowNode insertRowNode,
+      final int insertRowNodeIndex) {
+    if (groupedInsertRowsNode.isAligned() != insertRowNode.isAligned()) {
+      groupedInsertRowsNode.setMixingAlignment(true);
+    }
+    groupedInsertRowsNode.addOneInsertRowNode(insertRowNode, insertRowNodeIndex);
+    groupedInsertRowsNode.updateProgressIndex(insertRowNode.getProgressIndex());
+  }
+
+  private void flushWorkingProcessorsForTimePartition(final long timePartitionId) {
+    TsFileProcessor workSequenceProcessor = workSequenceTsFileProcessors.get(timePartitionId);
+    if (workSequenceProcessor != null) {
+      fileFlushPolicy.apply(this, workSequenceProcessor, workSequenceProcessor.isSequence());
+    }
+    TsFileProcessor workUnsequenceProcessor = workUnsequenceTsFileProcessors.get(timePartitionId);
+    if (workUnsequenceProcessor != null) {
+      fileFlushPolicy.apply(this, workUnsequenceProcessor, workUnsequenceProcessor.isSequence());
+    }
+  }
+
+  private List<TsFileProcessor> retryInsertRowsAfterFlush(
+      final InsertRowsNode subInsertRowsNode,
+      final long timePartitionId,
+      final long[] costsForMetrics)
+      throws WriteProcessException {
+    final Map<TsFileProcessor, InsertRowsNode> retriedProcessorMap = new HashMap<>();
+    for (int i = 0; i < subInsertRowsNode.getInsertRowNodeList().size(); i++) {
+      final InsertRowNode insertRowNode = subInsertRowsNode.getInsertRowNodeList().get(i);
+      final boolean isSequence =
+          config.isEnableSeparateData()
+              && insertRowNode.getTime()
+                  > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
+      final TsFileProcessor retriedProcessor =
+          getOrCreateTsFileProcessor(timePartitionId, isSequence);
+      final int insertRowNodeIndex = subInsertRowsNode.getInsertRowNodeIndexList().get(i);
+      retriedProcessorMap.compute(
+          retriedProcessor,
+          (k, v) -> {
+            if (v == null) {
+              v = createGroupedInsertRowsNode(subInsertRowsNode, insertRowNode);
+            }
+            appendInsertRowNode(v, insertRowNode, insertRowNodeIndex);
+            return v;
+          });
+    }
+
+    final List<TsFileProcessor> insertedProcessors = new ArrayList<>(retriedProcessorMap.size());
+    for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedProcessorMap.entrySet()) {
+      final TsFileProcessor retriedProcessor = retriedEntry.getKey();
+      retriedProcessor.insert(retriedEntry.getValue(), costsForMetrics);
+      insertedProcessors.add(retriedProcessor);
+    }
+    return insertedProcessors;
+  }
+
+  private void recordInsertRowsFailure(
+      final InsertRowsNode sourceInsertRowsNode,
+      final InsertRowsNode failedInsertRowsNode,
+      final WriteProcessException exception) {
+    final TSStatus failureStatus =
+        RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+    for (Integer failedIndex : failedInsertRowsNode.getInsertRowNodeIndexList()) {
+      sourceInsertRowsNode.getResults().put(failedIndex, failureStatus);
+    }
+  }
+
+  private void recordInsertRowsFailure(
+      final InsertRowsOfOneDeviceNode sourceInsertRowsNode,
+      final InsertRowsNode failedInsertRowsNode,
+      final WriteProcessException exception) {
+    final TSStatus failureStatus =
+        RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+    for (Integer failedIndex : failedInsertRowsNode.getInsertRowNodeIndexList()) {
+      sourceInsertRowsNode.getResults().put(failedIndex, failureStatus);
+    }
   }
 
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
@@ -1440,7 +1559,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
+  protected TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence)
+      throws WriteProcessException {
     TsFileProcessor tsFileProcessor = null;
     int retryCnt = 0;
     do {
@@ -1466,7 +1586,7 @@ public class DataRegion implements IDataRegionForQuery {
             "disk space is insufficient when creating TsFile processor, change system mode to read-only",
             e);
         CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-        break;
+        throw new WriteProcessException(e.getMessage(), e.getErrorCode(), true);
       } catch (IOException e) {
         if (retryCnt < 3) {
           logger.warn("meet IOException when creating TsFileProcessor, retry it again", e);
@@ -1475,11 +1595,15 @@ public class DataRegion implements IDataRegionForQuery {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to error", e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
-          break;
+          throw new WriteProcessException(
+              String.format(
+                  "Failed to create TsFileProcessor for database %s, timePartitionId %s",
+                  databaseName, timeRangeId),
+              e);
         }
       } catch (ExceedQuotaException e) {
         logger.error(e.getMessage());
-        break;
+        throw new WriteProcessException(e.getMessage(), e.getErrorCode(), true);
       }
     } while (tsFileProcessor == null);
     return tsFileProcessor;
@@ -1753,6 +1877,28 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
     }
     WritingMetrics.getInstance().recordTimedFlushMemTableCount(count);
+  }
+
+  /** Called under insertLock's write lock, after any memory-backpressure wait. */
+  protected void checkIoTConsensusWriteAllowed() throws WriteProcessRejectException {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+        && (ioTConsensusWritesStopped
+            || CommonDescriptor.getInstance().getConfig().isStopping()
+            || CommonDescriptor.getInstance().getConfig().isReadOnly())) {
+      throw new WriteProcessRejectException(
+          StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY).getMessage(),
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+    }
+  }
+
+  /** Reject new IoTConsensus applies and drain admitted applies before closing storage or WAL. */
+  public void stopIoTConsensusWrites() {
+    writeLock("stopIoTConsensusWrites");
+    try {
+      ioTConsensusWritesStopped = true;
+    } finally {
+      writeUnlock();
+    }
   }
 
   /** This method will be blocked until all tsfile processors are closed. */
@@ -2364,7 +2510,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @throws IOException
    */
   public void deleteByDevice(PartialPath pattern, long startTime, long endTime, long searchIndex)
-      throws IOException {
+      throws IOException, WriteProcessRejectException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
@@ -2377,6 +2523,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -2406,6 +2553,8 @@ public class DataRegion implements IDataRegionForQuery {
       hasReleasedLock = true;
 
       deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
+    } catch (WriteProcessRejectException e) {
+      throw e;
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2416,7 +2565,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDataDirectly(
-      PartialPath pathToDelete, long startTime, long endTime, long searchIndex) throws IOException {
+      PartialPath pathToDelete, long startTime, long endTime, long searchIndex)
+      throws IOException, WriteProcessRejectException {
     logger.info(
         "{} will delete data files directly for deleting data between {} and {}",
         databaseName + "-" + dataRegionIdString,
@@ -2427,6 +2577,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean releasedLock = false;
 
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -2448,6 +2599,8 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
       releasedLock = true;
       deleteDataDirectlyInFile(sealedTsFileResource, pathToDelete, startTime, endTime);
+    } catch (WriteProcessRejectException e) {
+      throw e;
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2500,18 +2653,27 @@ public class DataRegion implements IDataRegionForQuery {
   public void insertSeparatorToWAL() {
     writeLock("insertSeparatorToWAL");
     try {
-      if (deleted) {
+      if (deleted || ioTConsensusWritesStopped) {
         return;
       }
-      getWALNode()
-          .ifPresent(
-              walNode ->
-                  walNode.log(
-                      TsFileProcessor.MEMTABLE_NOT_EXIST,
-                      new ContinuousSameSearchIndexSeparatorNode()));
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
     }
+  }
+
+  /** Called under insertLock's write lock as part of an admitted write. */
+  private void logSeparatorToWAL() {
+    if (deleted
+        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      return;
+    }
+    getWALNode()
+        .ifPresent(
+            walNode ->
+                walNode.log(
+                    TsFileProcessor.MEMTABLE_NOT_EXIST,
+                    new ContinuousSameSearchIndexSeparatorNode()));
   }
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -3139,10 +3301,17 @@ public class DataRegion implements IDataRegionForQuery {
               0);
 
       if (!newFileName.equals(tsfileToBeInserted.getName())) {
-        logger.info(
-            "TsFile {} must be renamed to {} for loading into the unsequence list.",
-            tsfileToBeInserted.getName(),
-            newFileName);
+        if (isGeneratedByPipe) {
+          logger.debug(
+              "TsFile {} must be renamed to {} for loading into the unsequence list.",
+              tsfileToBeInserted.getName(),
+              newFileName);
+        } else {
+          logger.info(
+              "TsFile {} must be renamed to {} for loading into the unsequence list.",
+              tsfileToBeInserted.getName(),
+              newFileName);
+        }
         newTsFileResource.setFile(
             fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
       }
@@ -3177,7 +3346,11 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
-      logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
+      if (isGeneratedByPipe) {
+        logger.debug("TsFile {} is successfully loaded in unsequence list.", newFileName);
+      } else {
+        logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
+      }
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to database processor {} because the disk space is insufficient.",
@@ -3346,10 +3519,17 @@ public class DataRegion implements IDataRegionForQuery {
       return false;
     }
 
-    logger.info(
-        "Load tsfile in unsequence list, move file from {} to {}",
-        tsFileToLoad.getAbsolutePath(),
-        targetFile.getAbsolutePath());
+    if (isGeneratedByPipe) {
+      logger.debug(
+          "Load tsfile in unsequence list, move file from {} to {}",
+          tsFileToLoad.getAbsolutePath(),
+          targetFile.getAbsolutePath());
+    } else {
+      logger.info(
+          "Load tsfile in unsequence list, move file from {} to {}",
+          tsFileToLoad.getAbsolutePath(),
+          targetFile.getAbsolutePath());
+    }
 
     LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
 
@@ -3628,6 +3808,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("InsertRowsOfOneDevice");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -3641,6 +3822,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
+          markAllMeasurementsFailed(insertRowNode);
           insertRowsOfOneDeviceNode
               .getResults()
               .put(
@@ -3663,8 +3845,13 @@ public class DataRegion implements IDataRegionForQuery {
             config.isEnableSeparateData()
                 && insertRowNode.getTime()
                     > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
-        TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
-        if (tsFileProcessor == null) {
+        final TsFileProcessor tsFileProcessor;
+        try {
+          tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
+        } catch (WriteProcessException e) {
+          insertRowsOfOneDeviceNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
           continue;
         }
         int finalI = i;
@@ -3672,39 +3859,28 @@ public class DataRegion implements IDataRegionForQuery {
             tsFileProcessor,
             (k, v) -> {
               if (v == null) {
-                v = new InsertRowsNode(insertRowsOfOneDeviceNode.getPlanNodeId());
-                v.setSearchIndex(insertRowNode.getSearchIndex());
-                v.setAligned(insertRowNode.isAligned());
-                if (insertRowNode.isGeneratedByPipe()) {
-                  v.markAsGeneratedByPipe();
-                }
-                if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
-                  v.markAsGeneratedByRemoteConsensusLeader();
-                }
+                v = createGroupedInsertRowsNode(insertRowsOfOneDeviceNode, insertRowNode);
               }
-              v.addOneInsertRowNode(insertRowNode, finalI);
-              v.updateProgressIndex(insertRowNode.getProgressIndex());
+              appendInsertRowNode(v, insertRowNode, finalI);
               return v;
             });
       }
       List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
       for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
-        TsFileProcessor tsFileProcessor = entry.getKey();
         InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
-          tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
+          List<TsFileProcessor> insertedProcessors =
+              insertRowsWithTypeConsistencyCheck(
+                  entry.getKey(), subInsertRowsNode, costsForMetrics);
+          executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
+          for (TsFileProcessor tsFileProcessor : insertedProcessors) {
+            // check memtable size and may asyncTryToFlush the work memtable
+            if (tsFileProcessor.shouldFlush()) {
+              fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+            }
+          }
         } catch (WriteProcessException e) {
-          insertRowsOfOneDeviceNode
-              .getResults()
-              .put(
-                  subInsertRowsNode.getInsertRowNodeIndexList().get(0),
-                  RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        }
-        executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
-
-        // check memtable size and may asyncTryToFlush the work memtable
-        if (tsFileProcessor.shouldFlush()) {
-          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+          recordInsertRowsFailure(insertRowsOfOneDeviceNode, subInsertRowsNode, e);
         }
       }
 
@@ -3721,11 +3897,12 @@ public class DataRegion implements IDataRegionForQuery {
               System.nanoTime() - startTime);
         }
       }
+      if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
+        throw new BatchProcessException("Partial failed inserting rows of one device");
+      }
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
-    }
-    if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      throw new BatchProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3736,6 +3913,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("InsertRows");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
+      checkIoTConsensusWriteAllowed();
       if (deleted) {
         return;
       }
@@ -3746,6 +3924,7 @@ public class DataRegion implements IDataRegionForQuery {
         long deviceTTL =
             DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
         if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+          markAllMeasurementsFailed(insertRowNode);
           insertRowsNode
               .getResults()
               .put(
@@ -3757,7 +3936,6 @@ public class DataRegion implements IDataRegionForQuery {
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
                               CommonDateTimeUtils.currentTime() - deviceTTL))));
-          insertRowNode.setFailedMeasurementNumber(insertRowNode.getMeasurements().length);
           continue;
         }
         // init map
@@ -3786,9 +3964,21 @@ public class DataRegion implements IDataRegionForQuery {
       if (!insertRowsNode.getResults().isEmpty()) {
         throw new BatchProcessException("Partial failed inserting rows");
       }
+      logSeparatorToWAL();
     } finally {
       writeUnlock();
     }
+  }
+
+  private void markAllMeasurementsFailed(final InsertRowNode insertRowNode) {
+    final String[] measurements = insertRowNode.getMeasurements();
+    if (measurements == null) {
+      return;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      insertRowNode.markFailedMeasurement(i);
+    }
+    insertRowNode.setFailedMeasurementNumber(measurements.length);
   }
 
   /**
@@ -3797,34 +3987,45 @@ public class DataRegion implements IDataRegionForQuery {
    * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
-      throws BatchProcessException {
-    for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
-      InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
-      try {
-        insertTablet(insertTabletNode);
-      } catch (WriteProcessException e) {
-        insertMultiTabletsNode
-            .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      } catch (BatchProcessException e) {
-        // for each error
-        TSStatus firstStatus = null;
-        for (TSStatus status : e.getFailingStatus()) {
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            firstStatus = status;
-          }
-          // return WRITE_PROCESS_REJECT directly for the consensus retry logic
-          if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
-            insertMultiTabletsNode.getResults().put(i, status);
-            throw new BatchProcessException("Rejected inserting multi tablets");
-          }
-        }
-        insertMultiTabletsNode.getResults().put(i, firstStatus);
+      throws BatchProcessException, WriteProcessRejectException {
+    StorageEngine.blockInsertionIfReject();
+    writeLock("insertTablets");
+    try {
+      checkIoTConsensusWriteAllowed();
+      if (deleted) {
+        return;
       }
-    }
+      for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
+        InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+        try {
+          insertTablet(insertTabletNode, false);
+        } catch (WriteProcessException e) {
+          insertMultiTabletsNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        } catch (BatchProcessException e) {
+          // for each error
+          TSStatus firstStatus = null;
+          for (TSStatus status : e.getFailingStatus()) {
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              firstStatus = status;
+            }
+            // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+            if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+              insertMultiTabletsNode.getResults().put(i, status);
+              throw new BatchProcessException("Rejected inserting multi tablets");
+            }
+          }
+          insertMultiTabletsNode.getResults().put(i, firstStatus);
+        }
+      }
 
-    if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      throw new BatchProcessException("Partial failed inserting multi tablets");
+      if (!insertMultiTabletsNode.getResults().isEmpty()) {
+        throw new BatchProcessException("Partial failed inserting multi tablets");
+      }
+      logSeparatorToWAL();
+    } finally {
+      writeUnlock();
     }
   }
 

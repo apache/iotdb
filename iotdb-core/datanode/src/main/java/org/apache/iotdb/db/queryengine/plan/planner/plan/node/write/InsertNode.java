@@ -31,11 +31,14 @@ import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALReadUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -43,7 +46,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -163,7 +168,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   }
 
   public TSDataType getDataType(int index) {
-    return dataTypes[index];
+    return dataTypes == null || index < 0 || index >= dataTypes.length ? null : dataTypes[index];
   }
 
   public void setDataTypes(TSDataType[] dataTypes) {
@@ -213,28 +218,120 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
 
+  protected static int serializeString(String value, ByteBuffer buffer) {
+    if (value == null) {
+      return ReadWriteIOUtils.write(-1, buffer);
+    }
+    byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
+    int len = ReadWriteIOUtils.write(bytes.length, buffer);
+    buffer.put(bytes);
+    return len + bytes.length;
+  }
+
+  protected static int serializeString(String value, DataOutputStream stream) throws IOException {
+    if (value == null) {
+      return ReadWriteIOUtils.write(-1, stream);
+    }
+    byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
+    int len = ReadWriteIOUtils.write(bytes.length, stream);
+    stream.write(bytes);
+    return len + bytes.length;
+  }
+
+  protected static String deserializeString(ByteBuffer buffer) {
+    int strLength = ReadWriteIOUtils.readInt(buffer);
+    if (strLength < 0) {
+      return null;
+    } else if (strLength == 0) {
+      return "";
+    }
+    byte[] bytes = new byte[strLength];
+    buffer.get(bytes);
+    return new String(bytes, TSFileConfig.STRING_CHARSET);
+  }
+
+  protected static void serializeMeasurementSchema(
+      MeasurementSchema measurementSchema, ByteBuffer buffer) {
+    serializeString(measurementSchema.getMeasurementId(), buffer);
+    ReadWriteIOUtils.write(measurementSchema.getTypeInByte(), buffer);
+    ReadWriteIOUtils.write(measurementSchema.getEncodingType().serialize(), buffer);
+    ReadWriteIOUtils.write(measurementSchema.getCompressor().serialize(), buffer);
+    serializeProps(measurementSchema.getProps(), buffer);
+  }
+
+  protected static void serializeMeasurementSchema(
+      MeasurementSchema measurementSchema, DataOutputStream stream) throws IOException {
+    serializeString(measurementSchema.getMeasurementId(), stream);
+    ReadWriteIOUtils.write(measurementSchema.getTypeInByte(), stream);
+    ReadWriteIOUtils.write(measurementSchema.getEncodingType().serialize(), stream);
+    ReadWriteIOUtils.write(measurementSchema.getCompressor().serialize(), stream);
+    serializeProps(measurementSchema.getProps(), stream);
+  }
+
+  protected static MeasurementSchema deserializeMeasurementSchema(ByteBuffer buffer) {
+    String measurementId = deserializeString(buffer);
+    byte type = ReadWriteIOUtils.readByte(buffer);
+    byte encoding = ReadWriteIOUtils.readByte(buffer);
+    byte compressor = ReadWriteIOUtils.readByte(buffer);
+    Map<String, String> props = deserializeProps(buffer);
+    return new MeasurementSchema(measurementId, type, encoding, compressor, props);
+  }
+
+  private static void serializeProps(Map<String, String> props, ByteBuffer buffer) {
+    if (props == null) {
+      ReadWriteIOUtils.write(0, buffer);
+      return;
+    }
+    ReadWriteIOUtils.write(props.size(), buffer);
+    for (Map.Entry<String, String> entry : props.entrySet()) {
+      serializeString(entry.getKey(), buffer);
+      serializeString(entry.getValue(), buffer);
+    }
+  }
+
+  private static void serializeProps(Map<String, String> props, DataOutputStream stream)
+      throws IOException {
+    if (props == null) {
+      ReadWriteIOUtils.write(0, stream);
+      return;
+    }
+    ReadWriteIOUtils.write(props.size(), stream);
+    for (Map.Entry<String, String> entry : props.entrySet()) {
+      serializeString(entry.getKey(), stream);
+      serializeString(entry.getValue(), stream);
+    }
+  }
+
+  private static Map<String, String> deserializeProps(ByteBuffer buffer) {
+    int size = ReadWriteIOUtils.readInt(buffer);
+    if (size <= 0) {
+      return null;
+    }
+    Map<String, String> props = new HashMap<>();
+    for (int i = 0; i < size; i++) {
+      props.put(deserializeString(buffer), deserializeString(buffer));
+    }
+    return props;
+  }
+
   // region Serialization methods for WAL
   /** Serialized size of measurement schemas, ignoring failed time series */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
-    for (int i = 0; i < measurements.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
-        continue;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurementToWAL(i)) {
+        byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
       }
-      byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
     }
     return byteLen;
   }
 
   /** Serialize measurement schemas, ignoring failed time series */
   protected void serializeMeasurementSchemasToWAL(IWALByteBufferView buffer) {
-    for (int i = 0; i < measurements.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
-        continue;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurementToWAL(i)) {
+        WALWriteUtils.write(measurementSchemas[i], buffer);
       }
-      WALWriteUtils.write(measurementSchemas[i], buffer);
     }
   }
 
@@ -244,7 +341,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+      measurementSchemas[i] = WALReadUtils.readMeasurementSchema(stream);
       measurements[i] = measurementSchemas[i].getMeasurementId();
       dataTypes[i] = measurementSchemas[i].getType();
     }
@@ -252,7 +349,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
 
   protected void deserializeMeasurementSchemas(ByteBuffer buffer) {
     for (int i = 0; i < measurements.length; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+      measurementSchemas[i] = WALReadUtils.readMeasurementSchema(buffer);
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
@@ -272,8 +369,8 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   }
 
   public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!isMeasurementFailed(i)) {
         return true;
       }
     }
@@ -288,23 +385,64 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     return failedMeasurementNumber;
   }
 
-  public boolean allMeasurementFailed() {
-    if (measurements != null) {
-      return failedMeasurementNumber >= measurements.length;
+  protected int getValidMeasurementNumber() {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        validMeasurementNumber++;
+      }
     }
-    return true;
+    return validMeasurementNumber;
+  }
+
+  protected int getValidMeasurementNumberForWAL() {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurementToWAL(i)) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
+  protected boolean shouldSerializeMeasurement(final int index) {
+    return !isMeasurementFailed(index);
+  }
+
+  protected boolean shouldSerializeMeasurementToWAL(final int index) {
+    return shouldSerializeMeasurement(index)
+        && measurementSchemas != null
+        && index < measurementSchemas.length
+        && measurementSchemas[index] != null;
+  }
+
+  public boolean isMeasurementFailed(int index) {
+    return measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null;
+  }
+
+  public boolean allMeasurementFailed() {
+    return measurements == null || !hasValidMeasurements();
   }
 
   public String[] getRawMeasurements() {
     String[] measurements = getMeasurements();
     MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
+    String[] rawMeasurements = measurements;
     for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
+      if (measurementSchemas != null
+          && i < measurementSchemas.length
+          && measurementSchemas[i] != null) {
         // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-      } else {
-        rawMeasurements[i] = measurements[i];
+        String rawMeasurement = measurementSchemas[i].getMeasurementId();
+        if (!Objects.equals(rawMeasurement, measurements[i])) {
+          if (rawMeasurements == measurements) {
+            rawMeasurements = Arrays.copyOf(measurements, measurements.length);
+          }
+          rawMeasurements[i] = rawMeasurement;
+        }
       }
     }
     return rawMeasurements;

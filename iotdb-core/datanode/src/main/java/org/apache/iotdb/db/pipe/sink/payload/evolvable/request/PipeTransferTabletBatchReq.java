@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -34,7 +35,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -134,18 +134,19 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     // Binary req, for rolling upgrading
     ReadWriteIOUtils.readInt(transferReq.body);
 
-    int size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int insertNodeCount = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < insertNodeCount; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
     }
 
-    size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int rawTabletCount = ReadWriteIOUtils.readInt(transferReq.body);
+    final TabletStringInternPool tabletStringInternPool =
+        rawTabletCount > 1 ? new TabletStringInternPool() : null;
+    for (int i = 0; i < rawTabletCount; ++i) {
       batchReq.tabletReqs.add(
-          PipeTransferTabletRawReq.toTPipeTransferRawReq(
-              Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
+          PipeTransferTabletRawReq.toTPipeTransferRawReq(transferReq.body, tabletStringInternPool));
     }
 
     batchReq.version = transferReq.version;

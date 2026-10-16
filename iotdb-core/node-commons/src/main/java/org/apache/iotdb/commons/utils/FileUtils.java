@@ -39,6 +39,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
@@ -54,6 +55,7 @@ public class FileUtils {
       "Renamed file {} to {} because it already exists in the target directory: {}";
   private static final String COPY_FILE_MESSAGE =
       "Copy file {} to {} because it already exists in the target directory: {}";
+  private static final String ILLEGAL_EMPTY_PATH_MESSAGE = "The path cannot be empty. ";
   private static final String ILLEGAL_PATH_MESSAGE =
       "The path cannot be '.', '..', './' or '.\\'. ";
 
@@ -66,6 +68,23 @@ public class FileUtils {
     } catch (IOException e) {
       LOGGER.error(e.getMessage(), e);
       return false;
+    }
+  }
+
+  public static void createLink(Path link, Path existing, boolean fallBackToCopy)
+      throws IOException {
+    try {
+      Files.createLink(link, existing);
+    } catch (IOException | UnsupportedOperationException e) {
+      if (!fallBackToCopy) {
+        throw e;
+      }
+      try {
+        Files.copy(existing, link);
+      } catch (IOException copyException) {
+        copyException.addSuppressed(e);
+        throw copyException;
+      }
     }
   }
 
@@ -556,6 +575,9 @@ public class FileUtils {
   }
 
   public static String getIllegalError4Directory(final String path) {
+    if (path == null || path.isEmpty()) {
+      return ILLEGAL_EMPTY_PATH_MESSAGE;
+    }
     if (path.equals(".") || path.equals("..") || path.contains("/") || path.contains("\\")) {
       return ILLEGAL_PATH_MESSAGE;
     }
@@ -563,5 +585,20 @@ public class FileUtils {
       return WindowsOSUtils.OS_SEGMENT_ERROR;
     }
     return null;
+  }
+
+  /**
+   * Validates a path segment before it is used to construct a path.
+   *
+   * <p>In addition to the application-level checks above, constructing a {@link Path} validates
+   * platform-specific path syntax (for example, NUL characters on Unix).
+   */
+  public static String validatePathSegment(final String pathSegment) {
+    final String pathError = getIllegalError4Directory(pathSegment);
+    if (pathError != null) {
+      throw new IllegalArgumentException(pathError);
+    }
+    Paths.get(pathSegment);
+    return pathSegment;
   }
 }

@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -117,6 +118,17 @@ public abstract class ProgressIndex implements Accountable {
   }
 
   /**
+   * A.isEqualOrAfter(B) is true if and only if A already covers B in every tuple member. In other
+   * words, blending B into A does not advance A.
+   *
+   * @param progressIndex the progress index to be compared
+   * @return true if and only if this progress index is equal to or after the given progress index
+   */
+  public final boolean isEqualOrAfter(@Nonnull final ProgressIndex progressIndex) {
+    return updateToMinimumEqualOrIsAfterProgressIndex(progressIndex).equals(this);
+  }
+
+  /**
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.
    *
@@ -146,6 +158,15 @@ public abstract class ProgressIndex implements Accountable {
    * @return the type of this {@link ProgressIndex}
    */
   public abstract ProgressIndexType getType();
+
+  /**
+   * Extracts a progress index of the given type from this progress index.
+   *
+   * <p>{@link StateProgressIndex} and {@link HybridProgressIndex} are recursively unwrapped because
+   * they may contain progress indexes from other causal chains.
+   */
+  public abstract <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      Class<T> progressIndexClass);
 
   /**
    * Get the sum of the tuples of each total order relation of the {@link ProgressIndex}, which is

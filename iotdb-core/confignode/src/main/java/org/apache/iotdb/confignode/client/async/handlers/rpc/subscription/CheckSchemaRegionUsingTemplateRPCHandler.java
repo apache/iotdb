@@ -78,11 +78,11 @@ public class CheckSchemaRegionUsingTemplateRPCHandler
             + e.getMessage();
     LOGGER.error(errorMsg);
 
-    countDownLatch.countDown();
     TCheckSchemaRegionUsingTemplateResp resp = new TCheckSchemaRegionUsingTemplateResp();
     resp.setStatus(
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
     responseMap.put(requestId, resp);
+    countDownLatch.countDown();
   }
 }

@@ -47,6 +47,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
     E output = pollFirst();
     size--;
     reservedSize++;
+    markReserved(output);
     return output;
   }
 
@@ -66,7 +67,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
       throw new NullPointerException("pushed element is null");
     }
     pushToQueue(element);
-    reservedSize--;
+    decreaseReservedSizeIfNecessary(element);
     size++;
     this.notifyAll();
   }
@@ -74,7 +75,36 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
   /**
    * For task that is not in readyQueue when it's cleared, it won't be added into the queue again.
    */
-  public synchronized void decreaseReservedSize() {
-    this.reservedSize--;
+  public synchronized boolean decreaseReservedSize(E element) {
+    if (element == null) {
+      throw new NullPointerException("pushed element is null");
+    }
+    return decreaseReservedSizeIfNecessary(element);
+  }
+
+  public final synchronized int getReservedSize() {
+    return reservedSize;
+  }
+
+  @Override
+  public synchronized void clear() {
+    super.clear();
+    this.reservedSize = 0;
+  }
+
+  protected void markReserved(E element) {
+    // Do nothing by default.
+  }
+
+  protected boolean releaseReserved(E element) {
+    return true;
+  }
+
+  private boolean decreaseReservedSizeIfNecessary(E element) {
+    if (!releaseReserved(element) || reservedSize <= 0) {
+      return false;
+    }
+    reservedSize--;
+    return true;
   }
 }

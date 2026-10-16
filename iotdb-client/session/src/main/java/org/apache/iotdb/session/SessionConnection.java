@@ -779,6 +779,9 @@ public class SessionConnection {
 
   protected void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (paths.isEmpty()) {
+      return;
+    }
     callWithRetryAndVerify(() -> client.deleteTimeseries(sessionId, paths));
   }
 

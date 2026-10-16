@@ -114,6 +114,11 @@ public class EventService {
         currentEventServiceFuture = null;
         LOGGER.info("Event service is stopped successfully.");
       }
+      synchronized (this) {
+        previousNodeStatisticsMap.clear();
+        previousRegionGroupStatisticsMap.clear();
+        previousConsensusGroupStatisticsMap.clear();
+      }
     }
   }
 

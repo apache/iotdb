@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -164,8 +165,8 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
   }
 
   public static CreateMultiTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    Map<PartialPath, MeasurementGroup> measurementGroupMap = new HashMap<>();
     int size = byteBuffer.getInt();
+    Map<PartialPath, MeasurementGroup> measurementGroupMap = Maps.newHashMapWithExpectedSize(size);
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
     for (int i = 0; i < size; i++) {

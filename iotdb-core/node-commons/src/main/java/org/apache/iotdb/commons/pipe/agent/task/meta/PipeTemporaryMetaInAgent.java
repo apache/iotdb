@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.resource.PipeRecentFailureCounter;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 
 import java.util.Map;
 import java.util.Objects;
@@ -30,6 +32,7 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   // Statistics
   private final AtomicLong floatingMemoryUsageInByte = new AtomicLong(0L);
+  private final PipeRecentFailureCounter recentFailureCounter = new PipeRecentFailureCounter();
 
   // Object pool
   private final String pipeNameWithCreationTime;
@@ -51,6 +54,14 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   public long getFloatingMemoryUsageInByte() {
     return floatingMemoryUsageInByte.get();
+  }
+
+  public void recordResourceFailure(final PipeResourceFailureType failureType) {
+    recentFailureCounter.record(failureType);
+  }
+
+  public Map<String, Long> getRecentFailures() {
+    return recentFailureCounter.getRecentFailures();
   }
 
   public String getPipeNameWithCreationTime() {
@@ -87,12 +98,13 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     final PipeTemporaryMetaInAgent that = (PipeTemporaryMetaInAgent) o;
     return Objects.equals(
             this.floatingMemoryUsageInByte.get(), that.floatingMemoryUsageInByte.get())
+        && Objects.equals(this.getRecentFailures(), that.getRecentFailures())
         && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(floatingMemoryUsageInByte, regionId2CommitterKeyMap);
+    return Objects.hash(floatingMemoryUsageInByte, getRecentFailures(), regionId2CommitterKeyMap);
   }
 
   @Override
@@ -100,6 +112,8 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     return "PipeTemporaryMeta{"
         + "floatingMemoryUsage="
         + floatingMemoryUsageInByte
+        + ", recentFailures="
+        + getRecentFailures()
         + ", regionId2CommitterKeyMap="
         + regionId2CommitterKeyMap
         + '}';

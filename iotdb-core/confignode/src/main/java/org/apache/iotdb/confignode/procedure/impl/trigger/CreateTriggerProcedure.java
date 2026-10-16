@@ -304,7 +304,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     if (that instanceof CreateTriggerProcedure) {
       CreateTriggerProcedure thatProc = (CreateTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && Objects.equals(thatProc.getCurrentState(), this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && thatProc.triggerInformation.equals(this.triggerInformation);

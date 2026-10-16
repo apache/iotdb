@@ -111,7 +111,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnDataNodes");
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    pushPipeMetaToDataNodesBestEffort(env);
   }
 
   @Override
@@ -164,7 +164,11 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
       final int oldDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
       final int newDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
       regionGroupToOldAndNewLeaderPairMap.put(
-          new TConsensusGroupId(TConsensusGroupType.DataRegion, dataRegionGroupId),
+          new TConsensusGroupId(
+              dataRegionGroupId == Integer.MIN_VALUE
+                  ? TConsensusGroupType.ConfigRegion
+                  : TConsensusGroupType.DataRegion,
+              dataRegionGroupId),
           new Pair<>(oldDataRegionLeaderId, newDataRegionLeaderId));
     }
   }
@@ -179,7 +183,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     }
     PipeHandleLeaderChangeProcedure that = (PipeHandleLeaderChangeProcedure) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && this.regionGroupToOldAndNewLeaderPairMap.equals(
             that.regionGroupToOldAndNewLeaderPairMap);

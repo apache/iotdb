@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
@@ -78,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -188,6 +190,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -432,6 +435,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     if (isSystemDatabase) {
       databaseSchema.setMinSchemaRegionGroupNum(1);
+      databaseSchema.setMaxSchemaRegionGroupNum(1);
     } else if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
       databaseSchema.setMinSchemaRegionGroupNum(
           configNodeConfig.getDefaultSchemaRegionGroupNumPerDatabase());
@@ -444,6 +448,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     if (isSystemDatabase) {
       databaseSchema.setMinDataRegionGroupNum(1);
+      databaseSchema.setMaxDataRegionGroupNum(1);
     } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
       databaseSchema.setMinDataRegionGroupNum(
           configNodeConfig.getDefaultDataRegionGroupNumPerDatabase());
@@ -453,14 +458,36 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
     }
 
+    if (!isSystemDatabase) {
+      if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+        TSStatus status =
+            ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
+                databaseSchema, TConsensusGroupType.SchemaRegion);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          errorResp = status;
+        }
+      }
+      if (databaseSchema.isSetMaxDataRegionGroupNum()) {
+        TSStatus status =
+            ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
+                databaseSchema, TConsensusGroupType.DataRegion);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          errorResp = status;
+        }
+      }
+    }
+
     if (errorResp != null) {
       LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
       return errorResp;
     }
 
-    // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
-    databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
-    databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
+    if (!databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+      databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
+    }
+    if (!databaseSchema.isSetMaxDataRegionGroupNum()) {
+      databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
+    }
 
     DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
@@ -646,6 +673,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq =
         GetOrCreateDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
     return configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
+  }
+
+  @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    return configManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    return configManager.showRepairDataPartitionTableProgress();
   }
 
   @Override

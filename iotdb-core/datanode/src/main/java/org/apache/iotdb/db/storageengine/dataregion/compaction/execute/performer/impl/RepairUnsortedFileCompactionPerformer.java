@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 
@@ -74,7 +74,7 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
   private void prepareTargetFile() throws IOException {
     TsFileResource seqSourceFile = seqFiles.get(0);
     TsFileResource targetFile = targetFiles.get(0);
-    Files.createLink(targetFile.getTsFile().toPath(), seqSourceFile.getTsFile().toPath());
+    FileUtils.createLink(targetFile.getTsFile().toPath(), seqSourceFile.getTsFile().toPath(), true);
     ITimeIndex timeIndex = seqSourceFile.getTimeIndex();
     if (timeIndex instanceof DeviceTimeIndex) {
       targetFile.setTimeIndex(timeIndex);
@@ -82,9 +82,10 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
       targetFile.setTimeIndex(CompactionUtils.buildDeviceTimeIndex(seqSourceFile));
     }
     if (seqSourceFile.modFileExists()) {
-      Files.createLink(
+      FileUtils.createLink(
           new File(seqSourceFile.getCompactionModFile().getFilePath()).toPath(),
-          new File(seqSourceFile.getModFile().getFilePath()).toPath());
+          new File(seqSourceFile.getModFile().getFilePath()).toPath(),
+          true);
     }
   }
 

@@ -27,6 +27,8 @@ import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -41,7 +43,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -170,6 +171,24 @@ public class DeviceTimeIndex implements ITimeIndex {
     return deviceToIndex.keySet();
   }
 
+  @Override
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
+    return deviceToIndex.keySet();
+  }
+
+  public Map<IDeviceID, Integer> getDeviceToIndex() {
+    return deviceToIndex;
+  }
+
+  public long[] getEndTimes() {
+    return endTimes;
+  }
+
+  public long[] getStartTimes() {
+    return startTimes;
+  }
+
   /**
    * Deserialize TimeIndex and get devices only.
    *
@@ -179,7 +198,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   public static Set<IDeviceID> getDevices(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
     ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
-    Set<IDeviceID> devices = new HashSet<>();
+    Set<IDeviceID> devices = Sets.newHashSetWithExpectedSize(deviceNum);
     for (int i = 0; i < deviceNum; i++) {
       String path =
           DataNodeDevicePathCache.getInstance()

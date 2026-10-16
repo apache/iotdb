@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -443,14 +444,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     for (int i = 0; i < filesView.renamedTargetFiles.size(); i++) {
       TsFileResource oldFile = filesView.skippedSourceFiles.get(i);
       TsFileResource newFile = filesView.renamedTargetFiles.get(i);
-      Files.createLink(newFile.getTsFile().toPath(), oldFile.getTsFile().toPath());
-      Files.createLink(
+      FileUtils.createLink(newFile.getTsFile().toPath(), oldFile.getTsFile().toPath(), true);
+      FileUtils.createLink(
           new File(newFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          new File(oldFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+          new File(oldFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
+          true);
       if (oldFile.modFileExists()) {
-        Files.createLink(
+        FileUtils.createLink(
             new File(newFile.getTsFilePath() + ModificationFile.FILE_SUFFIX).toPath(),
-            new File(oldFile.getTsFilePath() + ModificationFile.FILE_SUFFIX).toPath());
+            new File(oldFile.getTsFilePath() + ModificationFile.FILE_SUFFIX).toPath(),
+            true);
       }
       newFile.deserialize();
     }

@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -43,9 +45,9 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,11 +60,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
+interface AlignedRowsMemCostEstimator {
+
+  void addRow(InsertRowNode row);
+
+  long getTVListMemoryCost();
+
+  long getTextDataMemoryCost();
+}
+
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private final Map<String, Integer> measurementIndexMap;
   private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
+  // Note: Use AbstractWritableMemChunk.workingListForFlush instead of list in FlushTask
   private AlignedTVList list;
   private List<AlignedTVList> sortedList;
   private long sortedRowCount = 0;
@@ -101,6 +113,132 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   public boolean containsMeasurement(String measurementId) {
     return measurementIndexMap.containsKey(measurementId);
+  }
+
+  public long alignedWriteRowMemCost(
+      String[] measurements, TSDataType[] incomingDataTypes, Object[] rowValues, int rowOffset) {
+    return list.alignedWriteRowMemCost(
+        mapMeasurementsToTVListColumns(measurements), incomingDataTypes, rowValues, rowOffset);
+  }
+
+  public long alignedWriteArrayMemCost(
+      String[] measurements, TSDataType[] incomingDataTypes, Object[] columns, int start, int end) {
+    return list.alignedWriteArrayMemCost(
+        mapMeasurementsToTVListColumns(measurements), incomingDataTypes, columns, start, end);
+  }
+
+  public long alignedWriteRowsMemCost(List<InsertRowNode> rows) {
+    AlignedTVList workingList = list;
+    synchronized (workingList) {
+      AlignedRowsMemCostEstimator estimator =
+          new ExistingAlignedRowsMemCostEstimator(workingList, false);
+      for (InsertRowNode row : rows) {
+        estimator.addRow(row);
+      }
+      return estimator.getTVListMemoryCost();
+    }
+  }
+
+  // TsFileProcessor serializes writes for a DataRegion, so the incremental estimator can retain a
+  // stable view of this TVList while rows from multiple devices are processed in input order.
+  AlignedRowsMemCostEstimator newAlignedWriteRowsMemCostEstimator() {
+    return new ExistingAlignedRowsMemCostEstimator(list, true);
+  }
+
+  private final class ExistingAlignedRowsMemCostEstimator implements AlignedRowsMemCostEstimator {
+    private final AlignedTVList.AlignedWriteRowsMemCostEstimator tvListEstimator;
+    private final Map<String, Integer> newMeasurementIndexMap = new HashMap<>();
+    private final boolean trackTextData;
+
+    private int nextColumnIndex = dataTypes.size();
+    private String[] previousMeasurements;
+    private int[] previousColumnIndexes = new int[0];
+    private long textDataMemoryCost;
+
+    private ExistingAlignedRowsMemCostEstimator(AlignedTVList workingList, boolean trackTextData) {
+      tvListEstimator = workingList.newAlignedWriteRowsMemCostEstimator();
+      this.trackTextData = trackTextData;
+    }
+
+    @Override
+    public void addRow(InsertRowNode row) {
+      tvListEstimator.startRow();
+      String[] measurements = row.getMeasurements();
+      TSDataType[] incomingDataTypes = row.getDataTypes();
+      Object[] rowValues = row.getValues();
+      if (measurements == null || incomingDataTypes == null || rowValues == null) {
+        return;
+      }
+      int[] tvListColumnIndexes = mapMeasurements(measurements);
+      int columnCount =
+          Math.min(measurements.length, Math.min(incomingDataTypes.length, rowValues.length));
+      for (int column = 0; column < columnCount; column++) {
+        String measurement = measurements[column];
+        TSDataType dataType = incomingDataTypes[column];
+        Object value = rowValues[column];
+        if (measurement == null || dataType == null || value == null) {
+          continue;
+        }
+        tvListEstimator.addValue(tvListColumnIndexes[column], dataType, value);
+        if (trackTextData && dataType.isBinary()) {
+          textDataMemoryCost += MemUtils.getBinarySize((Binary) value);
+        }
+      }
+    }
+
+    private int[] mapMeasurements(String[] measurements) {
+      if (previousMeasurements != null
+          && (previousMeasurements == measurements
+              || Arrays.equals(previousMeasurements, measurements))) {
+        previousMeasurements = measurements;
+        return previousColumnIndexes;
+      }
+      if (previousColumnIndexes.length < measurements.length) {
+        previousColumnIndexes = new int[measurements.length];
+      }
+      Arrays.fill(previousColumnIndexes, 0, measurements.length, -1);
+      for (int i = 0; i < measurements.length; i++) {
+        String measurement = measurements[i];
+        if (measurement == null) {
+          continue;
+        }
+        Integer columnIndex = measurementIndexMap.get(measurement);
+        if (columnIndex == null) {
+          columnIndex = newMeasurementIndexMap.get(measurement);
+          if (columnIndex == null) {
+            columnIndex = nextColumnIndex++;
+            newMeasurementIndexMap.put(measurement, columnIndex);
+          }
+        }
+        previousColumnIndexes[i] = columnIndex;
+      }
+      previousMeasurements = measurements;
+      return previousColumnIndexes;
+    }
+
+    @Override
+    public long getTVListMemoryCost() {
+      return tvListEstimator.getMemoryCost();
+    }
+
+    @Override
+    public long getTextDataMemoryCost() {
+      return textDataMemoryCost;
+    }
+  }
+
+  private int[] mapMeasurementsToTVListColumns(String[] measurements) {
+    int[] columnIndexes = new int[measurements.length];
+    Arrays.fill(columnIndexes, -1);
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        Integer columnIndex = measurementIndexMap.get(measurements[i]);
+        if (columnIndex != null) {
+          columnIndexes[i] = columnIndex;
+        }
+      }
+    }
+    return columnIndexes;
   }
 
   @Override
@@ -274,13 +412,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush() {
-    if (!list.isSorted()) {
-      list.sort();
-    }
-  }
-
-  @Override
   public int delete(long lowerBound, long upperBound) {
     int deletedNumber = list.delete(lowerBound, upperBound);
     for (AlignedTVList alignedTvList : sortedList) {
@@ -314,7 +445,33 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public IChunkWriter createIChunkWriter() {
-    return new AlignedChunkWriterImpl(schemaList);
+    return new AlignedChunkWriterImpl(getActiveSchemaList());
+  }
+
+  private List<IMeasurementSchema> getActiveSchemaList() {
+    if (measurementIndexMap.size() == schemaList.size()) {
+      return schemaList;
+    }
+    List<IMeasurementSchema> activeSchemaList = new ArrayList<>(measurementIndexMap.size());
+    for (int i = 0; i < schemaList.size(); i++) {
+      IMeasurementSchema schema = schemaList.get(i);
+      Integer activeColumnIndex = measurementIndexMap.get(schema.getMeasurementId());
+      if (activeColumnIndex != null && activeColumnIndex == i) {
+        activeSchemaList.add(schema);
+      }
+    }
+    return activeSchemaList;
+  }
+
+  private List<TSDataType> getDataTypes(List<IMeasurementSchema> schemaList) {
+    if (schemaList == this.schemaList) {
+      return dataTypes;
+    }
+    List<TSDataType> activeDataTypes = new ArrayList<>(schemaList.size());
+    for (IMeasurementSchema schema : schemaList) {
+      activeDataTypes.add(schema.getType());
+    }
+    return activeDataTypes;
   }
 
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
@@ -322,7 +479,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       BlockingQueue<Object> ioTaskQueue,
       long maxNumberOfPointsInChunk,
       int maxNumberOfPointsInPage) {
-    BitMap allValueColDeletedMap = list.getAllValueColDeletedMap();
+    List<IMeasurementSchema> activeSchemaList = getActiveSchemaList();
+    if (activeSchemaList.isEmpty()) {
+      return;
+    }
+
+    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    BitMap allValueColDeletedMap = alignedWorkingListForFlush.getAllValueColDeletedMap();
 
     boolean[] timeDuplicateInfo = null;
 
@@ -334,8 +497,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     int pointNumInPage = 0;
     int pointNumInChunk = 0;
 
-    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
-      long time = list.getTime(sortedRowIndex);
+    for (int sortedRowIndex = 0;
+        sortedRowIndex < alignedWorkingListForFlush.rowCount();
+        sortedRowIndex++) {
+      long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
       if (pointNumInPage == 0) {
         pageRange.add(sortedRowIndex);
       }
@@ -356,14 +521,16 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
 
       int nextRowIndex = sortedRowIndex + 1;
-      while (nextRowIndex < list.rowCount()
+      while (nextRowIndex < alignedWorkingListForFlush.rowCount()
           && allValueColDeletedMap != null
-          && allValueColDeletedMap.isMarked(list.getValueIndex(nextRowIndex))) {
+          && allValueColDeletedMap.isMarked(
+              alignedWorkingListForFlush.getValueIndex(nextRowIndex))) {
         nextRowIndex++;
       }
-      if (nextRowIndex != list.rowCount() && time == list.getTime(nextRowIndex)) {
+      if (nextRowIndex != alignedWorkingListForFlush.rowCount()
+          && time == alignedWorkingListForFlush.getTime(nextRowIndex)) {
         if (Objects.isNull(timeDuplicateInfo)) {
-          timeDuplicateInfo = new boolean[list.rowCount()];
+          timeDuplicateInfo = new boolean[alignedWorkingListForFlush.rowCount()];
         }
         timeDuplicateInfo[sortedRowIndex] = true;
       }
@@ -371,14 +538,19 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
 
     if (pointNumInPage != 0) {
-      pageRange.add(list.rowCount() - 1);
+      pageRange.add(alignedWorkingListForFlush.rowCount() - 1);
     }
     if (pointNumInChunk != 0) {
       chunkRange.add(pageRange);
     }
 
     handleEncoding(
-        ioTaskQueue, chunkRange, timeDuplicateInfo, allValueColDeletedMap, maxNumberOfPointsInPage);
+        ioTaskQueue,
+        chunkRange,
+        timeDuplicateInfo,
+        allValueColDeletedMap,
+        maxNumberOfPointsInPage,
+        activeSchemaList);
   }
 
   private void handleEncoding(
@@ -386,8 +558,35 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       List<List<Integer>> chunkRange,
       boolean[] timeDuplicateInfo,
       BitMap allValueColDeletedMap,
+      int maxNumberOfPointsInPage,
+      List<IMeasurementSchema> activeSchemaList) {
+    // Flushing memtables are immutable, so this identity remains stable during encoding.
+    if (activeSchemaList == schemaList) {
+      handleEncodingWithoutDeletedMeasurements(
+          ioTaskQueue,
+          chunkRange,
+          timeDuplicateInfo,
+          allValueColDeletedMap,
+          maxNumberOfPointsInPage);
+      return;
+    }
+    handleEncodingWithDeletedMeasurements(
+        ioTaskQueue,
+        chunkRange,
+        timeDuplicateInfo,
+        allValueColDeletedMap,
+        maxNumberOfPointsInPage,
+        activeSchemaList);
+  }
+
+  private void handleEncodingWithoutDeletedMeasurements(
+      BlockingQueue<Object> ioTaskQueue,
+      List<List<Integer>> chunkRange,
+      boolean[] timeDuplicateInfo,
+      BitMap allValueColDeletedMap,
       int maxNumberOfPointsInPage) {
-    List<TSDataType> dataTypes = list.getTsDataTypes();
+    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
@@ -404,16 +603,18 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               sortedRowIndex++) {
             // skip empty row
             if (allValueColDeletedMap != null
-                && allValueColDeletedMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+                && allValueColDeletedMap.isMarked(
+                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
               continue;
             }
             // skip time duplicated rows
-            long time = list.getTime(sortedRowIndex);
+            long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
             if (Objects.nonNull(timeDuplicateInfo)) {
-              if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
+              if (!alignedWorkingListForFlush.isNullValue(
+                  alignedWorkingListForFlush.getValueIndex(sortedRowIndex), columnIndex)) {
                 lastValidPointIndexForTimeDupCheck[columnIndex].left = time;
                 lastValidPointIndexForTimeDupCheck[columnIndex].right =
-                    list.getValueIndex(sortedRowIndex);
+                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
               }
               if (timeDuplicateInfo[sortedRowIndex]) {
                 continue;
@@ -434,41 +635,55 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
                 && (time == lastValidPointIndexForTimeDupCheck[columnIndex].left)) {
               originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex].right;
             } else {
-              originRowIndex = list.getValueIndex(sortedRowIndex);
+              originRowIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
             }
 
-            boolean isNull = list.isNullValue(originRowIndex, columnIndex);
+            boolean isNull = alignedWorkingListForFlush.isNullValue(originRowIndex, columnIndex);
             switch (tsDataType) {
               case BOOLEAN:
                 alignedChunkWriter.writeByColumn(
                     time,
-                    !isNull && list.getBooleanByValueIndex(originRowIndex, columnIndex),
+                    !isNull
+                        && alignedWorkingListForFlush.getBooleanByValueIndex(
+                            originRowIndex, columnIndex),
                     isNull);
                 break;
               case INT32:
               case DATE:
                 alignedChunkWriter.writeByColumn(
                     time,
-                    isNull ? 0 : list.getIntByValueIndex(originRowIndex, columnIndex),
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getIntByValueIndex(
+                            originRowIndex, columnIndex),
                     isNull);
                 break;
               case INT64:
               case TIMESTAMP:
                 alignedChunkWriter.writeByColumn(
                     time,
-                    isNull ? 0 : list.getLongByValueIndex(originRowIndex, columnIndex),
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getLongByValueIndex(
+                            originRowIndex, columnIndex),
                     isNull);
                 break;
               case FLOAT:
                 alignedChunkWriter.writeByColumn(
                     time,
-                    isNull ? 0 : list.getFloatByValueIndex(originRowIndex, columnIndex),
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getFloatByValueIndex(
+                            originRowIndex, columnIndex),
                     isNull);
                 break;
               case DOUBLE:
                 alignedChunkWriter.writeByColumn(
                     time,
-                    isNull ? 0 : list.getDoubleByValueIndex(originRowIndex, columnIndex),
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getDoubleByValueIndex(
+                            originRowIndex, columnIndex),
                     isNull);
                 break;
               case TEXT:
@@ -476,7 +691,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               case BLOB:
                 alignedChunkWriter.writeByColumn(
                     time,
-                    isNull ? null : list.getBinaryByValueIndex(originRowIndex, columnIndex),
+                    isNull
+                        ? null
+                        : alignedWorkingListForFlush.getBinaryByValueIndex(
+                            originRowIndex, columnIndex),
                     isNull);
                 break;
               default:
@@ -486,18 +704,180 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           alignedChunkWriter.nextColumn();
         }
 
-        long[] times = new long[Math.min(maxNumberOfPointsInPage, list.rowCount())];
+        long[] times =
+            new long[Math.min(maxNumberOfPointsInPage, alignedWorkingListForFlush.rowCount())];
         int pointsInPage = 0;
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
           // skip empty row
           if (allValueColDeletedMap != null
-              && allValueColDeletedMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+              && allValueColDeletedMap.isMarked(
+                  alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
             continue;
           }
           if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
-            times[pointsInPage++] = list.getTime(sortedRowIndex);
+            times[pointsInPage++] = alignedWorkingListForFlush.getTime(sortedRowIndex);
+          }
+        }
+        alignedChunkWriter.write(times, pointsInPage, 0);
+      }
+      alignedChunkWriter.sealCurrentPage();
+      alignedChunkWriter.clearPageWriter();
+      try {
+        ioTaskQueue.put(alignedChunkWriter);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private void handleEncodingWithDeletedMeasurements(
+      BlockingQueue<Object> ioTaskQueue,
+      List<List<Integer>> chunkRange,
+      boolean[] timeDuplicateInfo,
+      BitMap allValueColDeletedMap,
+      int maxNumberOfPointsInPage,
+      List<IMeasurementSchema> activeSchemaList) {
+    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    List<Integer> columnIndexList = buildColumnIndexList(activeSchemaList);
+    Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[activeSchemaList.size()];
+    for (List<Integer> pageRange : chunkRange) {
+      AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(activeSchemaList);
+      for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
+        for (int columnIndex = 0; columnIndex < activeSchemaList.size(); columnIndex++) {
+          int tvListColumnIndex = columnIndexList.get(columnIndex);
+          // Pair of Time and Index
+          if (Objects.nonNull(timeDuplicateInfo)
+              && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
+            lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
+          }
+          TSDataType tsDataType = activeSchemaList.get(columnIndex).getType();
+          for (int sortedRowIndex = pageRange.get(pageNum * 2);
+              sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
+              sortedRowIndex++) {
+            // skip empty row
+            if (allValueColDeletedMap != null
+                && allValueColDeletedMap.isMarked(
+                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
+              continue;
+            }
+            // skip time duplicated rows
+            long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
+            if (Objects.nonNull(timeDuplicateInfo)) {
+              if (tvListColumnIndex >= 0
+                  && !alignedWorkingListForFlush.isNullValue(
+                      alignedWorkingListForFlush.getValueIndex(sortedRowIndex),
+                      tvListColumnIndex)) {
+                lastValidPointIndexForTimeDupCheck[columnIndex].left = time;
+                lastValidPointIndexForTimeDupCheck[columnIndex].right =
+                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+              }
+              if (timeDuplicateInfo[sortedRowIndex]) {
+                continue;
+              }
+            }
+
+            // The part of code solves the following problem:
+            // Time: 1,2,2,3
+            // Value: 1,2,null,null
+            // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
+            // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
+            // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
+            // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2,
+            // write(T:3,V:null)
+
+            int originRowIndex;
+            if (tvListColumnIndex >= 0
+                && Objects.nonNull(lastValidPointIndexForTimeDupCheck[columnIndex])
+                && (time == lastValidPointIndexForTimeDupCheck[columnIndex].left)) {
+              originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex].right;
+            } else {
+              originRowIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+            }
+
+            boolean isNull =
+                tvListColumnIndex < 0
+                    || alignedWorkingListForFlush.isNullValue(originRowIndex, tvListColumnIndex);
+            switch (tsDataType) {
+              case BOOLEAN:
+                alignedChunkWriter.writeByColumn(
+                    time,
+                    !isNull
+                        && alignedWorkingListForFlush.getBooleanByValueIndex(
+                            originRowIndex, tvListColumnIndex),
+                    isNull);
+                break;
+              case INT32:
+              case DATE:
+                alignedChunkWriter.writeByColumn(
+                    time,
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getIntByValueIndex(
+                            originRowIndex, tvListColumnIndex),
+                    isNull);
+                break;
+              case INT64:
+              case TIMESTAMP:
+                alignedChunkWriter.writeByColumn(
+                    time,
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getLongByValueIndex(
+                            originRowIndex, tvListColumnIndex),
+                    isNull);
+                break;
+              case FLOAT:
+                alignedChunkWriter.writeByColumn(
+                    time,
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getFloatByValueIndex(
+                            originRowIndex, tvListColumnIndex),
+                    isNull);
+                break;
+              case DOUBLE:
+                alignedChunkWriter.writeByColumn(
+                    time,
+                    isNull
+                        ? 0
+                        : alignedWorkingListForFlush.getDoubleByValueIndex(
+                            originRowIndex, tvListColumnIndex),
+                    isNull);
+                break;
+              case TEXT:
+              case STRING:
+              case BLOB:
+                alignedChunkWriter.writeByColumn(
+                    time,
+                    isNull
+                        ? null
+                        : alignedWorkingListForFlush.getBinaryByValueIndex(
+                            originRowIndex, tvListColumnIndex),
+                    isNull);
+                break;
+              default:
+                break;
+            }
+          }
+          alignedChunkWriter.nextColumn();
+        }
+
+        long[] times =
+            new long[Math.min(maxNumberOfPointsInPage, alignedWorkingListForFlush.rowCount())];
+        int pointsInPage = 0;
+        for (int sortedRowIndex = pageRange.get(pageNum * 2);
+            sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
+            sortedRowIndex++) {
+          // skip empty row
+          if (allValueColDeletedMap != null
+              && allValueColDeletedMap.isMarked(
+                  alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
+            continue;
+          }
+          if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
+            times[pointsInPage++] = alignedWorkingListForFlush.getTime(sortedRowIndex);
           }
         }
         alignedChunkWriter.write(times, pointsInPage, 0);
@@ -513,23 +893,30 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void encode(
-      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
+  public void encode(BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(
           ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.maxNumberOfPointsInPage);
       return;
     }
 
-    AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+    List<IMeasurementSchema> activeSchemaList = getActiveSchemaList();
+    if (activeSchemaList.isEmpty()) {
+      return;
+    }
+
+    AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(activeSchemaList);
 
     // create MergeSortAlignedTVListIterator.
     List<AlignedTVList> alignedTvLists = new ArrayList<>(sortedList);
-    alignedTvLists.add(list);
-    List<Integer> columnIndexList = buildColumnIndexList(schemaList);
+    alignedTvLists.add((AlignedTVList) workingListForFlush);
+    List<Integer> columnIndexList = buildColumnIndexList(activeSchemaList);
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
-            dataTypes, columnIndexList, alignedTvLists, encodeInfo.maxNumberOfPointsInPage);
+            getDataTypes(activeSchemaList),
+            columnIndexList,
+            alignedTvLists,
+            encodeInfo.maxNumberOfPointsInPage);
 
     while (timeValuePairIterator.hasNextBatch()) {
       timeValuePairIterator.encodeBatch(alignedChunkWriter, encodeInfo, times);
@@ -546,7 +933,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
-        alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+        alignedChunkWriter = new AlignedChunkWriterImpl(activeSchemaList);
         encodeInfo.reset();
       }
     }
@@ -622,7 +1009,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     int size = 0;
     size += Integer.BYTES;
     for (IMeasurementSchema schema : schemaList) {
-      size += schema.serializedSize();
+      size += getSerializedSchemaSize(schema);
     }
     size += Integer.BYTES;
     for (AlignedTVList alignedTvList : sortedList) {
@@ -636,9 +1023,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   public void serializeToWAL(IWALByteBufferView buffer) {
     WALWriteUtils.write(schemaList.size(), buffer);
     for (IMeasurementSchema schema : schemaList) {
-      byte[] bytes = new byte[schema.serializedSize()];
-      schema.serializeTo(ByteBuffer.wrap(bytes));
-      buffer.put(bytes);
+      buffer.put(serializeSchemaToWALBytes(schema));
     }
     buffer.putInt(sortedList.size());
     for (AlignedTVList alignedTvList : sortedList) {
@@ -655,7 +1040,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       schemaList.add(schema);
     }
     int sortedListSize = stream.readInt();
-    List<AlignedTVList> sortedList = new ArrayList<>();
+    List<AlignedTVList> sortedList = new ArrayList<>(sortedListSize);
     for (int i = 0; i < sortedListSize; i++) {
       AlignedTVList tvList = AlignedTVList.deserialize(stream);
       sortedList.add(tvList);

@@ -51,7 +51,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +69,10 @@ public class TagManager {
   private static final String PREVIOUS_CONDITION =
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
+  // The tag index memory model adds one int-sized estimated overhead for each indexed key, value,
+  // and measurement reference. This is an accounting estimate rather than a specific
+  // ConcurrentHashMap or Set field.
+  private static final long INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES = Integer.BYTES;
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
@@ -164,34 +167,31 @@ public class TagManager {
       return;
     }
 
-    int tagIndexOldSize = tagIndex.size();
-    Map<String, Set<IMeasurementMNode<?>>> tagValueMap =
-        tagIndex.computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>());
-    int tagIndexNewSize = tagIndex.size();
+    tagIndex.compute(
+        tagKey,
+        (key, tagValueMap) -> {
+          long memorySize = 0;
+          if (tagValueMap == null) {
+            tagValueMap = new ConcurrentHashMap<>();
+            memorySize += RamUsageEstimator.sizeOf(tagKey) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
 
-    int tagValueMapOldSize = tagValueMap.size();
-    Set<IMeasurementMNode<?>> measurementsSet =
-        tagValueMap.computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()));
-    int tagValueMapNewSize = tagValueMap.size();
+          Set<IMeasurementMNode<?>> measurementsSet = tagValueMap.get(tagValue);
+          if (measurementsSet == null) {
+            measurementsSet = ConcurrentHashMap.newKeySet();
+            tagValueMap.put(tagValue, measurementsSet);
+            memorySize += RamUsageEstimator.sizeOf(tagValue) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
 
-    int measurementsSetOldSize = measurementsSet.size();
-    measurementsSet.add(measurementMNode);
-    int measurementsSetNewSize = measurementsSet.size();
-
-    long memorySize = 0;
-    if (tagIndexNewSize - tagIndexOldSize == 1) {
-      // the last 4 is the memory occupied by the size of tagvaluemap
-      memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
-    }
-    if (tagValueMapNewSize - tagValueMapOldSize == 1) {
-      // the last 4 is the memory occupied by the size of measurementsSet
-      memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
-    }
-    if (measurementsSetNewSize - measurementsSetOldSize == 1) {
-      // 8 is the memory occupied by the length of the IMeasurementMNode
-      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
-    }
-    requestMemory(memorySize);
+          if (measurementsSet.add(measurementMNode)) {
+            memorySize +=
+                RamUsageEstimator.NUM_BYTES_OBJECT_REF + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
+          if (memorySize > 0) {
+            requestMemory(memorySize);
+          }
+          return tagValueMap;
+        });
   }
 
   public void addIndex(Map<String, String> tagsMap, IMeasurementMNode<?> measurementMNode) {
@@ -206,32 +206,48 @@ public class TagManager {
     if (tagKey == null || tagValue == null || measurementMNode == null) {
       return;
     }
-    // init memory size
-    long memorySize = 0;
-    if (tagIndex.get(tagKey).get(tagValue).remove(measurementMNode)) {
-      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
-    }
-    if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
-      if (tagIndex.get(tagKey).remove(tagValue) != null) {
-        // the last 4 is the memory occupied by the size of IMeasurementMNodeSet
-        memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
-      }
-    }
-    if (tagIndex.get(tagKey).isEmpty()) {
-      if (tagIndex.remove(tagKey) != null) {
-        // the last 4 is the memory occupied by the size of tagValueMap
-        memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
-      }
-    }
-    releaseMemory(memorySize);
+    tagIndex.computeIfPresent(
+        tagKey,
+        (key, tagValueMap) -> {
+          long memorySize = 0;
+          Set<IMeasurementMNode<?>> measurementsSet = tagValueMap.get(tagValue);
+          if (measurementsSet == null) {
+            return tagValueMap;
+          }
+
+          if (measurementsSet.remove(measurementMNode)) {
+            memorySize +=
+                RamUsageEstimator.NUM_BYTES_OBJECT_REF + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
+          if (measurementsSet.isEmpty()) {
+            if (tagValueMap.remove(tagValue, measurementsSet)) {
+              memorySize +=
+                  RamUsageEstimator.sizeOf(tagValue) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+            }
+          }
+          if (tagValueMap.isEmpty()) {
+            memorySize += RamUsageEstimator.sizeOf(tagKey) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+            if (memorySize > 0) {
+              releaseMemory(memorySize);
+            }
+            return null;
+          }
+          if (memorySize > 0) {
+            releaseMemory(memorySize);
+          }
+          return tagValueMap;
+        });
   }
 
-  private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(TagFilter tagFilter) {
-    if (!tagIndex.containsKey(tagFilter.getKey())) {
-      return Collections.emptyList();
-    }
+  private boolean containsIndex(String tagKey, String tagValue) {
+    Map<String, Set<IMeasurementMNode<?>>> tagValueMap = tagIndex.get(tagKey);
+    return tagValueMap != null && tagValueMap.containsKey(tagValue);
+  }
+
+  List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(
+      final TagFilter tagFilter, final PartialPath pathPattern, final boolean isPrefixMatch) {
     Map<String, Set<IMeasurementMNode<?>>> value2Node = tagIndex.get(tagFilter.getKey());
-    if (value2Node.isEmpty()) {
+    if (value2Node == null || value2Node.isEmpty()) {
       return Collections.emptyList();
     }
 
@@ -247,19 +263,20 @@ public class TagManager {
         }
       }
     } else {
-      for (Map.Entry<String, Set<IMeasurementMNode<?>>> entry : value2Node.entrySet()) {
-        if (entry.getKey() == null || entry.getValue() == null) {
-          continue;
-        }
-        String tagValue = entry.getKey();
-        if (tagFilter.getValue().equals(tagValue)) {
-          allMatchedNodes.addAll(entry.getValue());
-        }
+      final Set<IMeasurementMNode<?>> matchedNodes = value2Node.get(tagFilter.getValue());
+      if (matchedNodes != null) {
+        allMatchedNodes.addAll(matchedNodes);
       }
     }
-    // we just sort them by the alphabetical order
+
+    // Filter by path before sorting to avoid sorting irrelevant measurements.
     allMatchedNodes =
         allMatchedNodes.stream()
+            .filter(
+                node ->
+                    isPrefixMatch
+                        ? pathPattern.prefixMatchFullPath(node.getPartialPath())
+                        : pathPattern.matchFullPath(node.getPartialPath()))
             .sorted(Comparator.comparing(IMNode::getFullPath))
             .collect(toList());
 
@@ -272,11 +289,13 @@ public class TagManager {
     SchemaFilter schemaFilter = plan.getSchemaFilter();
     // currently, only one TagFilter is supported
     // all IMeasurementMNode in allMatchedNodes satisfied TagFilter
+    PartialPath pathPattern = plan.getPath();
     Iterator<IMeasurementMNode<?>> allMatchedNodes =
         getMatchedTimeseriesInIndex(
-                (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0))
+                (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0),
+                pathPattern,
+                plan.isPrefixMatch())
             .iterator();
-    PartialPath pathPattern = plan.getPath();
     SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
         new SchemaIterator<ITimeSeriesSchemaInfo>() {
           private ITimeSeriesSchemaInfo nextMatched;
@@ -311,21 +330,17 @@ public class TagManager {
               if (node.isPreDeleted()) {
                 continue;
               }
-              if (plan.isPrefixMatch()
-                  ? pathPattern.prefixMatchFullPath(node.getPartialPath())
-                  : pathPattern.matchFullPath(node.getPartialPath())) {
-                Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-                    readTagFile(node.getOffset());
-                nextMatched =
-                    new ShowTimeSeriesResult(
-                        node.getFullPath(),
-                        node.getAlias(),
-                        node.getSchema(),
-                        tagAndAttributePair.left,
-                        tagAndAttributePair.right,
-                        node.getParent().getAsDeviceMNode().isAligned());
-                break;
-              }
+              Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+                  readTagFile(node.getOffset());
+              nextMatched =
+                  new ShowTimeSeriesResult(
+                      node.getFullPath(),
+                      node.getAlias(),
+                      node.getSchema(),
+                      tagAndAttributePair.left,
+                      tagAndAttributePair.right,
+                      node.getParent().getAsDeviceMNode().isAligned());
+              break;
             }
           }
 
@@ -365,8 +380,7 @@ public class TagManager {
     Map<String, String> tagMap = tagLogFile.readTag(node.getOffset());
     if (tagMap != null) {
       for (Map.Entry<String, String> entry : tagMap.entrySet()) {
-        if (tagIndex.containsKey(entry.getKey())
-            && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
+        if (containsIndex(entry.getKey(), entry.getValue())) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
@@ -418,7 +432,7 @@ public class TagManager {
         // we should remove before key-value from inverted index map
         if (beforeValue != null && !beforeValue.equals(value)) {
 
-          if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
+          if (containsIndex(key, beforeValue)) {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   String.format(
@@ -551,8 +565,7 @@ public class TagManager {
 
     if (!deleteTag.isEmpty()) {
       for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
-        if (tagIndex.containsKey((entry.getKey()))
-            && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
+        if (containsIndex(entry.getKey(), entry.getValue())) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
@@ -621,7 +634,7 @@ public class TagManager {
       String beforeValue = entry.getValue();
       String currentValue = newTagValue.get(key);
       // change the tag inverted index map
-      if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
+      if (containsIndex(key, beforeValue)) {
 
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -679,7 +692,7 @@ public class TagManager {
       // persist the change to disk
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
       // change the tag inverted index map
-      if (tagIndex.containsKey(oldKey) && tagIndex.get(oldKey).containsKey(value)) {
+      if (containsIndex(oldKey, value)) {
 
         if (logger.isDebugEnabled()) {
           logger.debug(

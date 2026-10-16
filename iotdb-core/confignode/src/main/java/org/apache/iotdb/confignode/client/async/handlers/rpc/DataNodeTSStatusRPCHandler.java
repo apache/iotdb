@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,12 +52,12 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
     // Put response
     responseMap.put(requestId, response);
 
-    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (isRequestCompleted(requestType, response)) {
       // Remove only if success
       nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
-      LOGGER.error(
+      logFailure(
           "Failed to {} on DataNode: {}, response: {}",
           requestType,
           formattedTargetLocation,
@@ -65,6 +66,18 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
 
     // Always CountDown
     countDownLatch.countDown();
+  }
+
+  static boolean isRequestCompleted(CnToDnAsyncRequestType requestType, TSStatus response) {
+    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    }
+    if (requestType == CnToDnAsyncRequestType.DELETE_REGION) {
+      return response.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode();
+    }
+    return (requestType == CnToDnAsyncRequestType.CREATE_DATA_REGION
+            || requestType == CnToDnAsyncRequestType.CREATE_SCHEMA_REGION)
+        && response.getCode() == TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode();
   }
 
   @Override
@@ -76,7 +89,7 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
             + formattedTargetLocation
             + ", exception: "
             + e.getMessage();
-    LOGGER.error(errorMsg);
+    logFailure(errorMsg);
 
     responseMap.put(
         requestId,
@@ -85,5 +98,12 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
 
     // Always CountDown
     countDownLatch.countDown();
+  }
+
+  private void logFailure(final String format, final Object... args) {
+    if (!LoggerPeriodicalLogReducer.shouldLog(format, args)) {
+      return;
+    }
+    LOGGER.error(format, args);
   }
 }

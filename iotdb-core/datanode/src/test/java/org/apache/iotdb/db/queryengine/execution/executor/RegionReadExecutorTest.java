@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.executor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -159,6 +161,50 @@ public class RegionReadExecutorTest {
 
     assertFalse(res.isAccepted());
     assertEquals(String.format(ERROR_MSG_FORMAT, "schema-exception"), res.getMessage());
+  }
+
+  @Test
+  public void testRepeatedRpcCall() throws ConsensusException {
+    // A repeated RPC dispatch of the same FragmentInstance makes FragmentInstanceManager throw
+    // IoTDBRuntimeException(REPEATED_RPC_CALL). RegionReadExecutor must carry that status code back
+    // (instead of dropping it, which would downgrade it to EXECUTE_STATEMENT_ERROR) and mark the
+    // result as non-retryable.
+    ConsensusGroupId dataRegionGroupId = new DataRegionId(1);
+    FragmentInstanceId fragmentInstanceId =
+        new FragmentInstanceId(new PlanFragmentId(MOCK_QUERY_ID, 0), "0");
+    FragmentInstance fragmentInstance = Mockito.mock(FragmentInstance.class);
+    Mockito.when(fragmentInstance.getId()).thenReturn(fragmentInstanceId);
+
+    IConsensus dataRegionConsensus = Mockito.mock(IConsensus.class);
+    IConsensus schemaRegionConsensus = Mockito.mock(IConsensus.class);
+    FragmentInstanceManager fragmentInstanceManager = Mockito.mock(FragmentInstanceManager.class);
+
+    RegionReadExecutor executor =
+        new RegionReadExecutor(dataRegionConsensus, schemaRegionConsensus, fragmentInstanceManager);
+
+    // consensus read path (covers both data and schema region queries)
+    Mockito.when(dataRegionConsensus.read(dataRegionGroupId, fragmentInstance))
+        .thenThrow(
+            new IoTDBRuntimeException("repeated", TSStatusCode.REPEATED_RPC_CALL.getStatusCode()));
+
+    RegionExecutionResult res = executor.execute(dataRegionGroupId, fragmentInstance);
+
+    assertFalse(res.isAccepted());
+    assertEquals(TSStatusCode.REPEATED_RPC_CALL.getStatusCode(), res.getStatus().getCode());
+    assertFalse(res.isReadNeedRetry());
+
+    // VirtualDataRegion path (FI executed directly through FragmentInstanceManager)
+    Mockito.when(
+            fragmentInstanceManager.execDataQueryFragmentInstance(
+                fragmentInstance, VirtualDataRegion.getInstance()))
+        .thenThrow(
+            new IoTDBRuntimeException("repeated", TSStatusCode.REPEATED_RPC_CALL.getStatusCode()));
+
+    res = executor.execute(fragmentInstance);
+
+    assertFalse(res.isAccepted());
+    assertEquals(TSStatusCode.REPEATED_RPC_CALL.getStatusCode(), res.getStatus().getCode());
+    assertFalse(res.isReadNeedRetry());
   }
 
   @Test

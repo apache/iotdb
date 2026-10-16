@@ -28,12 +28,18 @@ import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClien
 public abstract class ConfigNodeInternalServiceAsyncRequestManager<RequestType>
     extends AsyncRequestManager<
         RequestType, TConfigNodeLocation, AsyncConfigNodeInternalServiceClient> {
+
+  protected ConfigNodeInternalServiceAsyncRequestManager(int selectorNumOfAsyncClientManager) {
+    super(selectorNumOfAsyncClientManager);
+  }
+
   @Override
-  protected void initClientManager() {
+  protected void initClientManager(int selectorNumOfAsyncClientManager) {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory(
+                    selectorNumOfAsyncClientManager));
   }
 
   @Override

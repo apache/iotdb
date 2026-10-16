@@ -316,7 +316,7 @@ local_dirs_check() {
 
 local_jdk_check() {
   echo "Check: Installation Environment(JDK)"
-  echo "Requirement: JDK Version >=1.8"
+  echo "Requirement: JDK Version >=17"
 
   if [ -z $JAVA ] ; then
     echo "Result: Unable to find java executable. Check JAVA_HOME and PATH environment variables. "

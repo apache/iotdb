@@ -167,6 +167,40 @@ public class AlignedTVListIteratorTest {
   }
 
   @Test
+  public void testIteratorWithStaleRowCountAfterSort() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+    for (int i = 100; i < 110; i++) {
+      tvList.putAlignedValue(i, new Object[] {i, i, i});
+    }
+    int staleRowCount = tvList.rowCount();
+    for (int i = 1; i <= 2; i++) {
+      tvList.putAlignedValue(i, new Object[] {i, i, i});
+    }
+    tvList.delete(1, 2);
+    tvList.sort();
+
+    AlignedTVList.AlignedTVListIterator iterator =
+        tvList.iterator(
+            Ordering.ASC,
+            staleRowCount,
+            null,
+            Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),
+            Arrays.asList(0, 1, 2),
+            null,
+            null,
+            null,
+            100);
+    int count = 0;
+    while (iterator.hasNextTimeValuePair()) {
+      iterator.nextTimeValuePair();
+      count++;
+    }
+    Assert.assertEquals(staleRowCount - 2, count);
+  }
+
+  @Test
   public void testAlignedWithDeletionsInTVList() throws IOException {
     Map<TVList, Integer> tvListMap =
         buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
@@ -810,6 +844,90 @@ public class AlignedTVListIteratorTest {
         ? paginationController
         : new PaginationController(
             paginationController.getCurLimit(), paginationController.getCurOffset());
+  }
+
+  @Test
+  public void testPageSwitchKeepsPreparedDuplicateTimestampValues() throws IOException {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
+    tvList.putAlignedValue(1, new Object[] {1L, true, false});
+    tvList.putAlignedValue(100, new Object[] {2L, null, false});
+    tvList.putAlignedValue(100, new Object[] {null, true, false});
+
+    Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
+    tvListMap.put(tvList, tvList.rowCount());
+    AlignedReadOnlyMemChunk chunk =
+        new AlignedReadOnlyMemChunk(
+            fragmentInstanceContext,
+            Arrays.asList(0, 1, 2),
+            getMeasurementSchema(),
+            tvListMap,
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
+    chunk.sortTvLists();
+    chunk.initChunkMetaFromTVListsWithFakeStatistics();
+
+    MemPointIterator iterator = chunk.createMemPointIterator(Ordering.ASC, null);
+    List<TimeValuePair> result = new ArrayList<>();
+    // These are fake-page boundaries for one MemChunk. The middle page is empty, but the
+    // shared iterator still receives its time range before its next page is read.
+    for (TimeRange pageRange :
+        Arrays.asList(new TimeRange(1, 33), new TimeRange(34, 66), new TimeRange(67, 100))) {
+      iterator.setCurrentPageTimeRange(pageRange);
+      while (iterator.hasNextTimeValuePair()) {
+        result.add(iterator.nextTimeValuePair());
+      }
+    }
+
+    Assert.assertEquals(2, result.size());
+    Assert.assertEquals(1L, result.get(0).getTimestamp());
+    Assert.assertEquals(1L, result.get(0).getValues()[0]);
+    Assert.assertEquals(100L, result.get(1).getTimestamp());
+    Assert.assertEquals(2L, result.get(1).getValues()[0]);
+    Assert.assertEquals(Boolean.TRUE, result.get(1).getValues()[1]);
+    Assert.assertEquals(Boolean.FALSE, result.get(1).getValues()[2]);
+  }
+
+  @Test
+  public void testPageSwitchKeepsPreparedDuplicateTimestampValuesDescending() throws IOException {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.BOOLEAN));
+    tvList.putAlignedValue(1, new Object[] {null, true, false});
+    tvList.putAlignedValue(1, new Object[] {2L, null, false});
+    tvList.putAlignedValue(100, new Object[] {1L, true, false});
+
+    Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
+    tvListMap.put(tvList, tvList.rowCount());
+    AlignedReadOnlyMemChunk chunk =
+        new AlignedReadOnlyMemChunk(
+            fragmentInstanceContext,
+            Arrays.asList(0, 1, 2),
+            getMeasurementSchema(),
+            tvListMap,
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
+    chunk.sortTvLists();
+    chunk.initChunkMetaFromTVListsWithFakeStatistics();
+
+    MemPointIterator iterator = chunk.createMemPointIterator(Ordering.DESC, null);
+    List<TimeValuePair> result = new ArrayList<>();
+    for (TimeRange pageRange :
+        Arrays.asList(new TimeRange(67, 100), new TimeRange(34, 66), new TimeRange(1, 33))) {
+      iterator.setCurrentPageTimeRange(pageRange);
+      while (iterator.hasNextTimeValuePair()) {
+        result.add(iterator.nextTimeValuePair());
+      }
+    }
+
+    Assert.assertEquals(2, result.size());
+    Assert.assertEquals(100L, result.get(0).getTimestamp());
+    Assert.assertEquals(1L, result.get(0).getValues()[0]);
+    Assert.assertEquals(1L, result.get(1).getTimestamp());
+    Assert.assertEquals(2L, result.get(1).getValues()[0]);
+    Assert.assertEquals(Boolean.TRUE, result.get(1).getValues()[1]);
+    Assert.assertEquals(Boolean.FALSE, result.get(1).getValues()[2]);
   }
 
   @Test

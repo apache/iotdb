@@ -95,6 +95,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -894,12 +895,34 @@ public class ConfigPhysicalPlanSerDeTest {
   public void SetPipeStatusPlanV2Test() throws IOException {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
-            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
+            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.PRE_DELETE);
     final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeName(), setPipeStatusPlanV21.getPipeName());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeStatus(), setPipeStatusPlanV21.getPipeStatus());
+  }
+
+  @Test
+  public void SetPipeStatusWithStoppedByRuntimeExceptionPlanV2Test() throws IOException {
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2 =
+            new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.STOPPED, true);
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21 =
+            (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2)
+                ConfigPhysicalPlan.Factory.create(
+                    setPipeStatusWithStoppedByRuntimeExceptionPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeName(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeName());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeStatus(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeStatus());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isStoppedByRuntimeException(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isStoppedByRuntimeException());
   }
 
   @Test
@@ -944,7 +967,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new SetPipeStatusPlanV2(
             "testSet", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
 
-    List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
+    final List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
     subPlans.add(createPipePlanV2);
     subPlans.add(alterPipePlanV2);
     subPlans.add(dropPipePlanV2);
@@ -1190,7 +1213,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void ActiveCQPlanTest() throws IOException {
-    ActiveCQPlan activeCQPlan0 = new ActiveCQPlan("testCq", "testCq_md5");
+    ActiveCQPlan activeCQPlan0 = new ActiveCQPlan("testCq", "testCqToken");
     ActiveCQPlan activeCQPlan1 =
         (ActiveCQPlan) ConfigPhysicalPlan.Factory.create(activeCQPlan0.serializeToByteBuffer());
 
@@ -1213,7 +1236,7 @@ public class ConfigPhysicalPlanSerDeTest {
                 "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
                 "Asia",
                 "root"),
-            "testCq1_md5",
+            "testCq1Token",
             executionTime);
     AddCQPlan addCQPlan1 =
         (AddCQPlan) ConfigPhysicalPlan.Factory.create(addCQPlan0.serializeToByteBuffer());
@@ -1228,7 +1251,7 @@ public class ConfigPhysicalPlanSerDeTest {
         (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
     Assert.assertEquals(dropCQPlan0, dropCQPlan1);
 
-    dropCQPlan0 = new DropCQPlan("testCq1", "testCq1_md5");
+    dropCQPlan0 = new DropCQPlan("testCq1", "testCq1Token");
     dropCQPlan1 =
         (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
     Assert.assertEquals(dropCQPlan0, dropCQPlan1);
@@ -1237,7 +1260,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void UpdateCQLastExecTimePlanTest() throws IOException {
     UpdateCQLastExecTimePlan updateCQLastExecTimePlan0 =
-        new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCq_md5");
+        new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCqToken");
     UpdateCQLastExecTimePlan updateCQLastExecTimePlan1 =
         (UpdateCQLastExecTimePlan)
             ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.scheduler;
 import org.apache.iotdb.confignode.procedure.Procedure;
 
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.locks.ReentrantLock;
 
 /** Simple scheduler for procedures */
 public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
@@ -48,6 +49,7 @@ public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
     schedLock();
     try {
       runnables.clear();
+      waitings.clear();
     } finally {
       schedUnlock();
     }
@@ -68,12 +70,37 @@ public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
     return runnables.size();
   }
 
-  public void addWaiting(Procedure proc) {
-    waitings.add(proc);
+  public void waitProcedure(Procedure proc, ReentrantLock lock) {
+    boolean signal = false;
+    schedLock();
+    try {
+      if (lock.isLocked()) {
+        waitings.add(proc);
+      } else {
+        runnables.addFirst(proc);
+        signal = true;
+      }
+    } finally {
+      schedUnlock();
+    }
+    if (signal) {
+      signalAll();
+    }
   }
 
-  public void releaseWaiting() {
-    runnables.addAll(waitings);
-    waitings.clear();
+  public void releaseWaiting(ReentrantLock lock) {
+    boolean signal;
+    schedLock();
+    try {
+      lock.unlock();
+      signal = !waitings.isEmpty();
+      runnables.addAll(waitings);
+      waitings.clear();
+    } finally {
+      schedUnlock();
+    }
+    if (signal) {
+      signalAll();
+    }
   }
 }

@@ -47,7 +47,7 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
     Validate.isTrue(
         whenTransformers.size() == thenTransformers.size(),
         "the size between whenTransformers and thenTransformers needs to be same");
-    this.whenThenTransformers = new ArrayList<>();
+    this.whenThenTransformers = new ArrayList<>(whenTransformers.size());
     for (int i = 0; i < whenTransformers.size(); i++) {
       this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));
     }
@@ -83,8 +83,8 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
 
   @Override
   protected void evaluate() {
-    List<Column> whenColumnList = new ArrayList<>();
-    List<Column> thenColumnList = new ArrayList<>();
+    List<Column> whenColumnList = new ArrayList<>(whenThenTransformers.size());
+    List<Column> thenColumnList = new ArrayList<>(whenThenTransformers.size());
     for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
       whenThenTransformer.left.tryEvaluate();
       whenThenTransformer.right.tryEvaluate();
@@ -127,5 +127,15 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
   @Override
   protected void checkType() {
     // do nothing
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
+      whenThenTransformer.left.close();
+      whenThenTransformer.right.close();
+    }
+    elseTransformer.close();
   }
 }

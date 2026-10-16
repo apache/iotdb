@@ -94,6 +94,8 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
+  void releaseTemporaryTvListForFlush();
+
   default long getMaxTime() {
     return Long.MAX_VALUE;
   }
@@ -124,4 +126,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   TVList getWorkingTVList();
 
   void setWorkingTVList(TVList list);
+
+  TVList initWorkingListForFlushIfNecessary(
+      TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList);
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -86,10 +87,17 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
+    alterConsumerGroupProcedure = null;
+    createPipeProcedures = new ArrayList<>();
+
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
     // Construct AlterConsumerGroupProcedure
+    final String consumerId = subscribeReq.getConsumerId();
     final String consumerGroupId = subscribeReq.getConsumerGroupId();
+    final ConsumerGroupMeta consumerGroupMeta =
+        subscriptionInfo.get().getConsumerGroupMeta(consumerGroupId);
+    final ConsumerMeta consumerMeta = consumerGroupMeta.getConsumerMeta(consumerId);
     final ConsumerGroupMeta updatedConsumerGroupMeta =
         subscriptionInfo.get().deepCopyConsumerGroupMeta(consumerGroupId);
     updatedConsumerGroupMeta.addSubscription(
@@ -110,7 +118,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(pipeName)
-                    .setExtractorAttributes(topicMeta.generateExtractorAttributes())
+                    .setExtractorAttributes(
+                        topicMeta.generateExtractorAttributes(
+                            consumerMeta.getUsername(), consumerMeta.getSubscriptionAuthPassword()))
                     .setProcessorAttributes(topicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(topicMeta.generateConnectorAttributes(consumerGroupId)),
                 pipeTaskInfo));
@@ -153,8 +163,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && response.getSubStatusSize() > 0) {
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
               "Failed to create subscription with request %s on config nodes, because %s",

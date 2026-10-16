@@ -70,8 +70,6 @@ public class IoTConsensusConfig {
 
   public static class RPC {
 
-    private final int rpcSelectorThreadNum;
-    private final int rpcMinConcurrentClientNum;
     private final int rpcMaxConcurrentClientNum;
     private final int thriftServerAwaitTimeForStopService;
     private final boolean isRpcThriftCompressionEnabled;
@@ -83,8 +81,6 @@ public class IoTConsensusConfig {
     private final int maxClientNumForEachNode;
 
     private RPC(
-        int rpcSelectorThreadNum,
-        int rpcMinConcurrentClientNum,
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
@@ -93,8 +89,6 @@ public class IoTConsensusConfig {
         boolean printLogWhenThriftClientEncounterException,
         int thriftMaxFrameSize,
         int maxClientNumForEachNode) {
-      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
@@ -103,14 +97,6 @@ public class IoTConsensusConfig {
       this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
-    }
-
-    public int getRpcSelectorThreadNum() {
-      return rpcSelectorThreadNum;
-    }
-
-    public int getRpcMinConcurrentClientNum() {
-      return rpcMinConcurrentClientNum;
     }
 
     public int getRpcMaxConcurrentClientNum() {
@@ -151,7 +137,6 @@ public class IoTConsensusConfig {
 
     public static class Builder {
 
-      private int rpcSelectorThreadNum = 1;
       private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
@@ -162,11 +147,6 @@ public class IoTConsensusConfig {
       private boolean printLogWhenThriftClientEncounterException = true;
       private int thriftMaxFrameSize = 536870912;
       private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
-
-      public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
-        this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-        return this;
-      }
 
       public RPC.Builder setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
         this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
@@ -218,8 +198,6 @@ public class IoTConsensusConfig {
 
       public RPC build() {
         return new RPC(
-            rpcSelectorThreadNum,
-            rpcMinConcurrentClientNum,
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,

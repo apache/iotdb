@@ -74,10 +74,12 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 
 public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
@@ -110,6 +112,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   protected boolean isForwardingPipeRequests;
 
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
   private boolean sloppyPattern; // true to disable pattern filter after extraction
@@ -215,6 +218,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -380,14 +385,21 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
         break;
       }
-      pendingQueue.pollLast();
+      final PipeRealtimeEvent droppedEvent = (PipeRealtimeEvent) pendingQueue.pollLast();
+      if (droppedEvent != null) {
+        droppedEvent.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
+      }
     }
-    if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
-      final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
+    final Event last = pendingQueue.peekLast();
+    if (last instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) last).getEvent() instanceof ProgressReportEvent) {
+      final ProgressReportEvent oldEvent =
+          (ProgressReportEvent) ((PipeRealtimeEvent) last).getEvent();
       oldEvent.bindProgressIndex(
           oldEvent
               .getProgressIndex()
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
       return;
     }
     pendingQueue.offer(event);
@@ -499,6 +511,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public final boolean isShouldTransferModFile() {
     return shouldTransferModFile;
+  }
+
+  public final String getTsFileParser() {
+    return tsFileParser;
   }
 
   private void maySkipProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {

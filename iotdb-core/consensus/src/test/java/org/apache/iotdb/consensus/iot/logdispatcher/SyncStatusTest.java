@@ -36,7 +36,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class SyncStatusTest {
 
@@ -241,5 +247,54 @@ public class SyncStatusTest {
         config.getReplication().getMaxPendingBatchesNum(), controller.getCurrentIndex());
     Assert.assertEquals(
         config.getReplication().getMaxPendingBatchesNum() + 1, status.getNextSendingIndex());
+  }
+
+  @Test
+  public void testFirstBatchRetriesMemoryReservation()
+      throws InterruptedException, ExecutionException, TimeoutException {
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
+    IoTConsensusConfig retryConfig =
+        IoTConsensusConfig.newBuilder()
+            .setReplication(
+                IoTConsensusConfig.Replication.newBuilder().setBasicRetryWaitTimeMs(10).build())
+            .build();
+    SyncStatus status = new SyncStatus(controller, retryConfig);
+    TLogEntry logEntry = new TLogEntry().setSearchIndex(1).setMemorySize(1);
+    Batch batch = new Batch(retryConfig);
+    batch.addTLogEntry(logEntry);
+    batch.buildIndex();
+
+    IoTConsensusMemoryManager memoryManager = IoTConsensusMemoryManager.getInstance();
+    long previousMaxMemory = memoryManager.getMaxMemorySizeInByte();
+    long previousMaxQueueMemory = memoryManager.getMaxMemorySizeForQueueInByte();
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    CountDownLatch taskStarted = new CountDownLatch(1);
+    memoryManager.init(0, 0);
+    try {
+      Future<?> future =
+          executor.submit(
+              () -> {
+                taskStarted.countDown();
+                status.addNextBatch(batch);
+                return null;
+              });
+
+      Assert.assertTrue(taskStarted.await(5, TimeUnit.SECONDS));
+      // The zero limit makes the first reservation fail before the retry limit is raised.
+      Thread.sleep(100);
+      Assert.assertFalse(future.isDone());
+      memoryManager.init(batch.getMemorySize() + 1, batch.getMemorySize() + 1);
+      future.get(5, TimeUnit.SECONDS);
+
+      Assert.assertEquals(1, status.getPendingBatches().size());
+      status.removeBatch(batch);
+      Assert.assertEquals(0, status.getPendingBatches().size());
+    } finally {
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+      status.free();
+      memoryManager.init(previousMaxMemory, previousMaxQueueMemory);
+    }
   }
 }

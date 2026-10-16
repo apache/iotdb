@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -360,7 +361,7 @@ public class SchemaFile implements ISchemaFile {
       lastSGAddr = 0L;
       pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
     } else {
-      channel.read(headerContent);
+      IOUtils.readFully(channel, headerContent);
       headerContent.clear();
       lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
       dataTTL = ReadWriteIOUtils.readLong(headerContent);

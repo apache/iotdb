@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,7 +33,9 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
+import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -67,15 +70,21 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
+import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_OPERATOR_FROM_RAW_DATA;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
@@ -84,6 +93,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
+  private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private final FragmentInstanceId id;
@@ -148,15 +158,25 @@ public class FragmentInstanceContext extends QueryContext {
   private int initQueryDataSourceRetryCount = 0;
   private final AtomicLong readyQueueTime = new AtomicLong(0);
   private final AtomicLong blockQueueTime = new AtomicLong(0);
+  private final AtomicLong scanAggregationFromRawDataCost = new AtomicLong(0);
+  private final AtomicLong scanAggregationFromStatisticsCost = new AtomicLong(0);
+  private final AtomicLong aggregationOperatorFromRawDataCost = new AtomicLong(0);
   private long unclosedSeqFileNum = 0;
   private long unclosedUnseqFileNum = 0;
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
+  private boolean highestPriority = false;
+
+  // accessed value columns on each referenced AlignedTVList.
+  private Map<TVList, Set<Integer>> alignedTVListColumnAccessMap = new ConcurrentHashMap<>();
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      boolean debug) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo);
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, debug);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -167,9 +187,10 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Filter timeFilter) {
+      Filter timeFilter,
+      boolean debug) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter, debug);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -181,7 +202,8 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
+      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      boolean debug) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
             id,
@@ -189,18 +211,61 @@ public class FragmentInstanceContext extends QueryContext {
             sessionInfo,
             dataRegion,
             globalTimePredicate,
-            dataNodeQueryContextMap);
+            dataNodeQueryContextMap,
+            debug);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
-    return new FragmentInstanceContext(queryId, null, null, null);
+    return new FragmentInstanceContext(queryId, null, null, null, false);
   }
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  /**
+   * Record columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held. Even though the HashSet inside
+   * alignedTVListColumnAccessMap is not thread-safe, the calling pattern guarantees thread safety
+   * without requiring additional synchronization.
+   *
+   * @param tvList the TVList being accessed
+   * @param columnIndexList list of column indices being accessed
+   */
+  public void putAccessedColumns(TVList tvList, List<Integer> columnIndexList) {
+    Set<Integer> accessedColumns =
+        alignedTVListColumnAccessMap.computeIfAbsent(tvList, ignored -> new HashSet<>());
+    columnIndexList.stream()
+        .filter(Objects::nonNull)
+        .forEach(
+            index -> {
+              if (index >= 0) {
+                accessedColumns.add(index);
+              }
+            });
+  }
+
+  /** Remove column-access metadata for an unpublished TVList when clone preparation fails. */
+  public void removeAccessedColumns(TVList tvList) {
+    alignedTVListColumnAccessMap.remove(tvList);
+  }
+
+  /**
+   * Get columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring that no other thread can
+   * change accessed columns for the same TVList concurrently.
+   *
+   * @param tvList the TVList being accessed
+   * @return set of column indices being accessed
+   */
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    Set<Integer> accessedColumns = alignedTVListColumnAccessMap.get(tvList);
+    return accessedColumns == null
+        ? Collections.emptySet()
+        : Collections.unmodifiableSet(accessedColumns);
   }
 
   @TestOnly
@@ -208,7 +273,7 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
-            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault(), ""));
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault(), ""), false);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -224,7 +289,8 @@ public class FragmentInstanceContext extends QueryContext {
             id,
             stateMachine,
             new SessionInfo(1, "test", ZoneId.systemDefault(), ""),
-            memoryReservationManager);
+            memoryReservationManager,
+            false);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -236,7 +302,9 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
+      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      boolean debug) {
+    super(debug);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -251,7 +319,11 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      boolean debug) {
+    super(debug);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -266,7 +338,9 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
-      MemoryReservationManager memoryReservationManager) {
+      MemoryReservationManager memoryReservationManager,
+      boolean debug) {
+    super(debug);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -281,7 +355,9 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Filter globalTimeFilter) {
+      Filter globalTimeFilter,
+      boolean debug) {
+    super(debug);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -303,7 +379,9 @@ public class FragmentInstanceContext extends QueryContext {
       long queryId,
       MemoryReservationManager memoryReservationManager,
       Filter timeFilter,
-      DataRegion dataRegion) {
+      DataRegion dataRegion,
+      boolean debug) {
+    super(debug);
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
@@ -322,6 +400,60 @@ public class FragmentInstanceContext extends QueryContext {
 
     // always update last execution start time
     lastExecutionStartTime.set(now);
+  }
+
+  @Override
+  public List<Modification> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement)
+      throws IllegalPathException {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID, measurement);
+    }
+    PartialPath path = new PartialPath(deviceID, measurement);
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.getPath().overlapWith(path),
+            mods -> getPathModifications(mods, path))) {
+      return modificationLoader.getPathModifications();
+    }
+  }
+
+  @Override
+  public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, path);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.getPath().overlapWith(path),
+            mods -> getPathModifications(mods, path))) {
+      return modificationLoader.getPathModifications();
+    } catch (IllegalPathException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private QueryModificationLoader getQueryModificationLoader(
+      TsFileResource tsFileResource,
+      Predicate<Modification> fallbackModificationMatcher,
+      QueryModificationLoader.ModsTreeMatcher modsTreeMatcher) {
+    return new QueryModificationLoader(
+        tsFileResource,
+        memoryReservationManager,
+        CONFIG.getModsCacheSizeLimitPerFI(),
+        MODS_MEMORY_ESTIMATE_READ_INTERVAL,
+        fileModCache,
+        cachedModEntriesSize,
+        fallbackModificationMatcher,
+        modsTreeMatcher);
   }
 
   @Override
@@ -869,12 +1001,12 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
-      long tvListRamSize = tvList.calculateRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           if (tvList.getReservedMemoryBytes() != tvListRamSize) {
             LOGGER.warn(
                 "Release TVList owned by query: allocate size {}, release size {}",
@@ -898,9 +1030,22 @@ public class FragmentInstanceContext extends QueryContext {
                 memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            queryContext
-                .getMemoryReservationContext()
-                .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            try {
+              queryContext
+                  .getMemoryReservationContext()
+                  .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            } catch (MemoryNotEnoughException ex) {
+              LOGGER.warn(
+                  "MemoryNotEnoughException when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId());
+            } catch (RuntimeException ex) {
+              LOGGER.warn(
+                  "Unexpected Exception when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId(),
+                  ex);
+            }
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
@@ -939,6 +1084,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
+    alignedTVListColumnAccessMap = null;
 
     fileModCache = null;
     nonExistentModFiles = null;
@@ -954,6 +1100,8 @@ public class FragmentInstanceContext extends QueryContext {
         .recordTaskQueueTime(READY_QUEUED_TIME, readyQueueTime.get());
 
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
+
+    recordAggregationCostToMetric();
 
     QueryResourceMetricSet.getInstance()
         .recordInitQueryResourceRetryCount(getInitQueryDataSourceRetryCount());
@@ -1100,6 +1248,49 @@ public class FragmentInstanceContext extends QueryContext {
     blockQueueTime.addAndGet(time);
   }
 
+  public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
+    addCost(scanAggregationFromRawDataCost, costTimeInNanos);
+  }
+
+  public void recordScanAggregationFromStatisticsCost(long costTimeInNanos) {
+    addCost(scanAggregationFromStatisticsCost, costTimeInNanos);
+  }
+
+  public void recordAggregationOperatorFromRawDataCost(long costTimeInNanos) {
+    addCost(aggregationOperatorFromRawDataCost, costTimeInNanos);
+  }
+
+  private void addCost(AtomicLong cost, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      cost.addAndGet(costTimeInNanos);
+    }
+  }
+
+  long drainScanAggregationFromRawDataCost() {
+    return scanAggregationFromRawDataCost.getAndSet(0);
+  }
+
+  long drainScanAggregationFromStatisticsCost() {
+    return scanAggregationFromStatisticsCost.getAndSet(0);
+  }
+
+  long drainAggregationOperatorFromRawDataCost() {
+    return aggregationOperatorFromRawDataCost.getAndSet(0);
+  }
+
+  void recordAggregationCostToMetric() {
+    recordAggregationCost(AGGREGATION_FROM_RAW_DATA, drainScanAggregationFromRawDataCost());
+    recordAggregationCost(AGGREGATION_FROM_STATISTICS, drainScanAggregationFromStatisticsCost());
+    recordAggregationCost(
+        AGGREGATION_OPERATOR_FROM_RAW_DATA, drainAggregationOperatorFromRawDataCost());
+  }
+
+  private void recordAggregationCost(String stage, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      QueryExecutionMetricSet.getInstance().recordExecutionCost(stage, costTimeInNanos);
+    }
+  }
+
   public long getReadyQueueTime() {
     return readyQueueTime.get();
   }
@@ -1126,6 +1317,21 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean ignoreNotExistsDevice() {
     return ignoreNotExistsDevice;
+  }
+
+  /**
+   * Same flag as {@link
+   * org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis#needSetHighestPriority()}.
+   */
+  public boolean isHighestPriority() {
+    return highestPriority;
+  }
+
+  public void setHighestPriority(boolean highestPriority) {
+    this.highestPriority = highestPriority;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.setHighestPriority(highestPriority);
+    }
   }
 
   public boolean isSingleSourcePath() {

@@ -38,6 +38,7 @@ import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -113,10 +114,23 @@ public class NonAlignedChunkData implements ChunkData {
 
   @Override
   public void writeToFileWriter(final TsFileIOWriter writer) throws IOException {
+    ensureDataReadyForWriting();
     if (chunk != null) {
       writer.writeChunk(chunk);
     } else {
       chunkWriter.writeToFileWriter(writer);
+    }
+  }
+
+  private void ensureDataReadyForWriting() throws IOException {
+    if (chunk != null || chunkWriter != null) {
+      return;
+    }
+
+    try {
+      deserializeTsFileData(new ByteArrayInputStream(byteStream.getBuf(), 0, byteStream.size()));
+    } catch (final PageException e) {
+      throw new IOException(e);
     }
   }
 

@@ -22,10 +22,10 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALReadUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataInputStream;
@@ -180,7 +180,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     int size = 0;
     size += Integer.BYTES;
     for (Map.Entry<String, IWritableMemChunk> entry : memChunkMap.entrySet()) {
-      size += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+      size += WALWriteUtils.sizeToWrite(entry.getKey());
       size += entry.getValue().serializedSize();
     }
     return size;
@@ -200,7 +200,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
     int memChunkMapSize = stream.readInt();
     for (int i = 0; i < memChunkMapSize; ++i) {
-      String measurement = ReadWriteIOUtils.readString(stream);
+      String measurement = WALReadUtils.readString(stream);
       IWritableMemChunk memChunk = WritableMemChunk.deserialize(stream);
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }
@@ -212,7 +212,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
     int memChunkMapSize = stream.readInt();
     for (int i = 0; i < memChunkMapSize; ++i) {
-      String measurement = ReadWriteIOUtils.readString(stream);
+      String measurement = WALReadUtils.readString(stream);
       IWritableMemChunk memChunk = WritableMemChunk.deserializeSingleTVListMemChunks(stream);
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }

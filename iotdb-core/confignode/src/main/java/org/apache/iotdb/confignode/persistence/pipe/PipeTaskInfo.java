@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
@@ -212,6 +213,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
+    if (PipeStatus.PRE_DELETE.equals(getPipeStatus(alterPipeRequest.getPipeName()))) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter pipe %s, the pipe is being dropped", alterPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
 
     final PipeStaticMeta pipeStaticMetaFromCoordinator =
         getPipeMetaByPipeName(alterPipeRequest.getPipeName()).getStaticMeta();
@@ -297,6 +305,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format("Failed to start pipe %s, the pipe is being dropped", pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
   }
 
   public void checkBeforeStopPipe(final String pipeName) throws PipeException {
@@ -320,6 +334,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format("Failed to stop pipe %s, the pipe is being dropped", pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -348,6 +368,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeBeingDropped(final String pipeName) {
+    acquireReadLock();
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+      return pipeMeta != null
+          && PipeStatus.PRE_DELETE.equals(pipeMeta.getRuntimeMeta().getStatus().get());
     } finally {
       releaseReadLock();
     }
@@ -517,6 +548,25 @@ public class PipeTaskInfo implements SnapshotProcessor {
           .getRuntimeMeta()
           .getStatus()
           .set(plan.getPipeStatus());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public TSStatus setPipeStatusWithStoppedByRuntimeException(
+      final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 plan) {
+    acquireWriteLock();
+    try {
+      pipeMetaKeeper
+          .getPipeMeta(plan.getPipeName())
+          .getRuntimeMeta()
+          .getStatus()
+          .set(plan.getPipeStatus());
+      pipeMetaKeeper
+          .getPipeMeta(plan.getPipeName())
+          .getRuntimeMeta()
+          .setIsStoppedByRuntimeException(plan.isStoppedByRuntimeException());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
@@ -702,24 +752,42 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(final String pipeName) {
     acquireWriteLock();
     try {
-      clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(pipeName);
+      clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+          pipeName, System.currentTimeMillis());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(
+      final String pipeName, final long exceptionsClearTime) {
+    acquireWriteLock();
+    try {
+      clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+          pipeName, exceptionsClearTime);
     } finally {
       releaseWriteLock();
     }
   }
 
   private void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
-      final String pipeName) {
-    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      final String pipeName, final long exceptionsClearTime) {
+    clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+        pipeMetaKeeper.getPipeMeta(pipeName), exceptionsClearTime);
+  }
+
+  private void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+      final PipeMeta pipeMeta, final long exceptionsClearTime) {
+    if (pipeMeta == null) {
       return;
     }
 
-    final PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
 
     // To avoid unnecessary retries, we set the isStoppedByRuntimeException flag to false
     runtimeMeta.setIsStoppedByRuntimeException(false);
 
-    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
+    runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
 
     final Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
@@ -798,6 +866,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
                   final PipeRuntimeMeta runtimeMeta =
                       pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
 
+                  if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
+                    return;
+                  }
+
+                  // Keep user-stopped pipes out of the auto-restart flow. Otherwise, a failed
+                  // STOPPED meta sync can turn a manually stopped pipe into a runtime-stopped one
+                  // and the next PipeMetaSyncer round will restart it automatically.
+                  if (PipeStatus.STOPPED.equals(runtimeMeta.getStatus().get())
+                      && !runtimeMeta.getIsStoppedByRuntimeException()) {
+                    return;
+                  }
+
                   // Mark the status of the pipe with exception as stopped
                   runtimeMeta.getStatus().set(PipeStatus.STOPPED);
                   runtimeMeta.setIsStoppedByRuntimeException(true);
@@ -835,14 +915,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
    */
   private boolean autoRestartInternal() {
     final AtomicBoolean needRestart = new AtomicBoolean(false);
+    final long exceptionsClearTime = System.currentTimeMillis();
     final List<String> pipeToRestart = new LinkedList<>();
 
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              if (pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException()) {
-                pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              if (!PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())
+                  && runtimeMeta.getIsStoppedByRuntimeException()) {
+                runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
+                runtimeMeta.getStatus().set(PipeStatus.RUNNING);
 
                 needRestart.set(true);
                 pipeToRestart.add(pipeMeta.getStaticMeta().getPipeName());
@@ -873,9 +957,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              if (pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
-                clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(
-                    pipeMeta.getStaticMeta().getPipeName());
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              if (runtimeMeta.getStatus().get().equals(PipeStatus.RUNNING)
+                  && runtimeMeta.getIsStoppedByRuntimeException()) {
+                clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+                    pipeMeta, runtimeMeta.getExceptionsClearTime());
               }
             });
   }

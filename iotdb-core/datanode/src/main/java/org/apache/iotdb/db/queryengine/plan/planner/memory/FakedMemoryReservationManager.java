@@ -30,7 +30,13 @@ public class FakedMemoryReservationManager implements MemoryReservationManager {
   public void reserveMemoryImmediately() {}
 
   @Override
+  public void reserveMemoryImmediately(final long size) {}
+
+  @Override
   public void releaseMemoryCumulatively(long size) {}
+
+  @Override
+  public void releaseMemoryImmediately(long size) {}
 
   @Override
   public void releaseAllReservedMemory() {}
@@ -43,4 +49,7 @@ public class FakedMemoryReservationManager implements MemoryReservationManager {
   @Override
   public void reserveMemoryVirtually(
       final long bytesToBeReserved, final long bytesAlreadyReserved) {}
+
+  @Override
+  public void setHighestPriority(boolean isHighestPriority) {}
 }

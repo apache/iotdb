@@ -61,8 +61,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -138,12 +140,6 @@ public class IoTDBConfig {
 
   /** ssl key Store password. */
   private String keyStorePwd = "";
-
-  /** Rpc Selector thread num */
-  private int rpcSelectorThreadCount = 1;
-
-  /** Min concurrent client number */
-  private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 1000;
@@ -329,6 +325,14 @@ public class IoTDBConfig {
   private String[] loadTsFileDirs = {
     tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
   };
+
+  private String[] loadTsFileAllowedDirs = new String[0];
+
+  private CanonicalPaths loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+
+  private CanonicalPaths loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
+
+  private boolean loadTsFileSourcePathCheckEnabled = false;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -868,7 +872,7 @@ public class IoTDBConfig {
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
   /** Unit: byte */
-  private int thriftMaxFrameSize = 536870912;
+  private int thriftMaxFrameSize = getDefaultThriftMaxFrameSize();
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
@@ -999,6 +1003,8 @@ public class IoTDBConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
+  private int maxIdleClientNumForEachNode = DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE;
+
   /**
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
@@ -1034,9 +1040,6 @@ public class IoTDBConfig {
 
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
-
-  /** ThreadPool size for write operation in coordinator */
-  private int coordinatorWriteExecutorSize = 50;
 
   private int[] schemaMemoryProportion = new int[] {5, 4, 1};
 
@@ -1155,6 +1158,8 @@ public class IoTDBConfig {
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
+  private int loadTsFileTabletConversionThreadCount = 5;
+
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
@@ -1250,6 +1255,11 @@ public class IoTDBConfig {
   private boolean cacheLastValuesForLoad = true;
 
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
+
+  /* Need use these parameters when repair data partition table */
+  private int partitionTableRecoverWorkerNum = 10;
+  // Rate limit set to 10 MB/s
+  private int partitionTableRecoverMaxReadMBsPerSecond = 10;
 
   IoTDBConfig() {}
 
@@ -1401,6 +1411,10 @@ public class IoTDBConfig {
     for (int i = 0; i < loadActiveListeningDirs.length; i++) {
       loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
     }
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      loadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
+    loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
     loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
     loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
@@ -1596,6 +1610,36 @@ public class IoTDBConfig {
     return this.loadTsFileDirs;
   }
 
+  public String[] getLoadTsFileAllowedDirs() {
+    return this.loadTsFileAllowedDirs.length == 0
+        ? getLoadTsFileDirs()
+        : this.loadTsFileAllowedDirs;
+  }
+
+  public Path[] getLoadTsFileAllowedDirCanonicalPaths() throws FileNotFoundException {
+    return (this.loadTsFileAllowedDirs.length == 0
+            ? this.loadTsFileDirCanonicalPaths
+            : this.loadTsFileAllowedDirCanonicalPaths)
+        .getPaths();
+  }
+
+  public boolean isLoadTsFileSourcePathCheckEnabled() {
+    return loadTsFileSourcePathCheckEnabled;
+  }
+
+  public void setLoadTsFileSourcePathCheckEnabled(boolean loadTsFileSourcePathCheckEnabled) {
+    this.loadTsFileSourcePathCheckEnabled = loadTsFileSourcePathCheckEnabled;
+  }
+
+  public void setLoadTsFileAllowedDirs(String[] loadTsFileAllowedDirs) {
+    final String[] newLoadTsFileAllowedDirs = new String[loadTsFileAllowedDirs.length];
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      newLoadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
+    this.loadTsFileAllowedDirs = newLoadTsFileAllowedDirs;
+    this.loadTsFileAllowedDirCanonicalPaths = canonicalPaths(newLoadTsFileAllowedDirs);
+  }
+
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
     if (tierDataDirs.length < 1) {
       logger.warn("No data directory is set. loadTsFileDirs is kept as the default value.");
@@ -1613,6 +1657,45 @@ public class IoTDBConfig {
     // or the newLoadTsFileDirs will be used in the middle of the process
     // and cause the undefined behavior.
     this.loadTsFileDirs = newLoadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(newLoadTsFileDirs);
+  }
+
+  private static CanonicalPaths canonicalPaths(final String[] dirs) {
+    final Path[] paths = new Path[dirs.length];
+    for (int i = 0; i < dirs.length; i++) {
+      try {
+        paths[i] = new File(dirs[i]).getCanonicalFile().toPath();
+      } catch (final IOException e) {
+        return new CanonicalPaths(
+            String.format(
+                "Failed to resolve canonical path for Load TsFile allowed directory %s: %s",
+                dirs[i], e.getMessage()));
+      }
+    }
+    return new CanonicalPaths(paths);
+  }
+
+  private static class CanonicalPaths {
+
+    private final Path[] paths;
+    private final String errorMessage;
+
+    private CanonicalPaths(final Path[] paths) {
+      this.paths = paths;
+      this.errorMessage = null;
+    }
+
+    private CanonicalPaths(final String errorMessage) {
+      this.paths = new Path[0];
+      this.errorMessage = errorMessage;
+    }
+
+    private Path[] getPaths() throws FileNotFoundException {
+      if (errorMessage != null) {
+        throw new FileNotFoundException(errorMessage);
+      }
+      return paths;
+    }
   }
 
   public String getSchemaDir() {
@@ -1870,22 +1953,6 @@ public class IoTDBConfig {
 
   public void setUnSeqTsFileSize(long unSeqTsFileSize) {
     this.unSeqTsFileSize = unSeqTsFileSize;
-  }
-
-  public int getRpcSelectorThreadCount() {
-    return rpcSelectorThreadCount;
-  }
-
-  public void setRpcSelectorThreadCount(int rpcSelectorThreadCount) {
-    this.rpcSelectorThreadCount = rpcSelectorThreadCount;
-  }
-
-  public int getRpcMinConcurrentClientNum() {
-    return rpcMinConcurrentClientNum;
-  }
-
-  public void setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-    this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -2784,8 +2851,14 @@ public class IoTDBConfig {
   }
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.thriftMaxFrameSize =
+        thriftMaxFrameSize <= 0 ? getDefaultThriftMaxFrameSize() : thriftMaxFrameSize;
     BaseRpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
+  }
+
+  private static int getDefaultThriftMaxFrameSize() {
+    return Math.min(
+        64 * 1024 * 1024, (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
   }
 
   public int getThriftDefaultBufferSize() {
@@ -3332,6 +3405,14 @@ public class IoTDBConfig {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
+  public int getMaxIdleClientNumForEachNode() {
+    return maxIdleClientNumForEachNode;
+  }
+
+  public void setMaxIdleClientNumForEachNode(int maxIdleClientNumForEachNode) {
+    this.maxIdleClientNumForEachNode = maxIdleClientNumForEachNode;
+  }
+
   public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
@@ -3476,14 +3557,6 @@ public class IoTDBConfig {
 
   public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
     this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
-  }
-
-  public int getCoordinatorWriteExecutorSize() {
-    return coordinatorWriteExecutorSize;
-  }
-
-  public void setCoordinatorWriteExecutorSize(int coordinatorWriteExecutorSize) {
-    this.coordinatorWriteExecutorSize = coordinatorWriteExecutorSize;
   }
 
   public TEndPoint getAddressAndPort() {
@@ -4075,6 +4148,14 @@ public class IoTDBConfig {
         loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
+  public int getLoadTsFileTabletConversionThreadCount() {
+    return loadTsFileTabletConversionThreadCount;
+  }
+
+  public void setLoadTsFileTabletConversionThreadCount(int loadTsFileTabletConversionThreadCount) {
+    this.loadTsFileTabletConversionThreadCount = loadTsFileTabletConversionThreadCount;
+  }
+
   public long getLoadChunkMetadataMemorySizeInBytes() {
     return loadChunkMetadataMemorySizeInBytes;
   }
@@ -4193,7 +4274,17 @@ public class IoTDBConfig {
   }
 
   public String getLoadActiveListeningPipeDir() {
-    return loadActiveListeningPipeDir;
+    return loadActiveListeningPipeDir == null || Objects.equals(loadActiveListeningPipeDir, "")
+        ? extDir
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.PIPE_FOLDER_NAME
+        : loadActiveListeningPipeDir;
+  }
+
+  public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
+    this.loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
   }
 
   public String[] getLoadActiveListeningDirs() {
@@ -4455,5 +4546,22 @@ public class IoTDBConfig {
 
   public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
     this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
+  }
+
+  public int getPartitionTableRecoverWorkerNum() {
+    return partitionTableRecoverWorkerNum;
+  }
+
+  public void setPartitionTableRecoverWorkerNum(int partitionTableRecoverWorkerNum) {
+    this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
+  }
+
+  public int getPartitionTableRecoverMaxReadMBsPerSecond() {
+    return partitionTableRecoverMaxReadMBsPerSecond;
+  }
+
+  public void setPartitionTableRecoverMaxReadMBsPerSecond(
+      int partitionTableRecoverMaxReadMBsPerSecond) {
+    this.partitionTableRecoverMaxReadMBsPerSecond = partitionTableRecoverMaxReadMBsPerSecond;
   }
 }

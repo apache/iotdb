@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.pipe.source;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
@@ -36,6 +36,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -44,6 +46,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBNonDataRegionSource.class);
 
   protected IoTDBPipePatternOperations pipePattern;
 
@@ -58,6 +62,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   // If the extractor is closed, it should not be started again. This is to avoid the case that
   // the extractor is closed and then be reused by processor.
   protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
+  private final AtomicBoolean hasWarnedUnexpectedHybridProgressIndex = new AtomicBoolean(false);
 
   protected abstract AbstractPipeListeningQueue getListeningQueue();
 
@@ -85,14 +90,15 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     }
 
     final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    warnIfUnexpectedHybridProgressIndex(progressIndex);
+    final MetaProgressIndex metaProgressIndex = extractMetaProgressIndex(progressIndex);
     final long nextIndex =
-        progressIndex instanceof MinimumProgressIndex
+        Objects.isNull(metaProgressIndex)
                 // If the index is invalid, the queue is seen as cleared before and thus
                 // needs snapshot re-transferring
-                || !getListeningQueue()
-                    .isGivenNextIndexValid(((MetaProgressIndex) progressIndex).getIndex() + 1)
+                || !getListeningQueue().isGivenNextIndexValid(metaProgressIndex.getIndex() + 1)
             ? getNextIndexAfterSnapshot()
-            : ((MetaProgressIndex) progressIndex).getIndex() + 1;
+            : metaProgressIndex.getIndex() + 1;
     iterator = getListeningQueue().newIterator(nextIndex);
     super.start();
   }
@@ -222,10 +228,33 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public long getUnTransferredEventCount() {
-    return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
-        ? getListeningQueue().getTailIndex()
-            - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
-            - 1
+    if (Objects.isNull(pipeTaskMeta)) {
+      return 0L;
+    }
+    final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    warnIfUnexpectedHybridProgressIndex(progressIndex);
+    final MetaProgressIndex metaProgressIndex = extractMetaProgressIndex(progressIndex);
+    return Objects.nonNull(metaProgressIndex)
+        ? getListeningQueue().getTailIndex() - metaProgressIndex.getIndex() - 1
         : getListeningQueue().getSize() + historicalEventsCount;
+  }
+
+  private static MetaProgressIndex extractMetaProgressIndex(final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(MetaProgressIndex.class).orElse(null);
+  }
+
+  private void warnIfUnexpectedHybridProgressIndex(final ProgressIndex progressIndex) {
+    if (Objects.nonNull(progressIndex)
+        && progressIndex.getProgressIndexByType(HybridProgressIndex.class).isPresent()
+        && hasWarnedUnexpectedHybridProgressIndex.compareAndSet(false, true)) {
+      LOGGER.warn(
+          "Pipe {}@{} encountered an unexpected HybridProgressIndex in {}. Progress index: {}.",
+          pipeName,
+          creationTime,
+          getClass().getSimpleName(),
+          progressIndex);
+    }
   }
 }

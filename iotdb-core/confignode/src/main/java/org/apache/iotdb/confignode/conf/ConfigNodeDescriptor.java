@@ -56,6 +56,8 @@ public class ConfigNodeDescriptor {
 
   private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
+  private final ConfigNodeMemoryConfig memoryConfig = new ConfigNodeMemoryConfig();
+
   static {
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
@@ -77,6 +79,10 @@ public class ConfigNodeDescriptor {
 
   public ConfigNodeConfig getConf() {
     return conf;
+  }
+
+  public ConfigNodeMemoryConfig getMemoryConfig() {
+    return memoryConfig;
   }
 
   /**
@@ -143,10 +149,13 @@ public class ConfigNodeDescriptor {
       LOGGER.warn(
           "Couldn't load the configuration {} from any of the known sources.",
           CommonConfig.SYSTEM_CONFIG_NAME);
+      memoryConfig.init(trimProperties);
     }
   }
 
   private void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
+    memoryConfig.init(properties);
+
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
@@ -298,6 +307,24 @@ public class ConfigNodeDescriptor {
                     "cn_max_client_count_for_each_node_in_client_manager",
                     String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
+
+    int cnMaxIdleClientNumForEachNode =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_max_idle_client_count_for_each_node_in_client_manager",
+                String.valueOf(conf.getMaxIdleClientNumForEachNode())));
+    if (cnMaxIdleClientNumForEachNode >= 0) {
+      conf.setMaxIdleClientNumForEachNode(cnMaxIdleClientNumForEachNode);
+    }
+
+    int cnSelectorNumOfClientManager =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_selector_thread_nums_of_client_manager",
+                String.valueOf(conf.getSelectorNumOfClientManager())));
+    if (cnSelectorNumOfClientManager > 0) {
+      conf.setSelectorNumOfClientManager(cnSelectorNumOfClientManager);
+    }
 
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()).trim());
 

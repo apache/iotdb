@@ -69,8 +69,11 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;
-    copied.topicNameToSubscribedConsumerIdSet =
-        new ConcurrentHashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+    topicNameToSubscribedConsumerIdSet.forEach(
+        (topicName, subscribedConsumerIds) ->
+            copied.topicNameToSubscribedConsumerIdSet.put(
+                topicName, new HashSet<>(subscribedConsumerIds)));
     copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
@@ -134,6 +137,10 @@ public class ConsumerGroupMeta {
 
   public boolean containsConsumer(final String consumerId) {
     return consumerIdToConsumerMeta.containsKey(consumerId);
+  }
+
+  public ConsumerMeta getConsumerMeta(final String consumerId) {
+    return consumerIdToConsumerMeta.get(consumerId);
   }
 
   public boolean isEmpty() {
