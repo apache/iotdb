@@ -779,6 +779,16 @@ public class PartitionCache {
     }
   }
 
+  /** invalidate the replicaSetCache of one region */
+  public void invalidReplicaSetCache(final TConsensusGroupId regionId) {
+    regionReplicaSetLock.writeLock().lock();
+    try {
+      groupIdToReplicaSetMap.remove(regionId);
+    } finally {
+      regionReplicaSetLock.writeLock().unlock();
+    }
+  }
+
   // endregion
 
   // region schema partition cache

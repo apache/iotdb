@@ -23,12 +23,14 @@ import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
@@ -85,6 +87,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -158,8 +161,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsF
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
@@ -180,6 +185,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.io.BaseEncoding;
 import org.apache.thrift.TException;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -332,6 +338,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** manage seqFileList and unSeqFileList. */
   private final TsFileManager tsFileManager;
+
+  /** LOAD state is isolated by DataRegion and initialized only when this Region handles LOAD. */
+  private volatile LoadTsFileManager loadTsFileManager;
 
   /** manage tsFileResource degrade. */
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
@@ -554,6 +563,66 @@ public class DataRegion implements IDataRegionForQuery {
   @Override
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  public LoadTsFileManager getLoadTsFileManager() {
+    LoadTsFileManager manager = loadTsFileManager;
+    if (manager == null) {
+      synchronized (this) {
+        manager = loadTsFileManager;
+        if (manager == null) {
+          manager = new LoadTsFileManager(this);
+          loadTsFileManager = manager;
+        }
+      }
+    }
+    if (deleted) {
+      // The region went away: it takes no LOAD work, and the manager is stopped for good. A manager
+      // created in this window stops itself here, the one stopLoadTsFileManager saw was stopped by
+      // it.
+      manager.stop();
+      throw new IllegalStateException(
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_IT_TAKES_NO_LOAD_WORK_6E05108F,
+              databaseName + "-" + dataRegionIdString));
+    }
+    return manager;
+  }
+
+  public Optional<LoadTsFileManager> getLoadTsFileManagerIfPresent() {
+    return Optional.ofNullable(loadTsFileManager);
+  }
+
+  /** Stops the LOAD manager of this region for good. The manager stays published. */
+  public void stopLoadTsFileManager() {
+    final LoadTsFileManager manager = loadTsFileManager;
+    if (manager != null) {
+      manager.stop();
+    }
+  }
+
+  public List<LoadTsFileConsensusNode.PieceRef> writeLoadTsFilePiece(
+      final LoadTsFileConsensusNode node) throws IOException, PageException {
+    return getLoadTsFileManager().writePiece(node);
+  }
+
+  public boolean writeLoadTsFilePrepare(
+      final LoadTsFileConsensusNode node,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    return getLoadTsFileManager().prepare(node, timePartitionProgressIndexMap);
+  }
+
+  public boolean writeLoadTsFileCommit(
+      final LoadTsFileConsensusNode node,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    return getLoadTsFileManager().loadAll(node, timePartitionProgressIndexMap);
+  }
+
+  public void writeLoadTsFileAbort(final LoadTsFileConsensusNode node) throws IOException {
+    getLoadTsFileManager().deleteAll(node);
   }
 
   public boolean isTableModel() {
@@ -4776,9 +4845,13 @@ public class DataRegion implements IDataRegionForQuery {
               return null;
             });
       } else {
+        // The staged bytes have to stay for a replica that has not applied this command yet, so
+        // they cannot be moved. A sealed TsFile is never written again, so a hard link gives this
+        // region its own path to the very same bytes instead of a second copy of them; the resource
+        // file below is updated by the load and is still copied.
         RetryUtils.retryOnException(
             () -> {
-              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+              LoadUtil.transferFile(tsFileToLoad, targetFile, true);
               return null;
             });
       }
@@ -5527,6 +5600,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      stopLoadTsFileManager();
       shutdownUpgradeModFileThreadPool();
       releaseDirectBufferMemory();
       MetricService.getInstance().removeMetricSet(metrics);
