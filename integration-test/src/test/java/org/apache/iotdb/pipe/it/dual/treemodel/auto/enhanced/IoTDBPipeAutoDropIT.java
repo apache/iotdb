@@ -22,10 +22,10 @@ package org.apache.iotdb.pipe.it.dual.treemodel.auto.enhanced;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -41,9 +41,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
@@ -115,31 +111,23 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-        ResultSet result = statement.executeQuery("show pipes");
-        await()
-            .pollInSameThread()
-            .pollDelay(1L, TimeUnit.SECONDS)
-            .pollInterval(1L, TimeUnit.SECONDS)
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () -> {
-                  try {
-                    int pipeNum = 0;
-                    while (result.next()) {
-                      if (!result
-                          .getString(ColumnHeaderConstant.ID)
-                          .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-                        pipeNum++;
-                      }
-                    }
-                    Assert.assertEquals(0, pipeNum);
-                  } catch (Exception e) {
-                    Assert.fail();
-                  }
-                });
-      }
+      // Fetch a fresh ConfigNode snapshot on every poll while pipes are being removed.
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                showPipeResult.removeIf(
+                    i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
+                Assert.assertTrue(showPipeResult.isEmpty());
+              });
     }
   }
 
@@ -203,9 +191,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> pipeInfoList =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> pipeInfoList = response.getPipeInfoList();
                 Assert.assertFalse(
                     pipeInfoList.stream()
                         .anyMatch(info -> info.getId().equals("query_pipe_without_data_region")));
@@ -309,9 +299,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> showPipeResult =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
                 showPipeResult.removeIf(
                     i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
                 Assert.assertTrue(
@@ -371,31 +363,22 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 
-      try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-        ResultSet result = statement.executeQuery("show pipes");
-        await()
-            .pollInSameThread()
-            .pollDelay(1L, TimeUnit.SECONDS)
-            .pollInterval(1L, TimeUnit.SECONDS)
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () -> {
-                  try {
-                    int pipeNum = 0;
-                    while (result.next()) {
-                      if (!result
-                          .getString(ColumnHeaderConstant.ID)
-                          .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-                        pipeNum++;
-                      }
-                    }
-                    Assert.assertEquals(0, pipeNum);
-                  } catch (Exception e) {
-                    Assert.fail();
-                  }
-                });
-      }
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                showPipeResult.removeIf(
+                    i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
+                Assert.assertTrue(showPipeResult.isEmpty());
+              });
     }
   }
 }
