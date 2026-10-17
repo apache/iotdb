@@ -34,6 +34,9 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   // indicate whether lastValue is null
   private boolean lastValueIsNull = true;
 
+  // DIFF must advance its state once per input, even when several masks/consumers request it.
+  private Column currentInputResult;
+
   public DiffColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
@@ -42,6 +45,42 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   @Override
   protected void checkType() {
     // do nothing
+  }
+
+  @Override
+  public void evaluate() {
+    initializeColumnCache(evaluateCurrentInput());
+  }
+
+  @Override
+  protected Column evaluateSelection(boolean[] selection) {
+    // DIFF depends on all preceding rows and their ignoreNull flags, even outside the mask.
+    return evaluateCurrentInput();
+  }
+
+  private Column evaluateCurrentInput() {
+    if (currentInputResult == null) {
+      leftTransformer.tryEvaluate();
+      Column leftColumn = leftTransformer.getColumn();
+      rightTransformer.tryEvaluate();
+      Column rightColumn = rightTransformer.getColumn();
+      int positionCount = leftColumn.getPositionCount();
+      ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+      doTransform(leftColumn, rightColumn, builder, positionCount);
+      currentInputResult = builder.build();
+    }
+    return currentInputResult;
+  }
+
+  @Override
+  protected void resetForNewInput() {
+    currentInputResult = null;
+  }
+
+  @Override
+  public void close() {
+    currentInputResult = null;
+    super.close();
   }
 
   @Override

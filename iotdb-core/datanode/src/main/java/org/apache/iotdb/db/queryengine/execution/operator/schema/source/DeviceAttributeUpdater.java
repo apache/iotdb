@@ -51,6 +51,7 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<ColumnTransformer> commonTransformerList;
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
+  private final ColumnTransformer[] projectCacheTransformers;
   private final TriConsumer<String[], Integer, Object[]> attributeUpdater;
   private final TsBlockBuilder filterTsBlockBuilder;
   private final List<Integer> attributePointers = new ArrayList<>();
@@ -75,6 +76,7 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        commonTransformerList,
         columnSchemaList,
         attributeProvider,
         database,
@@ -82,6 +84,8 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     this.commonTransformerList = commonTransformerList;
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformerList = projectOutputTransformerList;
+    this.projectCacheTransformers =
+        ColumnTransformer.collectTransformers(projectOutputTransformerList);
     this.attributeUpdater = attributeUpdater;
     this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
     this.attributeNames = attributeNames;
@@ -97,6 +101,9 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   protected void update() throws MetadataException {
     final TsBlock block = getFilterTsBlock();
 
+    for (ColumnTransformer transformer : projectCacheTransformers) {
+      transformer.clearCacheForNewInput();
+    }
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
 
@@ -145,9 +152,15 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     final List<Column> filterResultColumns =
         new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
 
-    // Get result of calculated common sub expressions
-    commonTransformerList.forEach(
-        columnTransformer -> filterResultColumns.add(columnTransformer.getColumn()));
+    if (!commonTransformerList.isEmpty()) {
+      boolean[] selection = new boolean[deviceSchemaBatch.size()];
+      for (int i = 0; i < selection.length; i++) {
+        selection[i] = !curFilterColumn.isNull(i) && curFilterColumn.getBoolean(i);
+      }
+      for (ColumnTransformer transformer : commonTransformerList) {
+        filterResultColumns.add(transformer.getColumnWithSelection(selection));
+      }
+    }
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
 
     final int rowCount =

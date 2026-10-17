@@ -112,7 +112,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
     while (iterator.hasNext()) {
       try {
         Record input = iterator.next();
-        if (selection[i++]) {
+        if (!selection[i++]) {
           builder.appendNull();
           continue;
         }

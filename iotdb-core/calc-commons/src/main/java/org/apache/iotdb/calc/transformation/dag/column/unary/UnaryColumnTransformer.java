@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public abstract class UnaryColumnTransformer extends ColumnTransformer {
   protected ColumnTransformer childColumnTransformer;
 
@@ -44,13 +46,11 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
-    childColumnTransformer.evaluateWithSelection(selection);
-    Column column = childColumnTransformer.getColumn();
+  protected Column evaluateSelection(boolean[] selection) {
+    Column column = childColumnTransformer.getColumnWithSelection(selection);
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(column.getPositionCount());
     doTransform(column, columnBuilder, selection);
-    initializeColumnCache(columnBuilder.build());
-    childColumnTransformer.clearCache();
+    return columnBuilder.build();
   }
 
   public ColumnTransformer getChildColumnTransformer() {
@@ -68,9 +68,8 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
       Column column, ColumnBuilder columnBuilder, boolean[] selection);
 
   @Override
-  public void clearCache() {
-    super.clearCache();
-    childColumnTransformer.clearCache();
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    action.accept(childColumnTransformer);
   }
 
   @Override
