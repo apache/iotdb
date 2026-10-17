@@ -56,6 +56,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
@@ -134,7 +135,9 @@ public class TemplatedAnalyze {
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if ("*".equals(expression.getOutputSymbol())) {
-        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+        // Template map iteration can change after serialization. Order columns before pagination.
+        for (Map.Entry<String, IMeasurementSchema> entry :
+            new TreeMap<>(template.getSchemaMap()).entrySet()) {
           if (paginationController.hasCurOffset()) {
             paginationController.consumeOffset();
           } else if (paginationController.hasCurLimit()) {
@@ -168,6 +171,7 @@ public class TemplatedAnalyze {
             // reserve memory for this expression
             context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
             outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
+            paginationController.consumeLimit();
           } else {
             break;
           }
@@ -182,6 +186,11 @@ public class TemplatedAnalyze {
     }
 
     analyzeSelect(queryStatement, analysis, outputExpressions, template);
+
+    if (outputExpressions.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return true;
+    }
 
     analyzeDeviceToWhere(analysis, queryStatement);
     if (analysis.getWhereExpression() != null

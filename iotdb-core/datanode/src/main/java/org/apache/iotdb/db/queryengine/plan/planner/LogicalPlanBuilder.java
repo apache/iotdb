@@ -118,7 +118,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -820,7 +819,7 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
-        new HashMap<>();
+        new LinkedHashMap<>();
     for (List<String> tagValues : tagValuesToGroupedTimeseriesOperands.keySet()) {
       LinkedHashMap<Expression, List<Expression>> groupedTimeseriesOperands =
           tagValuesToGroupedTimeseriesOperands.get(tagValues);

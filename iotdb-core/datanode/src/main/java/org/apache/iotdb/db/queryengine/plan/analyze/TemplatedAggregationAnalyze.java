@@ -45,6 +45,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
@@ -104,6 +105,11 @@ public class TemplatedAggregationAnalyze {
     if (!valid) {
       analysis.setDeviceTemplate(null);
       return false;
+    }
+
+    if (outputExpressions.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return true;
     }
 
     analyzeDeviceToWhere(analysis, queryStatement);
@@ -180,6 +186,13 @@ public class TemplatedAggregationAnalyze {
       if (selectExpression instanceof FunctionExpression
           && COUNT_TIME.equalsIgnoreCase(
               ((FunctionExpression) selectExpression).getFunctionName())) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          continue;
+        }
+        if (!paginationController.hasCurLimit()) {
+          break;
+        }
         FunctionExpression countTimeExpression = (FunctionExpression) selectExpression;
         // The parsed count_time(*) expression belongs to the statement and may be analyzed again
         // after a dispatch failure. Build a template-only expression instead of replacing its
@@ -203,6 +216,7 @@ public class TemplatedAggregationAnalyze {
         analysis
             .getExpressionTypes()
             .put(NodeRef.of(templatedCountTimeExpression), TSDataType.INT64);
+        paginationController.consumeLimit();
         continue;
       }
 
@@ -214,7 +228,9 @@ public class TemplatedAggregationAnalyze {
             && "*".equalsIgnoreCase(selectExpression.getExpressions().get(0).getOutputSymbol())) {
           subExpressions = new ArrayList<>();
           FunctionExpression functionExpression = (FunctionExpression) selectExpression;
-          for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+          // Use the same stable wildcard order as raw-data queries, before applying pagination.
+          for (Map.Entry<String, IMeasurementSchema> entry :
+              new TreeMap<>(template.getSchemaMap()).entrySet()) {
             FunctionExpression subFunctionExpression =
                 new FunctionExpression(
                     functionExpression.getFunctionName(),
@@ -241,6 +257,7 @@ public class TemplatedAggregationAnalyze {
           selectExpressions.add(expression);
           aggregationExpressions.add(expression);
           analyzeExpressionType(analysis, expression);
+          paginationController.consumeLimit();
         } else {
           break;
         }

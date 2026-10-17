@@ -38,7 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -253,7 +253,7 @@ public class GroupByTagNode extends MultiChildProcessNode {
     // Tag values to aggregation descriptors.
     int numOfEntries = ReadWriteIOUtils.readInt(byteBuffer);
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
-        new HashMap<>();
+        new LinkedHashMap<>();
     while (numOfEntries > 0) {
       List<String> tagValues = ReadWriteIOUtils.readStringList(byteBuffer);
       List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();

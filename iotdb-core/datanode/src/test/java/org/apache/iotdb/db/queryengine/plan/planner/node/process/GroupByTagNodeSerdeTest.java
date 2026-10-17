@@ -43,9 +43,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,9 +97,13 @@ public class GroupByTagNodeSerdeTest {
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))));
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
-        new HashMap<>();
+        new LinkedHashMap<>();
     tagValuesToAggregationDescriptors.put(
-        Arrays.asList("v1", "v2"), Arrays.asList(s1MaxTime, null, s1Avg));
+        Collections.singletonList("Beijing"), Arrays.asList(s1MaxTime, null, s1Avg));
+    tagValuesToAggregationDescriptors.put(
+        Collections.singletonList("Nanjing"), Arrays.asList(null, s1MaxTime, s1Avg));
+    tagValuesToAggregationDescriptors.put(
+        Collections.singletonList("Shanghai"), Arrays.asList(s1MaxTime, null, s1Avg));
     GroupByTagNode expectedNode =
         new GroupByTagNode(
             new PlanNodeId("TestGroupByTagNode"),
@@ -121,13 +125,21 @@ public class GroupByTagNodeSerdeTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
     expectedNode.serialize(byteBuffer);
     byteBuffer.flip();
-    Assert.assertEquals(expectedNode, PlanNodeDeserializeHelper.deserialize(byteBuffer));
+    GroupByTagNode actualNode = (GroupByTagNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+    Assert.assertEquals(expectedNode, actualNode);
+    Assert.assertEquals(
+        new ArrayList<>(expectedNode.getTagValuesToAggregationDescriptors().keySet()),
+        new ArrayList<>(actualNode.getTagValuesToAggregationDescriptors().keySet()));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(baos);
     expectedNode.serialize(dataOutputStream);
     byte[] byteArray = baos.toByteArray();
     ByteBuffer buffer = ByteBuffer.wrap(byteArray);
-    Assert.assertEquals(expectedNode, PlanNodeDeserializeHelper.deserialize(buffer));
+    actualNode = (GroupByTagNode) PlanNodeDeserializeHelper.deserialize(buffer);
+    Assert.assertEquals(expectedNode, actualNode);
+    Assert.assertEquals(
+        new ArrayList<>(expectedNode.getTagValuesToAggregationDescriptors().keySet()),
+        new ArrayList<>(actualNode.getTagValuesToAggregationDescriptors().keySet()));
   }
 }

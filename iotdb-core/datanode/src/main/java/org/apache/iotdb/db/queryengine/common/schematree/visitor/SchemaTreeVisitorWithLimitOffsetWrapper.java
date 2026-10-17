@@ -42,13 +42,6 @@ public class SchemaTreeVisitorWithLimitOffsetWrapper<R> extends SchemaTreeVisito
     this.limit = limit;
     this.offset = offset;
     hasLimit = limit > 0 || offset > 0;
-
-    if (hasLimit) {
-      while (curOffset < offset && visitor.hasNext()) {
-        visitor.next();
-        curOffset++;
-      }
-    }
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {
@@ -57,11 +50,12 @@ public class SchemaTreeVisitorWithLimitOffsetWrapper<R> extends SchemaTreeVisito
 
   @Override
   public boolean hasNext() {
-    if (hasLimit) {
-      return count < limit && visitor.hasNext();
-    } else {
-      return visitor.hasNext();
+    // Template metadata is set after construction, so defer traversal until iteration starts.
+    while (curOffset < offset && visitor.hasNext()) {
+      visitor.next();
+      curOffset++;
     }
+    return (limit == 0 || count < limit) && visitor.hasNext();
   }
 
   @Override
@@ -119,12 +113,6 @@ public class SchemaTreeVisitorWithLimitOffsetWrapper<R> extends SchemaTreeVisito
     visitor.reset();
     count = 0;
     curOffset = 0;
-    if (hasLimit) {
-      while (curOffset < offset && visitor.hasNext()) {
-        visitor.next();
-        curOffset++;
-      }
-    }
   }
 
   public int getNextOffset() {
