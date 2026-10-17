@@ -21,7 +21,7 @@
 # Apache Thrift 0.24 (bundled by this client) builds against OpenSSL 3.x.
 #
 # By default, a fixed OpenSSL source release is downloaded, checksum-verified,
-# built as shared libraries, and installed under ${CMAKE_BINARY_DIR}/_deps.
+# built as shared libraries, and installed under ${CMAKE_CURRENT_BINARY_DIR}/_deps.
 # Set IOTDB_OPENSSL_FROM_SOURCE=OFF to opt into a compatible system OpenSSL.
 #
 # Side effects:
@@ -41,6 +41,9 @@ set(OPENSSL_FALLBACK_SHA256
 # packages independent of the build host's OpenSSL installation.
 option(IOTDB_OPENSSL_FROM_SOURCE
         "Ignore any system OpenSSL and build OpenSSL ${OPENSSL_FALLBACK_VERSION} from source" ON)
+option(IOTDB_OPENSSL_STATIC "Build OpenSSL as static PIC libraries" OFF)
+set(OPENSSL_USE_STATIC_LIBS ${IOTDB_OPENSSL_STATIC})
+set(OPENSSL_MSVC_STATIC_RT ${IOTDB_STATIC_CRT})
 
 if(NOT IOTDB_OPENSSL_FROM_SOURCE)
     find_package(OpenSSL QUIET)
@@ -88,7 +91,24 @@ if(_ossl_download_required)
     endif()
 endif()
 
-set(_ossl_root  "${CMAKE_BINARY_DIR}/_deps/openssl")
+set(_ossl_variant "shared")
+set(_ossl_options shared no-tests)
+if(IOTDB_OPENSSL_STATIC)
+    set(_ossl_variant "static-${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_C_COMPILER_ID}-${CMAKE_C_COMPILER_VERSION}-${CMAKE_BUILD_TYPE}-crt${IOTDB_STATIC_CRT}")
+    set(_ossl_options no-shared no-module no-tests)
+    if(NOT WIN32)
+        list(APPEND _ossl_options -fPIC)
+    elseif(NOT IOTDB_STATIC_CRT)
+        list(APPEND _ossl_options /MD)
+    endif()
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        list(APPEND _ossl_options --debug)
+    endif()
+endif()
+set(_ossl_root  "${CMAKE_CURRENT_BINARY_DIR}/_deps/openssl")
+if(IOTDB_OPENSSL_STATIC)
+    string(APPEND _ossl_root "-${_ossl_variant}")
+endif()
 set(_ossl_src   "${_ossl_root}/src/openssl-${OPENSSL_FALLBACK_VERSION}")
 set(_ossl_inst  "${_ossl_root}/install")
 set(_ossl_stamp "${_ossl_root}/.built-${OPENSSL_FALLBACK_VERSION}")
@@ -134,16 +154,20 @@ if(NOT EXISTS "${_ossl_stamp}")
         file(TO_NATIVE_PATH "${_ossl_src}" _ossl_src_native)
         file(TO_NATIVE_PATH "${_ossl_perl}" _ossl_perl_native)
         set(_ossl_build_script "${_ossl_root}/build-openssl.cmd")
+        string(REPLACE ";" " " _ossl_windows_options "${_ossl_options}")
+        # file(WRITE) translates LF to CRLF on Windows; explicit CRLF produces
+        # CRCRLF and cmd.exe can skip commands. Also catch negative process exit
+        # codes (for example a missing Perl runtime DLL), not only positive ones.
         file(WRITE "${_ossl_build_script}"
-                "@echo on\r\n"
-                "call \"${_vcvars}\"\r\n"
-                "if errorlevel 1 exit /b %errorlevel%\r\n"
-                "cd /d \"${_ossl_src_native}\"\r\n"
-                "\"${_ossl_perl_native}\" Configure VC-WIN64A --prefix=\"${_ossl_inst_native}\" --openssldir=\"${_ossl_inst_native}\\ssl\" shared no-tests no-asm\r\n"
-                "if errorlevel 1 exit /b %errorlevel%\r\n"
-                "nmake\r\n"
-                "if errorlevel 1 exit /b %errorlevel%\r\n"
-                "nmake install_sw\r\n")
+                "@echo on\n"
+                "call \"${_vcvars}\"\n"
+                "if not \"%errorlevel%\"==\"0\" exit /b %errorlevel%\n"
+                "cd /d \"${_ossl_src_native}\"\n"
+                "\"${_ossl_perl_native}\" Configure VC-WIN64A --prefix=\"${_ossl_inst_native}\" --openssldir=\"${_ossl_inst_native}\\ssl\" ${_ossl_windows_options} no-asm\n"
+                "if not \"%errorlevel%\"==\"0\" exit /b %errorlevel%\n"
+                "nmake\n"
+                "if not \"%errorlevel%\"==\"0\" exit /b %errorlevel%\n"
+                "nmake install_sw\n")
         execute_process(COMMAND cmd /d /c "${_ossl_build_script}" RESULT_VARIABLE _rc)
         if(NOT _rc EQUAL 0)
             message(FATAL_ERROR "[OpenSSL] Windows source build failed (rc=${_rc})")
@@ -155,7 +179,8 @@ if(NOT EXISTS "${_ossl_stamp}")
             set(_jobs 1)
         endif()
         execute_process(
-                COMMAND ./config --prefix=${_ossl_inst} --openssldir=${_ossl_inst}/ssl shared no-tests
+                COMMAND ${CMAKE_COMMAND} -E env "CC=${CMAKE_C_COMPILER}"
+                        ./config --prefix=${_ossl_inst} --openssldir=${_ossl_inst}/ssl ${_ossl_options}
                 WORKING_DIRECTORY "${_ossl_src}"
                 RESULT_VARIABLE _rc)
         if(NOT _rc EQUAL 0)
@@ -180,7 +205,7 @@ if(NOT EXISTS "${_ossl_stamp}")
     file(TOUCH "${_ossl_stamp}")
 endif()
 
-if(APPLE)
+if(APPLE AND NOT IOTDB_OPENSSL_STATIC)
     # OpenSSL's Darwin build records its absolute installation prefix in each dylib. Rewrite the
     # IDs before iotdb_session links against them so both the client and libssl resolve the bundled
     # libraries relative to the package's lib/ directory.
@@ -233,6 +258,11 @@ if(APPLE)
 endif()
 
 set(OPENSSL_ROOT_DIR "${_ossl_inst}" CACHE PATH "OpenSSL root" FORCE)
-set(OPENSSL_USE_STATIC_LIBS OFF)
+# Do not reuse a previous shared-library discovery when switching variants.
+unset(OPENSSL_SSL_LIBRARY CACHE)
+unset(OPENSSL_CRYPTO_LIBRARY CACHE)
+unset(OPENSSL_INCLUDE_DIR CACHE)
 find_package(OpenSSL REQUIRED)
-message(STATUS "[OpenSSL] built locally (shared) at ${OPENSSL_ROOT_DIR}")
+# The ODBC parent also consumes these targets (FindOpenSSL creates local imports).
+set_property(TARGET OpenSSL::SSL OpenSSL::Crypto PROPERTY IMPORTED_GLOBAL TRUE)
+message(STATUS "[OpenSSL] built locally (${_ossl_variant}) at ${OPENSSL_ROOT_DIR}")

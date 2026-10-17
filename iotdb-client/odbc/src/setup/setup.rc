@@ -1,0 +1,78 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+#include <windows.h>
+#include "resource.h"
+
+IDD_DSN_DIALOG DIALOGEX 0, 0, 300, 440
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Apache IoTDB ODBC Data Source Configuration"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    GROUPBOX        "Data Source", IDC_STATIC, 7, 7, 286, 48
+    LTEXT           "DSN Name:", IDC_STATIC, 14, 22, 60, 8
+    EDITTEXT        IDC_DSN_NAME, 80, 20, 206, 14, ES_AUTOHSCROLL
+    LTEXT           "Description:", IDC_STATIC, 14, 38, 60, 8
+    EDITTEXT        IDC_DSN_DESCRIPTION, 80, 36, 206, 14, ES_AUTOHSCROLL
+
+    GROUPBOX        "Connection", IDC_STATIC, 7, 60, 286, 68
+    LTEXT           "Server:", IDC_STATIC, 14, 76, 60, 8
+    EDITTEXT        IDC_SERVER, 80, 74, 140, 14, ES_AUTOHSCROLL
+    LTEXT           "Port:", IDC_STATIC, 228, 76, 18, 8
+    EDITTEXT        IDC_PORT, 248, 74, 38, 14, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "User:", IDC_STATIC, 14, 94, 60, 8
+    EDITTEXT        IDC_UID, 80, 92, 206, 14, ES_AUTOHSCROLL
+    LTEXT           "Password:", IDC_STATIC, 14, 112, 60, 8
+    EDITTEXT        IDC_PWD, 80, 110, 206, 14, ES_PASSWORD | ES_AUTOHSCROLL
+
+    GROUPBOX        "Options", IDC_STATIC, 7, 134, 286, 178
+    AUTOCHECKBOX    "Table Model (uncheck for Tree Model)", IDC_TABLE_MODEL, 14, 150, 200, 10
+    LTEXT           "Database:", IDC_STATIC, 14, 168, 60, 8
+    EDITTEXT        IDC_DATABASE, 80, 166, 140, 14, ES_AUTOHSCROLL
+    LTEXT           "(Table Model only)", IDC_DATABASE_HINT, 224, 168, 66, 8
+
+    LTEXT           "Log Level:", IDC_STATIC, 14, 190, 60, 8
+    EDITTEXT        IDC_LOG_LEVEL, 80, 188, 28, 14, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "0=ERROR  1=WARN  2=INFO  3=DEBUG  4=TRACE", IDC_STATIC, 114, 190, 170, 8
+
+    LTEXT           "Session Timeout:", IDC_STATIC, 14, 212, 62, 8
+    EDITTEXT        IDC_SESSION_TIMEOUT, 80, 210, 60, 14, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "ms (0 = no timeout; server default 60000ms)", IDC_STATIC, 144, 212, 148, 8
+
+    LTEXT           "Batch Size:", IDC_STATIC, 14, 234, 60, 8
+    EDITTEXT        IDC_BATCH_SIZE, 80, 232, 60, 14, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "rows per fetch (default: 1000)", IDC_STATIC, 144, 234, 120, 8
+
+    LTEXT           "* Log Level controls the verbosity of driver log output.", IDC_STATIC, 14, 256, 270, 8
+    LTEXT           "* Session Timeout: server-side queryTimeoutThreshold", IDC_STATIC, 14, 268, 270, 8
+    LTEXT           "  may also limit effective timeout.", IDC_STATIC, 14, 278, 270, 8
+    LTEXT           "* Batch Size: number of rows fetched per request.", IDC_STATIC, 14, 290, 270, 8
+    LTEXT           "  0 resets to default (1000).", IDC_STATIC, 14, 300, 270, 8
+
+    GROUPBOX        "Session TLS (PEM files)", IDC_STATIC, 7, 316, 286, 90
+    AUTOCHECKBOX    "Enable TLS", IDC_SSL, 14, 330, 120, 10
+    LTEXT           "CA file:", IDC_STATIC, 14, 348, 60, 8
+    EDITTEXT        IDC_SSLCA, 80, 346, 206, 14, ES_AUTOHSCROLL
+    LTEXT           "Client certificate:", IDC_STATIC, 14, 366, 65, 8
+    EDITTEXT        IDC_SSLCERT, 80, 364, 206, 14, ES_AUTOHSCROLL
+    LTEXT           "Client key:", IDC_STATIC, 14, 384, 60, 8
+    EDITTEXT        IDC_SSLKEY, 80, 382, 206, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "Test Connection", IDC_BTN_TEST, 7, 416, 70, 14
+    DEFPUSHBUTTON   "OK", IDOK, 176, 416, 50, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 233, 416, 50, 14
+END

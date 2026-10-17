@@ -51,12 +51,12 @@ endforeach()
 
 # Mirror the bash reference script: stage both .thrift files into a flat
 # working directory so `include "common.thrift"` resolves without -I args.
-set(_thrift_proto_dir "${CMAKE_BINARY_DIR}/thrift-protocols")
+set(_thrift_proto_dir "${CMAKE_CURRENT_BINARY_DIR}/thrift-protocols")
 file(MAKE_DIRECTORY "${_thrift_proto_dir}")
 configure_file("${_common_thrift}" "${_thrift_proto_dir}/common.thrift" COPYONLY)
 configure_file("${_client_thrift}" "${_thrift_proto_dir}/client.thrift" COPYONLY)
 
-set(THRIFT_GEN_CPP_DIR "${CMAKE_BINARY_DIR}/gen-cpp" CACHE PATH "" FORCE)
+set(THRIFT_GEN_CPP_DIR "${CMAKE_CURRENT_BINARY_DIR}/gen-cpp" CACHE PATH "" FORCE)
 file(MAKE_DIRECTORY "${THRIFT_GEN_CPP_DIR}")
 
 # A stamp file lets us re-run thrift only when one of the inputs changes

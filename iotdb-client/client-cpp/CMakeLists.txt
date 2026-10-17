@@ -22,6 +22,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(iotdb_session CXX C)
 
+option(IOTDB_SESSION_STATIC "Build the session client as a static library" OFF)
+option(IOTDB_STATIC_CRT "Use the static MSVC runtime" OFF)
+option(IOTDB_SESSION_INSTALL "Install the standalone session SDK" ON)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -46,7 +50,11 @@ endif()
 
 if(MSVC)
     # /MD: matches default Visual Studio projects; CRT lives in the VC redistributable.
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    if(IOTDB_STATIC_CRT)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    else()
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    endif()
 endif()
 
 if(NOT IOTDB_USE_CXX11_ABI STREQUAL "" AND NOT IOTDB_USE_CXX11_ABI MATCHES "^[01]$")
@@ -59,7 +67,7 @@ if(NOT MSVC)
     else()
         set(_iotdb_cxx11_abi_stamp_value "default")
     endif()
-    set(_iotdb_cxx11_abi_stamp "${CMAKE_BINARY_DIR}/.iotdb-cxx11-abi")
+    set(_iotdb_cxx11_abi_stamp "${CMAKE_CURRENT_BINARY_DIR}/.iotdb-cxx11-abi")
     if(EXISTS "${_iotdb_cxx11_abi_stamp}")
         file(READ "${_iotdb_cxx11_abi_stamp}" _iotdb_previous_cxx11_abi)
     else()
@@ -69,8 +77,8 @@ if(NOT MSVC)
         message(STATUS
                 "IOTDB_USE_CXX11_ABI changed from '${_iotdb_previous_cxx11_abi}' "
                 "to '${_iotdb_cxx11_abi_stamp_value}'; removing cached iotdb_session objects")
-        file(REMOVE_RECURSE "${CMAKE_BINARY_DIR}/CMakeFiles/iotdb_session.dir")
-        file(GLOB _iotdb_stale_session_libs "${CMAKE_BINARY_DIR}/libiotdb_session.so*")
+        file(REMOVE_RECURSE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iotdb_session.dir")
+        file(GLOB _iotdb_stale_session_libs "${CMAKE_CURRENT_BINARY_DIR}/libiotdb_session.so*")
         if(_iotdb_stale_session_libs)
             file(REMOVE ${_iotdb_stale_session_libs})
         endif()
@@ -110,7 +118,7 @@ endif()
 file(MAKE_DIRECTORY "${IOTDB_OS_DEPS_DIR}")
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install"
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/install"
         CACHE PATH "Install prefix" FORCE)
 endif()
 
@@ -130,12 +138,17 @@ file(GLOB SESSION_PUBLIC_SRCS CONFIGURE_DEPENDS
 file(GLOB SESSION_RPC_SRCS CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/src/rpc/*.cpp")
 
-add_library(iotdb_session SHARED
+if(IOTDB_SESSION_STATIC)
+    set(_iotdb_library_type STATIC)
+else()
+    set(_iotdb_library_type SHARED)
+endif()
+add_library(iotdb_session ${_iotdb_library_type}
         ${SESSION_PUBLIC_SRCS}
         ${SESSION_RPC_SRCS}
         ${THRIFT_GENERATED_SRCS})
 
-if(WIN32)
+if(WIN32 AND NOT IOTDB_SESSION_STATIC)
     set_target_properties(iotdb_session PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
@@ -163,7 +176,12 @@ endif()
 
 add_dependencies(iotdb_session iotdb_thrift_external iotdb_thrift_codegen)
 
-target_compile_definitions(iotdb_session PRIVATE THRIFT_STATIC_DEFINE IOTDB_BUILDING_SHARED)
+target_compile_definitions(iotdb_session PRIVATE THRIFT_STATIC_DEFINE)
+if(IOTDB_SESSION_STATIC)
+    target_compile_definitions(iotdb_session PUBLIC IOTDB_SESSION_STATIC)
+else()
+    target_compile_definitions(iotdb_session PRIVATE IOTDB_BUILDING_SHARED)
+endif()
 if(NOT IOTDB_USE_CXX11_ABI STREQUAL "" AND NOT MSVC)
     target_compile_definitions(iotdb_session PUBLIC
             _GLIBCXX_USE_CXX11_ABI=${IOTDB_USE_CXX11_ABI})
@@ -179,7 +197,9 @@ target_include_directories(iotdb_session
             ${THRIFT_INCLUDE_DIR}
             $<$<BOOL:${BOOST_INCLUDE_DIR}>:${BOOST_INCLUDE_DIR}>)
 
-if(APPLE)
+if(IOTDB_SESSION_STATIC)
+    target_link_libraries(iotdb_session PRIVATE iotdb_thrift_static)
+elseif(APPLE)
     target_link_libraries(iotdb_session PRIVATE "-Wl,-force_load,${THRIFT_STATIC_LIB_PATH}")
 elseif(UNIX AND NOT MSVC)
     # whole-archive pulls all Thrift objects into libiotdb_session.so; allow-multiple-definition
@@ -213,6 +233,8 @@ if(IOTDB_USE_CXX11_ABI STREQUAL "1" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 include(GNUInstallDirs)
+
+if(IOTDB_SESSION_INSTALL)
 
 set(IOTDB_PUBLIC_HEADERS
         Export.h
@@ -265,11 +287,11 @@ if(NOT IOTDB_USE_CXX11_ABI STREQUAL "" AND NOT MSVC)
 endif()
 configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/iotdb-session-config.cmake.in"
-        "${CMAKE_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
         @ONLY)
 configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/iotdb-session.pc.in"
-        "${CMAKE_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
+        "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
         @ONLY)
 execute_process(
         COMMAND git rev-parse HEAD
@@ -296,9 +318,9 @@ else()
     set(IOTDB_SESSION_OPENSSL_VERSION "disabled")
     set(IOTDB_SESSION_OPENSSL_PROVIDER "disabled")
 endif()
-file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/VERSION"
         "${IOTDB_SESSION_VERSION}\n")
-file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "Apache IoTDB C++ session client build information\n\n"
         "version=${IOTDB_SESSION_VERSION}\n"
         "commit=${IOTDB_SESSION_GIT_COMMIT}\n"
@@ -313,14 +335,15 @@ file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "iotdb.offline=${IOTDB_OFFLINE}\n"
         "iotdb.use.cxx11.abi=${IOTDB_USE_CXX11_ABI}\n"
         "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")
-install(FILES "${CMAKE_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
         DESTINATION cmake)
-install(FILES "${CMAKE_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
         DESTINATION pkgconfig)
 install(FILES
-        "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
-        "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
+        "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/VERSION"
+        "${CMAKE_CURRENT_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         DESTINATION .)
+endif()
 
 if(BUILD_TESTING)
     enable_testing()

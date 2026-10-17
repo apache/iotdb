@@ -1,0 +1,180 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+name: ODBC package
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'iotdb-client/odbc/**'
+      - 'iotdb-client/client-cpp/**'
+      - 'iotdb-protocol/**/thrift/**'
+      - '.github/scripts/*odbc*'
+      - '.github/scripts/native-linux-env.sh'
+      - '.github/workflows/odbc-package.yml'
+  pull_request:
+    paths:
+      - 'iotdb-client/odbc/**'
+      - 'iotdb-client/client-cpp/**'
+      - 'iotdb-protocol/**/thrift/**'
+      - '.github/scripts/*odbc*'
+      - '.github/scripts/native-linux-env.sh'
+      - '.github/workflows/odbc-package.yml'
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and check glibc baseline
+        run: |
+          source .github/scripts/native-linux-env.sh
+          docker run --rm -v "$PWD:/workspace" -w /workspace "${NATIVE_LINUX_IMAGE}" \
+            bash .github/scripts/package-odbc-manylinux228.sh
+      - name: Restore ownership
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" iotdb-client/odbc/target iotdb-client/client-cpp/third-party
+      - uses: actions/upload-artifact@v7
+        with:
+          name: odbc-linux-x86_64-glibc2.28
+          path: iotdb-client/odbc/target/build/iotdb-odbc-*.zip*
+          if-no-files-found: error
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install build prerequisites
+        shell: pwsh
+        run: |
+          choco install winflexbison3 strawberryperl -y --no-progress
+          'C:\Strawberry\perl\bin' >> $env:GITHUB_PATH
+      - name: Build, test and package
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content iotdb-client/pom.xml)).project.parent.version
+          cmake -S iotdb-client/odbc -B iotdb-client/odbc/target/build -A x64 "-DODBC_PACKAGE_VERSION=$version" -DODBC_PACKAGE_CLASSIFIER=windows-x86_64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cmake --build iotdb-client/odbc/target/build --config Release --parallel 4
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          ctest --test-dir iotdb-client/odbc/target/build -C Release --output-on-failure
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & iotdb-client/odbc/test/check-windows-dependencies.ps1 iotdb-client/odbc/target/build/Release/apache_iotdb_odbc.dll
+          Push-Location iotdb-client/odbc/target/build
+          cpack -C Release
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Pop-Location
+      - uses: actions/upload-artifact@v7
+        with:
+          name: odbc-windows-x86_64
+          path: iotdb-client/odbc/target/build/iotdb-odbc-*.zip*
+          if-no-files-found: error
+  linux-runtime:
+    needs: linux
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: ['almalinux:8', 'ubuntu:22.04', 'ubuntu:24.04']
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: odbc-linux-x86_64-glibc2.28
+          path: artifacts
+      - name: Extract release
+        run: unzip -q artifacts/*.zip -d package
+      - name: Load with system ODBC manager in a clean runtime
+        run: |
+          docker run --rm -v "$PWD/package:/package:ro" '${{ matrix.image }}' sh -ec '
+            if command -v dnf >/dev/null; then
+              dnf install -y unixODBC
+            else
+              apt-get update && apt-get install -y --no-install-recommends unixodbc
+            fi
+            pkg=$(find /package -mindepth 1 -maxdepth 1 -type d)
+            "$pkg/test/odbc_manager" "$pkg/lib/libapache_iotdb_odbc.so"
+          '
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+          cache: maven
+      - name: Check ODBC source formatting
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-17
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
+          ./mvnw -B -P with-odbc -pl iotdb-client/odbc spotless:check
+      - name: Build disposable test server
+        run: ./mvnw -B clean package -pl distribution -am -DskipTests
+      - uses: actions/upload-artifact@v7
+        with:
+          name: odbc-test-server
+          path: distribution/target/apache-iotdb-*-all-bin.zip
+          if-no-files-found: error
+  server-runtime:
+    needs: [linux, windows, server]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: odbc-linux-x86_64-glibc2.28
+          - os: windows-2022
+            artifact: odbc-windows-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.artifact }}
+          path: artifacts/driver
+      - uses: actions/download-artifact@v8
+        with:
+          name: odbc-test-server
+          path: artifacts/server
+      - name: Install runtime ODBC manager
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y unixodbc lsof
+      - name: Extract packages
+        shell: pwsh
+        run: |
+          Expand-Archive (Get-ChildItem artifacts/driver/*.zip).FullName package/driver
+          Expand-Archive (Get-ChildItem artifacts/server/*.zip).FullName package/server
+      - name: Test real server and application consumers
+        shell: pwsh
+        env:
+          IOTDB_TEST_PASSWORD: root
+        run: |
+          $package = (Get-ChildItem package/driver -Directory).FullName
+          $server = (Get-ChildItem package/server -Directory).FullName
+          if ($IsWindows) {
+            python iotdb-client/odbc/test/run_e2e.py "$package/test/odbc_manager.exe" "$package/bin/apache_iotdb_odbc.dll" $server --windows-consumers
+          } else {
+            chmod +x "$package/test/odbc_manager"
+            Get-ChildItem "$server/sbin/*.sh" | ForEach-Object { chmod +x $_.FullName }
+            python iotdb-client/odbc/test/run_e2e.py "$package/test/odbc_manager" "$package/lib/libapache_iotdb_odbc.so" $server
+          }
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

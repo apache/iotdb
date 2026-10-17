@@ -103,9 +103,9 @@ if(NOT _boost_tarball)
 endif()
 
 # ---------------------------------------------------------------------------
-# Extract headers-only into ${CMAKE_BINARY_DIR}/_deps/boost
+# Extract headers-only into ${CMAKE_CURRENT_BINARY_DIR}/_deps/boost
 # ---------------------------------------------------------------------------
-set(_boost_extract_dir "${CMAKE_BINARY_DIR}/_deps/boost")
+set(_boost_extract_dir "${CMAKE_CURRENT_BINARY_DIR}/_deps/boost")
 set(_boost_marker "${_boost_extract_dir}/.extracted-${BOOST_VERSION}")
 
 if(NOT EXISTS "${_boost_marker}")
