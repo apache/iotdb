@@ -322,6 +322,11 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
       }
     }
 
+    // Refresh stale candidates before retrying after an RPC or connection failure.
+    syncLatestConfigNodeList();
+    if (configNode != null) {
+      cursor = configNodes.indexOf(configNode);
+    }
     for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
       cursor = (cursor + 1) % configNodes.size();
       TEndPoint tryEndpoint = configNodes.get(cursor);
@@ -345,8 +350,11 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
   }
 
   public void syncLatestConfigNodeList() {
-    configNodes = getConfigNodeInfo().getLatestConfigNodes();
-    cursor = 0;
+    final List<TEndPoint> latestConfigNodes = getConfigNodeInfo().getLatestConfigNodes();
+    if (!latestConfigNodes.isEmpty()) {
+      configNodes = latestConfigNodes;
+      cursor = 0;
+    }
   }
 
   @Override
