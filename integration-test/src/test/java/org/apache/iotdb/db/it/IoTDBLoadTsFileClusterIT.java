@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -260,6 +261,74 @@ public class IoTDBLoadTsFileClusterIT {
     }
   }
 
+  /**
+   * A LOAD that runs while one DataNode is down is replicated by consensus to the surviving
+   * replicas. When the stopped DataNode restarts, its replicas replay the LOAD commands they
+   * missed, so the restarted DataNode ends up serving the very same file.
+   */
+  @Test
+  public void testRestartedDataNodeIsSyncedWithTheLoadedFile() throws Exception {
+    final long firstPointCount = generateTsFile(tmpDir, "sync-first.tsfile", 5_000, 1L);
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, firstPointCount);
+    }
+
+    // LOAD the second file while DataNode 0 is down. With three replicas it holds a copy of every
+    // region, so it is the DataNode that has to catch up with the LOAD when it comes back.
+    final DataNodeWrapper restartedDataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    restartedDataNode.stop();
+    Assert.assertFalse(restartedDataNode.isAlive());
+
+    final long secondPointCount = generateTsFile(tmpDir, "sync-second.tsfile", 3_000, 100_000L);
+    final long expectedPointCount = firstPointCount + secondPointCount;
+    try (final Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX
+                    + EnvFactory.getEnv().getDataNodeWrapper(1).getIpAndPortString(),
+                "root",
+                "root");
+        final Statement statement = connection.createStatement()) {
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, expectedPointCount);
+    }
+
+    restartedDataNode.start();
+    Assert.assertTrue(restartedDataNode.isAlive());
+
+    // The connection is pinned to the restarted DataNode, so this waits for the replicas it
+    // replayed the LOAD into and fails if the restart left them behind.
+    awaitPointCount(restartedDataNode, expectedPointCount);
+  }
+
+  /** Waits until the given statement sees the expected number of imported points. */
+  private static void awaitPointCount(final Statement statement, final long expectedPointCount) {
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .untilAsserted(() -> Assert.assertEquals(expectedPointCount, queryPointCount(statement)));
+  }
+
+  /** Waits until the points of every loaded file are queryable through the given DataNode. */
+  private static void awaitPointCount(
+      final DataNodeWrapper dataNode, final long expectedPointCount) {
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              try (final Connection connection = EnvFactory.getEnv().getConnection(dataNode);
+                  final Statement statement = connection.createStatement()) {
+                Assert.assertEquals(expectedPointCount, queryPointCount(statement));
+              }
+            });
+  }
+
   /** With two of three DataNodes down the LOAD must fail with a message. */
   @Test
   public void testLoadWithTwoDataNodesDownFailsWithAMeaningfulMessage() throws Exception {
@@ -365,7 +434,7 @@ public class IoTDBLoadTsFileClusterIT {
     }
   }
 
-  private long queryPointCount(final Statement statement) throws Exception {
+  private static long queryPointCount(final Statement statement) throws Exception {
     long actualPointCount = 0;
     final List<String> allDevices = new ArrayList<>(DEVICES);
     allDevices.addAll(ALIGNED_DEVICES);
