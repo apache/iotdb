@@ -1,0 +1,62 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: UT watchdog
+description: Diagnose long-running UTs and upload stacks while Maven is still running
+inputs:
+  command:
+    description: UT command (bash)
+    required: true
+  artifact-name:
+    description: Unique diagnostic artifact name for this job
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Run UTs until completion or diagnostic capture
+      shell: bash
+      env:
+        UT_COMMAND: ${{ inputs.command }}
+        UT_STATE: ${{ runner.temp }}/iotdb-ut-watchdog
+      run: |
+        # Reuse the shell selected by Actions; bare bash can resolve to WSL on Windows.
+        ut_shell="$BASH"
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          # Native Python needs a Windows path, not Git Bash's /usr/bin path.
+          ut_shell="$(cygpath -w "$ut_shell")"
+        fi
+        python .github/scripts/ut-watchdog.py start --state "$UT_STATE" -- "$ut_shell" -e -o pipefail -c "$UT_COMMAND"
+    # This step runs even if Maven never exits. The worker keeps Maven alive.
+    - name: Upload long-running UT diagnostics
+      uses: actions/upload-artifact@v6
+      continue-on-error: true
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/iotdb-ut-watchdog/diagnostics
+        if-no-files-found: ignore
+    - name: Wait for original UT result
+      shell: bash
+      env:
+        UT_STATE: ${{ runner.temp }}/iotdb-ut-watchdog
+      run: python .github/scripts/ut-watchdog.py wait --state "$UT_STATE"
+    - name: Stop UT worker on cancellation or failure
+      if: ${{ always() }}
+      shell: bash
+      env:
+        UT_STATE: ${{ runner.temp }}/iotdb-ut-watchdog
+      run: python .github/scripts/ut-watchdog.py stop --state "$UT_STATE"

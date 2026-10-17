@@ -67,8 +67,11 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Test Datanode Module with Maven
+      - name: Build Other Modules without tests
         shell: bash
+        if: ${{ matrix.it_task == 'others'}}
+        run: mvn clean install -DskipTests
+      - name: Test Datanode Module with Maven
         if: ${{ matrix.it_task == 'datanode'}}
         # forkCount=4 runs up to 4 surefire JVMs in parallel. reuseForks=false
         # is left on (set in iotdb-core/datanode/pom.xml) so each test class
@@ -77,10 +80,13 @@ jobs:
         # for filesystem isolation; datanode UTs do no socket binding (grep'd:
         # zero ServerSocket / bind() / TServer.serve() calls in tests), so
         # cross-fork resource conflicts are not a concern.
-        run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true -DforkCount=4
+        uses: ./.github/actions/ut-watchdog
+        with:
+          artifact-name: ut-jstacks-${{ matrix.os }}-${{ matrix.it_task }}-${{ github.run_attempt }}
+          command: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true -DforkCount=4
       - name: Test Other Modules with Maven
-        shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run: |
-          mvn clean install -DskipTests
-          mvn -P get-jar-with-dependencies,with-integration-tests clean test -Dtest.port.closed=true -Diotdb.test.skip=true
+        uses: ./.github/actions/ut-watchdog
+        with:
+          artifact-name: ut-jstacks-${{ matrix.os }}-${{ matrix.it_task }}-${{ github.run_attempt }}
+          command: mvn -P get-jar-with-dependencies,with-integration-tests clean test -Dtest.port.closed=true -Diotdb.test.skip=true
