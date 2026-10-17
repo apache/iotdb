@@ -1670,6 +1670,15 @@ public final class StorageEngineMessages {
   public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "The associated resource file of {} is not found in the snapshot";
   public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "Evicted non-existing/existing series count: {}/{}({}), total request: {}";
 
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_IS_CLOSED_9E2561DF =
+      "Write memory block %s is closed";
+  public static final String EXCEPTION_WRITE_MEMORY_SIZE_MUST_BE_NON_NEGATIVE_ARG_2CBCF358 =
+      "Write memory size must be non-negative: %s";
+  public static final String EXCEPTION_CANNOT_RELEASE_ARG_BYTES_FROM_WRITE_MEMORY_BLOCK_ARG_WITH_ARG_BYTES_3783A614 =
+      "Cannot release %s bytes from write memory block %s with %s bytes";
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_ALREADY_BELONGS_TO_ANOTHER_MANAGER_A05A8229 =
+      "Write memory block %s already belongs to another manager";
+
   public static final String EXCEPTION_CHUNK_LAYOUT_IS_MISSING_E87C71C0 = "Chunk layout is missing";
   public static final String EXCEPTION_CHUNK_HEADER_LIST_IS_EMPTY_5DE68C78 =
       "Chunk header list is empty.";
