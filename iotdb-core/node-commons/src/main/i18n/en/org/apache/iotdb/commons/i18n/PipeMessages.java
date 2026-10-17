@@ -965,5 +965,7 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable generation completed successfully";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
+  public static final String LOG_PIPE_RATE_LIMIT_IS_SMALLER_THAN_THE_SINGLE_REQUEST_SIZE_SO_ARG_BYTES_WILL_BE_TRANSFERRED_IN_ARG_SIZED_PIECES_AT_ARG_BYTES_PER_SECOND_CONSIDER_SETTING_A_LARGER_RATE_LIMIT_FOR_BETTER_PERFORMANCE_4450D4DC =
+      "Pipe rate limit is smaller than the single request size, so %s bytes will be transferred in %s-sized pieces at %s bytes per second. Consider setting a larger rate limit for better performance.";
 
 }

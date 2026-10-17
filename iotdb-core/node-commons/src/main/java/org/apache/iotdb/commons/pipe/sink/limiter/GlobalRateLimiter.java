@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.RateLimiter;
 
-import java.util.concurrent.TimeUnit;
-
 public abstract class GlobalRateLimiter {
 
   private final AtomicDouble throughputBytesPerSecond =
@@ -47,26 +45,11 @@ public abstract class GlobalRateLimiter {
       return;
     }
 
-    while (bytes > 0) {
-      if (bytes > Integer.MAX_VALUE) {
-        tryAcquireWithRateCheck(Integer.MAX_VALUE);
-        bytes -= Integer.MAX_VALUE;
-      } else {
-        tryAcquireWithRateCheck((int) bytes);
-        return;
-      }
-    }
-  }
-
-  private void tryAcquireWithRateCheck(final int bytes) {
-    while (!rateLimiter.tryAcquire(
+    RateLimitUtils.acquireWithRateLimit(
+        rateLimiter,
         bytes,
-        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
-        TimeUnit.MILLISECONDS)) {
-      if (reloadParams()) {
-        return;
-      }
-    }
+        () -> !reloadParams(),
+        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs());
   }
 
   private boolean reloadParams() {
