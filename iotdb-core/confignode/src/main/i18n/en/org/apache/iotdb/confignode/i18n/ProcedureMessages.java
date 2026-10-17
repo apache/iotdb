@@ -847,6 +847,17 @@ public final class ProcedureMessages {
       "RemoveRegionLocation remove region {} from DataNode {}, result is {}";
   public static final String REMOVEREGIONPEER_STATE_FAILED = "RemoveRegionPeer state {} failed";
   public static final String REMOVEREGIONPEER_STATE_SUCCESS = "RemoveRegionPeer state {} success";
+  public static final String
+      LOG_CANNOT_RECONCILE_PEER_LIST_FOR_ARG_AFTER_REMOVING_DATANODE_ARG_THE_CURRENT_REPLICA_SET_STILL_CONTAINS_THE_REMOVED_DATANODE_DBBF45DC =
+          "Cannot reconcile peer list for {} after removing DataNode {}: the current replica set still contains the removed DataNode.";
+  public static final String
+      LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4 =
+          "Failed to reset peer list for {} on DataNode {} to {}: {}";
+  public static final String LOG_PIDARG_REMOVEREGION_STATE_ARG_FAILED_RETRY_ARG_ARG_IN_ARG_MS_41B8ECB5 =
+      "[pid{}][RemoveRegion] state {} failed, retry {}/{} in {} ms.";
+  public static final String
+      EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168 =
+          "Failed to finalize Region peer removal for %s at state %s after %d attempts.";
   public static final String REMOVEREGION_RATIS_TRANSFER_LEADER_FAIL_BUT_PROCEDURE_WILL_CONTINUE =
       "[RemoveRegion] Ratis transfer leader fail, but procedure will continue.";
   public static final String REMOVE_CONFIG_NODE = "Remove Config Node";
