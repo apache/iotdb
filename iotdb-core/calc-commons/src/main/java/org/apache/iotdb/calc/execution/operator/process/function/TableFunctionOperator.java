@@ -72,6 +72,9 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   private final boolean isDeclaredAsPassThrough;
   private final IoTDBLocal ioTDBLocal;
 
+  /** Bytes the data processors may buffer internally while a partition is processed. */
+  private final long estimatedMaxBufferedBytes;
+
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
   private ListenableFuture<?> isBlocked;
@@ -101,6 +104,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
         new PartitionRecognizer(
             partitionChannels, requiredChannels, passThroughChannels, inputDataTypes);
     this.isDeclaredAsPassThrough = isDeclaredAsPassThrough;
+    this.estimatedMaxBufferedBytes = processorProvider.getEstimatedMaxBufferedBytes();
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.properBlockBuilder = new TsBlockBuilder(outputDataTypes.subList(0, properChannelCount));
@@ -291,7 +295,10 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public long calculateMaxPeekMemory() {
+    // A processor that buffers its input (LTTB) holds up to estimatedMaxBufferedBytes while the
+    // partition is processed, in addition to the input it reads and the block it builds.
     return inputOperator.calculateMaxPeekMemory()
+        + estimatedMaxBufferedBytes
         + Math.max(maxReturnSize, properBlockBuilder.getRetainedSizeInBytes());
   }
 
@@ -302,7 +309,9 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext();
+    // The buffers survive across next() calls until the partition completes, so they are retained
+    // here rather than charged to the peek of a single call.
+    return inputOperator.calculateRetainedSizeAfterCallingNext() + estimatedMaxBufferedBytes;
   }
 
   @Override
