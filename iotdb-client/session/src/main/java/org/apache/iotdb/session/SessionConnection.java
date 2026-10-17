@@ -465,6 +465,10 @@ public class SessionConnection {
             },
             TSExecuteStatementResp::getStatus);
     TSExecuteStatementResp execResp = result.getResult();
+    if (execResp == null) {
+      throw new IoTDBConnectionException(
+          "Cannot get statement response from server, response is null");
+    }
     if (result.getRetryAttempts() == 0) {
       RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
     } else {
@@ -536,6 +540,10 @@ public class SessionConnection {
             TSExecuteStatementResp::getStatus);
 
     TSExecuteStatementResp execResp = result.getResult();
+    if (execResp == null) {
+      throw new IoTDBConnectionException(
+          "Cannot get statement response from server, response is null");
+    }
     if (result.getRetryAttempts() == 0) {
       RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
     } else {
@@ -575,7 +583,10 @@ public class SessionConnection {
               return client.executeFastLastDataQueryForOnePrefixPath(req);
             });
     final TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
-
+    if (tsExecuteStatementResp == null) {
+      throw new IoTDBConnectionException(
+          "Cannot get statement response from server, response is null");
+    }
     if (result.getRetryAttempts() == 0) {
       RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
     } else {
@@ -621,6 +632,10 @@ public class SessionConnection {
             TSExecuteStatementResp::getStatus);
 
     TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
+    if (tsExecuteStatementResp == null) {
+      throw new IoTDBConnectionException(
+          "Cannot get statement response from server, response is null");
+    }
     if (result.getRetryAttempts() == 0) {
       try {
         RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
@@ -668,7 +683,10 @@ public class SessionConnection {
             },
             TSExecuteStatementResp::getStatus);
     final TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
-
+    if (tsExecuteStatementResp == null) {
+      throw new IoTDBConnectionException(
+          "Cannot get statement response from server, response is null");
+    }
     if (result.getRetryAttempts() == 0) {
       RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
     } else {
@@ -751,6 +769,10 @@ public class SessionConnection {
             TSExecuteStatementResp::getStatus);
 
     TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
+    if (tsExecuteStatementResp == null) {
+      throw new IoTDBConnectionException(
+          "Cannot get statement response from server, response is null");
+    }
     if (result.getRetryAttempts() == 0) {
       RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
     } else {
