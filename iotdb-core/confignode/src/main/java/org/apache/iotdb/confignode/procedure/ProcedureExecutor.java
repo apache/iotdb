@@ -768,6 +768,15 @@ public class ProcedureExecutor<Env> {
     if (!procedure.isSuccess()) {
       procedure.setState(ProcedureState.ROLLEDBACK);
     }
+    // The rollback loop skipped acquireLock() for this procedure, so a lock restored by
+    // restoreLock() on load is still recorded in lockedWhenLoading instead of locked. Finish that
+    // bookkeeping and release the lock here: rootProcedureCleanup() releases only the locks that
+    // hasLock() reports, and a finished procedure must not keep holding its lock.
+    if (procedure.hasLock() || procedure.isLockedWhenLoading()) {
+      if (acquireLock(procedure) == ProcedureLockState.LOCK_ACQUIRED) {
+        releaseLock(procedure, false);
+      }
+    }
     if (procedure.hasParent()) {
       try {
         store.delete(procedure.getProcId());
@@ -791,7 +800,8 @@ public class ProcedureExecutor<Env> {
       // recovered by a new leader leaves this procedure out. Endless retry since this step is not
       // idempotent.
       RetryUtils.executeWithEndlessBackoffRetry(
-          () -> store.update(procedure), "finish procedure without rollback");
+          () -> store.update(procedure),
+          ProcedureMessages.LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354);
     }
     procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
     LOG.info(
