@@ -99,6 +99,25 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   protected abstract void rollback(Env env)
       throws IOException, InterruptedException, ProcedureException;
 
+  /**
+   * Whether the states this procedure has already executed may still be undone. The executor asks
+   * this once, before it starts to roll back the root procedure stack. A procedure which has passed
+   * the point after which its changes can no longer be undone returns false: none of its states is
+   * then rolled back, and its effects stay as they are.
+   */
+  public boolean isRollbackAllowed() {
+    return true;
+  }
+
+  /**
+   * Drops the bookkeeping of the states this procedure has executed. The persisted stack indexes
+   * are what a recovered rollback rebuilds its stack from, so dropping them is what makes the
+   * decision survive a leader switch.
+   */
+  protected synchronized void abandonRollback() {
+    stackIndexes = null;
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     // procid
     stream.writeLong(this.procId);

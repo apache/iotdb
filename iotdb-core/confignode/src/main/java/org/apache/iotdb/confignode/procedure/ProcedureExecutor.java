@@ -40,8 +40,10 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -700,12 +702,26 @@ public class ProcedureExecutor<Env> {
           () -> store.update(rootProcedure), "root procedure rollback");
     }
     List<Procedure<Env>> subprocStack = procedureStack.getSubproceduresStack();
+    // Decide which procedures must keep the states they have executed before anything is rolled
+    // back: the decision reads the state history, which the rollback itself shrinks. Identity is
+    // used because procedures override equals with the data of the operation they run.
+    final Set<Procedure<Env>> proceduresKeepingTheirStates =
+        Collections.newSetFromMap(new IdentityHashMap<>());
+    for (Procedure<Env> procedure : subprocStack) {
+      if (!procedure.isSuccess() && !procedure.isRollbackAllowed()) {
+        proceduresKeepingTheirStates.add(procedure);
+      }
+    }
     int stackTail = subprocStack.size();
     while (stackTail-- > 0) {
       Procedure<Env> procedure = subprocStack.get(stackTail);
       if (procedure.isSuccess()) {
         subprocStack.remove(stackTail);
         cleanupAfterRollback(procedure);
+        continue;
+      }
+      if (proceduresKeepingTheirStates.contains(procedure)) {
+        // Finished below, once the rest of the stack has been rolled back.
         continue;
       }
       ProcedureLockState lockState = acquireLock(procedure);
@@ -730,10 +746,58 @@ public class ProcedureExecutor<Env> {
       }
     }
 
+    if (!proceduresKeepingTheirStates.isEmpty()) {
+      subprocStack.removeIf(proceduresKeepingTheirStates::contains);
+      proceduresKeepingTheirStates.forEach(this::finishWithoutRollback);
+    }
+
     LOG.info(
         ProcedureMessages.ROLLED_BACK_TIME_DURATION_IS, rootProcedure, rootProcedure.elapsedTime());
     rootProcedureCleanup(rootProcedure);
     return new LockStateResult<>(ProcedureLockState.LOCK_ACQUIRED, rootProcedure);
+  }
+
+  /**
+   * Finishes a procedure without undoing any of the states it has executed. The failure is still
+   * reported, as the operation the procedure was part of did not complete; what is dropped is only
+   * the bookkeeping of the rollback, so that neither this rollback nor the one a new leader
+   * recovers touches this procedure again.
+   */
+  private void finishWithoutRollback(final Procedure<Env> procedure) {
+    procedure.abandonRollback();
+    if (!procedure.isSuccess()) {
+      procedure.setState(ProcedureState.ROLLEDBACK);
+    }
+    if (procedure.hasParent()) {
+      try {
+        store.delete(procedure.getProcId());
+        // do not remove this procedure when exception occurred
+        procedures.remove(procedure.getProcId());
+      } catch (final Exception e) {
+        LOG.warn(ProcedureMessages.FAILED_TO_DELETE_PROCEDURE_ON_ROLLBACK, e);
+      }
+    } else {
+      // A child which never executed has no rollback step and is not visited above, so its record
+      // goes with the ones of the children which were.
+      final long[] childProcIds = rollbackStack.get(procedure.getProcId()).getSubprocedureIds();
+      if (childProcIds.length > 0) {
+        try {
+          store.delete(childProcIds);
+        } catch (final Exception e) {
+          LOG.warn(ProcedureMessages.FAILED_TO_DELETE_PROCEDURE_ON_ROLLBACK, e);
+        }
+      }
+      // The stack indexes and the states just dropped are persisted here, so that the rollback
+      // recovered by a new leader leaves this procedure out. Endless retry since this step is not
+      // idempotent.
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> store.update(procedure), "finish procedure without rollback");
+    }
+    procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
+    LOG.info(
+        ProcedureMessages
+            .LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9,
+        procedure);
   }
 
   private ProcedureLockState acquireLock(Procedure<Env> proc) {

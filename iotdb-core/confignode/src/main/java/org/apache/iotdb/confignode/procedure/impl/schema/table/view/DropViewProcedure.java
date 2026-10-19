@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import java.io.DataOutputStream;
@@ -36,6 +37,16 @@ public class DropViewProcedure extends DropTableProcedure {
       final String queryId,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, isGeneratedByPipe);
+  }
+
+  /**
+   * A view holds no data, so the procedure goes straight from PRE_DELETE to DROP_TABLE. The view is
+   * removed from the ConfigNode once DROP_TABLE has completed, and that cannot be undone, so from
+   * that point on the procedure must not roll back, even if a later state fails.
+   */
+  @Override
+  public boolean isRollbackAllowed() {
+    return !hasCompletedState(DropTableState.DROP_TABLE);
   }
 
   @Override

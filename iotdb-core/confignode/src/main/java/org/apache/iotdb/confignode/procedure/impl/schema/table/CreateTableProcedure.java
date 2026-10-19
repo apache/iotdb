@@ -210,6 +210,16 @@ public class CreateTableProcedure
     }
   }
 
+  /**
+   * A table is committed on the ConfigNode once COMMIT_CREATE has completed: its status turns to
+   * USING, so a rollback would delete it while the DataNodes keep it. From that point on the
+   * procedure must not roll back, even if a later state fails.
+   */
+  @Override
+  public boolean isRollbackAllowed() {
+    return !hasCompletedState(CreateTableState.COMMIT_CREATE);
+  }
+
   @Override
   protected boolean isRollbackSupported(final CreateTableState state) {
     return true;

@@ -31,6 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
@@ -144,6 +145,25 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
+   * Returns whether the specified state has been executed and completed. A state which only appears
+   * as the last element of the history is scheduled but has not completed yet; one which appears
+   * before it has completed at least once, even if it has been scheduled again since.
+   *
+   * <p>The commit states this is used for must not keep scheduling themselves until a condition
+   * holds: such a state is reported as completed as soon as it runs once.
+   */
+  protected final boolean hasCompletedState(final TState state) {
+    final int stateId = getStateId(state);
+    final Iterator<Integer> stateIds = states.iterator();
+    while (stateIds.hasNext()) {
+      if (stateIds.next() == stateId) {
+        return stateIds.hasNext();
+      }
+    }
+    return false;
+  }
+
+  /**
    * Add a child procedure to execute.
    *
    * @param childProcedure the child procedure
@@ -250,6 +270,12 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   protected boolean isEofState() {
     return !states.isEmpty() && states.getLast() == EOF_STATE;
+  }
+
+  @Override
+  protected synchronized void abandonRollback() {
+    super.abandonRollback();
+    states.clear();
   }
 
   /**

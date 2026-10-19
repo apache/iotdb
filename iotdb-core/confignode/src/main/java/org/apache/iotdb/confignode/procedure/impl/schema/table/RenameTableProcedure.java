@@ -144,6 +144,16 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     }
   }
 
+  /**
+   * The table is renamed on the ConfigNode once RENAME_TABLE has completed, and the ConfigNode
+   * schema is the source of truth the DataNodes resync from. From that point on the procedure must
+   * not roll back, even if a later state fails.
+   */
+  @Override
+  public boolean isRollbackAllowed() {
+    return !hasCompletedState(RenameTableState.RENAME_TABLE);
+  }
+
   @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final RenameTableState state)
       throws IOException, InterruptedException, ProcedureException {
