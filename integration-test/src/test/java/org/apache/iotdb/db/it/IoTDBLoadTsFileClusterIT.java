@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -50,6 +51,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,6 +99,14 @@ public class IoTDBLoadTsFileClusterIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(REPLICATION_FACTOR)
         .setDataReplicationFactor(REPLICATION_FACTOR);
+    // The restart case compares the on-disk size of the replicas, so keep compaction from changing
+    // those sizes while the test waits for the restarted DataNode to catch up.
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment(CONFIG_NODE_NUM, DATA_NODE_NUM);
   }
 
@@ -299,9 +309,96 @@ public class IoTDBLoadTsFileClusterIT {
     restartedDataNode.start();
     Assert.assertTrue(restartedDataNode.isAlive());
 
-    // The connection is pinned to the restarted DataNode, so this waits for the replicas it
-    // replayed the LOAD into and fails if the restart left them behind.
+    // A pinned connection may still read from another replica, so check the restarted node's own
+    // replicas before letting it answer the query.
+    awaitRestartedLocalReplicasHaveTheLoadedFile(restartedDataNode);
     awaitPointCount(restartedDataNode, expectedPointCount);
+  }
+
+  /**
+   * Waits until every data region replica on the given DataNode has the same on-disk size as the
+   * other replicas of that region. A node that did not replay the LOAD keeps its pre-LOAD size.
+   */
+  private static void awaitRestartedLocalReplicasHaveTheLoadedFile(
+      final DataNodeWrapper restartedDataNode) {
+    Awaitility.await()
+        .atMost(5, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              final Map<Integer, Map<Integer, String>> regionSizes = dataRegionSizes();
+              Assert.assertFalse(
+                  "the loaded database must have data regions", regionSizes.isEmpty());
+
+              int restartedDataNodeId;
+              try (final Connection connection = EnvFactory.getEnv().getConnection();
+                  final Statement statement = connection.createStatement()) {
+                restartedDataNodeId = dataNodeId(statement, restartedDataNode);
+              }
+
+              for (final Map.Entry<Integer, Map<Integer, String>> region : regionSizes.entrySet()) {
+                final Map<Integer, String> replicaSizes = region.getValue();
+                // A region without data on any replica has nothing to catch up with.
+                if (replicaSizes.values().stream().noneMatch(IoTDBLoadTsFileClusterIT::hasData)) {
+                  continue;
+                }
+                final String restartedSize = replicaSizes.get(restartedDataNodeId);
+                Assert.assertTrue(
+                    "region " + region.getKey() + " has no data on the restarted DataNode",
+                    hasData(restartedSize));
+                replicaSizes.forEach(
+                    (dataNodeId, size) -> {
+                      if (dataNodeId != restartedDataNodeId) {
+                        Assert.assertEquals(
+                            "region " + region.getKey() + " differs on DataNode " + dataNodeId,
+                            size,
+                            restartedSize);
+                      }
+                    });
+              }
+            });
+  }
+
+  /** Whether a `show regions` size means the replica holds data. */
+  private static boolean hasData(final String size) {
+    return size != null && !"Unknown".equals(size) && !"0 B".equals(size);
+  }
+
+  /** The DataRegion rows of `show regions`, mapped to each replica's on-disk size. */
+  private static Map<Integer, Map<Integer, String>> dataRegionSizes() throws Exception {
+    final Map<Integer, Map<Integer, String>> regionSizes = new HashMap<>();
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery("show regions")) {
+      while (resultSet.next()) {
+        if (!"DataRegion".equals(resultSet.getString(ColumnHeaderConstant.TYPE))
+            || !DATABASE.equals(resultSet.getString(ColumnHeaderConstant.DATABASE))) {
+          continue;
+        }
+        regionSizes
+            .computeIfAbsent(
+                resultSet.getInt(ColumnHeaderConstant.REGION_ID), id -> new HashMap<>())
+            .put(
+                resultSet.getInt(ColumnHeaderConstant.DATA_NODE_ID),
+                resultSet.getString(ColumnHeaderConstant.TSFILE_SIZE));
+      }
+    }
+    return regionSizes;
+  }
+
+  /** The cluster id of the given DataNode, matched by its client RPC endpoint. */
+  private static int dataNodeId(final Statement statement, final DataNodeWrapper dataNode)
+      throws SQLException {
+    try (final ResultSet resultSet = statement.executeQuery("show datanodes")) {
+      while (resultSet.next()) {
+        if (dataNode.getIp().equals(resultSet.getString(ColumnHeaderConstant.RPC_ADDRESS))
+            && dataNode.getPort() == resultSet.getInt(ColumnHeaderConstant.RPC_PORT)) {
+          return resultSet.getInt(ColumnHeaderConstant.NODE_ID);
+        }
+      }
+    }
+    throw new AssertionError("cannot find " + dataNode.getIpAndPortString() + " in show datanodes");
   }
 
   /** Waits until the given statement sees the expected number of imported points. */
