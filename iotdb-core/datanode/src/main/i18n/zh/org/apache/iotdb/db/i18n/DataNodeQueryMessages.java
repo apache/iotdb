@@ -2933,6 +2933,8 @@ public final class DataNodeQueryMessages {
   public static final String IS_NOT_SUPPORTED_FOR_PROPERTY_VALUE_OF_SET_CONFIGURATION =
 
       " 不支持作为 'set configuration' 的属性值。";
+  public static final String EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD =
+      "DEFAULT 不支持用于 SET CONFIGURATION";
   public static final String NOTE_THAT_THE_SYNTAX_FOR_SET_CONFIGURATION_IN_THE_TREE_MODEL_IS_NOT_EXACTLY_THE_SAME_AS =
 
       "注意：树模型中的 'set configuration' 语法与表模型中的语法并不完全相同。";

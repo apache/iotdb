@@ -1806,6 +1806,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
     for (Property property : properties) {
+      if (property.isSetToDefault()) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD);
+      }
       String key = property.getName().getValue();
       Expression propertyValue = property.getNonDefaultValue();
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {

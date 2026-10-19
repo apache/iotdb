@@ -2561,6 +2561,8 @@ public final class DataNodeQueryMessages {
       "Inconsistent numbers of non-time column names and values: %d-%d";
   public static final String IS_NOT_SUPPORTED_FOR_PROPERTY_VALUE_OF_SET_CONFIGURATION =
       " is not supported for property value of 'set configuration'. ";
+  public static final String EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD =
+      "DEFAULT is not supported for SET CONFIGURATION";
   public static final String NOTE_THAT_THE_SYNTAX_FOR_SET_CONFIGURATION_IN_THE_TREE_MODEL_IS_NOT_EXACTLY_THE_SAME_AS =
       "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.";
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
