@@ -362,6 +362,58 @@ public class RegionMaintainHandler {
     return clientHandler.getResponseMap();
   }
 
+  public boolean isIoTConsensusV1DataRegion(TConsensusGroupId regionId) {
+    return TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass());
+  }
+
+  /**
+   * Reconcile retained IoTConsensus V1 replicas after the removed location has been committed. A
+   * restarting replica may have received the previous peer list while the removal was in progress.
+   * The existing reset RPC waits for consensus startup before applying this final list.
+   */
+  public boolean resetPeerListAfterRemoveForIoTConsensusV1(
+      TConsensusGroupId regionId, TDataNodeLocation removedDataNode) {
+    if (!isIoTConsensusV1DataRegion(regionId)) {
+      return true;
+    }
+    Optional<TRegionReplicaSet> replicaSet = getRegionReplicaSet(regionId);
+    if (!replicaSet.isPresent()) {
+      // Database deletion may have removed the entire Region from ConfigNode metadata. Its
+      // deletion tasks own the cleanup, and there are no retained replicas left to reconcile.
+      return true;
+    }
+    if (replicaSet.get().getDataNodeLocations().stream()
+        .anyMatch(location -> location.getDataNodeId() == removedDataNode.getDataNodeId())) {
+      LOGGER.warn(
+          ProcedureMessages
+              .LOG_CANNOT_RECONCILE_PEER_LIST_FOR_ARG_AFTER_REMOVING_DATANODE_ARG_THE_CURRENT_REPLICA_SET_STILL_CONTAINS_THE_REMOVED_DATANODE_DBBF45DC,
+          regionId,
+          removedDataNode.getDataNodeId());
+      return false;
+    }
+    List<TDataNodeLocation> correctLocations = replicaSet.get().getDataNodeLocations();
+    Map<Integer, TDataNodeLocation> retainedNodes = new HashMap<>();
+    correctLocations.forEach(location -> retainedNodes.put(location.getDataNodeId(), location));
+    // Include offline replicas so the caller can retry unsuccessful resets within its retry limit.
+    Map<Integer, TSStatus> responses = resetPeerList(regionId, correctLocations, retainedNodes);
+    boolean allSucceeded = true;
+    for (TDataNodeLocation location : correctLocations) {
+      TSStatus response = responses == null ? null : responses.get(location.getDataNodeId());
+      if (response == null || response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            ProcedureMessages
+                .LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4,
+            regionId,
+            location.getDataNodeId(),
+            correctLocations,
+            response);
+        allSucceeded = false;
+      }
+    }
+    return allSucceeded;
+  }
+
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
     return waitTaskFinish(taskId, dataNodeLocation, null);
@@ -451,7 +503,7 @@ public class RegionMaintainHandler {
         .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
-  public void removeRegionLocation(
+  public TSStatus removeRegionLocation(
       TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
     RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
     TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
@@ -462,6 +514,7 @@ public class RegionMaintainHandler {
         status);
     configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+    return status;
   }
 
   /**
