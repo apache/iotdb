@@ -2405,10 +2405,13 @@ public class ProcedureManager {
             ProcedureType.ADD_VIEW_COLUMN_PROCEDURE,
             procedure,
             proc -> {
-              if(proc instanceof AddViewColumnProcedure){
-                ((AddViewColumnProcedure)proc).setAddedColumnList(TsTableColumnSchemaUtil.deserializeColumnSchemaList(addColumnReq.updateInfo));
+              if (proc instanceof AddViewColumnProcedure) {
+                ((AddViewColumnProcedure) proc)
+                    .setAddedColumnList(
+                        TsTableColumnSchemaUtil.deserializeColumnSchemaList(
+                            addColumnReq.updateInfo));
               }
-    });
+            });
     final TSStatus status = submissionResult.getLeft();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       procedures.add(new Pair<>(addColumnReq, procedure));
@@ -2816,14 +2819,14 @@ public class ProcedureManager {
   }
 
   public Pair<TSStatus, Long> executeWithoutDuplicateWithoutWaiting(
-    final String database,
-    final TsTable table,
-    final String tableName,
-    final @Nullable String newName,
-    final String queryId,
-    final ProcedureType thisType,
-    final Procedure<ConfigNodeProcedureEnv> procedure,
-    final Consumer<Procedure<ConfigNodeProcedureEnv>> consumer) {
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final @Nullable String newName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure,
+      final Consumer<Procedure<ConfigNodeProcedureEnv>> consumer) {
     final long procedureId;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
