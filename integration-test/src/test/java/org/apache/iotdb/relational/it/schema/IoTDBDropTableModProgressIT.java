@@ -67,7 +67,8 @@ public class IoTDBDropTableModProgressIT {
   public void testDropTableModFileProgress() throws Exception {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement();
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
       statement.execute("create database async_drop_mod_db");
       statement.execute("use async_drop_mod_db");
       statement.execute("create table drop_target (device string tag, reading int32)");
@@ -83,7 +84,7 @@ public class IoTDBDropTableModProgressIT {
           .untilAsserted(
               () -> {
                 try (final ResultSet resultSet =
-                    statement.executeQuery(
+                    procedureStatement.executeQuery(
                         "select state, written_mod_file_count, remaining_mod_file_count "
                             + "from information_schema.drop_table_procedures "
                             + "where database = 'async_drop_mod_db' and table_name = 'drop_target'")) {
