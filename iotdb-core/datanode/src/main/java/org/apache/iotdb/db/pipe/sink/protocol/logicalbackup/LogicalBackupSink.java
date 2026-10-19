@@ -22,10 +22,13 @@ package org.apache.iotdb.db.pipe.sink.protocol.logicalbackup;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupRecordType;
+import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupSettings;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupWriter;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -41,7 +44,11 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchem
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -55,19 +62,19 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @TreeModel
@@ -82,6 +89,8 @@ public class LogicalBackupSink implements PipeConnector {
   protected boolean includeHeartbeat;
   protected String unsupportedEventPolicy;
   private final String streamType;
+  private long backupStartTime = Long.MIN_VALUE;
+  private long backupEndTime = Long.MAX_VALUE;
 
   public LogicalBackupSink() {
     this("unknown");
@@ -161,6 +170,7 @@ public class LogicalBackupSink implements PipeConnector {
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_PERIODIC,
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_NONE);
     validateSharedDirectoryResumePolicy(parameters);
+    new LogicalBackupSettings(parameters, "backup");
     final String policy =
         parameters
             .getStringOrDefault(
@@ -218,135 +228,27 @@ public class LogicalBackupSink implements PipeConnector {
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     creationTime = configuration.getRuntimeEnvironment().getCreationTime();
     regionId = configuration.getRuntimeEnvironment().getRegionId();
-    final String root =
-        parameters.getStringByKeys(
-            PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_DIR_KEY,
-            PipeSinkConstant.SINK_LOGICAL_BACKUP_DIR_KEY);
-    if (root == null || root.isBlank()) {
-      throw new PipeParameterNotValidException(
-          DataNodePipeMessages.EXCEPTION_LOGICAL_BACKUP_DIRECTORY_MUST_NOT_BE_EMPTY_99DB3EDB);
+    validateSharedDirectoryResumePolicy(parameters);
+    final LogicalBackupSettings settings =
+        new LogicalBackupSettings(parameters, pipeName + "-" + creationTime);
+    includeHeartbeat = settings.includeHeartbeat;
+    unsupportedEventPolicy = settings.unsupported;
+    if (settings.captureOptions.containsKey("start-time")) {
+      backupStartTime =
+          DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
+              settings.captureOptions.get("start-time"));
     }
-    final String backupId =
-        parameters.getStringOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_ID_KEY,
-                PipeSinkConstant.SINK_LOGICAL_BACKUP_ID_KEY),
-            pipeName + "-" + creationTime);
-    if (backupId == null || backupId.isBlank()) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              DataNodePipeMessages
-                  .EXCEPTION_LOGICAL_BACKUP_ID_MUST_RESOLVE_BELOW_THE_CONFIGURED_BACKUP_DIRECTORY_ARG_25BE4B22,
-              backupId));
+    if (settings.captureOptions.containsKey("end-time")) {
+      backupEndTime =
+          DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
+              settings.captureOptions.get("end-time"));
+    }
+    if (configuration.getRuntimeEnvironment() instanceof PipeTaskTemporaryRuntimeEnvironment) {
+      return;
     }
     final String streamId = pipeName + "-" + creationTime + "-" + streamType + "-" + regionId;
-    final Path backupRoot = Paths.get(root).toAbsolutePath().normalize();
-    final Path backupIdPath;
-    try {
-      backupIdPath = Path.of(backupId);
-    } catch (final RuntimeException e) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              DataNodePipeMessages
-                  .EXCEPTION_LOGICAL_BACKUP_ID_MUST_RESOLVE_BELOW_THE_CONFIGURED_BACKUP_DIRECTORY_ARG_25BE4B22,
-              backupId));
-    }
-    if (backupIdPath.isAbsolute()
-        || backupIdPath.getNameCount() != 1
-        || ".".equals(backupId)
-        || "..".equals(backupId)) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              DataNodePipeMessages
-                  .EXCEPTION_LOGICAL_BACKUP_ID_MUST_RESOLVE_BELOW_THE_CONFIGURED_BACKUP_DIRECTORY_ARG_25BE4B22,
-              backupId));
-    }
-    Path directory = backupRoot.resolve(backupId).resolve(streamType + "-" + regionId).normalize();
-    if (!directory.startsWith(backupRoot)) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              DataNodePipeMessages
-                  .EXCEPTION_LOGICAL_BACKUP_ID_MUST_RESOLVE_BELOW_THE_CONFIGURED_BACKUP_DIRECTORY_ARG_25BE4B22,
-              backupId));
-    }
-    final String resume =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_RESUME_KEY,
-                    PipeSinkConstant.SINK_LOGICAL_BACKUP_RESUME_KEY),
-                PipeSinkConstant.LOGICAL_BACKUP_RESUME_DEFAULT_VALUE)
-            .toLowerCase(Locale.ROOT);
-    validateSharedDirectoryResumePolicy(parameters);
-    final boolean append = PipeSinkConstant.LOGICAL_BACKUP_RESUME_APPEND.equals(resume);
-    if (!append
-        && !PipeSinkConstant.LOGICAL_BACKUP_RESUME_NEW.equals(resume)
-        && !PipeSinkConstant.LOGICAL_BACKUP_RESUME_FAIL_IF_EXISTS.equals(resume)) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              DataNodePipeMessages.EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_RESUME_POLICY_ARG_583FCCF9,
-              resume));
-    }
-    if (PipeSinkConstant.LOGICAL_BACKUP_RESUME_NEW.equals(resume)) {
-      directory =
-          directory.resolveSibling(
-              directory.getFileName()
-                  + "-new-"
-                  + System.currentTimeMillis()
-                  + "-"
-                  + UUID.randomUUID().toString().substring(0, 8));
-    }
-    final long segmentSize =
-        parameters.getLongOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_SEGMENT_SIZE_BYTES_KEY,
-                PipeSinkConstant.SINK_LOGICAL_BACKUP_SEGMENT_SIZE_BYTES_KEY),
-            PipeSinkConstant.LOGICAL_BACKUP_SEGMENT_SIZE_BYTES_DEFAULT_VALUE);
-    final int maxRecord =
-        parameters.getIntOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_MAX_RECORD_BYTES_KEY,
-                PipeSinkConstant.SINK_LOGICAL_BACKUP_MAX_RECORD_BYTES_KEY),
-            PipeSinkConstant.LOGICAL_BACKUP_MAX_RECORD_BYTES_DEFAULT_VALUE);
-    final String fsync =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_FSYNC_POLICY_KEY,
-                    PipeSinkConstant.SINK_LOGICAL_BACKUP_FSYNC_POLICY_KEY),
-                PipeSinkConstant.LOGICAL_BACKUP_FSYNC_POLICY_DEFAULT_VALUE)
-            .toUpperCase(Locale.ROOT);
-    final LogicalBackupWriter.FsyncPolicy fsyncPolicy =
-        LogicalBackupWriter.FsyncPolicy.valueOf(fsync);
-    final int fsyncBatch =
-        parameters.getIntOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_FSYNC_BATCH_OPERATIONS_KEY,
-                PipeSinkConstant.SINK_LOGICAL_BACKUP_FSYNC_BATCH_OPERATIONS_KEY),
-            PipeSinkConstant.LOGICAL_BACKUP_FSYNC_BATCH_OPERATIONS_DEFAULT_VALUE);
-    final long fsyncPeriod =
-        parameters.getLongOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_FSYNC_PERIOD_MS_KEY,
-                PipeSinkConstant.SINK_LOGICAL_BACKUP_FSYNC_PERIOD_MS_KEY),
-            PipeSinkConstant.LOGICAL_BACKUP_FSYNC_PERIOD_MS_DEFAULT_VALUE);
-    includeHeartbeat =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_INCLUDE_HEARTBEAT_KEY,
-                PipeSinkConstant.SINK_LOGICAL_BACKUP_INCLUDE_HEARTBEAT_KEY),
-            PipeSinkConstant.LOGICAL_BACKUP_INCLUDE_HEARTBEAT_DEFAULT_VALUE);
-    unsupportedEventPolicy =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_UNSUPPORTED_EVENT_KEY,
-                    PipeSinkConstant.SINK_LOGICAL_BACKUP_UNSUPPORTED_EVENT_KEY),
-                PipeSinkConstant.LOGICAL_BACKUP_UNSUPPORTED_EVENT_DEFAULT_VALUE)
-            .toLowerCase(Locale.ROOT);
-
     final LogicalBackupManifest manifest = new LogicalBackupManifest();
-    manifest.backupId = backupId;
+    manifest.backupId = settings.backupId;
     manifest.pipeName = pipeName;
     manifest.pipeCreationTime = creationTime;
     manifest.sourceClusterId = getSourceClusterId();
@@ -357,16 +259,7 @@ public class LogicalBackupSink implements PipeConnector {
     manifest.regionId = regionId;
     manifest.streamType = streamType;
     manifest.sinkTaskId = streamId;
-    writer =
-        new LogicalBackupWriter(
-            directory,
-            manifest,
-            segmentSize,
-            maxRecord,
-            fsyncPolicy,
-            fsyncBatch,
-            fsyncPeriod,
-            append);
+    writer = settings.open(streamType, regionId, manifest);
   }
 
   protected String getSourceClusterId() {
@@ -447,9 +340,13 @@ public class LogicalBackupSink implements PipeConnector {
       final PipeDeleteDataNodeEvent deletion = (PipeDeleteDataNodeEvent) event;
       transferEnriched(
           deletion,
-          () ->
-              Collections.singletonList(
-                  PipeTransferPlanNodeReq.toTPipeTransferReq(deletion.getDeleteDataNode())));
+          () -> {
+            final Optional<AbstractDeleteDataNode> node =
+                boundedDeletion(deletion.getDeleteDataNode(), backupStartTime, backupEndTime);
+            return node.isPresent()
+                ? Collections.singletonList(PipeTransferPlanNodeReq.toTPipeTransferReq(node.get()))
+                : Collections.emptyList();
+          });
     } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
       final PipeSchemaRegionWritePlanEvent schema = (PipeSchemaRegionWritePlanEvent) event;
       transferEnriched(
@@ -465,8 +362,8 @@ public class LogicalBackupSink implements PipeConnector {
             LogicalBackupRecordType.HEARTBEAT, System.currentTimeMillis(), metadata(event));
       }
     } else if (event instanceof PipeTerminateEvent) {
-      writer.writeControl(
-          LogicalBackupRecordType.STREAM_END, System.currentTimeMillis(), metadata(event));
+      // The framework commits this ordered completion signal. close() writes the final STREAM_END;
+      // a continuous source also emits a historical completion signal before its realtime events.
     } else {
       handleUnsupported(event);
     }
@@ -524,13 +421,14 @@ public class LogicalBackupSink implements PipeConnector {
     }
   }
 
-  private List<TPipeTransferReq> requests(final PipeInsertNodeTabletInsertionEvent event)
+  List<TPipeTransferReq> requests(final PipeInsertNodeTabletInsertionEvent event)
       throws IOException {
     final String databaseName =
         event.isTableModelEvent()
             ? event.getTableModelDatabaseName()
             : event.getTreeModelDatabaseName();
-    if (!(event.getInsertNode() instanceof RelationalInsertTabletNode)) {
+    if (!(event.getInsertNode() instanceof RelationalInsertTabletNode)
+        && !event.shouldParseTimeOrPattern()) {
       return Collections.singletonList(
           PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
               event.getInsertNode(), databaseName));
@@ -539,11 +437,46 @@ public class LogicalBackupSink implements PipeConnector {
     final List<Tablet> tablets = event.convertToTablets();
     final List<TPipeTransferReq> requests = new ArrayList<>(tablets.size());
     for (int index = 0; index < tablets.size(); index++) {
+      if (tablets.get(index).getRowSize() == 0) {
+        continue;
+      }
       requests.add(
           PipeTransferTabletRawReqV2.toTPipeTransferReq(
               tablets.get(index), event.isAligned(index), databaseName));
     }
     return requests;
+  }
+
+  static Optional<AbstractDeleteDataNode> boundedDeletion(
+      final AbstractDeleteDataNode node, final long start, final long end) {
+    if (node instanceof DeleteDataNode) {
+      final DeleteDataNode tree = (DeleteDataNode) node;
+      final long first = Math.max(start, tree.getDeleteStartTime());
+      final long last = Math.min(end, tree.getDeleteEndTime());
+      return first > last
+          ? Optional.empty()
+          : Optional.of(new DeleteDataNode(tree.getPlanNodeId(), tree.getPathList(), first, last));
+    }
+    if (node instanceof RelationalDeleteDataNode) {
+      final RelationalDeleteDataNode table = (RelationalDeleteDataNode) node;
+      final List<TableDeletionEntry> entries = new ArrayList<>();
+      for (final TableDeletionEntry entry : table.getModEntries()) {
+        final long first = Math.max(start, entry.getStartTime());
+        final long last = Math.min(end, entry.getEndTime());
+        if (first <= last) {
+          entries.add(new TableDeletionEntry(entry.getPredicate(), new TimeRange(first, last)));
+        }
+      }
+      return entries.isEmpty()
+          ? Optional.empty()
+          : Optional.of(
+              new RelationalDeleteDataNode(
+                  table.getPlanNodeId(), entries, table.getDatabaseName()));
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            DataNodePipeMessages.EXCEPTION_UNSUPPORTED_PIPE_EVENT_FOR_LOGICAL_BACKUP_ARG_521AEE97,
+            node.getClass().getName()));
   }
 
   protected void transferEnriched(final EnrichedEvent event, final RequestSupplier requestSupplier)
@@ -552,8 +485,10 @@ public class LogicalBackupSink implements PipeConnector {
       return;
     }
     try {
-      writer.writeEvent(
-          eventId(event), System.currentTimeMillis(), requestSupplier.get(), metadata(event));
+      final List<TPipeTransferReq> requests = requestSupplier.get();
+      if (!requests.isEmpty()) {
+        writer.writeEvent(eventId(event), System.currentTimeMillis(), requests, metadata(event));
+      }
     } finally {
       event.decreaseReferenceCount(getClass().getName(), false);
     }

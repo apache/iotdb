@@ -148,4 +148,14 @@ public final class LogicalBackupMessages {
       "Logical backup directory is unavailable: %s";
 
   private LogicalBackupMessages() {}
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_ROOT_MANIFEST_FILE_CHECKSUM_OR_STATE_ARG_3EDC33F3 =
+      "Invalid logical backup root manifest, file, checksum or state: %s";
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_WRITER_SETTINGS_4E94FAAB =
+      "Invalid logical backup writer settings.";
+  public static final String EXCEPTION_CONFIGREGION_AND_DATAREGION_BACKUPS_REQUIRE_EXPLICIT_SINK_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_BECBAB90 =
+      "ConfigRegion and DataRegion backups require explicit sink.resume=append and a shared backup directory.";
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_SETTING_ARG_6D261EEB =
+      "Invalid logical backup setting: %s";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EVENT_ARG_30920E60 =
+      "Unsupported logical backup event: %s";
 }

@@ -165,4 +165,44 @@ public final class CliMessages {
   public static final String
       EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_HAS_INVALID_IDENTIFIER_ARG_BB015204 =
       "逻辑备份选项 --%s 的标识符无效：%s";
+  public static final String LOG_EXPORT_IS_DEPRECATED_USE_DUMP_TO_GENERATE_A_BACKUP_AND_PACK_TO_CREATE_A_ZIP_47709D2D =
+      "export 已弃用；请使用 dump 生成备份，使用 pack 创建 ZIP。";
+  public static final String LOG_IMPORT_IS_DEPRECATED_USE_RESTORE_2F1AE2CE =
+      "import 已弃用；请使用 restore。";
+  public static final String LOG_LOGICAL_BACKUP_ARG_1E5C23CE =
+      "逻辑备份：%s";
+  public static final String LOG_LOGICAL_BACKUP_PACKED_FROM_ARG_TO_ARG_CB9D5304 =
+      "已将逻辑备份从 %s 打包至 %s";
+public static final String EXCEPTION_STOP_SEQUENCE_REQUIRES_A_STABLE_SOURCE_SEQUENCE_CAPABILITY_USE_UNTIL_WITH_THIS_SERVER_VERSION_8323B09E =
+      "--stop-sequence 需要源端提供稳定序号能力；当前服务端版本请使用 --until。";
+  public static final String EXCEPTION_OBJECT_FILTERS_REQUIRE_MODEL_TREE_OR_MODEL_TABLE_SPLIT_MIXED_MODEL_FILTERED_DUMPS_INTO_SEPARATE_BACKUPS_0488699E =
+      "对象过滤需要 --model tree 或 --model table；请将混合模型过滤拆为独立备份。";
+  public static final String EXCEPTION_TABLE_FILTERS_USE_DATABASE_REGEX_TABLE_REGEX_EXCLUSIONS_MUST_USE_FOR_EITHER_DATABASE_OR_TABLE_42F0FA23 =
+      "Table 过滤使用数据库正则/表名正则；排除过滤中数据库或表名必须有一项为 .*。";
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_DUMP_OPTION_ARG_894E11E0 =
+      "逻辑备份 dump 选项无效：--%s";
+  public static final String EXCEPTION_INVALID_OR_CONFLICTING_LOGICAL_BACKUP_ARGUMENTS_76233F81 =
+      "逻辑备份参数无效或相互冲突。";
+  public static final String EXCEPTION_ONLY_CONFLICT_FAIL_IS_SUPPORTED_RESTORE_NEVER_IMPLICITLY_OVERWRITES_OR_DELETES_TARGET_OBJECTS_70C9523E =
+      "当前仅支持 --conflict fail；restore 不会隐式覆盖或删除目标对象。";
+  public static final String EXCEPTION_THE_EXISTING_BACKUP_TASK_DOES_NOT_MATCH_THIS_BACKUP_IDENTITY_OR_CAPTURE_OPTIONS_50E6388F =
+      "已有备份任务与本次备份身份或捕获选项不一致。";
+  public static final String EXCEPTION_ANOTHER_DUMP_PROCESS_IS_MANAGING_THIS_BACKUP_FE8EE828 =
+      "其他 dump 进程正在管理此备份。";
+  public static final String EXCEPTION_BACKUP_ARG_TASK_ARG_DIRECTORY_ARG_ARG_THE_TASK_IS_RETAINED_QUERY_SHOW_PIPE_OR_REPEAT_DUMP_WITH_THE_SAME_OPTIONS_AND_RESUME_APPEND_6F8C1E87 =
+      "备份 %s，任务 %s，目录 %s：%s。任务已保留；可使用 SHOW PIPE 查询，或使用相同选项和 --resume append 继续 dump。";
+  public static final String EXCEPTION_THE_BACKUP_TASK_HAS_NOT_PRODUCED_SEALED_STREAMS_YET_RESUME_THE_SAME_TASK_TO_FINISH_SEALING_87C9B599 =
+      "备份任务尚未产出封存的流；请继续原任务以完成封存。";
+  public static final String EXCEPTION_AN_EXISTING_CHECKPOINT_REQUIRES_RESUME_RESUME_REQUIRES_AN_EXISTING_CHECKPOINT_FB6D0B7D =
+      "使用已有 checkpoint 必须指定 --resume；--resume 要求 checkpoint 已存在。";
+  public static final String EXCEPTION_THE_TARGET_TIMESTAMP_PRECISION_DOES_NOT_MATCH_THE_BACKUP_70B225CB =
+      "目标时间精度与备份不一致。";
+  public static final String EXCEPTION_THE_TARGET_VERSION_OR_DATA_MODEL_IS_INCOMPATIBLE_WITH_THE_BACKUP_220EB40C =
+      "目标版本或数据模型与备份不兼容。";
+  public static final String EXCEPTION_THE_CHECKPOINT_MUST_BE_OUTSIDE_THE_INPUT_BACKUP_15B70F59 =
+      "checkpoint 必须位于输入备份之外。";
+  public static final String EXCEPTION_RESTORING_AUTHORIZATION_OBJECTS_REQUIRES_INCLUDE_AUTH_TRUE_INSPECT_THE_BACKUP_OR_USE_DRY_RUN_FIRST_83DDCD79 =
+      "恢复权限对象必须显式指定 --include-auth true；请先 inspect 备份或执行 --dry-run。";
+  public static final String LOG_LOGICAL_BACKUP_DUMP_VERIFY_INSPECT_PACK_RESTORE_OPTIONS_DUMP_CONNECT_TO_A_SOURCE_AND_SEAL_A_BACKUP_DIRECTORY_DOES_NOT_CREATE_A_ZIP_INSPECT_SHOW_BACKUP_IDENTITY_SCOPE_STREAMS_SEGMENTS_COUNTS_AND_STATUS_VERIFY_CHECK_STRUCTURE_CHECKSUMS_AND_SEMANTICS_WITHOUT_CHANGING_THE_INPUT_PACK_VERIFY_AND_PACKAGE_AN_EXISTING_DIRECTORY_AS_ZIP_ACCEPTS_NO_CONNECTION_OPTIONS_RESTORE_PREFLIGHT_AND_REPLAY_A_DIRECTORY_ROOT_MANIFEST_JSON_OR_ZIP_INSPECT_VERIFY_INPUT_PATH_JSON_ALLOW_INCOMPLETE_PACK_INPUT_DIR_OUTPUT_ZIP_JSON_ALLOW_INCOMPLETE_DUMP_HOST_HOST_PORT_PORT_USER_ROOT_PASSWORD_STDIN_PASSWORD_ENV_NAME_BACKUP_DIR_DIR_BACKUP_ID_ID_SCOPE_CONFIG_SCHEMA_DATA_MODEL_TREE_TABLE_INCLUDE_PATTERN_EXCLUDE_PATTERN_START_TIME_TIME_END_TIME_TIME_INCLUDE_AUTH_TRUE_FALSE_MODE_SNAPSHOT_CONTINUOUS_UNTIL_ISO_8601_RESUME_FAIL_IF_EXISTS_APPEND_NEW_PIPE_NAME_NAME_SEGMENT_SIZE_BYTES_268435456_MAX_RECORD_BYTES_67108864_FSYNC_POLICY_ALWAYS_BATCH_PERIODIC_NONE_FSYNC_BATCH_OPERATIONS_N_FSYNC_PERIOD_MS_N_ON_UNSUPPORTED_FAIL_SKIP_INCLUDE_HEARTBEAT_TRUE_FALSE_TIMEOUT_SECONDS_3600_POLL_INTERVAL_SECONDS_2_JSON_ALLOW_INCOMPLETE_CONTINUOUS_REQUIRES_UNTIL_STOP_SEQUENCE_IS_RESERVED_AND_CURRENTLY_REJECTED_OBJECT_FILTERS_REQUIRE_ONE_MODEL_TREE_USES_PATH_LISTS_TABLE_USES_DATABASE_REGEX_TABLE_REGEX_TREE_CONFIG_SCHEMA_CAPTURE_ACCEPTS_A_SINGLE_PREFIX_FULL_PATH_WITHOUT_EXCLUSIONS_TABLE_EXCLUSIONS_MUST_SELECT_WHOLE_DATABASES_OR_WHOLE_TABLE_NAME_PATTERNS_RESTORE_INPUT_PATH_HOST_HOST_PORT_PORT_USER_USER_PASSWORD_STDIN_PASSWORD_ENV_NAME_DRY_RUN_CHECKPOINT_FILE_RESUME_CONFLICT_FAIL_INCLUDE_AUTH_TRUE_FALSE_JSON_ALLOW_INCOMPLETE_RESTORING_AUTHORIZATION_OBJECTS_REQUIRES_INCLUDE_AUTH_TRUE_LEGACY_CONFIG_IS_CONSERVATIVE_A_TARGET_CONNECTION_IS_REQUIRED_FOR_REPLAY_LOCAL_DRY_RUN_NEEDS_NO_CONNECTION_TARGET_PREFLIGHT_CHECKS_VERSION_PRECISION_AUTHENTICATION_AND_HANDSHAKE_SUPPORT_OBJECT_CONFLICTS_AND_PER_OBJECT_PRIVILEGES_ARE_CHECKED_DURING_REPLAY_DEPRECATED_ALIASES_EXPORT_INPUT_DIR_OUTPUT_ZIP_PACK_EXPORT_WITH_SOURCE_CONNECTION_OPTIONS_DUMP_THEN_PACK_IMPORT_RESTORE_EXIT_CODE_0_SUCCESS_1_FAILURE_ERRORS_AND_DEPRECATION_NOTICES_GO_TO_STDERR_B1983BE8 =
+      "logical-backup <dump|verify|inspect|pack|restore> [选项]\n  dump     连接源端并封存备份目录，不生成 ZIP。\n  inspect  查看备份身份、范围、流、segment、计数和状态。\n  verify   检查结构、校验和与语义，不修改输入。\n  pack     校验已有目录并打包为 ZIP，不接受数据库连接参数。\n  restore  预检并回放备份目录、根 manifest.json 或 ZIP。\n\ninspect/verify: --input PATH [--json] [--allow-incomplete]\npack: --input DIR --output ZIP [--json] [--allow-incomplete]\ndump: --host HOST --port PORT [--user root] (--password-stdin|--password-env NAME)\n  --backup-dir DIR --backup-id ID --scope config,schema,data [--model tree,table]\n  [--include PATTERN] [--exclude PATTERN] [--start-time TIME] [--end-time TIME]\n  [--include-auth true|false] [--mode snapshot|continuous] [--until ISO-8601]\n  [--resume fail-if-exists|append|new] [--pipe-name NAME]\n  [--segment-size-bytes 268435456] [--max-record-bytes 67108864]\n  [--fsync-policy always|batch|periodic|none] [--fsync-batch-operations N|--fsync-period-ms N]\n  [--on-unsupported fail|skip] [--include-heartbeat true|false]\n  [--timeout-seconds 3600] [--poll-interval-seconds 2] [--json] [--allow-incomplete]\n  continuous 必须提供 --until；--stop-sequence 是预留参数，当前会被拒绝。\n  对象过滤只允许选择一个模型：Tree 使用路径列表，Table 使用数据库正则/表名正则。\n  Tree config/schema 捕获只接受单个前缀或完整路径，不支持排除过滤。\n  Table 排除过滤必须覆盖整个数据库或整个表名模式。\nrestore: --input PATH [--host HOST --port PORT --user USER\n  (--password-stdin|--password-env NAME)] [--dry-run] [--checkpoint FILE] [--resume]\n  [--conflict fail] [--include-auth true|false] [--json] [--allow-incomplete]\n  恢复权限对象必须指定 --include-auth true；旧 config 备份按包含权限对象处理。\n  实际恢复需要目标连接；本地 dry-run 无需连接。\n  目标预检检查版本、时间精度、认证和握手能力；\n  对象冲突及对象级权限在回放时检查。\n\n弃用别名：export --input DIR --output ZIP = pack；\n  带源端连接参数的 export = dump 后接 pack；import = restore。\n退出码：0 成功，1 失败。错误及弃用提示输出到标准错误。";
 }

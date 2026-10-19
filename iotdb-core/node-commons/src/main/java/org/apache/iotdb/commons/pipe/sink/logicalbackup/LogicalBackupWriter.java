@@ -115,6 +115,7 @@ public class LogicalBackupWriter implements Closeable {
             <= LogicalBackupFormat.SEGMENT_HEADER_SIZE + LogicalBackupFormat.SEGMENT_FOOTER_SIZE
         || maxRecordBytes <= 0
         || maxRecordBytes > LogicalBackupFormat.MAX_RECORD_BYTES
+        || segmentSizeBytes < maxRecordBytes
         || fsyncBatchOperations <= 0
         || fsyncPeriodMs <= 0) {
       throw new IOException(
@@ -144,6 +145,8 @@ public class LogicalBackupWriter implements Closeable {
         manifest.status = "WRITING";
         manifest.createdAt = Instant.now().toString();
         manifest.fsyncPolicy = fsyncPolicy.name().toLowerCase(Locale.ROOT);
+        manifest.fsyncBatchOperations = fsyncBatchOperations;
+        manifest.fsyncPeriodMs = fsyncPeriodMs;
         manifest.segmentSizeBytes = segmentSizeBytes;
         manifest.maxRecordBytes = maxRecordBytes;
         writeManifest();
@@ -759,6 +762,17 @@ public class LogicalBackupWriter implements Closeable {
         "fsyncPolicy", fsyncPolicy.name().toLowerCase(Locale.ROOT), existing.fsyncPolicy);
     validateManifestConfiguration("segmentSizeBytes", segmentSizeBytes, existing.segmentSizeBytes);
     validateManifestConfiguration("maxRecordBytes", maxRecordBytes, existing.maxRecordBytes);
+    if (existing.fsyncBatchOperations > 0) {
+      validateManifestConfiguration(
+          "fsyncBatchOperations", fsyncBatchOperations, existing.fsyncBatchOperations);
+    }
+    if (existing.fsyncPeriodMs > 0) {
+      validateManifestConfiguration("fsyncPeriodMs", fsyncPeriodMs, existing.fsyncPeriodMs);
+    }
+    validateManifestIdentity(
+        "captureOptions",
+        GSON.toJson(manifest.captureOptions),
+        GSON.toJson(existing.captureOptions));
     if (manifest.pipeCreationTime != 0 && manifest.pipeCreationTime != existing.pipeCreationTime) {
       throw new IOException(
           String.format(
@@ -799,7 +813,11 @@ public class LogicalBackupWriter implements Closeable {
             : existing.operationCounts;
     manifest.createdAt = existing.createdAt;
     manifest.closedAt = existing.closedAt;
+    manifest.sealedAt = existing.sealedAt;
+    manifest.captureOptions = existing.captureOptions;
     manifest.fsyncPolicy = existing.fsyncPolicy;
+    manifest.fsyncBatchOperations = fsyncBatchOperations;
+    manifest.fsyncPeriodMs = fsyncPeriodMs;
     manifest.segmentSizeBytes = existing.segmentSizeBytes;
     manifest.maxRecordBytes = existing.maxRecordBytes;
     manifest.lastEventGroupId = existing.lastEventGroupId;
@@ -904,8 +922,9 @@ public class LogicalBackupWriter implements Closeable {
         }
         sealSegment();
       }
-      manifest.status = manifest.recovered ? "RECOVERED" : "SEALED";
+      manifest.status = manifest.skippedEventCount > 0 ? "INCOMPLETE" : "SEALED";
       manifest.closedAt = Instant.now().toString();
+      manifest.sealedAt = manifest.closedAt;
       manifest.lastDurableSequence = manifest.lastSequence;
       writeManifest();
     } finally {

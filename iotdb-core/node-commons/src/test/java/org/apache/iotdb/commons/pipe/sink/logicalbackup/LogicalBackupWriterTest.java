@@ -326,14 +326,7 @@ public class LogicalBackupWriterTest {
     final LogicalBackupManifest manifest = manifest();
     try (final LogicalBackupWriter writer =
         new LogicalBackupWriter(
-            directory,
-            manifest,
-            500,
-            MAX_RECORD_BYTES,
-            LogicalBackupWriter.FsyncPolicy.NONE,
-            1,
-            1,
-            false)) {
+            directory, manifest, 500, 500, LogicalBackupWriter.FsyncPolicy.NONE, 1, 1, false)) {
       writer.writeEvent(
           UUID.randomUUID(), 1, Collections.singletonList(request(new byte[20])), "m");
       writer.writeEvent(
@@ -533,7 +526,7 @@ public class LogicalBackupWriterTest {
         directory,
         manifest(),
         segmentSize,
-        MAX_RECORD_BYTES,
+        (int) Math.min(MAX_RECORD_BYTES, segmentSize),
         LogicalBackupWriter.FsyncPolicy.ALWAYS,
         1,
         1,

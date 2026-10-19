@@ -8,12 +8,24 @@
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.confignode.manager.pipe.sink.protocol.logicalbackup;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.LogicalBackupMessages;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
+import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupRecordType;
+import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupSettings;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupWriter;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -21,6 +33,8 @@ import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigP
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -34,8 +48,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,11 +59,15 @@ import java.util.UUID;
 public class LogicalBackupSink implements PipeConnector {
   private static final int FILE_PIECE_BYTES = 64 * 1024;
   private LogicalBackupWriter writer;
+  private LogicalBackupSettings settings;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     validator.validateSynonymAttributes(
         Collections.singletonList("connector.dir"), Collections.singletonList("sink.dir"), true);
+    final LogicalBackupSettings validated =
+        new LogicalBackupSettings(validator.getParameters(), "backup");
+    validated.requireSharedResume(validator.getParameters());
   }
 
   @Override
@@ -61,18 +77,13 @@ public class LogicalBackupSink implements PipeConnector {
     final String pipeName = configuration.getRuntimeEnvironment().getPipeName();
     final long creationTime = configuration.getRuntimeEnvironment().getCreationTime();
     final int regionId = configuration.getRuntimeEnvironment().getRegionId();
-    final String root = parameters.getStringByKeys("connector.dir", "sink.dir");
-    final String backupId =
-        parameters.getStringOrDefault(
-            Arrays.asList("connector.backup-id", "sink.backup-id"), pipeName + "-" + creationTime);
-    final Path directory =
-        Paths.get(root)
-            .toAbsolutePath()
-            .normalize()
-            .resolve(backupId)
-            .resolve("config-" + regionId);
+    settings = new LogicalBackupSettings(parameters, pipeName + "-" + creationTime);
+    settings.requireSharedResume(parameters);
+    if (configuration.getRuntimeEnvironment() instanceof PipeTaskTemporaryRuntimeEnvironment) {
+      return;
+    }
     final LogicalBackupManifest manifest = new LogicalBackupManifest();
-    manifest.backupId = backupId;
+    manifest.backupId = settings.backupId;
     manifest.pipeName = pipeName;
     manifest.pipeCreationTime = creationTime;
     manifest.sourceClusterId =
@@ -83,23 +94,18 @@ public class LogicalBackupSink implements PipeConnector {
     manifest.streamId = pipeName + "-" + creationTime + "-config-" + regionId;
     manifest.regionId = regionId;
     manifest.streamType = "config";
-    writer =
-        new LogicalBackupWriter(
-            directory,
-            manifest,
-            64 * 1024 * 1024,
-            64 * 1024 * 1024,
-            LogicalBackupWriter.FsyncPolicy.BATCH,
-            100,
-            1000,
-            true);
+    writer = settings.open("config", regionId, manifest);
   }
 
   @Override
-  public void transfer(final TabletInsertionEvent event) throws Exception {}
+  public void transfer(final TabletInsertionEvent event) throws Exception {
+    unsupported(event);
+  }
 
   @Override
-  public void transfer(final TsFileInsertionEvent event) throws Exception {}
+  public void transfer(final TsFileInsertionEvent event) throws Exception {
+    unsupported(event);
+  }
 
   @Override
   public void transfer(final Event event) throws Exception {
@@ -108,7 +114,7 @@ public class LogicalBackupSink implements PipeConnector {
       if (e.increaseReferenceCount(getClass().getName())) {
         try {
           writer.writeEvent(
-              UUID.randomUUID(),
+              eventId(e),
               System.currentTimeMillis(),
               Collections.singletonList(
                   PipeTransferConfigPlanReq.toTPipeTransferReq(e.getConfigPhysicalPlan())),
@@ -140,13 +146,48 @@ public class LogicalBackupSink implements PipeConnector {
                   e.getFileType(),
                   e.toSealTypeString(),
                   e.getAuthUserName()));
-          writer.writeEvent(
-              UUID.randomUUID(), System.currentTimeMillis(), requests, "config-snapshot");
+          writer.writeEvent(eventId(e), System.currentTimeMillis(), requests, "config-snapshot");
         } finally {
           e.decreaseReferenceCount(getClass().getName(), false);
         }
       }
+    } else if (event instanceof PipeHeartbeatEvent) {
+      if (settings.includeHeartbeat) {
+        writer.writeControl(
+            LogicalBackupRecordType.HEARTBEAT, System.currentTimeMillis(), "heartbeat");
+      }
+    } else if (event instanceof PipeTerminateEvent) {
+      // close() writes STREAM_END after every preceding request has been committed.
+    } else {
+      unsupported(event);
     }
+  }
+
+  private void unsupported(final Event event) throws Exception {
+    final String name = event == null ? "null" : event.getClass().getName();
+    if ("skip".equals(settings.unsupported)) {
+      writer.recordSkippedEvent(System.currentTimeMillis(), name);
+    } else {
+      throw new java.io.IOException(
+          String.format(
+              LogicalBackupMessages.EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EVENT_ARG_30920E60, name));
+    }
+  }
+
+  private static UUID eventId(final EnrichedEvent event) {
+    String identity =
+        event.getClass().getName()
+            + "\0"
+            + event.getPipeName()
+            + "\0"
+            + event.getCreationTime()
+            + "\0"
+            + event.getCommitId();
+    if (event instanceof PipeConfigRegionSnapshotEvent) {
+      final PipeConfigRegionSnapshotEvent snapshot = (PipeConfigRegionSnapshotEvent) event;
+      identity += "\0" + snapshot.getFileType() + "\0" + snapshot.getSnapshotFile().getName();
+    }
+    return UUID.nameUUIDFromBytes(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   private static void appendFile(final List<TPipeTransferReq> requests, final File file)

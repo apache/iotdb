@@ -23,9 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveReader;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveReader.BackupStream;
+import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupCatalog;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupFormat;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupWriter;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -37,8 +39,11 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -57,7 +62,7 @@ public class PipeLogicalBackupToolTest {
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
-  public void testDirectoryExportZipVerifyAndDryRun() throws Exception {
+  public void testDirectoryPackZipVerifyAndRestoreDryRun() throws Exception {
     final Path root = temporaryFolder.getRoot().toPath();
     final Path source = root.resolve("source");
     writeBackup(source);
@@ -70,20 +75,14 @@ public class PipeLogicalBackupToolTest {
     Assert.assertEquals(
         0,
         PipeLogicalBackupTool.run(
-            new String[] {
-              "export",
-              "--input",
-              source.toString(),
-              "--output",
-              archive.toString(),
-              "--format=binary"
-            }));
+            new String[] {"pack", "--input", source.toString(), "--output", archive.toString()}));
     Assert.assertTrue(Files.isRegularFile(archive));
     try (final ZipFile zip = new ZipFile(archive.toFile())) {
       Assert.assertNotNull(zip.getEntry(LogicalBackupFormat.MANIFEST_FILE_NAME));
-      Assert.assertNotNull(zip.getEntry("segment-00000000000000000000.pwal"));
+      Assert.assertNotNull(zip.getEntry("legacy-stream/manifest.json"));
+      Assert.assertNotNull(zip.getEntry("legacy-stream/segment-00000000000000000000.pwal"));
       Assert.assertNull(zip.getEntry(".backup.lock"));
-      Assert.assertEquals(2, zip.size());
+      Assert.assertEquals(3, zip.size());
     }
 
     Assert.assertEquals(
@@ -91,7 +90,7 @@ public class PipeLogicalBackupToolTest {
     Assert.assertEquals(
         0,
         PipeLogicalBackupTool.run(
-            new String[] {"import", "--input", archive.toString(), "--dry-run"}));
+            new String[] {"restore", "--input", archive.toString(), "--dry-run"}));
 
     final byte[] originalArchive = Files.readAllBytes(archive);
     try {
@@ -100,6 +99,61 @@ public class PipeLogicalBackupToolTest {
       Assert.fail();
     } catch (final java.nio.file.FileAlreadyExistsException expected) {
       Assert.assertArrayEquals(originalArchive, Files.readAllBytes(archive));
+    }
+  }
+
+  @Test
+  public void testPackPreservesIncompleteStatus() throws Exception {
+    final Path root = temporaryFolder.getRoot().toPath();
+    final Path source = root.resolve("incomplete");
+    final LogicalBackupManifest manifest = new LogicalBackupManifest();
+    manifest.backupId = "backup";
+    manifest.pipeName = "pipe";
+    manifest.pipeCreationTime = 1;
+    manifest.streamId = "data-1";
+    manifest.streamType = "data";
+    manifest.timestampPrecision = "ms";
+    try (final LogicalBackupWriter writer =
+        new LogicalBackupWriter(
+            source, manifest, 4096, 1024, LogicalBackupWriter.FsyncPolicy.ALWAYS, 1, 1, false)) {
+      writer.recordSkippedEvent(1, "unsupported event");
+    }
+    final Path archive = root.resolve("incomplete.zip");
+    try {
+      PipeLogicalBackupTool.run(
+          new String[] {"pack", "--input", source.toString(), "--output", archive.toString()});
+      Assert.fail();
+    } catch (final IOException expected) {
+      Assert.assertFalse(Files.exists(archive));
+    }
+    final PrintStream previous = System.out;
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try {
+      System.setOut(new PrintStream(bytes, true, StandardCharsets.UTF_8));
+      PipeLogicalBackupTool.run(
+          new String[] {
+            "pack",
+            "--input",
+            source.toString(),
+            "--output",
+            archive.toString(),
+            "--allow-incomplete",
+            "--json"
+          });
+      final com.google.gson.JsonObject json =
+          new com.google.gson.Gson()
+              .fromJson(bytes.toString(StandardCharsets.UTF_8), com.google.gson.JsonObject.class);
+      Assert.assertEquals("INCOMPLETE", json.get("status").getAsString());
+      bytes.reset();
+      PipeLogicalBackupTool.run(
+          new String[] {"verify", "--input", archive.toString(), "--allow-incomplete", "--json"});
+      final com.google.gson.JsonObject verified =
+          new com.google.gson.Gson()
+              .fromJson(bytes.toString(StandardCharsets.UTF_8), com.google.gson.JsonObject.class);
+      Assert.assertEquals(
+          "INCOMPLETE", verified.getAsJsonObject("manifest").get("status").getAsString());
+    } finally {
+      System.setOut(previous);
     }
   }
 
@@ -166,17 +220,191 @@ public class PipeLogicalBackupToolTest {
   }
 
   @Test
-  public void testRemovedCommandAliasesAreRejected() throws Exception {
+  public void testUnknownCommandsAreRejected() throws Exception {
     final Path source = temporaryFolder.getRoot().toPath().resolve("source");
     writeBackup(source);
 
-    for (final String command : Arrays.asList("restore", "stats")) {
+    for (final String command : Arrays.asList("stats", "generate")) {
       try {
         PipeLogicalBackupTool.run(new String[] {command, "--input", source.toString()});
         Assert.fail();
       } catch (final ParseException expected) {
         // Expected.
       }
+    }
+  }
+
+  @Test
+  public void testRootManifestPackAndJsonVerification() throws Exception {
+    final Path root = temporaryFolder.getRoot().toPath();
+    final Path source = root.resolve("backup");
+    writeBackup(source.resolve("data-1"));
+    final LogicalBackupCatalog catalog = new LogicalBackupCatalog();
+    catalog.backupId = "backup";
+    catalog.pipeName = "pipe";
+    catalog.scope = Collections.singletonList("data");
+    catalog.model = Collections.singletonList("tree");
+    catalog.seal(source, new LogicalBackupArchiveReader().read(source, false));
+    final byte[] originalManifest = Files.readAllBytes(source.resolve("manifest.json"));
+    final Path archive = root.resolve("rooted.zip");
+    PipeLogicalBackupTool.run(
+        new String[] {"pack", "--input", source.toString(), "--output", archive.toString()});
+    Assert.assertArrayEquals(originalManifest, Files.readAllBytes(source.resolve("manifest.json")));
+    try (final ZipFile zip = new ZipFile(archive.toFile())) {
+      Assert.assertNotNull(zip.getEntry("manifest.json"));
+      Assert.assertNotNull(zip.getEntry("data-1/manifest.json"));
+      Assert.assertEquals(3, zip.size());
+    }
+    final PrintStream previous = System.out;
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try {
+      System.setOut(new PrintStream(bytes, true, StandardCharsets.UTF_8));
+      PipeLogicalBackupTool.run(new String[] {"verify", "--input", archive.toString(), "--json"});
+      final com.google.gson.JsonObject json =
+          new com.google.gson.Gson()
+              .fromJson(bytes.toString(StandardCharsets.UTF_8), com.google.gson.JsonObject.class);
+      Assert.assertEquals("passed", json.get("checksum").getAsString());
+      Assert.assertEquals("backup", json.getAsJsonObject("manifest").get("backupId").getAsString());
+    } finally {
+      System.setOut(previous);
+    }
+  }
+
+  @Test
+  public void testDeprecatedAliasesReportMigration() throws Exception {
+    final Path root = temporaryFolder.getRoot().toPath();
+    final Path source = root.resolve("source");
+    writeBackup(source);
+    final PrintStream previous = System.err;
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try {
+      System.setErr(new PrintStream(bytes, true, StandardCharsets.UTF_8));
+      PipeLogicalBackupTool.run(
+          new String[] {
+            "export",
+            "--input",
+            source.toString(),
+            "--output",
+            root.resolve("legacy.zip").toString()
+          });
+      PipeLogicalBackupTool.run(new String[] {"import", "--input", source.toString(), "--dry-run"});
+    } finally {
+      System.setErr(previous);
+    }
+    final String notices = bytes.toString(StandardCharsets.UTF_8);
+    Assert.assertTrue(notices.contains("dump"));
+    Assert.assertTrue(notices.contains("pack"));
+    Assert.assertTrue(notices.contains("restore"));
+  }
+
+  @Test
+  public void testCommandsRejectOptionsWithOtherResponsibilities() throws Exception {
+    final List<String[]> invalid =
+        Arrays.asList(
+            new String[] {
+              "pack", "--input", "backup", "--output", "backup.zip", "--host", "localhost"
+            },
+            new String[] {"dump", "--input", "backup"},
+            new String[] {"dump", "--output", "backup.zip"},
+            new String[] {"inspect", "--input", "backup", "--password-stdin"},
+            new String[] {"restore", "--input", "backup", "--resume", "checkpoint.json"},
+            new String[] {"restore", "--input", "backup", "--conflict", "overwrite"});
+    for (final String[] args : invalid) {
+      try {
+        PipeLogicalBackupTool.run(args);
+        Assert.fail(Arrays.toString(args));
+      } catch (final ParseException expected) {
+        // Command-specific validation must fail before opening files or connections.
+      }
+    }
+  }
+
+  @Test
+  public void testDumpScopeAuthAndWriterOptionsAreExplicit() throws Exception {
+    final LogicalBackupDumpOptions options =
+        new LogicalBackupDumpOptions(
+            PipeLogicalBackupTool.parse(
+                "dump",
+                new String[] {
+                  "--scope",
+                  "schema,data",
+                  "--model",
+                  "tree",
+                  "--include",
+                  "root.a.**",
+                  "--fsync-policy",
+                  "periodic",
+                  "--fsync-period-ms",
+                  "42"
+                }),
+            false);
+    Assert.assertEquals("schema,data", options.source.get("source.inclusion"));
+    Assert.assertEquals("auth", options.source.get("source.inclusion.exclusion"));
+    Assert.assertEquals("false", options.source.get("source.capture.table"));
+    Assert.assertEquals("root.a.**", options.source.get("source.path.inclusion"));
+    Assert.assertEquals("42", options.sink.get("sink.fsync-period-ms"));
+    Assert.assertFalse(options.catalog.includeAuth);
+    final LogicalBackupDumpOptions auth =
+        new LogicalBackupDumpOptions(
+            PipeLogicalBackupTool.parse(
+                "dump", new String[] {"--scope", "config", "--include-auth", "true"}),
+            false);
+    Assert.assertTrue(auth.source.get("source.inclusion").contains("auth"));
+  }
+
+  @Test
+  public void testDumpRejectsAmbiguousOrUnboundedCaptureBeforeCreatingTask() throws Exception {
+    for (final String[] args :
+        Arrays.asList(
+            new String[] {},
+            new String[] {"--scope", "data", "--mode", "continuous"},
+            new String[] {"--scope", "data", "--include-auth", "true"},
+            new String[] {"--scope", "data", "--model", "tree,table", "--include", "root.a.**"},
+            new String[] {"--scope", "data", "--segment-size-bytes", "1024"},
+            new String[] {"--scope", "data", "--fsync-period-ms", "1000"},
+            new String[] {"--scope", "data", "--mode", "continuous", "--stop-sequence", "100"})) {
+      try {
+        new LogicalBackupDumpOptions(PipeLogicalBackupTool.parse("dump", args), false);
+        Assert.fail(Arrays.toString(args));
+      } catch (final IOException expected) {
+        // No unsupported option may broaden capture or leave an unbounded task.
+      }
+    }
+  }
+
+  @Test
+  public void testPreflightSendsOnlyHandshakeRequests() throws Exception {
+    final Path source = temporaryFolder.getRoot().toPath().resolve("source");
+    writeBackup(source, "config-0", "config", Collections.singletonList(request((short) 200)));
+    final List<BackupStream> streams = new LogicalBackupArchiveReader().read(source, false);
+    final IoTDBSyncClient client = Mockito.mock(IoTDBSyncClient.class);
+    Mockito.when(client.pipeTransfer(Mockito.any()))
+        .thenReturn(
+            new TPipeTransferResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    PipeLogicalBackupTool.preflight(client, streams, "root", "secret");
+    final org.mockito.ArgumentCaptor<TPipeTransferReq> requests =
+        org.mockito.ArgumentCaptor.forClass(TPipeTransferReq.class);
+    Mockito.verify(client, Mockito.times(2)).pipeTransfer(requests.capture());
+    Assert.assertEquals(
+        PipeRequestType.HANDSHAKE_DATANODE_V2.getType(), requests.getAllValues().get(0).getType());
+    Assert.assertEquals(
+        PipeRequestType.HANDSHAKE_CONFIGNODE_V2.getType(),
+        requests.getAllValues().get(1).getType());
+  }
+
+  @Test
+  public void testFreshRestoreRejectsIdempotentConflict() throws Exception {
+    final IoTDBSyncClient client = Mockito.mock(IoTDBSyncClient.class);
+    Mockito.when(client.pipeTransfer(Mockito.any()))
+        .thenReturn(
+            new TPipeTransferResp(
+                new TSStatus(
+                    TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())));
+    try {
+      PipeLogicalBackupTool.transfer(client, request(1), false);
+      Assert.fail();
+    } catch (final IOException expected) {
+      // Only the uncertain request at a durable resume point may accept an idempotent conflict.
     }
   }
 
@@ -190,7 +418,7 @@ public class PipeLogicalBackupToolTest {
                 new TSStatus(
                     TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())));
 
-    PipeLogicalBackupTool.transfer(client, request);
+    PipeLogicalBackupTool.transfer(client, request, true);
   }
 
   @Test

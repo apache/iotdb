@@ -56,6 +56,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @TableModel
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
+  public static final long LOGICAL_BACKUP_COMPLETED_INDEX = Long.MAX_VALUE - 1;
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBNonDataRegionSource.class);
 
   protected IoTDBTreePatternOperations treePattern;
@@ -65,6 +67,14 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   // A fixed size initialized only when the historicalEvents are first
   // filled. Used only for metric framework.
   private int historicalEventsCount = 0;
+
+  // Logical backup snapshots must acknowledge all metadata before the coordinator drops the pipe.
+  // Leave room for queue maintenance to calculate index + 1 without overflowing.
+  private boolean finiteSnapshot;
+  private boolean snapshotOnly;
+  private long captureUntil;
+  private volatile long captureEndIndex = Long.MAX_VALUE;
+  private boolean snapshotCompletionReported;
 
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
@@ -96,6 +106,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     }
     treePattern = (IoTDBTreePatternOperations) pattern;
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    snapshotOnly = parameters.getBooleanOrDefault("source.logical-backup.snapshot", false);
+    captureUntil = parameters.getLongOrDefault("source.logical-backup.until", -1L);
+    finiteSnapshot = snapshotOnly || captureUntil > 0;
   }
 
   @Override
@@ -107,6 +120,13 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     warnIfUnexpectedHybridProgressIndex(progressIndex);
     final MetaProgressIndex metaProgressIndex = extractMetaProgressIndex(progressIndex);
+    if (finiteSnapshot
+        && metaProgressIndex != null
+        && metaProgressIndex.getIndex() == LOGICAL_BACKUP_COMPLETED_INDEX) {
+      snapshotCompletionReported = true;
+      super.start();
+      return;
+    }
     final long nextIndex =
         Objects.isNull(metaProgressIndex)
                 // If the index is invalid, the queue is seen as cleared before and thus
@@ -115,6 +135,12 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
             ? getNextIndexAfterSnapshot()
             : metaProgressIndex.getIndex() + 1;
     iterator = getListeningQueue().newIterator(nextIndex);
+    if (captureUntil > 0) {
+      java.util.concurrent.CompletableFuture.delayedExecutor(
+              Math.max(0L, captureUntil - System.currentTimeMillis()),
+              java.util.concurrent.TimeUnit.MILLISECONDS)
+          .execute(() -> captureEndIndex = getListeningQueue().getTailIndex());
+    }
     super.start();
   }
 
@@ -171,6 +197,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         return null;
       }
     }
+    if (snapshotCompletionReported) {
+      return null;
+    }
 
     // Check whether snapshot being parsed exists
     PipeWritePlanEvent realtimeEvent = lastEvent;
@@ -197,7 +226,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
 
-      if (canSkipSnapshotPrivilegeCheck(historicalEvent)) {
+      // Portable backups contain logical metadata plans, even when the user can read the whole
+      // snapshot. Snapshot file transfer remains available to ordinary replication pipes.
+      if (!finiteSnapshot && canSkipSnapshotPrivilegeCheck(historicalEvent)) {
         if (historicalEvents.isEmpty()) {
           // We only report progress for the last snapshot event.
           historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
@@ -221,7 +252,20 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
     // Realtime
     if (Objects.isNull(realtimeEvent)) {
+      if (finiteSnapshot
+          && (snapshotOnly || captureUntil <= 0 || iterator.getNextIndex() >= captureEndIndex)) {
+        final ProgressReportEvent completion =
+            new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
+        completion.bindProgressIndex(new MetaProgressIndex(LOGICAL_BACKUP_COMPLETED_INDEX));
+        completion.increaseReferenceCount(IoTDBNonDataRegionSource.class.getName());
+        snapshotCompletionReported = true;
+        return completion;
+      }
       realtimeEvent = (PipeWritePlanEvent) iterator.next(getMaxBlockingTimeMs());
+      if (captureUntil > 0 && iterator.getNextIndex() > captureEndIndex) {
+        // A blocking read may wake with an event appended after the boundary was captured.
+        realtimeEvent = null;
+      }
     }
     if (Objects.isNull(realtimeEvent)) {
       return null;
@@ -305,6 +349,11 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     warnIfUnexpectedHybridProgressIndex(progressIndex);
     final MetaProgressIndex metaProgressIndex = extractMetaProgressIndex(progressIndex);
+    if (finiteSnapshot
+        && metaProgressIndex != null
+        && metaProgressIndex.getIndex() == LOGICAL_BACKUP_COMPLETED_INDEX) {
+      return 0L;
+    }
     return Objects.nonNull(metaProgressIndex)
         ? getListeningQueue().getTailIndex() - metaProgressIndex.getIndex() - 1
         : getListeningQueue().getSize() + historicalEventsCount;

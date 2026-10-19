@@ -146,6 +146,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   protected String userName;
   protected String cliHostname;
   protected boolean skipIfNoPrivileges = true;
+  private long logicalBackupUntil = -1;
+  private final Object logicalBackupFence = new Object();
 
   protected PipeRealtimeDataRegionSource() {
     // Do nothing
@@ -218,6 +220,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
+    logicalBackupUntil = parameters.getLongOrDefault("source.logical-backup.until", -1L);
     final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
@@ -362,6 +365,28 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
    * @param event the {@link Event} from the {@link StorageEngine}
    */
   public final void extract(final PipeRealtimeEvent event) {
+    if (logicalBackupUntil > 0) {
+      synchronized (logicalBackupFence) {
+        if (System.currentTimeMillis() >= logicalBackupUntil) {
+          event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
+          return;
+        }
+        extractInternal(event);
+      }
+    } else {
+      extractInternal(event);
+    }
+  }
+
+  public boolean isLogicalBackupDrained() {
+    synchronized (logicalBackupFence) {
+      return logicalBackupUntil > 0
+          && System.currentTimeMillis() >= logicalBackupUntil
+          && pendingQueue.isEmpty();
+    }
+  }
+
+  private void extractInternal(final PipeRealtimeEvent event) {
     // The progress report event shall be directly extracted
     if (event.getEvent() instanceof ProgressReportEvent) {
       extractProgressReportEvent(event);

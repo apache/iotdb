@@ -91,7 +91,7 @@ public class LogicalBackupArchiveReaderTest {
   }
 
   @Test
-  public void testIncompleteLastSegmentRequiresExplicitOptIn() throws Exception {
+  public void testIncompleteOptInCannotBypassMissingFooter() throws Exception {
     final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
     writeStream(directory, "stream", "data", 4096);
     final Path segment = onlySegment(directory);
@@ -100,9 +100,7 @@ public class LogicalBackupArchiveReaderTest {
     }
 
     assertReadFails(directory, false);
-    final List<BackupStream> streams = new LogicalBackupArchiveReader().read(directory, true);
-    Assert.assertEquals(1, streams.size());
-    Assert.assertEquals(1, streams.get(0).getEventGroups().size());
+    assertReadFails(directory, true);
   }
 
   @Test
@@ -216,6 +214,103 @@ public class LogicalBackupArchiveReaderTest {
     assertReadFails(directory, false);
   }
 
+  @Test
+  public void testRootManifestIsPortableAndOrdersAllStreams() throws Exception {
+    final Path root = temporaryFolder.newFolder().toPath();
+    writeStream(root.resolve("data-7"), "data-7", "data", 4096);
+    writeStream(root.resolve("schema-3"), "schema-3", "schema", 4096);
+    writeStream(root.resolve("config-0"), "config-0", "config", 4096);
+    final LogicalBackupCatalog catalog = sealCatalog(root);
+
+    final List<BackupStream> streams =
+        new LogicalBackupArchiveReader().read(root.resolve("manifest.json"), false);
+    Assert.assertEquals("config", streams.get(0).getManifest().streamType);
+    Assert.assertEquals("schema", streams.get(1).getManifest().streamType);
+    Assert.assertEquals("data", streams.get(2).getManifest().streamType);
+    Assert.assertEquals(3, catalog.streams.size());
+    Assert.assertEquals("SEALED", streams.get(0).getCatalog().status);
+    for (final LogicalBackupCatalog.StreamEntry entry : catalog.streams) {
+      Assert.assertFalse(Path.of(entry.manifest.file).isAbsolute());
+      Assert.assertEquals(64, entry.manifest.sha256.length());
+      Assert.assertEquals(64, entry.segments.get(0).sha256.length());
+    }
+  }
+
+  @Test
+  public void testRootManifestRejectsUnlistedFile() throws Exception {
+    final Path root = temporaryFolder.newFolder().toPath();
+    writeStream(root.resolve("data"), "data", "data", 4096);
+    sealCatalog(root);
+    Files.writeString(root.resolve("unlisted.txt"), "not part of the backup");
+    assertReadFails(root, false);
+    assertReadFails(root, true);
+  }
+
+  @Test
+  public void testIncompleteOptInCannotBypassRootChecksum() throws Exception {
+    final Path root = temporaryFolder.newFolder().toPath();
+    writeStream(root.resolve("data"), "data", "data", 4096);
+    sealCatalog(root);
+    final Path segment = onlySegment(root.resolve("data"));
+    try (final RandomAccessFile file = new RandomAccessFile(segment.toFile(), "rw")) {
+      file.seek(LogicalBackupFormat.SEGMENT_HEADER_SIZE + LogicalBackupFormat.RECORD_HEADER_SIZE);
+      file.writeByte(0);
+    }
+    assertReadFails(root, false);
+    assertReadFails(root, true);
+  }
+
+  @Test
+  public void testRootManifestRejectsTraversalAndDuplicateFiles() throws Exception {
+    final Path root = temporaryFolder.newFolder().toPath();
+    writeStream(root.resolve("data"), "data", "data", 4096);
+    final LogicalBackupCatalog catalog = sealCatalog(root);
+    final String file = catalog.streams.get(0).manifest.file;
+    catalog.streams.get(0).manifest.file = "../outside/manifest.json";
+    catalog.write(root);
+    assertReadFails(root, true);
+    catalog.streams.get(0).manifest.file = file;
+    catalog.streams.add(catalog.streams.get(0));
+    catalog.write(root);
+    assertReadFails(root, true);
+  }
+
+  @Test
+  public void testIncompleteStatusRequiresExplicitOptIn() throws Exception {
+    final Path root = temporaryFolder.newFolder().toPath();
+    final Path directory = root.resolve("data");
+    try (final LogicalBackupWriter writer = writer(directory, manifest("data", "data"), 4096)) {
+      writer.recordSkippedEvent(1, "unsupported");
+    }
+    final LogicalBackupCatalog catalog = sealCatalog(root);
+    Assert.assertEquals("INCOMPLETE", catalog.status);
+    Assert.assertEquals(1, catalog.skippedEventCount);
+    assertReadFails(root, false);
+    Assert.assertEquals(1, new LogicalBackupArchiveReader().read(root, true).size());
+  }
+
+  @Test
+  public void testAllowIncompleteStillChecksSealedCounters() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    writeStream(directory, "data", "data", 4096);
+    final Path path = directory.resolve("manifest.json");
+    final LogicalBackupManifest manifest =
+        GSON.fromJson(Files.readString(path), LogicalBackupManifest.class);
+    manifest.operationCounts.clear();
+    Files.writeString(path, GSON.toJson(manifest));
+    assertReadFails(directory, true);
+  }
+
+  private static LogicalBackupCatalog sealCatalog(final Path root) throws IOException {
+    final LogicalBackupCatalog catalog = new LogicalBackupCatalog();
+    catalog.backupId = "backup";
+    catalog.pipeName = "pipe";
+    catalog.scope = Arrays.asList("config", "schema", "data");
+    catalog.model = Arrays.asList("tree", "table");
+    catalog.seal(root, new LogicalBackupArchiveReader().read(root, true));
+    return catalog;
+  }
+
   private static void writeStream(
       final Path directory, final String streamId, final String streamType, final long segmentSize)
       throws Exception {
@@ -247,7 +342,7 @@ public class LogicalBackupArchiveReaderTest {
         directory,
         manifest,
         segmentSize,
-        MAX_RECORD_BYTES,
+        (int) Math.min(MAX_RECORD_BYTES, segmentSize),
         LogicalBackupWriter.FsyncPolicy.ALWAYS,
         1,
         1,

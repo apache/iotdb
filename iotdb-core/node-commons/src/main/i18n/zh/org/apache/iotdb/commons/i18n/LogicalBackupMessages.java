@@ -148,4 +148,14 @@ public final class LogicalBackupMessages {
       "逻辑备份目录不可用：%s";
 
   private LogicalBackupMessages() {}
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_ROOT_MANIFEST_FILE_CHECKSUM_OR_STATE_ARG_3EDC33F3 =
+      "逻辑备份根清单、文件、校验和或状态无效：%s";
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_WRITER_SETTINGS_4E94FAAB =
+      "逻辑备份写入参数无效。";
+  public static final String EXCEPTION_CONFIGREGION_AND_DATAREGION_BACKUPS_REQUIRE_EXPLICIT_SINK_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_BECBAB90 =
+      "ConfigRegion 和 DataRegion 备份必须显式设置 sink.resume=append，并使用共享备份目录。";
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_SETTING_ARG_6D261EEB =
+      "逻辑备份参数无效：%s";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EVENT_ARG_30920E60 =
+      "不支持的逻辑备份事件：%s";
 }

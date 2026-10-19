@@ -37,11 +37,15 @@ public class LogicalBackupManifest {
   public String timestampPrecision;
   public String createdAt;
   public String closedAt;
+  public String sealedAt;
+  public Map<String, String> captureOptions = new LinkedHashMap<>();
   public String streamId;
   public int regionId;
   public String sinkTaskId;
   public String streamType;
   public String fsyncPolicy;
+  public int fsyncBatchOperations;
+  public long fsyncPeriodMs;
   public long segmentSizeBytes;
   public int maxRecordBytes;
   public long firstSequence = -1;

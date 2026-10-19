@@ -28,8 +28,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,9 +41,61 @@ import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.Optional;
 
 public class IoTDBNonDataRegionSourceTest {
+
+  @Test
+  public void testLogicalBackupParsesMetadataInsteadOfTransferringSnapshotFiles() throws Exception {
+    final AbstractPipeListeningQueue queue = Mockito.mock(AbstractPipeListeningQueue.class);
+    final TestNonDataRegionSource source =
+        new TestNonDataRegionSource(queue, new PipeTaskMeta(new MetaProgressIndex(10L), 0));
+    final java.lang.reflect.Field finite =
+        IoTDBNonDataRegionSource.class.getDeclaredField("finiteSnapshot");
+    finite.setAccessible(true);
+    finite.set(source, true);
+    final java.lang.reflect.Field snapshots =
+        IoTDBNonDataRegionSource.class.getDeclaredField("historicalEvents");
+    snapshots.setAccessible(true);
+    snapshots.set(
+        source,
+        new LinkedList<>(
+            Collections.singletonList(
+                Mockito.mock(PipeSnapshotEvent.class, Mockito.RETURNS_SELF))));
+    source.skipSnapshotPrivilegeCheck = true;
+    source.hasBeenStarted.set(true);
+    Assert.assertTrue(source.supply() instanceof ProgressReportEvent);
+    Assert.assertTrue(source.snapshotParsed);
+    Mockito.verifyZeroInteractions(queue);
+  }
+
+  @Test
+  public void testFiniteSnapshotReportsOrderedCompletionAndNeverReadsRealtime() throws Exception {
+    final AbstractPipeListeningQueue queue = Mockito.mock(AbstractPipeListeningQueue.class);
+    final PipeTaskMeta task = new PipeTaskMeta(new MetaProgressIndex(10L), 0);
+    final TestNonDataRegionSource source = new TestNonDataRegionSource(queue, task);
+    final java.lang.reflect.Field finite =
+        IoTDBNonDataRegionSource.class.getDeclaredField("finiteSnapshot");
+    finite.setAccessible(true);
+    finite.set(source, true);
+    source.hasBeenStarted.set(true);
+    final EnrichedEvent completion = source.supply();
+    Assert.assertTrue(completion instanceof ProgressReportEvent);
+    Assert.assertEquals(
+        new MetaProgressIndex(IoTDBNonDataRegionSource.LOGICAL_BACKUP_COMPLETED_INDEX),
+        completion.getProgressIndex());
+    Assert.assertNull(source.supply());
+    task.updateProgressIndex(completion.getProgressIndex());
+    Assert.assertEquals(0L, source.getUnTransferredEventCount());
+    Mockito.verifyZeroInteractions(queue);
+
+    final TestNonDataRegionSource restarted = new TestNonDataRegionSource(queue, task);
+    finite.set(restarted, true);
+    restarted.start();
+    Assert.assertNull(restarted.supply());
+    Mockito.verifyZeroInteractions(queue);
+  }
 
   @Test
   public void testStartWithStateWrappedHybridProgressIndex() throws Exception {
@@ -94,6 +148,8 @@ public class IoTDBNonDataRegionSourceTest {
   private static final class TestNonDataRegionSource extends IoTDBNonDataRegionSource {
 
     private final AbstractPipeListeningQueue listeningQueue;
+    private boolean skipSnapshotPrivilegeCheck;
+    private boolean snapshotParsed;
 
     private TestNonDataRegionSource(
         final AbstractPipeListeningQueue listeningQueue, final PipeTaskMeta pipeTaskMeta) {
@@ -123,13 +179,13 @@ public class IoTDBNonDataRegionSourceTest {
 
     @Override
     protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
-      return false;
+      return skipSnapshotPrivilegeCheck;
     }
 
     @Override
     protected void initSnapshotGenerator(final PipeSnapshotEvent event)
         throws IOException, IllegalPathException {
-      // Do nothing
+      snapshotParsed = true;
     }
 
     @Override

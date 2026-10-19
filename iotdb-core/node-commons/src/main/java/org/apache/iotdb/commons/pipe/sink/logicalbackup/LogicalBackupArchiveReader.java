@@ -60,7 +60,18 @@ public class LogicalBackupArchiveReader {
   public List<BackupStream> read(final Path source, final boolean allowIncomplete)
       throws IOException {
     final Path normalizedSource = source.toAbsolutePath().normalize();
-    final List<Path> manifests = discoverManifests(normalizedSource);
+    LogicalBackupCatalog.rejectSymbolicLinks(normalizedSource);
+    final Path root =
+        Files.isDirectory(normalizedSource) ? normalizedSource : normalizedSource.getParent();
+    final LogicalBackupCatalog catalog =
+        LogicalBackupCatalog.load(
+            Files.isDirectory(normalizedSource)
+                ? normalizedSource.resolve(LogicalBackupFormat.MANIFEST_FILE_NAME)
+                : normalizedSource);
+    final List<Path> manifests =
+        catalog == null
+            ? discoverManifests(normalizedSource)
+            : catalogManifests(root, catalog, allowIncomplete);
     if (manifests.isEmpty()) {
       throw new IOException(
           String.format(
@@ -72,6 +83,7 @@ public class LogicalBackupArchiveReader {
     LogicalBackupManifest archiveIdentity = null;
     for (final Path manifest : manifests) {
       final BackupStream stream = readStream(manifest, allowIncomplete);
+      stream.catalog = catalog;
       if (archiveIdentity == null) {
         archiveIdentity = stream.getManifest();
       } else {
@@ -85,11 +97,112 @@ public class LogicalBackupArchiveReader {
       }
       streams.add(stream);
     }
+    if (catalog != null) {
+      validateCatalog(root, catalog, streams);
+    }
     streams.sort(
         Comparator.comparingInt(
                 (BackupStream stream) -> streamOrder(stream.getManifest().streamType))
             .thenComparing((BackupStream stream) -> stream.getManifest().streamId));
     return Collections.unmodifiableList(streams);
+  }
+
+  private static List<Path> catalogManifests(
+      final Path root, final LogicalBackupCatalog catalog, final boolean allowIncomplete)
+      throws IOException {
+    if ((!"SEALED".equals(catalog.status) && !"INCOMPLETE".equals(catalog.status))
+        || (!allowIncomplete
+            && ("INCOMPLETE".equals(catalog.status) || catalog.skippedEventCount > 0))) {
+      throw LogicalBackupCatalog.invalid(root);
+    }
+    final List<Path> manifests = new ArrayList<>();
+    final Set<Path> files = new HashSet<>();
+    files.add(root.resolve(LogicalBackupFormat.MANIFEST_FILE_NAME));
+    for (final LogicalBackupCatalog.StreamEntry entry : catalog.streams) {
+      if (entry == null || entry.manifest == null || entry.segments == null) {
+        throw LogicalBackupCatalog.invalid(root);
+      }
+      final Path manifest = validateCatalogFile(root, entry.manifest, files);
+      if (!LogicalBackupFormat.MANIFEST_FILE_NAME.equals(manifest.getFileName().toString())) {
+        throw LogicalBackupCatalog.invalid(manifest);
+      }
+      manifests.add(manifest);
+      for (final LogicalBackupCatalog.FileEntry segment : entry.segments) {
+        validateCatalogFile(root, segment, files);
+      }
+    }
+    try (final Stream<Path> paths = Files.walk(root)) {
+      for (final Path path : paths.toList()) {
+        if (Files.isSymbolicLink(path)
+            || (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)
+                && !files.contains(path)
+                && !".backup.lock".equals(path.getFileName().toString()))) {
+          throw LogicalBackupCatalog.invalid(path);
+        }
+      }
+    }
+    return manifests;
+  }
+
+  private static Path validateCatalogFile(
+      final Path root, final LogicalBackupCatalog.FileEntry entry, final Set<Path> files)
+      throws IOException {
+    if (entry == null) {
+      throw LogicalBackupCatalog.invalid(root);
+    }
+    final Path path = LogicalBackupCatalog.resolve(root, entry.file);
+    if (!files.add(path)
+        || !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
+        || entry.sizeBytes != Files.size(path)
+        || !LogicalBackupCatalog.sha256(path).equals(entry.sha256)) {
+      throw LogicalBackupCatalog.invalid(path);
+    }
+    return path;
+  }
+
+  private static void validateCatalog(
+      final Path root, final LogicalBackupCatalog catalog, final List<BackupStream> streams)
+      throws IOException {
+    long skipped = 0;
+    final Map<String, Long> counts = new LinkedHashMap<>();
+    final Map<String, Long> highWatermarks = new LinkedHashMap<>();
+    for (int index = 0; index < streams.size(); index++) {
+      final BackupStream stream = streams.get(index);
+      final LogicalBackupManifest manifest = stream.manifest;
+      final LogicalBackupCatalog.StreamEntry entry = catalog.streams.get(index);
+      if (!manifest.streamId.equals(entry.streamId)
+          || !manifest.streamType.equals(entry.streamType)
+          || !manifest.backupId.equals(catalog.backupId)
+          || !java.util.Objects.equals(manifest.pipeName, catalog.pipeName)
+          || !java.util.Objects.equals(manifest.sourceClusterId, catalog.sourceClusterId)
+          || !java.util.Objects.equals(manifest.sourceVersion, catalog.sourceVersion)
+          || !java.util.Objects.equals(manifest.timestampPrecision, catalog.timestampPrecision)
+          || !java.util.Objects.equals(manifest.captureOptions, catalog.captureOptions)
+          || entry.segments.size() != manifest.segments.size()) {
+        throw LogicalBackupCatalog.invalid(root);
+      }
+      if (("data".equals(manifest.streamType) && !catalog.scope.contains("data"))
+          || ("schema".equals(manifest.streamType) && !catalog.scope.contains("schema"))
+          || ("config".equals(manifest.streamType)
+              && !catalog.scope.contains("config")
+              && !catalog.scope.contains("schema"))) {
+        throw LogicalBackupCatalog.invalid(root);
+      }
+      for (int segment = 0; segment < manifest.segments.size(); segment++) {
+        if (!LogicalBackupCatalog.resolve(root, entry.segments.get(segment).file)
+            .equals(stream.manifestPath.getParent().resolve(manifest.segments.get(segment).file))) {
+          throw LogicalBackupCatalog.invalid(root);
+        }
+      }
+      skipped += manifest.skippedEventCount;
+      manifest.operationCounts.forEach((key, value) -> counts.merge(key, value, Long::sum));
+      highWatermarks.put(manifest.streamId, manifest.lastDurableSequence);
+    }
+    if (skipped != catalog.skippedEventCount
+        || !counts.equals(catalog.operationCounts)
+        || !highWatermarks.equals(catalog.sourceHighWatermark)) {
+      throw LogicalBackupCatalog.invalid(root);
+    }
   }
 
   private static int streamOrder(final String streamType) {
@@ -131,6 +244,10 @@ public class LogicalBackupArchiveReader {
   private BackupStream readStream(final Path manifestPath, final boolean allowIncomplete)
       throws IOException {
     final LogicalBackupManifest manifest;
+    LogicalBackupCatalog.rejectSymbolicLinks(manifestPath);
+    if (Files.size(manifestPath) > 16 * 1024 * 1024) {
+      throw LogicalBackupCatalog.invalid(manifestPath);
+    }
     try {
       manifest =
           GSON.fromJson(
@@ -143,7 +260,9 @@ public class LogicalBackupArchiveReader {
           e);
     }
     validateManifest(manifest, manifestPath);
-    if (!allowIncomplete && manifest.skippedEventCount > 0) {
+    if ((!"SEALED".equals(manifest.status) && !"INCOMPLETE".equals(manifest.status))
+        || (!allowIncomplete
+            && (manifest.skippedEventCount > 0 || "INCOMPLETE".equals(manifest.status)))) {
       throw new IOException(
           String.format(
               LogicalBackupMessages.EXCEPTION_LOGICAL_BACKUP_CONTAINS_SKIPPED_EVENTS_ARG_E69FD599,
@@ -158,6 +277,7 @@ public class LogicalBackupArchiveReader {
     final Set<Path> listedSegments = new HashSet<>();
     long expectedSequence = -1;
     long expectedSegmentId = 0;
+    boolean allSealed = true;
 
     for (int index = 0; index < manifest.segments.size(); index++) {
       final LogicalBackupManifest.Segment segment = manifest.segments.get(index);
@@ -176,22 +296,23 @@ public class LogicalBackupArchiveReader {
                 LogicalBackupMessages.EXCEPTION_INVALID_LOGICAL_BACKUP_SEGMENT_PATH_ARG_6485A845,
                 segment.file));
       }
-      listedSegments.add(segmentPath);
-      final boolean lastSegment = index == manifest.segments.size() - 1;
-      final LogicalBackupSegmentReader.ScanResult scan =
-          segmentReader.scan(segmentPath, allowIncomplete && lastSegment);
+      if (!listedSegments.add(segmentPath)) {
+        throw LogicalBackupCatalog.invalid(segmentPath);
+      }
+      final LogicalBackupSegmentReader.ScanResult scan = segmentReader.scan(segmentPath, false);
       if (scan.getSegmentId() != segment.segmentId || scan.getSegmentId() != expectedSegmentId++) {
         throw new IOException(
             String.format(
                 LogicalBackupMessages.EXCEPTION_LOGICAL_BACKUP_SEGMENT_ID_MISMATCH_ARG_9FE7E88A,
                 segmentPath));
       }
-      if (!scan.isSealed() && (!allowIncomplete || !lastSegment)) {
+      if (!scan.isSealed() || scan.hasOpenEventGroup()) {
         throw new IOException(
             String.format(
                 LogicalBackupMessages.EXCEPTION_LOGICAL_BACKUP_SEGMENT_IS_NOT_SEALED_ARG_937793FF,
                 segmentPath));
       }
+      allSealed &= scan.isSealed();
       if (scan.isSealed()) {
         validateSegmentManifest(segment, scan, segmentPath);
       }
@@ -215,11 +336,11 @@ public class LogicalBackupArchiveReader {
       }
     }
 
-    if (!allowIncomplete) {
-      validateUnlistedSegments(streamDirectory, listedSegments);
+    validateUnlistedSegments(streamDirectory, listedSegments);
+    if (allSealed) {
       final long skippedEventCount =
           operationCounts.getOrDefault(LogicalBackupRecordType.SKIPPED_EVENT.name(), 0L);
-      if (skippedEventCount > 0) {
+      if (!allowIncomplete && skippedEventCount > 0) {
         throw new IOException(
             String.format(
                 LogicalBackupMessages.EXCEPTION_LOGICAL_BACKUP_CONTAINS_SKIPPED_EVENTS_ARG_E69FD599,
@@ -308,6 +429,7 @@ public class LogicalBackupArchiveReader {
         || !LogicalBackupFormat.FORMAT_NAME.equals(manifest.formatName)
         || !LogicalBackupFormat.FORMAT_VERSION.equals(manifest.formatVersion)
         || manifest.streamId == null
+        || !List.of("config", "schema", "data").contains(manifest.streamType)
         || manifest.backupId == null
         || manifest.timestampPrecision == null
         || manifest.maxRecordBytes <= 0
@@ -421,6 +543,7 @@ public class LogicalBackupArchiveReader {
     private final LogicalBackupManifest manifest;
     private final List<LogicalBackupRecord> records;
     private final List<EventGroup> eventGroups;
+    private LogicalBackupCatalog catalog;
 
     private BackupStream(
         final Path manifestPath,
@@ -439,6 +562,10 @@ public class LogicalBackupArchiveReader {
 
     public LogicalBackupManifest getManifest() {
       return manifest;
+    }
+
+    public LogicalBackupCatalog getCatalog() {
+      return catalog;
     }
 
     public List<LogicalBackupRecord> getRecords() {

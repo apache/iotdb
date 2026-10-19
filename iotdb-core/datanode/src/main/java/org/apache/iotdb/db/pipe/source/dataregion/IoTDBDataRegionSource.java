@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.source.IoTDBSource;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionSourceMetrics;
@@ -136,6 +137,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private PipeHistoricalDataRegionSource historicalSource;
   private PipeRealtimeDataRegionSource realtimeSource;
+  private boolean logicalBackupCompletionSent;
 
   private DataRegionWatermarkInjector watermarkInjector;
 
@@ -619,6 +621,15 @@ public class IoTDBDataRegionSource extends IoTDBSource {
       }
       if (Objects.isNull(event)) {
         event = realtimeSource.supply();
+        if (event == null
+            && !logicalBackupCompletionSent
+            && realtimeSource.isLogicalBackupDrained()) {
+          final PipeTerminateEvent completion =
+              new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, regionId, true);
+          completion.increaseReferenceCount(IoTDBDataRegionSource.class.getName());
+          logicalBackupCompletionSent = true;
+          event = completion;
+        }
       }
     }
 

@@ -39,6 +39,27 @@ import java.util.Map;
 public class PipeSinkSubtaskManagerTest {
 
   @Test
+  public void testLogicalBackupUsesOneWriterPerRegion() {
+    for (final BuiltinPipePlugin plugin :
+        new BuiltinPipePlugin[] {
+          BuiltinPipePlugin.LOGICAL_BACKUP_SINK, BuiltinPipePlugin.LOGICAL_BACKUP_CONNECTOR
+        }) {
+      final Map<String, String> attributes = new HashMap<>();
+      attributes.put(PipeSinkConstant.SINK_KEY, plugin.getPipePluginName());
+      attributes.put(PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY, "3");
+      attributes.put(PipeSinkConstant.SINK_SERIALIZE_BY_REGION_KEY, "false");
+      final PipeParameters parameters = new PipeParameters(attributes);
+      Assert.assertEquals(1, PipeSinkSubtaskManager.calculateSinkSubtaskNum(parameters, -1));
+      Assert.assertNotEquals(
+          PipeSinkSubtaskManager.generateAttributeSortedString(parameters, -1),
+          PipeSinkSubtaskManager.generateAttributeSortedString(parameters, -2));
+      Assert.assertNotEquals(
+          PipeSinkSubtaskManager.generateAttributeSortedString(parameters, Integer.MAX_VALUE),
+          PipeSinkSubtaskManager.generateAttributeSortedString(parameters, Integer.MAX_VALUE - 1));
+    }
+  }
+
+  @Test
   public void testSubtasksAreSharedOnlyWithinSamePipe() {
     // Initialize the task agent used by PipeEventCommitManager before registering subtasks.
     PipeDataNodeAgent.task();

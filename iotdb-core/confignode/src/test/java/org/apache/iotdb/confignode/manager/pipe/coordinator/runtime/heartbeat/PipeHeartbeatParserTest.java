@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TPipeCompletedDataRegion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
@@ -74,6 +75,37 @@ public class PipeHeartbeatParserTest {
   private static final int DATA_NODE_ID = 1;
 
   private boolean originalSeparatedPipeHeartbeatEnabled;
+
+  @Test
+  public void testBackupWaitsForCommittedConfigSnapshotAfterDataCompletes() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+    final Map<String, String> source = new HashMap<>();
+    source.put("source.realtime.enable", "false");
+    source.put("source.logical-backup.snapshot", "true");
+    source.put("source.inclusion", "schema.database");
+    final PipeMeta meta = createPipeMeta(source, Integer.MIN_VALUE);
+    final PipeTaskInfo info = new PipeTaskInfo();
+    info.createPipe(new CreatePipePlanV2(meta.getStaticMeta(), meta.getRuntimeMeta()));
+    final ParserTestContext context = createParserTestContext(1, info);
+    context.parser.parseHeartbeat(
+        1,
+        createPipeHeartbeatWithCompletedRegions(
+            meta, true, Collections.singletonList(Integer.MIN_VALUE)));
+    Assert.assertNotNull(info.getPipeMetaByPipeName("test_pipe"));
+    info.getPipeMetaByPipeName("test_pipe")
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .get(Integer.MIN_VALUE)
+        .updateProgressIndex(
+            new MetaProgressIndex(
+                org.apache.iotdb.commons.pipe.source.IoTDBNonDataRegionSource
+                    .LOGICAL_BACKUP_COMPLETED_INDEX));
+    context.parser.parseHeartbeat(
+        1,
+        createPipeHeartbeatWithCompletedRegions(
+            meta, true, Collections.singletonList(Integer.MIN_VALUE)));
+    Assert.assertNull(info.getPipeMetaByPipeName("test_pipe"));
+  }
 
   @Before
   public void setUp() {

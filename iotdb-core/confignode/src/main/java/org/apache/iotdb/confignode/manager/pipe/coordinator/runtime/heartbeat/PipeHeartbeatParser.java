@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
@@ -32,13 +33,18 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -185,12 +191,21 @@ public class PipeHeartbeatParser {
       // pipes must remain alive because they may receive work in the future.
       final boolean isFiniteInternalPipe =
           !staticMeta.isSourceExternal()
-              && PipeTaskAgent.isHistoryOnlyPipe(staticMeta.getSourceParameters());
+              && (PipeTaskAgent.isHistoryOnlyPipe(staticMeta.getSourceParameters())
+                  || (staticMeta
+                              .getSourceParameters()
+                              .getLongOrDefault("source.logical-backup.until", -1L)
+                          > 0
+                      && System.currentTimeMillis()
+                          >= staticMeta
+                              .getSourceParameters()
+                              .getLongOrDefault("source.logical-backup.until", -1L)));
       final boolean hasReliableDataRegionReport =
           pipeHeartbeat.hasCompletedDataRegionReport(staticMeta);
       if (isFiniteInternalPipe
           && hasReliableDataRegionReport
-          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)) {
+          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)
+          && metadataSnapshotsCompleted(pipeMetaFromCoordinator)) {
         PipeLogger.log(
             LOGGER::info,
             ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
@@ -327,6 +342,54 @@ public class PipeHeartbeatParser {
       }
     }
     return requiredDataRegionIds;
+  }
+
+  private boolean metadataSnapshotsCompleted(final PipeMeta pipeMeta) {
+    final PipeParameters parameters = pipeMeta.getStaticMeta().getSourceParameters();
+    if (!parameters.getBooleanOrDefault("source.logical-backup.snapshot", false)
+        && parameters.getLongOrDefault("source.logical-backup.until", -1L) <= 0) {
+      return true;
+    }
+    try {
+      for (final Map.Entry<Integer, PipeTaskMeta> entry :
+          pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+        final boolean required;
+        if (entry.getKey() == Integer.MIN_VALUE) {
+          required = !ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty();
+        } else {
+          final TConsensusGroupId region =
+              new TConsensusGroupId(TConsensusGroupType.SchemaRegion, entry.getKey());
+          if (!configManager.getPartitionManager().isRegionGroupExists(region)
+              || !SchemaRegionListeningFilter.shouldSchemaRegionBeListened(parameters)) {
+            continue;
+          }
+          final String database = configManager.getPartitionManager().getRegionDatabase(region);
+          final TDatabaseSchema schema =
+              configManager.getClusterSchemaManager().getDatabaseSchemaByName(database);
+          required =
+              schema.isIsTableModel()
+                  ? TablePattern.isTableModelDataAllowToBeCaptured(parameters)
+                  : TreePattern.isTreeModelDataAllowToBeCaptured(parameters);
+        }
+        if (required
+            && entry
+                .getValue()
+                .getProgressIndex()
+                .getProgressIndexByType(MetaProgressIndex.class)
+                .map(
+                    index ->
+                        index.getIndex()
+                            != org.apache.iotdb.commons.pipe.source.IoTDBNonDataRegionSource
+                                .LOGICAL_BACKUP_COMPLETED_INDEX)
+                .orElse(true)) {
+          return false;
+        }
+      }
+      return true;
+    } catch (final Exception e) {
+      // A failed metadata lookup must never turn a partial snapshot into a completed backup.
+      return false;
+    }
   }
 
   private boolean shouldKeepDataRegionAsRequired(
