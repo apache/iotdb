@@ -35,12 +35,18 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -72,6 +78,108 @@ import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.bu
 import static org.apache.iotdb.db.auth.AuthorityChecker.NO_PERMISSION_PROMOTION;
 
 public class PipeTsFileInsertionEventTest {
+  @Test
+  public void testHistoricalModsSurviveOriginalFileRemoval() throws Exception {
+    assertHistoricalModsAfterOriginalFileRemoval(true, true);
+  }
+
+  @Test
+  public void testHistoricalFileWithoutModsSurvivesOriginalFileRemoval() throws Exception {
+    assertHistoricalModsAfterOriginalFileRemoval(false, true);
+  }
+
+  @Test
+  public void testHistoricalModsRemainDisabledAfterOriginalFileRemoval() throws Exception {
+    assertHistoricalModsAfterOriginalFileRemoval(true, false);
+  }
+
+  private void assertHistoricalModsAfterOriginalFileRemoval(
+      final boolean hasMods, final boolean transferMods) throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalMods").toFile();
+    final String pipeName = "historical_mods";
+    final long creationTime = 1L;
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    PipeTsFileInsertionEvent event = null;
+    boolean increased = false;
+    File pinnedTsFile = null;
+    File pinnedModFile = null;
+    try {
+      final File dataDir = new File(tempDir, "unsequence/db1/0/0");
+      Assert.assertTrue(dataDir.mkdirs());
+      final TsFileResource resource =
+          createNonEmptyTsFileResource(dataDir, "1-1-0-0.tsfile", 1L, 0);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      final TableDeletionEntry deletion =
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "t1",
+                  new FullExactMatch(
+                      IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t1", "d1"}))),
+              new TimeRange(1L, 1L));
+      if (hasMods) {
+        resource.getExclusiveModFile().write(deletion);
+        resource.getExclusiveModFile().close();
+      }
+      manager.pinTsFileResource(resource, transferMods, resourcePipeName);
+      pinnedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              resource.getTsFile(), resourcePipeName);
+      pinnedModFile = ModificationFile.getExclusiveMods(pinnedTsFile);
+
+      // Compaction removes the original after historical selection has pinned both files.
+      Assert.assertTrue(resource.remove());
+      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertEquals(hasMods && transferMods, pinnedModFile.exists());
+      event =
+          new PipeTsFileInsertionEvent(
+              true,
+              "db1",
+              resource,
+              null,
+              transferMods,
+              false,
+              true,
+              Collections.singleton("t1"),
+              pipeName,
+              creationTime,
+              null,
+              null,
+              new TablePattern(true, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      increased = event.internallyIncreaseResourceReferenceCount(getClass().getName());
+      Assert.assertTrue(increased);
+      Assert.assertEquals(hasMods && transferMods, event.isWithMod());
+      if (hasMods && transferMods) {
+        Assert.assertEquals(pinnedModFile, event.getModFile());
+        Assert.assertEquals(
+            Collections.singletonList(deletion),
+            ModificationFile.readAllModifications(event.getTsFile(), true));
+      } else {
+        Assert.assertNull(event.getModFile());
+      }
+    } finally {
+      if (increased) {
+        event.internallyDecreaseResourceReferenceCount(getClass().getName());
+      } else if (event != null) {
+        event.close();
+      }
+      if (pinnedModFile != null) {
+        manager.decreaseFileReference(pinnedModFile, resourcePipeName);
+      }
+      if (pinnedTsFile != null) {
+        manager.decreaseFileReference(pinnedTsFile, resourcePipeName);
+      }
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
   @Test
   public void testAuthCheck() throws Exception {
     final AccessControl oldControl = AuthorityChecker.getAccessControl();
