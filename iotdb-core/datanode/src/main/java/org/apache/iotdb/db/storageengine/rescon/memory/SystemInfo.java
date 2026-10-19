@@ -137,7 +137,18 @@ public class SystemInfo {
           totalStorageGroupMemCost,
           REJECT_THRESHOLD);
       rejected = true;
-      if (chooseMemTablesToMarkFlush(tsFileProcessor)) {
+      boolean currentProcessorSelected = chooseMemTablesToMarkFlush(tsFileProcessor);
+      if (!currentProcessorSelected
+          && tsFileProcessor != null
+          && tsFileProcessor.getWorkMemTable() != null) {
+        // The writer holds its region's write lock. Waiting for another processor in that region
+        // to flush would prevent the flush submitter from acquiring the same lock. Let this writer
+        // finish and flush its own memtable, subject to the hard memory limit below.
+        tsFileProcessor.setWorkMemTableShouldFlush();
+        flushTaskSubmitThreadPool.submit(tsFileProcessor::submitAFlushTask);
+        currentProcessorSelected = true;
+      }
+      if (currentProcessorSelected) {
         if (totalStorageGroupMemCost < memorySizeForMemtable) {
           return true;
         } else {

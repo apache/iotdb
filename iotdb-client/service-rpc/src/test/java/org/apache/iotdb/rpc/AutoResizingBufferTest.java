@@ -61,12 +61,136 @@ public class AutoResizingBufferTest {
   }
 
   @Test
+  public void testGrowToRequiredCapacityWhenPreferredCapacityExceedsBudget() throws Exception {
+    memoryControl.setLimit(120);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBuffer buffer = new AutoResizingBuffer(100)) {
+      buffer.array()[99] = 42;
+      buffer.resizeIfNecessary(110);
+
+      Assert.assertEquals(110, buffer.array().length);
+      Assert.assertEquals(110, memoryControl.getUsedMemoryInBytes());
+      Assert.assertEquals(42, buffer.array()[99]);
+      Assert.assertEquals(2, AutoResizingBufferMemoryManager.getMemoryAllocationCount());
+      Assert.assertEquals(0, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testKeepPreferredGrowthWhenBudgetAllows() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    try (AutoResizingBuffer buffer = new AutoResizingBuffer(100)) {
+      buffer.resizeIfNecessary(110);
+      Assert.assertEquals(150, buffer.array().length);
+      Assert.assertEquals(150, memoryControl.getUsedMemoryInBytes());
+      Assert.assertEquals(2, AutoResizingBufferMemoryManager.getMemoryAllocationCount());
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testShrinkForRequestsAtOrBelowInitialCapacity() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    for (int requestSize : new int[] {0, 1, 100}) {
+      try (AutoResizingBuffer buffer = new AutoResizingBuffer(100)) {
+        buffer.resizeIfNecessary(1000);
+        buffer.array()[99] = 42;
+        for (int i = 0; i <= RpcUtils.MAX_BUFFER_OVERSIZE_TIME; i++) {
+          buffer.resizeIfNecessary(requestSize);
+        }
+
+        Assert.assertEquals(550, buffer.array().length);
+        Assert.assertEquals(550, memoryControl.getUsedMemoryInBytes());
+        Assert.assertEquals(42, buffer.array()[99]);
+      }
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+    }
+  }
+
+  @Test
+  public void testSmallFramesReleaseCapacityForAnotherConnection() throws Exception {
+    memoryControl.setLimit(800);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    AutoScalingBufferReadTransport first = new AutoScalingBufferReadTransport(100);
+    AutoScalingBufferReadTransport second = new AutoScalingBufferReadTransport(100);
+    try {
+      TMemoryBuffer input = new TMemoryBuffer(600);
+      byte[] payload = new byte[600];
+      payload[0] = 42;
+      input.write(payload);
+      first.fill(input, payload.length);
+      Assert.assertEquals(700, memoryControl.getUsedMemoryInBytes());
+      first.consumeBuffer(payload.length);
+
+      for (int i = 0; i <= RpcUtils.MAX_BUFFER_OVERSIZE_TIME; i++) {
+        input.write(new byte[] {42});
+        first.fill(input, 1);
+        first.consumeBuffer(1);
+      }
+      Assert.assertEquals(450, memoryControl.getUsedMemoryInBytes());
+
+      input.write(payload, 0, 400);
+      second.fill(input, 400);
+      Assert.assertEquals(750, memoryControl.getUsedMemoryInBytes());
+      Assert.assertEquals(42, first.getBuffer()[0]);
+      Assert.assertEquals(42, second.getBuffer()[0]);
+      Assert.assertEquals(400, second.getBytesRemainingInBuffer());
+    } finally {
+      first.close();
+      second.close();
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testFramedTransportsShrinkAfterLargeFrames() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    for (boolean compressed : new boolean[] {false, true}) {
+      TMemoryBuffer underlying = new TMemoryBuffer(0);
+      try (TElasticFramedTransport transport =
+          compressed
+              ? new TSnappyElasticFramedTransport(underlying, 100, 2048, true)
+              : new TElasticFramedTransport(underlying, 100, 2048, true)) {
+        byte[] payload = new byte[1000];
+        payload[999] = 42;
+        transport.write(payload);
+        transport.flush();
+        byte[] actual = new byte[payload.length];
+        transport.readAll(actual, 0, actual.length);
+        Assert.assertArrayEquals(payload, actual);
+        long largeFrameMemory = memoryControl.getUsedMemoryInBytes();
+
+        for (int i = 0; i <= RpcUtils.MAX_BUFFER_OVERSIZE_TIME; i++) {
+          transport.write(new byte[] {42});
+          transport.flush();
+          byte[] smallFrame = new byte[1];
+          transport.readAll(smallFrame, 0, smallFrame.length);
+          Assert.assertEquals(42, smallFrame[0]);
+        }
+        Assert.assertTrue(transport.writeBuffer.getBuffer().length < payload.length);
+        Assert.assertTrue(transport.readBuffer.getBuffer().length < payload.length);
+        Assert.assertTrue(memoryControl.getUsedMemoryInBytes() < largeFrameMemory);
+      }
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+    }
+  }
+
+  @Test
   public void testThrowIOExceptionWhenMemoryIsInsufficient() throws Exception {
     memoryControl.setLimit(120);
     AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
     AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
 
     AutoResizingBuffer buffer = new AutoResizingBuffer(100);
+    buffer.array()[99] = 42;
     try {
       buffer.resizeIfNecessary(200);
       Assert.fail("Expected IOException");
@@ -74,6 +198,8 @@ public class AutoResizingBufferTest {
       Assert.assertTrue(e.getMessage().contains("100"));
       Assert.assertTrue(e.getMessage().contains("5"));
     } finally {
+      Assert.assertEquals(100, buffer.array().length);
+      Assert.assertEquals(42, buffer.array()[99]);
       Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
       buffer.close();
     }
