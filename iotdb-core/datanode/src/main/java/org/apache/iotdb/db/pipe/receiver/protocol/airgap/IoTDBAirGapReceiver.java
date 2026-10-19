@@ -70,6 +70,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private OutputStream currentOutputStream;
   private DatagramSocket currentDatagramSocket;
   private SocketAddress currentRemoteSocketAddress;
+  private Long currentDatagramRequestId;
 
   public IoTDBAirGapReceiver(final Socket socket, final long receiverId) {
     this.socket = socket;
@@ -147,6 +148,12 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   boolean receive(final byte[] data, final String receiverKey) throws IOException {
+    return receive(data, receiverKey, null);
+  }
+
+  private boolean receive(
+      final byte[] data, final String receiverKey, final Runnable onValidRequest)
+      throws IOException {
     try {
       // If check sum failed, it indicates that the length we read may not be correct.
       // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
@@ -158,6 +165,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         return false;
       }
 
+      if (onValidRequest != null) {
+        onValidRequest.run();
+      }
       handleReq(toTPipeTransferReq(data), System.currentTimeMillis(), receiverKey);
       return true;
     } catch (final IOException e) {
@@ -171,6 +181,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       currentOutputStream = null;
       currentDatagramSocket = null;
       currentRemoteSocketAddress = null;
+      currentDatagramRequestId = null;
     }
   }
 
@@ -178,17 +189,29 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final DatagramSocket datagramSocket,
       final DatagramPacket packet,
       final String receiverKey,
-      final byte[] buffer)
+      final byte[] buffer,
+      final Runnable onValidRequest)
       throws IOException {
     isELanguagePayload = false;
     currentDatagramSocket = datagramSocket;
     currentRemoteSocketAddress = packet.getSocketAddress();
     boolean requestHandlingStarted = false;
-    try (final ByteArrayInputStream inputStream =
-        new ByteArrayInputStream(buffer, 0, packet.getLength())) {
-      final byte[] data = readData(inputStream);
-      requestHandlingStarted = true;
-      receive(data, receiverKey);
+    try {
+      if (packet.getLength() < Long.BYTES) {
+        throw new IOException(
+            DataNodePipeMessages.EXCEPTION_AIR_GAP_UDP_PACKET_IS_MISSING_ITS_REQUEST_ID_C4228CC8);
+      }
+      currentDatagramRequestId = ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong();
+      try (final ByteArrayInputStream inputStream =
+          new ByteArrayInputStream(buffer, Long.BYTES, packet.getLength() - Long.BYTES)) {
+        final byte[] data = readData(inputStream);
+        if (inputStream.available() != 0) {
+          throw new IOException(
+              DataNodePipeMessages.EXCEPTION_AIR_GAP_UDP_PACKET_CONTAINS_TRAILING_BYTES_2D34D418);
+        }
+        requestHandlingStarted = true;
+        receive(data, receiverKey, onValidRequest);
+      }
     } catch (final Exception e) {
       if (!requestHandlingStarted) {
         fail();
@@ -198,6 +221,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       currentOutputStream = null;
       currentDatagramSocket = null;
       currentRemoteSocketAddress = null;
+      currentDatagramRequestId = null;
     }
   }
 
@@ -272,8 +296,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   private void respond(final byte[] response) throws IOException {
     if (currentDatagramSocket != null && currentRemoteSocketAddress != null) {
+      if (currentDatagramRequestId == null) {
+        return;
+      }
+      final byte[] responseBytes =
+          ByteBuffer.allocate(Long.BYTES + response.length)
+              .putLong(currentDatagramRequestId)
+              .put(response)
+              .array();
       currentDatagramSocket.send(
-          new DatagramPacket(response, response.length, currentRemoteSocketAddress));
+          new DatagramPacket(responseBytes, responseBytes.length, currentRemoteSocketAddress));
       return;
     }
 

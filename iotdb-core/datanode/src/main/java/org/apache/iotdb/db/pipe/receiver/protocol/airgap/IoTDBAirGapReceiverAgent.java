@@ -39,10 +39,12 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -50,6 +52,8 @@ public class IoTDBAirGapReceiverAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiverAgent.class);
   private static final int UDP_PACKET_MAX_SIZE_IN_BYTES = 65_507;
+  private static final int UDP_SESSION_CLEANUP_INTERVAL_MS = 60_000;
+  private static final int UDP_MAX_CLIENT_SESSIONS = 1_024;
   private static final int LISTENER_THREAD_COUNT = 2;
 
   private final ExecutorService listenExecutor =
@@ -61,7 +65,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
   private DatagramSocket datagramSocket;
 
   private final AtomicLong receiverId = new AtomicLong(0);
-  private final Map<String, ClientSession> udpClientSessions = new ConcurrentHashMap<>();
+  final Map<String, UdpClientSession> udpClientSessions = new ConcurrentHashMap<>();
 
   public void listen() {
     try {
@@ -85,6 +89,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
 
   public void listenUdp() {
     while (allowSubmitListen.get() && !datagramSocket.isClosed()) {
+      removeExpiredUdpClientSessions(System.nanoTime());
       final byte[] buffer = new byte[UDP_PACKET_MAX_SIZE_IN_BYTES];
       final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
       try {
@@ -94,14 +99,21 @@ public class IoTDBAirGapReceiverAgent implements IService {
         final IoTDBAirGapReceiver receiver =
             new IoTDBAirGapReceiver(new Socket(), airGapReceiverId);
         final String receiverKey = packet.getSocketAddress().toString();
-        final boolean registeredSession = registerUdpSessionIfNecessary(packet);
+        final boolean[] registeredSession = {false};
         try {
-          receiver.receiveUdp(datagramSocket, packet, receiverKey, buffer);
+          receiver.receiveUdp(
+              datagramSocket,
+              packet,
+              receiverKey,
+              buffer,
+              () -> registeredSession[0] = registerUdpSessionIfNecessary(packet));
         } finally {
-          if (registeredSession) {
+          if (registeredSession[0]) {
             SessionManager.getInstance().removeCurrSession();
           }
         }
+      } catch (final SocketTimeoutException e) {
+        removeExpiredUdpClientSessions(System.nanoTime());
       } catch (final IOException e) {
         if (allowSubmitListen.get()) {
           LOGGER.warn(DataNodePipeMessages.UNHANDLED_EXCEPTION_DURING_PIPE_AIR_GAP_RECEIVER, e);
@@ -112,14 +124,71 @@ public class IoTDBAirGapReceiverAgent implements IService {
     }
   }
 
-  private boolean registerUdpSessionIfNecessary(final DatagramPacket packet) {
+  boolean registerUdpSessionIfNecessary(final DatagramPacket packet) {
     final String receiverKey = packet.getSocketAddress().toString();
-    final ClientSession session =
-        udpClientSessions.computeIfAbsent(
-            receiverKey,
-            key ->
-                new ClientSession(new DatagramClientSocket(packet.getAddress(), packet.getPort())));
-    return SessionManager.getInstance().registerSession(session);
+    final long now = System.nanoTime();
+    removeExpiredUdpClientSessions(now);
+
+    UdpClientSession clientSession = udpClientSessions.get(receiverKey);
+    if (clientSession == null) {
+      ensureUdpClientSessionCapacity();
+      clientSession =
+          new UdpClientSession(
+              new ClientSession(new DatagramClientSocket(packet.getAddress(), packet.getPort())),
+              now);
+      final UdpClientSession existing = udpClientSessions.putIfAbsent(receiverKey, clientSession);
+      if (existing != null) {
+        clientSession = existing;
+      }
+    }
+    clientSession.lastAccessTimeNanos = now;
+    return SessionManager.getInstance().registerSession(clientSession.session);
+  }
+
+  private void ensureUdpClientSessionCapacity() {
+    if (udpClientSessions.size() < UDP_MAX_CLIENT_SESSIONS) {
+      return;
+    }
+
+    String leastRecentlyUsedKey = null;
+    UdpClientSession leastRecentlyUsedSession = null;
+    for (final Map.Entry<String, UdpClientSession> entry : udpClientSessions.entrySet()) {
+      if (leastRecentlyUsedSession == null
+          || entry.getValue().lastAccessTimeNanos < leastRecentlyUsedSession.lastAccessTimeNanos) {
+        leastRecentlyUsedKey = entry.getKey();
+        leastRecentlyUsedSession = entry.getValue();
+      }
+    }
+    if (leastRecentlyUsedKey != null) {
+      removeUdpClientSession(leastRecentlyUsedKey, leastRecentlyUsedSession);
+    }
+  }
+
+  void removeExpiredUdpClientSessions(final long nowNanos) {
+    final long idleTimeoutNanos =
+        TimeUnit.MILLISECONDS.toNanos(
+            Math.max(1, PipeConfig.getInstance().getPipeSinkTransferTimeoutMs()));
+    udpClientSessions.forEach(
+        (key, session) -> {
+          if (nowNanos - session.lastAccessTimeNanos >= idleTimeoutNanos) {
+            removeUdpClientSession(key, session);
+          }
+        });
+  }
+
+  private void removeUdpClientSession(final String key, final UdpClientSession session) {
+    if (!udpClientSessions.remove(key, session)) {
+      return;
+    }
+
+    final boolean registeredSession = SessionManager.getInstance().registerSession(session.session);
+    try {
+      PipeDataNodeAgent.receiver().thrift().handleClientExit(key);
+    } finally {
+      if (registeredSession) {
+        SessionManager.getInstance().removeCurrSession();
+      }
+    }
   }
 
   @Override
@@ -127,6 +196,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
     try {
       serverSocket = new ServerSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
       datagramSocket = new DatagramSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
+      datagramSocket.setSoTimeout(UDP_SESSION_CLEANUP_INTERVAL_MS);
     } catch (final IOException e) {
       if (Objects.nonNull(serverSocket)) {
         try {
@@ -160,18 +230,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_IOTDBAIRGAPRECEIVERAGENT_S_SERVER_SOCKET, e);
     }
 
-    udpClientSessions.forEach(
-        (key, session) -> {
-          final boolean registeredSession = SessionManager.getInstance().registerSession(session);
-          try {
-            PipeDataNodeAgent.receiver().thrift().handleClientExit(key);
-          } finally {
-            if (registeredSession) {
-              SessionManager.getInstance().removeCurrSession();
-            }
-          }
-        });
-    udpClientSessions.clear();
+    udpClientSessions.forEach(this::removeUdpClientSession);
     listenExecutor.shutdown();
 
     LOGGER.info(DataNodePipeMessages.IOTDBAIRGAPRECEIVERAGENT_STOPPED, serverSocket);
@@ -200,6 +259,17 @@ public class IoTDBAirGapReceiverAgent implements IService {
     @Override
     public int getPort() {
       return port;
+    }
+  }
+
+  static class UdpClientSession {
+
+    private final ClientSession session;
+    volatile long lastAccessTimeNanos;
+
+    UdpClientSession(final ClientSession session, final long lastAccessTimeNanos) {
+      this.session = session;
+      this.lastAccessTimeNanos = lastAccessTimeNanos;
     }
   }
 }

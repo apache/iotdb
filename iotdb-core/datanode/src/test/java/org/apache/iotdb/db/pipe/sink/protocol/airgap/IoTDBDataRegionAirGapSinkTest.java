@@ -177,10 +177,14 @@ public class IoTDBDataRegionAirGapSinkTest {
                     try {
                       receiverSocket.receive(packet);
                       receivedRequests.add(decodeAirGapDatagram(buffer, packet.getLength()));
+                      final ByteBuffer responseBuffer =
+                          ByteBuffer.allocate(Long.BYTES + AirGapOneByteResponse.OK.length)
+                              .putLong(ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong())
+                              .put(AirGapOneByteResponse.OK);
                       receiverSocket.send(
                           new DatagramPacket(
-                              AirGapOneByteResponse.OK,
-                              AirGapOneByteResponse.OK.length,
+                              responseBuffer.array(),
+                              responseBuffer.array().length,
                               packet.getAddress(),
                               packet.getPort()));
                     } catch (final SocketTimeoutException ignored) {
@@ -213,6 +217,58 @@ public class IoTDBDataRegionAirGapSinkTest {
         Assert.assertEquals(PipeRequestType.TRANSFER_SLICE.getType(), receivedRequest.type);
         Assert.assertTrue(receivedRequest.body.remaining() < 1024);
       }
+    }
+  }
+
+  @Test
+  public void testUdpAirGapIgnoresStaleAcknowledgement() throws Exception {
+    try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+        final UdpTestingIoTDBDataRegionAirGapSink sink =
+            new UdpTestingIoTDBDataRegionAirGapSink()) {
+      final PipeParameters parameters = new PipeParameters(buildParameterAttributes(false));
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY, "udp");
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, "1024");
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final AtomicBoolean secondPacketReceived = new AtomicBoolean(false);
+      final AtomicReference<Throwable> receiverException = new AtomicReference<>();
+      final Thread receiverThread =
+          new Thread(
+              () -> {
+                try {
+                  final byte[] buffer = new byte[2048];
+                  final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                  receiverSocket.receive(packet);
+                  final long requestId = ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong();
+                  sendUdpAck(receiverSocket, packet, requestId);
+                  receiverSocket.receive(packet);
+                  sendUdpAck(receiverSocket, packet, requestId);
+                  secondPacketReceived.set(true);
+                } catch (final Throwable t) {
+                  receiverException.set(t);
+                }
+              });
+      receiverThread.start();
+
+      try {
+        final byte[] request = new byte[2500];
+        request[0] = 1;
+        request[1] = 0;
+        request[2] = 1;
+        Assert.assertThrows(
+            SocketTimeoutException.class,
+            () -> sink.sendUdp(receiverSocket.getLocalPort(), request));
+      } finally {
+        receiverSocket.close();
+      }
+
+      receiverThread.join(5000);
+      Assert.assertFalse(receiverThread.isAlive());
+      Assert.assertNull(receiverException.get());
+      Assert.assertTrue(secondPacketReceived.get());
     }
   }
 
@@ -266,10 +322,10 @@ public class IoTDBDataRegionAirGapSinkTest {
   }
 
   private static TPipeTransferReq decodeAirGapDatagram(final byte[] datagram, final int length) {
-    final ByteBuffer buffer = ByteBuffer.wrap(datagram, 0, length);
+    final ByteBuffer buffer = ByteBuffer.wrap(datagram, Long.BYTES, length - Long.BYTES);
     final int payloadLength = ReadWriteIOUtils.readInt(buffer);
     Assert.assertEquals(payloadLength, ReadWriteIOUtils.readInt(buffer));
-    Assert.assertEquals(length - 2 * Integer.BYTES, payloadLength);
+    Assert.assertEquals(length - Long.BYTES - 2 * Integer.BYTES, payloadLength);
 
     final long expectedChecksum = ReadWriteIOUtils.readLong(buffer);
     final byte[] payload = new byte[payloadLength - Long.BYTES];
@@ -279,6 +335,18 @@ public class IoTDBDataRegionAirGapSinkTest {
     crc32.update(payload, 0, payload.length);
     Assert.assertEquals(expectedChecksum, crc32.getValue());
     return toTPipeTransferReq(payload);
+  }
+
+  private static void sendUdpAck(
+      final DatagramSocket socket, final DatagramPacket requestPacket, final long requestId)
+      throws IOException {
+    final byte[] ack =
+        ByteBuffer.allocate(Long.BYTES + AirGapOneByteResponse.OK.length)
+            .putLong(requestId)
+            .put(AirGapOneByteResponse.OK)
+            .array();
+    socket.send(
+        new DatagramPacket(ack, ack.length, requestPacket.getAddress(), requestPacket.getPort()));
   }
 
   private static class RecordingIoTDBDataRegionAirGapSink extends IoTDBDataRegionAirGapSink {
