@@ -31,7 +31,7 @@ import javax.annotation.Nullable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import static org.apache.iotdb.commons.schema.table.TreeViewSchema.AUTO_SYNC_SCHEMA;
+import static org.apache.iotdb.commons.schema.table.TsTable.AUTO_SYNC_SCHEMA;
 
 public class RenameViewProcedure extends RenameTableProcedure {
   public RenameViewProcedure(final boolean isGeneratedByPipe) {

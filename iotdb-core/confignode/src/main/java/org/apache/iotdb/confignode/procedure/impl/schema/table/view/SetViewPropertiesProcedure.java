@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.schema.table.TreeViewSchema.AUTO_SYNC_SCHEMA;
+import static org.apache.iotdb.commons.schema.table.TsTable.AUTO_SYNC_SCHEMA;
 
 public class SetViewPropertiesProcedure extends SetTablePropertiesProcedure {
   public SetViewPropertiesProcedure(final boolean isGeneratedByPipe) {

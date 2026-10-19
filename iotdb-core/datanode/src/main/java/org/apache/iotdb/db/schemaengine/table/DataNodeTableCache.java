@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -180,7 +179,7 @@ public class DataNodeTableCache implements ITableCache {
    */
   private static boolean isAutoSyncView(final TsTable table) {
     final Optional<String> autoSyncSchemaValue =
-        table.getPropValue(TreeViewSchema.AUTO_SYNC_SCHEMA);
+        table.getPropValue(TsTable.AUTO_SYNC_SCHEMA);
     return autoSyncSchemaValue.isPresent()
         && Boolean.parseBoolean(autoSyncSchemaValue.get())
         && table.getPropValue(TREE_PATH_PATTERN).isPresent();
@@ -466,7 +465,8 @@ public class DataNodeTableCache implements ITableCache {
       }
     } catch (final IllegalPathException e) {
       LOGGER.warn(
-          DataNodeSchemaMessages.LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE,
+          DataNodeSchemaMessages
+              .LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE,
           database,
           tableName,
           e);

@@ -131,7 +131,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
   protected TUpdateTableReq buildCommitReleaseTableReq() {
     final boolean newAutoSync =
         table
-            .getPropValue(TreeViewSchema.AUTO_SYNC_SCHEMA)
+            .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
             .map(Boolean::parseBoolean)
             .orElse(false);
     if (newAutoSync) {
@@ -148,7 +148,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     final boolean oldAutoSync =
         Objects.nonNull(oldView)
             && oldView
-                .getPropValue(TreeViewSchema.AUTO_SYNC_SCHEMA)
+                .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
                 .map(Boolean::parseBoolean)
                 .orElse(false);
     if (oldAutoSync) {
@@ -172,7 +172,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     final boolean oldAutoSync =
         Objects.nonNull(oldView)
             && oldView
-                .getPropValue(TreeViewSchema.AUTO_SYNC_SCHEMA)
+                .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
                 .map(Boolean::parseBoolean)
                 .orElse(false);
     if (!oldAutoSync) {

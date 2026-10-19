@@ -161,7 +161,7 @@ public class TreeDeviceViewFieldDetector {
       final ConfigManager configManager, final String database, final TsTable table) {
     final boolean autoSync =
         table
-            .getPropValue(TreeViewSchema.AUTO_SYNC_SCHEMA)
+            .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
             .map(Boolean::parseBoolean)
             .orElse(false);
     if (!autoSync) {

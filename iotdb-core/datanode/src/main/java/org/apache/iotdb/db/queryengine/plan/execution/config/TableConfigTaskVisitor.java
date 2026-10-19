@@ -1005,7 +1005,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         throw new SemanticException(DataNodeQueryMessages.DUPLICATED_PROPERTY + key);
       }
       if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
-        if (TreeViewSchema.AUTO_SYNC_SCHEMA.equals(key) && !allowAutoSyncSchema) {
+        if (TsTable.AUTO_SYNC_SCHEMA.equals(key) && !allowAutoSyncSchema) {
           // A property assigned DEFAULT is dropped or reset as well, so the check covers it too
           throw new SemanticException(
               EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215);
@@ -1030,10 +1030,10 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
               map.put(
                   key, String.valueOf(parseBooleanFromLiteral(value, NEED_LAST_CACHE_PROPERTY)));
               break;
-            case TreeViewSchema.AUTO_SYNC_SCHEMA:
+            case TsTable.AUTO_SYNC_SCHEMA:
               map.put(
                   key,
-                  String.valueOf(parseBooleanFromLiteral(value, TreeViewSchema.AUTO_SYNC_SCHEMA)));
+                  String.valueOf(parseBooleanFromLiteral(value, TsTable.AUTO_SYNC_SCHEMA)));
               break;
             default:
               break;

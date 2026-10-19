@@ -51,7 +51,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType.ALTER_TAG;
-import static org.apache.iotdb.commons.schema.table.TreeViewSchema.AUTO_SYNC_SCHEMA;
+import static org.apache.iotdb.commons.schema.table.TsTable.AUTO_SYNC_SCHEMA;
 
 public class AddViewColumnProcedure extends AddTableColumnProcedure {
   public AddViewColumnProcedure(final boolean isGeneratedByPipe) {
