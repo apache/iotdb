@@ -24,12 +24,16 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -500,6 +504,18 @@ final class TsFileWriterManager {
                   uuidDirName(writer.getFile()),
                   Math.max(progress.getTotalLength(), expectedDataEnd),
                   fileLength));
+        }
+      }
+      // Rebuild from the staged devices so recovered writers also retain the table schemas that
+      // Pipe needs to enumerate table data in the sealed file.
+      if (PathUtils.isTableModelDatabase(dataRegion.getDatabaseName())) {
+        for (final String tableName : writer.getTableNames()) {
+          final TsTable table =
+              DataNodeTableCache.getInstance()
+                  .getTable(dataRegion.getDatabaseName(), tableName, false);
+          if (table != null) {
+            writer.registerTableSchema(TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table));
+          }
         }
       }
       writer.close();

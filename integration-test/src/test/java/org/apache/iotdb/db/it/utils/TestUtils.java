@@ -85,6 +85,10 @@ public class TestUtils {
 
   public static final String TIME_PRECISION_IN_NS = "ns";
 
+  static boolean isHalfTimeoutElapsed(final long elapsedTimeInMillis, final long timeoutSeconds) {
+    return elapsedTimeInMillis > TimeUnit.SECONDS.toMillis(timeoutSeconds) / 2;
+  }
+
   /**
    * Creates a statement on the write node without comparing results across DataNodes.
    *
@@ -1702,7 +1706,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1783,7 +1789,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1822,7 +1830,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1904,7 +1914,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -2024,7 +2036,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -2095,8 +2109,8 @@ public class TestUtils {
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
                   if (!flushed[0]
-                      && System.currentTimeMillis() - startTime
-                          > TimeUnit.SECONDS.toMillis(consistentSeconds) / 2) {
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, consistentSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -2137,8 +2151,8 @@ public class TestUtils {
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
                   if (!flushed[0]
-                      && System.currentTimeMillis() - startTime
-                          > TimeUnit.SECONDS.toMillis(consistentSeconds) / 2) {
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, consistentSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -2192,8 +2206,8 @@ public class TestUtils {
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
                   if (!flushed[0]
-                      && System.currentTimeMillis() - startTime
-                          > TimeUnit.SECONDS.toMillis(consistentSeconds) / 2) {
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, consistentSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
