@@ -120,15 +120,15 @@ public class IoTDBTagAggregationIT {
   public void testAggregateFunctions() {
     String query =
         "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1)";
-    // Expected result set:
+    // Expected groups (row order depends on schema traversal):
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |  k1|count(t)|
     // avg(t)|max_time(t)|min_time(t)|max_value(t)|min_value(t)|extreme(t)|
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
-    // |k1v2|       4|3.1000000536441803|         10|          1|         5.4|         1.3|
-    // 5.4|
     // |k1v1|       6| 2.600000003973643|         10|          1|         6.5|         1.1|
     // 6.5|
+    // |k1v2|       4|3.1000000536441803|         10|          1|         5.4|         1.3|
+    // 5.4|
     // |NULL|       4|  4.89999994635582|         10|          1|         8.7|         1.6|
     // 8.7|
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
@@ -136,34 +136,39 @@ public class IoTDBTagAggregationIT {
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(query)) {
         Assert.assertEquals(8, resultSet.getMetaData().getColumnCount());
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("k1v2", resultSet.getString("k1"));
-        Assert.assertEquals(4L, resultSet.getLong("count(t)"));
-        Assert.assertEquals(3.1D, resultSet.getDouble("avg(t)"), DELTA);
-        Assert.assertEquals(10L, resultSet.getLong("max_time(t)"));
-        Assert.assertEquals(1L, resultSet.getLong("min_time(t)"));
-        Assert.assertEquals(5.4F, resultSet.getFloat("max_value(t)"), DELTA);
-        Assert.assertEquals(1.3F, resultSet.getFloat("min_value(t)"), DELTA);
-        Assert.assertEquals(5.4F, resultSet.getFloat("extreme(t)"), DELTA);
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("k1v1", resultSet.getString(1));
-        Assert.assertEquals(6L, resultSet.getLong(2));
-        Assert.assertEquals(2.6D, resultSet.getDouble(3), DELTA);
-        Assert.assertEquals(10L, resultSet.getLong(4));
-        Assert.assertEquals(1L, resultSet.getLong(5));
-        Assert.assertEquals(6.5F, resultSet.getFloat(6), DELTA);
-        Assert.assertEquals(1.1F, resultSet.getFloat(7), DELTA);
-        Assert.assertEquals(6.5F, resultSet.getFloat(8), DELTA);
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("NULL", resultSet.getString(1));
-        Assert.assertEquals(4L, resultSet.getLong(2));
-        Assert.assertEquals(4.9D, resultSet.getDouble(3), DELTA);
-        Assert.assertEquals(10L, resultSet.getLong(4));
-        Assert.assertEquals(1L, resultSet.getLong(5));
-        Assert.assertEquals(8.7D, resultSet.getFloat(6), DELTA);
-        Assert.assertEquals(1.6D, resultSet.getFloat(7), DELTA);
-        Assert.assertEquals(8.7D, resultSet.getFloat(8), DELTA);
-        Assert.assertFalse(resultSet.next());
+        Set<String> groups = new HashSet<>();
+        while (resultSet.next()) {
+          String tagValue = resultSet.getString("k1");
+          Assert.assertTrue(groups.add(tagValue));
+          switch (tagValue) {
+            case "k1v1":
+              Assert.assertEquals(6L, resultSet.getLong("count(t)"));
+              Assert.assertEquals(2.6D, resultSet.getDouble("avg(t)"), DELTA);
+              Assert.assertEquals(6.5F, resultSet.getFloat("max_value(t)"), DELTA);
+              Assert.assertEquals(1.1F, resultSet.getFloat("min_value(t)"), DELTA);
+              Assert.assertEquals(6.5F, resultSet.getFloat("extreme(t)"), DELTA);
+              break;
+            case "k1v2":
+              Assert.assertEquals(4L, resultSet.getLong("count(t)"));
+              Assert.assertEquals(3.1D, resultSet.getDouble("avg(t)"), DELTA);
+              Assert.assertEquals(5.4F, resultSet.getFloat("max_value(t)"), DELTA);
+              Assert.assertEquals(1.3F, resultSet.getFloat("min_value(t)"), DELTA);
+              Assert.assertEquals(5.4F, resultSet.getFloat("extreme(t)"), DELTA);
+              break;
+            case "NULL":
+              Assert.assertEquals(4L, resultSet.getLong("count(t)"));
+              Assert.assertEquals(4.9D, resultSet.getDouble("avg(t)"), DELTA);
+              Assert.assertEquals(8.7D, resultSet.getFloat("max_value(t)"), DELTA);
+              Assert.assertEquals(1.6D, resultSet.getFloat("min_value(t)"), DELTA);
+              Assert.assertEquals(8.7D, resultSet.getFloat("extreme(t)"), DELTA);
+              break;
+            default:
+              fail("Unexpected tag value: " + tagValue);
+          }
+          Assert.assertEquals(10L, resultSet.getLong("max_time(t)"));
+          Assert.assertEquals(1L, resultSet.getLong("min_time(t)"));
+        }
+        Assert.assertEquals(3, groups.size());
       }
     } catch (SQLException e) {
       e.printStackTrace();
