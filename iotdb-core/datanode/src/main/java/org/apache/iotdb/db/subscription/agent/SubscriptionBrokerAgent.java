@@ -670,7 +670,8 @@ public class SubscriptionBrokerAgent {
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
-      final boolean initialActive) {
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     final ConsensusPrefetchingQueue queue =
         getOrCreateBroker(
                 consumerGroupId,
@@ -692,7 +693,8 @@ public class SubscriptionBrokerAgent {
                 fallbackCommittedRegionProgress,
                 tailStartSearchIndex,
                 initialRuntimeVersion,
-                initialActive);
+                initialActive,
+                replaceDetachedRetention);
     prefetchingQueueCount.invalidate();
     return queue;
   }
@@ -713,6 +715,16 @@ public class SubscriptionBrokerAgent {
           getBroker(entry.getValue(), ConsensusSubscriptionBroker.class);
       if (Objects.nonNull(broker)) {
         broker.refreshConsensusQueueOrderMode(topicName, orderMode);
+      }
+    }
+  }
+
+  public void wakeUpConsensusPrefetchingQueues(final String topicName, final boolean isTableModel) {
+    for (final List<ISubscriptionBroker> brokers : consumerGroupIdToBrokers.values()) {
+      final ConsensusSubscriptionBroker broker =
+          getBroker(brokers, ConsensusSubscriptionBroker.class);
+      if (Objects.nonNull(broker)) {
+        broker.wakeUpPrefetchingQueues(topicName, isTableModel);
       }
     }
   }
@@ -824,7 +836,9 @@ public class SubscriptionBrokerAgent {
   }
 
   public void unbindConsensusPrefetchingQueue(
-      final String consumerGroupId, final String topicName) {
+      final String consumerGroupId,
+      final String topicName,
+      final boolean retainProgressAfterUnsubscribe) {
     final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
@@ -833,7 +847,7 @@ public class SubscriptionBrokerAgent {
           consumerGroupId);
       return;
     }
-    broker.unbindConsensusPrefetchingQueue(topicName);
+    broker.unbindConsensusPrefetchingQueue(topicName, retainProgressAfterUnsubscribe);
     prefetchingQueueCount.invalidate();
   }
 

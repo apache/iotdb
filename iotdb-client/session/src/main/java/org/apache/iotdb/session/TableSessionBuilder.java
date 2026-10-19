@@ -180,6 +180,18 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
+   * Enables or disables schema auto-creation for this session's write requests.
+   *
+   * @param enableAutoCreateSchema whether to allow auto creating tables and columns.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionBuilder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
+    return this;
+  }
+
+  /**
    * Sets the maximum number of retries for connection attempts.
    *
    * @param maxRetryCount the maximum retry count.

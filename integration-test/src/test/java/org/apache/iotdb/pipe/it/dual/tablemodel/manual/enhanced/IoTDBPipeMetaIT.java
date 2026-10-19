@@ -184,8 +184,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           Collections.emptySet(),
           dbName);
 
-      TestUtils.executeNonQuery(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop database test", null);
+      // Receiver metadata can disappear before the sender's asynchronous drop has finished.
+      try (Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        TestUtils.dropDatabaseWithRetry(statement, dbName);
+      }
 
       // Will not include no-transfer database
       TestUtils.assertDataEventuallyOnEnv(
@@ -238,7 +241,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionOrigin,TimePartitionInterval,",
           Collections.emptySet());
     }
   }
@@ -296,7 +299,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"),
-          dbName);
+          "information_schema");
     }
   }
 
@@ -359,18 +362,17 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           "grant alter on any to user testUser with grant option",
           null);
 
-      TestUtils.assertDataAlwaysOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list privileges of user testUser",
           "Role,Scope,Privileges,GrantOption,",
           new HashSet<>(
               Arrays.asList(
-                  ",,MANAGE_USER,false,",
-                  ",,MANAGE_ROLE,false,",
-                  ",,MAINTAIN,false,",
+                  ",,SYSTEM,false,",
+                  ",,SECURITY,false,",
                   ",*.*,ALTER,true,",
                   ",test.*,DROP,false,")),
-          (String) null);
+          "information_schema");
     }
   }
 

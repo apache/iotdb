@@ -59,6 +59,8 @@ public abstract class IClientSession {
 
   @Nullable private String databaseName;
 
+  private boolean enableAutoCreateSchema = true;
+
   private long lastActiveTime = CommonDateTimeUtils.currentTime();
 
   public abstract String getClientAddress();
@@ -199,6 +201,14 @@ public abstract class IClientSession {
       throw new SemanticException(
           String.format(DataNodeMiscMessages.DATABASE_NAME_IS_TREE_MODEL_DATABASE, databaseName));
     }
+  }
+
+  public boolean isEnableAutoCreateSchema() {
+    return enableAutoCreateSchema;
+  }
+
+  public void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 
   /**

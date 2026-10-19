@@ -47,6 +47,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -57,6 +58,142 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ProgressWALIteratorTest {
+
+  @Test
+  public void testBoundedScanKeepsSkippedPrefixAndPendingFragmentsAcrossRounds() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-bounded-scan");
+    final File dataWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    try {
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        for (int fragment = 0; fragment < 5; fragment++) {
+          writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 1000L, 7, 1L));
+        }
+        for (int fragment = 0; fragment < 5; fragment++) {
+          writer.write(
+              searchableEntry(SearchNode.NO_CONSENSUS_INDEX),
+              singleEntryMeta(19, SearchNode.NO_CONSENSUS_INDEX, 1L, 2000L, 8, 50L));
+        }
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 3000L, 7, 2L));
+      }
+      try (WALWriter ignored = new WALWriter(successorWal, WALFileVersion.V3)) {
+        // Seal a successor so replay reads the historical file.
+      }
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 2L)) {
+        for (int round = 0; round < 5; round++) {
+          final ProgressWALIterator.ScanBudget budget =
+              new ProgressWALIterator.ScanBudget(2, Long.MAX_VALUE);
+          assertFalse(iterator.hasNext(budget));
+          assertTrue(budget.hasYielded());
+          assertTrue(iterator.hasYieldedScan());
+          assertFalse(iterator.hasBufferedNext());
+          assertFalse(iterator.hasIncompleteScan());
+          // Neither a skipped prefix nor an unfinished follower request is a completed delivery.
+          assertFalse(iterator.hasNext(budget));
+        }
+
+        final ProgressWALIterator.ScanBudget budget =
+            new ProgressWALIterator.ScanBudget(2, Long.MAX_VALUE);
+        assertTrue(iterator.hasNext(budget));
+        final IndexedConsensusRequest follower = iterator.next();
+        assertEquals(SearchNode.NO_CONSENSUS_INDEX, follower.getSearchIndex());
+        assertEquals(8, follower.getNodeId());
+        assertEquals(50L, follower.getProgressLocalSeq());
+        assertEquals(5, follower.getRequests().size());
+        // Repeated probes share the same budget and retain the final pending local request.
+        assertTrue(iterator.hasNext(budget));
+        assertEquals(2L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasNext(budget));
+        assertFalse(budget.hasYielded());
+        assertFalse(iterator.hasIncompleteScan());
+      }
+    } finally {
+      Files.deleteIfExists(dataWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testScanBudgetStartsWhenWalScanningBegins() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-delayed-scan");
+    final File walFile =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final AtomicLong clock = new AtomicLong();
+    try {
+      try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 1000L, 7, 1L));
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 2000L, 7, 2L));
+      }
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 1L)) {
+        final ProgressWALIterator.ScanBudget budget =
+            new ProgressWALIterator.ScanBudget(100, 50L, clock::get);
+        // Queue housekeeping, realtime materialization, or a JVM pause can consume a whole
+        // time slice before the first WAL probe. That must not starve replay.
+        clock.set(1000L);
+        assertTrue(iterator.hasNext(budget));
+        assertEquals(1L, iterator.next().getSearchIndex());
+        assertFalse(budget.hasYielded());
+      }
+    } finally {
+      Files.deleteIfExists(walFile.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testElapsedScanBudgetYieldsWithoutFlushingIncompleteRequest() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-scan-time-slice");
+    final File dataWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 1, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final AtomicLong clock = new AtomicLong();
+    try {
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 1000L, 7, 1L));
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 1000L, 7, 1L));
+      }
+      try (WALWriter ignored = new WALWriter(successorWal, WALFileVersion.V3)) {
+        // Seal a successor so replay reads the historical file.
+      }
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 1L)) {
+        final ProgressWALIterator.ScanBudget first =
+            new ProgressWALIterator.ScanBudget(1, Long.MAX_VALUE);
+        assertFalse(iterator.hasNext(first));
+        final ProgressWALIterator.ScanBudget expired =
+            new ProgressWALIterator.ScanBudget(100, 50L, () -> clock.getAndAdd(50L));
+        assertFalse(iterator.hasNext(expired));
+        assertTrue(expired.hasYielded());
+        assertFalse(iterator.hasBufferedNext());
+        assertFalse(iterator.hasIncompleteScan());
+
+        final ProgressWALIterator.ScanBudget resumed =
+            new ProgressWALIterator.ScanBudget(100, 50L, clock::get);
+        assertTrue(iterator.hasNext(resumed));
+        final IndexedConsensusRequest request = iterator.next();
+        assertEquals(1L, request.getSearchIndex());
+        assertEquals(2, request.getRequests().size());
+        iterator.retry(request);
+        // Already buffered requests remain available even when no further I/O is permitted.
+        assertTrue(iterator.hasNext(expired));
+        assertEquals(request, iterator.next());
+        assertFalse(iterator.hasNext(resumed));
+      }
+    } finally {
+      Files.deleteIfExists(dataWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
 
   @Test
   public void testIteratorGroupsByLocalSeqAndCarriesWriterMetadata() throws Exception {
@@ -861,6 +998,27 @@ public class ProgressWALIteratorTest {
 
         iterator.advanceTo(6L, (physicalTime, nodeId, localSeq) -> true);
 
+        assertTrue(iterator.hasNext());
+        assertEquals(6L, iterator.next().getSearchIndex());
+      }
+
+      // A freshly rebuilt replay iterator already has this lower bound, but has not read or
+      // skipped any files yet. It must still fast-forward covered history before a bounded scan.
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 6L)) {
+        iterator.advanceTo(6L, (physicalTime, nodeId, localSeq) -> true);
+        final ProgressWALIterator.ScanBudget budget =
+            new ProgressWALIterator.ScanBudget(2, Long.MAX_VALUE);
+        assertTrue(iterator.hasNext(budget));
+        assertEquals(6L, iterator.next().getSearchIndex());
+        assertFalse(budget.hasYielded());
+      }
+
+      // Equal-bound realignment must retain uncovered follower entries, just like an increasing
+      // bound. They have no local search index and cannot be skipped using the local cursor.
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 6L)) {
+        iterator.advanceTo(6L, (physicalTime, nodeId, localSeq) -> nodeId == 7);
+        assertTrue(iterator.hasNext());
+        assertEquals(8, iterator.next().getNodeId());
         assertTrue(iterator.hasNext());
         assertEquals(6L, iterator.next().getSearchIndex());
       }

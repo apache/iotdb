@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
+  public static final String LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B =
+      "Subscription replay has made no cursor progress for {} ms: {}. Inspect prefetch worker stacks and WAL I/O.";
 
   public static final String
       LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =
@@ -2692,6 +2694,8 @@ public final class DataNodePipeMessages {
       "Topic metadata for %s is unavailable during consensus subscription setup";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "Topic config for %s is unavailable during consensus subscription setup";
+  public static final String LOG_FAILED_TO_RESTORE_DETACHED_CONSENSUS_SUBSCRIPTION_WAL_RETENTION_FOR_CONSUMER_GROUP_ARG_TOPIC_ARG_REGION_ARG_296129FE =
+      "Failed to restore detached consensus subscription WAL retention for consumer group {}, topic {}, region {}";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
   public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
@@ -2704,4 +2708,6 @@ public final class DataNodePipeMessages {
       "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
   public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
       "[%s] Subscription entry requires %d bytes, above the current per-queue maximum %d bytes (DataNode budget %d bytes). Reduce the write batch/field size or increase subscription materialization memory. WAL progress has not advanced.";
+  public static final String LOG_SUBSCRIPTION_FAILED_TO_REPLAY_DELIVERY_BATCH_ARG_FROM_WAL_RETAINING_UNCOMMITTED_STATE_0654EACD =
+      "Subscription failed to replay delivery batch {} from WAL; retaining uncommitted state";
 }

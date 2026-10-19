@@ -163,30 +163,16 @@ public class AbstractCompactionTest {
               + "sequence"
               + File.separator
               + COMPACTION_TEST_SG);
-  protected static File SEQ_DIRS =
-      new File(
-          TestConstant.BASE_OUTPUT_PATH
-              + "data"
-              + File.separator
-              + "sequence"
-              + File.separator
-              + COMPACTION_TEST_SG
-              + File.separator
-              + "0"
-              + File.separator
-              + "0");
-  protected static File UNSEQ_DIRS =
+  protected static File UNSEQ_STORAGE_GROUP_DIR =
       new File(
           TestConstant.BASE_OUTPUT_PATH
               + "data"
               + File.separator
               + "unsequence"
               + File.separator
-              + COMPACTION_TEST_SG
-              + File.separator
-              + "0"
-              + File.separator
-              + "0");
+              + COMPACTION_TEST_SG);
+  protected static File SEQ_DIRS = new File(STORAGE_GROUP_DIR, "0" + File.separator + "0");
+  protected static File UNSEQ_DIRS = new File(UNSEQ_STORAGE_GROUP_DIR, "0" + File.separator + "0");
 
   protected Map<Long, Pair<File, File>> registeredTimePartitionDirs = new HashMap<>();
 
@@ -194,21 +180,55 @@ public class AbstractCompactionTest {
 
   private int fileCount = 0;
 
-  protected TsFileManager tsFileManager =
-      new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+  protected TsFileManager tsFileManager;
 
   protected CompactionFakeSchemaFetcherImpl schemaFetcher;
+
+  /**
+   * The database of the files created by this fixture and the directories that hold them. The
+   * defaults are the tree model database used by most of the compaction tests. A fixture that
+   * writes files of another data model overrides them, because the data model of the compaction
+   * input is resolved from the database directory of its source files: a table model database name
+   * must not start with {@code root.}
+   */
+  protected String getTestStorageGroup() {
+    return COMPACTION_TEST_SG;
+  }
+
+  /** The directory of the sequence files of the database of this fixture. */
+  protected File getSeqStorageGroupDir() {
+    return STORAGE_GROUP_DIR;
+  }
+
+  /** The directory of the unsequence files of the database of this fixture. */
+  protected File getUnseqStorageGroupDir() {
+    return UNSEQ_STORAGE_GROUP_DIR;
+  }
+
+  /** The directory of the data region 0, time partition 0 of the sequence files. */
+  protected File getSeqDirs() {
+    return SEQ_DIRS;
+  }
+
+  /** The directory of the data region 0, time partition 0 of the unsequence files. */
+  protected File getUnseqDirs() {
+    return UNSEQ_DIRS;
+  }
+
+  protected TsFileManager createTsFileManager() {
+    return new TsFileManager(getTestStorageGroup(), "0", getSeqStorageGroupDir().getPath());
+  }
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
     MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     fileCount = 0;
-    if (!SEQ_DIRS.exists()) {
-      Assert.assertTrue(SEQ_DIRS.mkdirs());
+    if (!getSeqDirs().exists()) {
+      Assert.assertTrue(getSeqDirs().mkdirs());
     }
-    if (!UNSEQ_DIRS.exists()) {
-      Assert.assertTrue(UNSEQ_DIRS.mkdirs());
+    if (!getUnseqDirs().exists()) {
+      Assert.assertTrue(getUnseqDirs().mkdirs());
     }
     dataType = TSDataType.INT64;
     CompactionTaskManager.getInstance().restart();
@@ -217,11 +237,12 @@ public class AbstractCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
+    tsFileManager = createTsFileManager();
     tsFileManager.getOrCreateSequenceListByTimePartition(0);
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
-    registeredTimePartitionDirs.put(0L, new Pair<>(SEQ_DIRS, UNSEQ_DIRS));
+    registeredTimePartitionDirs.put(0L, new Pair<>(getSeqDirs(), getUnseqDirs()));
     schemaFetcher = new CompactionFakeSchemaFetcherImpl();
-    schemaFetcher.getSchemaTree().setDatabases(Collections.singleton(COMPACTION_TEST_SG));
+    schemaFetcher.getSchemaTree().setDatabases(Collections.singleton(getTestStorageGroup()));
     CompactionUtils.setSchemaFetcher(schemaFetcher);
   }
 
@@ -230,30 +251,10 @@ public class AbstractCompactionTest {
       return;
     }
     File seqTimePartitionDir =
-        new File(
-            TestConstant.BASE_OUTPUT_PATH
-                + "data"
-                + File.separator
-                + "sequence"
-                + File.separator
-                + COMPACTION_TEST_SG
-                + File.separator
-                + "0"
-                + File.separator
-                + timePartition);
+        new File(getSeqStorageGroupDir(), "0" + File.separator + timePartition);
     seqTimePartitionDir.mkdirs();
     File unseqTimePartitionDir =
-        new File(
-            TestConstant.BASE_OUTPUT_PATH
-                + "data"
-                + File.separator
-                + "unsequence"
-                + File.separator
-                + COMPACTION_TEST_SG
-                + File.separator
-                + "0"
-                + File.separator
-                + timePartition);
+        new File(getUnseqStorageGroupDir(), "0" + File.separator + timePartition);
     unseqTimePartitionDir.mkdirs();
     registeredTimePartitionDirs.put(
         timePartition, new Pair<File, File>(seqTimePartitionDir, unseqTimePartitionDir));
@@ -293,9 +294,9 @@ public class AbstractCompactionTest {
           timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
-        filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getSeqDirs().getPath() + File.separator + fileName;
       } else {
-        filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getUnseqDirs().getPath() + File.separator + fileName;
       }
       File file;
       if (isAlign) {
@@ -365,9 +366,9 @@ public class AbstractCompactionTest {
           timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
-        filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getSeqDirs().getPath() + File.separator + fileName;
       } else {
-        filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getUnseqDirs().getPath() + File.separator + fileName;
       }
       File file;
       if (isAlign) {
@@ -511,11 +512,11 @@ public class AbstractCompactionTest {
 
     EnvironmentUtils.cleanAllDir();
 
-    if (SEQ_DIRS.exists()) {
-      FileUtils.deleteDirectory(SEQ_DIRS);
+    if (getSeqDirs().exists()) {
+      FileUtils.deleteDirectory(getSeqDirs());
     }
-    if (UNSEQ_DIRS.exists()) {
-      FileUtils.deleteDirectory(UNSEQ_DIRS);
+    if (getUnseqDirs().exists()) {
+      FileUtils.deleteDirectory(getUnseqDirs());
     }
     for (Map.Entry<Long, Pair<File, File>> entry : registeredTimePartitionDirs.entrySet()) {
       File seqDir = entry.getValue().left;
@@ -738,9 +739,9 @@ public class AbstractCompactionTest {
             + String.format("-%d-0.tsfile", innerCompactionCnt);
     String filePath;
     if (isSeq) {
-      filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getSeqDirs().getPath() + File.separator + fileName;
     } else {
-      filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getUnseqDirs().getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.updatePlanIndexes(fileVersion);
@@ -752,9 +753,9 @@ public class AbstractCompactionTest {
       String fileName, boolean isSeq, int innerCompactionCnt) {
     String filePath;
     if (isSeq) {
-      filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getSeqDirs().getPath() + File.separator + fileName;
     } else {
-      filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getUnseqDirs().getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);

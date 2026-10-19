@@ -363,8 +363,11 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private void markTsFileEpochDegradedUnderLock(final TsFileEpoch tsFileEpoch) {
     activeTsFileEpochs.add(tsFileEpoch);
-    if (degradedTsFileEpochs.add(tsFileEpoch) && isRegionLevelDowngradingEnabled) {
-      regionLevelDegradedTsFileEpochs.offer(tsFileEpoch);
+    if (degradedTsFileEpochs.add(tsFileEpoch)) {
+      markCompletionStateChanged();
+      if (isRegionLevelDowngradingEnabled) {
+        regionLevelDegradedTsFileEpochs.offer(tsFileEpoch);
+      }
     }
     if (isRegionLevelDowngradingEnabled) {
       isRegionLevelDegraded = true;
@@ -522,7 +525,9 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private void clearTsFileEpochUnderLock(final TsFileEpoch tsFileEpoch) {
     activeTsFileEpochs.remove(tsFileEpoch);
-    degradedTsFileEpochs.remove(tsFileEpoch);
+    if (degradedTsFileEpochs.remove(tsFileEpoch)) {
+      markCompletionStateChanged();
+    }
     regionLevelDegradedTsFileEpochs.remove(tsFileEpoch);
     if (regionLevelTailTsFileEpoch == tsFileEpoch) {
       regionLevelTailTsFileEpoch = null;
@@ -562,6 +567,11 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   }
 
   @Override
+  public boolean isTsFileEpochDegraded() {
+    return !degradedTsFileEpochs.isEmpty();
+  }
+
+  @Override
   public void close() throws Exception {
     try {
       // Do not hold regionLevelDowngradingLock while waiting for the assigner to stop. An event
@@ -571,6 +581,9 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       synchronized (regionLevelDowngradingLock) {
         clearRegionLevelBufferedEventsUnderLock();
         activeTsFileEpochs.clear();
+        if (!degradedTsFileEpochs.isEmpty()) {
+          markCompletionStateChanged();
+        }
         degradedTsFileEpochs.clear();
         regionLevelDegradedTsFileEpochs.clear();
         isRegionLevelDegraded = false;
@@ -890,6 +903,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
               DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
+      markDataRegionCompletionInvalid();
       PipeDataNodeAgent.runtime()
           .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       PipeTsFileEpochProgressIndexKeeper.getInstance()

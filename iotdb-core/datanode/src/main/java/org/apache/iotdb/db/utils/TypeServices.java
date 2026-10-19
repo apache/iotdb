@@ -1853,6 +1853,58 @@ public class TypeServices {
                           .setChecked(true);
                 };
 
+    /**
+     * Writes one decoded {@link TsPrimitiveType} value into a value column of a chunk, so a caller
+     * that only holds decoded values does not have to switch on the data type itself.
+     */
+    public static final TypeService<TsPrimitiveValueChunkWriter>
+        TS_PRIMITIVE_VALUE_CHUNK_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE ->
+                      (writer, time, value, isNull) ->
+                          writer.write(time, isNull ? 0 : value.getInt(), isNull);
+                  case INT64, TIMESTAMP ->
+                      (writer, time, value, isNull) ->
+                          writer.write(time, isNull ? 0L : value.getLong(), isNull);
+                  case FLOAT ->
+                      (writer, time, value, isNull) ->
+                          writer.write(time, isNull ? 0F : value.getFloat(), isNull);
+                  case DOUBLE ->
+                      (writer, time, value, isNull) ->
+                          writer.write(time, isNull ? 0D : value.getDouble(), isNull);
+                  case BOOLEAN ->
+                      (writer, time, value, isNull) ->
+                          writer.write(time, !isNull && value.getBoolean(), isNull);
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (writer, time, value, isNull) ->
+                          writer.write(time, isNull ? null : value.getBinary(), isNull);
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                          .setChecked(true);
+                };
+
+    /**
+     * Writes one boxed value into a non-aligned chunk, so a caller that only holds the value as an
+     * {@link Object} does not have to switch on the data type itself.
+     */
+    public static final TypeService<ObjectValueChunkWriter> OBJECT_VALUE_CHUNK_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE -> (writer, time, value) -> writer.write(time, (int) value);
+              case INT64, TIMESTAMP -> (writer, time, value) -> writer.write(time, (long) value);
+              case FLOAT -> (writer, time, value) -> writer.write(time, (float) value);
+              case DOUBLE -> (writer, time, value) -> writer.write(time, (double) value);
+              case BOOLEAN -> (writer, time, value) -> writer.write(time, (boolean) value);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (writer, time, value) -> writer.write(time, (Binary) value);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
     public static final TypeService<Boolean> TABLET_PLAIN_FAST_PATH_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -4345,6 +4397,21 @@ public class TypeServices {
         int rowIndex,
         int columnIndex,
         boolean isNull);
+  }
+
+  /**
+   * Writes one decoded {@link TsPrimitiveType} into one value column of a chunk. The column of an
+   * aligned series is addressed through {@link
+   * org.apache.tsfile.write.chunk.AlignedChunkWriterImpl#getValueChunkWriterByIndex(int)}.
+   */
+  @FunctionalInterface
+  public interface TsPrimitiveValueChunkWriter {
+    void write(ValueChunkWriter writer, long time, TsPrimitiveType value, boolean isNull);
+  }
+
+  @FunctionalInterface
+  public interface ObjectValueChunkWriter {
+    void write(ChunkWriterImpl writer, long time, Object value);
   }
 
   @FunctionalInterface

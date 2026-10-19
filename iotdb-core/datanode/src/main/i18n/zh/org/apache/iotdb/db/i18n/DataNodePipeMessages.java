@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
+  public static final String LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B =
+      "订阅回放游标已连续 {} ms 未推进：{}。请检查预取工作线程栈和 WAL I/O。";
 
   public static final String
       LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =
@@ -2517,6 +2519,8 @@ public final class DataNodePipeMessages {
       "共识订阅设置期间 topic %s 的元数据不可用";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "共识订阅设置期间 topic %s 的配置不可用";
+  public static final String LOG_FAILED_TO_RESTORE_DETACHED_CONSENSUS_SUBSCRIPTION_WAL_RETENTION_FOR_CONSUMER_GROUP_ARG_TOPIC_ARG_REGION_ARG_296129FE =
+      "为 consumer group {}、topic {}、region {} 恢复 detached consensus subscription WAL retention 失败";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
   public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
@@ -2529,4 +2533,6 @@ public final class DataNodePipeMessages {
       "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
   public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
       "[%s] 订阅 entry 需要 %d 字节，超过当前队列可用上限 %d 字节（DataNode 预算 %d 字节）。请减小写入 batch/字段大小或增加订阅物化内存。WAL 进度未推进。";
+  public static final String LOG_SUBSCRIPTION_FAILED_TO_REPLAY_DELIVERY_BATCH_ARG_FROM_WAL_RETAINING_UNCOMMITTED_STATE_0654EACD =
+      "Subscription 无法从 WAL 重放交付批次 {}；保留未提交状态";
 }

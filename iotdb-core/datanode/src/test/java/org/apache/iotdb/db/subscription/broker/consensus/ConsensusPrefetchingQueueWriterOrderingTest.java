@@ -57,6 +57,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.Collections;
@@ -198,6 +199,42 @@ public class ConsensusPrefetchingQueueWriterOrderingTest {
     assertEquals(1000L, first.getCommitContext().getWriterProgress().getPhysicalTime());
     assertTrue(queue.ack("consumer", first.getCommitContext()));
     consumeRemainingWriterSeven(1024);
+  }
+
+  @Test
+  public void testOrderedReplayResumesAfterSharedWalScanBudgetYields() throws Exception {
+    newQueue(walNode(writeWal(1), 1), 1024 * 1024);
+    installSafeFrontiers(1);
+    final Method driveOrderedReplay =
+        ConsensusPrefetchingQueue.class.getDeclaredMethod(
+            "driveOrderedWriterReplay",
+            long.class,
+            int.class,
+            int.class,
+            long.class,
+            int.class,
+            ProgressWALIterator.ScanBudget.class);
+    driveOrderedReplay.setAccessible(true);
+    final ProgressWALIterator.ScanBudget scanBudget =
+        new ProgressWALIterator.ScanBudget(1, Long.MAX_VALUE);
+    final PrefetchRoundResult result =
+        (PrefetchRoundResult)
+            driveOrderedReplay.invoke(queue, 0L, 1024, 512, 16 * 1024 * 1024L, 0, scanBudget);
+
+    assertTrue(scanBudget.hasYielded());
+    assertEquals(PrefetchRoundResult.Type.RESCHEDULE_NOW, result.getType());
+    // A single physical entry remains buffered until the next writer request establishes its end.
+    assertEquals(0, walReads.get());
+    assertEquals(0, conversions.get());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+    assertNull(queue.poll("consumer"));
+
+    for (int round = 0; round < 20 && queue.getPrefetchedEventCount() == 0; round++) {
+      queue.drivePrefetchOnce();
+    }
+    assertEvent(8, 1000);
+    consumeRemainingWriterSeven(1);
+    assertEquals(2, conversions.get());
   }
 
   @Test

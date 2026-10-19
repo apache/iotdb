@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -106,10 +107,14 @@ public class IoTDBDeviceIT {
               "show devices from table0 where region_id < plant_id offset 0 limit 1"),
           "region_id,plant_id,device_id,model,",
           Collections.singleton("1,木兰,3,A,"));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from table0 where region_id < plant_id limit 0"),
-          "region_id,plant_id,device_id,model,",
-          Collections.emptySet());
+      try {
+        statement.executeQuery("show devices from table0 where region_id < plant_id limit 0");
+        fail("Expected LIMIT 0 to be rejected");
+      } catch (SQLException e) {
+        assertTrue(
+            e.getMessage(),
+            e.getMessage().contains("LIMIT row count must be greater than 0 (actual value: 0)"));
+      }
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from table0 where region_id < plant_id"),
           "count(devices),",

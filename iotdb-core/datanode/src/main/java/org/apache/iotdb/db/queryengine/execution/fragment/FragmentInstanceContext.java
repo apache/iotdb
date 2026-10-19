@@ -492,9 +492,7 @@ public class FragmentInstanceContext extends QueryContext {
         getQueryModificationLoader(
             tsFileResource,
             modification ->
-                deviceID.isTableModel()
-                    ? modification.affects(deviceID)
-                    : modification.affectsAll(deviceID),
+                isTableModel() ? modification.affects(deviceID) : modification.affectsAll(deviceID),
             mods -> getPathModifications(mods, deviceID))) {
       return modificationLoader.getPathModifications();
     }

@@ -188,6 +188,8 @@ public class SessionPool implements ISessionPool {
   // may be null
   protected String database;
 
+  protected boolean enableAutoCreateSchema = true;
+
   private static final String INSERT_RECORD_FAIL = SessionMessages.INSERT_RECORD_FAILED;
 
   private static final String INSERT_RECORD_ERROR_MSG =
@@ -553,6 +555,7 @@ public class SessionPool implements ISessionPool {
     this.sqlDialect = builder.sqlDialect;
     this.database = builder.database;
     this.queryTimeoutInMs = builder.timeOut;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
 
     if (enableAutoFetch) {
       initThreadPool();
@@ -612,6 +615,7 @@ public class SessionPool implements ISessionPool {
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
               .database(database)
+              .enableAutoCreateSchema(enableAutoCreateSchema)
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)
@@ -640,6 +644,7 @@ public class SessionPool implements ISessionPool {
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
               .database(database)
+              .enableAutoCreateSchema(enableAutoCreateSchema)
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)

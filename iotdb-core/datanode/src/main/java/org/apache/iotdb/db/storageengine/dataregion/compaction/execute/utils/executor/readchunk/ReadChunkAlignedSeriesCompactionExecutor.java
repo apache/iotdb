@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
@@ -109,7 +110,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.targetResource = targetResource;
     this.summary = summary;
     this.ignoreAllNullRows = ignoreAllNullRows;
-    if (device.isTableModel()) {
+    if (PathUtils.isTableModelDatabase(database)) {
       collectValueColumnSchemaListForTable(database);
     } else {
       collectValueColumnSchemaListForTree();

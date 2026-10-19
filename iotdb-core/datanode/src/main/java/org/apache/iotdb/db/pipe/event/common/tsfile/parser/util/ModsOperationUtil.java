@@ -80,6 +80,7 @@ public class ModsOperationUtil {
    * @param startTime start time
    * @param endTime end time
    * @param modifications modification records
+   * @param isTableModel whether the device belongs to table model
    * @return true if data is completely deleted, false otherwise
    */
   public static boolean isAllDeletedByMods(
@@ -87,18 +88,20 @@ public class ModsOperationUtil {
       String measurementID,
       long startTime,
       long endTime,
-      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      boolean isTableModel) {
     if (modifications == null) {
       return false;
     }
 
-    final List<ModEntry> mods = getOverlappedMods(deviceID, measurementID, modifications);
+    final List<ModEntry> mods =
+        getOverlappedMods(deviceID, measurementID, modifications, isTableModel);
     if (mods == null || mods.isEmpty()) {
       return false;
     }
 
     // Different logic for tree model and table model
-    if (deviceID.isTableModel()) {
+    if (isTableModel) {
       // For table model: check if any modification affects the device and covers the time range
       return mods.stream()
           .anyMatch(
@@ -119,17 +122,20 @@ public class ModsOperationUtil {
    * @param deviceID device ID
    * @param measurements measurement list
    * @param modifications modification records
+   * @param isTableModel whether the device belongs to table model
    * @return mapping from measurement ID to mods list and index
    */
   public static List<ModsInfo> initializeMeasurementMods(
       IDeviceID deviceID,
       List<String> measurements,
-      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      boolean isTableModel) {
 
     List<ModsInfo> modsInfos = new ArrayList<>(measurements.size());
 
     for (final String measurement : measurements) {
-      final List<ModEntry> mods = getOverlappedMods(deviceID, measurement, modifications);
+      final List<ModEntry> mods =
+          getOverlappedMods(deviceID, measurement, modifications, isTableModel);
       if (mods == null || mods.isEmpty()) {
         // No mods, use empty list and index 0
         modsInfos.add(new ModsInfo(Collections.emptyList(), 0));
@@ -139,7 +145,7 @@ public class ModsOperationUtil {
       // Sort by time range for efficient lookup
       // Different filtering logic for tree model and table model
       final List<ModEntry> filteredMods;
-      if (deviceID.isTableModel()) {
+      if (isTableModel) {
         // For table model: filter modifications that affect the device
         filteredMods =
             mods.stream()
@@ -161,9 +167,11 @@ public class ModsOperationUtil {
   private static List<ModEntry> getOverlappedMods(
       final IDeviceID deviceID,
       final String measurement,
-      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      final boolean isTableModel) {
     try {
-      return modifications.getOverlapped(CompactionPathUtils.getPath(deviceID, measurement));
+      return modifications.getOverlapped(
+          CompactionPathUtils.getPath(deviceID, measurement, isTableModel));
     } catch (final IllegalPathException e) {
       throw new PipeException(e.getMessage(), e);
     }
