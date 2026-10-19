@@ -134,7 +134,7 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     when(walNode.getLogDirectory()).thenReturn(walDirectory);
     when(walNode.getCurrentSearchIndex()).thenAnswer(ignored -> currentSearchIndex.get());
     when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-    when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+    when(walNode.getWALMetaDataSnapshot(1L)).thenReturn(new WALMetaData());
     when(walNode.getSortedWalFilesSnapshot())
         .thenAnswer(
             ignored -> {
