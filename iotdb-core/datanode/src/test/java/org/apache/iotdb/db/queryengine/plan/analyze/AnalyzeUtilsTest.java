@@ -75,28 +75,21 @@ import static org.junit.Assert.assertTrue;
 public class AnalyzeUtilsTest {
 
   @Test
-  public void testSchemaFailureIsNotOverwrittenByPartialInsertError() throws Exception {
+  public void testSchemaFailureIsNotOverwrittenByPartialInsertError() {
     final InsertRowStatement row = new InsertRowStatement();
-    row.setDevicePath(new PartialPath("table1"));
     row.setMeasurements(new String[] {"field"});
     row.setDataTypes(new TSDataType[] {TSDataType.INT64});
     row.setValues(new Object[] {1L});
     final Analysis analysis = new Analysis();
 
-    AnalyzeUtils.analyzeInsert(
-        new MPPQueryContext(new QueryId("no_valid_field")),
+    AnalyzeUtils.validateSchema(
+        analysis,
         row,
         () -> {
           row.markFailedMeasurement(0, new IllegalArgumentException("type mismatch"));
           throw new SemanticException(
               DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK);
-        },
-        (params, userName) -> {
-          throw new AssertionError("Rejected insertion must not look up a partition");
-        },
-        AnalyzeUtils::computeTableDataPartitionParams,
-        analysis,
-        false);
+        });
 
     assertTrue(analysis.isFinishQueryAfterAnalyze());
     assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
