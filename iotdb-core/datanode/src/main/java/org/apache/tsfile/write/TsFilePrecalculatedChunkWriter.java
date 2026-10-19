@@ -31,6 +31,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -53,6 +54,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -80,6 +82,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
   private final File file;
   private final Map<IDeviceID, Map<String, List<IChunkMetadata>>> device2MetadataMap =
       new TreeMap<>();
+  private final Map<String, TableSchema> tableSchemaMap = new TreeMap<>();
 
   private long maxPhysicalFileSize;
   private boolean sealed;
@@ -385,6 +388,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
       }
 
       tsFileMetadata.setTableMetadataIndexNodeMap(tableIndexNodeMap);
+      tsFileMetadata.setTableSchemaMap(tableSchemaMap);
       tsFileMetadata.setMetaOffset(metaOffset);
       tsFileMetadata.setBloomFilter(bloomFilter);
 
@@ -444,6 +448,16 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
                     .flatMap(List::stream)
                     .collect(Collectors.toList())));
     return result;
+  }
+
+  public Set<String> getTableNames() {
+    return device2MetadataMap.keySet().stream()
+        .map(IDeviceID::getTableName)
+        .collect(Collectors.toSet());
+  }
+
+  public void registerTableSchema(final TableSchema tableSchema) {
+    tableSchemaMap.put(tableSchema.getTableName(), tableSchema);
   }
 
   private String getFileForLog() {
