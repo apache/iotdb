@@ -171,10 +171,12 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
         current = child;
       }
 
-      final boolean added =
-          viewReferences
-              .computeIfAbsent(current, node -> new HashSet<>())
-              .add(new TreeToTableViewReference(database, tableName, isRestrict, numOfTags));
+      final TreeToTableViewReference reference =
+          new TreeToTableViewReference(database, tableName, isRestrict, numOfTags);
+      final Set<TreeToTableViewReference> references =
+          viewReferences.computeIfAbsent(current, node -> new HashSet<>());
+      final boolean added = !references.remove(reference);
+      references.add(reference);
       // whether the reference is new or not, this path is covered by a view now
       hasView = true;
       return added;
