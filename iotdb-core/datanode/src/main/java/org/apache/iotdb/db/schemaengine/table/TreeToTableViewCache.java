@@ -228,10 +228,6 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
   private boolean removeViewLocked(String database, String tableName) {
     final RegisteredView registered = getRegisteredView(database, tableName);
     if (Objects.isNull(registered)) {
-      LOGGER.warn(
-          DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_BBD78902,
-          database,
-          tableName);
       return false;
     }
 
