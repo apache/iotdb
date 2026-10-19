@@ -40,6 +40,32 @@ public class TagFilterParserTest {
   }
 
   @Test
+  public void testQuotesInTagValues() throws Exception {
+    Assert.assertTrue(evaluate("region = \"O'Reilly\"", Map.of("region", "O'Reilly")));
+    Assert.assertFalse(evaluate("region = \"O'Reilly\"", Map.of("region", "O''Reilly")));
+    Assert.assertTrue(evaluate("region = \"a''b\"", Map.of("region", "a''b")));
+    Assert.assertTrue(evaluate("region = \"a\"\"\"\"b\"", Map.of("region", "a\"\"b")));
+    Assert.assertFalse(evaluate("region = \"a\"\"\"\"b\"", Map.of("region", "a\"b")));
+    Assert.assertTrue(evaluate("region = \"\"\"quoted\"\"\"", Map.of("region", "\"quoted\"")));
+    Assert.assertTrue(
+        evaluate(
+            "region = \"O'Reilly \"\"A\"\"\"\"B\"\"\"", Map.of("region", "O'Reilly \"A\"\"B\"")));
+  }
+
+  @Test
+  public void testQuotesInInLikeAndRegexp() throws Exception {
+    final String inFilter = "region IN (\"O'Reilly\", \"a\"\"\"\"b\")";
+    Assert.assertTrue(evaluate(inFilter, Map.of("region", "O'Reilly")));
+    Assert.assertTrue(evaluate(inFilter, Map.of("region", "a\"\"b")));
+    Assert.assertFalse(evaluate(inFilter, Map.of("region", "a\"b")));
+    Assert.assertTrue(
+        evaluate("region LIKE \"O'Reilly \"\"%\"\"\"", Map.of("region", "O'Reilly \"north\"")));
+    Assert.assertTrue(
+        evaluate(
+            "region REGEXP \"^O'Reilly \"\"[A-Z]+\"\"$\"", Map.of("region", "O'Reilly \"NORTH\"")));
+  }
+
+  @Test
   public void testInLikeRegexpAndBooleanOperators() throws Exception {
     Assert.assertTrue(
         evaluate(
