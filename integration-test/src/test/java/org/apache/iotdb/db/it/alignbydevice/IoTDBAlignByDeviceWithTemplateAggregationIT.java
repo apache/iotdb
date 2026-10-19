@@ -542,14 +542,14 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
   public void wildCardTest() {
     String[] expectedHeader =
         new String[] {
-          "Device,max_time(s3),max_time(s1),max_time(s2),last_value(s1),last_value(s3),last_value(s1),last_value(s2)"
+          "Device,max_time(s1),max_time(s2),max_time(s3),last_value(s1),last_value(s1),last_value(s2),last_value(s3)"
         };
     String[] retArray =
         new String[] {
-          "root.sg1.d1,1314000000000,1314000000000,1314000000000,13.14,1314,13.14,true,",
-          "root.sg1.d2,1314000000001,1314000000001,1314000000001,13.15,1315,13.15,false,",
-          "root.sg1.d3,1314000000002,1314000000002,1314000000002,13.16,1316,13.16,false,",
-          "root.sg1.d4,1314000000003,1314000000003,1314000000003,13.14,1314,13.14,true,",
+          "root.sg1.d1,1314000000000,1314000000000,1314000000000,13.14,13.14,true,1314,",
+          "root.sg1.d2,1314000000001,1314000000001,1314000000001,13.15,13.15,false,1315,",
+          "root.sg1.d3,1314000000002,1314000000002,1314000000002,13.16,13.16,false,1316,",
+          "root.sg1.d4,1314000000003,1314000000003,1314000000003,13.14,13.14,true,1314,",
         };
     resultSetEqualTest(
         "SELECT max_time(*), last_value(s1), last_value(*) FROM root.sg1.** align by device;",
@@ -557,10 +557,10 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
     retArray =
         new String[] {
-          "root.sg2.d1,1314000000000,1314000000000,1314000000000,13.14,1314,13.14,true,",
-          "root.sg2.d2,1314000000001,1314000000001,1314000000001,13.15,1315,13.15,false,",
-          "root.sg2.d3,1314000000002,1314000000002,1314000000002,13.16,1316,13.16,false,",
-          "root.sg2.d4,1314000000003,1314000000003,1314000000003,13.14,1314,13.14,true,",
+          "root.sg2.d1,1314000000000,1314000000000,1314000000000,13.14,13.14,true,1314,",
+          "root.sg2.d2,1314000000001,1314000000001,1314000000001,13.15,13.15,false,1315,",
+          "root.sg2.d3,1314000000002,1314000000002,1314000000002,13.16,13.16,false,1316,",
+          "root.sg2.d4,1314000000003,1314000000003,1314000000003,13.14,13.14,true,1314,",
         };
     resultSetEqualTest(
         "SELECT max_time(*), last_value(s1), last_value(*) FROM root.sg2.** align by device;",
@@ -569,13 +569,13 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
 
     // filter test
     expectedHeader =
-        new String[] {"Device,max_time(s1),last_value(s3),last_value(s1),last_value(s2),count(s2)"};
+        new String[] {"Device,max_time(s1),last_value(s1),last_value(s2),last_value(s3),count(s2)"};
     retArray =
         new String[] {
-          "root.sg1.d1,1314000000000,1314,13.14,true,3,",
-          "root.sg1.d2,1314000000001,1315,13.15,false,4,",
-          "root.sg1.d3,1314000000002,1316,13.16,false,3,",
-          "root.sg1.d4,1314000000003,1314,13.14,true,4,",
+          "root.sg1.d1,1314000000000,13.14,true,1314,3,",
+          "root.sg1.d2,1314000000001,13.15,false,1315,4,",
+          "root.sg1.d3,1314000000002,13.16,false,1316,3,",
+          "root.sg1.d4,1314000000003,13.14,true,1314,4,",
         };
     resultSetEqualTest(
         "SELECT max_time(s1), last_value(*), count(s2) FROM root.sg1.** where s3>1 align by device;",
@@ -583,10 +583,10 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
     retArray =
         new String[] {
-          "root.sg2.d1,1314000000000,1314,13.14,true,3,",
-          "root.sg2.d2,1314000000001,1315,13.15,false,4,",
-          "root.sg2.d3,1314000000002,1316,13.16,false,3,",
-          "root.sg2.d4,1314000000003,1314,13.14,true,4,",
+          "root.sg2.d1,1314000000000,13.14,true,1314,3,",
+          "root.sg2.d2,1314000000001,13.15,false,1315,4,",
+          "root.sg2.d3,1314000000002,13.16,false,1316,3,",
+          "root.sg2.d4,1314000000003,13.14,true,1314,4,",
         };
     resultSetEqualTest(
         "SELECT max_time(s1), last_value(*), count(s2) FROM root.sg2.** where s3>1 align by device;",
@@ -594,16 +594,16 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
 
     // sliding window
-    expectedHeader = new String[] {"Time,Device,last_value(s1),last_value(s2)"};
+    expectedHeader = new String[] {"Time,Device,last_value(s2),last_value(s3)"};
     retArray =
         new String[] {
-          "1,root.sg1.d1,2.2,false,",
-          "1,root.sg1.d2,22.2,false,",
-          "3,root.sg1.d2,50.0,false,",
-          "5,root.sg1.d2,50.0,false,",
-          "7,root.sg1.d3,8.8,false,",
-          "3,root.sg1.d4,5555.5,false,",
-          "5,root.sg1.d4,5555.5,false,",
+          "1,root.sg1.d1,false,2,",
+          "1,root.sg1.d2,false,22,",
+          "3,root.sg1.d2,false,5,",
+          "5,root.sg1.d2,false,5,",
+          "7,root.sg1.d3,false,4,",
+          "3,root.sg1.d4,false,5555,",
+          "5,root.sg1.d4,false,5555,",
         };
     resultSetEqualTest(
         "SELECT last_value(*) FROM root.sg1.** where s3+1=1316 or s2=false group by ([1,10),3ms,2ms) having avg(s1)>0 soffset 1 slimit 2 align by device;",
@@ -611,13 +611,13 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
     retArray =
         new String[] {
-          "1,root.sg2.d1,2.2,false,",
-          "1,root.sg2.d2,22.2,false,",
-          "3,root.sg2.d2,50.0,false,",
-          "5,root.sg2.d2,50.0,false,",
-          "7,root.sg2.d3,8.8,false,",
-          "3,root.sg2.d4,5555.5,false,",
-          "5,root.sg2.d4,5555.5,false,",
+          "1,root.sg2.d1,false,2,",
+          "1,root.sg2.d2,false,22,",
+          "3,root.sg2.d2,false,5,",
+          "5,root.sg2.d2,false,5,",
+          "7,root.sg2.d3,false,4,",
+          "3,root.sg2.d4,false,5555,",
+          "5,root.sg2.d4,false,5555,",
         };
     resultSetEqualTest(
         "SELECT last_value(*) FROM root.sg2.** where s3+1=1316 or s2=false group by ([1,10),3ms,2ms) having avg(s1)>0 soffset 1 slimit 2 align by device;",
@@ -627,11 +627,11 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
     // having
     expectedHeader =
         new String[] {
-          "Device,last_value(s3),last_value(s1),last_value(s2),first_value(s3),first_value(s1),first_value(s2)"
+          "Device,last_value(s1),last_value(s2),last_value(s3),first_value(s1),first_value(s2),first_value(s3)"
         };
     retArray =
         new String[] {
-          "root.sg1.d2,1315,13.15,false,11,11.1,false,",
+          "root.sg1.d2,13.15,false,1315,11.1,false,11,",
         };
     resultSetEqualTest(
         "SELECT last_value(*), first_value(*) FROM root.sg1.** where s2=false having count(s3+s1) > 2 align by device;",
@@ -639,7 +639,7 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
     retArray =
         new String[] {
-          "root.sg2.d2,1315,13.15,false,11,11.1,false,",
+          "root.sg2.d2,13.15,false,1315,11.1,false,11,",
         };
     resultSetEqualTest(
         "SELECT last_value(*), first_value(*) FROM root.sg2.** where s2=false having count(s3+s1) > 2 align by device;",
@@ -647,7 +647,7 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
 
     // not supported expression: agg1(*)+agg2(*), agg(*)/2
-    expectedHeader = new String[] {"Device,count(s3) + 1,count(s1) + 1,count(s2) + 1"};
+    expectedHeader = new String[] {"Device,count(s1) + 1,count(s2) + 1,count(s3) + 1"};
     retArray =
         new String[] {
           "root.sg1.d2,5.0,5.0,5.0,",

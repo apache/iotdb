@@ -363,8 +363,8 @@ public class IoTDBAuthIT {
 
         ResultSet set1 = adminStmt.executeQuery("SELECT * from root.sg.aligned_template");
         assertEquals(3, set1.getMetaData().getColumnCount());
-        assertEquals("root.sg.aligned_template.temperature", set1.getMetaData().getColumnName(2));
-        assertEquals("root.sg.aligned_template.status", set1.getMetaData().getColumnName(3));
+        assertEquals("root.sg.aligned_template.status", set1.getMetaData().getColumnName(2));
+        assertEquals("root.sg.aligned_template.temperature", set1.getMetaData().getColumnName(3));
 
         ResultSet set2 = userStmt.executeQuery("SELECT * from root.sg.aligned_template");
         assertEquals(2, set2.getMetaData().getColumnCount());

@@ -344,7 +344,8 @@ public class IoTDBTimeDurationIT {
 
     // group by tags
     expectedHeader = new String[] {"city", "time_duration(s1)"};
-    retArray = new String[] {"Beijing,1677570933,", "Nanjing,1677570938,"};
+    // The root.db1 series are encountered first, so the Nanjing group is returned first.
+    retArray = new String[] {"Nanjing,1677570938,", "Beijing,1677570933,"};
     resultSetEqualTest(
         "select time_duration(s1) from root.db1.**,root.db.** group by tags(city)",
         expectedHeader,
