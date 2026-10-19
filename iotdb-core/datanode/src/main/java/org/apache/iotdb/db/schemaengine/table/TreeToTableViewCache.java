@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -194,26 +195,54 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
   public boolean removeView(String database, String tableName) {
     readWriteLock.writeLock().lock();
     try {
-      final RegisteredView registered = getRegisteredView(database, tableName);
-      if (Objects.isNull(registered)) {
-        LOGGER.warn(
-            DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED,
-            database,
-            tableName);
-        return false;
-      }
-
-      registered.references.remove(registered.reference);
-      if (registered.references.isEmpty()) {
-        viewReferences.remove(registered.node);
-        pruneNodesWithoutView(registered.node);
-        hasView = !viewReferences.isEmpty();
-      }
-      viewPaths.remove(new Pair<>(database, tableName));
-      return true;
+      return removeViewLocked(database, tableName);
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  /**
+   * Removes every view of the database. A database of the same name may be created again with views
+   * which have nothing to do with the dropped ones, so the entries of the old database have to go
+   * together with it.
+   */
+  @Override
+  public void removeViews(final String database) {
+    readWriteLock.writeLock().lock();
+    try {
+      // viewPaths is the record of what is registered, so the views which the table cache does not
+      // hold any more are removed here as well.
+      final List<String> tableNames = new ArrayList<>();
+      for (final Pair<String, String> view : viewPaths.keySet()) {
+        if (Objects.equals(database, view.getLeft())) {
+          tableNames.add(view.getRight());
+        }
+      }
+      tableNames.forEach(tableName -> removeViewLocked(database, tableName));
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  /** The body of {@link #removeView}, which the caller runs while holding the write lock. */
+  private boolean removeViewLocked(String database, String tableName) {
+    final RegisteredView registered = getRegisteredView(database, tableName);
+    if (Objects.isNull(registered)) {
+      LOGGER.warn(
+          DataNodeSchemaMessages.LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED,
+          database,
+          tableName);
+      return false;
+    }
+
+    registered.references.remove(registered.reference);
+    if (registered.references.isEmpty()) {
+      viewReferences.remove(registered.node);
+      pruneNodesWithoutView(registered.node);
+      hasView = !viewReferences.isEmpty();
+    }
+    viewPaths.remove(new Pair<>(database, tableName));
+    return true;
   }
 
   @Override

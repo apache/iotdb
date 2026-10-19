@@ -513,6 +513,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.remove(database);
       specialStatusMap.remove(database);
+      treeToTableViewCache.removeViews(database);
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();

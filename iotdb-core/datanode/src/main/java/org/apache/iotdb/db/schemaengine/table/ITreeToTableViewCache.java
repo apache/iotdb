@@ -47,6 +47,12 @@ public interface ITreeToTableViewCache {
 
   boolean removeView(String database, String tableName);
 
+  /**
+   * Removes every view of the database, eg. when the database is dropped. The views are taken from
+   * the index itself, so the ones the table cache does not hold any more are removed as well.
+   */
+  void removeViews(String database);
+
   boolean alterViewName(String database, String newName, String oldName);
 
   /**
