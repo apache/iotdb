@@ -62,14 +62,7 @@ final class LoadTaskRetention {
 
   /** Checks whether the staged directory must be retained for follower WAL synchronization. */
   boolean mustRetain(final long searchIndex) {
-    // IoTConsensusV2 replicates through pipe, so no replica reads these bytes back out of the WAL
-    // and there is no index to wait for: the staged directory can go as soon as the task ends.
-    if (LoadConsensusCompat.usesIoTConsensusV2()) {
-      return false;
-    }
-    final long safelyDeletedSearchIndex = currentSafelyDeletedSearchIndex();
-    return safelyDeletedSearchIndex != ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-        && safelyDeletedSearchIndex < searchIndex;
+    return currentSafelyDeletedSearchIndex() < searchIndex;
   }
 
   /** Takes ownership of a staged directory, postponing deletion until WAL watermarks allow it. */
@@ -122,14 +115,14 @@ final class LoadTaskRetention {
     }
 
     final long safelyDeletedSearchIndex = currentSafelyDeletedSearchIndex();
-    final long boundary =
-        safelyDeletedSearchIndex == ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-            ? Long.MAX_VALUE
-            : safelyDeletedSearchIndex;
+    // The default V1 watermark means no replica progress has been confirmed yet.
+    if (safelyDeletedSearchIndex == ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
+      return;
+    }
 
     for (final Map.Entry<String, RetainedTaskDir> entry : loadId2RetainedTaskDir.entrySet()) {
       final RetainedTaskDir retained = entry.getValue();
-      if (retained.reachedSearchIndex() <= boundary
+      if (retained.reachedSearchIndex() <= safelyDeletedSearchIndex
           && loadId2RetainedTaskDir.remove(entry.getKey(), retained)) {
         LOGGER.info(
             StorageEngineMessages
@@ -165,10 +158,15 @@ final class LoadTaskRetention {
   }
 
   private long currentSafelyDeletedSearchIndex() {
+    // V2 replicates through pipe. Other protocols without a V1 WAL (for example Ratis) do not
+    // expand staged references from this node's WAL either, so neither has a watermark to wait for.
+    if (LoadConsensusCompat.usesIoTConsensusV2()) {
+      return Long.MAX_VALUE;
+    }
     return dataRegion
         .getWALNode()
         .map(IWALNode::getSafelyDeletedSearchIndex)
-        .orElse(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
+        .orElse(Long.MAX_VALUE);
   }
 
   // -------------------------------------------------------------------------
