@@ -58,7 +58,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -2970,25 +2969,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements = new HashMap<>();
     Collection<ISchemaRegion> allSchemaRegions = SchemaEngine.getInstance().getAllSchemaRegions();
     for (final PartialPath setPath : setPaths) {
-      final String setPathString = setPath.getFullPath();
+      // A device which is exactly the mount path has the template too, but "setPath.**" only
+      // matches its descendants, so the mount path itself is read with a pattern of its own.
+      final List<PartialPath> devicePatterns =
+          Arrays.asList(setPath, setPath.concatNode(MULTI_LEVEL_PATH_WILDCARD));
       for (final ISchemaRegion schemaRegion : allSchemaRegions) {
-        // A device under this path can only live in the region of the database the path belongs to.
-        if (!setPathString.startsWith(schemaRegion.getDatabaseFullPath())) {
+        if (!setPath.startsWithOrPrefixOf(
+            PathUtils.splitPathToDetachedNodes(schemaRegion.getDatabaseFullPath()))) {
           continue;
         }
-        try (final ISchemaReader<IDeviceSchemaInfo> deviceReader =
-            schemaRegion.getDeviceReader(
-                SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                    setPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
-                    0,
-                    0,
-                    false,
-                    newTemplate.getId(),
-                    SchemaConstant.ALL_MATCH_SCOPE))) {
-          while (deviceReader.hasNext()) {
-            device2Measurements
-                .computeIfAbsent(deviceReader.next().getPartialPath(), device -> new ArrayList<>())
-                .addAll(extendedMeasurements);
+        for (final PartialPath devicePattern : devicePatterns) {
+          try (final ISchemaReader<IDeviceSchemaInfo> deviceReader =
+              schemaRegion.getDeviceReader(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                      devicePattern,
+                      0,
+                      0,
+                      false,
+                      newTemplate.getId(),
+                      SchemaConstant.ALL_MATCH_SCOPE))) {
+            while (deviceReader.hasNext()) {
+              device2Measurements
+                  .computeIfAbsent(
+                      deviceReader.next().getPartialPath(), device -> new ArrayList<>())
+                  .addAll(extendedMeasurements);
+            }
           }
         }
       }
