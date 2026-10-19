@@ -64,6 +64,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.FileUtils;
@@ -300,6 +301,66 @@ public class DataNodeInternalRPCServiceImplTest {
       tableDeviceNumberMap.remove("table");
       hasPullTaskNowRef.set(false);
       leaseManager.recoveryLeaseForTest(true);
+      DataNodeSchemaQuotaManager.getInstance().updateRemain(-1, -1);
+    }
+  }
+
+  @Test
+  public void testTimeSeriesQuotaCheckedBeforeCreationBetweenHeartbeats() throws Exception {
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .until(() -> SchemaRegionConsensusImpl.getInstance().isLeader(new SchemaRegionId(0)));
+    final SchemaEngine schemaEngine = SchemaEngine.getInstance();
+    final long localCount =
+        schemaEngine.getAllSchemaRegions().stream()
+            .mapToLong(region -> region.getSchemaRegionStatistics().getSeriesNumber(false))
+            .sum();
+    final TDataNodeHeartbeatReq heartbeat =
+        new TDataNodeHeartbeatReq()
+            .setHeartbeatTimestamp(1L)
+            .setNeedJudgeLeader(false)
+            .setNeedSamplingLoad(false)
+            .setLogicalClock(0L)
+            .setTimeSeriesQuotaRemain(localCount + 2)
+            .setTimeSeriesQuota(localCount + 2)
+            .setTimeSeriesCount(0L);
+    try {
+      dataNodeInternalRPCServiceImpl.getDataNodeHeartBeat(heartbeat);
+      // Reject the oversized batch, accept an exact fit, then reject another creation without
+      // receiving a new heartbeat from ConfigNode.
+      for (int size : new int[] {3, 2, 1}) {
+        final List<String> measurements = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+          measurements.add("s" + i);
+        }
+        final CreateAlignedTimeSeriesNode node =
+            new CreateAlignedTimeSeriesNode(
+                new PlanNodeId("quota"),
+                new PartialPath("root.ln.quota.d" + size),
+                measurements,
+                Collections.nCopies(size, TSDataType.INT64),
+                Collections.nCopies(size, TSEncoding.PLAIN),
+                Collections.nCopies(size, CompressionType.SNAPPY),
+                null,
+                null,
+                null);
+        final TSendSinglePlanNodeReq request =
+            new TSendSinglePlanNodeReq()
+                .setConsensusGroupId(genRegionReplicaSet().getRegionId())
+                .setPlanNode(new TPlanNode(node.serializeToByteBuffer()));
+        final TSendSinglePlanNodeResp response =
+            dataNodeInternalRPCServiceImpl
+                .sendBatchPlanNode(new TSendBatchPlanNodeReq(Collections.singletonList(request)))
+                .getResponses()
+                .get(0);
+        Assert.assertEquals(
+            "Unexpected acceptance for batch size " + size, size == 2, response.isAccepted());
+        Assert.assertEquals(
+            (size == 2 ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.SCHEMA_QUOTA_EXCEEDED)
+                .getStatusCode(),
+            response.getStatus().getCode());
+      }
+    } finally {
       DataNodeSchemaQuotaManager.getInstance().updateRemain(-1, -1);
     }
   }

@@ -91,6 +91,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -427,26 +428,33 @@ public class RegionWriteExecutor {
         final boolean receivedFromPipe) {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
-      final RegionExecutionResult result =
-          checkQuotaAndTypeBeforeCreatingTimeSeries(
-              schemaRegion,
-              node.getPath().getDevicePath(),
-              1,
-              Collections.singletonList(node.getPath().getMeasurement()),
-              Collections.singletonList(node.getDataType()));
-      if (result != null) {
-        return result;
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
       }
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
           && !receivedFromPipe) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
+          final RegionExecutionResult typeResult =
+              checkTypesBeforeCreatingTimeSeries(
+                  schemaRegion,
+                  node.getPath().getDevicePath(),
+                  Collections.singletonList(node.getPath().getMeasurement()),
+                  Collections.singletonList(node.getDataType()));
+          if (typeResult != null) {
+            return typeResult;
+          }
           final Map<Integer, MetadataException> failingMeasurementMap =
               schemaRegion.checkMeasurementExistence(
                   node.getPath().getDevicePath(),
                   Collections.singletonList(node.getPath().getMeasurement()),
                   Collections.singletonList(node.getAlias()));
           if (failingMeasurementMap.isEmpty()) {
+            final RegionExecutionResult result =
+                checkQuotaBeforeCreatingTimeSeries(schemaRegion, node.getPath().getDevicePath(), 1);
+            if (result != null) {
+              return result;
+            }
             return PlanVisitor.super.visitCreateTimeSeries(node, context);
           } else {
             final MetadataException metadataException = failingMeasurementMap.get(0);
@@ -461,6 +469,16 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
+        final RegionExecutionResult result =
+            checkQuotaAndTypeBeforeCreatingTimeSeries(
+                schemaRegion,
+                node.getPath().getDevicePath(),
+                1,
+                Collections.singletonList(node.getPath().getMeasurement()),
+                Collections.singletonList(node.getDataType()));
+        if (result != null) {
+          return result;
+        }
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
@@ -487,24 +505,29 @@ public class RegionWriteExecutor {
         final boolean receivedFromPipe) {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
-      final RegionExecutionResult result =
-          checkQuotaAndTypeBeforeCreatingTimeSeries(
-              schemaRegion,
-              node.getDevicePath(),
-              node.getMeasurements().size(),
-              node.getMeasurements(),
-              node.getDataTypes());
-      if (result != null) {
-        return result;
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
       }
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
           && !receivedFromPipe) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
+          final RegionExecutionResult typeResult =
+              checkTypesBeforeCreatingTimeSeries(
+                  schemaRegion, node.getDevicePath(), node.getMeasurements(), node.getDataTypes());
+          if (typeResult != null) {
+            return typeResult;
+          }
           final Map<Integer, MetadataException> failingMeasurementMap =
               schemaRegion.checkMeasurementExistence(
                   node.getDevicePath(), node.getMeasurements(), node.getAliasList());
           if (failingMeasurementMap.isEmpty()) {
+            final RegionExecutionResult result =
+                checkQuotaBeforeCreatingTimeSeries(
+                    schemaRegion, node.getDevicePath(), node.getMeasurements().size());
+            if (result != null) {
+              return result;
+            }
             return PlanVisitor.super.visitCreateAlignedTimeSeries(node, context);
           } else {
             final MetadataException metadataException =
@@ -520,6 +543,16 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
+        final RegionExecutionResult result =
+            checkQuotaAndTypeBeforeCreatingTimeSeries(
+                schemaRegion,
+                node.getDevicePath(),
+                node.getMeasurements().size(),
+                node.getMeasurements(),
+                node.getDataTypes());
+        if (result != null) {
+          return result;
+        }
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
@@ -546,24 +579,17 @@ public class RegionWriteExecutor {
         final boolean receivedFromPipe) {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
-      RegionExecutionResult result;
-      for (final Map.Entry<PartialPath, MeasurementGroup> entry :
-          node.getMeasurementGroupMap().entrySet()) {
-        result =
-            checkQuotaAndTypeBeforeCreatingTimeSeries(
-                schemaRegion,
-                entry.getKey(),
-                entry.getValue().getMeasurements().size(),
-                entry.getValue().getMeasurements(),
-                entry.getValue().getDataTypes());
-        if (result != null) {
-          return result;
-        }
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
       }
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
           && !receivedFromPipe) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
+          RegionExecutionResult result = checkTypesBeforeCreatingTimeSeries(schemaRegion, node);
+          if (result != null) {
+            return result;
+          }
           final List<TSStatus> failingStatus = new ArrayList<>();
           final Map<PartialPath, MeasurementGroup> measurementGroupMap =
               node.getMeasurementGroupMap();
@@ -574,6 +600,13 @@ public class RegionWriteExecutor {
 
           for (final PartialPath emptyDevice : emptyDeviceList) {
             measurementGroupMap.remove(emptyDevice);
+          }
+
+          result =
+              checkQuotaBeforeCreatingTimeSeries(
+                  schemaRegion, getTimeSeriesCountMap(measurementGroupMap));
+          if (result != null) {
+            return result;
           }
 
           final RegionExecutionResult executionResult =
@@ -589,6 +622,15 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
+        RegionExecutionResult result = checkTypesBeforeCreatingTimeSeries(schemaRegion, node);
+        if (result == null) {
+          result =
+              checkQuotaBeforeCreatingTimeSeries(
+                  schemaRegion, getTimeSeriesCountMap(node.getMeasurementGroupMap()));
+        }
+        if (result != null) {
+          return result;
+        }
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
@@ -669,23 +711,25 @@ public class RegionWriteExecutor {
         final boolean receivedFromPipe) {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
-      final RegionExecutionResult result =
-          checkQuotaAndTypeBeforeCreatingTimeSeries(
-              schemaRegion,
-              node.getDevicePath(),
-              node.getMeasurementGroup().size(),
-              node.getMeasurementGroup().getMeasurements(),
-              node.getMeasurementGroup().getDataTypes());
-      if (result != null) {
-        return result;
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
       }
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
           && !receivedFromPipe) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
+          final MeasurementGroup measurementGroup = node.getMeasurementGroup();
+          final RegionExecutionResult typeResult =
+              checkTypesBeforeCreatingTimeSeries(
+                  schemaRegion,
+                  node.getDevicePath(),
+                  measurementGroup.getMeasurements(),
+                  measurementGroup.getDataTypes());
+          if (typeResult != null) {
+            return typeResult;
+          }
           final List<TSStatus> failingStatus = new ArrayList<>();
           final List<TSStatus> alreadyExistingStatus = new ArrayList<>();
-          final MeasurementGroup measurementGroup = node.getMeasurementGroup();
           final Map<Integer, MetadataException> failingMeasurementMap =
               schemaRegion.checkMeasurementExistence(
                   node.getDevicePath(),
@@ -718,6 +762,15 @@ public class RegionWriteExecutor {
           }
           measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
 
+          if (!measurementGroup.isEmpty()) {
+            final RegionExecutionResult result =
+                checkQuotaBeforeCreatingTimeSeries(
+                    schemaRegion, node.getDevicePath(), measurementGroup.size());
+            if (result != null) {
+              return result;
+            }
+          }
+
           return processExecutionResultOfInternalCreateSchema(
               !measurementGroup.isEmpty()
                   ? PlanVisitor.super.visitInternalCreateTimeSeries(node, context)
@@ -731,6 +784,16 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
+        final RegionExecutionResult result =
+            checkQuotaAndTypeBeforeCreatingTimeSeries(
+                schemaRegion,
+                node.getDevicePath(),
+                node.getMeasurementGroup().size(),
+                node.getMeasurementGroup().getMeasurements(),
+                node.getMeasurementGroup().getDataTypes());
+        if (result != null) {
+          return result;
+        }
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
@@ -757,24 +820,17 @@ public class RegionWriteExecutor {
         final boolean receivedFromPipe) {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
-      RegionExecutionResult result;
-      for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
-          node.getDeviceMap().entrySet()) {
-        result =
-            checkQuotaAndTypeBeforeCreatingTimeSeries(
-                schemaRegion,
-                deviceEntry.getKey(),
-                deviceEntry.getValue().getRight().size(),
-                deviceEntry.getValue().getRight().getMeasurements(),
-                deviceEntry.getValue().getRight().getDataTypes());
-        if (result != null) {
-          return result;
-        }
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
       }
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
           && !receivedFromPipe) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
+          RegionExecutionResult result = checkTypesBeforeCreatingTimeSeries(schemaRegion, node);
+          if (result != null) {
+            return result;
+          }
           final List<TSStatus> failingStatus = new ArrayList<>();
           final List<TSStatus> alreadyExistingStatus = new ArrayList<>();
 
@@ -820,6 +876,11 @@ public class RegionWriteExecutor {
             }
           }
 
+          result = checkQuotaBeforeCreatingTimeSeries(schemaRegion, getTimeSeriesCountMap(node));
+          if (result != null) {
+            return result;
+          }
+
           return processExecutionResultOfInternalCreateSchema(
               !node.getDeviceMap().isEmpty()
                   ? PlanVisitor.super.visitInternalCreateMultiTimeSeries(node, context)
@@ -833,6 +894,13 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
+        RegionExecutionResult result = checkTypesBeforeCreatingTimeSeries(schemaRegion, node);
+        if (result == null) {
+          result = checkQuotaBeforeCreatingTimeSeries(schemaRegion, getTimeSeriesCountMap(node));
+        }
+        if (result != null) {
+          return result;
+        }
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
@@ -858,6 +926,16 @@ public class RegionWriteExecutor {
         final int size,
         final List<String> measurements,
         final List<TSDataType> dataTypes) {
+      final RegionExecutionResult result =
+          checkTypesBeforeCreatingTimeSeries(schemaRegion, path, measurements, dataTypes);
+      return result == null ? checkQuotaBeforeCreatingTimeSeries(schemaRegion, path, size) : result;
+    }
+
+    private RegionExecutionResult checkTypesBeforeCreatingTimeSeries(
+        final ISchemaRegion schemaRegion,
+        final PartialPath path,
+        final List<String> measurements,
+        final List<TSDataType> dataTypes) {
       // Shutdown may clear SchemaEngine while the region's validation lock still exists.
       // Reject the request as retryable before dereferencing the missing region.
       if (schemaRegion == null) {
@@ -873,6 +951,14 @@ public class RegionWriteExecutor {
               false, errorStr, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, errorStr));
         }
       }
+      return null;
+    }
+
+    private RegionExecutionResult checkQuotaBeforeCreatingTimeSeries(
+        final ISchemaRegion schemaRegion, final PartialPath path, final int size) {
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
+      }
       try {
         schemaRegion.checkSchemaQuota(path, size);
       } catch (final SchemaQuotaExceededException e) {
@@ -880,6 +966,82 @@ public class RegionWriteExecutor {
             false, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
       return null;
+    }
+
+    private RegionExecutionResult checkQuotaBeforeCreatingTimeSeries(
+        final ISchemaRegion schemaRegion, final Map<PartialPath, Integer> timeSeriesCountMap) {
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
+      }
+      if (timeSeriesCountMap.isEmpty()) {
+        return null;
+      }
+      try {
+        schemaRegion.checkSchemaQuota(timeSeriesCountMap);
+      } catch (final SchemaQuotaExceededException e) {
+        return RegionExecutionResult.create(
+            false, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+      return null;
+    }
+
+    private RegionExecutionResult checkTypesBeforeCreatingTimeSeries(
+        final ISchemaRegion schemaRegion, final CreateMultiTimeSeriesNode node) {
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
+      }
+      for (Map.Entry<PartialPath, MeasurementGroup> entry :
+          node.getMeasurementGroupMap().entrySet()) {
+        final RegionExecutionResult result =
+            checkTypesBeforeCreatingTimeSeries(
+                schemaRegion,
+                entry.getKey(),
+                entry.getValue().getMeasurements(),
+                entry.getValue().getDataTypes());
+        if (result != null) {
+          return result;
+        }
+      }
+      return null;
+    }
+
+    private RegionExecutionResult checkTypesBeforeCreatingTimeSeries(
+        final ISchemaRegion schemaRegion, final InternalCreateMultiTimeSeriesNode node) {
+      if (schemaRegion == null) {
+        return createSchemaRegionUnavailableResult();
+      }
+      for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
+          node.getDeviceMap().entrySet()) {
+        final RegionExecutionResult result =
+            checkTypesBeforeCreatingTimeSeries(
+                schemaRegion,
+                entry.getKey(),
+                entry.getValue().getRight().getMeasurements(),
+                entry.getValue().getRight().getDataTypes());
+        if (result != null) {
+          return result;
+        }
+      }
+      return null;
+    }
+
+    private Map<PartialPath, Integer> getTimeSeriesCountMap(
+        final Map<PartialPath, MeasurementGroup> measurementGroupMap) {
+      final Map<PartialPath, Integer> timeSeriesCountMap = new HashMap<>();
+      for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+        timeSeriesCountMap.put(entry.getKey(), entry.getValue().size());
+      }
+      return timeSeriesCountMap;
+    }
+
+    private Map<PartialPath, Integer> getTimeSeriesCountMap(
+        final InternalCreateMultiTimeSeriesNode node) {
+      final Map<PartialPath, Integer> timeSeriesCountMap = new HashMap<>();
+      for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
+          node.getDeviceMap().entrySet()) {
+        timeSeriesCountMap.put(entry.getKey(), entry.getValue().getRight().size());
+      }
+      return timeSeriesCountMap;
     }
 
     private RegionExecutionResult processExecutionResultOfInternalCreateSchema(
@@ -1041,6 +1203,7 @@ public class RegionWriteExecutor {
       try {
         ISchemaRegion schemaRegion =
             schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
+        final Map<PartialPath, Integer> timeSeriesCountMap = new HashMap<>();
         for (PartialPath devicePath : node.getTemplateActivationMap().keySet()) {
           Pair<Template, PartialPath> templateSetInfo =
               clusterTemplateManager.checkTemplateSetInfo(devicePath);
@@ -1054,16 +1217,12 @@ public class RegionWriteExecutor {
             return RegionExecutionResult.create(
                 false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
           }
-          RegionExecutionResult result =
-              checkQuotaAndTypeBeforeCreatingTimeSeries(
-                  schemaRegion,
-                  devicePath,
-                  templateSetInfo.left.getMeasurementNumber(),
-                  Collections.emptyList(),
-                  Collections.emptyList());
-          if (result != null) {
-            return result;
-          }
+          timeSeriesCountMap.put(devicePath, templateSetInfo.left.getMeasurementNumber());
+        }
+        final RegionExecutionResult result =
+            checkQuotaBeforeCreatingTimeSeries(schemaRegion, timeSeriesCountMap);
+        if (result != null) {
+          return result;
         }
 
         return receivedFromPipe
@@ -1090,6 +1249,7 @@ public class RegionWriteExecutor {
       try {
         ISchemaRegion schemaRegion =
             schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
+        final Map<PartialPath, Integer> timeSeriesCountMap = new HashMap<>();
         for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
             node.getTemplateActivationMap().entrySet()) {
           Pair<Template, PartialPath> templateSetInfo =
@@ -1106,16 +1266,12 @@ public class RegionWriteExecutor {
             return RegionExecutionResult.create(
                 false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
           }
-          RegionExecutionResult result =
-              checkQuotaAndTypeBeforeCreatingTimeSeries(
-                  schemaRegion,
-                  entry.getKey(),
-                  templateSetInfo.left.getMeasurementNumber(),
-                  Collections.emptyList(),
-                  Collections.emptyList());
-          if (result != null) {
-            return result;
-          }
+          timeSeriesCountMap.put(entry.getKey(), templateSetInfo.left.getMeasurementNumber());
+        }
+        final RegionExecutionResult result =
+            checkQuotaBeforeCreatingTimeSeries(schemaRegion, timeSeriesCountMap);
+        if (result != null) {
+          return result;
         }
 
         return receivedFromPipe

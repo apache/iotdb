@@ -905,11 +905,21 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
-    if (!mTree.checkDeviceNodeExists(devicePath)) {
-      schemaQuotaManager.check(timeSeriesNum, 1);
-    } else {
-      schemaQuotaManager.check(timeSeriesNum, 0);
+    checkSchemaQuota(Collections.singletonMap(devicePath, timeSeriesNum));
+  }
+
+  @Override
+  public void checkSchemaQuota(final Map<PartialPath, Integer> deviceTimeSeriesNumMap)
+      throws SchemaQuotaExceededException {
+    long timeSeriesNum = 0;
+    int deviceNum = 0;
+    for (Map.Entry<PartialPath, Integer> entry : deviceTimeSeriesNumMap.entrySet()) {
+      timeSeriesNum += entry.getValue();
+      if (!mTree.checkDeviceNodeExists(entry.getKey())) {
+        deviceNum++;
+      }
     }
+    schemaQuotaManager.check(timeSeriesNum, deviceNum);
   }
 
   @Override

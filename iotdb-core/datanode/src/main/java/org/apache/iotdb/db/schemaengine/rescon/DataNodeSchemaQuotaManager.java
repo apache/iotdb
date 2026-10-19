@@ -26,10 +26,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @SuppressWarnings("java:S6548") // do not warn about singleton class
 public class DataNodeSchemaQuotaManager {
-  private boolean measurementLimit = false;
-  private boolean deviceLimit = false;
+  private volatile boolean measurementLimit = false;
+  private volatile boolean deviceLimit = false;
   private final AtomicLong measurementRemain = new AtomicLong(0);
   private final AtomicLong deviceRemain = new AtomicLong(0);
+  private long measurementQuota = -1;
+  private long clusterMeasurementCount;
+  private long localMeasurementCount;
 
   /**
    * Update remain quota.
@@ -37,7 +40,10 @@ public class DataNodeSchemaQuotaManager {
    * @param measurementRemain -1 means no limit, otherwise it is the remain measurement quota
    * @param deviceRemain -1 means no limit, otherwise it is the remain device quota
    */
-  public void updateRemain(long measurementRemain, long deviceRemain) {
+  public synchronized void updateRemain(long measurementRemain, long deviceRemain) {
+    measurementQuota = -1;
+    clusterMeasurementCount = 0;
+    localMeasurementCount = 0;
     if (measurementRemain == -1) {
       this.measurementLimit = false;
     } else {
@@ -52,9 +58,35 @@ public class DataNodeSchemaQuotaManager {
     }
   }
 
+  /**
+   * Cache the latest ConfigNode quota and usage together with the local quota usage. Successful
+   * acquisitions are added to the local count until the next heartbeat refreshes it.
+   *
+   * @param measurementQuota -1 means no limit
+   */
+  public synchronized void updateQuota(
+      long measurementQuota,
+      long clusterMeasurementCount,
+      long localMeasurementCount,
+      long deviceRemain) {
+    updateRemain(
+        measurementQuota == -1 ? -1 : Math.max(0, measurementQuota - clusterMeasurementCount),
+        deviceRemain);
+    this.measurementQuota = measurementQuota;
+    this.clusterMeasurementCount = clusterMeasurementCount;
+    this.localMeasurementCount = localMeasurementCount;
+  }
+
   private void checkMeasurementLevel(long acquireNumber) throws SchemaQuotaExceededException {
-    if (measurementLimit) {
-      if (measurementRemain.get() <= 0) {
+    if (measurementLimit && acquireNumber > 0) {
+      if (measurementQuota != -1) {
+        final long currentCount = Math.max(localMeasurementCount, clusterMeasurementCount);
+        // Subtract before comparing to avoid overflowing when adding the requested count.
+        if (currentCount > measurementQuota || acquireNumber > measurementQuota - currentCount) {
+          throw new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES);
+        }
+        localMeasurementCount += acquireNumber;
+      } else if (acquireNumber > measurementRemain.get()) {
         throw new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES);
       } else {
         measurementRemain.addAndGet(-acquireNumber);
@@ -62,28 +94,28 @@ public class DataNodeSchemaQuotaManager {
     }
   }
 
-  private void checkDeviceLevel() throws SchemaQuotaExceededException {
+  private void checkDeviceLevel(final int acquireNumber) throws SchemaQuotaExceededException {
     if (deviceLimit) {
-      if (deviceRemain.get() <= 0) {
+      if (acquireNumber > deviceRemain.get()) {
         throw new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.DEVICE);
       } else {
-        deviceRemain.addAndGet(-1L);
+        deviceRemain.addAndGet(-acquireNumber);
       }
     }
   }
 
-  public void check(final long acquireMeasurementNumber, final int acquireDeviceNumber)
+  public synchronized void check(final long acquireMeasurementNumber, final int acquireDeviceNumber)
       throws SchemaQuotaExceededException {
     if (acquireDeviceNumber > 0) {
-      checkDeviceLevel();
+      checkDeviceLevel(acquireDeviceNumber);
     }
     // if pass device check, check measurement level
     try {
       checkMeasurementLevel(acquireMeasurementNumber);
     } catch (final SchemaQuotaExceededException e) {
       // if measurement level check failed, roll back device remain
-      if (acquireDeviceNumber > 0) {
-        deviceRemain.addAndGet(1L);
+      if (acquireDeviceNumber > 0 && deviceLimit) {
+        deviceRemain.addAndGet(acquireDeviceNumber);
       }
       throw e;
     }

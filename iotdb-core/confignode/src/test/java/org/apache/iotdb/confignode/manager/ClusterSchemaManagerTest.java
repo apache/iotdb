@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -39,12 +40,43 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 public class ClusterSchemaManagerTest {
+
+  @Test
+  public void testTimeSeriesQuotaAndUsage() {
+    final IManager configManager = Mockito.mock(IManager.class);
+    final PartitionManager partitionManager = Mockito.mock(PartitionManager.class);
+    Mockito.when(configManager.getPartitionManager()).thenReturn(partitionManager);
+    Mockito.when(partitionManager.getAllSchemaPartition())
+        .thenReturn(new HashSet<>(Arrays.asList(1, 2)));
+    final ClusterSchemaQuotaStatistics statistics = new ClusterSchemaQuotaStatistics(10, -1);
+    final ClusterSchemaManager manager =
+        new ClusterSchemaManager(configManager, Mockito.mock(ClusterSchemaInfo.class), statistics);
+    final Map<Integer, Long> usage = new HashMap<>();
+    usage.put(1, 5L);
+    usage.put(2, 7L);
+    usage.put(3, 100L);
+    manager.updateTimeSeriesUsage(usage);
+
+    // Ignore removed regions and retain the real count even when it exceeds the total quota.
+    assertTimeSeriesQuotaAndUsage(manager, 10, 12);
+    Assert.assertEquals(Long.valueOf(0), manager.getSchemaQuotaRemain().left);
+    manager.updateSchemaQuotaConfiguration(-1, -1);
+    assertTimeSeriesQuotaAndUsage(manager, -1, 12);
+  }
+
+  private void assertTimeSeriesQuotaAndUsage(ClusterSchemaManager manager, long quota, long count) {
+    final Pair<Long, Long> quotaAndUsage = manager.getTimeSeriesQuotaAndUsage();
+    Assert.assertEquals(Long.valueOf(quota), quotaAndUsage.left);
+    Assert.assertEquals(Long.valueOf(count), quotaAndUsage.right);
+  }
 
   @Test
   public void testCalcMaxRegionGroupNum() {

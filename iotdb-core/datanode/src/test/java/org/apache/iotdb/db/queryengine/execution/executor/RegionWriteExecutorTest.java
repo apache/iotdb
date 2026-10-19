@@ -27,15 +27,21 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
@@ -57,9 +63,12 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Test;
+import org.mockito.InOrder;
 import org.mockito.Mockito;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -202,6 +211,164 @@ public class RegionWriteExecutorTest {
   }
 
   @Test
+  public void testQuotaExceededBeforeConsensusWrite() throws Exception {
+    checkInternalCreateWithRegionAvailability(false, true, true);
+    checkInternalCreateWithRegionAvailability(true, true, true);
+  }
+
+  @Test
+  public void testExplicitCreationQuotaExceededBeforeConsensusWrite() throws Exception {
+    final String originalProtocol =
+        IoTDBDescriptor.getInstance().getConfig().getSchemaRegionConsensusProtocolClass();
+    final PartialPath device = new PartialPath("root.sg.d");
+    try {
+      for (String protocol :
+          new String[] {ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS}) {
+        IoTDBDescriptor.getInstance().getConfig().setSchemaRegionConsensusProtocolClass(protocol);
+        for (boolean fromPipe : new boolean[] {false, true}) {
+          final CreateTimeSeriesNode single =
+              new CreateTimeSeriesNode(
+                  new PlanNodeId("single"),
+                  new MeasurementPath("root.sg.d.s"),
+                  TSDataType.INT64,
+                  TSEncoding.PLAIN,
+                  CompressionType.SNAPPY,
+                  null,
+                  null,
+                  null,
+                  null);
+          final CreateAlignedTimeSeriesNode aligned =
+              new CreateAlignedTimeSeriesNode(
+                  new PlanNodeId("aligned"),
+                  device,
+                  Arrays.asList("s1", "s2"),
+                  Collections.nCopies(2, TSDataType.INT64),
+                  Collections.nCopies(2, TSEncoding.PLAIN),
+                  Collections.nCopies(2, CompressionType.SNAPPY),
+                  null,
+                  null,
+                  null);
+          final MeasurementGroup group = new MeasurementGroup();
+          group.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+          group.addMeasurement("s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+          final CreateMultiTimeSeriesNode multi =
+              new CreateMultiTimeSeriesNode(
+                  new PlanNodeId("multi"), Collections.singletonMap(device, group));
+          for (WritePlanNode node : new WritePlanNode[] {single, aligned, multi}) {
+            final IConsensus consensus = Mockito.mock(IConsensus.class);
+            final DataNodeRegionManager regionManager = Mockito.mock(DataNodeRegionManager.class);
+            final SchemaEngine schemaEngine = Mockito.mock(SchemaEngine.class);
+            final SchemaRegionId regionId = new SchemaRegionId(1);
+            final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+            Mockito.when(regionManager.getRegionLock(regionId)).thenReturn(lock);
+            final ISchemaRegion region = Mockito.mock(ISchemaRegion.class);
+            Mockito.when(schemaEngine.getSchemaRegion(regionId)).thenReturn(region);
+            final SchemaQuotaExceededException exception =
+                new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES);
+            if (node == multi) {
+              Mockito.doThrow(exception)
+                  .when(region)
+                  .checkSchemaQuota(Collections.singletonMap(device, 2));
+            } else {
+              Mockito.doThrow(exception)
+                  .when(region)
+                  .checkSchemaQuota(device, node == single ? 1 : 2);
+            }
+            final RegionWriteExecutor executor =
+                new RegionWriteExecutor(
+                    Mockito.mock(IConsensus.class),
+                    consensus,
+                    regionManager,
+                    schemaEngine,
+                    Mockito.mock(ClusterTemplateManager.class),
+                    Mockito.mock(TriggerFireVisitor.class));
+            final WritePlanNode request = fromPipe ? new PipeEnrichedWritePlanNode(node) : node;
+
+            final RegionExecutionResult result = executor.execute(regionId, request);
+
+            assertFalse(result.isAccepted());
+            assertEquals(
+                TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode(), result.getStatus().getCode());
+            assertEquals(exception.getMessage(), result.getStatus().getMessage());
+            Mockito.verifyZeroInteractions(consensus);
+            assertFalse(lock.isWriteLocked());
+          }
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setSchemaRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testExistingSeriesExcludedFromInternalCreationQuota() throws Exception {
+    final String originalProtocol =
+        IoTDBDescriptor.getInstance().getConfig().getSchemaRegionConsensusProtocolClass();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      for (boolean batch : new boolean[] {false, true}) {
+        final IConsensus consensus = Mockito.mock(IConsensus.class);
+        final DataNodeRegionManager regionManager = Mockito.mock(DataNodeRegionManager.class);
+        final SchemaEngine schemaEngine = Mockito.mock(SchemaEngine.class);
+        final SchemaRegionId regionId = new SchemaRegionId(1);
+        Mockito.when(regionManager.getRegionLock(regionId))
+            .thenReturn(new ReentrantReadWriteLock());
+        final ISchemaRegion region = Mockito.mock(ISchemaRegion.class);
+        Mockito.when(schemaEngine.getSchemaRegion(regionId)).thenReturn(region);
+        final PartialPath device = new PartialPath("root.sg.d");
+        final MeasurementGroup measurements = new MeasurementGroup();
+        measurements.addMeasurement(
+            "s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        measurements.addMeasurement(
+            "s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        Mockito.when(region.checkMeasurementExistence(device, measurements.getMeasurements(), null))
+            .thenReturn(
+                Collections.singletonMap(
+                    0,
+                    new MeasurementAlreadyExistException(
+                        "root.sg.d.s1", new MeasurementPath("root.sg.d.s1", TSDataType.INT64))));
+        final WritePlanNode node =
+            batch
+                ? new InternalCreateMultiTimeSeriesNode(
+                    new PlanNodeId("batch"),
+                    new HashMap<>(
+                        Collections.singletonMap(device, new Pair<>(false, measurements))))
+                : new InternalCreateTimeSeriesNode(
+                    new PlanNodeId("single"), device, measurements, false);
+        Mockito.when(consensus.write(regionId, node))
+            .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        final RegionWriteExecutor executor =
+            new RegionWriteExecutor(
+                Mockito.mock(IConsensus.class),
+                consensus,
+                regionManager,
+                schemaEngine,
+                Mockito.mock(ClusterTemplateManager.class),
+                Mockito.mock(TriggerFireVisitor.class));
+
+        assertTrue(executor.execute(regionId, node).isAccepted());
+
+        assertEquals(Collections.singletonList("s2"), measurements.getMeasurements());
+        final InOrder order = Mockito.inOrder(region, consensus);
+        if (batch) {
+          order.verify(region).checkSchemaQuota(Collections.singletonMap(device, 1));
+        } else {
+          order.verify(region).checkSchemaQuota(device, 1);
+        }
+        order.verify(consensus).write(regionId, node);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setSchemaRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
   public void testSchemaWriteWhenRegionIsClearedAfterLookup() throws Exception {
     final IConsensus consensus = Mockito.mock(IConsensus.class);
     final DataNodeRegionManager regionManager = Mockito.mock(DataNodeRegionManager.class);
@@ -253,6 +420,11 @@ public class RegionWriteExecutorTest {
 
   private void checkInternalCreateWithRegionAvailability(boolean batch, boolean available)
       throws Exception {
+    checkInternalCreateWithRegionAvailability(batch, available, false);
+  }
+
+  private void checkInternalCreateWithRegionAvailability(
+      boolean batch, boolean available, boolean quotaExceeded) throws Exception {
     final String originalProtocol =
         IoTDBDescriptor.getInstance().getConfig().getSchemaRegionConsensusProtocolClass();
     try {
@@ -278,6 +450,17 @@ public class RegionWriteExecutorTest {
                   Mockito.mock(ClusterTemplateManager.class),
                   Mockito.mock(TriggerFireVisitor.class));
           final PartialPath device = new PartialPath("root.sg.d");
+          if (quotaExceeded) {
+            if (batch) {
+              Mockito.doThrow(new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES))
+                  .when(region)
+                  .checkSchemaQuota(Collections.singletonMap(device, 1));
+            } else {
+              Mockito.doThrow(new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES))
+                  .when(region)
+                  .checkSchemaQuota(device, 1);
+            }
+          }
           final MeasurementGroup measurements = new MeasurementGroup();
           measurements.addMeasurement(
               "s", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
@@ -293,16 +476,25 @@ public class RegionWriteExecutorTest {
               .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
           final RegionExecutionResult result = executor.execute(regionId, request);
-          assertEquals(available, result.isAccepted());
+          assertEquals(available && !quotaExceeded, result.isAccepted());
           assertEquals(
-              (available ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.NO_AVAILABLE_REGION_GROUP)
+              (quotaExceeded
+                      ? TSStatusCode.SCHEMA_QUOTA_EXCEEDED
+                      : available
+                          ? TSStatusCode.SUCCESS_STATUS
+                          : TSStatusCode.NO_AVAILABLE_REGION_GROUP)
                   .getStatusCode(),
               result.getStatus().getCode());
           assertFalse(lock.isWriteLocked());
           assertEquals(0, lock.getReadLockCount());
-          if (available) {
-            Mockito.verify(region).checkSchemaQuota(device, 1);
-            Mockito.verify(consensus).write(regionId, request);
+          if (available && !quotaExceeded) {
+            final InOrder order = Mockito.inOrder(region, consensus);
+            if (batch) {
+              order.verify(region).checkSchemaQuota(Collections.singletonMap(device, 1));
+            } else {
+              order.verify(region).checkSchemaQuota(device, 1);
+            }
+            order.verify(consensus).write(regionId, request);
           } else {
             Mockito.verifyZeroInteractions(consensus);
             assertEquals(1, measurements.size());

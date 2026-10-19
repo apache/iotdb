@@ -475,9 +475,28 @@ public class SchemaEngine {
   public void updateAndFillSchemaCountMap(
       final TDataNodeHeartbeatReq req, final TDataNodeHeartbeatResp resp) {
     // update DataNodeSchemaQuotaManager
-    schemaQuotaManager.updateRemain(
-        req.getTimeSeriesQuotaRemain(),
-        req.isSetDeviceQuotaRemain() ? req.getDeviceQuotaRemain() : -1);
+    final long deviceQuotaRemain = req.isSetDeviceQuotaRemain() ? req.getDeviceQuotaRemain() : -1;
+    if (req.isSetTimeSeriesQuota() && req.isSetTimeSeriesCount()) {
+      schemaQuotaManager.updateQuota(
+          req.getTimeSeriesQuota(),
+          req.getTimeSeriesCount(),
+          req.getTimeSeriesQuota() == -1
+              ? 0
+              : schemaRegionMap.entrySet().stream()
+                  .filter(
+                      entry ->
+                          SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
+                              && !entry
+                                  .getValue()
+                                  .getDatabaseFullPath()
+                                  .equals(SystemConstant.AUDIT_DATABASE))
+                  .mapToLong(entry -> getTimeSeriesNumber4Quota(entry.getValue()))
+                  .sum(),
+          deviceQuotaRemain);
+    } else {
+      // Older ConfigNodes only send the remaining quota.
+      schemaQuotaManager.updateRemain(req.getTimeSeriesQuotaRemain(), deviceQuotaRemain);
+    }
     // Build both maps on snapshots and publish them together only after all counts succeed, so a
     // failure cannot leave a partially updated heartbeat response.
     Map<Integer, Long> regionDeviceUsageMap =

@@ -296,6 +296,8 @@ struct TDataNodeHeartbeatReq {
   // lowest bit: enable separation of admin powers
   16: optional byte booleanVariables1
   17: optional i64 fenceThresholdMs
+  18: optional i64 timeSeriesQuota
+  19: optional i64 timeSeriesCount
 }
 
 struct TDataNodeActivation {

@@ -172,6 +172,10 @@ public interface ISchemaRegion {
   void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException;
 
+  /** Check and reserve quota for the entire batch before submitting it to consensus. */
+  void checkSchemaQuota(final Map<PartialPath, Integer> deviceTimeSeriesNumMap)
+      throws SchemaQuotaExceededException;
+
   /**
    * Check whether table device can be created.
    *

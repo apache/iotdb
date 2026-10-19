@@ -1517,6 +1517,15 @@ public class ClusterSchemaManager {
     }
   }
 
+  /**
+   * @return pair of <total timeseries quota, cluster timeseries count>, -1 quota means no limit
+   */
+  public Pair<Long, Long> getTimeSeriesQuotaAndUsage() {
+    return new Pair<>(
+        schemaQuotaStatistics.getSeriesThreshold(),
+        schemaQuotaStatistics.getSeriesCount(getPartitionManager().getAllSchemaPartition()));
+  }
+
   public void updateTimeSeriesUsage(final Map<Integer, Long> seriesUsage) {
     schemaQuotaStatistics.updateTimeSeriesUsage(seriesUsage);
   }

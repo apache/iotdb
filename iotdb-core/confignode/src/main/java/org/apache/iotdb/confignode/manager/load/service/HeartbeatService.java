@@ -171,6 +171,10 @@ public class HeartbeatService {
         configManager.getClusterSchemaManager().getSchemaQuotaRemain();
     heartbeatReq.setTimeSeriesQuotaRemain(schemaQuotaRemain.left);
     heartbeatReq.setDeviceQuotaRemain(schemaQuotaRemain.right);
+    Pair<Long, Long> timeSeriesQuota =
+        configManager.getClusterSchemaManager().getTimeSeriesQuotaAndUsage();
+    heartbeatReq.setTimeSeriesQuota(timeSeriesQuota.left);
+    heartbeatReq.setTimeSeriesCount(timeSeriesQuota.right);
     // We collect pipe meta in every 100 heartbeat loop
     heartbeatReq.setNeedPipeMetaList(
         !PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled()
