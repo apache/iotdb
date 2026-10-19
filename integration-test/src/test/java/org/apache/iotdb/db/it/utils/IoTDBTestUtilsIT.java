@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -64,6 +65,12 @@ public class IoTDBTestUtilsIT {
     assertThrows(
         AssertionError.class,
         () -> TestUtils.assertAlwaysFail(EnvFactory.getEnv(), "show databases", 1));
+  }
+
+  @Test
+  public void testHalfTimeoutElapsedUsesSeconds() {
+    assertFalse(TestUtils.isHalfTimeoutElapsed(299_999, 600));
+    assertTrue(TestUtils.isHalfTimeoutElapsed(300_001, 600));
   }
 
   @Test
