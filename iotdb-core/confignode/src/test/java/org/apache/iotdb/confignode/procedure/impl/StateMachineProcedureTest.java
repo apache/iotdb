@@ -35,15 +35,13 @@ public class StateMachineProcedureTest {
   }
 
   /**
-   * A procedure which must not be rolled back once {@code APPLY} has completed, the way the table
-   * procedures treat the state which applies their change on the ConfigNode.
+   * A procedure whose commit point is the completion of {@code APPLY}: it stays rollbackable while
+   * it is at {@code PREPARE} or {@code APPLY}, and not once it has moved on to {@code RELEASE}.
    */
   private static class CommitPointProcedure extends StateMachineProcedure<TestProcEnv, State> {
 
     private boolean failAtApply;
-
-    /** How many times APPLY schedules itself before it moves on. */
-    private int applyRepeats;
+    private boolean failAtRelease;
 
     @Override
     protected Flow executeFromState(final TestProcEnv env, final State state) {
@@ -54,14 +52,14 @@ public class StateMachineProcedureTest {
         case APPLY:
           if (failAtApply) {
             setFailure(new ProcedureException("apply failed"));
-          } else if (applyRepeats-- > 0) {
-            // A state which keeps scheduling itself, the way one waiting for a condition does.
-            setNextState(State.APPLY);
           } else {
             setNextState(State.RELEASE);
           }
           break;
         case RELEASE:
+          if (failAtRelease) {
+            setFailure(new ProcedureException("release failed"));
+          }
           return Flow.NO_MORE_STATE;
         default:
           throw new IllegalStateException();
@@ -71,12 +69,12 @@ public class StateMachineProcedureTest {
 
     @Override
     protected void rollbackState(final TestProcEnv env, final State state) {
-      // The point of the test is that this is never reached after the commit state.
+      // The point of the test is that this is never called once the commit point has been passed.
     }
 
     @Override
-    public boolean isRollbackAllowed() {
-      return !hasCompletedState(State.APPLY);
+    protected boolean isRollbackSupported(final State state) {
+      return state != State.RELEASE;
     }
 
     @Override
@@ -99,10 +97,6 @@ public class StateMachineProcedureTest {
       execute(new TestProcEnv());
     }
 
-    private boolean completed(final State state) {
-      return hasCompletedState(state);
-    }
-
     private State currentState() {
       return getCurrentState();
     }
@@ -121,48 +115,47 @@ public class StateMachineProcedureTest {
   }
 
   @Test
-  public void rollbackIsAllowedUntilTheCommitStateCompletes() throws InterruptedException {
+  public void rollbackIsAllowedUntilTheStateAfterTheCommitPointIsReached()
+      throws InterruptedException {
     final CommitPointProcedure procedure = new CommitPointProcedure();
 
-    // PREPARE has completed and APPLY is scheduled, but APPLY has not run yet.
+    // PREPARE has completed and APPLY is scheduled.
     procedure.runStep();
-    Assert.assertTrue(procedure.completed(State.PREPARE));
-    Assert.assertFalse(procedure.completed(State.APPLY));
-    Assert.assertTrue(procedure.isRollbackAllowed());
-
-    // APPLY has completed: nothing may be undone from now on.
-    procedure.runStep();
-    Assert.assertTrue(procedure.completed(State.APPLY));
-    Assert.assertFalse(procedure.isRollbackAllowed());
-
-    // A later state does not change the answer.
-    procedure.runStep();
-    Assert.assertFalse(procedure.isRollbackAllowed());
-  }
-
-  @Test
-  public void aCommitStateWhichRunsAgainStillCountsAsCompleted() throws InterruptedException {
-    final CommitPointProcedure procedure = new CommitPointProcedure();
-    procedure.applyRepeats = 1;
-    procedure.runStep(); // PREPARE
-    procedure.runStep(); // APPLY, which schedules APPLY again
-
-    // The last element is the APPLY which has not run yet, but the one before it has completed.
     Assert.assertEquals(State.APPLY, procedure.currentState());
-    Assert.assertTrue(procedure.completed(State.APPLY));
-    Assert.assertFalse(procedure.isRollbackAllowed());
+    Assert.assertTrue(procedure.isRollbackSupported());
+
+    // APPLY has completed: the procedure is at RELEASE and must not be rolled back any more.
+    procedure.runStep();
+    Assert.assertEquals(State.RELEASE, procedure.currentState());
+    Assert.assertFalse(procedure.isRollbackSupported());
+
+    // Every state has run; the decision falls on the last state which ran, not on the end marker.
+    procedure.runStep();
+    Assert.assertFalse(procedure.isRollbackSupported());
   }
 
   @Test
-  public void aCommitStateWhichFailsDoesNotBlockTheRollback() throws InterruptedException {
+  public void aFailureBeforeTheCommitPointStillAllowsTheRollback() throws InterruptedException {
     final CommitPointProcedure procedure = new CommitPointProcedure();
     procedure.runStep();
 
     procedure.failAtApply = true;
     procedure.runStep();
 
-    Assert.assertFalse(procedure.completed(State.APPLY));
-    Assert.assertTrue(procedure.isRollbackAllowed());
+    Assert.assertEquals(State.APPLY, procedure.currentState());
+    Assert.assertTrue(procedure.isRollbackSupported());
+  }
+
+  @Test
+  public void aFailureAfterTheCommitPointDoesNotAllowTheRollback() throws InterruptedException {
+    final CommitPointProcedure procedure = new CommitPointProcedure();
+    procedure.runStep();
+    procedure.runStep();
+
+    procedure.failAtRelease = true;
+    procedure.runStep();
+
+    Assert.assertFalse(procedure.isRollbackSupported());
   }
 
   @Test
@@ -175,7 +168,7 @@ public class StateMachineProcedureTest {
     procedure.addSlot(1);
     procedure.addSlot(2);
     Assert.assertEquals(3, procedure.stackIndexes().length);
-    Assert.assertFalse(procedure.isRollbackAllowed());
+    Assert.assertFalse(procedure.isRollbackSupported());
 
     procedure.abandon();
 
@@ -186,7 +179,7 @@ public class StateMachineProcedureTest {
   }
 
   @Test
-  public void aProcedureWithoutACommitStateIsAlwaysRollbackable() {
-    Assert.assertTrue(new SimpleSTMProcedure().isRollbackAllowed());
+  public void aProcedureWhichOverridesNothingIsRollbackableEverywhere() {
+    Assert.assertTrue(new SimpleSTMProcedure().isRollbackSupported());
   }
 }

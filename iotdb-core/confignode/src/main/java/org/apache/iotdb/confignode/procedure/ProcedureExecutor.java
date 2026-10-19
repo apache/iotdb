@@ -708,7 +708,7 @@ public class ProcedureExecutor<Env> {
     final Set<Procedure<Env>> proceduresKeepingTheirStates =
         Collections.newSetFromMap(new IdentityHashMap<>());
     for (Procedure<Env> procedure : subprocStack) {
-      if (!procedure.isSuccess() && !procedure.isRollbackAllowed()) {
+      if (!procedure.isSuccess() && !procedure.isRollbackSupported()) {
         proceduresKeepingTheirStates.add(procedure);
       }
     }

@@ -164,12 +164,19 @@ public abstract class AbstractSetPropertiesProcedure
 
   /**
    * The properties are set on the ConfigNode once SET_PROPERTIES has completed, and the ConfigNode
-   * schema is the source of truth the DataNodes resync from. From that point on the procedure must
-   * not roll back, even if a later state fails.
+   * schema is the source of truth the DataNodes resync from. The procedure therefore stays
+   * rollbackable up to SET_PROPERTIES and not after it.
    */
   @Override
-  public boolean isRollbackAllowed() {
-    return !hasCompletedState(SetTablePropertiesState.SET_PROPERTIES);
+  protected boolean isRollbackSupported(final SetTablePropertiesState state) {
+    switch (state) {
+      case VALIDATE_TABLE:
+      case PRE_RELEASE:
+      case SET_PROPERTIES:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

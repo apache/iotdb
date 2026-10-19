@@ -161,16 +161,7 @@ public class AlterTableColumnDataTypeProcedure
     setNextState(AlterTableColumnDataTypeState.COMMIT_RELEASE);
   }
 
-  /**
-   * The column type is changed on the ConfigNode once ALTER_TABLE_COLUMN_DATA_TYPE has completed,
-   * and the ConfigNode schema is the source of truth the DataNodes resync from. From that point on
-   * the procedure must not roll back, even if a later state fails.
-   */
-  @Override
-  public boolean isRollbackAllowed() {
-    return !hasCompletedState(AlterTableColumnDataTypeState.ALTER_TABLE_COLUMN_DATA_TYPE);
-  }
-
+  /** The rollback of this procedure is a no-op, so it is never rolled back. */
   @Override
   protected boolean isRollbackSupported(final AlterTableColumnDataTypeState state) {
     return false;

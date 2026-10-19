@@ -156,12 +156,19 @@ public class AddTableColumnProcedure
 
   /**
    * The column is part of the table on the ConfigNode once ADD_COLUMN has completed, and the
-   * ConfigNode schema is the source of truth the DataNodes resync from. From that point on the
-   * procedure must not roll back, even if a later state fails.
+   * ConfigNode schema is the source of truth the DataNodes resync from. The procedure therefore
+   * stays rollbackable up to ADD_COLUMN and not after it.
    */
   @Override
-  public boolean isRollbackAllowed() {
-    return !hasCompletedState(AddTableColumnState.ADD_COLUMN);
+  protected boolean isRollbackSupported(final AddTableColumnState state) {
+    switch (state) {
+      case COLUMN_CHECK:
+      case PRE_RELEASE:
+      case ADD_COLUMN:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

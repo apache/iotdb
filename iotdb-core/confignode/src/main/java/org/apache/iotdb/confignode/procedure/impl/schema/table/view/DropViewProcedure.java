@@ -41,12 +41,19 @@ public class DropViewProcedure extends DropTableProcedure {
 
   /**
    * A view holds no data, so the procedure goes straight from PRE_DELETE to DROP_TABLE. The view is
-   * removed from the ConfigNode once DROP_TABLE has completed, and that cannot be undone, so from
-   * that point on the procedure must not roll back, even if a later state fails.
+   * removed from the ConfigNode once DROP_TABLE has completed; before that it can still be
+   * restored, so the procedure is not rolled back from COMMIT_DELETE on.
    */
   @Override
-  public boolean isRollbackAllowed() {
-    return !hasCompletedState(DropTableState.DROP_TABLE);
+  protected boolean isRollbackSupported(final DropTableState state) {
+    switch (state) {
+      case CHECK_AND_INVALIDATE_TABLE:
+      case PRE_DELETE:
+      case DROP_TABLE:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

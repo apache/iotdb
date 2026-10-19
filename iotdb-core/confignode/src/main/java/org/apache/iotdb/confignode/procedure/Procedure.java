@@ -101,11 +101,10 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   /**
    * Whether the states this procedure has already executed may still be undone. The executor asks
-   * this once, before it starts to roll back the root procedure stack. A procedure which has passed
-   * the point after which its changes can no longer be undone returns false: none of its states is
-   * then rolled back, and its effects stay as they are.
+   * this once, before it starts to roll back the root procedure stack. A procedure which returns
+   * false is finished without undoing any of its states, see {@link #abandonRollback()}.
    */
-  public boolean isRollbackAllowed() {
+  protected boolean isRollbackSupported() {
     return true;
   }
 

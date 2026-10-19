@@ -233,16 +233,7 @@ public class DropTableColumnProcedure
     }
   }
 
-  /**
-   * The column is removed from the ConfigNode schema once DROP_COLUMN has completed, and the
-   * ConfigNode schema is the source of truth the DataNodes resync from. From that point on the
-   * procedure must not roll back, even if a later state fails.
-   */
-  @Override
-  public boolean isRollbackAllowed() {
-    return !hasCompletedState(DropTableColumnState.DROP_COLUMN);
-  }
-
+  /** The rollback of this procedure is a no-op, so it is never rolled back. */
   @Override
   protected boolean isRollbackSupported(final DropTableColumnState state) {
     return false;
