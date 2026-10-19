@@ -331,7 +331,7 @@ public class AnalyzeUtils {
     }
     boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
     String partialInsertMessage;
-    if (hasFailedMeasurement) {
+    if (hasFailedMeasurement && !analysis.isFinishQueryAfterAnalyze()) {
       partialInsertMessage =
           String.format(
               "Fail to insert measurements %s caused by %s",

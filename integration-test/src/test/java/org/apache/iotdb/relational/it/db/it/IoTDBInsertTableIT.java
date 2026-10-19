@@ -1380,7 +1380,68 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
-  public void testRejectedOnlyFieldStillWritesTime() throws Exception {
+  public void testRejectedOnlySqlFieldDoesNotWriteTime() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table rejected_sql_field (tag1 string tag, s1 int64 field)");
+      SQLException error =
+          assertThrows(
+              SQLException.class,
+              () -> statement.execute("insert into rejected_sql_field(time, s1) values(1, true)"));
+      assertEquals(
+          "507: No column other than Time present, please check the request", error.getMessage());
+      error =
+          assertThrows(
+              SQLException.class,
+              () -> statement.execute("insert into rejected_sql_field(time) values(2)"));
+      assertEquals(
+          "507: No column other than Time present, please check the request", error.getMessage());
+      for (int phase = 0; phase < 2; phase++) {
+        try (ResultSet result = statement.executeQuery("select * from rejected_sql_field")) {
+          assertFalse(result.next());
+        }
+        if (phase == 0) {
+          statement.execute("flush");
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testRejectedFieldKeepsValidField() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table partially_rejected_field (tag1 string tag, s1 int64 field, s2 int64 field)");
+      SQLException error =
+          assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "insert into partially_rejected_field(time, tag1, s1, s2) values(1, 'd1', true, 42)"));
+      assertEquals(507, error.getErrorCode());
+      assertTrue(error.getMessage().contains("Fail to insert measurements [s1]"));
+      for (int phase = 0; phase < 2; phase++) {
+        try (ResultSet result =
+            statement.executeQuery("select time, tag1, s1, s2 from partially_rejected_field")) {
+          assertTrue(result.next());
+          assertEquals(1, result.getLong(1));
+          assertEquals("d1", result.getString(2));
+          assertNull(result.getObject(3));
+          assertEquals(42, result.getLong(4));
+          assertFalse(result.next());
+        }
+        if (phase == 0) {
+          statement.execute("flush");
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testRejectedOnlyFieldDoesNotWriteTime() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("use \"test\"");
       session.executeNonQueryStatement(
@@ -1402,7 +1463,8 @@ public class IoTDBInsertTableIT {
 
       StatementExecutionException error =
           assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
-      assertTrue(error.getMessage().contains("s1"));
+      assertEquals(
+          "507: No column other than Time present, please check the request", error.getMessage());
 
       Tablet withoutTag =
           new Tablet(
@@ -1414,31 +1476,22 @@ public class IoTDBInsertTableIT {
       withoutTag.addTimestamp(0, 3);
       withoutTag.addValue("s1", 0, true);
       error = assertThrows(StatementExecutionException.class, () -> session.insert(withoutTag));
-      assertTrue(error.getMessage().contains("s1"));
-      assertRejectedFieldTimeRows(session);
-
-      session.executeNonQueryStatement("flush");
-      assertRejectedFieldTimeRows(session);
-    }
-  }
-
-  private static void assertRejectedFieldTimeRows(ITableSession session)
-      throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet dataSet =
-        session.executeQueryStatement(
-            "select time, tag1, s1 from rejected_only_field_time order by time");
-    for (int i = 0; i < 3; i++) {
-      assertTrue(dataSet.hasNext());
-      RowRecord row = dataSet.next();
-      assertEquals(i + 1, row.getFields().get(0).getLongV());
-      if (i < 2) {
-        assertEquals("d" + i, row.getFields().get(1).getStringValue());
-      } else {
-        assertNull(row.getFields().get(1).getObjectValue(TSDataType.STRING));
+      assertEquals(
+          "507: No column other than Time present, please check the request", error.getMessage());
+      for (int phase = 0; phase < 2; phase++) {
+        try (SessionDataSet dataSet =
+            session.executeQueryStatement("select * from rejected_only_field_time")) {
+          assertFalse(dataSet.hasNext());
+        }
+        try (SessionDataSet dataSet =
+            session.executeQueryStatement("show devices from rejected_only_field_time")) {
+          assertFalse(dataSet.hasNext());
+        }
+        if (phase == 0) {
+          session.executeNonQueryStatement("flush");
+        }
       }
-      assertNull(row.getFields().get(2).getObjectValue(TSDataType.INT64));
     }
-    assertFalse(dataSet.hasNext());
   }
 
   @Test
