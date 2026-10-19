@@ -70,9 +70,9 @@ import java.util.Set;
  * columns come from the measurements the schema write has just created, instead of from the
  * statement itself.
  */
-public class ViewColumnAutoSync {
+public class ViewColumnAutoSyncTrigger {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ViewColumnAutoSync.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ViewColumnAutoSyncTrigger.class);
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
@@ -108,7 +108,9 @@ public class ViewColumnAutoSync {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(AbstractConfigNodeInfo.CONFIG_REGION_ID)) {
       List<TAlterOrDropTableReq> updateViewReqs =
-          view2Measurements.entrySet().stream().map(ViewColumnAutoSync::toAlterTableReq).toList();
+          view2Measurements.entrySet().stream()
+              .map(ViewColumnAutoSyncTrigger::toAlterTableReq)
+              .toList();
 
       TAutoSyncViewColumnsResp resp =
           configNodeClient.autoSyncViewColumns(new TAutoSyncViewColumnsReq(updateViewReqs));
@@ -118,7 +120,7 @@ public class ViewColumnAutoSync {
         return;
       }
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC,
             operationId,
             resp.getStatus());
@@ -211,7 +213,9 @@ public class ViewColumnAutoSync {
       Map.Entry<TreeToTableViewReference, Set<Pair<String, TSDataType>>> view2Measurements) {
     final TreeToTableViewReference view = view2Measurements.getKey();
     final List<TsTableColumnSchema> columnSchemas =
-        view2Measurements.getValue().stream().map(ViewColumnAutoSync::toColumnSchema).toList();
+        view2Measurements.getValue().stream()
+            .map(ViewColumnAutoSyncTrigger::toColumnSchema)
+            .toList();
     TAlterOrDropTableReq tAlterOrDropTableReq =
         new TAlterOrDropTableReq(
             view.getDatabaseName(),

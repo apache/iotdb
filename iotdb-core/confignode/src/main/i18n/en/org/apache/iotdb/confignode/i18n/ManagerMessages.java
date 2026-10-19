@@ -720,4 +720,16 @@ public final class ManagerMessages {
 
   public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
       "ConfigNode leader is waiting for node status persistence.";
+
+  public static final String LOG_RECEIVED_ARG_ADD_VIEW_COLUMN_REQUESTS_6ED6D52F =
+      "Received {} add view column requests";
+  public static final String
+      LOG_ADD_VIEW_COLUMN_OVERLAP_RETRY_ROUND_ARG_HAS_ARG_PENDING_REQUESTS_43EC58EA =
+          "Add view column overlap retry round {} has {} pending requests";
+  public static final String
+      LOG_ADD_VIEW_COLUMN_REQUEST_FOR_ARG_ARG_STILL_FAILS_AFTER_ARG_RETRY_ROUNDS_ARG_0181431F =
+          "Add view column request for {}.{} still fails after {} retry rounds: {}";
+  public static final String
+      LOG_ADD_VIEW_COLUMN_REQUESTS_FOR_ARG_VIEWS_FINISHED_IN_ARG_MS_ARG_VIEWS_FAILED_4A4E0506 =
+          "Add view column requests for {} views finished in {} ms, {} views failed";
 }
