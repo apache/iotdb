@@ -69,6 +69,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -109,6 +110,7 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   private ConsensusLogToTabletConverter converter;
   private ConsensusSubscriptionCommitManager commitManager;
   private SubscriptionMemoryManager memoryManager;
+  private WriterSafeFrontierTracker writerSafeFrontierTracker;
   private AtomicLong currentSearchIndex;
   private long tabletBytes;
 
@@ -285,6 +287,43 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     assertTrue(event.isPayloadDetached());
     assertEquals(0L, queue.getRetainedTabletBytes());
     assertTrue(committedProgress().getWriterPositions().isEmpty());
+    assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
+  }
+
+  @Test
+  public void testLingerBatchRemainsReplayableAfterAddingActiveWriter() throws Exception {
+    config.setSubscriptionConsensusBatchMaxTabletCount(2);
+    config.setSubscriptionConsensusBatchMaxDelayInMs(60_000);
+    writeWal(2, true);
+    final ConsensusPrefetchingQueue queue = newQueue();
+    queue.setOrderMode(TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE);
+    queue.setActiveWriterNodeIds(Collections.singleton(WRITER));
+    assertNull(queue.poll(CONSUMER));
+    assertTrue(pendingEntries(queue).offer(request(1, 1, WRITER)));
+    assertTrue(pendingEntries(queue).offer(request(2, 2, WRITER)));
+    queue.drivePrefetchOnce();
+    assertNull(queue.poll(CONSUMER));
+    assertEquals(tabletBytes * 2, queue.getRetainedTabletBytes());
+
+    writerSafeFrontierTracker.recordAppliedProgress(1002, WRITER, 2);
+    writerSafeFrontierTracker.observePendingWriterSafeTimeBarrier(2000, WRITER, 2);
+    writerSafeFrontierTracker.observePendingWriterSafeTimeBarrier(2000, 8, 0);
+    queue.setActiveWriterNodeIds(Set.of(WRITER, 8));
+    config.setSubscriptionConsensusBatchMaxDelayInMs(0);
+    for (int round = 0; round < 20 && queue.getPrefetchedEventCount() == 0; round++) {
+      queue.drivePrefetchOnce();
+    }
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    assertNotNull(event);
+    final SubscriptionPollResponse first = deliver(event);
+    assertEquals(Arrays.asList(1001L, 1002L), timestamps(first));
+    assertTrue(event.isPayloadDetached());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+
+    assertTrue(queue.nack(CONSUMER, event.getCommitContext()));
+    assertSame(event, queue.poll(CONSUMER));
+    assertEquals(first.getPayload(), deliver(event).getPayload());
+    assertEquals(0L, queue.getRetainedTabletBytes());
     assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
   }
 
@@ -599,7 +638,8 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   private ConsensusPrefetchingQueue newQueue(final boolean unboundedWalFixture) {
     final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
     when(server.getConsensusReqReader()).thenReturn(walNode);
-    when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+    writerSafeFrontierTracker = new WriterSafeFrontierTracker();
+    when(server.getWriterSafeFrontierTracker()).thenReturn(writerSafeFrontierTracker);
     final ConsensusPrefetchingQueue queue =
         new ConsensusPrefetchingQueue(
             "group",

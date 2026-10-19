@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
+import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker.SafeFrontier;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueAdmission;
@@ -390,6 +391,15 @@ public class ConsensusPrefetchingQueue {
    */
   private final Map<Integer, NavigableMap<Long, PreparedEntry>> realtimeEntriesByWriter =
       new ConcurrentHashMap<>();
+
+  // Ordered replay keeps one raw head per writer. Each iterator can pass other writers without
+  // converting or retaining their Tablets, so a long writer prefix cannot exhaust the memory
+  // needed to find an older record from another writer.
+  private final Map<Integer, WriterReplayState> orderedWriterReplay = new ConcurrentHashMap<>();
+  private long orderedReplayStartSearchIndex = Long.MIN_VALUE;
+  private int orderedWriterRoundRobinStart;
+  private final AtomicLong orderedRequestBytes = new AtomicLong();
+  private final Set<Long> reportedOrderedBrokenWalVersions = ConcurrentHashMap.newKeySet();
 
   /**
    * Local tail position used only when initialization starts without any persisted region progress.
@@ -945,6 +955,7 @@ public class ConsensusPrefetchingQueue {
     }
 
     return hasImmediatePrefetchableWork()
+        || !orderedWriterReplay.isEmpty()
         || hasHistoricalWalLag()
         || !lingerBatch.isEmpty()
         || !inFlightEvents.isEmpty()
@@ -1662,6 +1673,7 @@ public class ConsensusPrefetchingQueue {
   // ======================== Prefetch Round Drive ========================
 
   private static final long WAL_GAP_RETRY_SLEEP_MS = 10L;
+  private static final long WRITER_BARRIER_RETRY_SLEEP_MS = 100L;
   private static final long MEMORY_RETRY_SLEEP_MS = 100L;
   // Yield long WAL scans to other regions without closing readers or splitting writer requests.
   private static final long WAL_SCAN_TIME_SLICE_NANOS = TimeUnit.MILLISECONDS.toNanos(50L);
@@ -1777,6 +1789,21 @@ public class ConsensusPrefetchingQueue {
       final int batchMaxDelayMs = config.getSubscriptionConsensusBatchMaxDelayInMs();
       final int maxTablets = config.getSubscriptionConsensusBatchMaxTabletCount();
       final long maxBatchBytes = config.getSubscriptionConsensusBatchMaxSizeInBytes();
+
+      if (!shouldUseActiveWriterBarriers() && !orderedWriterReplay.isEmpty()) {
+        closeOrderedWriterReplay();
+      }
+
+      if (shouldUseActiveWriterBarriers()
+          && (activeWriterNodeIds.size() > 1 || !orderedWriterReplay.isEmpty())) {
+        return driveOrderedWriterReplay(
+            observedSeekGeneration,
+            maxWalEntries,
+            maxTablets,
+            maxBatchBytes,
+            batchMaxDelayMs,
+            walScanBudget);
+      }
 
       // Always consume already materialized entries before converting more WAL requests into
       // Tablets. Otherwise a full delivery batch can leave an unbounded hidden writer backlog.
@@ -1920,6 +1947,374 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
+  private PrefetchRoundResult driveOrderedWriterReplay(
+      final long expectedSeekGeneration,
+      final int maxWalEntries,
+      final int maxTablets,
+      final long maxBatchBytes,
+      final int batchMaxDelayMs,
+      final ProgressWALIterator.ScanBudget walScanBudget)
+      throws IOException {
+    if (orderedReplayStartSearchIndex == Long.MIN_VALUE) {
+      orderedReplayStartSearchIndex = nextExpectedSearchIndex.get();
+      if (!lingerBatch.isEmpty()) {
+        // A runtime transition can add another active writer while a single-writer batch lingers.
+        // Preserve each entry's ordering key, WAL position, and projection when returning the
+        // reserved Tablets to the merge, so the resulting delivery remains replayable.
+        for (final WriterBufferedEntry entry : lingerBatch.entries) {
+          bufferRealtimeEntry(
+              new PreparedEntry(
+                  entry.getTablets(),
+                  entry.getEstimatedBytes(),
+                  entry.getPhysicalTime(),
+                  entry.getWriterNodeId(),
+                  entry.getLocalSeq(),
+                  entry.getSearchIndex(),
+                  entry.getReplayConverter()));
+        }
+        lingerBatch.reset();
+      }
+    }
+    final Map<Integer, SafeFrontier> safeFrontiers =
+        serverImpl.getWriterSafeFrontierTracker().snapshotSafeFrontiers();
+    activeWriterNodeIds.forEach(this::getOrCreateWriterReplay);
+    safeFrontiers.keySet().forEach(this::getOrCreateWriterReplay);
+    recoveryWriterProgressByWriter.keySet().forEach(id -> getOrCreateWriterReplay(id.getNodeId()));
+    realtimeEntriesByWriter.keySet().forEach(this::getOrCreateWriterReplay);
+    for (final IndexedConsensusRequest request : pendingEntries) {
+      if (hasComparableWriterProgress(request)) {
+        getOrCreateWriterReplay(request.getNodeId());
+      }
+    }
+
+    // Bound entries processed across all writer readers in this round, including skipped entries.
+    final int[] remainingEntryBudget = {Math.max(1, maxWalEntries)};
+    final int roundRobinStart = orderedWriterRoundRobinStart++;
+    while (prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      if (seekGeneration.get() != expectedSeekGeneration || closeRequested) {
+        return PrefetchRoundResult.rescheduleNow();
+      }
+      final int writerCount = orderedWriterReplay.size();
+      final List<Map.Entry<Integer, WriterReplayState>> writers =
+          new ArrayList<>(orderedWriterReplay.entrySet());
+      Collections.rotate(writers, Math.floorMod(roundRobinStart, Math.max(1, writers.size())));
+      for (final Map.Entry<Integer, WriterReplayState> writer : writers) {
+        if (!fillOrderedWriterHead(
+            writer.getKey(), writer.getValue(), remainingEntryBudget, walScanBudget)) {
+          return flushOrderedBatchAndRetry(expectedSeekGeneration, MEMORY_RETRY_SLEEP_MS);
+        }
+        if (walScanBudget.hasYielded()) {
+          break;
+        }
+      }
+      // A scan can discover a retired writer absent from the runtime set. Acquire its head before
+      // releasing any other writer, with the same shared per-round scan budget.
+      if (orderedWriterReplay.size() != writerCount && remainingEntryBudget[0] > 0) {
+        continue;
+      }
+
+      final PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
+      for (final Map.Entry<Integer, WriterReplayState> writer : orderedWriterReplay.entrySet()) {
+        final int writerNodeId = writer.getKey();
+        final WriterReplayState state = writer.getValue();
+        final PreparedEntry buffered = peekRealtimeEntry(writerNodeId);
+        if (Objects.nonNull(buffered)) {
+          frontiers.add(WriterFrontier.forHead(writerNodeId, buffered));
+        } else if (Objects.nonNull(state.head)) {
+          final IndexedConsensusRequest head = state.head;
+          frontiers.add(
+              new WriterFrontier(
+                  writerNodeId,
+                  new OrderingKey(head.getPhysicalTime(), writerNodeId, head.getProgressLocalSeq()),
+                  false));
+        } else if (isWriterRuntimeActive(writerNodeId) || !state.caughtUp) {
+          final SafeFrontier safe = safeFrontiers.get(writerNodeId);
+          final long safePt =
+              Objects.nonNull(safe) && state.consumedLocalSeq >= safe.getLocalSeq()
+                  ? safe.getPhysicalTime()
+                  : Long.MIN_VALUE;
+          frontiers.add(WriterFrontier.forBarrier(writerNodeId, safePt));
+        }
+      }
+      final WriterFrontier next = frontiers.peek();
+      if (Objects.isNull(next) || next.isBarrier) {
+        break;
+      }
+      final PreparedEntry buffered = peekRealtimeEntry(next.writerNodeId);
+      if (Objects.isNull(buffered) && shouldWaitForSubscriptionMemory()) {
+        blockRealtimeAdmission(memoryBlockReason);
+        return flushOrderedBatchAndRetry(expectedSeekGeneration, MEMORY_RETRY_SLEEP_MS);
+      }
+      final WriterReplayState state = orderedWriterReplay.get(next.writerNodeId);
+      final IndexedConsensusRequest request = state.head;
+      final PreparedEntry entry = Objects.nonNull(buffered) ? buffered : prepareEntry(request);
+      if (Objects.isNull(entry) && memoryBlockedEntryBytes > 0L) {
+        blockRealtimeAdmission(memoryBlockReason);
+        return flushOrderedBatchAndRetry(expectedSeekGeneration, MEMORY_RETRY_SLEEP_MS);
+      }
+      if (Objects.nonNull(entry)) {
+        if (!canAppendWriterEntry(
+                lingerBatch,
+                entry,
+                entry.estimatedBytes,
+                Integer.MAX_VALUE,
+                maxTablets,
+                maxBatchBytes)
+            && !flushBatch(lingerBatch, expectedSeekGeneration)) {
+          releaseTabletMemory(entry.estimatedBytes);
+          return PrefetchRoundResult.rescheduleNow();
+        }
+        if (entry.tablets.isEmpty()) {
+          if (!commitEmptyWriterEntry(lingerBatch, entry, expectedSeekGeneration)) {
+            return PrefetchRoundResult.rescheduleNow();
+          }
+        } else {
+          lingerBatch.append(entry, entry.estimatedBytes, true);
+        }
+      }
+      if (Objects.nonNull(buffered)) {
+        removeRealtimeEntry(buffered.writerNodeId, buffered.localSeq);
+        remainingEntryBudget[0]--;
+      } else {
+        markMaterializedProgress(request);
+        state.consumedLocalSeq = Math.max(state.consumedLocalSeq, request.getProgressLocalSeq());
+        if (state.fromPending) {
+          advanceLocalCursorIfPresent(request);
+          if (pendingEntries.remove(request)) {
+            pendingEntries.release(request);
+          }
+          markAcceptedFromPending();
+        } else {
+          advanceWalReplayCursorIfPresent(request);
+          markAcceptedFromWal();
+        }
+        releaseOrderedWriterHead(state);
+      }
+      unblockRealtimeAdmission();
+      if (remainingEntryBudget[0] <= 0) {
+        break;
+      }
+      if (walScanBudget.hasYielded()) {
+        break;
+      }
+    }
+
+    // Pending and WAL can carry the same record. Release obsolete realtime references even when
+    // this round used WAL, rather than letting their bounded queue fill with already read data.
+    for (final IndexedConsensusRequest request : pendingEntries) {
+      if (shouldSkipForRecoveryProgress(request) || shouldSkipForMaterializedProgress(request)) {
+        if (pendingEntries.remove(request)) {
+          pendingEntries.release(request);
+        }
+      }
+    }
+    if (!lingerBatch.isEmpty()
+        && System.currentTimeMillis() - lingerBatch.firstTabletTimeMs >= batchMaxDelayMs) {
+      if (!flushBatch(lingerBatch, expectedSeekGeneration)) {
+        return PrefetchRoundResult.rescheduleNow();
+      }
+    }
+    maybeInjectWatermark();
+    if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+      return PrefetchRoundResult.dormant();
+    }
+    if (walScanBudget.hasYielded()
+        || remainingEntryBudget[0] <= 0
+        || (remainingEntryBudget[0] < maxWalEntries
+            && orderedWriterReplay.values().stream()
+                .anyMatch(state -> Objects.isNull(state.head) && !state.caughtUp))) {
+      return PrefetchRoundResult.rescheduleNow();
+    }
+    long delayMs = WRITER_BARRIER_RETRY_SLEEP_MS;
+    if (!lingerBatch.isEmpty()) {
+      delayMs =
+          Math.min(
+              delayMs,
+              Math.max(
+                  1L,
+                  batchMaxDelayMs - (System.currentTimeMillis() - lingerBatch.firstTabletTimeMs)));
+    }
+    return PrefetchRoundResult.rescheduleAfter(delayMs);
+  }
+
+  private PrefetchRoundResult flushOrderedBatchAndRetry(
+      final long expectedSeekGeneration, final long delayMs) {
+    if (!lingerBatch.isEmpty() && !flushBatch(lingerBatch, expectedSeekGeneration)) {
+      return PrefetchRoundResult.rescheduleNow();
+    }
+    return PrefetchRoundResult.rescheduleAfter(delayMs);
+  }
+
+  private WriterReplayState getOrCreateWriterReplay(final int writerNodeId) {
+    return orderedWriterReplay.computeIfAbsent(
+        writerNodeId,
+        ignored -> {
+          final WriterProgress recovered =
+              recoveryWriterProgressByWriter.get(
+                  new WriterId(consensusGroupId.toString(), writerNodeId));
+          final WriterProgress materialized = materializedProgressByWriter.get(writerNodeId);
+          return new WriterReplayState(
+              createSubscriptionWALIterator(Long.MIN_VALUE),
+              Math.max(
+                  Objects.nonNull(recovered) ? recovered.getLocalSeq() : 0L,
+                  Objects.nonNull(materialized) ? materialized.getLocalSeq() : 0L));
+        });
+  }
+
+  private boolean fillOrderedWriterHead(
+      final int writerNodeId,
+      final WriterReplayState state,
+      final int[] remainingEntryBudget,
+      final ProgressWALIterator.ScanBudget walScanBudget)
+      throws IOException {
+    if (Objects.nonNull(state.head) || remainingEntryBudget[0] <= 0 || walScanBudget.hasYielded()) {
+      return true;
+    }
+    for (final IndexedConsensusRequest request : pendingEntries) {
+      if (shouldSkipForRecoveryProgress(request)
+          || shouldSkipForMaterializedProgress(request)
+          || (hasLocalSearchIndex(request)
+              && request.getSearchIndex() < orderedReplayStartSearchIndex)) {
+        if (pendingEntries.remove(request)) {
+          pendingEntries.release(request);
+        }
+        continue;
+      }
+      if (request.getNodeId() == writerNodeId
+          && !shouldSkipForRecoveryProgress(request)
+          && !shouldSkipForMaterializedProgress(request)
+          && (Objects.isNull(state.iterator)
+              || request.getProgressLocalSeq() == state.consumedLocalSeq + 1L)) {
+        state.head = request;
+        state.fromPending = true;
+        state.caughtUp = false;
+        remainingEntryBudget[0]--;
+        return true;
+      }
+    }
+    if (Objects.isNull(state.iterator)) {
+      state.caughtUp = true;
+      return true;
+    }
+    state.iterator.skipReportedBrokenWalFiles(reportedOrderedBrokenWalVersions);
+    final int writerEntryBudget =
+        Math.max(1, remainingEntryBudget[0] / Math.max(1, orderedWriterReplay.size()));
+    for (int scanned = 0; scanned < writerEntryBudget && remainingEntryBudget[0] > 0; scanned++) {
+      if (closeRequested || pendingSeekRequest != null) {
+        return true;
+      }
+      if (!state.iterator.hasNext(walScanBudget)) {
+        if (walScanBudget.hasYielded()) {
+          return true;
+        }
+        state.iterator.refresh();
+        if (!state.iterator.hasNext(walScanBudget)) {
+          if (walScanBudget.hasYielded()) {
+            return true;
+          }
+          reportOrderedUnreadableWal(state.iterator);
+          state.caughtUp =
+              !state.iterator.hasReadError() && !state.iterator.isWaitingForReadableWal();
+          return true;
+        }
+      }
+      reportOrderedUnreadableWal(state.iterator);
+      final IndexedConsensusRequest request = state.iterator.next();
+      // Each reader decodes the shared WAL. Charge skipped and duplicate entries too so a long
+      // prefix cannot monopolize this round's prefetch work.
+      remainingEntryBudget[0]--;
+      state.caughtUp = false;
+      if (hasComparableWriterProgress(request)) {
+        getOrCreateWriterReplay(request.getNodeId());
+      }
+      if (request.getNodeId() != writerNodeId) {
+        continue;
+      }
+      if ((hasLocalSearchIndex(request) && request.getSearchIndex() < orderedReplayStartSearchIndex)
+          || shouldSkipForRecoveryProgress(request)
+          || shouldSkipForMaterializedProgress(request)) {
+        state.consumedLocalSeq = Math.max(state.consumedLocalSeq, request.getProgressLocalSeq());
+        continue;
+      }
+      // WAL requests wrap ByteBuffers whose default getMemorySize() is zero. Build the buffer list
+      // before reserving the retained head so consensus accounting includes its actual payload.
+      request.buildSerializedRequests();
+      if (!IoTConsensusMemoryManager.getInstance().reserve(request)) {
+        state.iterator.retry(request);
+        return false;
+      }
+      orderedRequestBytes.addAndGet(request.getRetainedMemorySize());
+      state.head = request;
+      state.fromPending = false;
+      return true;
+    }
+    return true;
+  }
+
+  private void reportOrderedUnreadableWal(final ProgressWALIterator iterator) {
+    int newFiles = 0;
+    for (final Map.Entry<Long, Long> skipped :
+        iterator.getSkippedBrokenWalEntryCounts().entrySet()) {
+      if (reportedOrderedBrokenWalVersions.add(skipped.getKey())) {
+        newFiles++;
+        unreadableWalEntryCount.addAndGet(skipped.getValue());
+      }
+    }
+    if (newFiles > 0) {
+      final long totalSkippedFiles = unreadableWalFileCount.addAndGet(newFiles);
+      pendingWalReplayError.set(
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_WAL_REPLAY_SKIPPED_ARG_UNREADABLE_RETAINED_WAL_FILE_S_IN_QUEUE_ARG_REGION_ARG_HISTORICAL_DATA_MAY_BE_LOST_DETAILS_RECENT_FILES_FULL_DETAILS_IN_SERVER_LOG_ARG_FEDEFF7E,
+              totalSkippedFiles,
+              getPrefetchingQueueId(),
+              consensusGroupId,
+              iterator.getSkippedBrokenWalFileDetails(0)));
+    }
+  }
+
+  private void releaseOrderedWriterHead(final WriterReplayState state) {
+    if (Objects.nonNull(state.head) && !state.fromPending) {
+      orderedRequestBytes.addAndGet(-state.head.getRetainedMemorySize());
+      IoTConsensusMemoryManager.getInstance().free(state.head);
+    }
+    state.head = null;
+  }
+
+  private void closeOrderedWriterReplay() {
+    for (final WriterReplayState state : orderedWriterReplay.values()) {
+      releaseOrderedWriterHead(state);
+      if (Objects.nonNull(state.iterator)) {
+        try {
+          state.iterator.close();
+        } catch (final IOException e) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_CLOSING_SUBSCRIPTION_WAL_19711C01,
+              this,
+              e);
+        }
+      }
+    }
+    orderedWriterReplay.clear();
+    reportedOrderedBrokenWalVersions.clear();
+    orderedReplayStartSearchIndex = Long.MIN_VALUE;
+    orderedWriterRoundRobinStart = 0;
+  }
+
+  private static final class WriterReplayState {
+    private final ProgressWALIterator iterator;
+    private long consumedLocalSeq;
+    private IndexedConsensusRequest head;
+    private boolean fromPending;
+    private boolean caughtUp;
+
+    private WriterReplayState(final ProgressWALIterator iterator, final long consumedLocalSeq) {
+      this.iterator = iterator;
+      this.consumedLocalSeq = consumedLocalSeq;
+    }
+  }
+
   private void logPeriodicStatsIfNecessary() {
     final long nowMs = System.currentTimeMillis();
     if (nowMs - lastStatsLogTimeMs < PREFETCH_STATS_LOG_INTERVAL_MS) {
@@ -2022,6 +2417,9 @@ public class ConsensusPrefetchingQueue {
       return PrefetchRoundResult.rescheduleNow();
     }
     long delayMs = Long.MAX_VALUE;
+    if (!realtimeEntriesByWriter.isEmpty()) {
+      delayMs = Math.min(delayMs, WRITER_BARRIER_RETRY_SLEEP_MS);
+    }
     if (hasHistoricalWalLag()) {
       delayMs = Math.min(delayMs, WAL_GAP_RETRY_SLEEP_MS);
     }
@@ -2066,6 +2464,9 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean hasImmediatePrefetchableWork() {
+    if (!orderedWriterReplay.isEmpty()) {
+      return false;
+    }
     return hasImmediatePrefetchableWork(newWalScanBudget());
   }
 
@@ -2630,6 +3031,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void closeSubscriptionWALIterator() {
+    closeOrderedWriterReplay();
     if (Objects.isNull(subscriptionWALIterator)) {
       return;
     }
@@ -5265,7 +5667,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   public long getRetainedRequestBytes() {
-    return pendingEntries.getRetainedRequestBytes();
+    return pendingEntries.getRetainedRequestBytes() + orderedRequestBytes.get();
   }
 
   public long getSubscriptionMemoryLimitInBytes() {
@@ -5488,6 +5890,7 @@ public class ConsensusPrefetchingQueue {
   private static final class DeliveryBatchState {
 
     private final List<Tablet> tablets = new ArrayList<>();
+    private final List<WriterBufferedEntry> entries = new ArrayList<>();
     private final ByteArrayOutputStream replayPositions = new ByteArrayOutputStream();
     private long previousSearchIndex;
     private long previousPhysicalTime;
@@ -5535,6 +5938,7 @@ public class ConsensusPrefetchingQueue {
         endSearchIndex = entry.getSearchIndex();
       }
       tablets.addAll(entry.getTablets());
+      entries.add(entry);
       DeliveryBatchRecord.writeDelta(replayPositions, entry.getSearchIndex() - previousSearchIndex);
       DeliveryBatchRecord.writeDelta(
           replayPositions, entry.getPhysicalTime() - previousPhysicalTime);
@@ -5570,6 +5974,7 @@ public class ConsensusPrefetchingQueue {
 
     private void reset() {
       tablets.clear();
+      entries.clear();
       replayPositions.reset();
       previousSearchIndex = 0L;
       previousPhysicalTime = 0L;

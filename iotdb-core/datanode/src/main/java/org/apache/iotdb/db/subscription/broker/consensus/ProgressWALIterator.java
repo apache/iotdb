@@ -45,9 +45,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
@@ -128,6 +131,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   private boolean currentReaderUsesLiveSnapshot = false;
   private int consumedEntryCountInCurrentFile = 0;
   private final Set<Long> skippedBrokenWalVersionIds = new HashSet<>();
+  private final Map<Long, Long> skippedBrokenWalEntryCounts = new HashMap<>();
   private final List<String> skippedBrokenWalFileDetails = new ArrayList<>();
   private long skippedBrokenWalEntryCount;
   private boolean retryCurrentReader;
@@ -452,6 +456,32 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
 
   long getSkippedBrokenWalEntryCount() {
     return skippedBrokenWalEntryCount;
+  }
+
+  Map<Long, Long> getSkippedBrokenWalEntryCounts() {
+    return Collections.unmodifiableMap(skippedBrokenWalEntryCounts);
+  }
+
+  /** Shares confirmed corrupt-file decisions between independent readers of the same WAL. */
+  void skipReportedBrokenWalFiles(final Set<Long> versionIds) throws IOException {
+    final boolean skipsCurrentFile =
+        versionIds.contains(currentReaderVersionId)
+            || (currentFileIndex >= 0
+                && currentFileIndex < walFileVersionIds.length
+                && versionIds.contains(walFileVersionIds[currentFileIndex]));
+    if (skipsCurrentFile) {
+      closeCurrentReader();
+      nextReady = null;
+      pendingRequests.clear();
+      pendingSearchIndex = Long.MIN_VALUE;
+      pendingLocalSeq = Long.MIN_VALUE;
+    }
+    if (skippedBrokenWalVersionIds.addAll(versionIds)) {
+      refresh();
+    }
+    if (skipsCurrentFile) {
+      resetCurrentFileTracking();
+    }
   }
 
   boolean isWaitingForReadableWal() {
@@ -801,6 +831,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     final int entryCount = metadata == null ? -1 : metadata.getBuffersSize().size();
     final long skippedEntries =
         entryCount < 0 ? -1L : Math.max(0L, (long) entryCount - firstSkippedEntryOffset);
+    skippedBrokenWalEntryCounts.put(versionId, Math.max(0L, skippedEntries));
     if (skippedEntries > 0L) {
       skippedBrokenWalEntryCount += skippedEntries;
     }

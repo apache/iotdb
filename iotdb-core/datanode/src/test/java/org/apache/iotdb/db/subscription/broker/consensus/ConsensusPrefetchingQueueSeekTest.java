@@ -57,6 +57,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -91,10 +92,25 @@ public class ConsensusPrefetchingQueueSeekTest {
         Arrays.asList(createRequest(3L, 3L, 7), createRequest(4L, 4L, 7)), 5L, 2L);
   }
 
+  @Test(timeout = 10_000L)
+  public void testMultiWriterSeekReplaysAfterResettingOrderedReaders() throws Exception {
+    assertBeginningReplay(
+        Arrays.asList(createRequest(1L, 1L, 7), createRequest(-1L, 10L, 8)), 2L, 0L, true);
+  }
+
   private void assertBeginningReplay(
       final List<IndexedConsensusRequest> requests,
       final long expectedNextIndex,
       final long expectedSkippedEntries)
+      throws Exception {
+    assertBeginningReplay(requests, expectedNextIndex, expectedSkippedEntries, false);
+  }
+
+  private void assertBeginningReplay(
+      final List<IndexedConsensusRequest> requests,
+      final long expectedNextIndex,
+      final long expectedSkippedEntries,
+      final boolean multiWriter)
       throws Exception {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final int originalBatchMaxDelay = config.getSubscriptionConsensusBatchMaxDelayInMs();
@@ -124,7 +140,14 @@ public class ConsensusPrefetchingQueueSeekTest {
       when(walNode.getLogDirectory()).thenReturn(systemDir);
       final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
       when(server.getConsensusReqReader()).thenReturn(walNode);
-      when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
+      for (final IndexedConsensusRequest request : requests) {
+        tracker.recordAppliedProgress(
+            request.getPhysicalTime(), request.getNodeId(), request.getProgressLocalSeq());
+        tracker.observePendingWriterSafeTimeBarrier(
+            3000L, request.getNodeId(), request.getProgressLocalSeq());
+      }
+      when(server.getWriterSafeFrontierTracker()).thenReturn(tracker);
       final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
       when(converter.getDatabaseName()).thenReturn("db");
       when(converter.isTableModel()).thenReturn(true);
@@ -138,7 +161,9 @@ public class ConsensusPrefetchingQueueSeekTest {
           new ConsensusPrefetchingQueue(
               "consumerGroup",
               "topic",
-              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              multiWriter
+                  ? TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE
+                  : TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
               new DataRegionId(1),
               server,
               new SubscriptionWalRetentionPolicy(
@@ -171,36 +196,41 @@ public class ConsensusPrefetchingQueueSeekTest {
             }
           };
       queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
-
-      queue.seekToBeginning();
-
-      final List<Long> actualTimestamps = new ArrayList<>();
-      final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5L);
-      while (actualTimestamps.size() < requests.size() && System.nanoTime() < deadline) {
-        final SubscriptionEvent event = queue.poll("consumer");
-        if (event == null) {
-          TimeUnit.MILLISECONDS.sleep(10L);
-          continue;
-        }
-        assertEquals(
-            SubscriptionPollResponseType.TABLETS.getType(),
-            event.getCurrentResponse().getResponseType());
-        for (final Tablet tablet :
-            ((TabletsPayload) event.getCurrentResponse().getPayload()).getTablets()) {
-          assertEquals(1, tablet.getRowSize());
-          actualTimestamps.add(tablet.getTimestamps()[0]);
-        }
+      if (multiWriter) {
+        queue.setActiveWriterNodeIds(Set.of(7, 8));
       }
-      final List<Long> expectedTimestamps = new ArrayList<>();
-      for (final IndexedConsensusRequest request : requests) {
-        expectedTimestamps.add(((InsertRowNode) request.getRequests().get(0)).getTime());
+
+      for (int attempt = 0; attempt < (multiWriter ? 2 : 1); attempt++) {
+        queue.seekToBeginning();
+
+        final List<Long> actualTimestamps = new ArrayList<>();
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5L);
+        while (actualTimestamps.size() < requests.size() && System.nanoTime() < deadline) {
+          final SubscriptionEvent event = queue.poll("consumer");
+          if (event == null) {
+            TimeUnit.MILLISECONDS.sleep(10L);
+            continue;
+          }
+          assertEquals(
+              SubscriptionPollResponseType.TABLETS.getType(),
+              event.getCurrentResponse().getResponseType());
+          for (final Tablet tablet :
+              ((TabletsPayload) event.getCurrentResponse().getPayload()).getTablets()) {
+            assertEquals(1, tablet.getRowSize());
+            actualTimestamps.add(tablet.getTimestamps()[0]);
+          }
+        }
+        final List<Long> expectedTimestamps = new ArrayList<>();
+        for (final IndexedConsensusRequest request : requests) {
+          expectedTimestamps.add(((InsertRowNode) request.getRequests().get(0)).getTime());
+        }
+        Collections.sort(expectedTimestamps);
+        Collections.sort(actualTimestamps);
+        assertEquals(expectedTimestamps, actualTimestamps);
+        assertEquals(expectedNextIndex, queue.getCurrentReadSearchIndex());
+        assertEquals(expectedSkippedEntries, queue.getWalGapSkippedEntries());
+        verify(converter, times(requests.size() * (attempt + 1))).convert(any());
       }
-      Collections.sort(expectedTimestamps);
-      Collections.sort(actualTimestamps);
-      assertEquals(expectedTimestamps, actualTimestamps);
-      assertEquals(expectedNextIndex, queue.getCurrentReadSearchIndex());
-      assertEquals(expectedSkippedEntries, queue.getWalGapSkippedEntries());
-      verify(converter, times(requests.size())).convert(any());
     } finally {
       if (queue != null) {
         queue.close();
