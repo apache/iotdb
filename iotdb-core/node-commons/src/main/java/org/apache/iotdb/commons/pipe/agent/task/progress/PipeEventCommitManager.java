@@ -150,10 +150,11 @@ public class PipeEventCommitManager {
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
     if (committer == null) {
-      final int currentRestartTimes =
-          eventCommitterRestartTimesMap.computeIfAbsent(
-              generateCommitterRestartTimesKey(committerKey), k -> 0);
       if (LOGGER.isDebugEnabled()) {
+        // Late commits must not recreate restart state after the pipe has been cleared.
+        final int currentRestartTimes =
+            eventCommitterRestartTimesMap.getOrDefault(
+                generateCommitterRestartTimesKey(committerKey), 0);
         if (committerKey.getRestartTimes() < currentRestartTimes) {
           LOGGER.debug(
               PipeMessages.STALE_PIPE_EVENT_COMMITTER,
