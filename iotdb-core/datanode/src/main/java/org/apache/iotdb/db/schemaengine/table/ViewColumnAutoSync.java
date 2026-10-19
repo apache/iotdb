@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -52,10 +54,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -137,8 +141,8 @@ public class ViewColumnAutoSync {
   }
 
   /**
-   * @return the measurements each view covering the given devices needs; eg: view01 -> {s1, s2,
-   *     s3}, view02 -> {s1, s2, s3, s4}
+   * @return the measurements each view covering the given devices still needs; eg: view01 -> {s1,
+   *     s2, s3}, view02 -> {s1, s2, s3, s4}
    */
   private static Map<TreeToTableViewReference, Set<Pair<String, TSDataType>>>
       collectViewMeasurements(
@@ -146,7 +150,7 @@ public class ViewColumnAutoSync {
 
     // deduplicate the measurement by set, the measurement with same name and dataType
     // from different device would count once, eg: dev01.s1(int32)  and dev02.s1(int32)
-    // other deduplication would leave to ConfigMTree in CN
+    // the measurements which already have a column in the view are dropped below
     final Map<TreeToTableViewReference, Set<Pair<String, TSDataType>>> view2Measurements =
         new HashMap<>();
 
@@ -162,7 +166,45 @@ public class ViewColumnAutoSync {
                   .computeIfAbsent(view, key -> new LinkedHashSet<>())
                   .addAll(entry.getValue()));
     }
+
+    // A measurement the view already has a column for is not needed again: ConfigNode would drop
+    // it in its column check and reject the request when nothing is left, which costs an RPC and a
+    // persisted procedure for nothing. A view the table cache does not hold is left as it is, as
+    // the DataNode cannot tell which columns are missing then.
+    final Iterator<Map.Entry<TreeToTableViewReference, Set<Pair<String, TSDataType>>>> iterator =
+        view2Measurements.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<TreeToTableViewReference, Set<Pair<String, TSDataType>>> viewEntry =
+          iterator.next();
+      final TsTable view = getCachedView(viewEntry.getKey());
+      if (Objects.isNull(view)) {
+        continue;
+      }
+      removeExistingMeasurements(view, viewEntry.getValue());
+      if (viewEntry.getValue().isEmpty()) {
+        iterator.remove();
+      }
+    }
     return view2Measurements;
+  }
+
+  /** The view as the DataNode caches it, or null when the cache does not hold it. */
+  private static TsTable getCachedView(final TreeToTableViewReference view) {
+    return DataNodeTableCache.getInstance()
+        .getTable(view.getDatabaseName(), view.getTableName(), false);
+  }
+
+  /** Drops the measurements which the view already has a column for. */
+  private static void removeExistingMeasurements(
+      final TsTable view, final Set<Pair<String, TSDataType>> measurements) {
+    // The same test ConfigNode applies before it adds the columns: the column name, or the source
+    // measurement a FROM column references. A measurement the cache does not know yet is kept, as
+    // the cache may lag behind ConfigNode.
+    final Set<String> sourceNames = TreeViewSchema.getSourceNames(view);
+    measurements.removeIf(
+        measurement ->
+            Objects.nonNull(view.getColumnSchema(measurement.getLeft().toLowerCase(Locale.ROOT)))
+                || sourceNames.contains(measurement.getLeft()));
   }
 
   private static TAlterOrDropTableReq toAlterTableReq(
