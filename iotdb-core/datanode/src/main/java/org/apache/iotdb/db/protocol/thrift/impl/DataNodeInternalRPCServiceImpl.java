@@ -2925,7 +2925,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             // todo
             LOGGER.warn(
                 DataNodeMiscMessages
-                    .LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_95856581,
+                    .LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554,
                 newTemplate.getName(),
                 e);
           }

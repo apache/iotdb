@@ -1494,7 +1494,7 @@ public final class DataNodeMiscMessages {
   public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB =
       "自动检测测点 %s 的类型时遇到多种类型，请检查";
 
-  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_95856581 =
-      "收集使用扩展模板 %s 的设备失败";
+  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
+      "收集使用扩展模板 {} 的设备失败";
 
 }

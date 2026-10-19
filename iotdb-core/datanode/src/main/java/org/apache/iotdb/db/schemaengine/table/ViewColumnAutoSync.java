@@ -111,18 +111,21 @@ public class ViewColumnAutoSync {
       TAutoSyncViewColumnsResp resp =
           configNodeClient.autoSyncViewColumns(new TAutoSyncViewColumnsReq(updateViewReqs));
       if (resp == null || resp.getStatus() == null) {
-        LOGGER.error(DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE, operationId);
+        LOGGER.error(
+            DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26, operationId);
         return;
       }
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_FAILED, operationId, resp.getStatus());
+            DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC,
+            operationId,
+            resp.getStatus());
       }
       // the views are updated one by one in ConfigNode, so the failed ones are reported one by one
       if (resp.getFailedViews() != null) {
         for (TAutoSyncViewColumnsFailure failedView : resp.getFailedViews()) {
           LOGGER.error(
-              DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW,
+              DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144,
               failedView.getDatabase(),
               failedView.getTableName(),
               operationId,
@@ -130,7 +133,8 @@ public class ViewColumnAutoSync {
         }
       }
     } catch (ClientManagerException | TException e) {
-      LOGGER.warn(DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE, operationId, e);
+      LOGGER.warn(
+          DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652, operationId, e);
     }
   }
 

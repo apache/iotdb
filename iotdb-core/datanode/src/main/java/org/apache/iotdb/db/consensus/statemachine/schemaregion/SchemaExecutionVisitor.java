@@ -495,7 +495,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         ViewColumnAutoSync.sync(createdMeasurements, operationId);
       }
     } catch (final Throwable e) {
-      logger.error(DataNodeSchemaMessages.LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED, operationId, e);
+      logger.error(
+          DataNodeSchemaMessages.LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F, operationId, e);
     }
   }
 

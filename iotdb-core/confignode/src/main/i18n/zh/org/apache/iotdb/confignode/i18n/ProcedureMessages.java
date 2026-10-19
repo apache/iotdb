@@ -1519,6 +1519,6 @@ public final class ProcedureMessages {
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
       "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
   public static final String
-      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_9544E1D9 =
+      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_8F20CAE7 =
           "扫描新建视图 {}.{} 下的树序列失败：{}";
 }

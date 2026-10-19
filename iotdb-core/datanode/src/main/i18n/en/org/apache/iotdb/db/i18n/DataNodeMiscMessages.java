@@ -1514,7 +1514,7 @@ public final class DataNodeMiscMessages {
   public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB =
       "Multiple types encountered when auto detecting type of measurement '%s', please check";
 
-  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_95856581 =
-      "Failed to collect the devices using the extended template %s";
+  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
+      "Failed to collect the devices using the extended template {}";
 
 }

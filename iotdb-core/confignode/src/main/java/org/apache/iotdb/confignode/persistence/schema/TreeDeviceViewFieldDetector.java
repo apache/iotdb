@@ -171,10 +171,9 @@ public class TreeDeviceViewFieldDetector {
     final Pair<TSStatus, List<TsTableColumnSchema>> detected =
         new TreeDeviceViewFieldDetector(configManager, table).detectNewFieldColumnsAfterCreation();
     if (detected.getLeft().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // todo, i18N
       LOGGER.warn(
           ProcedureMessages
-              .LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_9544E1D9,
+              .LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_8F20CAE7,
           database,
           table.getTableName(),
           detected.getLeft());
