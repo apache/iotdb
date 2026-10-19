@@ -151,8 +151,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
     // An absent auto_sync_schema means false, so it only has to be given back when it is stored
     table
         .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
-        .ifPresent(
-            autoSyncSchema -> builder.append(", auto_sync_schema=").append(autoSyncSchema));
+        .ifPresent(autoSyncSchema -> builder.append(", auto_sync_schema=").append(autoSyncSchema));
     builder.append(")");
 
     builder.append(" AS ");

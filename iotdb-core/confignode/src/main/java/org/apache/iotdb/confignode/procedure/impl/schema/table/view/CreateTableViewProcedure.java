@@ -130,10 +130,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
   @Override
   protected TUpdateTableReq buildCommitReleaseTableReq() {
     final boolean newAutoSync =
-        table
-            .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
-            .map(Boolean::parseBoolean)
-            .orElse(false);
+        table.getPropValue(TsTable.AUTO_SYNC_SCHEMA).map(Boolean::parseBoolean).orElse(false);
     if (newAutoSync) {
       // Whether the view is a new one, or replace the old table, just add view
       final TUpdateTree2TableView viewInfo =

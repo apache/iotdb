@@ -71,8 +71,7 @@ public class TsTable {
   public static final String AUTO_SYNC_SCHEMA = "auto_sync_schema";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES =
       Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(TTL_PROPERTY, NEED_LAST_CACHE_PROPERTY, AUTO_SYNC_SCHEMA)));
+          new HashSet<>(Arrays.asList(TTL_PROPERTY, NEED_LAST_CACHE_PROPERTY, AUTO_SYNC_SCHEMA)));
   private static final String OBJECT_STRING_ERROR =
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;

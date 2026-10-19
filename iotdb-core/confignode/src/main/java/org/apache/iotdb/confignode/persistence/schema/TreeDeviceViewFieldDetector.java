@@ -160,10 +160,7 @@ public class TreeDeviceViewFieldDetector {
   public static List<TsTableColumnSchema> detectMissingColumnsAfterCreation(
       final ConfigManager configManager, final String database, final TsTable table) {
     final boolean autoSync =
-        table
-            .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
-            .map(Boolean::parseBoolean)
-            .orElse(false);
+        table.getPropValue(TsTable.AUTO_SYNC_SCHEMA).map(Boolean::parseBoolean).orElse(false);
     if (!autoSync) {
       return Collections.emptyList();
     }

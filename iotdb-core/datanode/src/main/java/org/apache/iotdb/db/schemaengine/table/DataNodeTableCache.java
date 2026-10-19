@@ -178,8 +178,7 @@ public class DataNodeTableCache implements ITableCache {
    * carry no definition at all, so they are never one.
    */
   private static boolean isAutoSyncView(final TsTable table) {
-    final Optional<String> autoSyncSchemaValue =
-        table.getPropValue(TsTable.AUTO_SYNC_SCHEMA);
+    final Optional<String> autoSyncSchemaValue = table.getPropValue(TsTable.AUTO_SYNC_SCHEMA);
     return autoSyncSchemaValue.isPresent()
         && Boolean.parseBoolean(autoSyncSchemaValue.get())
         && table.getPropValue(TREE_PATH_PATTERN).isPresent();

@@ -79,9 +79,7 @@ public class ViewColumnAutoSync {
    * Adds the columns the views covering the given devices need.
    *
    * <p>It is a best-effort side effect of the write which triggers it: every failure is logged here
-   * and none of them is propagated, so that the write operation is never affected. The columns
-   * which are not added this time are only added again when a later schema write covers the same
-   * measurements.
+   * and none of them is propagated, so that the write operation is never affected.
    *
    * @param device2Measurements the measurements the schema write really created, eg. device01 ->
    *     {s1, s2, s3}; device02 -> {s3, s4}. Only they get a column, so that a creation which failed
@@ -198,9 +196,19 @@ public class ViewColumnAutoSync {
   }
 
   // leader and follower would build the same queryId when apply the same log; so CN could recognize
-  // the same add view column request
+  // the same add view column request. The database and table names may contain any character, so
+  // their lengths are written out to keep the parts apart: without them, the views a_b.c and
+  // a.b_c would share an id and the request for the second one would be taken for a repeat of the
+  // first one's.
   private static String buildQueryId(String columnFingerprint, String database, String table) {
-    return QUERY_ID_PREFIX + "_" + columnFingerprint + "_" + database + "_" + table;
+    return String.join(
+        "_",
+        QUERY_ID_PREFIX,
+        columnFingerprint,
+        String.valueOf(database.length()),
+        database,
+        String.valueOf(table.length()),
+        table);
   }
 
   /**
