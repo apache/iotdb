@@ -914,6 +914,8 @@ public class TypeServices {
 
   public static final class Aggregation {
 
+    // Validate all type branches in TypeServicesTest. Doing so here eagerly constructs unrelated
+    // strategies and initializes the calc registry on the first aggregation query.
     public static final TypeService<ExtremeValueAccumulatorStrategy>
         EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE =
             type ->
@@ -1457,15 +1459,6 @@ public class TypeServices {
                         DataNodeQueryMessages.UNKNOWN_DATA_TYPE + type.getTypeEnum());
                   };
             };
-
-    static {
-      EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
-      TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
-      MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.check();
-      EVENT_WINDOW_MANAGER_PROVIDER_SERVICE.check();
-      OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
-      MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
-    }
 
     private Aggregation() {
       // Utility class
