@@ -257,7 +257,9 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     config.setSubscriptionConsensusBatchMaxTabletCount(2);
     writeWal(1, true);
     currentSearchIndex.set(2);
-    final ConsensusPrefetchingQueue queue = newQueue();
+    // Keep the mixed batch deterministic when first-use class loading exhausts a scan slice.
+    // Bounded scan yielding is covered by ConsensusPrefetchingQueueWalBackpressureTest.
+    final ConsensusPrefetchingQueue queue = newQueue(true);
     assertNull(queue.poll(CONSUMER));
     assertTrue(pendingEntries(queue).offer(request(2, 2, WRITER)));
     queue.drivePrefetchOnce();
@@ -591,6 +593,10 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   }
 
   private ConsensusPrefetchingQueue newQueue() {
+    return newQueue(false);
+  }
+
+  private ConsensusPrefetchingQueue newQueue(final boolean unboundedWalFixture) {
     final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
     when(server.getConsensusReqReader()).thenReturn(walNode);
     when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
@@ -614,6 +620,14 @@ public class ConsensusPrefetchingQueueDeliveryTest {
           @Override
           protected ProgressWALIterator createSubscriptionWALIterator(final long startSearchIndex) {
             walIteratorCreations.incrementAndGet();
+            if (unboundedWalFixture) {
+              return new ProgressWALIterator(walNode, startSearchIndex) {
+                @Override
+                boolean hasNext(final ScanBudget scanBudget) {
+                  return super.hasNext(null);
+                }
+              };
+            }
             return super.createSubscriptionWALIterator(startSearchIndex);
           }
         };

@@ -2286,14 +2286,15 @@ public class ConsensusPrefetchingQueue {
       subscriptionWALIterator.advanceTo(fromIndex, this::isWriterProgressCoveredForWalFastForward);
     }
     // A pending-queue jump can span millions of WAL entries when real-time delivery has overflowed.
-    // Keep gap recovery within the normal per-round budget so sparse topic filtering cannot hold
-    // the
-    // queue read lock indefinitely and block unsubscribe from acquiring the close write lock.
+    // Stop replay at the pending boundary. Admitted requests should use direct delivery instead of
+    // being replayed and discarded as duplicates. Gap recovery still shares the normal scan budget,
+    // so sparse filtering cannot hold the read lock indefinitely and block unsubscribe.
     final MaterializationResult pumpResult =
         pumpFromSubscriptionWAL(
             batchState,
             expectedSeekGeneration,
             maxWalEntries,
+            toIndex,
             maxTablets,
             maxBatchBytes,
             walScanBudget);
@@ -2353,6 +2354,7 @@ public class ConsensusPrefetchingQueue {
             batchState,
             expectedSeekGeneration,
             maxWalEntries,
+            Long.MAX_VALUE,
             maxTablets,
             maxBatchBytes,
             walScanBudget);
@@ -2380,6 +2382,7 @@ public class ConsensusPrefetchingQueue {
       final DeliveryBatchState batchState,
       final long expectedSeekGeneration,
       final int maxWalEntries,
+      final long endSearchIndexExclusive,
       final int maxTablets,
       final long maxBatchBytes,
       final ProgressWALIterator.ScanBudget walScanBudget) {
@@ -2406,6 +2409,14 @@ public class ConsensusPrefetchingQueue {
       reportUnreadableWalReplayIfNecessary();
       try {
         final IndexedConsensusRequest walEntry = subscriptionWALIterator.next();
+        if (hasLocalSearchIndex(walEntry) && walEntry.getSearchIndex() >= endSearchIndexExclusive) {
+          // A sparse WAL can jump past the pending boundary. Preserve its next request while
+          // handing the admitted entry back to the pending path, and report only the missing gap.
+          subscriptionWALIterator.retry(walEntry);
+          reportWalGapBefore(endSearchIndexExclusive);
+          nextExpectedSearchIndex.set(endSearchIndexExclusive);
+          break;
+        }
         entriesRead++;
 
         if (isBeforeLocalCursor(walEntry)) {
@@ -2495,6 +2506,11 @@ public class ConsensusPrefetchingQueue {
     }
 
     final long actualSearchIndex = request.getSearchIndex();
+    reportWalGapBefore(actualSearchIndex);
+    nextExpectedSearchIndex.set(actualSearchIndex + 1);
+  }
+
+  private void reportWalGapBefore(final long actualSearchIndex) {
     final long expectedSearchIndex = nextExpectedSearchIndex.get();
     if (actualSearchIndex > expectedSearchIndex) {
       final long skippedEntries = actualSearchIndex - expectedSearchIndex;
@@ -2508,7 +2524,6 @@ public class ConsensusPrefetchingQueue {
           skippedEntries,
           totalSkippedEntries);
     }
-    nextExpectedSearchIndex.set(actualSearchIndex + 1);
   }
 
   private void ensureSubscriptionWalReadable(final ProgressWALIterator.ScanBudget walScanBudget) {
