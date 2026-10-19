@@ -1,0 +1,246 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.tsfile.write;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
+import org.apache.tsfile.write.writer.TsFileOutput;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.Arrays;
+import java.util.Objects;
+
+/**
+ * A {@link TsFileOutput} that buffers writes and hands them to the {@link FileChannel} once the
+ * configured buffer size is reached. The buffer is allocated at half of that size and grows on
+ * demand, and it is flushed by {@link #force()}, {@link #flush()}, {@link #truncate(long)}, a seek
+ * to another position, or {@link #close()}.
+ */
+public final class BufferedFileChannelOutput extends OutputStream implements TsFileOutput {
+
+  /** The buffer size used when the configured size is not positive. */
+  private static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
+
+  private final FileChannel channel;
+  private final int bufferSize;
+  private final DynamicBuffer buffer;
+
+  /** Creates an output that buffers {@code load_tsfile_write_buffer_size} bytes. */
+  public BufferedFileChannelOutput(final FileChannel channel) {
+    this(channel, configuredBufferSize());
+  }
+
+  /**
+   * Creates an output that buffers the given number of bytes.
+   *
+   * @param bufferSize the size of the buffer in bytes, must be positive
+   */
+  public BufferedFileChannelOutput(final FileChannel channel, final int bufferSize) {
+    this.channel =
+        Objects.requireNonNull(
+            channel, StorageEngineMessages.EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB);
+    if (bufferSize <= 0) {
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages.EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4);
+    }
+    this.bufferSize = bufferSize;
+    this.buffer = new DynamicBuffer(Math.max(1, bufferSize / 2));
+  }
+
+  private static int configuredBufferSize() {
+    final int configured = IoTDBDescriptor.getInstance().getConfig().getLoadTsFileWriteBufferSize();
+    return configured > 0 ? configured : DEFAULT_BUFFER_SIZE;
+  }
+
+  @Override
+  public synchronized void write(final int b) throws IOException {
+    write((byte) b);
+  }
+
+  @Override
+  public synchronized void write(final byte b) throws IOException {
+    if (buffer.size() == bufferSize) {
+      flushBuffer();
+    }
+    buffer.write(b);
+  }
+
+  @Override
+  public synchronized void write(final byte[] bytes) throws IOException {
+    write(bytes, 0, bytes.length);
+  }
+
+  @Override
+  public synchronized void write(final byte[] bytes, final int offset, final int length)
+      throws IOException {
+    Objects.checkFromIndexSize(offset, length, bytes.length);
+    if (length == 0) {
+      return;
+    }
+    if (length >= bufferSize) {
+      // A block at least as large as the buffer is not worth a copy.
+      flushBuffer();
+      writeDirect(bytes, offset, length);
+      return;
+    }
+    if (length > bufferSize - buffer.size()) {
+      flushBuffer();
+    }
+    buffer.write(bytes, offset, length);
+  }
+
+  @Override
+  public synchronized void write(final ByteBuffer src) throws IOException {
+    final int length = src.remaining();
+    if (length == 0) {
+      return;
+    }
+    if (length >= bufferSize) {
+      flushBuffer();
+      while (src.hasRemaining()) {
+        channel.write(src);
+      }
+      return;
+    }
+    if (length > bufferSize - buffer.size()) {
+      flushBuffer();
+    }
+    buffer.write(src);
+  }
+
+  private void writeDirect(final byte[] bytes, final int offset, final int length)
+      throws IOException {
+    final ByteBuffer wrap = ByteBuffer.wrap(bytes, offset, length);
+    while (wrap.hasRemaining()) {
+      channel.write(wrap);
+    }
+  }
+
+  /** Hands the buffered bytes to the channel, keeping the previous writes in order. */
+  private void flushBuffer() throws IOException {
+    if (buffer.size() == 0) {
+      return;
+    }
+    final ByteBuffer wrap = ByteBuffer.wrap(buffer.array(), 0, buffer.size());
+    while (wrap.hasRemaining()) {
+      channel.write(wrap);
+    }
+    buffer.clear();
+  }
+
+  @Override
+  public synchronized long getPosition() throws IOException {
+    // The buffered bytes are already logically written, so a position query must not flush them.
+    return channel.position() + buffer.size();
+  }
+
+  /** Moves the output to the given absolute position, flushing first when the position changes. */
+  synchronized void position(final long offset) throws IOException {
+    if (offset == channel.position() + buffer.size()) {
+      return;
+    }
+    flushBuffer();
+    channel.position(offset);
+  }
+
+  @Override
+  public OutputStream wrapAsStream() {
+    return this;
+  }
+
+  @Override
+  public synchronized void flush() throws IOException {
+    flushBuffer();
+  }
+
+  @Override
+  public synchronized void force() throws IOException {
+    flushBuffer();
+    // Pass false to fsync file content without blocking on OS metadata modifications
+    channel.force(false);
+  }
+
+  @Override
+  public synchronized void truncate(final long size) throws IOException {
+    flushBuffer();
+    channel.truncate(size);
+  }
+
+  @Override
+  public synchronized void close() throws IOException {
+    try {
+      flushBuffer();
+    } finally {
+      channel.close();
+    }
+  }
+
+  /** A byte array that grows on demand and is only ever written to by its owner. */
+  private static final class DynamicBuffer {
+
+    private byte[] data;
+    private int size;
+
+    private DynamicBuffer(final int initialCapacity) {
+      this.data = new byte[initialCapacity];
+    }
+
+    private void ensureCapacity(final int minCapacity) {
+      if (minCapacity > data.length) {
+        data = Arrays.copyOf(data, Math.max(data.length * 2, minCapacity));
+      }
+    }
+
+    private void write(final byte b) {
+      ensureCapacity(size + 1);
+      data[size++] = b;
+    }
+
+    private void write(final byte[] src, final int offset, final int length) {
+      ensureCapacity(size + length);
+      System.arraycopy(src, offset, data, size, length);
+      size += length;
+    }
+
+    private void write(final ByteBuffer src) {
+      final int length = src.remaining();
+      ensureCapacity(size + length);
+      src.get(data, size, length);
+      size += length;
+    }
+
+    private int size() {
+      return size;
+    }
+
+    private byte[] array() {
+      return data;
+    }
+
+    private void clear() {
+      size = 0;
+    }
+  }
+}

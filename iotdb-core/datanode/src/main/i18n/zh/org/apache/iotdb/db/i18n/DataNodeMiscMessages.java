@@ -1491,4 +1491,10 @@ public final class DataNodeMiscMessages {
       LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
           "mpp_data_exchange_max_payload_size_in_bytes（%d）低于允许的最小值 %d，将使用 %d";
 
+  public static final String
+      MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936 =
+          "loadTsFileWriteBufferSize 应大于 0";
+  public static final String EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4 =
+      "bufferSize 应大于 0";
+
 }

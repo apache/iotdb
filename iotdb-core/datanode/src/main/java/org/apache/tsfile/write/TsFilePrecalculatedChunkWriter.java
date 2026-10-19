@@ -88,7 +88,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
     this.file =
         Objects.requireNonNull(file, StorageEngineMessages.EXCEPTION_FILE_CANNOT_BE_NULL_29A83D70);
     this.out =
-        new WritableFileChannelOutput(
+        new BufferedFileChannelOutput(
             FileChannel.open(
                 file.toPath(),
                 StandardOpenOption.CREATE,
@@ -108,7 +108,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
       throws IOException {
     this.file = file;
     this.out =
-        new WritableFileChannelOutput(
+        new BufferedFileChannelOutput(
             Objects.requireNonNull(
                 channel, StorageEngineMessages.EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB));
     this.sealed = false;
@@ -206,7 +206,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
    */
   private long alignToOffset(final long expectedOffset, final IDeviceID device, final Chunk chunk)
       throws IOException {
-    if (out instanceof WritableFileChannelOutput channelOutput) {
+    if (out instanceof BufferedFileChannelOutput channelOutput) {
       // 1. Expand file with zeros if jumping past current physical maximum bound
       if (expectedOffset > maxPhysicalFileSize) {
         final long paddingStartOffset = maxPhysicalFileSize;
@@ -340,7 +340,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
     try {
       // Seek past the highest written data zone byte before building indices
-      if (out instanceof WritableFileChannelOutput channelOutput) {
+      if (out instanceof BufferedFileChannelOutput channelOutput) {
         channelOutput.position(maxPhysicalFileSize);
       }
 
@@ -452,88 +452,4 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
   public record ChunkWriteResult(
       long actualChunkGroupHeaderOffset, long actualChunkOffset, long actualChunkEndOffset) {}
-
-  // -------------------------------------------------------------------------
-  // Channel Wrapper
-  // -------------------------------------------------------------------------
-
-  private static final class WritableFileChannelOutput implements TsFileOutput {
-
-    private final FileChannel channel;
-    private final ByteBuffer singleByteBuffer = ByteBuffer.allocateDirect(1);
-
-    private WritableFileChannelOutput(final FileChannel channel) {
-      this.channel = channel;
-    }
-
-    @Override
-    public void write(final byte[] bytes) throws IOException {
-      write(bytes, 0, bytes.length);
-    }
-
-    public void write(final byte[] bytes, final int offset, final int length) throws IOException {
-      write(ByteBuffer.wrap(bytes, offset, length));
-    }
-
-    @Override
-    public synchronized void write(final byte b) throws IOException {
-      singleByteBuffer.clear();
-      singleByteBuffer.put(b);
-      singleByteBuffer.flip();
-      write(singleByteBuffer);
-    }
-
-    @Override
-    public void write(final ByteBuffer buffer) throws IOException {
-      while (buffer.hasRemaining()) {
-        channel.write(buffer);
-      }
-    }
-
-    @Override
-    public long getPosition() throws IOException {
-      return channel.position();
-    }
-
-    private void position(final long offset) throws IOException {
-      channel.position(offset);
-    }
-
-    @Override
-    public OutputStream wrapAsStream() {
-      return new OutputStream() {
-        @Override
-        public void write(final int b) throws IOException {
-          WritableFileChannelOutput.this.write((byte) b);
-        }
-
-        @Override
-        public void write(final byte[] bytes, final int offset, final int length)
-            throws IOException {
-          WritableFileChannelOutput.this.write(bytes, offset, length);
-        }
-      };
-    }
-
-    @Override
-    public void flush() throws IOException {
-      force();
-    }
-
-    @Override
-    public void force() throws IOException {
-      // Pass false to fsync file content without blocking on OS metadata modifications
-      channel.force(false);
-    }
-
-    @Override
-    public void truncate(final long size) throws IOException {
-      channel.truncate(size);
-    }
-
-    @Override
-    public void close() throws IOException {
-      channel.close();
-    }
-  }
 }
