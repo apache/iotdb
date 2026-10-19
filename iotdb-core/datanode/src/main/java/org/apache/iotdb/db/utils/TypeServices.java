@@ -914,8 +914,6 @@ public class TypeServices {
 
   public static final class Aggregation {
 
-    // Validate all type branches in TypeServicesTest. Doing so here eagerly constructs unrelated
-    // strategies and initializes the calc registry on the first aggregation query.
     public static final TypeService<ExtremeValueAccumulatorStrategy>
         EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE =
             type ->
