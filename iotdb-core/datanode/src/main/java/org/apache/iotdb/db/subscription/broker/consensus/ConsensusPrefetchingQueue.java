@@ -518,6 +518,11 @@ public class ConsensusPrefetchingQueue {
           Objects.isNull(reason) ? SubscriptionQueueRejectionReason.QUEUE_CAPACITY : reason;
       lastOfferRejectionReason.set(effectiveReason);
       rejectionListener.accept(effectiveReason);
+      // The rejected request remains available in WAL. Wake the replay worker so a queue that has
+      // already gone dormant does not wait for a later successful realtime offer to make progress.
+      if (effectiveReason != SubscriptionQueueRejectionReason.INACTIVE_OR_CLOSED) {
+        wakeupHook.run();
+      }
       return false;
     }
 
