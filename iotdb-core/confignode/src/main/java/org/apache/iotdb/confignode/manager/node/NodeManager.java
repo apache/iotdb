@@ -146,13 +146,6 @@ public class NodeManager {
   private static final String CONSENSUS_WRITE_ERROR =
       ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
-  private static final String ROLLBACK_STATUS_LOG_FORMAT =
-      "versionUpdateStatus: {}, rollbackStatus: {}";
-  private static final String REGISTRATION_ROLLBACK_FAILED_FORMAT =
-      "The registration rollback also failed: %s";
-  private static final String MANUAL_REGISTRATION_CLEANUP_MESSAGE =
-      "Manual cleanup may be required before retrying the registration.";
-
   public static final int APPLY_CONFIG_LOCALLY = -2;
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
@@ -943,20 +936,32 @@ public class NodeManager {
    *
    * @param configNodeLocation The new ConfigNode.
    * @param versionInfo The new ConfigNode's versionInfo.
-   * @throws IllegalStateException if the ConfigNode information cannot be persisted atomically
+   * @throws IllegalStateException if the ConfigNode information or version cannot be persisted
    */
   public void applyConfigNode(
       TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
-    ensureConsensusWriteSuccessful(
-        writeConfigPhysicalPlan(applyConfigNodePlan),
-        String.format("apply ConfigNode %s", configNodeLocation));
+    final TSStatus applyStatus = writeConfigPhysicalPlan(applyConfigNodePlan);
+    if (!isConsensusWriteSuccessful(applyStatus)) {
+      throw new IllegalStateException(
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_APPLY_CONFIGNODE_ARG_THROUGH_CONSENSUS_LAYER_ARG_B4A985D7,
+              configNodeLocation,
+              describeStatus(applyStatus)));
+    }
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
     final TSStatus updateStatus = writeConfigPhysicalPlan(updateVersionInfoPlan);
     if (!isConsensusWriteSuccessful(updateStatus)) {
+      // ADD_PEER has already joined this node to Raft. Removing it here would also mark the
+      // joining node as Removing. Keep the membership and let REGISTER_SUCCESS retry both plans.
       throw new IllegalStateException(
-          rollbackConfigNodeRegistration(configNodeLocation, updateStatus).getMessage());
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_PERSIST_VERSION_INFO_FOR_CONFIGNODE_ARG_ARG_REGISTRATION_REMAINS_PENDING_AND_MUST_BE_RETRIED_F662C350,
+              configNodeLocation.getConfigNodeId(),
+              describeStatus(updateStatus)));
     }
   }
 
@@ -1431,83 +1436,59 @@ public class NodeManager {
     final TSStatus rollbackStatus =
         writeConfigPhysicalPlan(
             new RemoveDataNodePlan(Collections.singletonList(dataNodeLocation)));
-    final String failureMessage =
-        String.format(
-            "Failed to persist version info for DataNode %d: %s",
-            dataNodeLocation.getDataNodeId(), describeStatus(versionUpdateStatus));
     if (isConsensusWriteSuccessful(rollbackStatus)) {
-      return buildStatus(
-          versionUpdateStatus.getCode(),
-          failureMessage,
-          "The registration has been rolled back. Please retry the registration.");
+      return new TSStatus(versionUpdateStatus.getCode())
+          .setMessage(
+              String.format(
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_5DDB311F,
+                  dataNodeLocation.getDataNodeId(),
+                  describeStatus(versionUpdateStatus)));
     }
 
     LOGGER.error(
-        "Failed to roll back DataNode registration {} after version info persistence failure. "
-            + ROLLBACK_STATUS_LOG_FORMAT,
+        ConfigNodeMessages
+            .LOG_FAILED_TO_ROLL_BACK_DATANODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_437E6F09,
         dataNodeLocation,
         versionUpdateStatus,
         rollbackStatus);
-    return buildStatus(
-        rollbackStatus.getCode(),
-        failureMessage,
-        String.format(REGISTRATION_ROLLBACK_FAILED_FORMAT, describeStatus(rollbackStatus)),
-        MANUAL_REGISTRATION_CLEANUP_MESSAGE);
+    return new TSStatus(rollbackStatus.getCode())
+        .setMessage(
+            String.format(
+                ConfigNodeMessages
+                    .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_5463B5FF,
+                dataNodeLocation.getDataNodeId(),
+                describeStatus(versionUpdateStatus),
+                describeStatus(rollbackStatus)));
   }
 
   private TSStatus rollbackAiNodeRegistration(
       TAINodeLocation aiNodeLocation, TSStatus versionUpdateStatus) {
     final TSStatus rollbackStatus = writeConfigPhysicalPlan(new RemoveAINodePlan(aiNodeLocation));
-    final String failureMessage =
-        String.format(
-            "Failed to persist version info for AINode %d: %s",
-            aiNodeLocation.getAiNodeId(), describeStatus(versionUpdateStatus));
     if (isConsensusWriteSuccessful(rollbackStatus)) {
-      return buildStatus(
-          versionUpdateStatus.getCode(),
-          failureMessage,
-          "The registration has been rolled back. Please retry the registration.");
+      return new TSStatus(versionUpdateStatus.getCode())
+          .setMessage(
+              String.format(
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_7571C626,
+                  aiNodeLocation.getAiNodeId(),
+                  describeStatus(versionUpdateStatus)));
     }
 
     LOGGER.error(
-        "Failed to roll back AINode registration {} after version info persistence failure. "
-            + ROLLBACK_STATUS_LOG_FORMAT,
+        ConfigNodeMessages
+            .LOG_FAILED_TO_ROLL_BACK_AINODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_BFF24BD4,
         aiNodeLocation,
         versionUpdateStatus,
         rollbackStatus);
-    return buildStatus(
-        rollbackStatus.getCode(),
-        failureMessage,
-        String.format(REGISTRATION_ROLLBACK_FAILED_FORMAT, describeStatus(rollbackStatus)),
-        MANUAL_REGISTRATION_CLEANUP_MESSAGE);
-  }
-
-  private TSStatus rollbackConfigNodeRegistration(
-      TConfigNodeLocation configNodeLocation, TSStatus versionUpdateStatus) {
-    final TSStatus rollbackStatus =
-        writeConfigPhysicalPlan(new RemoveConfigNodePlan(configNodeLocation));
-    final String failureMessage =
-        String.format(
-            "Failed to persist version info for ConfigNode %d: %s",
-            configNodeLocation.getConfigNodeId(), describeStatus(versionUpdateStatus));
-    if (isConsensusWriteSuccessful(rollbackStatus)) {
-      return buildStatus(
-          versionUpdateStatus.getCode(),
-          failureMessage,
-          "The ConfigNode registration has been rolled back.");
-    }
-
-    LOGGER.error(
-        "Failed to roll back ConfigNode registration {} after version info persistence failure. "
-            + ROLLBACK_STATUS_LOG_FORMAT,
-        configNodeLocation,
-        versionUpdateStatus,
-        rollbackStatus);
-    return buildStatus(
-        rollbackStatus.getCode(),
-        failureMessage,
-        String.format(REGISTRATION_ROLLBACK_FAILED_FORMAT, describeStatus(rollbackStatus)),
-        MANUAL_REGISTRATION_CLEANUP_MESSAGE);
+    return new TSStatus(rollbackStatus.getCode())
+        .setMessage(
+            String.format(
+                ConfigNodeMessages
+                    .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_B9B1DCCD,
+                aiNodeLocation.getAiNodeId(),
+                describeStatus(versionUpdateStatus),
+                describeStatus(rollbackStatus)));
   }
 
   private TSStatus buildStatus(int statusCode, String... messages) {
@@ -1534,20 +1515,12 @@ public class NodeManager {
 
   private String describeStatus(TSStatus status) {
     if (status == null) {
-      return "unknown error";
+      return ConfigNodeMessages.MESSAGE_UNKNOWN_ERROR_E9EEAFF8;
     }
     if (status.getMessage() != null && !status.getMessage().isEmpty()) {
       return status.getMessage();
     }
-    return "status code " + status.getCode();
-  }
-
-  private void ensureConsensusWriteSuccessful(TSStatus status, String action) {
-    if (isConsensusWriteSuccessful(status)) {
-      return;
-    }
-    throw new IllegalStateException(
-        String.format("Failed to %s through consensus layer: %s", action, status));
+    return String.format(ConfigNodeMessages.MESSAGE_STATUS_CODE_ARG_4B3BCD8B, status.getCode());
   }
 
   private ConsensusManager getConsensusManager() {

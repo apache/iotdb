@@ -24,7 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -32,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVers
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -51,6 +56,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -116,7 +124,13 @@ public class NodeManagerRegistrationTest {
 
     Assert.assertEquals(
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), resp.getStatus().getCode());
-    Assert.assertTrue(resp.getStatus().getMessage().contains("rolled back"));
+    Assert.assertEquals(
+        String.format(
+            ConfigNodeMessages
+                .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_5DDB311F,
+            0,
+            failureStatus.getMessage()),
+        resp.getStatus().getMessage());
     verify(loadCache, never()).createNodeHeartbeatCache(eq(NodeType.DataNode), anyInt());
     verify(clusterSchemaManager, never()).adjustMaxRegionGroupNum();
 
@@ -149,29 +163,78 @@ public class NodeManagerRegistrationTest {
   }
 
   @Test
-  public void testApplyConfigNodeRollsBackWhenVersionWriteFails() throws ConsensusException {
-    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public void testApplyConfigNodeRetainsMembershipAndRetriesVersionWrite()
+      throws ConsensusException {
     TSStatus failureStatus =
         new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage("apply failed");
-    when(consensusManager.write(any())).thenReturn(successStatus, failureStatus, successStatus);
-
+            .setMessage("version update failed");
+    AtomicBoolean failVersionUpdate = new AtomicBoolean(true);
+    when(consensusManager.write(any()))
+        .thenAnswer(
+            invocation -> {
+              ConfigPhysicalPlan plan = invocation.getArgument(0);
+              if (plan instanceof ApplyConfigNodePlan) {
+                return nodeInfo.applyConfigNode((ApplyConfigNodePlan) plan);
+              }
+              if (plan instanceof RemoveConfigNodePlan) {
+                return nodeInfo.removeConfigNode((RemoveConfigNodePlan) plan);
+              }
+              if (failVersionUpdate.getAndSet(false)) {
+                return failureStatus;
+              }
+              return nodeInfo.updateVersionInfo((UpdateVersionInfoPlan) plan);
+            });
+    TConfigNodeLocation location =
+        new TConfigNodeLocation(
+            1, new TEndPoint("127.0.0.1", 10710), new TEndPoint("127.0.0.1", 10720));
+    TNodeVersionInfo version = new TNodeVersionInfo("version", "build");
+    TNodeVersionInfo previousVersion = nodeInfo.getVersionInfo(location.getConfigNodeId());
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    int originalNodeId = conf.getConfigNodeId();
+    NodeStatus originalNodeStatus = CommonDescriptor.getInstance().getConfig().getNodeStatus();
+    String originalStatusReason = CommonDescriptor.getInstance().getConfig().getStatusReason();
     try {
-      nodeManager.applyConfigNode(
-          new TConfigNodeLocation(
-              1, new TEndPoint("127.0.0.1", 10710), new TEndPoint("127.0.0.1", 10720)),
-          new TNodeVersionInfo("version", "build"));
-      Assert.fail("Expected applyConfigNode to fail fast");
-    } catch (IllegalStateException e) {
-      Assert.assertTrue(e.getMessage().contains("rolled back"));
+      // Model the joining Raft member applying its own registration and rollback plans.
+      conf.setConfigNodeId(location.getConfigNodeId());
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
+      try {
+        nodeManager.applyConfigNode(location, version);
+        Assert.fail("Expected the failed version write to keep registration pending");
+      } catch (IllegalStateException e) {
+        Assert.assertEquals(
+            String.format(
+                ConfigNodeMessages
+                    .EXCEPTION_FAILED_TO_PERSIST_VERSION_INFO_FOR_CONFIGNODE_ARG_ARG_REGISTRATION_REMAINS_PENDING_AND_MUST_BE_RETRIED_F662C350,
+                location.getConfigNodeId(),
+                failureStatus.getMessage()),
+            e.getMessage());
+      }
+      Assert.assertEquals(
+          NodeStatus.Running, CommonDescriptor.getInstance().getConfig().getNodeStatus());
+      Assert.assertEquals(Collections.singletonList(location), nodeInfo.getRegisteredConfigNodes());
+      Assert.assertEquals(previousVersion, nodeInfo.getVersionInfo(location.getConfigNodeId()));
+
+      nodeManager.applyConfigNode(location, version);
+
+      Assert.assertEquals(
+          NodeStatus.Running, CommonDescriptor.getInstance().getConfig().getNodeStatus());
+      Assert.assertEquals(Collections.singletonList(location), nodeInfo.getRegisteredConfigNodes());
+      Assert.assertEquals(version, nodeInfo.getVersionInfo(location.getConfigNodeId()));
+    } finally {
+      conf.setConfigNodeId(originalNodeId);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setNodeStatusWithReason(originalNodeStatus, originalStatusReason);
     }
 
     ArgumentCaptor<ConfigPhysicalPlan> planCaptor =
         ArgumentCaptor.forClass(ConfigPhysicalPlan.class);
-    verify(consensusManager, Mockito.times(3)).write(planCaptor.capture());
+    verify(consensusManager, Mockito.times(4)).write(planCaptor.capture());
     Assert.assertTrue(planCaptor.getAllValues().get(0) instanceof ApplyConfigNodePlan);
     Assert.assertTrue(planCaptor.getAllValues().get(1) instanceof UpdateVersionInfoPlan);
-    Assert.assertTrue(planCaptor.getAllValues().get(2) instanceof RemoveConfigNodePlan);
+    Assert.assertTrue(planCaptor.getAllValues().get(2) instanceof ApplyConfigNodePlan);
+    Assert.assertTrue(planCaptor.getAllValues().get(3) instanceof UpdateVersionInfoPlan);
+    verify(consensusManager, never()).write(any(RemoveConfigNodePlan.class));
   }
 
   private TDataNodeRegisterReq generateDataNodeRegisterReq(int dataNodeId) {

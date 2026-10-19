@@ -117,6 +117,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private File simpleLogFile;
   private int startIndex;
   private int endIndex;
+  private boolean simpleConsensusWritesDisabled;
 
   private static final String CURRENT_FILE_DIR =
       ConsensusManager.getConfigRegionDir() + File.separator + "current";
@@ -607,6 +608,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     long logFileSizeBeforeWrite = 0;
     int endIndexBeforeWrite = endIndex;
     try {
+      if (simpleConsensusWritesDisabled) {
+        throw new IOException(
+            ConfigNodeMessages
+                .EXCEPTION_CONFIGNODE_SIMPLECONSENSUS_WRITES_ARE_DISABLED_AFTER_A_WAL_CLEANUP_FAILURE_RESTART_IS_REQUIRED_D52F0107);
+      }
       if (simpleLogWriter == null || simpleLogFile == null) {
         throw new IOException(ConfigNodeMessages.SIMPLECONSENSUS_LOG_WRITER_IS_NOT_INITIALIZED);
       }
@@ -630,11 +636,24 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           ConfigNodeMessages
               .PERSIST_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED,
           e);
-      return SimpleConsensusPersistResult.failure(
+      TSStatus status =
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(
-                  ConfigNodeMessages.PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED
-                      + e.getMessage()));
+                  String.format(
+                      ConfigNodeMessages.PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED,
+                      e.getMessage()));
+      // A failed append or force may still leave a complete or partial record in the WAL.
+      if (persistedLogFile != null
+          && !rollbackFailedPlanForSimpleConsensus(
+              plan,
+              SimpleConsensusPersistResult.success(
+                  persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite))) {
+        status.setMessage(
+            status.getMessage()
+                + " "
+                + ConfigNodeMessages.FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG);
+      }
+      return SimpleConsensusPersistResult.failure(status);
     }
     return SimpleConsensusPersistResult.success(
         persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite);
@@ -642,16 +661,24 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   private boolean rollbackFailedPlanForSimpleConsensus(
       ConfigPhysicalPlan plan, SimpleConsensusPersistResult persistResult) {
-    closeSimpleLogWriter();
-    try (FileChannel channel =
-        FileChannel.open(persistResult.logFile.toPath(), StandardOpenOption.WRITE)) {
-      channel.truncate(persistResult.logFileSizeBeforeWrite);
-      channel.force(true);
+    try {
+      if (!closeSimpleLogWriter()) {
+        throw new IOException(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_WRITER_BC0F417C);
+      }
+      try (FileChannel channel =
+          FileChannel.open(persistResult.logFile.toPath(), StandardOpenOption.WRITE)) {
+        channel.truncate(persistResult.logFileSizeBeforeWrite);
+        channel.force(true);
+      }
       simpleLogFile = persistResult.logFile;
       simpleLogWriter = new LogWriter(simpleLogFile, false);
       endIndex = persistResult.endIndexBeforeWrite;
       return true;
     } catch (IOException e) {
+      // Never append past an entry whose removal could not be made durable.
+      simpleConsensusWritesDisabled = true;
       LOGGER.error(
           ConfigNodeMessages
               .ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED,
@@ -666,11 +693,27 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   private void rollSimpleConsensusLogFile() throws IOException {
     simpleLogWriter.force();
-    closeSimpleLogWriter();
-    Files.move(
-        simpleLogFile.toPath(),
-        new File(FILE_PATH + startIndex + "_" + endIndex).toPath(),
-        StandardCopyOption.ATOMIC_MOVE);
+    if (!closeSimpleLogWriter()) {
+      simpleConsensusWritesDisabled = true;
+      throw new IOException(
+          ConfigNodeMessages
+              .EXCEPTION_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_WRITER_BC0F417C);
+    }
+    try {
+      Files.move(
+          simpleLogFile.toPath(),
+          simpleLogFile.toPath().resolveSibling(LOG_FILE_PREFIX + startIndex + "_" + endIndex),
+          StandardCopyOption.ATOMIC_MOVE);
+    } catch (IOException e) {
+      // The source file and indexes are unchanged when renaming fails. Reopen it for retries.
+      try {
+        simpleLogWriter = new LogWriter(simpleLogFile, false);
+      } catch (IOException reopenException) {
+        simpleConsensusWritesDisabled = true;
+        e.addSuppressed(reopenException);
+      }
+      throw e;
+    }
     startIndex = endIndex + 1;
     createLogFile(startIndex);
   }
@@ -765,15 +808,15 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return filename.startsWith(LOG_INPROGRESS_FILE_PREFIX);
   }
 
-  private void closeSimpleLogWriter() {
+  private boolean closeSimpleLogWriter() {
     if (simpleLogWriter == null) {
-      return;
+      return true;
     }
     for (int retry = 0; retry < 5; retry++) {
       try {
         simpleLogWriter.close();
         simpleLogWriter = null;
-        return;
+        return true;
       } catch (IOException e) {
         LOGGER.warn(
             ConfigNodeMessages
@@ -790,6 +833,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         }
       }
     }
+    return false;
   }
 
   static long parseEndIndex(String filename) {
