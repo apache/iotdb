@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.utils.TypeServices.DefaultEncodingProvider;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
@@ -82,7 +83,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class IoTDBConfig {
+public class IoTDBConfig implements DefaultEncodingProvider {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
@@ -184,6 +185,9 @@ public class IoTDBConfig {
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
+
+  /** Maximum size of one WAL entry. A non-positive value follows walBufferSize. Unit: byte */
+  private int walEntrySizeLimitInByte = -1;
 
   /** Blocking queue capacity of each delete ahead log buffer */
   private int deletionAheadLogBufferQueueCapacity = 500;
@@ -1170,6 +1174,8 @@ public class IoTDBConfig {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private long loadCleanupTaskIdleTimeoutSeconds = 900L; // 15 min, idle LOAD staging is reclaimed
+
   private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
@@ -1700,6 +1706,11 @@ public class IoTDBConfig {
     return this.loadTsFileDirs;
   }
 
+  public void setLoadTsFileDirs(final String[] loadTsFileDirs) {
+    this.loadTsFileDirs = loadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+  }
+
   public String[] getLoadTsFileAllowedDirs() {
     return this.loadTsFileAllowedDirs.length == 0
         ? getLoadTsFileDirs()
@@ -2149,6 +2160,14 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
+  }
+
+  public int getWalEntrySizeLimitInByte() {
+    return walEntrySizeLimitInByte > 0 ? walEntrySizeLimitInByte : walBufferSize;
+  }
+
+  public void setWalEntrySizeLimitInByte(int walEntrySizeLimitInByte) {
+    this.walEntrySizeLimitInByte = walEntrySizeLimitInByte;
   }
 
   public int getDeletionAheadLogBufferQueueCapacity() {
@@ -2601,6 +2620,7 @@ public class IoTDBConfig {
     this.defaultDatabaseLevel = defaultDatabaseLevel;
   }
 
+  @Override
   public TSEncoding getDefaultBooleanEncoding() {
     return defaultBooleanEncoding;
   }
@@ -2613,6 +2633,7 @@ public class IoTDBConfig {
     this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt32Encoding() {
     return defaultInt32Encoding;
   }
@@ -2625,6 +2646,7 @@ public class IoTDBConfig {
     this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt64Encoding() {
     return defaultInt64Encoding;
   }
@@ -2637,6 +2659,7 @@ public class IoTDBConfig {
     this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultFloatEncoding() {
     return defaultFloatEncoding;
   }
@@ -2649,6 +2672,7 @@ public class IoTDBConfig {
     this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultDoubleEncoding() {
     return defaultDoubleEncoding;
   }
@@ -2661,6 +2685,7 @@ public class IoTDBConfig {
     this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultTextEncoding() {
     return defaultTextEncoding;
   }
@@ -4277,6 +4302,14 @@ public class IoTDBConfig {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
+  public long getLoadCleanupTaskIdleTimeoutSeconds() {
+    return loadCleanupTaskIdleTimeoutSeconds;
+  }
+
+  public void setLoadCleanupTaskIdleTimeoutSeconds(final long loadCleanupTaskIdleTimeoutSeconds) {
+    this.loadCleanupTaskIdleTimeoutSeconds = loadCleanupTaskIdleTimeoutSeconds;
+  }
+
   public int getLoadTsFileRetryCountOnRegionChange() {
     return loadTsFileRetryCountOnRegionChange;
   }
@@ -4463,10 +4496,12 @@ public class IoTDBConfig {
   }
 
   public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
+    // A cap of 0 would reject every LOAD whose source file spans at least one time partition,
+    // i.e. every LOAD, so the smallest usable value is 1.
     if (loadTsFileSpiltPartitionMaxSize <= 0) {
       throw new IllegalArgumentException(
           DataNodeMiscMessages
-              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23);
+              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192);
     }
 
     if (this.loadTsFileSpiltPartitionMaxSize == loadTsFileSpiltPartitionMaxSize) {

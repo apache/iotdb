@@ -21,6 +21,8 @@ package org.apache.iotdb.db.i18n;
 
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "请求的查询不属于当前会话。";
 
   public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
       "缺少 Load TsFile 分片元数据：%s";
@@ -606,7 +608,12 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "输入的双精度数值为 Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "BOOLEAN 值应为 true/TRUE、false/FALSE 或 0/1";
-  public static final String UNSUPPORTED_DATA_TYPE_FMT = "不支持的数据类型：%s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3 =
+      "数据类型不一致，输入值 %s，注册类型 %s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858 =
+      "数据类型不一致，输入值 %s，注册类型 %s，原因：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "不支持的数据类型：%s";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
       "聚合函数名称不能为空";
@@ -1031,6 +1038,10 @@ public final class DataNodeMiscMessages {
   // --- DataNodeInternalRPCServiceImpl ---
   public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
       "Load 命令需要时间分区到进度索引的映射";
+  public static final String LOG_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_THE_REQUEST_OF_TASK_ARG_IS_REJECTED_76937A9C =
+      "Load 命令协议已被移除，任务 {} 的请求被拒绝。";
+  public static final String MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16 =
+      "Load 命令协议已被移除，LOAD 现在通过共识完成。";
   public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
       "拓扑探测在 %s 毫秒后超时";
   public static final String NO_SUCH_QUERY = "查询不存在";
@@ -1073,7 +1084,7 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
       "DataNode 退出。JVM 内存使用情况：{}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "无法向 ConfigNode 上报 DataNode 关闭状态。集群在接下来的几秒内仍会将当前 DataNode 视为 Running。";
+      "未能获得 ConfigNode leader 对 DataNode 关闭报告的确认。";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
       "调用共识层的 triggerSnapshot API 时发生错误。";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =
@@ -1340,8 +1351,7 @@ public final class DataNodeMiscMessages {
       "配置项 chunkmeta_chunk_timeseriesmeta_free_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
       "非法的 defaultDatabaseLevel：%d，应 >= 1";
-  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
-      "loadTsFileSpiltPartitionMaxSize 应大于或等于 0";
+  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192 = "loadTsFileSpiltPartitionMaxSize 应大于 0";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId：%s 在会话 %s 中不存在";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =

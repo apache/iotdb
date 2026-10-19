@@ -99,6 +99,7 @@ public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
   protected Session session;
@@ -243,6 +244,9 @@ public class SessionConnection {
     openReq.putToConfiguration("sql_dialect", sqlDialect);
     if (session.useEncryptedPassword) {
       openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+    }
+    if (!session.enableAutoCreateSchema) {
+      openReq.putToConfiguration(ENABLE_AUTO_CREATE_SCHEMA_KEY, Boolean.FALSE.toString());
     }
     if (database != null) {
       openReq.putToConfiguration("db", database);
@@ -969,7 +973,8 @@ public class SessionConnection {
     return new RetryResult<>(status, lastTException, i);
   }
 
-  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc) {
+  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc)
+      throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         status -> status.isSetNeedRetry() && status.isNeedRetry(),
@@ -977,7 +982,7 @@ public class SessionConnection {
   }
 
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Function<T, TSStatus> statusGetter) {
+      TFunction<T> rpc, Function<T, TSStatus> statusGetter) throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         t -> {
@@ -989,9 +994,15 @@ public class SessionConnection {
                 == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
-  /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
+  /**
+   * reconnect if the remote datanode is unreachable retry if the status is set to needRetry
+   *
+   * @throws IoTDBConnectionException if no attempt produced a result, i.e. the last attempt failed
+   *     with a TException. The TException is the cause.
+   */
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
+      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect)
+      throws IoTDBConnectionException {
     TException lastTException = null;
     T result = null;
     int retryAttempt;
@@ -1039,6 +1050,10 @@ public class SessionConnection {
       }
     }
 
+    if (result == null) {
+      // all attempts failed with a TException, callers must not see a null result
+      throw new IoTDBConnectionException(lastTException);
+    }
     return new RetryResult<>(result, lastTException, retryAttempt);
   }
 
@@ -1341,7 +1356,7 @@ public class SessionConnection {
     if (endPointList == null) {
       return MSG_RECONNECTION_FAIL;
     }
-    List<String> urls = new ArrayList<>();
+    List<String> urls = new ArrayList<>(endPointList.size());
     for (TEndPoint end : endPointList) {
       urls.add(UrlUtils.convertTEndPointIpv4AndIpv6Url(end));
     }

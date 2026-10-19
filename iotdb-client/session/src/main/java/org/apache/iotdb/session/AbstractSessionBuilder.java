@@ -80,6 +80,8 @@ public abstract class AbstractSessionBuilder {
 
   public String database;
 
+  public boolean enableAutoCreateSchema = true;
+
   public Boolean isIoTDBRpcCompressionEnabled = true;
 
   public Boolean isThriftRpcCompactionEnabled = false;

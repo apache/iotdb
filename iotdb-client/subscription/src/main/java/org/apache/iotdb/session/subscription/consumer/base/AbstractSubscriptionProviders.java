@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -50,6 +51,9 @@ final class AbstractSubscriptionProviders {
   private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
+  private final Set<AbstractSubscriptionProvider> providersWithHeartbeatInFlight =
+      ConcurrentHashMap.newKeySet();
+  private final Object heartbeatResponseLock = new Object();
   private int nextDataNodeId = -1;
 
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
@@ -316,29 +320,33 @@ final class AbstractSubscriptionProviders {
       return;
     }
 
-    acquireWriteLock();
-    try {
-      if (consumer.isClosed() || consumer.isFenced()) {
-        return;
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      if (!providersWithHeartbeatInFlight.add(provider)) {
+        continue;
       }
-      heartbeatInternal(consumer);
-    } finally {
-      releaseWriteLock();
+      if (Objects.isNull(
+          SubscriptionExecutorServiceManager.submitProviderHeartbeat(
+              () -> heartbeatProvider(consumer, provider)))) {
+        providersWithHeartbeatInFlight.remove(provider);
+      }
     }
   }
 
-  private void heartbeatInternal(final AbstractSubscriptionConsumer consumer) {
-    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
-      if (consumer.isFenced()) {
+  private void heartbeatProvider(
+      final AbstractSubscriptionConsumer consumer, final AbstractSubscriptionProvider provider) {
+    try {
+      if (consumer.isClosed() || consumer.isFenced() || !containsProvider(provider)) {
         return;
       }
-      try {
-        final List<SubscriptionCommitContext> processorBufferedCommitContexts =
-            consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
-        final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
-        // update subscribed topics
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts =
+          consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
+      final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
+      if (consumer.isClosed() || consumer.isFenced() || !containsProvider(provider)) {
+        return;
+      }
+      provider.setAvailable();
+      synchronized (heartbeatResponseLock) {
         consumer.subscribedTopics = resp.getTopics();
-        // unsubscribe completed topics
         for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
           LOGGER.info(
               SubscriptionMessages
@@ -347,22 +355,26 @@ final class AbstractSubscriptionProviders {
               topicName);
           consumer.unsubscribe(topicName);
         }
-        provider.setAvailable();
-      } catch (final SubscriptionConsumerFencedException e) {
-        consumer.fence(e);
-        provider.setUnavailable();
-        return;
-      } catch (final Exception e) {
-        LOGGER.warn(
-            SubscriptionMessages
-                .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
-            consumer,
-            provider,
-            e,
-            e);
-        provider.setUnavailable();
       }
+    } catch (final SubscriptionConsumerFencedException e) {
+      consumer.fence(e);
+      provider.setUnavailable();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
+          consumer,
+          provider,
+          e,
+          e);
+      provider.setUnavailable();
+    } finally {
+      providersWithHeartbeatInFlight.remove(provider);
     }
+  }
+
+  private boolean containsProvider(final AbstractSubscriptionProvider provider) {
+    return subscriptionProviders.get(provider.getDataNodeId()) == provider;
   }
 
   /////////////////////////////// sync endpoints ///////////////////////////////

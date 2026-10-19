@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -77,6 +78,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1442,6 +1444,9 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
+    conf.setWalEntrySizeLimitInByte(
+        Integer.parseInt(properties.getProperty("wal_entry_size_limit_in_byte", "-1")));
+
     boolean WALInsertNodeCacheShrinkClearEnabled =
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2600,6 +2605,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                String.valueOf(conf.getLoadCleanupTaskIdleTimeoutSeconds()))));
     conf.setLoadTsFileRetryCountOnRegionChange(
         Integer.parseInt(
             properties.getProperty(
@@ -2745,6 +2755,13 @@ public class IoTDBDescriptor {
                 "load_clean_up_task_execution_delay_time_seconds",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_clean_up_task_execution_delay_time_seconds"))));
+
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_clean_up_task_idle_timeout_seconds"))));
 
     conf.setLoadWriteThroughputBytesPerSecond(
         Double.parseDouble(
@@ -3139,26 +3156,9 @@ public class IoTDBDescriptor {
 
   /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case INT32:
-      case DATE:
-        return conf.getDefaultInt32Encoding();
-      case INT64:
-      case TIMESTAMP:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      default:
-        return conf.getDefaultTextEncoding();
-    }
+    return TypeServices.DEFAULT_ENCODING_BY_TYPE_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(conf);
   }
 
   // These configurations are received from config node when registering

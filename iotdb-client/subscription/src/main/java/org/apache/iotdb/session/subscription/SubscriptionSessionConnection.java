@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.Session;
@@ -57,6 +58,13 @@ public class SubscriptionSessionConnection extends SessionConnection {
 
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) throws TException {
     return client.pipeSubscribe(req);
+  }
+
+  public int getServerThriftMaxFrameSize(final int fallbackMaxFrameSize) throws TException {
+    final ServerProperties properties = client.getProperties();
+    return properties.isSetThriftMaxFrameSize()
+        ? properties.getThriftMaxFrameSize()
+        : fallbackMaxFrameSize;
   }
 
   public boolean setTimeout(final int timeoutInMs) {

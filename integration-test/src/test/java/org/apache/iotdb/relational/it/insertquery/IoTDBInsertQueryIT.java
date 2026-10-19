@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.insertquery;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -99,7 +100,7 @@ public class IoTDBInsertQueryIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("DROP DATABASE IF EXISTS test");
+      TestUtils.dropDatabaseWithRetry(statement, "test");
     } catch (Exception e) {
       fail(e.getMessage());
     }

@@ -67,6 +67,8 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqHandler;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
@@ -110,6 +112,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private static final double POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD = 0.9;
   private static final long HEARTBEAT_TIMEOUT_MULTIPLIER = 3L;
+  private static final long MAX_REASSEMBLED_REQUEST_BODY_SIZE = 256L * 1024 * 1024;
+  private static final int MAX_REASSEMBLED_REQUEST_FRAME_COUNT = 4;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -131,6 +135,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ACK_RESP =
+      new TPipeSubscribeResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
+  private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ERROR_RESP =
+      new TPipeSubscribeResp(
+          new TSStatus(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode()),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
   private volatile String authenticatedUsername;
@@ -139,6 +155,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private volatile boolean consumerFenced;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
+  private final PipeSubscribeSliceReqHandler sliceReqHandler =
+      new PipeSubscribeSliceReqHandler(getMaxReassembledRequestBodySize());
   private long consumerStateVersion;
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
@@ -146,6 +164,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public final TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
     final short reqType = req.getType();
+    if (PipeSubscribeRequestType.SLICE.getType() != reqType) {
+      sliceReqHandler.clear();
+    }
     final boolean isFencedRequest = beforeHandle(reqType);
     try {
       if (isFencedRequest) {
@@ -172,6 +193,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
           case SEEK:
             return handleSubscriptionSeek(SubscriptionSeekReq.fromThriftReq(req));
+          case SLICE:
+            return handlePipeSubscribeSlice(req);
           default:
             break;
         }
@@ -228,7 +251,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   public void invalidateConsumer() {
     synchronized (this) {
       consumerFenced = true;
+      sliceReqHandler.clear();
       clearSharedConsumerState();
+    }
+  }
+
+  @Override
+  public void releaseInFlightEvents() {
+    synchronized (this) {
+      final ConsumerConfig consumerConfig = sharedConsumerConfig;
+      if (Objects.nonNull(consumerConfig) && !consumerInvalidated) {
+        releaseInFlightEvents(consumerConfig);
+      }
     }
   }
 
@@ -246,6 +280,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           // progress to continue consuming. When another connection has already taken ownership,
           // the receiver is invalidated and even this best-effort cleanup must be skipped.
           if (!consumerInvalidated) {
+            releaseInFlightEvents(consumerConfig);
             // When handling exit, unsubscribe from topics that have already been completed as much
             // as possible to release some resources (such as the underlying pipe) in a timely
             // manner.
@@ -253,11 +288,39 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           }
         }
       } finally {
+        sliceReqHandler.clear();
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
         authenticatedUsername = null;
       }
     }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeSlice(final TPipeSubscribeReq thriftReq) {
+    final PipeSubscribeSliceReq sliceReq;
+    try {
+      sliceReq = PipeSubscribeSliceReq.fromTPipeSubscribeReq(thriftReq);
+    } catch (final RuntimeException e) {
+      sliceReqHandler.clear();
+      return SUBSCRIPTION_SLICE_ERROR_RESP;
+    }
+    if (!sliceReqHandler.receiveSlice(sliceReq)) {
+      return SUBSCRIPTION_SLICE_ERROR_RESP;
+    }
+    return sliceReqHandler
+        .makeReqIfComplete()
+        .map(this::handle)
+        .orElse(SUBSCRIPTION_SLICE_ACK_RESP);
+  }
+
+  private static int getMaxReassembledRequestBodySize() {
+    final long maxFrameSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    final long desiredSize =
+        Math.min(
+            MAX_REASSEMBLED_REQUEST_BODY_SIZE, maxFrameSize * MAX_REASSEMBLED_REQUEST_FRAME_COUNT);
+    final long memoryLimit = Math.max(maxFrameSize, Runtime.getRuntime().maxMemory() / 16);
+    return (int)
+        Math.min(Integer.MAX_VALUE, Math.max(maxFrameSize, Math.min(desiredSize, memoryLimit)));
   }
 
   @Override
@@ -408,19 +471,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     final List<SubscriptionCommitContext> processorBufferedCommitContexts =
         req.getProcessorBufferedCommitContexts();
-    final int refreshedCount =
-        SubscriptionAgent.broker()
-            .refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
-    if (Objects.nonNull(processorBufferedCommitContexts)
-        && !processorBufferedCommitContexts.isEmpty()) {
-      LOGGER.debug(
-          DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTION_CONSUMER_REFRESHED_OF_PROCESSOR_BUFFERED_COMMIT_8C7A352A,
-          consumerConfig,
-          refreshedCount,
-          processorBufferedCommitContexts.size());
-    }
-
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
@@ -437,6 +487,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .checkTopicReadPermissions(authenticatedUsername, consumerConfig, subscribedTopicNames);
     if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
+
+    final int refreshedCount =
+        refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
+    if (Objects.nonNull(processorBufferedCommitContexts)
+        && !processorBufferedCommitContexts.isEmpty()) {
+      LOGGER.debug(
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_CONSUMER_REFRESHED_OF_PROCESSOR_BUFFERED_COMMIT_8C7A352A,
+          consumerConfig,
+          refreshedCount,
+          processorBufferedCommitContexts.size());
     }
 
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS, consumerConfig);
@@ -485,6 +547,17 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS, topics, endPoints, topicNamesToUnsubscribe);
+  }
+
+  protected int refreshInFlightEventLeases(
+      final ConsumerConfig consumerConfig,
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
+    return SubscriptionAgent.broker()
+        .refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
+  }
+
+  protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+    return SubscriptionAgent.broker().requeueInFlightEvents(consumerConfig);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
@@ -752,10 +825,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                   }
 
                   try {
-                    final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
+                    final ByteBuffer byteBuffer = event.getResponseByteBuffer(response);
 
                     // payload size control
-                    final long size = event.getCurrentResponseSize();
+                    final long size = byteBuffer.remaining();
                     if (totalSize.get() + size > maxBytes) {
                       throw new SubscriptionPayloadExceedException(
                           String.format(
@@ -795,6 +868,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           response,
                           req.getRequest());
                     }
+                    // The buffer now owns the serialized bytes. Notify outside the event monitor
+                    // so queue lifecycle locks always precede the event's payload lock.
+                    event.markResponseDelivered(response);
                     return byteBuffer;
                   } catch (final Exception e) {
                     final boolean isOutdated =
@@ -952,6 +1028,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             consumerConfig,
             nack,
             commitContexts);
+      }
+    } else if (acceptedCommitContexts.isEmpty()) {
+      LOGGER.debug(
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_PARTIALLY_ACCEPTED_REQUESTED_87D0C038,
+          consumerConfig,
+          nack,
+          summarizeCommitContexts(commitContexts),
+          summarizeCommitContexts(acceptedCommitContexts),
+          summarizeCommitContexts(staleUnsubscribedCommitContexts));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_FULL_REQUESTED_COMMIT_1E67E8A3,
+            consumerConfig,
+            nack,
+            commitContexts,
+            acceptedCommitContexts,
+            staleUnsubscribedCommitContexts);
       }
     } else {
       LOGGER.warn(

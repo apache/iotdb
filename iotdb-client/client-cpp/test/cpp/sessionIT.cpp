@@ -28,6 +28,7 @@
 #include "common_types.h"
 
 #include <atomic>
+#include <map>
 #include <stdexcept>
 #include <thread>
 
@@ -842,6 +843,52 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
   sessionDataSet = session->executeLastDataQuery(paths, 100000);
   sessionDataSet->setFetchSize(1024);
   REQUIRE(sessionDataSet->hasNext() == false);
+}
+
+TEST_CASE("Fast Last Query returns all series under a tree prefix", "[fastLastQuery]") {
+  const vector<string> paths = {"root.test.fast_last_cpp.d1.s1", "root.test.fast_last_cpp.d1.s2",
+                                "root.test.fast_last_cpp.d2.s1"};
+  for (const auto& path : paths) {
+    if (session->checkTimeseriesExists(path)) {
+      session->deleteTimeseries(path);
+    }
+    session->createTimeseries(path, TSDataType::INT64, TSEncoding::RLE,
+                              CompressionType::SNAPPY);
+  }
+  session->insertRecord("root.test.fast_last_cpp.d1", 20, {"s1", "s2"}, {"1", "2"});
+  session->insertRecord("root.test.fast_last_cpp.d1", 30, {"s1"}, {"3"});
+  session->insertRecord("root.test.fast_last_cpp.d2", 40, {"s1"}, {"4"});
+
+  const map<string, string> expected = {{paths[0], "30,3,INT64"},
+                                        {paths[1], "20,2,INT64"},
+                                        {paths[2], "40,4,INT64"}};
+  const vector<string> prefix = {"root", "test", "fast_last_cpp"};
+  for (int query = 0; query < 2; ++query) {
+    auto dataSet = session->executeFastLastDataQueryForOnePrefixPath(prefix);
+    map<string, string> actual;
+    while (dataSet->hasNext()) {
+      auto row = dataSet->next();
+      REQUIRE(row->fields.size() == 3);
+      const auto& fields = row->fields;
+      auto inserted = actual.emplace(fields[0].stringV.value(),
+                                     to_string(row->timestamp) + "," +
+                                         fields[1].stringV.value() + "," + fields[2].stringV.value());
+      REQUIRE(inserted.second);
+    }
+    dataSet->closeOperationHandle();
+    REQUIRE(actual == expected);
+  }
+
+  auto empty = session->executeFastLastDataQueryForOnePrefixPath(
+      {"root", "test", "fast_last_cpp", "missing"});
+  REQUIRE_FALSE(empty->hasNext());
+  empty->closeOperationHandle();
+  REQUIRE_THROWS_AS(session->executeFastLastDataQueryForOnePrefixPath({"root", "test", "*"}),
+                    std::invalid_argument);
+
+  for (const auto& path : paths) {
+    session->deleteTimeseries(path);
+  }
 }
 
 // Helper function for comparing TEndPoint with detailed error message

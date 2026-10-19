@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFinishedException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
@@ -63,6 +65,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntConsumer;
 
@@ -71,9 +74,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -139,8 +144,12 @@ public class SeriesScanUtilCancellationTest {
           throw new AssertionError(state);
       }
 
-      IOException exception = assertThrows(IOException.class, scanner::hasNextFile);
-      assertSame(context.getFailureCause().orElse(null), exception.getCause());
+      if (state == FragmentInstanceState.FINISHED) {
+        assertThrows(FragmentInstanceFinishedException.class, scanner::hasNextFile);
+      } else {
+        IOException exception = assertThrows(IOException.class, scanner::hasNextFile);
+        assertSame(context.getFailureCause().orElse(null), exception.getCause());
+      }
       assertEquals(0, loadedFiles);
       assertEquals(state, context.getStateMachine().getState());
     }
@@ -237,12 +246,22 @@ public class SeriesScanUtilCancellationTest {
 
   @Test(timeout = 15000)
   public void testTimeoutUnblocksDriverResourceCleanup() throws Exception {
+    assertFailureUnblocksDriverResourceCleanup(new QueryTimeoutException());
+  }
+
+  @Test(timeout = 15000)
+  public void testSemanticFailureUnblocksDriverResourceCleanup() throws Exception {
+    assertFailureUnblocksDriverResourceCleanup(
+        new SemanticException("Scalar sub-query has returned multiple rows."));
+  }
+
+  private void assertFailureUnblocksDriverResourceCleanup(RuntimeException failure)
+      throws Exception {
     ExecutorService notifications = Executors.newSingleThreadExecutor();
     FragmentInstanceContext context = newContext(notifications);
     context.initializeNumOfDrivers(1);
     try {
       CountDownLatch closeRequested = new CountDownLatch(1);
-      QueryTimeoutException timeout = new QueryTimeoutException();
       SeriesScanUtil scanner =
           newScanner(
               context,
@@ -251,7 +270,7 @@ public class SeriesScanUtilCancellationTest {
               4,
               count -> {
                 if (count == 2) {
-                  context.failed(timeout);
+                  context.failed(failure);
                   try {
                     // The notification thread has requested close while this thread owns the
                     // driver lock, just as in a query that is still loading metadata.
@@ -296,10 +315,9 @@ public class SeriesScanUtilCancellationTest {
           exchangeManager);
 
       assertSame(
-          timeout,
+          failure,
           assertThrows(
-              QueryTimeoutException.class,
-              () -> driver.processFor(new Duration(1, TimeUnit.SECONDS))));
+              RuntimeException.class, () -> driver.processFor(new Duration(1, TimeUnit.SECONDS))));
       // This can complete only after the preceding cleanup callback gets past allDriversClosed.
       notifications.submit(() -> {}).get(5, TimeUnit.SECONDS);
       assertEquals(2, loadedFiles);
@@ -313,6 +331,146 @@ public class SeriesScanUtilCancellationTest {
       context.decrementNumOfUnClosedDriver();
       notifications.shutdownNow();
       assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test(timeout = 60000)
+  public void testFinishedScanUnblocksDriverResourceCleanup() throws Exception {
+    for (boolean sequence : new boolean[] {true, false}) {
+      for (boolean waitForClose : new boolean[] {false, true}) {
+        assertFinishedScanUnblocksDriverResourceCleanup(sequence, waitForClose);
+      }
+    }
+  }
+
+  private void assertFinishedScanUnblocksDriverResourceCleanup(
+      boolean sequence, boolean waitForClose) throws Exception {
+    ExecutorService notifications = Executors.newSingleThreadExecutor();
+    ExecutorService worker = Executors.newSingleThreadExecutor();
+    CountDownLatch allowNotifications = new CountDownLatch(waitForClose ? 0 : 1);
+    CountDownLatch scanEntered = new CountDownLatch(1);
+    CountDownLatch resumeScan = new CountDownLatch(1);
+    CountDownLatch closeRequested = new CountDownLatch(1);
+    // Cover both orderings: the FI is FINISHED before driver.close(), and close is already pending.
+    notifications.submit(() -> await(allowNotifications));
+    FragmentInstanceContext context = newContext(notifications);
+    context.initializeNumOfDrivers(1);
+    Operator operator = mock(Operator.class);
+    doReturn(NOT_BLOCKED).when(operator).isBlocked();
+    when(operator.hasNextWithTimer()).thenReturn(true);
+    SeriesScanUtil scanner =
+        newScanner(
+            context,
+            Ordering.ASC,
+            sequence,
+            4,
+            count -> {
+              if (count == 1) {
+                scanEntered.countDown();
+                await(resumeScan);
+              }
+            });
+    when(operator.nextWithTimer())
+        .thenAnswer(
+            invocation -> {
+              scanner.hasNextFile();
+              return null;
+            });
+    ISink sink = mock(ISink.class);
+    doReturn(NOT_BLOCKED).when(sink).isFull();
+    DataDriverContext driverContext = new DataDriverContext(context, 0);
+    driverContext.setSink(sink);
+    DataDriver driver =
+        new DataDriver(operator, driverContext, 0) {
+          @Override
+          public void close() {
+            super.close();
+            closeRequested.countDown();
+          }
+        };
+    MPPDataExchangeManager exchangeManager = mock(MPPDataExchangeManager.class);
+    IDriverScheduler scheduler = mock(IDriverScheduler.class);
+    FragmentInstanceExecution.createFragmentInstanceExecution(
+        scheduler,
+        context.getId(),
+        context,
+        Collections.singletonList(driver),
+        sink,
+        context.getStateMachine(),
+        1000,
+        false,
+        exchangeManager);
+    try {
+      Future<?> execution =
+          worker.submit(() -> driver.processFor(new Duration(1, TimeUnit.SECONDS)));
+      await(scanEntered);
+      context.finished();
+      if (waitForClose) {
+        await(closeRequested);
+      }
+      resumeScan.countDown();
+      execution.get(5, TimeUnit.SECONDS);
+      assertTrue(driver.isFinished());
+      assertEquals(1, loadedFiles);
+      assertEquals(FragmentInstanceState.FINISHED, context.getStateMachine().getState());
+      assertTrue(context.getStateMachine().getFailureCauses().isEmpty());
+      allowNotifications.countDown();
+      notifications.submit(() -> {}).get(5, TimeUnit.SECONDS);
+      verify(operator).close();
+      verify(context.getMemoryReservationContext()).releaseAllReservedMemory();
+      verify(exchangeManager)
+          .deRegisterFragmentInstanceFromMemoryPool(
+              context.getId().getQueryId().getId(), context.getId().getFragmentInstanceId(), true);
+      verify(scheduler, never()).abortFragmentInstance(any(), any());
+    } finally {
+      resumeScan.countDown();
+      allowNotifications.countDown();
+      worker.shutdownNow();
+      assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
+      driver.close();
+      context.decrementNumOfUnClosedDriver();
+      // Let FI cleanup finish after opening its latch, without interrupting its driver-close wait.
+      notifications.shutdown();
+      assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testFinishedFragmentDoesNotSuppressIOException() throws Exception {
+    FragmentInstanceContext context = newContext(Runnable::run);
+    context.initializeNumOfDrivers(1);
+    IOException failure = new IOException("Failed to read file metadata");
+    Operator operator = mock(Operator.class);
+    doReturn(NOT_BLOCKED).when(operator).isBlocked();
+    when(operator.hasNextWithTimer()).thenReturn(true);
+    when(operator.nextWithTimer())
+        .thenAnswer(
+            invocation -> {
+              context.finished();
+              throw failure;
+            });
+    ISink sink = mock(ISink.class);
+    doReturn(NOT_BLOCKED).when(sink).isFull();
+    DataDriverContext driverContext = new DataDriverContext(context, 0);
+    driverContext.setSink(sink);
+    DataDriver driver = new DataDriver(operator, driverContext, 0);
+    try {
+      RuntimeException exception =
+          assertThrows(
+              RuntimeException.class, () -> driver.processFor(new Duration(1, TimeUnit.SECONDS)));
+      assertSame(failure, exception.getCause());
+      assertSame(failure, context.getFailureCause().get());
+    } finally {
+      driver.close();
+    }
+  }
+
+  private static void await(CountDownLatch latch) {
+    try {
+      assertTrue(latch.await(5, TimeUnit.SECONDS));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
     }
   }
 

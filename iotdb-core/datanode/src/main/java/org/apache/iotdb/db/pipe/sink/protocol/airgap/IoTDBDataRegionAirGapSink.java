@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
@@ -553,7 +554,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
-                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+                .forceAllocateForTsFileWithRetry(
+                    IoTDBDataRegionAirGapSink.class.getSimpleName(),
+                    readFileBufferSize,
+                    PipeMemoryBlockCategory.SINK,
+                    IoTDBDataRegionAirGapSink.class.getSimpleName());
         final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
@@ -665,7 +670,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   @Override
   protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+    if (Objects.nonNull(sinkTaskId)) {
+      // Do not cache the timer, the metric service replaces it when it restarts
       compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(reqInBytes);

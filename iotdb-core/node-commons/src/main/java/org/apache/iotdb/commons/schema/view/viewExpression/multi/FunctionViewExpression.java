@@ -81,7 +81,7 @@ public class FunctionViewExpression extends ViewExpression {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
     functionAttributesKeyValueList = ReadWriteIOUtils.readStringList(byteBuffer);
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
-    expressions = new ArrayList<>();
+    expressions = new ArrayList<>(expressionSize);
     for (int i = 0; i < expressionSize; i++) {
       expressions.add(ViewExpression.deserialize(byteBuffer));
     }
@@ -92,7 +92,7 @@ public class FunctionViewExpression extends ViewExpression {
       functionName = ReadWriteIOUtils.readString(inputStream);
       functionAttributesKeyValueList = ReadWriteIOUtils.readStringList(inputStream);
       int expressionSize = ReadWriteIOUtils.readInt(inputStream);
-      expressions = new ArrayList<>();
+      expressions = new ArrayList<>(expressionSize);
       for (int i = 0; i < expressionSize; i++) {
         expressions.add(ViewExpression.deserialize(inputStream));
       }
