@@ -55,7 +55,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -329,39 +328,37 @@ public class AlignedChunkData implements ChunkData {
   }
 
   protected void encodeAndBuildChunks() throws IOException, PageException {
-    // One aligned ChunkData may accumulate pages from several physical Chunks before it is
-    // consumed. Encode every Chunk represented by the current buffers, while leaving Chunks that
-    // were sealed by an earlier endChunk() untouched.
-    final Set<Integer> bufferedChunkIndexes = new LinkedHashSet<>();
+    // Group the buffered pages by chunk once; scanning the whole page list once per chunk turns
+    // wide aligned tables into O(columns * pages).
+    final Map<Integer, List<PageBuffer>> pagesByChunkIndex = new LinkedHashMap<>();
     for (final PageBuffer pageBuffer : pageBuffers) {
-      bufferedChunkIndexes.add(pageBuffer.chunkIndex);
+      pagesByChunkIndex
+          .computeIfAbsent(pageBuffer.chunkIndex, ignored -> new ArrayList<>())
+          .add(pageBuffer);
     }
 
-    // A chunk whose pages were never split only needs its page headers and data copied. Building it
-    // through AlignedChunkWriterImpl would encode every page again and then copy the whole chunk
-    // out
-    // of the writer's growable buffer, so its peak cost is roughly four times the chunk size.
+    // Fast-path: assemble chunks that need no splitting directly, avoiding re-encoding and its
+    // buffer amplification.
     final Map<Integer, Chunk> directlyBuiltChunks = new LinkedHashMap<>();
-    for (final int chunkIndex : bufferedChunkIndexes) {
+    for (final Map.Entry<Integer, List<PageBuffer>> entry : pagesByChunkIndex.entrySet()) {
+      final int chunkIndex = entry.getKey();
       final Chunk chunk =
           buildChunkFromUndecodedPages(
-              chunkIndex,
               chunkHeaderList.get(chunkIndex),
-              chunkIndex == 0 ? TIME_COLUMN_MASK : VALUE_COLUMN_MASK);
+              chunkIndex == 0 ? TIME_COLUMN_MASK : VALUE_COLUMN_MASK,
+              entry.getValue());
       if (chunk != null) {
         directlyBuiltChunks.put(chunkIndex, chunk);
       }
     }
 
     final AlignedChunkWriterImpl writer =
-        directlyBuiltChunks.size() == bufferedChunkIndexes.size()
-            ? null
-            : createAlignedChunkWriter();
+        directlyBuiltChunks.size() == pagesByChunkIndex.size() ? null : createAlignedChunkWriter();
     if (writer != null) {
       writePageBuffersToWriter(writer, directlyBuiltChunks.keySet());
     }
 
-    for (final int chunkIndex : bufferedChunkIndexes) {
+    for (final int chunkIndex : pagesByChunkIndex.keySet()) {
       final Chunk directChunk = directlyBuiltChunks.get(chunkIndex);
       if (directChunk != null) {
         entireChunks.add(directChunk);
@@ -401,17 +398,15 @@ public class AlignedChunkData implements ChunkData {
    * the caller then falls back to {@link AlignedChunkWriterImpl}.
    */
   protected Chunk buildChunkFromUndecodedPages(
-      final int chunkIndex, final ChunkHeader sourceHeader, final int mask) throws IOException {
+      final ChunkHeader sourceHeader, final int mask, final List<PageBuffer> chunkPages)
+      throws IOException {
     // A time chunk header carries VECTOR, and its pages use TimeStatistics rather than the
     // LongStatistics that Statistics.getStatsByType(INT64) would create.
     final TSDataType statisticsType = sourceHeader.getDataType();
     Statistics<?> statistics = null;
     int totalSize = 0;
     int pageCount = 0;
-    for (final PageBuffer page : pageBuffers) {
-      if (page.chunkIndex != chunkIndex) {
-        continue;
-      }
+    for (final PageBuffer page : chunkPages) {
       if (page.needDecode || page.pageHeader == null || page.pageHeader.getStatistics() == null) {
         return null;
       }
@@ -431,8 +426,8 @@ public class AlignedChunkData implements ChunkData {
 
     final ByteBuffer encodedData = ByteBuffer.allocate(totalSize);
     final OutputStream headerStream = new ByteBufferOutputStream(encodedData);
-    for (final PageBuffer page : pageBuffers) {
-      if (page.chunkIndex != chunkIndex || page.pageData.remaining() == 0) {
+    for (final PageBuffer page : chunkPages) {
+      if (page.pageData.remaining() == 0) {
         continue;
       }
       page.pageHeader.serializeTo(headerStream);
@@ -510,11 +505,7 @@ public class AlignedChunkData implements ChunkData {
   private void writePageBuffersToWriter(
       final AlignedChunkWriterImpl writer, final Set<Integer> directlyBuiltChunkIndexes)
       throws IOException, PageException {
-    // The partition bounds do not depend on the point and TimePartitionUtils derives them with
-    // BigInteger arithmetic, so resolve them once per ChunkData instead of once per buffered point:
-    // a page that covers thousands of time partitions otherwise costs O(points * partitions) bound
-    // computations and the matching allocation churn. The end time is the overflow-safe one, so the
-    // last representable partition still keeps its upper bound.
+    // Cache partition bounds: resolving them per point performs BigInteger work and allocations.
     final long partitionStart = timePartitionSlot.getStartTime();
     final long partitionEnd = TimePartitionUtils.getTimePartitionEndTime(partitionStart);
     for (final PageBuffer page : pageBuffers) {
@@ -535,58 +526,55 @@ public class AlignedChunkData implements ChunkData {
         }
         continue;
       }
-      // Times inside a page are sorted, so the points of this partition are one contiguous range.
-      // Locating that range with two binary searches avoids rescanning the whole page for every
-      // partition: a page that covers thousands of partitions used to cost O(points * partitions)
-      // bound comparisons even after the bounds themselves were cached.
-      final int from = lowerBound(page.timeBatch, partitionStart);
-      final int to = upperBound(page.timeBatch, partitionEnd);
+      // Timestamps within a page are monotonically increasing; binary-search the contiguous slice
+      // for this partition, starting the upper bound at the lower bound.
+      final int from = lowerBound(page.timeBatch, 0, page.timeBatch.length, partitionStart);
+      final int to = upperBound(page.timeBatch, from, page.timeBatch.length, partitionEnd);
+      if (from >= to) {
+        continue;
+      }
       if (page.valueBatch == null) {
         for (int i = from; i < to; i++) {
           writer.writeTime(page.timeBatch[i]);
         }
-        if (from < to) {
-          writer.sealCurrentTimePage();
-        }
+        writer.sealCurrentTimePage();
       } else {
         final TSDataType dataType = chunkHeaderList.get(page.chunkIndex).getDataType();
         for (int i = from; i < to; i++) {
           writeValueToAlignedChunkWriter(
               writer, page.timeBatch[i], page.valueBatch[i], dataType, page.chunkIndex - 1);
         }
-        if (from < to) {
-          writer.sealCurrentValuePage(page.chunkIndex - 1);
-        }
+        writer.sealCurrentValuePage(page.chunkIndex - 1);
       }
     }
   }
 
-  private static int lowerBound(final long[] times, final long key) {
-    int low = 0;
-    int high = times.length;
-    while (low < high) {
-      final int mid = (low + high) >>> 1;
+  private static int lowerBound(final long[] times, final int low, final int high, final long key) {
+    int left = low;
+    int right = high;
+    while (left < right) {
+      final int mid = (left + right) >>> 1;
       if (times[mid] < key) {
-        low = mid + 1;
+        left = mid + 1;
       } else {
-        high = mid;
+        right = mid;
       }
     }
-    return low;
+    return left;
   }
 
-  private static int upperBound(final long[] times, final long key) {
-    int low = 0;
-    int high = times.length;
-    while (low < high) {
-      final int mid = (low + high) >>> 1;
+  private static int upperBound(final long[] times, final int low, final int high, final long key) {
+    int left = low;
+    int right = high;
+    while (left < right) {
+      final int mid = (left + right) >>> 1;
       if (times[mid] <= key) {
-        low = mid + 1;
+        left = mid + 1;
       } else {
-        high = mid;
+        right = mid;
       }
     }
-    return low;
+    return left;
   }
 
   private void writeValueToAlignedChunkWriter(

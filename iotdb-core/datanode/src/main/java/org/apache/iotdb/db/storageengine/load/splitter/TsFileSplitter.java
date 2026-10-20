@@ -551,8 +551,7 @@ public class TsFileSplitter {
     if (isAligned) {
       TimePageReader timePageReader = new TimePageReader(pageHeader, pageData, timeDecoder);
       long[] times = timePageReader.getNextTimeBatch();
-      // The values of an aligned time page are never used: the value columns are decoded by
-      // decodeValuePage. Returning null avoids allocating a page-sized array of nulls.
+      // Aligned time pages carry no value array; return null to avoid a dummy Object[].
       return new Pair<>(times, null);
     }
 

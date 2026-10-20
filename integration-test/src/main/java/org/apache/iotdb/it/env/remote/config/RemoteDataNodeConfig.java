@@ -77,6 +77,12 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setLoadWriteThroughputBytesPerSecond(
+      double loadWriteThroughputBytesPerSecond) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
     return this;
   }

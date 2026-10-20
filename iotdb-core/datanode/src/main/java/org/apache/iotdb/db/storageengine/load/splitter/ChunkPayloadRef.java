@@ -114,7 +114,7 @@ public class ChunkPayloadRef {
   public byte[] readPayload() {
     final File file = locatePayloadFile();
     try (final RandomAccessFile input = new RandomAccessFile(file, "r")) {
-      final byte[] payload = new byte[(int) size];
+      final byte[] payload = new byte[Math.toIntExact(size)];
       input.seek(offset);
       input.readFully(payload);
       return payload;
@@ -125,7 +125,7 @@ public class ChunkPayloadRef {
               file.getAbsolutePath(),
               offset),
           e);
-    } catch (final IOException | ArithmeticException | NegativeArraySizeException e) {
+    } catch (final IOException | ArithmeticException e) {
       throw new ChunkPayloadUnavailableException(
           String.format(
               StorageEngineMessages
@@ -145,7 +145,7 @@ public class ChunkPayloadRef {
     if (size == 0) {
       return;
     }
-    final byte[] buffer = new byte[(int) Math.min(size, 8192L)];
+    final byte[] buffer = ChunkStreamBuffer.get();
     try (final RandomAccessFile input = new RandomAccessFile(file, "r")) {
       input.seek(offset);
       long remaining = size;
@@ -164,7 +164,7 @@ public class ChunkPayloadRef {
               file.getAbsolutePath(),
               offset),
           e);
-    } catch (final IOException | ArithmeticException | NegativeArraySizeException e) {
+    } catch (final IOException | ArithmeticException e) {
       throw new ChunkPayloadUnavailableException(
           String.format(
               StorageEngineMessages
@@ -177,10 +177,9 @@ public class ChunkPayloadRef {
 
   private File locatePayloadFile() {
     final File file = locateFile();
-    // Checked against the file before the buffer is allocated: without it a reference to bytes past
-    // the end of the staged file would still allocate its full size and fail later, and a huge size
-    // would be allocated only to be thrown away.
-    if (offset + size > file.length()) {
+    // Check against the file before allocating: the subtraction form cannot overflow even for an
+    // offset or size close to Long.MAX_VALUE.
+    if (offset < 0 || size < 0 || size > file.length() - offset) {
       throw new ChunkPayloadUnavailableException(
           String.format(
               StorageEngineMessages

@@ -191,7 +191,7 @@ public interface ChunkData extends TsFileData {
       return;
     }
     final ByteBuffer duplicate = data.duplicate();
-    final byte[] buffer = new byte[Math.min(duplicate.remaining(), 8192)];
+    final byte[] buffer = ChunkStreamBuffer.get();
     while (duplicate.hasRemaining()) {
       final int length = Math.min(duplicate.remaining(), buffer.length);
       duplicate.get(buffer, 0, length);
@@ -220,9 +220,8 @@ public interface ChunkData extends TsFileData {
     }
 
     if (stream instanceof ByteBufferSliceSource source) {
-      // The piece body already owns these bytes. A slice keeps them in place instead of copying
-      // every chunk payload into a new array; the body stays reachable through the chunk until the
-      // piece has been written.
+      // Zero-copy slice over the piece body; the chunk keeps the body reachable until it is
+      // written.
       return source.readSlice(length);
     }
     byte[] payload = new byte[length];

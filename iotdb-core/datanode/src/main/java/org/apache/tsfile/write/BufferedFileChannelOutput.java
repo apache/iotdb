@@ -45,6 +45,10 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
   private final FileChannel channel;
   private final int bufferSize;
   private final byte[] buffer;
+
+  /** Reused wrapper over {@link #buffer} so each flush does not allocate a new ByteBuffer. */
+  private final ByteBuffer bufferView;
+
   private int bufferLength;
 
   /** Creates an output that buffers {@code load_tsfile_write_buffer_size_in_byte} bytes. */
@@ -67,6 +71,7 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
     }
     this.bufferSize = bufferSize;
     this.buffer = new byte[bufferSize];
+    this.bufferView = ByteBuffer.wrap(buffer);
   }
 
   private static int configuredBufferSize() {
@@ -120,9 +125,7 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
     }
     if (length >= bufferSize) {
       flushBuffer();
-      while (src.hasRemaining()) {
-        channel.write(src);
-      }
+      writeFully(src);
       return;
     }
     if (length > bufferSize - bufferLength) {
@@ -134,10 +137,7 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
 
   private void writeDirect(final byte[] bytes, final int offset, final int length)
       throws IOException {
-    final ByteBuffer wrap = ByteBuffer.wrap(bytes, offset, length);
-    while (wrap.hasRemaining()) {
-      channel.write(wrap);
-    }
+    writeFully(ByteBuffer.wrap(bytes, offset, length));
   }
 
   /** Hands the buffered bytes to the channel, keeping the previous writes in order. */
@@ -145,11 +145,15 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
     if (bufferLength == 0) {
       return;
     }
-    final ByteBuffer wrap = ByteBuffer.wrap(buffer, 0, bufferLength);
-    while (wrap.hasRemaining()) {
-      channel.write(wrap);
-    }
+    bufferView.position(0).limit(bufferLength);
+    writeFully(bufferView);
     bufferLength = 0;
+  }
+
+  private void writeFully(final ByteBuffer src) throws IOException {
+    while (src.hasRemaining()) {
+      channel.write(src);
+    }
   }
 
   @Override

@@ -410,6 +410,29 @@ public class LoadTsFileManagerTest {
     }
   }
 
+  @Test
+  public void testChunkPayloadRefStreamsPayloadsLargerThanItsScratchBuffer() throws Exception {
+    // Stage a piece first so the shared staging directory follows this test's tempDir, then append
+    // a payload larger than the 8 KiB scratch buffer to the staged file.
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode piece = stagedPiece("large-payload-load", laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    final long offset = staged.length();
+    final byte[] payload = new byte[20_000];
+    for (int i = 0; i < payload.length; i++) {
+      payload[i] = (byte) (i * 31);
+    }
+    Files.write(staged.toPath(), payload, StandardOpenOption.APPEND);
+
+    final ChunkPayloadRef ref =
+        new ChunkPayloadRef(staged.getAbsolutePath(), offset, payload.length);
+    final ByteArrayOutputStream output = new ByteArrayOutputStream(payload.length);
+    ref.writePayloadTo(new DataOutputStream(output));
+
+    assertArrayEquals(payload, output.toByteArray());
+  }
+
   /**
    * A PREPARE of a task that is still missing a piece must fail instead of sealing the file.
    *

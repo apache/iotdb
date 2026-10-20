@@ -83,6 +83,12 @@ public class IoTDBLoadTsFileRegionMigrationIT {
   private static final int CONFIG_NODE_NUM = 1;
   private static final int DATA_NODE_NUM = 3;
 
+  /**
+   * Keep the LOAD blocked after its first piece until the migration has been submitted, so the two
+   * operations cannot silently run one after the other on a fast machine.
+   */
+  private static final double THROTTLED_LOAD_WRITE_THROUGHPUT_BYTES_PER_SECOND = 1;
+
   private File tmpDir;
 
   @BeforeClass
@@ -93,6 +99,10 @@ public class IoTDBLoadTsFileRegionMigrationIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("1:10:1:1:1:0");
     EnvFactory.getEnv().getConfig().getCommonConfig().setTargetChunkPointNum(1_000);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxNumberOfPointsInPage(500);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeConfig()
+        .setLoadWriteThroughputBytesPerSecond(THROTTLED_LOAD_WRITE_THROUGHPUT_BYTES_PER_SECOND);
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -169,6 +179,10 @@ public class IoTDBLoadTsFileRegionMigrationIT {
             "migrate region " + migration[0] + " from " + migration[1] + " to " + migration[2]);
       }
 
+      // The migration procedure is submitted asynchronously. Resume the throttled LOAD now so the
+      // two operations overlap instead of running one after the other.
+      restoreLoadWriteThroughput();
+
       // The LOAD may follow the migration with a refreshed route or fall back to the tablet path,
       // but it must not report a failure to the client.
       final Exception loadFailure = load.get(15, TimeUnit.MINUTES);
@@ -181,7 +195,19 @@ public class IoTDBLoadTsFileRegionMigrationIT {
         awaitPointCount(statement, writtenPointCount);
       }
     } finally {
+      try {
+        restoreLoadWriteThroughput();
+      } catch (final Exception ignored) {
+        // Preserve the original failure; the cluster is discarded by tearDownClass.
+      }
       loader.shutdownNow();
+    }
+  }
+
+  private static void restoreLoadWriteThroughput() throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"load_write_throughput_bytes_per_second\"=\"-1\"");
     }
   }
 
