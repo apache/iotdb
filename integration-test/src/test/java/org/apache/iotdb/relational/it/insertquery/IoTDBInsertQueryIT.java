@@ -280,9 +280,7 @@ public class IoTDBInsertQueryIT {
       statement.execute("DELETE FROM vehicle1");
       statement.execute(
           "INSERT INTO vehicle1(time, s2, manufacturer) SELECT time, s2, manufacturer FROM vehicle0");
-      resultSet =
-          statement.executeQuery(
-              "SELECT deviceId, manufacturer, s1, s2 FROM vehicle1 ORDER BY manufacturer, s2");
+      resultSet = statement.executeQuery("SELECT deviceId, manufacturer, s1, s2 FROM vehicle1");
       while (resultSet.next()) {
         for (int i = 1; i <= 4; i++) {
           if (i % 2 == 1) {

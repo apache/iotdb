@@ -54,8 +54,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getUnorderedResultSets;
-
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT3.class})
 public class IoTDBShowReceiversTripleIT {
@@ -216,65 +214,36 @@ public class IoTDBShowReceiversTripleIT {
       final String secondPipeName,
       final int secondReceiverDataNodeId)
       throws SQLException {
+    boolean hasFirstPipe = false;
+    boolean hasSecondPipe = false;
+    final Set<Integer> receiverDataNodeIds = new HashSet<>();
     try (final Connection connection =
             receiverEnv.getConnection(
                 SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
-      // Each node must see both senders, but unordered table queries may return different row
-      // orders.
-      for (final ResultSet nodeResult :
-          BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
-              ? getUnorderedResultSets(sql, resultSet)
-              : Collections.singletonList(resultSet)) {
-        if (!hasExpectedReceivers(
-            nodeResult,
-            sqlDialect,
-            firstPipeName,
-            firstReceiverDataNodeId,
-            secondPipeName,
-            secondReceiverDataNodeId)) {
-          return false;
+      while (resultSet.next()) {
+        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
+        if (!"DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+            || !"thrift".equals(getString(resultSet, "Protocol", "protocol"))
+            || pipeIds == null) {
+          continue;
         }
-      }
-      return true;
-    }
-  }
-
-  private static boolean hasExpectedReceivers(
-      final ResultSet resultSet,
-      final String sqlDialect,
-      final String firstPipeName,
-      final int firstReceiverDataNodeId,
-      final String secondPipeName,
-      final int secondReceiverDataNodeId)
-      throws SQLException {
-    boolean hasFirstPipe = false;
-    boolean hasSecondPipe = false;
-    final Set<Integer> receiverDataNodeIds = new HashSet<>();
-    while (resultSet.next()) {
-      final String pipeIds = getString(resultSet, sqlDialect, "PipeIDs", "pipe_ids");
-      if (!"DataNode"
-              .equals(getString(resultSet, sqlDialect, "ReceiverNodeType", "receiver_node_type"))
-          || !"thrift".equals(getString(resultSet, sqlDialect, "Protocol", "protocol"))
-          || pipeIds == null) {
-        continue;
-      }
-      final int receiverDataNodeId =
-          getInt(resultSet, sqlDialect, "ReceiverNodeId", "receiver_node_id");
-      if (receiverDataNodeId == firstReceiverDataNodeId
-          && pipeIds.contains(firstPipeName + "@")
-          && getInt(resultSet, sqlDialect, "ConnectionCount", "connection_count") >= 1
-          && getInt(resultSet, sqlDialect, "PipeCount", "pipe_count") >= 1) {
-        hasFirstPipe = true;
-        receiverDataNodeIds.add(receiverDataNodeId);
-      }
-      if (receiverDataNodeId == secondReceiverDataNodeId
-          && pipeIds.contains(secondPipeName + "@")
-          && getInt(resultSet, sqlDialect, "ConnectionCount", "connection_count") >= 1
-          && getInt(resultSet, sqlDialect, "PipeCount", "pipe_count") >= 1) {
-        hasSecondPipe = true;
-        receiverDataNodeIds.add(receiverDataNodeId);
+        final int receiverDataNodeId = getInt(resultSet, "ReceiverNodeId", "receiver_node_id");
+        if (receiverDataNodeId == firstReceiverDataNodeId
+            && pipeIds.contains(firstPipeName + "@")
+            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+            && getInt(resultSet, "PipeCount", "pipe_count") >= 1) {
+          hasFirstPipe = true;
+          receiverDataNodeIds.add(receiverDataNodeId);
+        }
+        if (receiverDataNodeId == secondReceiverDataNodeId
+            && pipeIds.contains(secondPipeName + "@")
+            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+            && getInt(resultSet, "PipeCount", "pipe_count") >= 1) {
+          hasSecondPipe = true;
+          receiverDataNodeIds.add(receiverDataNodeId);
+        }
       }
     }
     return hasFirstPipe && hasSecondPipe && receiverDataNodeIds.size() >= 2;
@@ -297,22 +266,22 @@ public class IoTDBShowReceiversTripleIT {
   }
 
   private static String getString(
-      final ResultSet resultSet,
-      final String sqlDialect,
-      final String treeColumnName,
-      final String tableColumnName)
+      final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
       throws SQLException {
-    return resultSet.getString(
-        BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) ? tableColumnName : treeColumnName);
+    try {
+      return resultSet.getString(treeColumnName);
+    } catch (final SQLException ignored) {
+      return resultSet.getString(tableColumnName);
+    }
   }
 
   private static int getInt(
-      final ResultSet resultSet,
-      final String sqlDialect,
-      final String treeColumnName,
-      final String tableColumnName)
+      final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
       throws SQLException {
-    return resultSet.getInt(
-        BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) ? tableColumnName : treeColumnName);
+    try {
+      return resultSet.getInt(treeColumnName);
+    } catch (final SQLException ignored) {
+      return resultSet.getInt(tableColumnName);
+    }
   }
 }

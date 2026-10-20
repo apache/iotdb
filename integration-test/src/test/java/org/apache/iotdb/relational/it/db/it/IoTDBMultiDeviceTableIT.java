@@ -264,7 +264,7 @@ public class IoTDBMultiDeviceTableIT {
   }
 
   private void testSelectAll() {
-    String selectSql = "select * from t ORDER BY tag1, tag2, time";
+    String selectSql = "select * from t";
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {

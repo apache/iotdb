@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 
@@ -75,14 +74,6 @@ public final class CollectQueryAssertions {
       // Parentheses around the whole query retain its ordering; nested FROM/UNION branches do not.
       query = ((TableSubquery) body).getQuery();
     }
-    return nodeResults(resultSet);
-  }
-
-  /** EXPLAIN text may contain node-specific details; each node must satisfy the plan assertions. */
-  public static List<ResultSet> getExplainResultSets(String sql, ResultSet resultSet) {
-    assertTrue(
-        "Plan assertions require EXPLAIN: " + sql,
-        new SqlParser().createStatement(sql, ZoneOffset.UTC, null) instanceof Explain);
     return nodeResults(resultSet);
   }
 

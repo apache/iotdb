@@ -40,7 +40,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getExplainResultSets;
 import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getUnorderedResultSets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -135,15 +134,6 @@ public class IoTDBClusterResultSetIT {
     try (ResultSet result = cluster(new String[] {"a"})) {
       assertEquals(1, getUnorderedResultSets("SELECT value FROM t", result).size());
       assertUnorderedQueryResult("SELECT value FROM t", result, "value,", Arrays.asList("a,"));
-    }
-  }
-
-  @Test
-  public void testExplainChecksAreExplicit() throws SQLException {
-    try (ResultSet result = cluster(new String[] {"plan-a"}, new String[] {"plan-b"})) {
-      assertThrows(AssertionError.class, () -> getExplainResultSets("SELECT value FROM t", result));
-      assertEquals(
-          2, getExplainResultSets("EXPLAIN SELECT value FROM t ORDER BY value", result).size());
     }
   }
 

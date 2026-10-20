@@ -41,7 +41,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getExplainResultSets;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
@@ -5903,23 +5902,19 @@ public class IoTDBTableAggregationIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
-      try (ResultSet clusterResult = statement.executeQuery("EXPLAIN (FORMAT JSON) " + query)) {
-        for (ResultSet resultSet :
-            getExplainResultSets("EXPLAIN (FORMAT JSON) " + query, clusterResult)) {
-          Assert.assertTrue(resultSet.next());
-          String plan = resultSet.getString(1);
-          // The PARTIAL/FINAL split only exists when the scanned data spans multiple DataRegions.
-          // Under randomized partition allocation (e.g. the SHUFFLE strategy used by
-          // IoTDBTableAggregation2IT), all devices may occasionally land in one single region,
-          // where a SINGLE-step aggregation is the correct plan, so the check must be skipped.
-          if (countDistinctRegionIds(plan) < 2) {
-            continue;
-          }
-          Assert.assertTrue(
-              "Expected a PARTIAL aggregation in plan: " + plan, plan.contains("PARTIAL"));
-          Assert.assertTrue(
-              "Expected a FINAL aggregation in plan: " + plan, plan.contains("FINAL"));
+      try (ResultSet resultSet = statement.executeQuery("EXPLAIN (FORMAT JSON) " + query)) {
+        Assert.assertTrue(resultSet.next());
+        String plan = resultSet.getString(1);
+        // The PARTIAL/FINAL split only exists when the scanned data spans multiple DataRegions.
+        // Under randomized partition allocation (e.g. the SHUFFLE strategy used by
+        // IoTDBTableAggregation2IT), all devices may occasionally land in one single region,
+        // where a SINGLE-step aggregation is the correct plan, so the check must be skipped.
+        if (countDistinctRegionIds(plan) < 2) {
+          return;
         }
+        Assert.assertTrue(
+            "Expected a PARTIAL aggregation in plan: " + plan, plan.contains("PARTIAL"));
+        Assert.assertTrue("Expected a FINAL aggregation in plan: " + plan, plan.contains("FINAL"));
       }
     } catch (Exception exception) {
       throw new AssertionError(exception);

@@ -125,7 +125,9 @@ public class IoTDBCollectFanInIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE);
       try (ResultSet result =
-          statement.executeQuery(TableModelUtils.getQuerySql("pipe_readings"))) {
+          statement.executeQuery(
+              "select s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,time from pipe_readings "
+                  + "order by s0,s1,s2,s3,time")) {
         TestUtils.assertResultSetEqual(result, TableModelUtils.generateHeaderResults(), expected);
       }
     }

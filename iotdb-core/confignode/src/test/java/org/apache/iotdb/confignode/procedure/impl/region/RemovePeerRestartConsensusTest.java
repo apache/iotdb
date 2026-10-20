@@ -99,9 +99,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 
 /**
  * Runs the ConfigNode removal state machine against real IoTConsensus replication services. Only
@@ -161,12 +159,8 @@ public class RemovePeerRestartConsensusTest {
       final PartitionInfo partitionInfo = newPartitionInfo(locations);
       final ConfigManager configManager =
           Mockito.mock(ConfigManager.class, Mockito.RETURNS_DEEP_STUBS);
-      Mockito.when(
-              configManager.getPartitionManager().getRegionDatabase(any(TConsensusGroupId.class)))
-          .thenAnswer(call -> partitionInfo.getRegionDatabase(call.getArgument(0)));
-      Mockito.when(configManager.getPartitionManager().getReplicaSets(anyString(), anyList()))
-          .thenAnswer(
-              call -> partitionInfo.getReplicaSets(call.getArgument(0), call.getArgument(1)));
+      Mockito.when(configManager.getPartitionManager().getAllReplicaSets())
+          .thenAnswer(ignored -> partitionInfo.getAllReplicaSets());
       Mockito.when(
               configManager
                   .getPartitionManager()
