@@ -227,7 +227,7 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ",
+            + ") AS m ORDER BY m.time ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -282,7 +282,7 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ",
+            + ") AS m ORDER BY m.time ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -333,7 +333,7 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ",
+            + ") AS m ORDER BY m.time ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -384,7 +384,7 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ",
+            + ") AS m ORDER BY m.time ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -426,7 +426,7 @@ public class IoTDBPatternAggregationIT {
             + "      B AS totalprice = 20, "
             + "      C AS totalprice = 30, "
             + "      D AS totalprice = 40 "
-            + ") AS m ",
+            + ") AS m ORDER BY m.time ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -476,7 +476,7 @@ public class IoTDBPatternAggregationIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "      A AS true "
-            + ") AS m ",
+            + ") AS m ORDER BY m.time ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -507,7 +507,7 @@ public class IoTDBPatternAggregationIT {
             + "    PATTERN ((A | B)*) "
             + "    DEFINE "
             + "        A AS AVG(totalprice) = 5 "
-            + ") AS m ",
+            + ") AS m ORDER BY m.time ",
         expectedHeader,
         retArray,
         DATABASE_NAME);

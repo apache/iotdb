@@ -31,9 +31,13 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import static java.lang.String.format;
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -279,32 +283,24 @@ public class IoTDBPatternRecognitionIT {
             + "        B AS B.totalprice < PREV(B.totalprice) "
             + ") AS m";
 
-    tableResultSetEqualTest(
-        format(sql, "ONE ROW PER MATCH", "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "ONE ROW PER MATCH", "PATTERN (B*)"), expectedHeader, retArray1);
 
-    tableResultSetEqualTest(
-        format(sql, "ALL ROWS PER MATCH", "PATTERN (B*)"),
-        expectedHeader,
-        retArray2,
-        DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "ALL ROWS PER MATCH", "PATTERN (B*)"), expectedHeader, retArray2);
 
-    tableResultSetEqualTest(
-        format(sql, "ALL ROWS PER MATCH", "PATTERN (B+)"),
-        expectedHeader,
-        retArray3,
-        DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "ALL ROWS PER MATCH", "PATTERN (B+)"), expectedHeader, retArray3);
 
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         format(sql, "ALL ROWS PER MATCH OMIT EMPTY MATCHES", "PATTERN (B*)"),
         expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+        retArray4);
 
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         format(sql, "ALL ROWS PER MATCH WITH UNMATCHED ROWS", "PATTERN (B+)"),
         expectedHeader,
-        retArray5,
-        DATABASE_NAME);
+        retArray5);
   }
 
   @Test
@@ -359,7 +355,7 @@ public class IoTDBPatternRecognitionIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "        A AS true "
-            + ") AS m";
+            + ") AS m ORDER BY m.time";
     // LAST(totalprice)
     tableResultSetEqualTest(format(sql, "totalprice"), expectedHeader, retArray1, DATABASE_NAME);
     tableResultSetEqualTest(
@@ -454,7 +450,7 @@ public class IoTDBPatternRecognitionIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "        A AS true "
-            + ") AS m";
+            + ") AS m ORDER BY m.time";
     // PREV(totalprice)
     tableResultSetEqualTest(
         format(sql1, "PREV(totalprice)"), expectedHeader1, retArray1, DATABASE_NAME);
@@ -588,7 +584,7 @@ public class IoTDBPatternRecognitionIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "        A AS true "
-            + ") AS m";
+            + ") AS m ORDER BY m.time";
     // PREV(FIRST(totalprice))
     tableResultSetEqualTest(
         format(sql, "PREV(RPR_FIRST(totalprice))"), expectedHeader, retArray1, DATABASE_NAME);
@@ -677,7 +673,7 @@ public class IoTDBPatternRecognitionIT {
             + "        A AS A.totalprice = 80, "
             + "        L AS L.totalprice < 80, "
             + "        H AS H.totalprice > 80 "
-            + ") AS m";
+            + ") AS m ORDER BY m.time";
 
     tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
   }
@@ -713,7 +709,7 @@ public class IoTDBPatternRecognitionIT {
             + "        A AS A.totalprice = 80, "
             + "        L AS L.totalprice < 80, "
             + "        H AS H.totalprice > 80 "
-            + ") AS m";
+            + ") AS m ORDER BY m.time";
 
     tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
   }
@@ -802,7 +798,7 @@ public class IoTDBPatternRecognitionIT {
     // pattern concatenation
     tableResultSetEqualTest(
         format(
-            sql,
+            sql + " ORDER BY m.time",
             "PATTERN (A B C) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
@@ -814,7 +810,7 @@ public class IoTDBPatternRecognitionIT {
     // pattern alternation
     tableResultSetEqualTest(
         format(
-            sql,
+            sql + " ORDER BY m.time",
             "PATTERN (B | C | A) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
@@ -826,7 +822,7 @@ public class IoTDBPatternRecognitionIT {
     // pattern permutation
     tableResultSetEqualTest(
         format(
-            sql,
+            sql + " ORDER BY m.time",
             "PATTERN (PERMUTE(B, C)) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
@@ -838,7 +834,7 @@ public class IoTDBPatternRecognitionIT {
     // grouped pattern
     tableResultSetEqualTest(
         format(
-            sql,
+            sql + " ORDER BY m.time",
             "PATTERN (((A) (B (C)))) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
@@ -905,35 +901,68 @@ public class IoTDBPatternRecognitionIT {
             + "        B AS B.totalprice <= PREV(B.totalprice) "
             + ") AS m";
 
-    tableResultSetEqualTest(format(sql, "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
-
-    tableResultSetEqualTest(format(sql, "PATTERN (B*?)"), expectedHeader, retArray2, DATABASE_NAME);
-
-    tableResultSetEqualTest(format(sql, "PATTERN (B+)"), expectedHeader, retArray3, DATABASE_NAME);
-
-    tableResultSetEqualTest(format(sql, "PATTERN (B+?)"), expectedHeader, retArray4, DATABASE_NAME);
-
-    tableResultSetEqualTest(format(sql, "PATTERN (B?)"), expectedHeader, retArray5, DATABASE_NAME);
-
-    tableResultSetEqualTest(format(sql, "PATTERN (B??)"), expectedHeader, retArray2, DATABASE_NAME);
+    tableResultSetEqualTest(
+        format(sql + " ORDER BY m.time", "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{,})"), expectedHeader, retArray1, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B*?)"),
+        expectedHeader,
+        retArray2,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{,}?)"), expectedHeader, retArray2, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B+)"), expectedHeader, retArray3, DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{1,})"), expectedHeader, retArray3, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B+?)"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{1,}?)"), expectedHeader, retArray4, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B?)"), expectedHeader, retArray5, DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{2,})"), expectedHeader, retArray3, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B??)"),
+        expectedHeader,
+        retArray2,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{2,}?)"), expectedHeader, retArray6, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B{,})"),
+        expectedHeader,
+        retArray1,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql + " ORDER BY m.time", "PATTERN (B{,}?)"),
+        expectedHeader,
+        retArray2,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql + " ORDER BY m.time", "PATTERN (B{1,})"),
+        expectedHeader,
+        retArray3,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql + " ORDER BY m.time", "PATTERN (B{1,}?)"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql + " ORDER BY m.time", "PATTERN (B{2,})"),
+        expectedHeader,
+        retArray3,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        format(sql + " ORDER BY m.time", "PATTERN (B{2,}?)"),
+        expectedHeader,
+        retArray6,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
         format(sql, "PATTERN (B{5,})"), expectedHeader, new String[] {}, DATABASE_NAME);
@@ -942,21 +971,53 @@ public class IoTDBPatternRecognitionIT {
         format(sql, "PATTERN (B{5,}?)"), expectedHeader, new String[] {}, DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{,1})"), expectedHeader, retArray5, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B{,1})"),
+        expectedHeader,
+        retArray5,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{,1}?)"), expectedHeader, retArray2, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B{,1}?)"),
+        expectedHeader,
+        retArray2,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{1,1})"), expectedHeader, retArray4, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B{1,1})"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{1,1}?)"), expectedHeader, retArray4, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B{1,1}?)"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{1})"), expectedHeader, retArray4, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B{1})"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
 
     tableResultSetEqualTest(
-        format(sql, "PATTERN (B{1}?)"), expectedHeader, retArray4, DATABASE_NAME);
+        format(sql + " ORDER BY m.time", "PATTERN (B{1}?)"),
+        expectedHeader,
+        retArray4,
+        DATABASE_NAME);
+  }
+
+  private static void assertUnorderedTableResult(
+      String sql, String[] expectedHeader, String[] retArray) {
+    String header = String.join(",", expectedHeader) + ",";
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("use " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertUnorderedQueryResult(sql, resultSet, header, Arrays.asList(retArray));
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
   }
 }

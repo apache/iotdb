@@ -129,12 +129,12 @@ public class IoTDBUserDefinedTableFunctionIT {
           "2,2,", "4,4,",
         };
     tableResultSetEqualTest(
-        "select * from TABLE(SPLIT('1,2,4,5')) a(o1) join TABLE(SPLIT('2、3、4', '、')) b(o2) on a.o1=b.o2",
+        "select * from TABLE(SPLIT('1,2,4,5')) a(o1) join TABLE(SPLIT('2、3、4', '、')) b(o2) on a.o1=b.o2 ORDER BY o1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select * from SPLIT('1,2,4,5') a(o1) join TABLE(SPLIT('2、3、4', '、')) b(o2) on a.o1=b.o2",
+        "select * from SPLIT('1,2,4,5') a(o1) join TABLE(SPLIT('2、3、4', '、')) b(o2) on a.o1=b.o2 ORDER BY o1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -329,10 +329,10 @@ public class IoTDBUserDefinedTableFunctionIT {
     String[] expectedHeader = new String[] {"s1", "device_id"};
     String[] retArray =
         new String[] {
-          "1,d0,", "null,d0,", "3,d0,", "4,d1,",
+          "1,d0,", "3,d0,", "null,d0,", "4,d1,",
         };
     tableResultSetEqualTest(
-        "select * from MY_SELECT(vehicle PARTITION BY device_id, 's1') ORDER BY device_id",
+        "select * from MY_SELECT(vehicle PARTITION BY device_id, 's1') ORDER BY device_id, s1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

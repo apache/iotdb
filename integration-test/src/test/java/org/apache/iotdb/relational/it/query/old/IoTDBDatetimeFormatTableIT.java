@@ -111,7 +111,8 @@ public class IoTDBDatetimeFormatTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT time, s1 FROM table1 where device_id='d1'")) {
+          statement.executeQuery(
+              "SELECT time, s1 FROM table1 where device_id='d1' ORDER BY time")) {
         Assert.assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {

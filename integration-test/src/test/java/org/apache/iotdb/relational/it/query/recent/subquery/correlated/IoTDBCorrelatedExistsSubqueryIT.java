@@ -31,12 +31,20 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -57,7 +65,7 @@ public class IoTDBCorrelatedExistsSubqueryIT {
   @Test
   public void testCorrelatedExistsSubqueryInWhereClause() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: exists and other filter
@@ -65,31 +73,29 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s)";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: only exists
     sql = "SELECT s1 FROM table3 t3 WHERE exists(SELECT s1 from table1 t1 WHERE t1.s1 = t3.s1)";
     retArray = new String[] {"30,", "30,", "40,"};
-    expectedHeader = new String[] {"s1"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "s1,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
 
     // Test case: exists with distinct
     sql =
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s)";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: aggregation in exists
@@ -97,12 +103,11 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT cast(min(%s) as INT32) as %s FROM table1 t1 WHERE exists(SELECT avg(%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s)";
     retArray = new String[] {"30,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: aggregation with group by in exists(subquery returns empty result with having
@@ -111,12 +116,11 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE exists(SELECT count(*) from table3 t3 where t1.%s = t3.%s group by device_id having count(*) > 5)";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: limit 1 in exists
@@ -124,61 +128,60 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s limit 1)";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
 
   @Test
   public void testNestedExistsSubquery() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: Nested exists
     sql =
         "select distinct s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 = t3.s1 and exists(select s1 from table2 t2 where t2.s1 = t3.s1 - 25))";
     retArray = new String[] {"30,"};
-    expectedHeader = new String[] {"s1"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "s1,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
 
     // Test case: Nested exists with not(64 - 4 = 60 rows remain)
     sql =
         "select count(*) as cnt from table1 t1 where not exists(select s1 from table3 t3 where t1.s1 = t3.s1 and exists(select s1 from table2 t2 where t2.s1 = t3.s1 - 25))";
     retArray = new String[] {"60,"};
-    expectedHeader = new String[] {"cnt"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "cnt,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
   }
 
   @Test
   public void testMultipleExistsSubquery() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: multiple exists
     sql =
         "select distinct s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 = t3.s1) and exists(select s1 from table2 t2 where t2.s1 = t1.s1 - 25)";
     retArray = new String[] {"30,"};
-    expectedHeader = new String[] {"s1"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "s1,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
 
     // Test case: multiple exists with not
     sql =
         "select distinct s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 = t3.s1) and not exists(select s1 from table2 t2 where t2.s1 = t1.s1)";
     retArray = new String[] {"30,", "40,"};
-    expectedHeader = new String[] {"s1"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "s1,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
   }
 
   @Test
   public void testCorrelatedExistsSubqueryInWhereClauseWithOtherUncorrelatedSubquery() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: with InPredicate
@@ -186,8 +189,8 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s) and %s in (select %s from table3)";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql,
               measurement,
@@ -198,8 +201,7 @@ public class IoTDBCorrelatedExistsSubqueryIT {
               measurement,
               measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: with InPredicate in exists
@@ -207,8 +209,8 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s and %s not in (select %s from table2 where %s is not null))";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql,
               measurement,
@@ -220,8 +222,7 @@ public class IoTDBCorrelatedExistsSubqueryIT {
               measurement,
               measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: with Scalar Subquery
@@ -229,13 +230,12 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s) and s1 > (select min(%s) from table3)";
     retArray = new String[] {"40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql, measurement, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: with Scalar Subquery in exists
@@ -243,13 +243,12 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s and s1 = (select min(%s) from table3))";
     retArray = new String[] {"30,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql, measurement, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: with Quantified Comparison
@@ -257,13 +256,12 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s) and s1 != any(select %s from table2)";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql, measurement, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: with Quantified Comparison in exists
@@ -271,8 +269,8 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s and %s = any (select %s from table3))";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql,
               measurement,
@@ -283,15 +281,14 @@ public class IoTDBCorrelatedExistsSubqueryIT {
               measurement,
               measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
 
   @Test
   public void testCorrelatedExistsSubqueryWithMultipleCorrelation() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: Multiple correlation in exists
@@ -299,91 +296,89 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and exists(SELECT (%s) from table3 t3 WHERE t1.%s = t3.%s and t1.s1 = t3.s1 and t1.s2 = t3.s2)";
     retArray = new String[] {"30,", "40,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     sql =
         "SELECT cast(%s AS INT32) as %s FROM table1 t1 WHERE device_id = 'd01' and not exists(SELECT (%s) from table3 t3 WHERE t1.%s = t3.%s and t1.s1 = t3.s1 and t1.s2 = t3.s2)";
     retArray = new String[] {"50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
 
   @Test
   public void testCorrelatedExistsSubqueryInHavingClause() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: exists in having
     sql =
         "SELECT device_id, count(*) from table1 t1 group by device_id having exists(SELECT 1 from table3 t3 where t3.device_id = t1.device_id)";
-    expectedHeader = new String[] {"device_id", "_col1"};
+    expectedHeader = "device_id,_col1,";
     retArray = new String[] {"d01,5,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
-          String.format(sql, measurement), expectedHeader, retArray, DATABASE_NAME);
+      assertUnorderedResult(
+          String.format(sql, measurement), expectedHeader, Arrays.asList(retArray));
     }
 
     sql =
         "SELECT device_id, count(*) from table1 t1 group by device_id having exists(SELECT 1 from table3 t3 where t3.device_id != 'd01' and t3.device_id = t1.device_id)";
-    expectedHeader = new String[] {"device_id", "_col1"};
+    expectedHeader = "device_id,_col1,";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
-          String.format(sql, measurement), expectedHeader, retArray, DATABASE_NAME);
+      assertUnorderedResult(
+          String.format(sql, measurement), expectedHeader, Arrays.asList(retArray));
     }
 
     // Test case: not exists in having
     sql =
         "SELECT device_id, count(*) from table1 t1 group by device_id having count(*) = 5 and not exists(SELECT 1 from table3 t3 where t3.device_id = t1.device_id)";
-    expectedHeader = new String[] {"device_id", "_col1"};
+    expectedHeader = "device_id,_col1,";
     retArray = new String[] {"d03,5,", "d05,5,", "d07,5,", "d09,5,", "d11,5,", "d13,5,", "d15,5,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
-          String.format(sql, measurement), expectedHeader, retArray, DATABASE_NAME);
+      assertUnorderedResult(
+          String.format(sql, measurement), expectedHeader, Arrays.asList(retArray));
     }
   }
 
   @Test
   public void testCorrelatedExistsSubqueryInSelectClause() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: exists in Select clause
     sql =
         "select exists(select s1 from table1 t1 where t1.s1 = t3.s1) from table3 t3 where exists(select s1 from table2 t2 where t2.s1 = t3.s1 - 25)";
     retArray = new String[] {"true,", "true,"};
-    expectedHeader = new String[] {"_col0"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "_col0,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
 
     sql = "select exists(select s1 from table1 t1 where t1.s1 = t3.s1) from table3 t3";
     retArray = new String[] {"true,", "true,", "true,", "false,"};
-    expectedHeader = new String[] {"_col0"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "_col0,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
 
     sql =
         "select not exists(select s1 from table1 t1 where t1.s1 = t3.s1) from table3 t3 where exists(select s1 from table2 t2 where t2.s1 = t3.s1 - 25)";
     retArray = new String[] {"false,", "false,"};
-    expectedHeader = new String[] {"_col0"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "_col0,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
 
     sql = "select not exists(select s1 from table1 t1 where t1.s1 = t3.s1) from table3 t3";
     retArray = new String[] {"false,", "false,", "false,", "true,"};
-    expectedHeader = new String[] {"_col0"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = "_col0,";
+    assertUnorderedResult(sql, expectedHeader, Arrays.asList(retArray));
   }
 
   @Test
@@ -427,5 +422,19 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         "select s1 from table3 t3 where 30 = t3.s1 and exists(select s1 from table2 t2 where t2.s1 = t3.s1 limit 2)",
         "Decorrelation for LIMIT with row count greater than 1 is not supported yet",
         DATABASE_NAME);
+  }
+
+  private static void assertUnorderedResult(
+      String sql, String expectedHeader, List<String> expectedRows) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertUnorderedQueryResult(sql, resultSet, expectedHeader, expectedRows);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

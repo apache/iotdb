@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
-import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.plan.planner.ITableOperatorGeneratorContext;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
@@ -92,7 +91,6 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private int exchangeSumNum = 0;
   private final long fragmentExchangeMaxBytes;
   private Map<ISink, Long> legacySinkLimits = new IdentityHashMap<>();
-  private List<CollectOperator> collectOperators = new ArrayList<>();
 
   private List<TSDataType> cachedDataTypes;
 
@@ -135,7 +133,6 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   public LocalExecutionPlanContext(LocalExecutionPlanContext parentContext) {
     this.fragmentExchangeMaxBytes = parentContext.fragmentExchangeMaxBytes;
     this.legacySinkLimits = parentContext.legacySinkLimits;
-    this.collectOperators = parentContext.collectOperators;
     this.nextOperatorId = parentContext.nextOperatorId;
     this.typeProvider = parentContext.typeProvider;
     this.allSensorsMap = parentContext.allSensorsMap;
@@ -279,10 +276,6 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.exchangeOperatorList.add(exchangeOperator);
   }
 
-  public void addCollectOperator(CollectOperator collectOperator) {
-    collectOperators.add(collectOperator);
-  }
-
   public void setMaxBytesOneHandleCanReserve() {
     long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
     LOGGER.debug(
@@ -312,7 +305,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     long maxBlockBytes = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     boolean sharedBudget =
         (inputMaxBytes > 0 || outputMaxBytes > 0)
-            && SharedExchangeMemoryEligibility.isEligible(plan)
+            && SharedExchangeBudgetEligibility.isEligible(plan)
             // Only the root pipeline may exist. Child factories are registered during generation;
             // the root factory is registered after its memory has been estimated below.
             && pipelineDriverFactories.isEmpty()
@@ -326,7 +319,6 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
       memoryPool.registerFragmentInstanceSharedBudget(
           instanceContext.getId().getQueryId().getId(),
           instanceContext.getId().getFragmentInstanceId());
-      collectOperators.forEach(CollectOperator::enableReadyInputConsumption);
       LOGGER.debug(
           DataNodeQueryMessages.LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109,
           instanceContext.getId(),

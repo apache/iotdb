@@ -581,7 +581,7 @@ public class IoTDBTableViewAggregationIT {
           "2024-09-24T06:15:55.000Z,2024-09-24T06:16:00.000Z,d16,0,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count_if(device_id = 'd01') from table1 group by 1,device_id",
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count_if(device_id = 'd01') from table1 group by 1,device_id ORDER BY device_id, 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

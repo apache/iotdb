@@ -24,10 +24,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Aggrega
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.SharedExchangeMemoryEligibility;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 
 import org.junit.Test;
 
@@ -39,106 +37,138 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class CollectInputPropertyTest {
-  private static DistributedQueryPlan plan(String sql) {
+  private static List<PlanNode> plans(String sql) {
     PlanTester tester = new PlanTester();
     tester.createPlan(sql);
-    return tester.getDistributedPlan();
+    List<PlanNode> result = new ArrayList<>();
+    for (int i = 0; i < tester.getDistributedPlan().getFragments().size(); i++) {
+      result.add(tester.getFragmentPlan(i));
+    }
+    return result;
   }
 
   private static <T> List<T> nodes(PlanNode node, Class<T> type) {
     List<T> result = new ArrayList<>();
     if (type.isInstance(node)) result.add(type.cast(node));
-    if (!(node instanceof ExchangeNode))
-      for (PlanNode child : node.getChildren()) result.addAll(nodes(child, type));
+    for (PlanNode child : node.getChildren()) result.addAll(nodes(child, type));
     return result;
   }
 
-  private static void assertSequential(DistributedQueryPlan plan) {
-    assertTrue(
-        plan.getInstances().stream()
-            .anyMatch(
-                fi -> !nodes(fi.getFragment().getPlanNodeTree(), CollectNode.class).isEmpty()));
-    for (FragmentInstance fi : plan.getInstances())
-      assertFalse(
-          fi.getId().toString(),
-          SharedExchangeMemoryEligibility.isEligible(fi.getFragment().getPlanNodeTree()));
+  private static <T> List<T> nodes(List<PlanNode> plans, Class<T> type) {
+    List<T> result = new ArrayList<>();
+    for (PlanNode plan : plans) {
+      result.addAll(nodes(plan, type));
+    }
+    return result;
   }
 
   @Test
-  public void testTopKWindowKeepsGroupInsteadOfFullSort() {
-    DistributedQueryPlan query =
-        plan(
-            "SELECT tag1, tag2, tag3, s1, SUM(s1) OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) rs "
-                + "FROM (SELECT tag1, tag2, tag3, s1, ROW_NUMBER() OVER () n FROM table1) t "
-                + "WHERE n > 0 ORDER BY rs DESC LIMIT 10");
-    assertSequential(query);
-    PlanNode root = query.getInstances().get(0).getFragment().getPlanNodeTree();
-    assertEquals(1, nodes(root, GroupNode.class).size());
-    assertTrue(
-        nodes(root, SortNode.class).stream().noneMatch(sort -> sort.getClass() == SortNode.class));
-  }
-
-  @Test
-  public void testTopKAggregationKeepsStreamingGroups() {
-    DistributedQueryPlan query =
-        plan(
-            "SELECT tag1, tag2, tag3, SUM(s1) AS s FROM (SELECT tag1, tag2, tag3, s1, "
-                + "COUNT(*) OVER () AS n FROM table1 WHERE tag1 != 'shenzhen') t "
-                + "WHERE n > 0 GROUP BY tag1, tag2, tag3 ORDER BY s DESC LIMIT 10");
-    assertSequential(query);
-    List<AggregationNode> aggregations =
-        nodes(query.getInstances().get(0).getFragment().getPlanNodeTree(), AggregationNode.class);
-    assertEquals(1, aggregations.size());
-    assertEquals(3, aggregations.get(0).getPreGroupedSymbols().size());
-    assertTrue(aggregations.get(0).isStreamable());
-  }
-
-  @Test
-  public void testNestedWindowKeepsSequentialGroupingPlan() {
-    DistributedQueryPlan query =
-        plan(
-            "SELECT tag1, tag2, tag3, SUM(s1) OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) AS rs "
-                + "FROM (SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n FROM table1) t WHERE n > 0");
-    assertSequential(query);
-    assertFalse(
-        nodes(query.getInstances().get(0).getFragment().getPlanNodeTree(), GroupNode.class)
-            .isEmpty());
-  }
-
-  @Test
-  public void testUnorderedScansProjectionsAggregationsAndUnionRetainReadyMode() {
-    for (String sql :
-        new String[] {
-          "SELECT * FROM table1",
-          "SELECT time, s1 + 1 AS x FROM table1",
-          "SELECT time, diff(s1) AS d FROM table1",
-          "SELECT time, abs(diff(s1)) AS d FROM table1 "
-              + "WHERE tag1='shenzhen' AND tag2='B2' AND tag3='ZZ'",
-          "SELECT time, s1 FROM table1 WHERE diff(s1) > 0",
-          "SELECT COUNT(*), SUM(s1), MIN(s1), MAX(s1) FROM table1",
-          "SELECT COUNT(DISTINCT s1) FROM table1",
-          "SELECT s1 FROM table1 UNION ALL SELECT s1 FROM table2"
-        }) {
-      DistributedQueryPlan query = plan(sql);
+  public void testAggregationAboveGlobalWindowHashesInterleavedGroups() {
+    for (String aggregate : new String[] {"SUM(s1)", "COUNT(DISTINCT s1)"}) {
+      List<PlanNode> fragments =
+          plans(
+              "SELECT tag1, tag2, tag3, "
+                  + aggregate
+                  + " FROM ("
+                  + "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n "
+                  + "FROM table1 WHERE tag1 != 'shenzhen') t WHERE n > 0 GROUP BY tag1, tag2, tag3");
+      PlanNode root = fragments.get(0);
+      List<AggregationNode> aggregations = nodes(fragments, AggregationNode.class);
+      assertFalse(aggregations.isEmpty());
+      assertFalse(nodes(fragments, CollectNode.class).isEmpty());
+      for (AggregationNode aggregation : aggregations) {
+        if (!nodes(aggregation.getChild(), CollectNode.class).isEmpty()) {
+          assertTrue(aggregation.getPreGroupedSymbols().isEmpty());
+          assertFalse(aggregation.isStreamable());
+        }
+      }
       assertTrue(
-          sql,
-          query.getInstances().stream()
-              .anyMatch(
-                  fi ->
-                      SharedExchangeMemoryEligibility.isEligible(
-                          fi.getFragment().getPlanNodeTree())));
+          "Hash aggregation should not add a grouping sort", nodes(root, SortNode.class).isEmpty());
     }
   }
 
   @Test
+  public void testPartialPreGroupingAlsoFallsBackToHash() {
+    List<PlanNode> fragments =
+        plans(
+            "SELECT tag1, tag2, tag3, s1, COUNT(*) FROM ("
+                + "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n "
+                + "FROM table1 WHERE tag1 != 'shenzhen') t WHERE n > 0 GROUP BY tag1, tag2, tag3, s1");
+    List<AggregationNode> aggregations = nodes(fragments, AggregationNode.class);
+    assertFalse(aggregations.isEmpty());
+    assertFalse(nodes(fragments, CollectNode.class).isEmpty());
+    assertTrue(aggregations.get(0).getPreGroupedSymbols().isEmpty());
+  }
+
+  @Test
+  public void testNestedWindowRestoresPartitionContiguityWithSort() {
+    List<PlanNode> fragments =
+        plans(
+            "SELECT tag1, tag2, tag3, SUM(s1) OVER ("
+                + "PARTITION BY tag1, tag2, tag3 ORDER BY s1) AS running_sum "
+                + "FROM (SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n FROM table1) t WHERE n > 0");
+    PlanNode root = fragments.get(0);
+    assertFalse(nodes(fragments, CollectNode.class).isEmpty());
+    assertTrue(nodes(root, GroupNode.class).isEmpty());
+    List<WindowNode> windows = nodes(root, WindowNode.class);
+    assertEquals(2, windows.size());
+    WindowNode outer =
+        windows.stream()
+            .filter(w -> !w.getSpecification().getPartitionBy().isEmpty())
+            .findFirst()
+            .get();
+    assertFalse(nodes(outer.getChild(), SortNode.class).isEmpty());
+  }
+
+  @Test
+  public void testStreamSortAfterGlobalWindowUsesFullSort() {
+    List<PlanNode> fragments =
+        plans(
+            "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n "
+                + "FROM table1 ORDER BY tag1, tag2, tag3, s1");
+    PlanNode root = fragments.get(0);
+    assertFalse(nodes(fragments, CollectNode.class).isEmpty());
+    assertFalse(nodes(root, SortNode.class).isEmpty());
+    assertTrue(nodes(root, StreamSortNode.class).isEmpty());
+  }
+
+  @Test
+  public void testConstantFillDoesNotRemoveRestoredSort() {
+    List<PlanNode> fragments =
+        plans(
+            "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n FROM table1 "
+                + "FILL METHOD CONSTANT 0 ORDER BY tag1, tag2, tag3");
+    PlanNode root = fragments.get(0);
+    assertFalse(nodes(fragments, CollectNode.class).isEmpty());
+    assertFalse(nodes(root, SortNode.class).isEmpty());
+    assertTrue(nodes(root, StreamSortNode.class).isEmpty());
+  }
+
+  @Test
+  public void testUnionFinalAggregationDoesNotInheritBranchGrouping() {
+    List<PlanNode> fragments =
+        plans(
+            "SELECT tag1, tag2, tag3, SUM(s1) FROM ("
+                + "SELECT tag1, tag2, tag3, s1 FROM table1 UNION ALL "
+                + "SELECT tag1, tag2, tag3, s1 FROM table2) u GROUP BY tag1, tag2, tag3");
+    List<AggregationNode> aggregations = nodes(fragments, AggregationNode.class);
+    assertFalse(aggregations.isEmpty());
+    boolean foundFinalCollect = false;
+    for (AggregationNode aggregation : aggregations) {
+      if (aggregation.getChild() instanceof CollectNode) {
+        foundFinalCollect = true;
+        assertTrue(aggregation.getPreGroupedSymbols().isEmpty());
+      }
+    }
+    assertTrue(foundFinalCollect);
+  }
+
+  @Test
   public void testOrderedScanBranchesKeepStreamingAggregation() {
-    DistributedQueryPlan query =
-        plan("SELECT tag1, tag2, tag3, SUM(s1 + 1) FROM table1 GROUP BY tag1, tag2, tag3");
-    assertTrue(
-        query.getInstances().stream()
-            .anyMatch(
-                fi ->
-                    nodes(fi.getFragment().getPlanNodeTree(), AggregationNode.class).stream()
-                        .anyMatch(AggregationNode::isStreamable)));
+    List<PlanNode> fragments =
+        plans("SELECT tag1, tag2, tag3, SUM(s1 + 1) FROM table1 GROUP BY tag1, tag2, tag3");
+    List<AggregationNode> aggregations = nodes(fragments, AggregationNode.class);
+    assertFalse(aggregations.isEmpty());
+    assertTrue(aggregations.stream().anyMatch(AggregationNode::isStreamable));
   }
 }

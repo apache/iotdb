@@ -30,12 +30,20 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -58,7 +66,7 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
   @Test
   public void testScalarSubqueryAfterComparisonInOneTable() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: s equals to the maximum value of s in table1
@@ -66,12 +74,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = (SELECT max(%s) from table1 WHERE device_id = 'd01')";
     retArray = new String[] {"70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s not equals to the maximum value of s in table1
@@ -79,12 +86,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s != ((SELECT max(%s) FROM table1 WHERE device_id = 'd01'))";
     retArray = new String[] {"30,", "40,", "50,", "60,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s greater than the average value of s in table1
@@ -92,12 +98,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s >= ((SELECT AVG(%s) FROM table1 WHERE device_id = 'd01'))";
     retArray = new String[] {"50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s greater than the max value of s in table1
@@ -105,12 +110,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > ((SELECT max(%s) FROM table1 WHERE device_id = 'd01'))";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s is less than the maximum value of s in table1 and greater than the minimum value
@@ -119,13 +123,12 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < (SELECT max(%s) from table1 WHERE device_id = 'd01') and %s > (SELECT min(%s) from table1 WHERE device_id = 'd01') ";
     retArray = new String[] {"40,", "50,", "60,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql, measurement, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s greater than the avg value of s in table1 and s5 = true
@@ -133,12 +136,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > ((SELECT avg(%s) FROM table1 WHERE device_id = 'd01' and s5 = true))";
     retArray = new String[] {"60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s greater than the count value of s in table1
@@ -146,12 +148,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > (SELECT count(%s) FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s less than the sum value of s in table1
@@ -159,12 +160,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < (SELECT sum(%s) FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: subquery is not aggregation but returns exactly one row
@@ -172,20 +172,19 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = (SELECT %s FROM table1 WHERE device_id = 'd01' and %s = 30)";
     retArray = new String[] {"30,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql, measurement, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
 
   @Test
   public void testScalarSubqueryAfterComparisonInDifferentTables() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: s greater than the count value of s in table2
@@ -193,12 +192,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > (SELECT count(%s) from table2)";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: s less than the max value of s in table2 * the count value of s in table2 * 10
@@ -206,19 +204,18 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < ((SELECT max(%s) from table2) * (SELECT count(%s) from table2)) * 10";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
 
   @Test
   public void testNestedScalarSubqueryAfterComparison() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: nested scalar subquery in where clause
@@ -226,13 +223,12 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = (SELECT max(%s) from table1 where %s = (SELECT max(%s) from table1 WHERE device_id = 'd01'))";
     retArray = new String[] {"70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql, measurement, measurement, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: nested scalar subquery with table subquery
@@ -240,8 +236,8 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT %s from (SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = (SELECT max(%s) from table1 where %s = (SELECT max(%s) from table1 WHERE device_id = 'd01')))";
     retArray = new String[] {"70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(
               sql,
               measurement,
@@ -252,8 +248,7 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
               measurement,
               measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
 
@@ -293,7 +288,7 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
   @Test
   public void testScalarSubqueryInSelectClause() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: select scalar subquery as one constant column
@@ -301,12 +296,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast((SELECT max(%s) from table1 where device_id = 'd01') AS INT32) as %s from table1 where device_id = 'd01'";
     retArray = new String[] {"70,", "70,", "70,", "70,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: scalar subquery in arithmetic expression and function expression
@@ -314,24 +308,22 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast((s1 + (SELECT max(%s) from table1 where device_id = 'd01')) AS INT32) as %s from table1 where device_id = 'd01'";
     retArray = new String[] {"100,", "110,", "120,", "130,", "140,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     sql =
         "SELECT  cast(((SELECT max(%s) from table1 where device_id = 'd01') + (SELECT max(%s) from table1 where device_id = 'd01')) AS INT32) as %s from table1 where device_id = 'd01'";
     retArray = new String[] {"140,", "140,", "140,", "140,", "140,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: scalar subquery in udf expression
@@ -339,24 +331,22 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "SELECT cast(floor(sin((SELECT max(%s) from table1 where device_id = 'd01'))) AS INT32) as %s from table1 where device_id = 'd01'";
     retArray = new String[] {"0,", "0,", "0,", "0,", "0,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
 
     // Test case: scalar subquery in aggregation function
     sql = "SELECT count((select count(s1) from table1)) as %s from table1";
     retArray = new String[] {"64,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = new String[] {measurement};
-      tableResultSetEqualTest(
+      expectedHeader = measurement + ",";
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
 
@@ -366,24 +356,38 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
   @Test
   public void testScalarSubqueryInHavingClause() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: scalar subquery in having clause
     sql =
         "SELECT device_id, count(*) from table1 group by device_id having count(*) > 3 + (SELECT count(*) from table2 where device_id = 'd01')";
-    expectedHeader = new String[] {"device_id", "_col1"};
+    expectedHeader = "device_id,_col1,";
     retArray =
         new String[] {
           "d01,5,", "d03,5,", "d05,5,", "d07,5,", "d09,5,", "d11,5,", "d13,5,", "d15,5,"
         };
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
+
   // endregion
+
+  private static void assertUnorderedResult(
+      String sql, String expectedHeader, List<String> expectedRows) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertUnorderedQueryResult(sql, resultSet, expectedHeader, expectedRows);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

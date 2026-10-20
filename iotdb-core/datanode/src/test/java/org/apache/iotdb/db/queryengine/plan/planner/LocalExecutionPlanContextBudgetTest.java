@@ -386,7 +386,7 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setMaxBytesOneHandleCanReserve();
     verify(source).setMaxBytesCanReserve(256);
     assertFalse(
-        SharedExchangeMemoryEligibility.isEligible(
+        SharedExchangeBudgetEligibility.isEligible(
             node(
                 PlanNodeType.TREE_COLLECT,
                 node(PlanNodeType.EXCHANGE),
@@ -432,13 +432,13 @@ public class LocalExecutionPlanContextBudgetTest {
     PlanNode topK = node(PlanNodeType.TABLE_TOPK_NODE, child);
     context.setExchangeMemoryLimits(topK, pool);
     verify(source).setMaxBytesCanReserve(256);
-    assertFalse(collect.isBlocked().isDone());
+    assertTrue(collect.isBlocked().isDone());
     assertAdmissionIsShared(false);
     assertFalse(
-        SharedExchangeMemoryEligibility.isEligible(
+        SharedExchangeBudgetEligibility.isEligible(
             node(PlanNodeType.TABLE_COLLECT_NODE, topK, collect())));
     assertTrue(
-        SharedExchangeMemoryEligibility.isEligible(
+        SharedExchangeBudgetEligibility.isEligible(
             node(
                 PlanNodeType.TABLE_COLLECT_NODE,
                 node(PlanNodeType.TABLE_EXCHANGE_NODE, topK),
@@ -453,7 +453,7 @@ public class LocalExecutionPlanContextBudgetTest {
     child.addPipelineDriverFactory(mock(Operator.class), child.getDriverContext(), 0);
     addSource(context);
     context.setExchangeMemoryLimits(plan, pool);
-    assertFalse(collect.isBlocked().isDone());
+    assertTrue(collect.isBlocked().isDone());
     assertAdmissionIsShared(false);
   }
 
@@ -472,10 +472,10 @@ public class LocalExecutionPlanContextBudgetTest {
               node(PlanNodeType.TABLE_EXCHANGE_NODE),
               node(PlanNodeType.TABLE_EXCHANGE_NODE));
       assertFalse(
-          SharedExchangeMemoryEligibility.isEligible(
+          SharedExchangeBudgetEligibility.isEligible(
               node(PlanNodeType.TABLE_COLLECT_NODE, dependent, collect())));
       assertFalse(
-          SharedExchangeMemoryEligibility.isEligible(node(dependency, collect(), collect())));
+          SharedExchangeBudgetEligibility.isEligible(node(dependency, collect(), collect())));
     }
     ISourceHandle source = addSource(context);
     ISinkHandle sink = mock(ISinkHandle.class);
@@ -500,10 +500,13 @@ public class LocalExecutionPlanContextBudgetTest {
   @Test
   public void testSequentialAndUnknownMultiInputOperatorsDisableSharing() {
     assertFalse(
-        SharedExchangeMemoryEligibility.isEligible(
+        SharedExchangeBudgetEligibility.isEligible(
+            node(PlanNodeType.TABLE_COLLECT_NODE, collect(), collect())));
+    assertFalse(
+        SharedExchangeBudgetEligibility.isEligible(
             node(PlanNodeType.IDENTITY_SINK, collect(), collect())));
     assertFalse(
-        SharedExchangeMemoryEligibility.isEligible(
+        SharedExchangeBudgetEligibility.isEligible(
             node(PlanNodeType.SCHEMA_QUERY_MERGE, collect(), collect())));
   }
 
@@ -511,7 +514,7 @@ public class LocalExecutionPlanContextBudgetTest {
   public void testExchangeBoundaryDoesNotInspectUpstreamFragment() {
     PlanNode remote = node(PlanNodeType.TABLE_MERGESORT_NODE, collect(), collect());
     assertTrue(
-        SharedExchangeMemoryEligibility.isEligible(
+        SharedExchangeBudgetEligibility.isEligible(
             node(
                 PlanNodeType.TABLE_COLLECT_NODE,
                 node(PlanNodeType.TABLE_EXCHANGE_NODE, remote),

@@ -162,7 +162,7 @@ public class IoTDBAlignByDeviceTableViewIT {
           "1970-01-01T00:00:01.000Z,d1,888,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select * from vehicle order by device_id", expectedHeader, retArray, DATABASE_NAME);
+        "select * from vehicle order by device_id, time", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -224,7 +224,7 @@ public class IoTDBAlignByDeviceTableViewIT {
           "1970-01-01T00:00:01.000Z,d1,888,888,null,",
         };
     tableResultSetEqualTest(
-        "select time, device_id, s0,s0,s1 from vehicle where device_id = 'd0' or device_id = 'd1' order by device_id",
+        "select time, device_id, s0,s0,s1 from vehicle where device_id = 'd0' or device_id = 'd1' order by device_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -289,7 +289,7 @@ public class IoTDBAlignByDeviceTableViewIT {
           "1999-12-31T16:00:00.000Z,d0,null,",
         };
     tableResultSetEqualTest(
-        "select time, device_id, s0 from vehicle where s1 < 200 order by device_id",
+        "select time, device_id, s0 from vehicle where s1 < 200 order by device_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -547,7 +547,7 @@ public class IoTDBAlignByDeviceTableViewIT {
           "1970-01-01T00:00:01.000Z,d1,888,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select * from vehicle where device_id like 'd%' order by device_id",
+        "select * from vehicle where device_id like 'd%' order by device_id, time",
         expectedHeader, retArray, DATABASE_NAME);
   }
 

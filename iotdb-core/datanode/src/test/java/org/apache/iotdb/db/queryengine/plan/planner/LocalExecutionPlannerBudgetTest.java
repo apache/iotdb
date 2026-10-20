@@ -185,8 +185,8 @@ public class LocalExecutionPlannerBudgetTest {
           planner.plan(plan, new TypeProvider(), instance, new DataNodeQueryContext(1));
       assertEquals(1, factories.size());
       CollectOperator collect = (CollectOperator) factories.get(0).getOperation();
-      assertEquals(100 + collect.ramBytesUsed(), freeBefore - planner.getFreeMemoryForOperators());
-      assertFalse(collect.isBlocked().isDone());
+      assertEquals(150 + collect.ramBytesUsed(), freeBefore - planner.getFreeMemoryForOperators());
+      assertTrue(collect.isBlocked().isDone());
       assertEquals(0, instance.getInputMaxBytes());
       verify(firstHandle).setMaxBytesCanReserve(512);
       verify(secondHandle).setMaxBytesCanReserve(512);

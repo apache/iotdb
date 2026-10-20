@@ -2087,7 +2087,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "           c.course_name,"
             + "           g.score "
             + "from students s, teachers t, courses c, grades g "
-            + "where s.time=c.time and c.time=g.time and t.teacher_tag = 1005 limit 1";
+            + "where s.time=c.time and c.time=g.time and t.teacher_tag = 1005 order by g.score desc limit 1";
 
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
@@ -2196,7 +2196,8 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
     expectedHeader = new String[] {"attr1", "attr2"};
     sql =
-        "select t0.attr1,t0.attr2 from table0 t0 join table1 t1 on t0.attr1=t1.attr1 AND t0.attr2=t1.attr2";
+        "select t0.attr1,t0.attr2 from table0 t0 join table1 t1 on t0.attr1=t1.attr1 AND t0.attr2=t1.attr2"
+            + " ORDER BY t0.attr1, t0.attr2";
     retArray =
         new String[] {
           "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,",

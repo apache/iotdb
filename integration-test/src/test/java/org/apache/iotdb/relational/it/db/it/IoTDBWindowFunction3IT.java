@@ -346,7 +346,7 @@ public class IoTDBWindowFunction3IT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, row_number() OVER (PARTITION BY device) AS rn FROM demo ORDER BY device, time",
+        "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time) AS rn FROM demo ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);

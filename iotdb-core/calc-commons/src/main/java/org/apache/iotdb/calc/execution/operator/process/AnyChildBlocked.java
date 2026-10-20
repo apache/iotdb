@@ -185,10 +185,6 @@ final class AnyChildBlocked implements Accountable {
     }
   }
 
-  void finishChild(int childId) {
-    invalidateChild(childId);
-  }
-
   void close() {
     WaitRound round;
     synchronized (lock) {
