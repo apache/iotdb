@@ -280,6 +280,9 @@ public final class DataNodeQueryMessages {
           + " (configure copy_to_allowed_export_dirs to permit it): ";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "Data type of target time column is not TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "Specified TIME column %s does not exist in the query result";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "Duplicate column names in query dataset.";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =

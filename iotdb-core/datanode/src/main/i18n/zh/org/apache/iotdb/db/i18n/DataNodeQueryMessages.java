@@ -268,6 +268,9 @@ public final class DataNodeQueryMessages {
       "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "指定的 TIME 列 %s 在查询结果中不存在";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "查询数据集中存在重复的列名。";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
