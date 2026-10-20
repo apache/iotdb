@@ -204,14 +204,6 @@ public final class ManagerMessages {
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "Failed to sync topic meta. Result status: {}.";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
-      "Failed to unbind from pipe config region connector metrics, connector map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
-      "Failed to unbind from pipe config region extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP =
-      "Failed to unbind from pipe remaining time metrics, RemainingTimeOperator map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP =
-      "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty";
   public static final String FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST =
       "Failed to update pipe procedure timer, PipeProcedure({}) does not exist";
   public static final String FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE =
@@ -491,8 +483,8 @@ public final class ManagerMessages {
       "Successfully transferred config region snapshot {}.";
   public static final String THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ =
       "There is no RUNNING DataNode to execute CQ {}";
-  public static final String THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The ConfigNode-{} will be shutdown soon, mark it as Unknown";
+  public static final String LOG_NODE_ARG_REPORTED_SHUTDOWN_CURRENT_STATUS_IS_ARG_A375D665 =
+      "Node {} reported shutdown; current status is {}.";
   public static final String THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING =
       "The config region air gap connector does not support transferring single file piece bytes.";
   public static final String THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE =
@@ -501,8 +493,6 @@ public final class ManagerMessages {
       "The config region snapshots %s cannot be parsed.";
   public static final String THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE =
       "The Database: {} doesn't exist. Maybe it has been pre-deleted.";
-  public static final String THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The DataNode-{} will be shutdown soon, mark it as Unknown";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_GREEDYREGIONGROUPALLOCATOR_IS_YET =
       "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR =
@@ -619,6 +609,7 @@ public final class ManagerMessages {
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "Got IOException when deserialize use&role file, type:{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "Got IOException when deserialize roleList";
   public static final String LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40 = "Got exception when deserializing ttl file";
+  public static final String LOG_UNSUPPORTED_USER_ROLE_PROFILE_VERSION_ARG_THIS_NODE_SUPPORTS_UP_TO_ARG_2ABBF4FA = "Unsupported user/role profile version %d, this node supports up to %d";
   public static final String LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B = "Unrecognized node type. Cannot deserialize MTree from given buffer";
   public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "Got IOException when construct database Tree";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "Got IOException when deserialize template info";
@@ -724,4 +715,6 @@ public final class ManagerMessages {
       MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
           "%s Please manually check later whether the procedure is executed successfully.";
 
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
+      "ConfigNode leader is waiting for node status persistence.";
 }

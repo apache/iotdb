@@ -42,7 +42,6 @@ import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
@@ -63,8 +62,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -189,7 +186,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Rollb
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -215,6 +211,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -271,6 +268,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
@@ -285,6 +283,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataPartitionTableGeneratorProgressResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -684,30 +684,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return createTLoadResp(resultStatus);
   }
 
+  /**
+   * The LOAD command protocol (EXECUTE / ROLLBACK of a task identified by its uuid) was replaced by
+   * the consensus protocol, which drives a task through BEGIN / PIECE / PREPARE / COMMIT / ABORT.
+   * The entry point is kept because it is part of the internal service interface, and a node of an
+   * older version may still send a command.
+   */
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
-    if (req.isSetTimePartition2ProgressIndex()) {
-      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
-          req.getTimePartition2ProgressIndex().entrySet()) {
-        timePartitionProgressIndexMap.put(
-            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
-      }
-    } else {
-      final TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-      status.setMessage(
-          DataNodeMiscMessages.LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP);
-      return createTLoadResp(status);
-    }
-
-    return createTLoadResp(
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
-                req.uuid,
-                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                timePartitionProgressIndexMap));
+    final TSStatus status = new TSStatus();
+    status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+    status.setMessage(
+        DataNodeMiscMessages
+            .MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16);
+    return createTLoadResp(status);
   }
 
   @Override
@@ -2009,13 +1999,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .execute(
                     new DataRegionId(consensusGroupId.getId()),
                     new RelationalDeleteDataNode(
-                        new PlanNodeId(""),
+                        req.isSetProcedureId()
+                            ? DropTableModProgress.planNodeId(req.getProcedureId())
+                            : new PlanNodeId(""),
                         new TableDeletionEntry(
                             new DeletionPredicate(req.getTableName()),
                             new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
                         // the request is only sent to associated region
                         null))
                 .getStatus());
+  }
+
+  @Override
+  public TGetDropTableModProgressResp getDropTableModProgress(
+      final TGetDropTableModProgressReq req) {
+    final Map<Integer, TDropTableModProgress> progress = new HashMap<>();
+    for (final TConsensusGroupId regionId : req.getRegionIdList()) {
+      final DataRegion region =
+          StorageEngine.getInstance().getDataRegion(new DataRegionId(regionId.getId()));
+      if (region != null) {
+        final TDropTableModProgress regionProgress =
+            region.getDropTableModProgress(req.getProcedureId());
+        // Regions in the same deletion request execute sequentially. Report zero written and
+        // an unknown total until this region starts, so other regions' live counts are visible.
+        progress.put(
+            regionId.getId(),
+            regionProgress == null ? new TDropTableModProgress(0) : regionProgress);
+      }
+    }
+    return new TGetDropTableModProgressResp(StatusUtils.OK).setRegionProgress(progress);
   }
 
   @Override
@@ -2435,12 +2447,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(commonConfig.getNodeStatus().getStatus());
-    // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
-    // treat
-    // it as safely fenced when unreachable (older DataNodes that omit this are handled strictly).
-    if (commonConfig.getStatusReason() != null) {
-      resp.setStatusReason(commonConfig.getStatusReason());
+    // Read status and reason under the same monitor used by their setters.
+    synchronized (commonConfig) {
+      resp.setStatus(commonConfig.getNodeStatus().getStatus());
+      final String statusReason = commonConfig.getStatusReason();
+      if (statusReason != null) {
+        resp.setStatusReason(statusReason);
+      }
     }
     MetadataLeaseFencedException schemaUsageCollectionException = null;
     if (req.getSchemaRegionIds() != null) {
@@ -2620,12 +2633,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
-        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
-        commonConfig.setNodeStatus(NodeStatus.Running);
-        commonConfig.setStatusReason(null);
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+      } else {
+        synchronized (commonConfig) {
+          // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
+          if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+              && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
+            commonConfig.setNodeStatus(NodeStatus.Running);
+          }
+        }
       }
     }
   }
@@ -2800,7 +2816,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      commonConfig.setNodeStatus(NodeStatus.parse(status));
+      NodeStatus nodeStatus = NodeStatus.parse(status);
+      if (nodeStatus == NodeStatus.ReadOnly) {
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+      } else {
+        commonConfig.setNodeStatus(nodeStatus);
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

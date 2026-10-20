@@ -204,6 +204,8 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
+  protected volatile boolean enableAutoCreateSchema = true;
+
   private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
       "times, measurementsList and valuesList's size should be equal";
 
@@ -484,6 +486,7 @@ public class Session implements ISession {
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
   }
 
   @Override
@@ -2648,7 +2651,7 @@ public class Session implements ISession {
       List<List<TSDataType>> typesList,
       List<List<String>> measurementsList)
       throws IoTDBConnectionException {
-    List<ByteBuffer> buffersList = new ArrayList<>();
+    List<ByteBuffer> buffersList = new ArrayList<>(valuesList.size());
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer =
           SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i), measurementsList.get(i));
@@ -2879,7 +2882,7 @@ public class Session implements ISession {
             (k, v) -> {
               if (v == null) {
                 List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
-                List<TSDataType> dataTypes = new ArrayList<>();
+                List<TSDataType> dataTypes = new ArrayList<>(tablet.getSchemas().size());
                 tablet
                     .getSchemas()
                     .forEach(
@@ -3007,6 +3010,7 @@ public class Session implements ISession {
             .collect(Collectors.toList());
 
     StringBuilder errMsgBuilder = new StringBuilder();
+    List<Throwable> errors = new ArrayList<>();
     for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
         completableFuture.join();
@@ -3016,6 +3020,7 @@ public class Session implements ISession {
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          errors.add(cause);
           if (errMsgBuilder.length() > 0) {
             errMsgBuilder.append(";");
           }
@@ -3024,7 +3029,10 @@ public class Session implements ISession {
       }
     }
     if (errMsgBuilder.length() > 0) {
-      throw new StatementExecutionException(errMsgBuilder.toString());
+      StatementExecutionException exception =
+          new StatementExecutionException(errMsgBuilder.toString());
+      errors.forEach(exception::addSuppressed);
+      throw exception;
     }
   }
 
@@ -3289,8 +3297,8 @@ public class Session implements ISession {
       return;
     }
     request.addToPrefixPaths(filtered.getDeviceId());
-    List<String> measurements = new ArrayList<>();
-    List<Integer> dataTypes = new ArrayList<>();
+    List<String> measurements = new ArrayList<>(filtered.getSchemas().size());
+    List<Integer> dataTypes = new ArrayList<>(filtered.getSchemas().size());
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
@@ -3980,9 +3988,9 @@ public class Session implements ISession {
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> flatMeasurements = new ArrayList<>();
-    List<TSDataType> flatDataTypes = new ArrayList<>();
-    List<TSEncoding> flatEncodings = new ArrayList<>();
+    List<String> flatMeasurements = new ArrayList<>(measurements.size());
+    List<TSDataType> flatDataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> flatEncodings = new ArrayList<>(measurements.size());
     for (int idx = 0; idx < measurements.size(); idx++) {
       flatMeasurements.add(measurements.get(idx).get(0));
       flatDataTypes.add(dataTypes.get(idx).get(0));
@@ -4520,6 +4528,11 @@ public class Session implements ISession {
 
     public Builder database(String database) {
       this.database = database;
+      return this;
+    }
+
+    public Builder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+      this.enableAutoCreateSchema = enableAutoCreateSchema;
       return this;
     }
 

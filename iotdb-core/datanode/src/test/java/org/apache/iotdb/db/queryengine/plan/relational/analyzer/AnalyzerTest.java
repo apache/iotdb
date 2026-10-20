@@ -183,6 +183,15 @@ public class AnalyzerTest {
   }
 
   @Test
+  public void testLimitZeroRejected() {
+    TestUtils.assertAnalyzeSemanticException(
+        "SELECT * FROM table1 LIMIT 0", "LIMIT row count must be greater than 0 (actual value: 0)");
+    TestUtils.assertAnalyzeSemanticException(
+        "SELECT * FROM table1 ORDER BY time LIMIT 0",
+        "LIMIT row count must be greater than 0 (actual value: 0)");
+  }
+
+  @Test
   public void testMockQuery() throws OperatorNotFoundException {
     final String sql =
         "SELECT s1, (s1 + 1) as t from table1 where time > 100 and s2 > 10 offset 2 limit 3";

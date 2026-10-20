@@ -30,7 +30,10 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqBuilder;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -131,7 +134,15 @@ public class SubscriptionReceiverV1Test {
   @Test
   @SuppressWarnings("unchecked")
   public void testHandleExitKeepsSharedConsumerStateForTimeoutCleanup() throws Exception {
-    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final AtomicLong releaseCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+            releaseCount.incrementAndGet();
+            return 1;
+          }
+        };
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
     setField(receiver, "sharedConsumerConfig", consumerConfig);
     final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
@@ -144,12 +155,21 @@ public class SubscriptionReceiverV1Test {
     Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
     Assert.assertTrue(receiver.hasActiveConsumer());
     Assert.assertNull(consumerConfigThreadLocal.get());
+    Assert.assertEquals(1L, releaseCount.get());
   }
 
   @Test
   @SuppressWarnings("unchecked")
   public void testHandleExitClearsThreadLocalStateAfterInvalidation() throws Exception {
-    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final AtomicLong releaseCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+            releaseCount.incrementAndGet();
+            return 1;
+          }
+        };
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
     setField(receiver, "sharedConsumerConfig", consumerConfig);
     final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
@@ -162,6 +182,7 @@ public class SubscriptionReceiverV1Test {
     Assert.assertFalse(receiver.hasActiveConsumer());
     Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
     Assert.assertNull(consumerConfigThreadLocal.get());
+    Assert.assertEquals(0L, releaseCount.get());
   }
 
   @Test
@@ -201,6 +222,58 @@ public class SubscriptionReceiverV1Test {
     Assert.assertEquals(
         TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
         receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
+  }
+
+  @Test
+  public void testHandleSlicesDispatchesReassembledRequest() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+
+    final TPipeSubscribeResp firstResp =
+        receiver.handle(
+            PipeSubscribeSliceReqBuilder.buildSliceReq(
+                heartbeatReq, 1, 0, sliceCount, bodySizeLimit));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), firstResp.getStatus().getCode());
+
+    final TPipeSubscribeResp lastResp =
+        receiver.handle(
+            PipeSubscribeSliceReqBuilder.buildSliceReq(
+                heartbeatReq, 1, 1, sliceCount, bodySizeLimit));
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(), lastResp.getStatus().getCode());
+  }
+
+  @Test
+  public void testNonSliceRequestClearsIncompleteSlices() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 1, 0, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
+        receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 1, 1, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
   }
 
   @Test

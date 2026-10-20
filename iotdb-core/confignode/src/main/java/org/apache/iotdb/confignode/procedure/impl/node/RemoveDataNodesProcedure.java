@@ -54,6 +54,7 @@ import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANOD
 public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodesProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
+  private static final long ROLLBACK_RETRY_INTERVAL_MS = 5_000;
 
   private List<TDataNodeLocation> removedDataNodes;
 
@@ -84,6 +85,12 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();
     }
+  }
+
+  @Override
+  protected void waitForLock(ConfigNodeProcedureEnv env) {
+    // This procedure does not acquire the node lock. Failed cleanup is rescheduled by the timeout
+    // executor; waiting on an unowned node lock would requeue it immediately.
   }
 
   @Override
@@ -120,6 +127,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                 removedDataNodes);
             return Flow.NO_MORE_STATE;
           }
+          // Retry preparation separately: changing nodes to Removing affects the capacity check.
+          break;
         case REMOVE_DATA_NODE_PREPARE:
           Map<Integer, NodeStatus> removedNodeStatusMap = new HashMap<>();
           removedDataNodes.forEach(
@@ -159,6 +168,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
+        } else {
+          setNextState(state);
         }
       }
     }
@@ -211,7 +222,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         dataNodeLocation.getDataNodeId(), dataNodeLocation.getInternalEndPoint().getIp());
   }
 
-  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) {
+  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) throws IOException {
     List<TRegionReplicaSet> replicaSets =
         env.getConfigManager().getPartitionManager().getAllReplicaSets();
     List<TDataNodeLocation> rollBackDataNodes = new ArrayList<>();
@@ -264,7 +275,19 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RemoveDataNodeState state)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException {
+    if (state == RemoveDataNodeState.STOP_DATA_NODE) {
+      // The parent advances here before waiting for migration children. A failed child skips
+      // normal execution, so finish node cleanup without undoing migrations or clearing its
+      // failure.
+      checkRegionStatusAndStopDataNode(env);
+    }
+  }
+
+  @Override
+  protected long getRollbackRetryTimeout() {
+    return ROLLBACK_RETRY_INTERVAL_MS;
+  }
 
   @Override
   protected boolean isRollbackSupported(RemoveDataNodeState state) {

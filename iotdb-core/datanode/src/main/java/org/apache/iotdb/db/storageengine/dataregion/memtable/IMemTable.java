@@ -68,9 +68,11 @@ public interface IMemTable extends WALEntryValue {
       Object[] objectValue);
 
   /**
+   * @param ignoreAllNullRows whether rows whose values are all null should be ignored, it is
+   *     determined by the data model of the database the memtable belongs to
    * @return the number of points
    */
-  long size();
+  long size(boolean ignoreAllNullRows);
 
   /**
    * @return memory usage
@@ -123,6 +125,16 @@ public interface IMemTable extends WALEntryValue {
   int insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException;
 
+  default int insertAlignedTablet(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs)
+      throws WriteProcessException {
+    return insertAlignedTablet(insertTabletNode, start, end, results);
+  }
+
   ReadOnlyMemChunk query(
       QueryContext context,
       IFullPath fullPath,
@@ -160,7 +172,7 @@ public interface IMemTable extends WALEntryValue {
    *
    * @return
    */
-  long delete(ModEntry modEntry);
+  long delete(ModEntry modEntry, boolean ignoreAllNullRows);
 
   /**
    * Make a copy of this MemTable.
@@ -204,7 +216,7 @@ public interface IMemTable extends WALEntryValue {
 
   void setFlushStatus(FlushStatus flushStatus);
 
-  Map<IDeviceID, Long> getMaxTime();
+  Map<IDeviceID, Long> getMaxTime(boolean ignoreAllNullRows);
 
   String getDatabase();
 

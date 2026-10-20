@@ -97,13 +97,13 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
   public void shutdown() {
     super.shutdown();
     JMXService.deregisterMBean(mbeanName);
-    ThreadPoolMetrics.getInstance().unRegisterThreadPool(this.mbeanName);
+    ThreadPoolMetrics.getInstance().unRegisterThreadPool(this, this.mbeanName);
   }
 
   @Override
   public List<Runnable> shutdownNow() {
     JMXService.deregisterMBean(mbeanName);
-    ThreadPoolMetrics.getInstance().unRegisterThreadPool(this.mbeanName);
+    ThreadPoolMetrics.getInstance().unRegisterThreadPool(this, this.mbeanName);
     return super.shutdownNow();
   }
 

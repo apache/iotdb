@@ -223,7 +223,7 @@ public class ReadPointCompactionPerformer
             .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList());
 
-    fragmentInstanceContext.setIgnoreAllNullRows(device.getTableName().startsWith("root."));
+    fragmentInstanceContext.setIgnoreAllNullRows(!deviceIterator.isTableModel());
     IDataBlockReader dataBlockReader =
         constructReader(
             device,

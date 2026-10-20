@@ -177,18 +177,20 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void writeDataPoint(
       long timestamp, TsPrimitiveType value, IChunkWriter chunkWriter, int subTaskId) {
-    long writtenPointTotalSize;
     if (chunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
       Type.fromTsDataType(chunkWriterImpl.getDataType()).write(chunkWriterImpl, timestamp, value);
-      writtenPointTotalSize = Long.BYTES + estimateWrittenValueSize(value);
+      if (hasVariableLengthTypeArray[subTaskId]) {
+        writtenPointTotalSizeArray[subTaskId] += Long.BYTES + estimateWrittenValueSize(value);
+      }
     } else {
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
       alignedChunkWriter.write(timestamp, value.getVector());
-      writtenPointTotalSize = estimateWrittenPointTotalSize(value);
+      if (hasVariableLengthTypeArray[subTaskId]) {
+        writtenPointTotalSizeArray[subTaskId] += estimateWrittenPointTotalSize(value);
+      }
     }
     chunkPointNumArray[subTaskId]++;
-    writtenPointTotalSizeArray[subTaskId] += writtenPointTotalSize;
   }
 
   private long estimateWrittenPointTotalSize(TsPrimitiveType value) {

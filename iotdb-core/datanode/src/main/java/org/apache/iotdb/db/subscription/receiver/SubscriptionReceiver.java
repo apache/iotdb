@@ -33,6 +33,11 @@ public interface SubscriptionReceiver {
 
   void handleExit();
 
+  /** Releases the in-flight events held by this receiver's current consumer. */
+  default void releaseInFlightEvents() {
+    // no-op for receivers without subscription event ownership
+  }
+
   void handleTimeout();
 
   /**

@@ -182,7 +182,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>Interfaces and Implementation for initialization、recover and clear
+ *   <li>Interfaces and Implementation for initialization, recover and clear
  *   <li>Interfaces and Implementation for schema region Info query and operation
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces for auto create device
@@ -205,6 +205,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
+  private boolean ratisLogAppenderBufferReserved = false;
 
   private final String databaseDirPath;
   private final String schemaRegionDirPath;
@@ -228,7 +229,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private IDeviceAttributeStore deviceAttributeStore;
   private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
 
-  // region Interfaces and Implementation of initialization、snapshot、recover and clear
+  // region Interfaces and Implementation of initialization, snapshot, recover and clear
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
@@ -260,7 +261,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return;
     }
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ratisLogAppenderBufferReserved
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
@@ -269,6 +273,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 + DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_LIMIT
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
+      ratisLogAppenderBufferReserved = true;
     }
 
     initDir();
@@ -497,9 +502,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(
         schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ratisLogAppenderBufferReserved) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+      ratisLogAppenderBufferReserved = false;
     }
   }
 
@@ -893,11 +899,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    try {
-      return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
-    } catch (final Exception e) {
-      return Collections.emptyMap();
-    }
+    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
   @Override

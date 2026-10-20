@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -48,6 +49,18 @@ import static org.mockito.Mockito.verify;
 public class PipeRealtimePriorityBlockingQueueTest {
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testCompletionBarrierIsNotDroppedAfterHeartbeat() {
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    final PipeHeartbeatEvent heartbeatEvent = new PipeHeartbeatEvent(1, false);
+    final PipeHeartbeatEvent completionBarrier = new PipeHeartbeatEvent(1, false, true);
+
+    Assert.assertTrue(queue.offer(heartbeatEvent));
+    Assert.assertTrue(queue.offer(completionBarrier));
+    Assert.assertSame(heartbeatEvent, queue.directPoll());
+    Assert.assertSame(completionBarrier, queue.directPoll());
+  }
 
   @Test
   public void testReplaceOnlyRemovesEventsForCompactionSourceFiles() throws Exception {

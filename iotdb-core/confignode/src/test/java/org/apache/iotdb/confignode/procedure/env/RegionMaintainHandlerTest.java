@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -58,8 +60,12 @@ import java.util.Optional;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -85,6 +91,7 @@ public class RegionMaintainHandlerTest {
 
   private TConsensusGroupId regionId;
   private LoadManager loadManager;
+  private NodeManager nodeManager;
   private RegionMaintainHandler handler;
   private String originalConsensusProtocol;
 
@@ -98,25 +105,26 @@ public class RegionMaintainHandlerTest {
 
     regionId = new TConsensusGroupId(regionType, 1);
     ConfigManager configManager = mock(ConfigManager.class);
-    NodeManager nodeManager = mock(NodeManager.class);
+    nodeManager = mock(NodeManager.class);
     PartitionManager partitionManager = mock(PartitionManager.class);
     loadManager = mock(LoadManager.class);
     when(configManager.getNodeManager()).thenReturn(nodeManager);
     when(configManager.getPartitionManager()).thenReturn(partitionManager);
     when(configManager.getLoadManager()).thenReturn(loadManager);
-    when(partitionManager.getAllReplicaSets())
+    when(partitionManager.getRegionDatabase(regionId)).thenReturn("root.test");
+    when(partitionManager.getReplicaSets("root.test", Collections.singletonList(regionId)))
         .thenReturn(
             Collections.singletonList(
                 new TRegionReplicaSet(
                     regionId, Arrays.asList(original, coordinator, otherReplica))));
-    when(nodeManager.filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly))
-        .thenReturn(
-            Arrays.asList(
-                new TDataNodeConfiguration().setLocation(original),
-                new TDataNodeConfiguration().setLocation(coordinator),
-                new TDataNodeConfiguration().setLocation(otherReplica),
-                new TDataNodeConfiguration().setLocation(nonReplica)));
-    when(loadManager.getRegionLeaderMap()).thenReturn(Collections.emptyMap());
+    when(loadManager.filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly))
+        .thenReturn(Arrays.asList(1, 2, 3, 4));
+    for (TDataNodeLocation location :
+        Arrays.asList(original, coordinator, otherReplica, nonReplica)) {
+      when(nodeManager.getRegisteredDataNode(location.getDataNodeId()))
+          .thenReturn(new TDataNodeConfiguration().setLocation(location));
+    }
+    when(loadManager.getRegionLeaderId(regionId)).thenReturn(-1);
     handler = new RegionMaintainHandler(configManager);
   }
 
@@ -138,7 +146,7 @@ public class RegionMaintainHandlerTest {
 
   @Test
   public void testFilterReplicaWithUnknownLeader() {
-    when(loadManager.getRegionLeaderMap()).thenReturn(Collections.singletonMap(regionId, -1));
+    when(loadManager.getRegionLeaderId(regionId)).thenReturn(-1);
     assertEquals(
         Optional.of(otherReplica),
         handler.filterDataNodeWithOtherRegionReplica(
@@ -148,8 +156,7 @@ public class RegionMaintainHandlerTest {
 
   @Test
   public void testFilterReplicaPrefersKnownLeader() {
-    when(loadManager.getRegionLeaderMap())
-        .thenReturn(Collections.singletonMap(regionId, otherReplica.getDataNodeId()));
+    when(loadManager.getRegionLeaderId(regionId)).thenReturn(otherReplica.getDataNodeId());
     assertEquals(
         Optional.of(otherReplica),
         handler.filterDataNodeWithOtherRegionReplica(regionId, original));
@@ -172,17 +179,15 @@ public class RegionMaintainHandlerTest {
 
   @Test
   public void testTransferLeaderWithUnknownLeader() throws Exception {
-    when(loadManager.getRegionLeaderMap()).thenReturn(Collections.singletonMap(regionId, -1));
+    when(loadManager.getRegionLeaderId(regionId)).thenReturn(-1);
     assertLeaderTransfer();
   }
 
   @Test
   public void testTransferLeaderWaitsForLeaderElection() throws Exception {
     // The filter has a known leader, while the transfer lookup observes a stale cache first.
-    when(loadManager.getRegionLeaderMap())
-        .thenReturn(Collections.singletonMap(regionId, otherReplica.getDataNodeId()))
-        .thenReturn(Collections.emptyMap())
-        .thenReturn(Collections.singletonMap(regionId, original.getDataNodeId()));
+    when(loadManager.getRegionLeaderId(regionId))
+        .thenReturn(otherReplica.getDataNodeId(), -1, original.getDataNodeId());
     assertLeaderTransfer();
     verify(loadManager).waitForRegionGroupReady(Collections.singletonList(regionId));
   }
@@ -190,9 +195,7 @@ public class RegionMaintainHandlerTest {
   @Test
   public void testTransferLeaderWhenCacheEntryDisappears() throws Exception {
     // The cache can change between replica selection and the transfer's leader lookup.
-    when(loadManager.getRegionLeaderMap())
-        .thenReturn(Collections.singletonMap(regionId, -1))
-        .thenReturn(Collections.emptyMap());
+    when(loadManager.getRegionLeaderId(regionId)).thenReturn(otherReplica.getDataNodeId(), -1);
     assertLeaderTransfer();
   }
 
@@ -231,5 +234,113 @@ public class RegionMaintainHandlerTest {
     } finally {
       clientManagerField.set(clientPool, originalClientManager);
     }
+  }
+
+  @Test
+  public void testFilterReplicaDoesNotReadUnrelatedConfigurations() {
+    assertEquals(
+        Optional.of(otherReplica),
+        handler.filterDataNodeWithOtherRegionReplica(
+            regionId, Arrays.asList(original, coordinator)));
+    verify(loadManager, never()).getRegionLeaderMap();
+    verify(nodeManager, never()).getRegisteredDataNode(nonReplica.getDataNodeId());
+    verify(nodeManager, never())
+        .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly);
+  }
+
+  @Test
+  public void testFilterReplicaSkipsUnregisteredNode() {
+    when(nodeManager.getRegisteredDataNode(otherReplica.getDataNodeId()))
+        .thenReturn(new TDataNodeConfiguration());
+    assertFalse(
+        handler
+            .filterDataNodeWithOtherRegionReplica(regionId, Arrays.asList(original, coordinator))
+            .isPresent());
+  }
+
+  @Test
+  public void testFilterReplicaRejectsChangedEndpoint() {
+    TDataNodeLocation changedLocation = otherReplica.deepCopy();
+    changedLocation.setInternalEndPoint(new TEndPoint("127.0.0.2", 10730));
+    when(nodeManager.getRegisteredDataNode(otherReplica.getDataNodeId()))
+        .thenReturn(new TDataNodeConfiguration().setLocation(changedLocation));
+    assertFalse(
+        handler
+            .filterDataNodeWithOtherRegionReplica(regionId, Arrays.asList(original, coordinator))
+            .isPresent());
+  }
+
+  @Test
+  public void testFilterReplicaPreservesRequestedStatuses() {
+    when(loadManager.filterDataNodeThroughStatus(NodeStatus.Removing))
+        .thenReturn(Collections.singletonList(otherReplica.getDataNodeId()));
+    assertEquals(
+        Optional.of(otherReplica),
+        handler.filterDataNodeWithOtherRegionReplica(regionId, original, NodeStatus.Removing));
+    verify(nodeManager, never()).getRegisteredDataNode(coordinator.getDataNodeId());
+    verify(loadManager, never()).getRegionLeaderMap();
+    verify(nodeManager, never()).getRegisteredDataNode(nonReplica.getDataNodeId());
+  }
+
+  private RegionMaintainHandler stubStatusAndSubmit(
+      final NodeStatus status, final TSStatus submitResult) {
+    RegionMaintainHandler retryHandler = spy(handler);
+    doReturn(status).when(retryHandler).getDataNodeStatus(original.getDataNodeId());
+    doReturn(submitResult)
+        .when(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            any(CnToDnSyncRequestType.class),
+            any(Boolean.class));
+    return retryHandler;
+  }
+
+  @Test
+  public void testDeleteOldRegionPeerUsesSingleRetryForStoppedDataNode() {
+    final TSStatus success = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    final RegionMaintainHandler retryHandler = stubStatusAndSubmit(NodeStatus.Stopped, success);
+
+    final TSStatus status = retryHandler.submitDeleteOldRegionPeerTask(1L, original, regionId);
+
+    assertEquals(success.getCode(), status.getCode());
+    // A Stopped node does not respond to requests either: like Unknown, it gets a single retry.
+    verify(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            eq(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER),
+            eq(false));
+  }
+
+  @Test
+  public void testDeleteOldRegionPeerUsesFullRetryForRunningDataNode() {
+    final TSStatus success = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    final RegionMaintainHandler retryHandler = stubStatusAndSubmit(NodeStatus.Running, success);
+
+    retryHandler.submitDeleteOldRegionPeerTask(1L, original, regionId);
+
+    verify(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            eq(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER),
+            eq(true));
+  }
+
+  @Test
+  public void testDeleteOldRegionPeerUsesFullRetryForReadOnlyDataNode() {
+    final TSStatus success = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    final RegionMaintainHandler retryHandler = stubStatusAndSubmit(NodeStatus.ReadOnly, success);
+
+    retryHandler.submitDeleteOldRegionPeerTask(1L, original, regionId);
+
+    // Only Unknown and Stopped are treated as down; ReadOnly still responds.
+    verify(retryHandler)
+        .submitDataNodeSyncRequest(
+            any(TEndPoint.class),
+            any(Object.class),
+            eq(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER),
+            eq(true));
   }
 }

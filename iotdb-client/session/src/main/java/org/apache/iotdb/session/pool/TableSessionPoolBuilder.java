@@ -318,6 +318,18 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   /**
+   * Enables or disables schema auto-creation for this pool's write requests.
+   *
+   * @param enableAutoCreateSchema whether to allow auto creating tables and columns.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionPoolBuilder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
+    return this;
+  }
+
+  /**
    * Builds and returns a configured {@link ITableSessionPool} instance.
    *
    * @return a fully configured {@link ITableSessionPool}.

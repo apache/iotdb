@@ -70,6 +70,25 @@ public class LoadUtilTest {
   }
 
   @Test
+  public void testTransferFileLinksTheSourceInsteadOfCopyingIt() throws Exception {
+    final File source = new File(sourceDir, "link-me.tsfile");
+    Files.write(source.toPath(), "the payload".getBytes(StandardCharsets.UTF_8));
+    final File target = new File(targetDir, "link-me.tsfile");
+
+    LoadUtil.transferFile(source, target, true);
+
+    Assert.assertTrue(target.isFile());
+    Assert.assertArrayEquals(
+        Files.readAllBytes(source.toPath()), Files.readAllBytes(target.toPath()));
+    // A link, not a copy: both paths name the same file on disk, and deleting one keeps the other.
+    Assert.assertTrue(
+        "the transfer must link the source when the file system allows it",
+        Files.isSameFile(source.toPath(), target.toPath()));
+    Assert.assertTrue(source.delete());
+    Assert.assertTrue(target.isFile());
+  }
+
+  @Test
   public void testAsyncLoadValidatesCompleteBatchBeforeTransfer() throws Exception {
     final File validTsFile = createCompletedTsFile("valid.tsfile");
     final File invalidTsFile = new File(sourceDir, "invalid.tsfile");

@@ -22,7 +22,6 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 
 import org.apache.thrift.transport.TTransportException;
-import org.osgi.service.component.annotations.Component;
 
 import java.sql.Connection;
 import java.sql.Driver;
@@ -34,7 +33,6 @@ import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-@Component(service = java.sql.Driver.class, immediate = true)
 public class IoTDBDriver implements Driver {
   private static final org.slf4j.Logger logger =
       org.slf4j.LoggerFactory.getLogger(IoTDBDriver.class);
