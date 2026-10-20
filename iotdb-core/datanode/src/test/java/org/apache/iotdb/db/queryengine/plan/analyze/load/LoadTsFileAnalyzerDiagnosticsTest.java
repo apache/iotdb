@@ -43,9 +43,9 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.reflect.Whitebox;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -134,11 +134,12 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
             Mockito.mock(IPartitionFetcher.class),
             Mockito.mock(ISchemaFetcher.class))) {
       final Analysis analysis = new Analysis();
-      Whitebox.invokeMethod(
-          analyzer,
-          "executeTabletConversionOnException",
-          analysis,
-          new LoadAnalyzeException("original analysis failure"));
+      final Method conversionMethod =
+          LoadTsFileAnalyzer.class.getDeclaredMethod(
+              "executeTabletConversionOnException", Analysis.class, LoadAnalyzeException.class);
+      conversionMethod.setAccessible(true);
+      conversionMethod.invoke(
+          analyzer, analysis, new LoadAnalyzeException("original analysis failure"));
       Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
       return analysis.getFailStatus();
     }
