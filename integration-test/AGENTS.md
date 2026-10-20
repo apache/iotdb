@@ -70,18 +70,58 @@ These instructions apply to `integration-test/` and supplement the repository-le
 
 ## Verification
 
-- Format Java changes with `mvn spotless:apply -pl integration-test -P with-integration-tests`.
-- Run the affected IT classes or methods with the matching profile; do not run the entire IT
-  suite for a focused change. For a tree-model cluster test, run from the repository root:
+This module is excluded from the default build. Run the commands below from the repository root,
+always enabling `-P with-integration-tests` when building or testing this module.
 
-  ```bash
-  mvn clean verify -DskipUTs \
-    -Dit.test=ClassName#methodName \
-    -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false \
-    -pl integration-test -am -PClusterIT -P with-integration-tests
-  ```
+Format Java changes with `mvn spotless:apply -pl integration-test -P with-integration-tests`.
+
+### Targeted test runs
+
+Run only the affected IT classes or methods for a focused change. Select the matching test profile:
+
+| Data model | Default topology | Test profile |
+| --- | --- | --- |
+| Tree | 1 ConfigNode + 1 DataNode | `SimpleIT` (default) |
+| Tree | 1 ConfigNode + 3 DataNodes | `ClusterIT` |
+| Table | 1 ConfigNode + 1 DataNode | `TableSimpleIT` |
+| Table | 1 ConfigNode + 3 DataNodes | `TableClusterIT` |
+
+For example, run one tree-model cluster test method:
+
+```bash
+mvn clean verify -DskipUTs \
+  '-Dit.test=ClassName#methodName' \
+  -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false \
+  -pl integration-test -am -PClusterIT -P with-integration-tests
+```
+
+Use `-Dit.test=ClassName` to run a whole class. Replace `-PClusterIT` with the profile needed by the
+test; it may be omitted for the default `SimpleIT` profile.
 
 - Check the Failsafe report to confirm that the selected test actually ran; the no-tests flags
   allow upstream reactor modules to have no matching tests.
 - Report the tested revision, edition, profile, and result accurately. Passing an upstream build
   does not establish that the corresponding downstream edition was tested.
+
+### Node templates and IDE runs
+
+Build the node templates before an IDE run or a direct Failsafe invocation, and rebuild them after
+code changes:
+
+```bash
+mvn clean package -DskipTests -pl integration-test -am -P with-integration-tests
+```
+
+The `clean verify` command above already includes this packaging step. In IntelliJ, enable the
+`with-integration-tests` profile in the Maven sidebar before running test cases directly.
+
+### Edge tests
+
+Build the Edge distribution before running its dedicated Tree/Table read-write IT:
+
+```bash
+mvn clean package -DskipTests -pl distribution -am
+mvn verify -DskipUTs -Dit.test=IoTDBEdgeBasicIT \
+  -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false \
+  -pl integration-test -am -P EdgeIT -P with-integration-tests
+```
