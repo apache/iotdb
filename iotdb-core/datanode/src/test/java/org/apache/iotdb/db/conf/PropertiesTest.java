@@ -80,15 +80,15 @@ public class PropertiesTest {
       Assert.assertEquals(1024 * 1024, new IoTDBConfig().getLoadTsFileWriteBufferSize());
 
       final TrimProperties properties = new TrimProperties();
-      properties.setProperty("load_tsfile_write_buffer_size", "4096");
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "4096");
       descriptor.loadProperties(properties);
       Assert.assertEquals(4096, descriptor.getConfig().getLoadTsFileWriteBufferSize());
 
-      properties.setProperty("load_tsfile_write_buffer_size", "8192");
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "8192");
       descriptor.loadHotModifiedProps(properties);
       Assert.assertEquals(8192, descriptor.getConfig().getLoadTsFileWriteBufferSize());
 
-      properties.setProperty("load_tsfile_write_buffer_size", "0");
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "0");
       Assert.assertThrows(
           QueryProcessException.class, () -> descriptor.loadHotModifiedProps(properties));
       Assert.assertEquals(
@@ -97,7 +97,8 @@ public class PropertiesTest {
           descriptor.getConfig().getLoadTsFileWriteBufferSize());
     } finally {
       final TrimProperties properties = new TrimProperties();
-      properties.setProperty("load_tsfile_write_buffer_size", Integer.toString(originalValue));
+      properties.setProperty(
+          "load_tsfile_write_buffer_size_in_byte", Integer.toString(originalValue));
       descriptor.loadHotModifiedProps(properties);
     }
   }

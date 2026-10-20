@@ -2624,7 +2624,7 @@ public class IoTDBDescriptor {
     conf.setLoadTsFileWriteBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "load_tsfile_write_buffer_size",
+                "load_tsfile_write_buffer_size_in_byte",
                 String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(
@@ -2779,7 +2779,7 @@ public class IoTDBDescriptor {
     conf.setLoadTsFileWriteBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "load_tsfile_write_buffer_size",
+                "load_tsfile_write_buffer_size_in_byte",
                 String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(

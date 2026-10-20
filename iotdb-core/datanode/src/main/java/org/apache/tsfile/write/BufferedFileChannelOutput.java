@@ -29,14 +29,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Arrays;
 import java.util.Objects;
 
 /**
  * A {@link TsFileOutput} that buffers writes and hands them to the {@link FileChannel} once the
- * configured buffer size is reached. The buffer is allocated at half of that size and grows on
- * demand, and it is flushed by {@link #force()}, {@link #flush()}, {@link #truncate(long)}, a seek
- * to another position, or {@link #close()}.
+ * configured buffer size is reached. The buffer is allocated at its full configured size when the
+ * output is created, and it is flushed by {@link #force()}, {@link #flush()}, {@link
+ * #truncate(long)}, a seek to another position, or {@link #close()}.
  */
 public final class BufferedFileChannelOutput extends OutputStream implements TsFileOutput {
 
@@ -45,9 +44,10 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
 
   private final FileChannel channel;
   private final int bufferSize;
-  private final DynamicBuffer buffer;
+  private final byte[] buffer;
+  private int bufferLength;
 
-  /** Creates an output that buffers {@code load_tsfile_write_buffer_size} bytes. */
+  /** Creates an output that buffers {@code load_tsfile_write_buffer_size_in_byte} bytes. */
   public BufferedFileChannelOutput(final FileChannel channel) {
     this(channel, configuredBufferSize());
   }
@@ -66,7 +66,7 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
           DataNodeMiscMessages.EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4);
     }
     this.bufferSize = bufferSize;
-    this.buffer = new DynamicBuffer(Math.max(1, bufferSize / 2));
+    this.buffer = new byte[bufferSize];
   }
 
   private static int configuredBufferSize() {
@@ -81,10 +81,10 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
 
   @Override
   public synchronized void write(final byte b) throws IOException {
-    if (buffer.size() == bufferSize) {
+    if (bufferLength == bufferSize) {
       flushBuffer();
     }
-    buffer.write(b);
+    buffer[bufferLength++] = b;
   }
 
   @Override
@@ -105,10 +105,11 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
       writeDirect(bytes, offset, length);
       return;
     }
-    if (length > bufferSize - buffer.size()) {
+    if (length > bufferSize - bufferLength) {
       flushBuffer();
     }
-    buffer.write(bytes, offset, length);
+    System.arraycopy(bytes, offset, buffer, bufferLength, length);
+    bufferLength += length;
   }
 
   @Override
@@ -124,10 +125,11 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
       }
       return;
     }
-    if (length > bufferSize - buffer.size()) {
+    if (length > bufferSize - bufferLength) {
       flushBuffer();
     }
-    buffer.write(src);
+    src.get(buffer, bufferLength, length);
+    bufferLength += length;
   }
 
   private void writeDirect(final byte[] bytes, final int offset, final int length)
@@ -140,25 +142,25 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
 
   /** Hands the buffered bytes to the channel, keeping the previous writes in order. */
   private void flushBuffer() throws IOException {
-    if (buffer.size() == 0) {
+    if (bufferLength == 0) {
       return;
     }
-    final ByteBuffer wrap = ByteBuffer.wrap(buffer.array(), 0, buffer.size());
+    final ByteBuffer wrap = ByteBuffer.wrap(buffer, 0, bufferLength);
     while (wrap.hasRemaining()) {
       channel.write(wrap);
     }
-    buffer.clear();
+    bufferLength = 0;
   }
 
   @Override
   public synchronized long getPosition() throws IOException {
     // The buffered bytes are already logically written, so a position query must not flush them.
-    return channel.position() + buffer.size();
+    return channel.position() + bufferLength;
   }
 
   /** Moves the output to the given absolute position, flushing first when the position changes. */
   synchronized void position(final long offset) throws IOException {
-    if (offset == channel.position() + buffer.size()) {
+    if (offset == channel.position() + bufferLength) {
       return;
     }
     flushBuffer();
@@ -194,53 +196,6 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
       flushBuffer();
     } finally {
       channel.close();
-    }
-  }
-
-  /** A byte array that grows on demand and is only ever written to by its owner. */
-  private static final class DynamicBuffer {
-
-    private byte[] data;
-    private int size;
-
-    private DynamicBuffer(final int initialCapacity) {
-      this.data = new byte[initialCapacity];
-    }
-
-    private void ensureCapacity(final int minCapacity) {
-      if (minCapacity > data.length) {
-        data = Arrays.copyOf(data, Math.max(data.length * 2, minCapacity));
-      }
-    }
-
-    private void write(final byte b) {
-      ensureCapacity(size + 1);
-      data[size++] = b;
-    }
-
-    private void write(final byte[] src, final int offset, final int length) {
-      ensureCapacity(size + length);
-      System.arraycopy(src, offset, data, size, length);
-      size += length;
-    }
-
-    private void write(final ByteBuffer src) {
-      final int length = src.remaining();
-      ensureCapacity(size + length);
-      src.get(data, size, length);
-      size += length;
-    }
-
-    private int size() {
-      return size;
-    }
-
-    private byte[] array() {
-      return data;
-    }
-
-    private void clear() {
-      size = 0;
     }
   }
 }
