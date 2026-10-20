@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.storageengine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.splitter.NonAlignedChunkData;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -40,14 +43,17 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -78,6 +84,47 @@ public class TsFileWriterManagerRecoveryTest {
   @Test
   public void testResumeMinimumTimePartition() throws Exception {
     assertTimePartitionResumes(Long.MIN_VALUE);
+  }
+
+  @Test
+  public void testCommitPreparedFileAfterRecovery() throws Exception {
+    final File taskDir = temporaryFolder.newFolder("prepared-task");
+    final NonAlignedChunkData chunk = chunk(0L, 1);
+    new ChunkOffsetCalculator().assign(chunk);
+    final ProgressIndex progressIndex = new SimpleProgressIndex(1, 10L);
+    TsFileWriterManager manager = new TsFileWriterManager(dataRegion, taskDir);
+    try {
+      manager.writePiece(List.of(chunk));
+      manager.prepare(
+          true,
+          Map.of(chunk.getTimePartitionSlot(), progressIndex),
+          Map.of(chunk.getTimePartitionSlot(), chunkEnd(chunk)));
+      final File staged = stagedFile(taskDir, 0L);
+      final byte[] preparedBytes = Files.readAllBytes(staged.toPath());
+      manager.close(true);
+
+      manager = new TsFileWriterManager(dataRegion, taskDir).recoverFromDisk();
+
+      assertArrayEquals(
+          "Recovery must preserve a prepared TsFile",
+          preparedBytes,
+          Files.readAllBytes(staged.toPath()));
+      // The coordinator already received the PREPARE acknowledgement and only sends COMMIT.
+      manager.loadAll(true, false);
+      final ArgumentCaptor<TsFileResource> imported = ArgumentCaptor.forClass(TsFileResource.class);
+      Mockito.verify(dataRegion)
+          .loadNewTsFile(
+              imported.capture(),
+              Mockito.eq(false),
+              Mockito.eq(true),
+              Mockito.eq(false),
+              Mockito.any());
+      assertTrue(imported.getValue().isGeneratedByPipe());
+      assertEquals(progressIndex, imported.getValue().getMaxProgressIndexAfterClose());
+      assertPoints(staged, 0L, 1);
+    } finally {
+      manager.close();
+    }
   }
 
   private void assertTimePartitionResumes(final long partitionStart) throws Exception {

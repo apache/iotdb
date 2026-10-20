@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -54,6 +55,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -741,7 +743,21 @@ final class TsFileWriterManager {
       final TTimePartitionSlot timePartitionSlot =
           new TTimePartitionSlot(parseTimePartitionStart(tsFile.getName()));
       final long resumeOffset = progress.getTotalLength();
-      if (tsFile.length() > resumeOffset) {
+      final TsFileResource resource = new TsFileResource(tsFile);
+      boolean sealed = false;
+      if (resource.resourceFileExists()) {
+        try (final TsFileSequenceReader reader =
+            new TsFileSequenceReader(tsFile.getAbsolutePath(), false)) {
+          sealed = TSFileConfig.MAGIC_STRING.equals(reader.readTailMagic());
+        }
+        if (sealed) {
+          resource.deserialize();
+          resource.setStatus(TsFileResourceStatus.NORMAL);
+        }
+      }
+      // A resource sidecar and a completed footer record a successful PREPARE. Its coordinator
+      // may send COMMIT immediately after recovery, so preserve both the sealed bytes and marks.
+      if (!sealed && tsFile.length() > resumeOffset) {
         try (final FileChannel truncatingChannel =
             FileChannel.open(tsFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)) {
           truncatingChannel.truncate(resumeOffset);
@@ -765,15 +781,15 @@ final class TsFileWriterManager {
       try {
         channel =
             FileChannel.open(tsFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
-        channel.position(resumeOffset);
+        channel.position(sealed ? tsFile.length() : resumeOffset);
         final TsFilePrecalculatedChunkWriter writer =
-            new TsFilePrecalculatedChunkWriter(tsFile, channel);
+            new TsFilePrecalculatedChunkWriter(tsFile, channel, sealed);
         writer.setRejectHoles(LoadConsensusCompat.usesIoTConsensusV2());
         writer.restoreChunkMetadata(restoreChunkMetadata(records));
         publishedLengths.put(tsFile, tsFile.length());
 
         timePartition2Writer.put(timePartitionSlot, writer);
-        timePartition2Resource.put(timePartitionSlot, new TsFileResource(tsFile));
+        timePartition2Resource.put(timePartitionSlot, resource);
         timePartition2Progress.put(timePartitionSlot, progress);
 
         final File modificationFile = ModificationFile.getExclusiveMods(tsFile);
