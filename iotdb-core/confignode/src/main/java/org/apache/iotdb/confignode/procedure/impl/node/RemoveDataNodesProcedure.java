@@ -291,7 +291,9 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
 
   @Override
   protected boolean isRollbackSupported(RemoveDataNodeState state) {
-    return false;
+    // Child migration failures are reported after the parent has advanced to STOP_DATA_NODE.
+    // Roll back there so drained nodes are stopped and failed migrations restore their statuses.
+    return state == RemoveDataNodeState.STOP_DATA_NODE;
   }
 
   /**
