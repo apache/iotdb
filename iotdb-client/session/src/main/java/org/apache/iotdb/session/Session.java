@@ -125,6 +125,7 @@ public class Session implements ISession {
           new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
+  private final List<String> initialNodeUrls;
   protected String username;
   protected String password;
   protected boolean useEncryptedPassword;
@@ -367,6 +368,8 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
+    this.initialNodeUrls =
+        Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -434,8 +437,9 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
-    nodeUrls = shuffleNodeUrls(nodeUrls);
+    nodeUrls = shuffleNodeUrls(new ArrayList<>(nodeUrls));
     this.nodeUrls = nodeUrls;
+    this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -451,11 +455,13 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = shuffleNodeUrls(new ArrayList<>(builder.nodeUrls));
+      this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
       this.enableQueryRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+      this.initialNodeUrls =
+          Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
       this.enableQueryRedirection = builder.enableRedirection;
     }
     this.enableThriftRpcCompaction = builder.isThriftRpcCompactionEnabled;
@@ -599,11 +605,7 @@ public class Session implements ISession {
   }
 
   private List<TEndPoint> getNodeUrls() {
-    if (defaultEndPoint != null) {
-      return Collections.singletonList(defaultEndPoint);
-    } else {
-      return SessionUtils.parseSeedNodeUrls(nodeUrls);
-    }
+    return SessionUtils.parseSeedNodeUrls(initialNodeUrls);
   }
 
   @Override

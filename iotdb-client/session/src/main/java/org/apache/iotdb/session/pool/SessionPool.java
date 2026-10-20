@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -564,7 +565,7 @@ public class SessionPool implements ISessionPool {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = Collections.unmodifiableList(new ArrayList<>(builder.nodeUrls));
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();

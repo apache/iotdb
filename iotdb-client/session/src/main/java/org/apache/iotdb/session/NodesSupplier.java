@@ -30,12 +30,17 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class NodesSupplier implements INodeSupplier, Runnable {
 
@@ -54,10 +59,13 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private static final int FETCH_SIZE = 10_000;
 
-  // availableNodes won't be updated frequently, so we use CopyOnWriteArrayList which is thread-safe
-  // and is optimized for scenarios of reading more and writing less
+  // Publish complete snapshots; discovery must never overwrite the initial recovery addresses.
   @SuppressWarnings("java:S3077")
-  private volatile List<TEndPoint> availableNodes = new CopyOnWriteArrayList<>();
+  private volatile List<TEndPoint> availableNodes;
+
+  private final List<TEndPoint> seedNodes;
+  private final ScheduledExecutorService executorService;
+  private final AtomicBoolean refreshRequested = new AtomicBoolean();
 
   private final boolean useSSL;
   private final String trustStore;
@@ -108,6 +116,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     NodesSupplier nodesSupplier =
         new NodesSupplier(
             endPointList,
+            executorService,
             userName,
             password,
             zoneId,
@@ -133,6 +142,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private NodesSupplier(
       List<TEndPoint> endPointList,
+      ScheduledExecutorService executorService,
       String userName,
       String password,
       ZoneId zoneId,
@@ -147,7 +157,11 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       String sslProtocol,
       boolean enableRPCCompression,
       String version) {
-    this.availableNodes.addAll(new HashSet<>(endPointList));
+    this.seedNodes =
+        Collections.unmodifiableList(
+            endPointList.stream().distinct().map(TEndPoint::deepCopy).collect(Collectors.toList()));
+    this.availableNodes = seedNodes;
+    this.executorService = executorService;
     this.userName = userName;
     this.password = password;
     this.useSSL = useSSL;
@@ -172,24 +186,54 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   }
 
   @Override
-  public void run() {
+  public List<TEndPoint> getSeedNodes() {
+    return seedNodes;
+  }
+
+  @Override
+  public void requestRefresh() {
+    if (!closed && refreshRequested.compareAndSet(false, true)) {
+      try {
+        executorService.execute(
+            () -> {
+              try {
+                run();
+              } finally {
+                refreshRequested.set(false);
+              }
+            });
+      } catch (RejectedExecutionException e) {
+        // The session or pool may have shut down its executor concurrently.
+        refreshRequested.set(false);
+      }
+    }
+  }
+
+  @Override
+  public synchronized void run() {
     if (closed) {
       if (client != null) {
         destroyCurrentClient();
       }
       return;
     }
-    if (client == null) {
-      for (TEndPoint endPoint : availableNodes) {
-        if (createConnection(endPoint)) {
-          break;
-        }
+    Set<TEndPoint> attempted = new HashSet<>();
+    if (client != null) {
+      attempted.add(client.endPoint);
+      if (updateDataNodeList()) {
+        return;
       }
+      destroyCurrentClient();
     }
 
-    // make sure the following code block can run thread-safely with close() method.
-    synchronized (this) {
-      if (client != null && !updateDataNodeList()) {
+    // A stale discovery snapshot can omit the only node that has finished a rolling restart.
+    Set<TEndPoint> candidates = new LinkedHashSet<>(availableNodes);
+    candidates.addAll(seedNodes);
+    for (TEndPoint endPoint : candidates) {
+      if (attempted.add(endPoint)) {
+        if (createConnection(endPoint) && updateDataNodeList()) {
+          return;
+        }
         destroyCurrentClient();
       }
     }
@@ -235,10 +279,11 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   @Override
   public Optional<TEndPoint> getQueryEndPoint() {
-    if (availableNodes == null || availableNodes.isEmpty()) {
+    List<TEndPoint> snapshot = availableNodes;
+    if (snapshot.isEmpty()) {
       return Optional.empty();
     } else {
-      return Optional.of(policy.chooseOne(get()));
+      return Optional.of(policy.chooseOne(snapshot));
     }
   }
 
@@ -266,9 +311,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         }
       }
     }
-    // replace the older ones.
-    if (!res.isEmpty()) {
-      availableNodes = res;
-    }
+    // An empty successful result is authoritative too; seeds remain available for recovery.
+    availableNodes = Collections.unmodifiableList(res);
   }
 }
