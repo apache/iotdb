@@ -98,8 +98,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
 
   @Override
   protected void importSchemaFromCsvFile(File file) {
-    try {
-      CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
+    try (CSVParser csvRecords = readCsvFile(file.getAbsolutePath())) {
       List<String> headerNames = csvRecords.getHeaderNames();
       Stream<CSVRecord> records = csvRecords.stream();
       if (headerNames.isEmpty()) {
