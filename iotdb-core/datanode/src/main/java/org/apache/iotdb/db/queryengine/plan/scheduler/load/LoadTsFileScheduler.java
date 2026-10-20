@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.load.RegionReplicaSetChangedException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -559,6 +560,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private void convertFailedTsFilesToTabletsAndRetry() {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(queryContext, isGeneratedByPipe);
+    final List<String> failureDetails = new ArrayList<>();
 
     final Iterator<Integer> iterator = failedTsFileNodeIndexes.listIterator();
     while (iterator.hasNext()) {
@@ -579,17 +581,30 @@ public class LoadTsFileScheduler implements IScheduler {
               "Load: Successfully converted TsFile {} into tablets and inserted.",
               failedNode.getTsFileResource().getTsFilePath());
         } else {
-          LOGGER.warn(
-              "Load: Failed to convert to tablets from TsFile {}. Status: {}",
-              failedNode.getTsFileResource().getTsFilePath(),
-              status);
+          final String message =
+              status == null
+                  ? String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                      filePath,
+                      DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3)
+                  : String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                      filePath,
+                      status);
+          failureDetails.add(message);
+          LOGGER.warn(message);
         }
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Load: Failed to convert to tablets from TsFile {}. Exception: {}",
-            failedNode.getTsFileResource().getTsFilePath(),
-            e.getMessage(),
-            e);
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                filePath,
+                e);
+        failureDetails.add(message);
+        LOGGER.warn(message, e);
       }
     }
 
@@ -600,10 +615,10 @@ public class LoadTsFileScheduler implements IScheduler {
       stateMachine.transitionToFinished();
     } else {
       final String errorMsg =
-          "Load: failed to load some TsFiles by converting them into tablets. Failed TsFiles: "
-              + failedTsFileNodeIndexes.stream()
-                  .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
-                  .collect(Collectors.joining(", "));
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5,
+              String.join("; ", failureDetails));
       LOGGER.warn(errorMsg);
       stateMachine.transitionToFailed(new LoadFileException(errorMsg));
     }
