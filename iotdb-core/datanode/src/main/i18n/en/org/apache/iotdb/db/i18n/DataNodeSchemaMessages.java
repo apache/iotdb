@@ -171,7 +171,7 @@ public final class DataNodeSchemaMessages {
   public static final String ERROR_DURING_INIT_SCHEMA_REGION =
       "Error occurred during initializing schemaRegion {}";
   public static final String FAILED_TO_RECOVER_TAG_INDEX =
-      "Failed to recover tagIndex for {} in schemaRegion {}.";
+      "Failed to recover tag index for measurement [{}] in database [{}], SchemaRegion [{}], tag offset [{}].";
   public static final String FAILED_TO_READ_TAG_ATTRIBUTE =
       "Failed to read tag and attribute info because {}";
 
@@ -213,19 +213,19 @@ public final class DataNodeSchemaMessages {
   public static final String DATABASE_NAME_ILLEGAL_CHARS =
       "The database name can only contain english or chinese characters, numbers, backticks and underscores. %s";
   public static final String SDT_COMPRESSION_DEVIATION_REQUIRED =
-      "SDT compression deviation is required";
+      "SDT compression requires the compdev property";
   public static final String SDT_COMPRESSION_DEVIATION_NEGATIVE =
-      "SDT compression deviation cannot be negative";
+      "SDT property compdev must be non-negative, but was [%s]";
   public static final String SDT_COMPRESSION_DEVIATION_FORMAT_ERROR =
-      "SDT compression deviation formatting error";
+      "SDT property compdev must be a number, but was [%s]";
   public static final String SDT_COMPRESSION_MAX_GREATER_THAN_MIN =
-      "SDT compression maximum time needs to be greater than compression minimum time";
+      "SDT property compmaxtime [%s] must be greater than compmintime [%s]";
   public static final String SDT_COMPRESSION_TIME_NEGATIVE =
-      "SDT compression %s time cannot be negative";
+      "SDT property %s must be non-negative, but was [%s]";
   public static final String SDT_COMPRESSION_TIME_FORMAT_ERROR =
-      "SDT compression %s time formatting error";
+      "SDT property %s must be a 64-bit integer, but was [%s]";
   public static final String SDT_ENABLED_NO_COMPRESSION_TIME =
-      "{} enabled SDT but did not set compression {} time";
+      "Timeseries [{}] uses SDT without property [{}]; using default [{}].";
 
   // ======================== Tag/Attribute ========================
 
@@ -489,9 +489,12 @@ public final class DataNodeSchemaMessages {
   public static final String FAILED_TO_CREATE_TEMPLATE =
       "Failed to execute create device template {} in config node, status is {}.";
   public static final String CREATE_TEMPLATE_ERROR_PREFIX = "create template error -";
-  public static final String CREATE_TEMPLATE_ERROR = "create template error.";
-  public static final String GET_ALL_TEMPLATE_ERROR = "get all template error.";
-  public static final String GET_TEMPLATE_INFO_ERROR = "get template info error.";
+  public static final String CREATE_TEMPLATE_ERROR =
+      "Failed to create schema template [%s] on ConfigNode: %s";
+  public static final String GET_ALL_TEMPLATE_ERROR =
+      "Failed to get schema templates from ConfigNode: %s";
+  public static final String GET_TEMPLATE_INFO_ERROR =
+      "Failed to get schema template [%s] from ConfigNode: %s";
   public static final String FAILED_TO_SET_TEMPLATE =
       "Failed to execute set device template {} on path {} in config node, status is {}.";
 
