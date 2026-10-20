@@ -63,7 +63,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
  */
 public class TreeToTableViewCache implements ITreeToTableViewCache {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TreeToTableViewCache.class);
+  public static final Logger LOGGER = LoggerFactory.getLogger(TreeToTableViewCache.class);
 
   private final IMNodeFactory<IMemMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();

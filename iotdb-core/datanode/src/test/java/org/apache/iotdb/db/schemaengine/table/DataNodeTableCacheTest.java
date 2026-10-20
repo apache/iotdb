@@ -60,12 +60,12 @@ public class DataNodeTableCacheTest {
       final TsTable initial = createTable(TABLE_NAME);
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, initial, null);
       Assert.assertNull(cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
       Assert.assertSame(initial, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
       final TsTable updated = new TsTable(initial);
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, updated, null);
       Assert.assertSame(initial, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
       Assert.assertSame(updated, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
     } finally {
       cache.invalid(TABLE_CACHE_TEST_DATABASE);

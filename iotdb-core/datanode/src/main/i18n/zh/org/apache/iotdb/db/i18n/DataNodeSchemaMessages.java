@@ -736,5 +736,15 @@ public final class DataNodeSchemaMessages {
   public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "计划节点 {} 触发树转表视图加列失败，本次 schema 写入不受影响。";
   public static final String LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_BBD78902 = "树转表视图 {}.{} 未注册";
   public static final String LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE = "更新树转表视图 {}.{} 的索引失败";
+  public static final String
+      LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2 =
+          "注册树转表视图 {}.{}，路径 {}，restrict {}，tag 数 {}";
+  public static final String LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A =
+      "注销树转表视图 {}.{}";
+  public static final String LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41 =
+      "树转表视图 {}.{} 由 {} 重命名而来";
+  public static final String
+      LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984 =
+          "树转表视图 {}.{} 的属性更新为 {}";
 
 }

@@ -421,34 +421,38 @@ public class DataNodeTableCache implements ITableCache {
     final TreeToTableViewTrieOperationType type =
         TreeToTableViewTrieOperationType.getType(
             updateTree2TableViewInfo.getTree2TableOperationType());
+    final boolean changed;
     try {
       switch (type) {
         case REMOVE:
           // Unregistering a view needs nothing but its name.
-          treeToTableViewCache.removeView(database, tableName);
+          changed = treeToTableViewCache.removeView(database, tableName);
           break;
         case ALTER_RENAME:
           // A rename keeps the place of the view.
-          treeToTableViewCache.alterViewName(database, tableName, oldTableName);
+          changed = treeToTableViewCache.alterViewName(database, tableName, oldTableName);
           break;
         case ALTER_TAG:
-          final Map<String, String> properties = new HashMap<>();
-          properties.put(
-              TreeToTableViewReference.NUM_OF_TAGS,
-              String.valueOf(updateTree2TableViewInfo.getTagNum()));
-          treeToTableViewCache.alterViewProperties(database, tableName, properties);
+          changed =
+              treeToTableViewCache.alterViewProperties(
+                  database,
+                  tableName,
+                  Collections.singletonMap(
+                      TreeToTableViewReference.NUM_OF_TAGS,
+                      String.valueOf(updateTree2TableViewInfo.getTagNum())));
           break;
         case ADD:
         case ALTER_AUTO_SYNC:
-          treeToTableViewCache.addView(
-              database,
-              tableName,
-              updateTree2TableViewInfo.isRestrict,
-              updateTree2TableViewInfo.getTagNum(),
-              new PartialPath(updateTree2TableViewInfo.getTreePath()));
+          changed =
+              treeToTableViewCache.addView(
+                  database,
+                  tableName,
+                  updateTree2TableViewInfo.isRestrict,
+                  updateTree2TableViewInfo.getTagNum(),
+                  new PartialPath(updateTree2TableViewInfo.getTreePath()));
           break;
         default:
-          break;
+          return;
       }
     } catch (final IllegalPathException e) {
       LOGGER.warn(
@@ -457,6 +461,57 @@ public class DataNodeTableCache implements ITableCache {
           database,
           tableName,
           e);
+      return;
+    }
+    if (changed) {
+      logTreeToTableViewChange(type, database, tableName, oldTableName, updateTree2TableViewInfo);
+    }
+  }
+
+  /** Logs the change an operation really applied to the tree-to-table view index. */
+  private static void logTreeToTableViewChange(
+      final TreeToTableViewTrieOperationType type,
+      final String database,
+      final String tableName,
+      final @Nullable String oldTableName,
+      final TUpdateTree2TableView updateTree2TableViewInfo) {
+    switch (type) {
+      case REMOVE:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages.LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A,
+            database,
+            tableName);
+        break;
+      case ALTER_RENAME:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages.LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41,
+            database,
+            tableName,
+            oldTableName);
+        break;
+      case ALTER_TAG:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages
+                .LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984,
+            database,
+            tableName,
+            Collections.singletonMap(
+                TreeToTableViewReference.NUM_OF_TAGS,
+                String.valueOf(updateTree2TableViewInfo.getTagNum())));
+        break;
+      case ADD:
+      case ALTER_AUTO_SYNC:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages
+                .LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2,
+            database,
+            tableName,
+            updateTree2TableViewInfo.getTreePath(),
+            updateTree2TableViewInfo.isRestrict,
+            updateTree2TableViewInfo.getTagNum());
+        break;
+      default:
+        break;
     }
   }
 

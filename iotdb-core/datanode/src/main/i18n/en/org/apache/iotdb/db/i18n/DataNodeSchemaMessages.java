@@ -748,5 +748,15 @@ public final class DataNodeSchemaMessages {
   public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "Failed to trigger the view column addition of the tree to table views for plan node {}, the schema write is not affected.";
   public static final String LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_BBD78902 = "Tree to table view {}.{} is not registered";
   public static final String LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE = "Failed to update the tree-to-table view index of view {}.{}";
+  public static final String
+      LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2 =
+          "Registered the tree to table view {}.{} at {} with restrict {} and num of tags {}";
+  public static final String LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A =
+      "Unregistered the tree to table view {}.{}";
+  public static final String LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41 =
+      "Renamed the tree to table view {}.{} from {}";
+  public static final String
+      LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984 =
+          "Updated the properties of the tree to table view {}.{} to {}";
 
 }
