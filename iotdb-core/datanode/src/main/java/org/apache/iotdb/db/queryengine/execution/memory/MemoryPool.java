@@ -57,6 +57,7 @@ public class MemoryPool {
     private final long bytesToReserve;
     // Assigned once by the pool before publication. Zero denotes an untracked future.
     private long reservationId;
+    private FragmentMemoryReservation fragment;
 
     /**
      * MemoryReservationFuture is created when an exchange handle tries to reserve memory from the
@@ -159,6 +160,7 @@ public class MemoryPool {
   private static class PlanNodeReservation {
     private final MemorySide side;
     private volatile long bytesReserved;
+    private boolean deregistered;
 
     private PlanNodeReservation(MemorySide side) {
       this.side = side;
@@ -178,6 +180,8 @@ public class MemoryPool {
         new ConcurrentHashMap<>();
     // Enabled by local planning before drivers start; request limits are supplied by handles.
     private volatile boolean sharedBudget;
+    // Protected by this monitor, together with waiter publication and retry.
+    private boolean deregistered;
 
     private AtomicLong getUsedBytes(MemorySide side) {
       return side == MemorySide.INPUT ? inputUsedBytes : outputUsedBytes;
@@ -286,56 +290,72 @@ public class MemoryPool {
       String queryId, String fragmentInstanceId, boolean forceDeregister) {
     Map<String, FragmentMemoryReservation> queryRelatedMemory =
         queryMemoryReservations.get(queryId);
-    if (queryRelatedMemory != null) {
-      FragmentMemoryReservation fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
-      boolean hasPotentialMemoryLeak = false;
-      // fragmentRelatedMemory could be null if the FI has not reserved any memory(For example,
-      // next() of root operator returns no data)
-      if (fragmentRelatedMemory != null) {
-        hasPotentialMemoryLeak =
-            fragmentRelatedMemory.inputUsedBytes.get() != 0L
-                || fragmentRelatedMemory.outputUsedBytes.get() != 0L
-                || fragmentRelatedMemory.planNodes.values().stream()
-                    .anyMatch(value -> value.bytesReserved != 0L);
-      }
-      if (!forceDeregister && hasPotentialMemoryLeak) {
-        // If hasPotentialMemoryLeak is true, it means that LocalSourceChannel/LocalSourceHandles
-        // have not been closed.
-        // We should wait for them to be closed. Make sure this method is called again with
-        // forceDeregister == true, after all LocalSourceChannel/LocalSourceHandles are closed.
-        return;
-      }
-      // Pending requests must not outlive their FI registration. Cancel before removing the
-      // account so another query's free() cannot retry a request against a missing FI. Do not
-      // hold the registration lock while notifying cancellation listeners.
-      if (fragmentRelatedMemory != null) {
-        for (MemoryReservationFuture<Void> future :
-            fragmentRelatedMemory.pendingReservations.values()) {
-          tryCancel(future);
+    if (queryRelatedMemory == null) {
+      return;
+    }
+    FragmentMemoryReservation fragment = queryRelatedMemory.get(fragmentInstanceId);
+    boolean hasPotentialMemoryLeak = false;
+    synchronized (queryMemoryReservations) {
+      if (fragment != null) {
+        synchronized (fragment) {
+          if (queryRelatedMemory.get(fragmentInstanceId) != fragment) {
+            return;
+          }
+          if (!forceDeregister && hasReservedMemory(fragment)) {
+            // Local queues can still hold this FI's allocation after its driver has closed.
+            return;
+          }
+          fragment.deregistered = true;
+          setPlanNodesDeregistered(fragment, true);
+          // Wait for reservations that had already acquired their plan-node accounting lock.
+          hasPotentialMemoryLeak = hasReservedMemory(fragment);
+          if (!forceDeregister && hasPotentialMemoryLeak) {
+            setPlanNodesDeregistered(fragment, false);
+            fragment.deregistered = false;
+            return;
+          }
+          queryRelatedMemory.remove(fragmentInstanceId, fragment);
         }
       }
-      synchronized (queryMemoryReservations) {
-        queryRelatedMemory.remove(fragmentInstanceId);
-        // Another fragment may have recreated the query entry while this cleanup waited for the
-        // lock.
-        if (queryRelatedMemory.isEmpty()
-            && queryMemoryReservations.get(queryId) == queryRelatedMemory) {
-          queryMemoryReservations.remove(queryId);
-        }
+      if (queryRelatedMemory.isEmpty()
+          && queryMemoryReservations.get(queryId) == queryRelatedMemory) {
+        queryMemoryReservations.remove(queryId);
       }
-      if (hasPotentialMemoryLeak) {
-        // hasPotentialMemoryLeak means that fragmentRelatedMemory is not null
-        List<Map.Entry<String, PlanNodeReservation>> invalidEntryList =
-            fragmentRelatedMemory.planNodes.entrySet().stream()
-                .filter(entry -> entry.getValue().bytesReserved != 0L)
-                .collect(Collectors.toList());
-        throw new MemoryLeakException(
-            String.format(
-                DataNodeQueryMessages
-                    .QUERY_EXCEPTION_PLANNODE_RELATED_MEMORY_IS_NOT_ZERO_WHEN_TRYING_TO_DEREGISTER_E01109C5,
-                queryId,
-                fragmentInstanceId,
-                invalidEntryList));
+    }
+    // Detach without completing the futures. Only owners may cancel and deduct pending bytes;
+    // cancellation listeners otherwise mistake cancellation for admission. Publication and
+    // retries cannot enter this account after it has been marked as deregistered.
+    if (fragment != null) {
+      for (MemoryReservationFuture<Void> future : fragment.pendingReservations.values()) {
+        removePendingReservation(future);
+      }
+    }
+    if (hasPotentialMemoryLeak) {
+      List<Map.Entry<String, PlanNodeReservation>> invalidEntryList =
+          fragment.planNodes.entrySet().stream()
+              .filter(entry -> entry.getValue().bytesReserved != 0L)
+              .collect(Collectors.toList());
+      throw new MemoryLeakException(
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_PLANNODE_RELATED_MEMORY_IS_NOT_ZERO_WHEN_TRYING_TO_DEREGISTER_E01109C5,
+              queryId,
+              fragmentInstanceId,
+              invalidEntryList));
+    }
+  }
+
+  private static boolean hasReservedMemory(FragmentMemoryReservation fragment) {
+    return fragment.inputUsedBytes.get() != 0L
+        || fragment.outputUsedBytes.get() != 0L
+        || fragment.planNodes.values().stream().anyMatch(value -> value.bytesReserved != 0L);
+  }
+
+  private static void setPlanNodesDeregistered(
+      FragmentMemoryReservation fragment, boolean deregistered) {
+    for (PlanNodeReservation reservation : fragment.planNodes.values()) {
+      synchronized (reservation) {
+        reservation.deregistered = deregistered;
       }
     }
   }
@@ -397,9 +417,22 @@ public class MemoryPool {
               queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
       FragmentMemoryReservation fragment =
           getFragmentReservation(queryId, fragmentInstanceId, planNodeId);
-      result.reservationId = nextReservationId.incrementAndGet();
-      fragment.pendingReservations.put(result.reservationId, result);
-      memoryReservationFutures.put(result.reservationId, result);
+      synchronized (fragment) {
+        // Deregistration must not miss a request published after its pending-request scan.
+        if (fragment.deregistered) {
+          throw new IllegalArgumentException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F,
+                  queryId,
+                  fragmentInstanceId,
+                  planNodeId));
+        }
+        result.fragment = fragment;
+        result.reservationId = nextReservationId.incrementAndGet();
+        fragment.pendingReservations.put(result.reservationId, result);
+        memoryReservationFutures.put(result.reservationId, result);
+      }
       // A concurrent free may have missed this request before it was published. Retry after
       // publication, under the same future lock used by free and tryCancel to avoid charging twice.
       try {
@@ -407,8 +440,7 @@ public class MemoryPool {
           removePendingReservation(result);
         }
       } catch (RuntimeException | Error e) {
-        // A concurrently removed registration must not leave a published request behind.
-        tryCancel(result);
+        removePendingReservation(result);
         throw e;
       }
       return new MemoryReservationResult(result, false, bytesToReserve);
@@ -509,12 +541,8 @@ public class MemoryPool {
 
   private void removePendingReservation(MemoryReservationFuture<Void> future) {
     memoryReservationFutures.remove(future.reservationId, future);
-    Map<String, FragmentMemoryReservation> fragments =
-        queryMemoryReservations.get(future.getQueryId());
-    FragmentMemoryReservation fragment =
-        fragments == null ? null : fragments.get(future.getFragmentInstanceId());
-    if (fragment != null) {
-      fragment.pendingReservations.remove(future.reservationId, future);
+    if (future.fragment != null) {
+      future.fragment.pendingReservations.remove(future.reservationId, future);
     }
   }
 
@@ -527,16 +555,22 @@ public class MemoryPool {
       String queryId = future.getQueryId();
       String fragmentInstanceId = future.getFragmentInstanceId();
       String planNodeId = future.getPlanNodeId();
-      if (tryReserve(
-          queryId,
-          fragmentInstanceId,
-          planNodeId,
-          bytesToReserve,
-          future.getMaxBytesCanReserve())) {
-        future.set(null);
-        return true;
+      synchronized (future.fragment) {
+        if (future.fragment.deregistered) {
+          return true;
+        }
+        if (!tryReserve(
+            queryId,
+            fragmentInstanceId,
+            planNodeId,
+            bytesToReserve,
+            future.getMaxBytesCanReserve())) {
+          return false;
+        }
       }
-      return false;
+      // Owner callbacks may register or release other accounts.
+      future.set(null);
+      return true;
     }
   }
 
@@ -587,6 +621,9 @@ public class MemoryPool {
     // Legacy quotas are independent per plan node. Only shared quotas require the FI lock.
     Object accountingLock = fragment.sharedBudget ? fragment : reservation;
     synchronized (accountingLock) {
+      if (reservation.deregistered) {
+        return false;
+      }
       long usedBytes =
           fragment.sharedBudget
               ? fragment.getUsedBytes(reservation.side).get()

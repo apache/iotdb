@@ -189,7 +189,7 @@ public class MemoryPoolTest {
   }
 
   @Test
-  public void testDeregisterCancelsPendingReservationsBeforeUnrelatedFree() {
+  public void testDeregisterDetachesPendingReservationsBeforeUnrelatedFree() {
     pool.registerPlanNodeIdToQueryMemoryMap("healthy", "fi", "a", MemorySide.INPUT);
     pool.registerPlanNodeIdToQueryMemoryMap("healthy", "fi", "b", MemorySide.INPUT);
     Assert.assertTrue(pool.tryReserve("healthy", "fi", "a", 512, 512));
@@ -200,14 +200,15 @@ public class MemoryPoolTest {
 
     pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
 
-    Assert.assertTrue(pending.getFuture().isCancelled());
+    Assert.assertFalse(pending.getFuture().isDone());
+    Assert.assertEquals(256, pool.tryCancel(pending.getFuture()));
     pool.free("healthy", "fi", "a", 512);
     pool.free("healthy", "fi", "b", 512);
     Assert.assertEquals(0, pool.getReservedBytes());
   }
 
   @Test
-  public void testForceDeregisterCancelsPendingReservationsEvenWhenReportingLeak() {
+  public void testForceDeregisterDetachesPendingReservationsEvenWhenReportingLeak() {
     Assert.assertTrue(pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512, 512));
     MemoryReservationResult pending =
         pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 512, false);
@@ -220,10 +221,98 @@ public class MemoryPoolTest {
             pool.deRegisterFragmentInstanceFromQueryMemoryMap(
                 QUERY_ID, FRAGMENT_INSTANCE_ID, true));
 
-    Assert.assertTrue(pending.getFuture().isCancelled());
+    Assert.assertFalse(pending.getFuture().isDone());
+    Assert.assertEquals(256, pool.tryCancel(pending.getFuture()));
     pool.free("healthy", "fi", "a", 256);
     // Forced cleanup still reports and retains the original leaked allocation.
     Assert.assertEquals(512, pool.getReservedBytes());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testPublicationDuringDeregistrationCannotPoisonOtherQueries() throws Exception {
+    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "a", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "b", MemorySide.INPUT);
+    Assert.assertTrue(pool.tryReserve("holder", "fi", "a", 512, 512));
+    Assert.assertTrue(pool.tryReserve("holder", "fi", "b", 512, 512));
+    Field accounts = MemoryPool.class.getDeclaredField("queryMemoryReservations");
+    accounts.setAccessible(true);
+    Map<String, Map<String, Object>> queries =
+        (Map<String, Map<String, Object>>) accounts.get(pool);
+    Object fragment = queries.get(QUERY_ID).get(FRAGMENT_INSTANCE_ID);
+    Field pendingField = fragment.getClass().getDeclaredField("pendingReservations");
+    pendingField.setAccessible(true);
+    AtomicInteger publicationAttempts = new AtomicInteger();
+    List<MemoryReservationResult> detached = new ArrayList<>();
+    List<MemoryReservationResult> healthy = new ArrayList<>();
+    pendingField.set(
+        fragment,
+        new java.util.concurrent.ConcurrentHashMap<
+            Long, MemoryPool.MemoryReservationFuture<Void>>() {
+          @Override
+          public Collection<MemoryPool.MemoryReservationFuture<Void>> values() {
+            // A waiter published after this snapshot was the missed-request race in deregistration.
+            Collection<MemoryPool.MemoryReservationFuture<Void>> snapshot =
+                new ArrayList<>(super.values());
+            publicationAttempts.incrementAndGet();
+            try {
+              detached.add(
+                  pool.reserveWithPriority(
+                      QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 32, 512, false));
+            } catch (IllegalArgumentException expected) {
+              // Publication must be refused once deregistration has closed this account.
+            }
+            pool.registerPlanNodeIdToQueryMemoryMap("waiting", "fi", "later", MemorySide.INPUT);
+            healthy.add(pool.reserveWithPriority("waiting", "fi", "later", 32, 512, false));
+            return snapshot;
+          }
+        });
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
+    Assert.assertEquals(1, publicationAttempts.get());
+    pool.free("holder", "fi", "a", 512);
+    Assert.assertTrue(healthy.get(0).getFuture().isDone());
+    pool.free("holder", "fi", "b", 512);
+    pool.free("waiting", "fi", "later", 32);
+    for (MemoryReservationResult request : detached) {
+      Assert.assertFalse(request.getFuture().isDone());
+      Assert.assertEquals(32, pool.tryCancel(request.getFuture()));
+    }
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap("holder", "fi", true);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap("waiting", "fi", true);
+    Assert.assertEquals(0, pool.getReservedBytes());
+    Assert.assertEquals(0, pool.getMemoryReservationSize());
+    Assert.assertEquals(0, pool.getQueryMemoryReservationSize());
+  }
+
+  @Test
+  public void testDetachedWaiterDoesNotUseRecreatedFragmentAccount() {
+    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "a", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "b", MemorySide.INPUT);
+    Assert.assertTrue(pool.tryReserve("holder", "fi", "a", 512, 512));
+    Assert.assertTrue(pool.tryReserve("holder", "fi", "b", 512, 512));
+    MemoryReservationResult old =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 32, 512, false);
+    AtomicInteger callbacks = new AtomicInteger();
+    old.getFuture().addListener(callbacks::incrementAndGet, Runnable::run);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
+    Assert.assertFalse(old.getFuture().isDone());
+    Assert.assertEquals(0, callbacks.get());
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, MemorySide.INPUT);
+    MemoryReservationResult replacement =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 32, 512, false);
+    Assert.assertEquals(32, pool.tryCancel(old.getFuture()));
+    Assert.assertEquals(1, pool.getMemoryReservationSize());
+    pool.free("holder", "fi", "a", 512);
+    Assert.assertTrue(replacement.getFuture().isDone());
+    Assert.assertFalse(replacement.getFuture().isCancelled());
+    pool.free("holder", "fi", "b", 512);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 32);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap("holder", "fi", true);
+    Assert.assertEquals(0, pool.getReservedBytes());
+    Assert.assertEquals(0, pool.getMemoryReservationSize());
+    Assert.assertEquals(0, pool.getQueryMemoryReservationSize());
   }
 
   @Test
@@ -257,7 +346,8 @@ public class MemoryPoolTest {
 
     pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
 
-    Assert.assertTrue(pending.getFuture().isCancelled());
+    Assert.assertFalse(pending.getFuture().isDone());
+    Assert.assertEquals(256, pool.tryCancel(pending.getFuture()));
     Assert.assertFalse(other.getFuture().isDone());
     pool.free("healthy", "fi", "a", 512);
     Assert.assertTrue(other.getFuture().isDone());
@@ -273,7 +363,7 @@ public class MemoryPoolTest {
   }
 
   @Test
-  public void testDeregistrationCancelsOnlyIndexedWaiters() throws Exception {
+  public void testDeregistrationDetachesOnlyIndexedWaiters() throws Exception {
     assertDeregistrationDoesNotScanUnrelatedWaiters(false);
   }
 
@@ -298,6 +388,10 @@ public class MemoryPoolTest {
         Assert.assertEquals(8, pool.tryCancel(victims.get(i).getFuture()));
       }
       pool.deRegisterFragmentInstanceFromQueryMemoryMap("victim", Integer.toString(i), true);
+      if (!ownerCancels) {
+        Assert.assertFalse(victims.get(i).getFuture().isDone());
+        Assert.assertEquals(8, pool.tryCancel(victims.get(i).getFuture()));
+      }
       Assert.assertTrue(victims.get(i).getFuture().isCancelled());
       Assert.assertFalse(unrelated.get(i).getFuture().isDone());
     }
