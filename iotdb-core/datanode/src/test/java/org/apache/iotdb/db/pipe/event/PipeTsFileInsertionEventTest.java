@@ -80,7 +80,8 @@ public class PipeTsFileInsertionEventTest {
             TsFileNameGenerator.generateNewTsFilePath(
                 TestConstant.BASE_OUTPUT_PATH + IoTDBConstant.SEQUENCE_FOLDER_NAME, 1, 1, 1, 1));
     try {
-      AuthorityChecker.setAccessControl(new TestAccessControl());
+      final TestAccessControl accessControl = Mockito.spy(new TestAccessControl());
+      AuthorityChecker.setAccessControl(accessControl);
 
       final TsFileResource resource = new TsFileResource(file);
       try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
@@ -126,6 +127,18 @@ public class PipeTsFileInsertionEventTest {
               Long.MIN_VALUE,
               Long.MAX_VALUE);
       Assert.assertThrows(AccessDeniedException.class, tableEvent::throwIfNoPrivilege);
+      // A denied event must remain retryable until SELECT is granted.
+      Assert.assertThrows(AccessDeniedException.class, tableEvent::throwIfNoPrivilege);
+      Mockito.doReturn(true)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      tableEvent.throwIfNoPrivilege();
+      // Processing can fail after a successful check, so the next attempt must check again.
+      tableEvent.throwIfNoPrivilege();
+      Mockito.doReturn(false)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      Assert.assertThrows(AccessDeniedException.class, tableEvent::throwIfNoPrivilege);
       tableEvent.close();
 
       final PipeTsFileInsertionEvent treeEvent =
@@ -156,6 +169,8 @@ public class PipeTsFileInsertionEventTest {
       Assert.assertThrows(PipeException.class, treeEvent::toTabletInsertionEvents);
 
       treeEvent.setTreeSchemaMap(Collections.singletonMap(deviceID, new String[] {"s0", "s1"}));
+      Assert.assertThrows(AccessDeniedException.class, treeEvent::throwIfNoPrivilege);
+      // Retrying a realtime event must not fall back to the historical coarse filter.
       Assert.assertThrows(AccessDeniedException.class, treeEvent::throwIfNoPrivilege);
 
       treeEvent.close();
