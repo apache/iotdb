@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -452,7 +453,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     // root.test / root.db shall not be transferred
     TestUtils.assertDataAlwaysOnEnv(
-        receiverEnv, "count databases", "count,", Collections.singleton("0,"));
+        receiverEnv,
+        "count databases",
+        ColumnHeaderConstant.COUNT_DATABASE + ",",
+        Collections.singleton("0,"));
 
     // Test snapshot filter
     TestUtils.executeNonQueries(
@@ -506,7 +510,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     // Shall be transferred
     // The root.test may or may not be transferred due to delayed start of the config source
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases root.test1", "count,", Collections.singleton("1,"));
+        receiverEnv,
+        "count databases root.test1",
+        ColumnHeaderConstant.COUNT_DATABASE + ",",
+        Collections.singleton("1,"));
 
     // Write some data
     TestUtils.executeNonQueries(
