@@ -154,6 +154,23 @@ public class RenameTableColumnProcedure
     }
   }
 
+  /**
+   * The column is renamed on the ConfigNode once RENAME_COLUMN has completed, and the ConfigNode
+   * schema is the source of truth the DataNodes resync from. The procedure therefore stays
+   * rollbackable up to RENAME_COLUMN and not after it.
+   */
+  @Override
+  protected boolean isRollbackSupported(final RenameTableColumnState state) {
+    switch (state) {
+      case COLUMN_CHECK:
+      case PRE_RELEASE:
+      case RENAME_COLUMN:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final RenameTableColumnState state)
       throws IOException, InterruptedException, ProcedureException {

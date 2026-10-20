@@ -162,6 +162,23 @@ public abstract class AbstractSetPropertiesProcedure
   protected abstract ConfigPhysicalPlan createSetPropertiesPlan(
       Map<String, String> properties, boolean isRollback);
 
+  /**
+   * The properties are set on the ConfigNode once SET_PROPERTIES has completed, and the ConfigNode
+   * schema is the source of truth the DataNodes resync from. The procedure therefore stays
+   * rollbackable up to SET_PROPERTIES and not after it.
+   */
+  @Override
+  protected boolean isRollbackSupported(final SetTablePropertiesState state) {
+    switch (state) {
+      case VALIDATE_TABLE:
+      case PRE_RELEASE:
+      case SET_PROPERTIES:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
