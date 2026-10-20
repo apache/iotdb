@@ -234,7 +234,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       }
       return firstStatus;
     } catch (SemanticException | TableLostRuntimeException e) {
-      LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage());
+      LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (MetadataLeaseFencedException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
