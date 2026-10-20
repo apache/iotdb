@@ -644,12 +644,17 @@ public class QueryExecution implements IQueryExecution {
     } catch (InterruptedException e) {
       // TODO: (xingtanzjr) use more accurate error handling
       Thread.currentThread().interrupt();
+      // An interrupted waiter can still observe a failure recorded before the interruption.
+      // Preserve its identity so callers do not mistake that failure for shutdown cancellation.
+      TSStatus failureStatus = stateMachine.getFailureStatus();
+      if (failureStatus != null) {
+        return new ExecutionResult(context.getQueryId(), failureStatus);
+      }
       return new ExecutionResult(
           context.getQueryId(),
-          stateMachine.getFailureStatus() == null
-              ? RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
-              : stateMachine.getFailureStatus());
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()),
+          // A terminal query may have failed with an exception that has no dedicated status code.
+          !stateMachine.getState().isDone());
     } catch (ExecutionException e) {
       return new ExecutionResult(
           context.getQueryId(),

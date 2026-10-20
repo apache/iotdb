@@ -23,11 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
+import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
@@ -46,16 +51,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.stubbing.OngoingStubbing;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -221,35 +231,12 @@ public class IoTDBInternalLocalReporterTest {
 
     executedStatements(1);
     assertTrue(Thread.currentThread().isInterrupted());
-    assertFalse(hasWarning());
+    assertTrue(hasWarning());
   }
 
   @Test
   public void testStopInterruptsAutoCreateAndPreventsRetry() throws Exception {
-    // Exercise shutdownNow() on a real worker while schema creation is in progress.
-    service = Executors.newSingleThreadScheduledExecutor();
-    reporter = newReporter(service);
-    CountDownLatch creating = new CountDownLatch(1);
-    execution()
-        .thenReturn(result(TSStatusCode.METADATA_ERROR))
-        .thenAnswer(
-            invocation -> {
-              creating.countDown();
-              try {
-                new CountDownLatch(1).await();
-              } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-              }
-              return result(TSStatusCode.INTERNAL_SERVER_ERROR);
-            });
-
-    writeMetric();
-    assertTrue(creating.await(5, TimeUnit.SECONDS));
-    reporter.stop();
-    assertTrue(service.awaitTermination(5, TimeUnit.SECONDS));
-
-    assertEquals(2, executedStatements(2).size());
-    assertFalse(hasWarning());
+    verifyReloadInterrupt(null, null, true);
   }
 
   @Test
@@ -277,12 +264,14 @@ public class IoTDBInternalLocalReporterTest {
   }
 
   @Test
-  public void testInternalErrorWithoutShutdownStillWarns() {
+  public void testInterruptedWaitWithoutShutdownStillWarns() throws Exception {
+    QueryExecution queryExecution =
+        queryExecutionWithDelayedStatus(null, null, new CountDownLatch(0));
     execution()
         .thenAnswer(
             invocation -> {
               Thread.currentThread().interrupt();
-              return result(TSStatusCode.INTERNAL_SERVER_ERROR);
+              return queryExecution.getStatus();
             });
 
     writeMetric();
@@ -332,6 +321,111 @@ public class IoTDBInternalLocalReporterTest {
     writeMetric();
 
     assertTrue(hasWarning());
+  }
+
+  @Test
+  public void testReloadInterruptPreservesRecordedReadOnlyFailure() throws Exception {
+    verifyReloadInterrupt(new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()), null, false);
+  }
+
+  @Test
+  public void testReloadInterruptPreservesRecordedWriteFailure() throws Exception {
+    verifyReloadInterrupt(
+        new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode()), null, false);
+  }
+
+  @Test
+  public void testReloadInterruptPreservesRecordedInternalFailure() throws Exception {
+    verifyReloadInterrupt(
+        new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()), null, false);
+  }
+
+  @Test
+  public void testReloadInterruptPreservesRecordedException() throws Exception {
+    verifyReloadInterrupt(null, new IllegalStateException("existing write failure"), false);
+  }
+
+  @Test
+  public void testReloadInterruptPreservesRecordedAutoCreateFailure() throws Exception {
+    verifyReloadInterrupt(
+        new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode()), null, true);
+  }
+
+  @Test
+  public void testReloadWithOnlyInterruptedWaitDoesNotWarn() throws Exception {
+    verifyReloadInterrupt(null, null, false);
+  }
+
+  private void verifyReloadInterrupt(
+      TSStatus recordedFailure, Throwable recordedException, boolean autoCreate) throws Exception {
+    service = Executors.newSingleThreadScheduledExecutor();
+    reporter = newReporter(service);
+    CountDownLatch waitingForStatus = new CountDownLatch(1);
+    QueryExecution queryExecution =
+        queryExecutionWithDelayedStatus(recordedFailure, recordedException, waitingForStatus);
+    AtomicReference<ExecutionResult> returnedResult = new AtomicReference<>();
+    AtomicBoolean interrupted = new AtomicBoolean();
+    OngoingStubbing<ExecutionResult> execution = execution();
+    if (autoCreate) {
+      execution = execution.thenReturn(result(TSStatusCode.METADATA_ERROR));
+    }
+    execution.thenAnswer(
+        invocation -> {
+          ExecutionResult result = queryExecution.getStatus();
+          returnedResult.set(result);
+          interrupted.set(Thread.currentThread().isInterrupted());
+          return result;
+        });
+
+    writeMetric();
+    assertTrue(waitingForStatus.await(5, TimeUnit.SECONDS));
+    // The node remains running: stop() represents replacing just the reporter on reload.
+    reporter.stop();
+    assertTrue(service.awaitTermination(5, TimeUnit.SECONDS));
+
+    assertTrue(interrupted.get());
+    ExecutionResult result = returnedResult.get();
+    if (recordedFailure != null) {
+      assertSame(recordedFailure, result.status);
+    } else {
+      assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.getCode());
+      if (recordedException != null) {
+        assertEquals(recordedException.getMessage(), result.status.getMessage());
+      }
+    }
+    executedStatements(autoCreate ? 2 : 1);
+    assertEquals(
+        recordedFailure == null && recordedException == null, result.failureCausedByInterruption);
+    assertEquals(recordedFailure != null || recordedException != null, hasWarning());
+  }
+
+  private QueryExecution queryExecutionWithDelayedStatus(
+      TSStatus recordedFailure, Throwable recordedException, CountDownLatch waitingForStatus)
+      throws Exception {
+    MPPQueryContext context = mock(MPPQueryContext.class);
+    when(context.getQueryId()).thenReturn(new QueryId("metric_reload"));
+    IPlanner planner = mock(IPlanner.class);
+    when(planner.analyze(context)).thenReturn(mock(IAnalysis.class));
+    ExecutorService notifications = mock(ExecutorService.class);
+    QueryExecution execution = new QueryExecution(planner, context, notifications);
+    Field stateMachineField = QueryExecution.class.getDeclaredField("stateMachine");
+    stateMachineField.setAccessible(true);
+    QueryStateMachine stateMachine = (QueryStateMachine) stateMachineField.get(execution);
+    if (recordedFailure != null) {
+      stateMachine.transitionToFailed(recordedFailure);
+    } else if (recordedException != null) {
+      stateMachine.transitionToFailed(recordedException);
+    }
+    // Delay listener delivery as with a busy notification executor. The real getStatus() waits
+    // until shutdownNow() interrupts it, even when the state machine already holds a failure.
+    doAnswer(
+            invocation -> {
+              waitingForStatus.countDown();
+              return null;
+            })
+        .when(notifications)
+        .execute(any(Runnable.class));
+    return execution;
   }
 
   private IoTDBInternalLocalReporter newReporter(ScheduledExecutorService executor) {
