@@ -128,7 +128,7 @@ public class Role {
   }
 
   public List<TPathPrivilege> getTreePrivilegeInfo() {
-    List<TPathPrivilege> privilegeList = new ArrayList<>();
+    List<TPathPrivilege> privilegeList = new ArrayList<>(pathPrivilegeList.size());
     for (PathPrivilege pathPrivilege : pathPrivilegeList) {
       TPathPrivilege pathPriv = new TPathPrivilege();
       pathPriv.setPath(pathPrivilege.getPath().getFullPath());

@@ -77,8 +77,8 @@ public class OperateMultiplePipesPlanV2 extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     if (ReadWriteIOUtils.readBool(buffer)) {
-      subPlans = new ArrayList<>();
       int size = ReadWriteIOUtils.readInt(buffer);
+      subPlans = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         final boolean isLastSubPlan = i == size - 1;
         short type = ReadWriteIOUtils.readShort(buffer);

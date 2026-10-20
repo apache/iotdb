@@ -43,6 +43,10 @@ public class SubscriptionQueueRegistry {
   private final String consensusGroupId;
   private final Map<BlockingQueue<IndexedConsensusRequest>, SubscriptionQueueRegistration> queues =
       new ConcurrentHashMap<>();
+  private final Map<String, SubscriptionQueueRegistration> detachedRetentionRegistrations =
+      new ConcurrentHashMap<>();
+  private final Map<String, BlockingQueue<IndexedConsensusRequest>> retentionOwners =
+      new ConcurrentHashMap<>();
   // offer is synchronized, so these counts remain scoped to one reason without extra atomics.
   private final long[] rejectedEntriesByReason =
       new long[SubscriptionQueueRejectionReason.values().length];
@@ -71,16 +75,81 @@ public class SubscriptionQueueRegistry {
       final SubscriptionWalRetentionPolicy retentionPolicy,
       final LongSupplier retainedMinVersionIdSupplier) {
     queues.put(
-        queue, new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier));
+        queue,
+        new SubscriptionQueueRegistration(retentionPolicy, retainedMinVersionIdSupplier, null));
+  }
+
+  public synchronized void register(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier retainedMinVersionIdSupplier,
+      final String retentionId) {
+    replaceDetachedRetentionWithQueue(
+        retentionId, queue, retentionPolicy, retainedMinVersionIdSupplier);
   }
 
   // Shares the monitor with offer() so unregister() is a real stop-receiving barrier.
   public synchronized void unregister(final BlockingQueue<IndexedConsensusRequest> queue) {
-    queues.remove(queue);
+    final SubscriptionQueueRegistration registration = queues.remove(queue);
+    if (registration != null && registration.retentionId != null) {
+      retentionOwners.remove(registration.retentionId, queue);
+    }
+  }
+
+  public synchronized void replaceQueueWithDetachedRetention(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier retainedMinVersionIdSupplier) {
+    final SubscriptionQueueRegistration registration = queues.remove(queue);
+    // A later unsubscribe cleanup or a new queue may have superseded this asynchronous close.
+    // The old queue must still stop receiving writes, but cannot recreate detached retention.
+    if (registration == null
+        || (registration.retentionId != null
+            && !retentionOwners.remove(registration.retentionId, queue))) {
+      return;
+    }
+    detachedRetentionRegistrations.put(
+        retentionId,
+        new SubscriptionQueueRegistration(
+            retentionPolicy, retainedMinVersionIdSupplier, retentionId));
+  }
+
+  public synchronized void replaceDetachedRetentionWithQueue(
+      final String retentionId,
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier retainedMinVersionIdSupplier) {
+    detachedRetentionRegistrations.remove(retentionId);
+    retentionOwners.put(retentionId, queue);
+    queues.put(
+        queue,
+        new SubscriptionQueueRegistration(
+            retentionPolicy, retainedMinVersionIdSupplier, retentionId));
+  }
+
+  public synchronized void registerDetachedRetention(
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier retainedMinVersionIdSupplier) {
+    retentionOwners.remove(retentionId);
+    detachedRetentionRegistrations.put(
+        retentionId,
+        new SubscriptionQueueRegistration(
+            retentionPolicy, retainedMinVersionIdSupplier, retentionId));
+  }
+
+  public synchronized void unregisterDetachedRetention(final String retentionId) {
+    retentionOwners.remove(retentionId);
+    detachedRetentionRegistrations.remove(retentionId);
   }
 
   public synchronized boolean isEmpty() {
-    return queues.isEmpty();
+    return queues.isEmpty() && detachedRetentionRegistrations.isEmpty();
+  }
+
+  public synchronized boolean hasQueues() {
+    return !queues.isEmpty();
   }
 
   public synchronized int size() {
@@ -88,8 +157,13 @@ public class SubscriptionQueueRegistry {
   }
 
   public synchronized Collection<SubscriptionWalRetentionPolicy> getRetentionPolicies() {
-    final Collection<SubscriptionWalRetentionPolicy> retentionPolicies = new ArrayList<>();
+    final Collection<SubscriptionWalRetentionPolicy> retentionPolicies =
+        new ArrayList<>(queues.size());
     for (final SubscriptionQueueRegistration registration : queues.values()) {
+      retentionPolicies.add(registration.retentionPolicy);
+    }
+    for (final SubscriptionQueueRegistration registration :
+        detachedRetentionRegistrations.values()) {
       retentionPolicies.add(registration.retentionPolicy);
     }
     return retentionPolicies;
@@ -101,9 +175,13 @@ public class SubscriptionQueueRegistry {
       for (final SubscriptionQueueRegistration registration : queues.values()) {
         suppliers.add(registration.retainedMinVersionIdSupplier);
       }
+      for (final SubscriptionQueueRegistration registration :
+          detachedRetentionRegistrations.values()) {
+        suppliers.add(registration.retainedMinVersionIdSupplier);
+      }
     }
 
-    final Collection<Long> retainedMinVersionIds = new ArrayList<>();
+    final Collection<Long> retainedMinVersionIds = new ArrayList<>(suppliers.size());
     for (final LongSupplier supplier : suppliers) {
       retainedMinVersionIds.add(supplier.getAsLong());
     }
@@ -116,8 +194,12 @@ public class SubscriptionQueueRegistry {
       return false;
     }
 
-    // Subscription queues reserve request memory, including the serialized buffers.
-    indexedConsensusRequest.buildSerializedRequests();
+    // Subscription queues reserve request memory, including the serialized buffers. A request that
+    // deferred its serialization keeps only its source objects until it is sent, and subscription
+    // delivery reads those objects, so nothing is materialized here.
+    if (!indexedConsensusRequest.hasDeferredRequests()) {
+      indexedConsensusRequest.buildSerializedRequests();
+    }
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -181,12 +263,15 @@ public class SubscriptionQueueRegistry {
 
     private final SubscriptionWalRetentionPolicy retentionPolicy;
     private final LongSupplier retainedMinVersionIdSupplier;
+    private final String retentionId;
 
     private SubscriptionQueueRegistration(
         final SubscriptionWalRetentionPolicy retentionPolicy,
-        final LongSupplier retainedMinVersionIdSupplier) {
+        final LongSupplier retainedMinVersionIdSupplier,
+        final String retentionId) {
       this.retentionPolicy = retentionPolicy;
       this.retainedMinVersionIdSupplier = retainedMinVersionIdSupplier;
+      this.retentionId = retentionId;
     }
   }
 }

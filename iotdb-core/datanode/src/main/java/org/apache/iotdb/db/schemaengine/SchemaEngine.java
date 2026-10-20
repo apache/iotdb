@@ -91,6 +91,9 @@ public class SchemaEngine {
 
   private SchemaMetricManager schemaMetricManager;
 
+  // Published so write handlers can identify teardown failures before region locks are removed.
+  private volatile boolean clearing;
+
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
@@ -110,6 +113,7 @@ public class SchemaEngine {
   }
 
   public void init() {
+    clearing = false;
     logger.info(
         DataNodeSchemaMessages.USED_SCHEMA_ENGINE_MODE,
         CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
@@ -244,6 +248,7 @@ public class SchemaEngine {
   }
 
   public synchronized void clear() {
+    clearing = true;
     schemaRegionLoader.clear();
 
     // clearSchemaResource will shut down release and flush task in PBTree mode, which must be
@@ -266,6 +271,10 @@ public class SchemaEngine {
       schemaMetricManager.clear();
     }
     ClusterTemplateManager.getInstance().clear();
+  }
+
+  public boolean isClearing() {
+    return clearing;
   }
 
   public ISchemaRegion getSchemaRegion(final SchemaRegionId regionId) {

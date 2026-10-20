@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.common;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -389,7 +390,8 @@ public class TimeseriesContext {
     int activeCountMultiplier = ReadWriteIOUtils.readInt(buffer);
     boolean logicalView = ReadWriteIOUtils.readBool(buffer);
     int activeLogicalViewContextMapSize = ReadWriteIOUtils.readInt(buffer);
-    Map<String, TimeseriesContext> activeLogicalViewContextMap = new HashMap<>();
+    Map<String, TimeseriesContext> activeLogicalViewContextMap =
+        Maps.newHashMapWithExpectedSize(activeLogicalViewContextMapSize);
     for (int i = 0; i < activeLogicalViewContextMapSize; i++) {
       activeLogicalViewContextMap.put(
           ReadWriteIOUtils.readString(buffer), TimeseriesContext.deserialize(buffer));

@@ -59,11 +59,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -76,6 +78,8 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.PipeMemoryBlockInfo;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -193,12 +197,16 @@ public class InformationSchemaContentSupplierFactory {
           return new DatabaseSupplier(dataTypes, userEntity);
         case InformationSchema.TABLES:
           return new TableSupplier(dataTypes, userEntity);
+        case InformationSchema.DROP_TABLE_PROCEDURES:
+          return new DropTableProceduresSupplier(dataTypes, userEntity);
         case InformationSchema.COLUMNS:
           return new ColumnSupplier(dataTypes, userEntity);
         case InformationSchema.REGIONS:
           return new RegionSupplier(dataTypes, userEntity);
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
+        case InformationSchema.PIPE_MEMORY:
+          return new PipeMemorySupplier(dataTypes, userEntity);
         case InformationSchema.RECEIVERS:
           return new ReceiversSupplier(dataTypes, userEntity);
         case InformationSchema.PIPE_PLUGINS:
@@ -486,6 +494,80 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
+  private static class DropTableProceduresSupplier extends TsBlockSupplier {
+    private final Iterator<TDropTableProcedureInfo> procedures;
+    private final UserEntity userEntity;
+    private TDropTableProcedureInfo currentProcedure;
+
+    private DropTableProceduresSupplier(
+        final List<TSDataType> dataTypes, final UserEntity userEntity) throws Exception {
+      super(dataTypes);
+      this.userEntity = userEntity;
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        final TShowDropTableProceduresResp response = client.showDropTableProcedures();
+        if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBRuntimeException(response.getStatus());
+        }
+        final List<TDropTableProcedureInfo> result = response.getDropTableProcedureInfoList();
+        procedures =
+            (result == null ? Collections.<TDropTableProcedureInfo>emptyList() : result).iterator();
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      columnBuilders[0].writeBinary(
+          new Binary(currentProcedure.getDatabase(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(currentProcedure.getTableName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeLong(currentProcedure.getProcedureId());
+      columnBuilders[3].writeBinary(
+          new Binary(currentProcedure.getState(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeBinary(
+          new Binary(currentProcedure.getProgress(), TSFileConfig.STRING_CHARSET));
+      if (currentProcedure.isSetErrorMessage()) {
+        columnBuilders[5].writeBinary(
+            new Binary(currentProcedure.getErrorMessage(), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[5].appendNull();
+      }
+      if (currentProcedure.isSetWrittenModFileCount()) {
+        columnBuilders[6].writeLong(currentProcedure.getWrittenModFileCount());
+      } else {
+        columnBuilders[6].appendNull();
+      }
+      if (currentProcedure.isSetRemainingModFileCount()) {
+        columnBuilders[7].writeLong(currentProcedure.getRemainingModFileCount());
+      } else {
+        columnBuilders[7].appendNull();
+      }
+      resultBuilder.declarePosition();
+      currentProcedure = null;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (currentProcedure != null) {
+        return true;
+      }
+      while (procedures.hasNext()) {
+        final TDropTableProcedureInfo procedure = procedures.next();
+        if (canShowDB(accessControl, userEntity.getUsername(), procedure.getDatabase(), userEntity)
+            && canShowTable(
+                accessControl,
+                userEntity.getUsername(),
+                procedure.getDatabase(),
+                procedure.getTableName(),
+                userEntity)) {
+          currentProcedure = procedure;
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
   public static class ColumnSupplier extends TsBlockSupplier {
     private final Iterator<Map.Entry<String, Map<String, TableColumnDetailInfo>>> dbIterator;
     private Iterator<Map.Entry<String, TableColumnDetailInfo>> tableInfoIterator;
@@ -739,6 +821,59 @@ public class InformationSchemaContentSupplierFactory {
                   : "{}",
               TSFileConfig.STRING_CHARSET));
 
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class PipeMemorySupplier extends TsBlockSupplier {
+
+    private final Iterator<PipeMemoryBlockInfo> iterator;
+
+    private PipeMemorySupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      iterator = PipeDataNodeResourceManager.memory().getPipeMemoryBlockInfoList().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      final PipeMemoryBlockInfo memoryBlockInfo = iterator.next();
+      columnBuilders[0].writeLong(memoryBlockInfo.getBlockId());
+      columnBuilders[1].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getName()));
+      columnBuilders[2].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getCategory()));
+      if (memoryBlockInfo.getPipeName() == null) {
+        columnBuilders[3].appendNull();
+      } else {
+        columnBuilders[3].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getPipeName()));
+      }
+      if (memoryBlockInfo.getPipeModel() == null) {
+        columnBuilders[4].appendNull();
+      } else {
+        columnBuilders[4].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getPipeModel()));
+      }
+      columnBuilders[5].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
+      columnBuilders[6].writeLong(memoryBlockInfo.getPeakMemorySizeInBytes());
+      columnBuilders[7].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
+      columnBuilders[8].writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              memoryBlockInfo.getAllocationTime(), TimeUnit.MILLISECONDS));
+      if (memoryBlockInfo.getAssigner() == null) {
+        columnBuilders[9].appendNull();
+      } else {
+        columnBuilders[9].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getAssigner()));
+      }
+      if (memoryBlockInfo.getParentBlockId() == null) {
+        columnBuilders[10].appendNull();
+      } else {
+        columnBuilders[10].writeLong(memoryBlockInfo.getParentBlockId());
+      }
+      columnBuilders[11].writeInt(memoryBlockInfo.getHierarchyLevel());
+      columnBuilders[12].writeLong(memoryBlockInfo.getAccountedMemoryUsageInBytes());
       resultBuilder.declarePosition();
     }
 

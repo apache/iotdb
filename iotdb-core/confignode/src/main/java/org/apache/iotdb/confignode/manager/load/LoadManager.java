@@ -502,6 +502,15 @@ public class LoadManager {
   }
 
   /**
+   * Get the latest leader of the specified RegionGroup.
+   *
+   * @return the leader ID, or -1 if the cache is absent or no leader has been selected
+   */
+  public int getRegionLeaderId(TConsensusGroupId regionGroupId) {
+    return loadCache.getRegionLeaderId(regionGroupId);
+  }
+
+  /**
    * Get the latest RegionLeaderMap.
    *
    * @return Map<RegionGroupId, leaderId>

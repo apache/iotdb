@@ -137,7 +137,7 @@ public class IoTDBDeletionTableIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("DROP DATABASE IF EXISTS test");
+      TestUtils.dropDatabaseWithRetry(statement, "test");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -1359,7 +1359,7 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
 
-      statement.execute("DROP TABLE vehicle" + testNum);
+      TestUtils.dropTable(connection, "test", "vehicle" + testNum);
 
       try (ResultSet ignored = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
         fail("Exception expected");

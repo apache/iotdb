@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
@@ -72,6 +73,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -360,6 +362,58 @@ public class RegionMaintainHandler {
     return clientHandler.getResponseMap();
   }
 
+  public boolean isIoTConsensusV1DataRegion(TConsensusGroupId regionId) {
+    return TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass());
+  }
+
+  /**
+   * Reconcile retained IoTConsensus V1 replicas after the removed location has been committed. A
+   * restarting replica may have received the previous peer list while the removal was in progress.
+   * The existing reset RPC waits for consensus startup before applying this final list.
+   */
+  public boolean resetPeerListAfterRemoveForIoTConsensusV1(
+      TConsensusGroupId regionId, TDataNodeLocation removedDataNode) {
+    if (!isIoTConsensusV1DataRegion(regionId)) {
+      return true;
+    }
+    Optional<TRegionReplicaSet> replicaSet = getRegionReplicaSet(regionId);
+    if (!replicaSet.isPresent()) {
+      // Database deletion may have removed the entire Region from ConfigNode metadata. Its
+      // deletion tasks own the cleanup, and there are no retained replicas left to reconcile.
+      return true;
+    }
+    if (replicaSet.get().getDataNodeLocations().stream()
+        .anyMatch(location -> location.getDataNodeId() == removedDataNode.getDataNodeId())) {
+      LOGGER.warn(
+          ProcedureMessages
+              .LOG_CANNOT_RECONCILE_PEER_LIST_FOR_ARG_AFTER_REMOVING_DATANODE_ARG_THE_CURRENT_REPLICA_SET_STILL_CONTAINS_THE_REMOVED_DATANODE_DBBF45DC,
+          regionId,
+          removedDataNode.getDataNodeId());
+      return false;
+    }
+    List<TDataNodeLocation> correctLocations = replicaSet.get().getDataNodeLocations();
+    Map<Integer, TDataNodeLocation> retainedNodes = new HashMap<>();
+    correctLocations.forEach(location -> retainedNodes.put(location.getDataNodeId(), location));
+    // Include offline replicas so the caller can retry unsuccessful resets within its retry limit.
+    Map<Integer, TSStatus> responses = resetPeerList(regionId, correctLocations, retainedNodes);
+    boolean allSucceeded = true;
+    for (TDataNodeLocation location : correctLocations) {
+      TSStatus response = responses == null ? null : responses.get(location.getDataNodeId());
+      if (response == null || response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            ProcedureMessages
+                .LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4,
+            regionId,
+            location.getDataNodeId(),
+            correctLocations,
+            response);
+        allSucceeded = false;
+      }
+    }
+    return allSucceeded;
+  }
+
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
     return waitTaskFinish(taskId, dataNodeLocation, null);
@@ -449,7 +503,7 @@ public class RegionMaintainHandler {
         .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
-  public void removeRegionLocation(
+  public TSStatus removeRegionLocation(
       TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
     RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
     TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
@@ -460,6 +514,7 @@ public class RegionMaintainHandler {
         status);
     configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+    return status;
   }
 
   /**
@@ -771,9 +826,17 @@ public class RegionMaintainHandler {
   }
 
   public Optional<TRegionReplicaSet> getRegionReplicaSet(TConsensusGroupId regionId) {
-    return configManager.getPartitionManager().getAllReplicaSets().stream()
-        .filter(rg -> rg.regionId.equals(regionId))
-        .findAny();
+    if (regionId == null) {
+      return Optional.empty();
+    }
+    PartitionManager partitionManager = configManager.getPartitionManager();
+    String database = partitionManager.getRegionDatabase(regionId);
+    if (database == null) {
+      return Optional.empty();
+    }
+    // Locate by Region ID before copying: unrelated replica sets need not be locked or copied.
+    return partitionManager.getReplicaSets(database, Collections.singletonList(regionId)).stream()
+        .findFirst();
   }
 
   public String getRegionReplicaSetString(TConsensusGroupId regionId) {
@@ -931,11 +994,15 @@ public class RegionMaintainHandler {
       return Optional.empty();
     }
 
-    // Choosing the RUNNING DataNodes to execute firstly
-    // If all DataNodes are not RUNNING, then choose the REMOVING DataNodes secondly
+    Set<Integer> regionDataNodeIds =
+        regionLocations.stream().map(TDataNodeLocation::getDataNodeId).collect(Collectors.toSet());
+    // Filter IDs before reading configurations, so unrelated DataNodes are not deep-copied.
     List<TDataNodeLocation> aliveDataNodes =
-        configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
-            .map(TDataNodeConfiguration::getLocation)
+        configManager.getLoadManager().filterDataNodeThroughStatus(allowingStatus).stream()
+            .filter(regionDataNodeIds::contains)
+            .map(
+                nodeId ->
+                    configManager.getNodeManager().getRegisteredDataNode(nodeId).getLocation())
             .collect(Collectors.toList());
     final int leaderId = getRegionLeaderId(regionId);
     Collections.shuffle(aliveDataNodes);
@@ -962,11 +1029,11 @@ public class RegionMaintainHandler {
    */
   private int getRegionLeaderId(TConsensusGroupId regionId) {
     final LoadManager loadManager = configManager.getLoadManager();
-    Integer leaderId = loadManager.getRegionLeaderMap().get(regionId);
-    if (leaderId == null || leaderId == -1) {
+    int leaderId = loadManager.getRegionLeaderId(regionId);
+    if (leaderId == -1) {
       loadManager.waitForRegionGroupReady(Collections.singletonList(regionId));
-      leaderId = loadManager.getRegionLeaderMap().get(regionId);
+      leaderId = loadManager.getRegionLeaderId(regionId);
     }
-    return leaderId == null ? -1 : leaderId;
+    return leaderId;
   }
 }

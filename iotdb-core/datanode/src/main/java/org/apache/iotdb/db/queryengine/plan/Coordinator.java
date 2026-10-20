@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
@@ -157,6 +158,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.udf.InternalQueryExecutor;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -430,6 +432,27 @@ public class Coordinator {
       long startTime) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
+    if (statement instanceof ShowPipeMemoryStatement) {
+      // Reuse the information_schema scan and access checks.
+      // The fragment planner selects its operators using the query's session dialect.
+      final SessionInfo session = queryContext.getSession();
+      queryContext.setSession(
+          new SessionInfo(
+              session.getSessionId(),
+              session.getUserEntity(),
+              session.getZoneId(),
+              session.getVersion(),
+              session.getDatabaseName().orElse(null),
+              SqlDialect.TABLE));
+      return createQueryExecutionForTableModel(
+          statement,
+          new SqlParser(),
+          null,
+          queryContext,
+          LocalExecutionPlanner.getInstance().metadata,
+          timeOut,
+          startTime);
+    }
     final Statement configStatement =
         statement instanceof PipeEnrichedStatement
                 && ((PipeEnrichedStatement) statement).getInnerStatement()
