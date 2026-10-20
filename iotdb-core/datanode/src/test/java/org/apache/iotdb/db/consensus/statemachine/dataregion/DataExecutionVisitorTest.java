@@ -19,11 +19,15 @@
 package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -36,6 +40,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -82,5 +87,58 @@ public class DataExecutionVisitorTest {
       logger.detachAppender(appender);
       appender.stop();
     }
+  }
+
+  @Test
+  public void testTreeDeleteFailureReturnsMessage() throws Exception {
+    final DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    Mockito.when(dataRegion.getDatabaseName()).thenReturn("root.sg");
+    final DeleteDataNode node = createDeleteDataNode("root.sg.device.s1");
+    final IOException failure = new IOException("injected tree delete failure");
+    Mockito.doThrow(failure).when(dataRegion).deleteByDevice(any(MeasurementPath.class), any());
+
+    final TSStatus status = new DataExecutionVisitor().visitDeleteData(node, dataRegion);
+
+    Assert.assertEquals(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(failure.getMessage(), status.getMessage());
+    Mockito.verify(dataRegion).writeUnlock();
+  }
+
+  @Test
+  public void testDirectTreeDeleteFailureReturnsMessage() throws Exception {
+    final DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    Mockito.when(dataRegion.getDatabaseName()).thenReturn("root.sg");
+    final DeleteDataNode node = createDeleteDataNode("root.sg.**");
+    final IOException failure = new IOException("injected direct delete failure");
+    Mockito.doThrow(failure).when(dataRegion).deleteDataDirectly(any(MeasurementPath.class), any());
+
+    final TSStatus status = new DataExecutionVisitor().visitDeleteData(node, dataRegion);
+
+    Assert.assertEquals(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(failure.getMessage(), status.getMessage());
+    Mockito.verify(dataRegion).writeUnlock();
+  }
+
+  @Test
+  public void testTableDeleteFailureReturnsMessage() throws Exception {
+    final DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    final RelationalDeleteDataNode node =
+        new RelationalDeleteDataNode(
+            new PlanNodeId("delete-error-test"), Collections.emptyList(), "test_db");
+    final IOException failure = new IOException("injected table delete failure");
+    Mockito.doThrow(failure).when(dataRegion).deleteByTable(node);
+
+    final TSStatus status = new DataExecutionVisitor().visitDeleteData(node, dataRegion);
+
+    Assert.assertEquals(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(failure.getMessage(), status.getMessage());
+  }
+
+  private DeleteDataNode createDeleteDataNode(final String path) throws IllegalPathException {
+    return new DeleteDataNode(
+        new PlanNodeId("delete-error-test"),
+        Collections.singletonList(new MeasurementPath(path)),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 }

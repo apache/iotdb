@@ -347,7 +347,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (IOException | IllegalPathException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
-      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
     } finally {
       dataRegion.writeUnlock();
     }
@@ -363,7 +363,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final IOException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
-      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
     }
   }
 
