@@ -63,7 +63,6 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
       "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD";
   private static final String COLUMN_FILTER = "column_name IN (\"time\", \"tag1\", \"s2\")";
   private static final String FIELD_CATEGORY_FILTER = "category = \"FIELD\"";
-  private static final String FIELD_CATEGORY_REBIND_FILTER = "category IN (\"FIELD\")";
   private static final String MIXED_COLUMN_FILTER =
       "( CATEGORY = \"field\" AND datatype IN (\"int64\", \"double\") )"
           + " OR \"column_name\" REGEXP \"tag.*\"";
@@ -622,11 +621,11 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
-  public void testLiveRecordHandlerRestartResnapshotsNewMatchingTable() throws Exception {
-    final String database = databaseName("restart_new");
-    final String topicName = topicName("restart_new");
-    final String consumerId = consumerName("restart_new");
-    final String consumerGroupId = consumerGroupName("restart_new");
+  public void testLiveRecordHandlerIncludesNewMatchingTableWithoutRestart() throws Exception {
+    final String database = databaseName("new_table");
+    final String topicName = topicName("new_table");
+    final String consumerId = consumerName("new_table");
+    final String consumerGroupId = consumerGroupName("new_table");
     final String initialTableName = TABLE_NAME + "_restart_old";
     final String newTableName = TABLE_NAME + "_restart_new";
 
@@ -638,13 +637,13 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
           TABLE_NAME + "_restart_.*",
           TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
           FIELD_CATEGORY_FILTER);
-      createTable(senderEnv, database, newTableName, TABLE_SCHEMA);
-
-      TestUtils.restartCluster(senderEnv);
-
       try (final ISubscriptionTablePullConsumer consumer =
           createConsumer(consumerId, consumerGroupId)) {
         consumer.subscribe(topicName);
+        insertRows(senderEnv, database, initialTableName, 230, 233);
+        pollRecordMessagesForTimestamps(
+            consumer, new LinkedHashSet<>(Arrays.asList(230L, 231L, 232L)), false);
+        createTable(senderEnv, database, newTableName, TABLE_SCHEMA);
         insertRows(senderEnv, database, newTableName, 240, 243);
 
         final Set<Long> expectedTimestamps = new LinkedHashSet<>(Arrays.asList(240L, 241L, 242L));
@@ -662,11 +661,11 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
-  public void testLiveRecordHandlerStrictSnapshotRequiresAlterAfterAddColumn() throws Exception {
-    final String database = databaseName("strict");
-    final String topicName = topicName("strict");
-    final String consumerId = consumerName("strict");
-    final String consumerGroupId = consumerGroupName("strict");
+  public void testLiveRecordHandlerIncludesNewFieldsWithoutAlteringTopic() throws Exception {
+    final String database = databaseName("streaming");
+    final String topicName = topicName("streaming");
+    final String consumerId = consumerName("streaming");
+    final String consumerGroupId = consumerGroupName("streaming");
 
     try {
       createDatabaseAndTable(senderEnv, database, TABLE_NAME, TABLE_SCHEMA);
@@ -680,32 +679,94 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
       try (final ISubscriptionTablePullConsumer consumer =
           createConsumer(consumerId, consumerGroupId)) {
         consumer.subscribe(topicName);
+        insertRows(senderEnv, database, TABLE_NAME, 70, 74);
+        pollRecordMessagesForTimestamps(
+            consumer, new LinkedHashSet<>(Arrays.asList(70L, 71L, 72L, 73L)), false);
         addColumn(senderEnv, database, TABLE_NAME, "s4 INT32 FIELD");
         insertRowsWithS4(senderEnv, database, TABLE_NAME, 80, 84);
 
-        final Set<Long> beforeAlterTimestamps =
-            new LinkedHashSet<>(Arrays.asList(80L, 81L, 82L, 83L));
-        final ConsumedRecordStats beforeAlter =
-            pollRecordMessagesForTimestamps(consumer, beforeAlterTimestamps, false);
-        Assert.assertTrue(beforeAlter.columnNames.contains("tag1"));
-        Assert.assertTrue(beforeAlter.columnNames.contains("s1"));
-        Assert.assertTrue(beforeAlter.columnNames.contains("s2"));
-        Assert.assertTrue(beforeAlter.columnNames.contains("s3"));
-        Assert.assertFalse(beforeAlter.columnNames.contains("s4"));
+        final Set<Long> expectedTimestamps = new LinkedHashSet<>(Arrays.asList(80L, 81L, 82L, 83L));
+        final ConsumedRecordStats stats =
+            pollRecordMessagesForTimestamps(consumer, expectedTimestamps, false);
+        Assert.assertEquals(
+            new LinkedHashSet<>(Arrays.asList("tag1", "s1", "s2", "s3", "s4")), stats.columnNames);
+        Assert.assertEquals(expectedTimestamps, stats.timestamps);
+      }
+    } finally {
+      cleanup(topicName, database);
+    }
+  }
 
-        alterTopicColumnFilter(topicName, FIELD_CATEGORY_REBIND_FILTER);
-        insertRowsWithS4(senderEnv, database, TABLE_NAME, 90, 94);
+  @Test
+  public void testLiveRecordHandlerIncludesNewTagsForSelectedFields() throws Exception {
+    final String database = databaseName("new_tag");
+    final String topicName = topicName("new_tag");
+    try {
+      createDatabaseAndTable(senderEnv, database, TABLE_NAME, TABLE_SCHEMA);
+      createTopic(
+          topicName,
+          database,
+          TABLE_NAME,
+          TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
+          "column_name = \"s2\"");
+      try (final ISubscriptionTablePullConsumer consumer =
+          createConsumer(consumerName("new_tag"), consumerGroupName("new_tag"))) {
+        consumer.subscribe(topicName);
+        insertRows(senderEnv, database, TABLE_NAME, 300, 303);
+        final ConsumedRecordStats initial =
+            pollRecordMessagesForTimestamps(
+                consumer, new LinkedHashSet<>(Arrays.asList(300L, 301L, 302L)), false);
+        Assert.assertEquals(new LinkedHashSet<>(Arrays.asList("tag1", "s2")), initial.columnNames);
 
-        final Set<Long> afterAlterTimestamps =
-            new LinkedHashSet<>(Arrays.asList(90L, 91L, 92L, 93L));
-        final ConsumedRecordStats afterAlter =
-            pollRecordMessagesForTimestamps(consumer, afterAlterTimestamps, false);
-        Assert.assertTrue(afterAlter.columnNames.contains("tag1"));
-        Assert.assertTrue(afterAlter.columnNames.contains("s1"));
-        Assert.assertTrue(afterAlter.columnNames.contains("s2"));
-        Assert.assertTrue(afterAlter.columnNames.contains("s3"));
-        Assert.assertTrue(afterAlter.columnNames.contains("s4"));
-        Assert.assertEquals(afterAlterTimestamps, afterAlter.timestamps);
+        addColumn(senderEnv, database, TABLE_NAME, "tag2 STRING TAG");
+        insertRowsWithNewTag(senderEnv, database, TABLE_NAME, 310, 313);
+        final ConsumedRecordStats changed =
+            pollRecordMessagesForTimestamps(
+                consumer, new LinkedHashSet<>(Arrays.asList(310L, 311L, 312L)), false);
+        Assert.assertEquals(
+            new LinkedHashSet<>(Arrays.asList("tag1", "tag2", "s2")), changed.columnNames);
+      }
+    } finally {
+      cleanup(topicName, database);
+    }
+  }
+
+  @Test
+  public void testLiveTsFileIncludesNewTagsWithoutAlteringTopic() throws Exception {
+    final String database = databaseName("tsfile_new_tag");
+    final String topicName = topicName("tsfile_new_tag");
+    try {
+      createDatabaseAndTable(senderEnv, database, TABLE_NAME, TABLE_SCHEMA);
+      createDatabaseAndTable(receiverEnv, database, TABLE_NAME, TABLE_SCHEMA);
+      createTopic(
+          topicName,
+          database,
+          TABLE_NAME,
+          TopicConstant.FORMAT_TS_FILE_VALUE,
+          "column_name IN (\"time\", \"s2\")");
+      try (final ISubscriptionTablePullConsumer consumer =
+          createConsumer(consumerName("tsfile_new_tag"), consumerGroupName("tsfile_new_tag"))) {
+        consumer.subscribe(topicName);
+        insertRows(senderEnv, database, TABLE_NAME, 320, 323);
+        pollTsFileMessagesAndLoad(consumer, database, 3);
+        addColumn(senderEnv, database, TABLE_NAME, "tag2 STRING TAG");
+        addColumn(receiverEnv, database, TABLE_NAME, "tag2 STRING TAG");
+        insertRowsWithNewTag(senderEnv, database, TABLE_NAME, 330, 333);
+        pollTsFileMessagesAndLoad(consumer, database, 6);
+        try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+            final Statement statement = connection.createStatement()) {
+          statement.execute("use " + database);
+          try (final java.sql.ResultSet rows =
+              statement.executeQuery("select tag2, s2 from " + TABLE_NAME + " where time >= 330")) {
+            int count = 0;
+            while (rows.next()) {
+              Assert.assertEquals("new_tag", rows.getString("tag2"));
+              Assert.assertTrue(rows.getDouble("s2") >= 330.5);
+              count++;
+            }
+            Assert.assertEquals(3, count);
+          }
+        }
       }
     } finally {
       cleanup(topicName, database);
@@ -795,7 +856,7 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
-  public void testLiveRecordHandlerColumnFilterUsesAlteredDataTypeAtBindTime() throws Exception {
+  public void testLiveRecordHandlerColumnFilterUsesLatestDataType() throws Exception {
     final String database = databaseName("alter_type");
     final String topicName = topicName("alter_type");
     final String consumerId = consumerName("alter_type");
@@ -805,17 +866,22 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
 
     try {
       createDatabaseAndTable(senderEnv, database, TABLE_NAME, initialSchema);
-      alterColumnType(senderEnv, database, TABLE_NAME, "s1", "INT64");
       createTopic(
           topicName,
           database,
           TABLE_NAME,
           TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
-          "datatype = \"INT64\"");
+          "category = \"TAG\" OR datatype = \"INT64\"");
 
       try (final ISubscriptionTablePullConsumer consumer =
           createConsumer(consumerId, consumerGroupId)) {
         consumer.subscribe(topicName);
+        insertRows(senderEnv, database, TABLE_NAME, 140, 143);
+        final ConsumedRecordStats initial =
+            pollRecordMessagesForTimestamps(
+                consumer, new LinkedHashSet<>(Arrays.asList(140L, 141L, 142L)), false);
+        Assert.assertEquals(new LinkedHashSet<>(Arrays.asList("tag1")), initial.columnNames);
+        alterColumnType(senderEnv, database, TABLE_NAME, "s1", "INT64");
         insertRows(senderEnv, database, TABLE_NAME, 150, 153);
 
         final Set<Long> expectedTimestamps = new LinkedHashSet<>(Arrays.asList(150L, 151L, 152L));
@@ -1142,6 +1208,32 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
                 i + 0.5d,
                 i % 2 == 0 ? "true" : "false",
                 i,
+                i));
+      }
+      statement.execute("flush");
+    }
+  }
+
+  private static void insertRowsWithNewTag(
+      final BaseEnv env,
+      final String database,
+      final String tableName,
+      final int startInclusive,
+      final int endExclusive)
+      throws Exception {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + database);
+      for (int i = startInclusive; i < endExclusive; i++) {
+        statement.execute(
+            String.format(
+                Locale.ROOT,
+                "insert into %s(tag1, tag2, s1, s2, s3, time) "
+                    + "values ('tag_%d', 'new_tag', %d, %.1f, true, %d)",
+                tableName,
+                i,
+                i * 10L,
+                i + 0.5d,
                 i));
       }
       statement.execute("flush");

@@ -826,6 +826,15 @@ public class DataNodeTableCache implements ITableCache {
     return modified ? builder.toString() : DataNodeSchemaMessages.COMPARE_TABLE_NOT_MODIFIED;
   }
 
+  /** Returns the current local schema without fetching or resolving updates from ConfigNode. */
+  @Override
+  public TsTable getTableInCache(final String database, final String tableName) {
+    return getTableInCache(
+        PathUtils.unQualifyDatabaseName(database),
+        tableName,
+        LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+  }
+
   private TsTable getTableInCache(
       final String database,
       final String tableName,
