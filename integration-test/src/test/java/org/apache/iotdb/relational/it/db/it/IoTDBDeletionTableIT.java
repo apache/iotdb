@@ -29,7 +29,6 @@ import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -138,7 +137,7 @@ public class IoTDBDeletionTableIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("DROP DATABASE IF EXISTS test");
+      TestUtils.dropDatabaseWithRetry(statement, "test");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -1360,26 +1359,7 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
 
-      statement.execute("DROP TABLE vehicle" + testNum);
-
-      // DROP TABLE acknowledges submission before the table has been fully removed.
-      Awaitility.await()
-          .atMost(60, TimeUnit.SECONDS)
-          .pollInSameThread()
-          // Progress snapshots can differ between cluster nodes while deletion is running.
-          .ignoreException(InconsistentDataException.class)
-          .untilAsserted(
-              () -> {
-                try (ResultSet resultSet =
-                    statement.executeQuery(
-                        "SELECT state, error_message FROM information_schema.drop_table_procedures "
-                            + "WHERE database = 'test' AND table_name = 'vehicle"
-                            + testNum
-                            + "' ORDER BY procedure_id DESC LIMIT 1")) {
-                  assertTrue(resultSet.next());
-                  assertEquals(resultSet.getString(2), "SUCCESS", resultSet.getString(1));
-                }
-              });
+      TestUtils.dropTable(connection, "test", "vehicle" + testNum);
 
       try (ResultSet ignored = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
         fail("Exception expected");

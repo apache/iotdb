@@ -266,7 +266,7 @@ public abstract class AbstractMemTable implements IMemTable {
       dataTypes.add(schema.getType());
       writableValues[i] = value;
     }
-    if (schemaList.isEmpty()) {
+    if (schemaList.isEmpty() && insertRowNode.getColumnCategories() == null) {
       return 0;
     }
     memSize +=
@@ -497,7 +497,7 @@ public abstract class AbstractMemTable implements IMemTable {
         }
       }
     }
-    if (schemaList.isEmpty()) {
+    if (schemaList.isEmpty() && insertTabletNode.getColumnCategories() == null) {
       return;
     }
     int splitStart = start;

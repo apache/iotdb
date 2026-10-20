@@ -1388,6 +1388,84 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
+  public void testRejectedSqlFields() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table rejected_sql_fields (tag1 string tag, s1 int64 field, s2 int64 field)");
+      SQLException error =
+          assertThrows(
+              SQLException.class,
+              () -> statement.execute("insert into rejected_sql_fields(time, s1) values(1, true)"));
+      assertEquals(
+          "507: No column other than Time present, please check the request", error.getMessage());
+      try (ResultSet result = statement.executeQuery("select * from rejected_sql_fields")) {
+        assertFalse(result.next());
+      }
+
+      error =
+          assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "insert into rejected_sql_fields(time, tag1, s1, s2) values(2, 'd1', true, 42)"));
+      assertEquals(507, error.getErrorCode());
+      assertTrue(error.getMessage().contains("Fail to insert measurements [s1]"));
+      statement.execute("flush");
+      try (ResultSet result =
+          statement.executeQuery("select time, tag1, s1, s2 from rejected_sql_fields")) {
+        assertTrue(result.next());
+        assertEquals(2, result.getLong(1));
+        assertEquals("d1", result.getString(2));
+        assertNull(result.getObject(3));
+        assertEquals(42, result.getLong(4));
+        assertFalse(result.next());
+      }
+    }
+  }
+
+  @Test
+  public void testRejectedOnlyFieldDoesNotWriteTime() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use test");
+      session.executeNonQueryStatement(
+          "create table rejected_only_field_time (tag1 string tag, s1 int64 field)");
+      for (boolean withTag : new boolean[] {true, false}) {
+        Tablet tablet =
+            new Tablet(
+                "rejected_only_field_time",
+                withTag ? Arrays.asList("tag1", "s1") : Arrays.asList("s1"),
+                withTag
+                    ? Arrays.asList(TSDataType.STRING, TSDataType.BOOLEAN)
+                    : Arrays.asList(TSDataType.BOOLEAN),
+                withTag
+                    ? Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)
+                    : Arrays.asList(ColumnCategory.FIELD),
+                1);
+        tablet.addTimestamp(0, withTag ? 1 : 2);
+        if (withTag) {
+          tablet.addValue("tag1", 0, "d1");
+        }
+        tablet.addValue("s1", 0, true);
+        StatementExecutionException error =
+            assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+        assertEquals(
+            "507: No column other than Time present, please check the request", error.getMessage());
+      }
+      session.executeNonQueryStatement("flush");
+      for (String sql :
+          Arrays.asList(
+              "select * from rejected_only_field_time",
+              "show devices from rejected_only_field_time")) {
+        try (SessionDataSet dataSet = session.executeQueryStatement(sql)) {
+          assertFalse(dataSet.hasNext());
+        }
+      }
+    }
+  }
+
+  @Test
   public void testInsertWithChangedSchema() throws SQLException, IOException {
     SimpleEnv simpleEnv = new SimpleEnv();
     simpleEnv.initClusterEnvironment(1, 1);

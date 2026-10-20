@@ -27,8 +27,10 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -38,13 +40,28 @@ import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
@@ -53,6 +70,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManage
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -62,6 +80,7 @@ import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -73,8 +92,11 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -108,7 +130,7 @@ public class IoTConsensusShutdownTest {
   private NodeStatus previousNodeStatus;
   private String previousStatusReason;
   private boolean previousStopping;
-  private DataRegion dataRegion;
+  private TestDataRegion dataRegion;
   private IoTConsensusDataRegionStateMachine stateMachine;
 
   @Before
@@ -125,12 +147,7 @@ public class IoTConsensusShutdownTest {
     commonConfig.setNodeStatus(NodeStatus.Running);
     commonConfig.setStopping(false);
     EnvironmentUtils.envSetUp();
-    dataRegion =
-        new DataRegion(
-            TestConstant.OUTPUT_DATA_DIR + "shutdown-info",
-            "0",
-            new TsFileFlushPolicy.DirectFlushPolicy(),
-            DATABASE);
+    dataRegion = new TestDataRegion();
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     stateMachine = new IoTConsensusDataRegionStateMachine(dataRegion);
   }
@@ -273,18 +290,32 @@ public class IoTConsensusShutdownTest {
 
   @Test
   public void testShutdownDrainsAdmittedApplyBeforeClosingStorage() throws Exception {
+    checkShutdownDrainsAdmittedApply(false);
+  }
+
+  @Test
+  public void testShutdownDrainsWalSeparatorBeforeClosingStorage() throws Exception {
+    checkShutdownDrainsAdmittedApply(true);
+  }
+
+  private void checkShutdownDrainsAdmittedApply(final boolean delaySeparator) throws Exception {
     writeAndAssertSuccess(1);
     final CountDownLatch admittedApply = new CountDownLatch(1);
     final CountDownLatch resumeApply = new CountDownLatch(1);
     final InsertRowNode pendingRow = spy(insertRow(2));
-    doAnswer(
-            invocation -> {
-              admittedApply.countDown();
-              assertTrue(resumeApply.await(30, TimeUnit.SECONDS));
-              return invocation.callRealMethod();
-            })
-        .when(pendingRow)
-        .accept(any(IPlanVisitor.class), any(DataRegion.class));
+    final InsertRowNode delayedRow =
+        doAnswer(
+                invocation -> {
+                  admittedApply.countDown();
+                  assertTrue(resumeApply.await(30, TimeUnit.SECONDS));
+                  return invocation.callRealMethod();
+                })
+            .when(pendingRow);
+    if (delaySeparator) {
+      delayedRow.getRoutingEpoch();
+    } else {
+      delayedRow.setLastFragment(true);
+    }
     final ExecutorService executor = Executors.newFixedThreadPool(2);
     final CountDownLatch shutdownStarted = new CountDownLatch(1);
     final CountDownLatch admissionClosed = new CountDownLatch(1);
@@ -292,8 +323,7 @@ public class IoTConsensusShutdownTest {
     final Future<TSStatus> write =
         executor.submit(() -> stateMachine.write((IConsensusRequest) pendingRow));
     try {
-      // Unlike the pre-apply-check test, this request has passed the check under the lifecycle
-      // lock.
+      // This request has passed the storage admission check and holds insertLock.
       assertTrue(admittedApply.await(10, TimeUnit.SECONDS));
       commonConfig.setStopping(true);
       commonConfig.setNodeStatus(NodeStatus.ReadOnly);
@@ -383,7 +413,9 @@ public class IoTConsensusShutdownTest {
       resumeRetry.countDown();
       assertEquals(
           TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), write.get(10, TimeUnit.SECONDS).getCode());
-      assertEquals(1, applyAttempts.get());
+      // The retry enters the visitor, but its storage admission check rejects it before any WAL
+      // or processor can be created.
+      assertEquals(2, applyAttempts.get());
       assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
       assertTrue(dataRegion.getWorkUnsequenceTsFileProcessors().isEmpty());
       assertEquals(0, WALManager.getInstance().getWALNodesNum());
@@ -406,6 +438,236 @@ public class IoTConsensusShutdownTest {
     writeAndAssertSuccess(2);
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     assertRows(dataRegion.getSequenceFileList().get(0).getTsFile(), 1, 2);
+  }
+
+  @Test
+  public void testWriteWaitingForInsertLockIsRejectedAfterShutdown() throws Exception {
+    writeAndAssertSuccess(1);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final AtomicReference<Thread> writerThread = new AtomicReference<>();
+    final Future<TSStatus> write;
+    dataRegion.writeLock("testShutdownWhileWaitingForInsertLock");
+    try {
+      write =
+          executor.submit(
+              () -> {
+                writerThread.set(Thread.currentThread());
+                return stateMachine.write((IConsensusRequest) insertRow(2));
+              });
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(
+              () ->
+                  writerThread.get() != null
+                      && writerThread.get().getState() == Thread.State.WAITING);
+      // Close admission while the writer has already entered the visitor and is queued for
+      // insertLock. The stopping and read-only flags deliberately remain unset.
+      dataRegion.stopIoTConsensusWrites();
+    } finally {
+      dataRegion.writeUnlock();
+      executor.shutdown();
+    }
+    try {
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), write.get(10, TimeUnit.SECONDS).getCode());
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
+      assertRows(dataRegion.getSequenceFileList().get(0).getTsFile(), 1);
+    } finally {
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testMemoryBackpressureDoesNotBlockShutdownOrFlush() throws Exception {
+    writeAndAssertSuccess(1);
+    final Field rejectedField = SystemInfo.class.getDeclaredField("rejected");
+    rejectedField.setAccessible(true);
+    final boolean previousRejected = rejectedField.getBoolean(SystemInfo.getInstance());
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final AtomicReference<Thread> writerThread = new AtomicReference<>();
+    rejectedField.setBoolean(SystemInfo.getInstance(), true);
+    final Future<TSStatus> write =
+        executor.submit(
+            () -> {
+              writerThread.set(Thread.currentThread());
+              return stateMachine.write((IConsensusRequest) insertRow(2));
+            });
+    try {
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(
+              () ->
+                  writerThread.get() != null
+                      && writerThread.get().getState() == Thread.State.TIMED_WAITING);
+      executor.submit(() -> dataRegion.stopIoTConsensusWrites()).get(10, TimeUnit.SECONDS);
+      assertFalse(write.isDone());
+      // The same insertLock remains available to flush the memory that the writer is waiting for.
+      executor
+          .submit(() -> dataRegion.syncCloseAllWorkingTsFileProcessors())
+          .get(10, TimeUnit.SECONDS);
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), write.get(10, TimeUnit.SECONDS).getCode());
+      assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
+      assertRows(dataRegion.getSequenceFileList().get(0).getTsFile(), 1);
+    } finally {
+      rejectedField.setBoolean(SystemInfo.getInstance(), previousRejected);
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testAllWritePathsRejectAfterStorageStop() throws Exception {
+    writeAndAssertSuccess(1);
+    final PlanNodeId id = new PlanNodeId("shutdown");
+    final List<PlanNode> writes =
+        Arrays.asList(
+            insertRow(2),
+            insertTablet(2),
+            new InsertRowsNode(
+                id, Collections.singletonList(0), Collections.singletonList(insertRow(2))),
+            new InsertRowsOfOneDeviceNode(
+                id, Collections.singletonList(0), Collections.singletonList(insertRow(2))),
+            new InsertMultiTabletsNode(
+                id, Collections.singletonList(0), Collections.singletonList(insertTablet(2))),
+            StatementTestUtils.genInsertRowNode(2),
+            StatementTestUtils.genInsertTabletNode(1, 2),
+            new DeleteDataNode(
+                id, Collections.singletonList(new MeasurementPath(DEVICE + ".s1")), 0, 10),
+            new DeleteDataNode(
+                id, Collections.singletonList(new MeasurementPath(DATABASE + ".**")), 0, 10),
+            tableDeletion());
+    StorageEngine.getInstance().stop();
+    WALManager.getInstance().stop();
+    assertFalse(commonConfig.isReadOnly());
+    assertFalse(commonConfig.isStopping());
+    for (final PlanNode node : writes) {
+      assertEquals(
+          node.getClass().getSimpleName(),
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(),
+          stateMachine.write((IConsensusRequest) node).getCode());
+    }
+    dataRegion.insertSeparatorToWAL();
+    assertEquals(0, WALManager.getInstance().getWALNodesNum());
+    assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
+    assertTrue(dataRegion.getWorkUnsequenceTsFileProcessors().isEmpty());
+    assertRows(dataRegion.getSequenceFileList().get(0).getTsFile(), 1);
+  }
+
+  @Test
+  public void testOtherConsensusAppliesRemainWritable() throws Exception {
+    final DataRegionStateMachine otherStateMachine = new DataRegionStateMachine(dataRegion);
+    commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+    commonConfig.setStopping(true);
+    try {
+      long time = 0;
+      for (final String protocol :
+          Arrays.asList(
+              ConsensusFactory.RATIS_CONSENSUS,
+              ConsensusFactory.SIMPLE_CONSENSUS,
+              ConsensusFactory.IOT_CONSENSUS_V2)) {
+        config.setDataRegionConsensusProtocolClass(protocol);
+        assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            otherStateMachine.write((IConsensusRequest) insertRow(++time)).getCode());
+      }
+    } finally {
+      config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      commonConfig.setStopping(false);
+    }
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    assertRows(dataRegion.getSequenceFileList().get(0).getTsFile(), 1, 2, 3);
+  }
+
+  @Test
+  public void testShutdownDrainsTableDeletionOutsideInsertLock() throws Exception {
+    checkShutdownDrainsTableDeletion(false);
+  }
+
+  @Test
+  public void testFailedTableDeletionDoesNotBlockShutdown() throws Exception {
+    checkShutdownDrainsTableDeletion(true);
+  }
+
+  private void checkShutdownDrainsTableDeletion(final boolean failDeletion) throws Exception {
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(DATABASE, StatementTestUtils.genTsTable(), null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(DATABASE, StatementTestUtils.tableName(), null);
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        stateMachine
+            .write((IConsensusRequest) StatementTestUtils.genInsertTabletNode(2, 0))
+            .getCode());
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getSequenceFileList().get(0);
+    assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTING));
+    final ModificationFile modFile = spy(resource.getModFileForWrite());
+    resource.setExclusiveModFile(modFile);
+    final CountDownLatch modFileClosing = new CountDownLatch(1);
+    final CountDownLatch resumeDeletion = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              modFileClosing.countDown();
+              assertTrue(resumeDeletion.await(30, TimeUnit.SECONDS));
+              if (failDeletion) {
+                throw new IOException();
+              }
+              return invocation.callRealMethod();
+            })
+        .when(modFile)
+        .close();
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final AtomicReference<Thread> shutdownThread = new AtomicReference<>();
+    final Future<TSStatus> deletion =
+        executor.submit(() -> stateMachine.write((IConsensusRequest) tableDeletion()));
+    try {
+      assertTrue(modFileClosing.await(10, TimeUnit.SECONDS));
+      // Mod-file I/O still runs without insertLock, so an ordinary flush can proceed.
+      executor.submit(() -> dataRegion.timedFlushSeqMemTable()).get(10, TimeUnit.SECONDS);
+      final Future<?> shutdown =
+          executor.submit(
+              () -> {
+                shutdownThread.set(Thread.currentThread());
+                commonConfig.setStopping(true);
+                StorageEngine.getInstance().stop();
+                WALManager.getInstance().stop();
+              });
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(
+              () ->
+                  shutdownThread.get() != null
+                      && shutdownThread.get().getState() == Thread.State.WAITING);
+      assertFalse(shutdown.isDone());
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(),
+          stateMachine.write((IConsensusRequest) insertRow(3)).getCode());
+      resumeDeletion.countDown();
+      assertEquals(
+          (failDeletion ? TSStatusCode.WRITE_PROCESS_ERROR : TSStatusCode.SUCCESS_STATUS)
+              .getStatusCode(),
+          deletion.get(10, TimeUnit.SECONDS).getCode());
+      shutdown.get(10, TimeUnit.SECONDS);
+      assertEquals(0, WALManager.getInstance().getWALNodesNum());
+    } finally {
+      resumeDeletion.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+      doAnswer(invocation -> invocation.callRealMethod()).when(modFile).close();
+      modFile.close();
+    }
+  }
+
+  private static RelationalDeleteDataNode tableDeletion() {
+    return new RelationalDeleteDataNode(
+        new PlanNodeId("shutdown"),
+        new TableDeletionEntry(
+            new DeletionPredicate(StatementTestUtils.tableName(), new NOP()), new TimeRange(0, 10)),
+        DATABASE);
   }
 
   private IoTConsensusServerImpl newServer(
@@ -549,9 +811,48 @@ public class IoTConsensusShutdownTest {
   }
 
   private void writeUncheckedAndAssertSuccess(long time) throws Exception {
-    assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        insertRow(time).accept(new DataExecutionVisitor(), dataRegion).getCode());
+    dataRegion.bypassWriteChecks = true;
+    try {
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          insertRow(time).accept(new DataExecutionVisitor(), dataRegion).getCode());
+    } finally {
+      dataRegion.bypassWriteChecks = false;
+    }
+  }
+
+  private static class TestDataRegion extends DataRegion {
+    // Only the two fault-injection tests bypass admission to reproduce the old late-write bug.
+    private boolean bypassWriteChecks;
+
+    private TestDataRegion() throws DataRegionException {
+      super(
+          TestConstant.OUTPUT_DATA_DIR + "shutdown-info",
+          "0",
+          new TsFileFlushPolicy.DirectFlushPolicy(),
+          DATABASE);
+    }
+
+    @Override
+    protected void checkIoTConsensusWriteAllowed() throws WriteProcessRejectException {
+      if (!bypassWriteChecks) {
+        super.checkIoTConsensusWriteAllowed();
+      }
+    }
+  }
+
+  private static InsertTabletNode insertTablet(final long time) throws Exception {
+    return new InsertTabletNode(
+        new PlanNodeId("shutdown"),
+        new PartialPath(DEVICE),
+        false,
+        new String[] {MEASUREMENT},
+        new TSDataType[] {TSDataType.INT32},
+        new MeasurementSchema[] {new MeasurementSchema(MEASUREMENT, TSDataType.INT32)},
+        new long[] {time},
+        null,
+        new Object[] {new int[] {(int) time * 10}},
+        1);
   }
 
   private static InsertRowNode insertRow(long time) throws Exception {

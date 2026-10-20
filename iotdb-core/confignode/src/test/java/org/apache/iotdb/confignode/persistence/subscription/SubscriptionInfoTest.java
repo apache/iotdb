@@ -34,10 +34,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -48,6 +51,102 @@ import java.util.Set;
 import java.util.UUID;
 
 public class SubscriptionInfoTest {
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testLastConsumerClosePreservesConfiguredProgressAcrossSnapshot() throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      for (final boolean unsubscribeFirst : new boolean[] {false, true}) {
+        assertLastConsumerClosePreservesProgress(tableModel, unsubscribeFirst);
+      }
+    }
+  }
+
+  private void assertLastConsumerClosePreservesProgress(
+      final boolean tableModel, final boolean unsubscribeFirst) throws Exception {
+    final SubscriptionInfo info = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+    attributes.put(SystemConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree");
+    info.createTopic(new CreateTopicPlan(new TopicMeta("kept", 1L, attributes)));
+    final Map<String, String> discardedAttributes = new HashMap<>(attributes);
+    discardedAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+    info.createTopic(new CreateTopicPlan(new TopicMeta("discarded", 1L, discardedAttributes)));
+    final ConsumerGroupMeta group =
+        new ConsumerGroupMeta(
+            "group",
+            1L,
+            new ConsumerMeta(
+                "consumer",
+                1L,
+                Collections.singletonMap(
+                    ConsumerConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree")));
+    group.addSubscription(
+        "consumer", new java.util.HashSet<>(java.util.Arrays.asList("kept", "discarded")));
+    info.alterConsumerGroup(new AlterConsumerGroupPlan(group));
+    final String keptKey = CommitProgressKeeper.generateKey("group", "kept", "DataRegion[1]", 1);
+    final String legacyKey =
+        CommitProgressKeeper.generateLegacyKey("group", "kept", "DataRegion[1]", 2);
+    final String discardedKey =
+        CommitProgressKeeper.generateKey("group", "discarded", "DataRegion[1]", 1);
+    for (final String key : new String[] {keptKey, legacyKey, discardedKey}) {
+      info.getCommitProgressKeeper().updateRegionProgress(key, ByteBuffer.wrap(new byte[] {1}));
+    }
+    final ConsumerGroupMeta updated = group.deepCopy();
+    if (unsubscribeFirst) {
+      updated.removeSubscription(
+          "consumer", new java.util.HashSet<>(java.util.Arrays.asList("kept", "discarded")));
+      info.alterConsumerGroup(new AlterConsumerGroupPlan(updated.deepCopy()));
+    }
+    updated.removeConsumer("consumer");
+    info.alterConsumerGroup(new AlterConsumerGroupPlan(updated));
+    Assert.assertNotNull(
+        "tableModel=" + tableModel + ", unsubscribeFirst=" + unsubscribeFirst,
+        info.getCommitProgressKeeper().getRegionProgress(keptKey));
+    Assert.assertNotNull(info.getCommitProgressKeeper().getRegionProgress(legacyKey));
+    Assert.assertNull(info.getCommitProgressKeeper().getRegionProgress(discardedKey));
+    Assert.assertTrue(info.getConsumerGroupMeta("group").isEmpty());
+    Assert.assertTrue(info.getConsumerGroupMeta("group").visibleUnder(tableModel));
+
+    final java.io.File snapshotDir = temporaryFolder.newFolder();
+    Assert.assertTrue(info.processTakeSnapshot(snapshotDir));
+    final SubscriptionInfo restored = new SubscriptionInfo();
+    restored.processLoadSnapshot(snapshotDir);
+    Assert.assertNotNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    final ConsumerGroupMeta restoredGroup = restored.deepCopyConsumerGroupMeta("group");
+    Assert.assertTrue(restoredGroup.isEmpty());
+    Assert.assertTrue(restoredGroup.visibleUnder(tableModel));
+    final ConsumerMeta replacement =
+        new ConsumerMeta(
+            "replacement",
+            2L,
+            Collections.singletonMap(
+                ConsumerConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree"));
+    restoredGroup.checkAuthorityBeforeJoinConsumerGroup(replacement);
+    restoredGroup.addConsumer(replacement);
+    restored.alterConsumerGroup(new AlterConsumerGroupPlan(restoredGroup));
+    Assert.assertNotNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    restoredGroup.removeConsumer("replacement");
+    restored.alterConsumerGroup(new AlterConsumerGroupPlan(restoredGroup));
+
+    // Same-name topics in the other model must not remove this retained group's progress.
+    final Map<String, String> otherAttributes = new HashMap<>(attributes);
+    otherAttributes.put(SystemConstant.SQL_DIALECT_KEY, tableModel ? "tree" : "table");
+    restored.createTopic(new CreateTopicPlan(new TopicMeta("kept", 2L, otherAttributes)));
+    restored.dropTopic(new DropTopicPlan("kept", !tableModel));
+    Assert.assertNotNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    if (unsubscribeFirst) {
+      attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+      restored.alterTopic(new AlterTopicPlan(new TopicMeta("kept", 2L, attributes)));
+    } else {
+      restored.dropTopic(new DropTopicPlan("kept", tableModel));
+    }
+    Assert.assertNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    Assert.assertNull(restored.getCommitProgressKeeper().getRegionProgress(legacyKey));
+    Assert.assertFalse(restored.isConsumerGroupExisted("group"));
+  }
 
   @Test
   public void testSameNameTreeAndTableTopicsCanBeManagedIndependently() {

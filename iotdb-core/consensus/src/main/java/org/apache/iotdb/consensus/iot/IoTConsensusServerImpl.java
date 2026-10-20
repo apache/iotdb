@@ -1267,7 +1267,20 @@ public class IoTConsensusServerImpl {
       final BlockingQueue<IndexedConsensusRequest> queue,
       final SubscriptionWalRetentionPolicy retentionPolicy,
       final LongSupplier retainedMinVersionIdSupplier) {
-    subscriptionQueueRegistry.register(queue, retentionPolicy, retainedMinVersionIdSupplier);
+    registerSubscriptionQueue(queue, retentionPolicy, retainedMinVersionIdSupplier, null);
+  }
+
+  public void registerSubscriptionQueue(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier retainedMinVersionIdSupplier,
+      final String retentionId) {
+    if (retentionId == null) {
+      subscriptionQueueRegistry.register(queue, retentionPolicy, retainedMinVersionIdSupplier);
+    } else {
+      subscriptionQueueRegistry.register(
+          queue, retentionPolicy, retainedMinVersionIdSupplier, retentionId);
+    }
     // Immediately re-evaluate the safe delete index with new subscription awareness
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(

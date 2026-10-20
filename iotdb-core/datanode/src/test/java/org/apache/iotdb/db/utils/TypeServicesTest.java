@@ -54,6 +54,16 @@ import static org.junit.Assert.assertTrue;
 public class TypeServicesTest {
 
   @Test
+  public void testAggregationServicesCoverAllTypes() {
+    TypeServices.Aggregation.EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
+    TypeServices.Aggregation.TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
+    TypeServices.Aggregation.MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.check();
+    TypeServices.Aggregation.EVENT_WINDOW_MANAGER_PROVIDER_SERVICE.check();
+    TypeServices.Aggregation.OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
+    TypeServices.Aggregation.MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
+  }
+
+  @Test
   public void testTabletBinarySerializationMatchesLegacyFormat() throws IOException {
     Binary[] values = {
       new Binary(new byte[] {1, 2, 3}),

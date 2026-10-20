@@ -204,6 +204,8 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
+  protected volatile boolean enableAutoCreateSchema = true;
+
   private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
       "times, measurementsList and valuesList's size should be equal";
 
@@ -484,6 +486,7 @@ public class Session implements ISession {
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
   }
 
   @Override
@@ -3007,6 +3010,7 @@ public class Session implements ISession {
             .collect(Collectors.toList());
 
     StringBuilder errMsgBuilder = new StringBuilder();
+    List<Throwable> errors = new ArrayList<>();
     for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
         completableFuture.join();
@@ -3016,6 +3020,7 @@ public class Session implements ISession {
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          errors.add(cause);
           if (errMsgBuilder.length() > 0) {
             errMsgBuilder.append(";");
           }
@@ -3024,7 +3029,10 @@ public class Session implements ISession {
       }
     }
     if (errMsgBuilder.length() > 0) {
-      throw new StatementExecutionException(errMsgBuilder.toString());
+      StatementExecutionException exception =
+          new StatementExecutionException(errMsgBuilder.toString());
+      errors.forEach(exception::addSuppressed);
+      throw exception;
     }
   }
 
@@ -4520,6 +4528,11 @@ public class Session implements ISession {
 
     public Builder database(String database) {
       this.database = database;
+      return this;
+    }
+
+    public Builder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+      this.enableAutoCreateSchema = enableAutoCreateSchema;
       return this;
     }
 

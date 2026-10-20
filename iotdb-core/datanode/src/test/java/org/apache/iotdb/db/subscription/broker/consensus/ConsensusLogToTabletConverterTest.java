@@ -63,6 +63,31 @@ public class ConsensusLogToTabletConverterTest {
   private static final String DATABASE_NAME = "db";
 
   @Test
+  public void testReplayRequiresCompleteAndDecodableWalFragments() {
+    final List<IConsensusRequest> fragments = new ArrayList<>();
+    final RelationalInsertRowNode node = StatementTestUtils.genInsertRowNode(1);
+    node.setSearchIndex(1);
+    final WALInfoEntry entry = new WALInfoEntry(1L, node);
+    final ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
+    entry.serialize(new WALByteBufferForTest(buffer));
+    buffer.flip();
+    fragments.add(new IoTConsensusRequest(buffer));
+    final IndexedConsensusRequest request = new IndexedConsensusRequest(1, fragments);
+    Assert.assertNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+
+    node.setLastFragment(true);
+    final WALInfoEntry completeEntry = new WALInfoEntry(1L, node);
+    final ByteBuffer complete = ByteBuffer.allocate(completeEntry.serializedSize());
+    completeEntry.serialize(new WALByteBufferForTest(complete));
+    complete.flip();
+    request.getRequests().set(0, new IoTConsensusRequest(complete));
+    Assert.assertNotNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+
+    request.getRequests().add(0, new IoTConsensusRequest(ByteBuffer.allocate(1)));
+    Assert.assertNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+  }
+
+  @Test
   public void testRepeatedWalDeserializationPreservesAllFragments() {
     final List<IConsensusRequest> fragments = new ArrayList<>();
     for (int row = 1; row <= 2; row++) {

@@ -36,6 +36,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.TableSessionBuilder;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -98,9 +99,19 @@ public class IoTDBSessionRelationalIT {
   @After
   public void tearDown() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
-      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db3");
+      for (String database : Arrays.asList("db1", "db2", "db3")) {
+        // Asynchronous DROP TABLE procedures may still be running when the test finishes.
+        Awaitility.await()
+            .atMost(60, TimeUnit.SECONDS)
+            .pollInSameThread()
+            .ignoreExceptionsMatching(
+                e ->
+                    e instanceof StatementExecutionException
+                        && ((StatementExecutionException) e).getStatusCode()
+                            == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode())
+            .untilAsserted(
+                () -> session.executeNonQueryStatement("DROP DATABASE IF EXISTS " + database));
+      }
     }
   }
 
@@ -259,6 +270,7 @@ public class IoTDBSessionRelationalIT {
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
+      // Include a FIELD column so schema validation does not mask invalid timestamps.
       session.executeNonQueryStatement(
           "create table wrong_time(color string tag, device_id string tag,city string attribute,"
               + " value int32 field)");
@@ -442,7 +454,7 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("CREATE TABLE partial_insert (s1 boolean)");
       try {
         session.executeNonQueryStatement(
-            "insert into partial_insert(time, s1) values (10000,true),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
+            "insert into partial_insert(time, s1) values (10000,true),(11000,null),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertEquals(
@@ -452,21 +464,61 @@ public class IoTDBSessionRelationalIT {
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from partial_insert order by time");
-      long[] timestamps = new long[] {10000, 20000, 40000, 50000};
-      Boolean[] values = new Boolean[] {true, false, false, true};
+      // Rows without any valid FIELD are skipped during partial insertion.
+      long[] timestamps = new long[] {10000, 11000, 20000, 40000, 50000};
+      Boolean[] values = new Boolean[] {true, null, false, false, true};
       int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rec = dataSet.next();
         assertEquals(timestamps[cnt], rec.getFields().get(0).getLongV());
-        assertEquals(values[cnt], rec.getFields().get(1).getBoolV());
+        assertEquals(values[cnt], rec.getFields().get(1).getObjectValue(TSDataType.BOOLEAN));
         cnt++;
       }
-      assertEquals(4, cnt);
+      assertEquals(timestamps.length, cnt);
 
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
         session.executeNonQueryStatement(
             "SET CONFIGURATION \"enable_auto_create_schema\"=\"true\"");
+      }
+    }
+  }
+
+  @Test
+  public void disableAutoCreateSchemaForTableSessionTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    try (ITableSession session =
+        new TableSessionBuilder()
+            .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+            .database("db1")
+            .enableAutoCreateSchema(false)
+            .build()) {
+      final List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+      final Tablet tablet =
+          new Tablet(
+              "session_auto_create",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+              1);
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("tag1", 0, "d1");
+      tablet.addValue("s1", 0, 1L);
+      tablet.addValue("s2", 0, 2L);
+
+      assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE session_auto_create (tag1 string tag, s1 int64 field)");
+      assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM session_auto_create")) {
+        assertEquals(Arrays.asList("time", "tag1", "s1"), dataSet.getColumnNames());
       }
     }
   }
@@ -766,20 +818,18 @@ public class IoTDBSessionRelationalIT {
         fail("Insert should fail");
       } catch (StatementExecutionException e) {
         assertEquals(
-            "507: Fail to insert measurements [f1, f2] "
-                + "caused by [Incompatible data type of column f1: DOUBLE/INT32, "
-                + "Incompatible data type of column f2: DOUBLE/INT32]",
-            e.getMessage());
+            "507: No column other than Time present, please check the request", e.getMessage());
       }
       tablet.reset();
-      int cnt = 0;
-      SessionDataSet dataSet =
-          session.executeQueryStatement("select * from field_wrong_type order by time");
-      while (dataSet.hasNext()) {
-        dataSet.next();
-        cnt++;
+      for (int phase = 0; phase < 2; phase++) {
+        try (SessionDataSet dataSet =
+            session.executeQueryStatement("select * from field_wrong_type order by time")) {
+          assertFalse(dataSet.hasNext());
+        }
+        if (phase == 0) {
+          session.executeNonQueryStatement("flush");
+        }
       }
-      assertEquals(0, cnt);
     }
   }
 
@@ -1507,17 +1557,13 @@ public class IoTDBSessionRelationalIT {
             fail("Exception expected: from=" + from + ", to=" + to);
           } catch (StatementExecutionException e) {
             assertEquals(
-                "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
-                    + from
-                    + "/"
-                    + to
-                    + "]",
-                e.getMessage());
+                "507: No column other than Time present, please check the request", e.getMessage());
           }
           // time, tag1, m1
-          SessionDataSet dataSet =
-              session.executeQueryStatement("select * from table" + testNum + " order by time");
-          assertFalse(dataSet.hasNext());
+          try (SessionDataSet dataSet =
+              session.executeQueryStatement("select * from table" + testNum + " order by time")) {
+            assertFalse(dataSet.hasNext());
+          }
         } else {
           // cannot cast, expect an exception
           try {

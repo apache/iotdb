@@ -929,6 +929,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
                 plan.getTopicMeta().getTopicName())) {
           commitProgressKeeper.removeTopicProgress(
               consumerGroupMeta.getConsumerGroupId(), plan.getTopicMeta().getTopicName());
+          removeEmptyConsumerGroupWithoutProgress(consumerGroupMeta);
         }
       }
     }
@@ -971,6 +972,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
         if (!plan.isTableModelSet() || consumerGroupMeta.visibleUnder(plan.isTableModel())) {
           commitProgressKeeper.removeTopicProgress(
               consumerGroupMeta.getConsumerGroupId(), plan.getTopicName());
+          removeEmptyConsumerGroupWithoutProgress(consumerGroupMeta);
         }
       }
       if (plan.isTableModelSet()) {
@@ -1146,30 +1148,45 @@ public class SubscriptionInfo implements SnapshotProcessor {
                 ? consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId)
                 : null;
         if (Objects.nonNull(currentConsumerGroupMeta)) {
+          ConsumerGroupMeta.getTopicsUnsubByGroup(currentConsumerGroupMeta, consumerGroupMeta)
+              .forEach(
+                  topicName -> {
+                    final TopicMeta topicMeta =
+                        topicMetaKeeper.getTopicMeta(
+                            topicName, currentConsumerGroupMeta.visibleUnder(true));
+                    if (Objects.isNull(topicMeta)
+                        || !topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
+                      commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName);
+                    }
+                  });
           if (consumerGroupMeta.isEmpty()) {
-            commitProgressKeeper.removeConsumerGroupProgress(consumerGroupId);
-          } else {
-            ConsumerGroupMeta.getTopicsUnsubByGroup(currentConsumerGroupMeta, consumerGroupMeta)
-                .forEach(
-                    topicName -> {
-                      final TopicMeta topicMeta =
-                          topicMetaKeeper.getTopicMeta(
-                              topicName, currentConsumerGroupMeta.visibleUnder(true));
-                      if (Objects.isNull(topicMeta)
-                          || !topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
-                        commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName);
-                      }
-                    });
+            final Set<String> retainedTopicNames = new HashSet<>();
+            for (final TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
+              if (topicMeta.visibleUnderTableModel() == currentConsumerGroupMeta.visibleUnder(true)
+                  && topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
+                retainedTopicNames.add(topicMeta.getTopicName());
+              }
+            }
+            commitProgressKeeper.removeConsumerGroupProgressExceptTopics(
+                consumerGroupId, retainedTopicNames);
           }
         }
         consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
-        if (!consumerGroupMeta.isEmpty()) {
+        if (!consumerGroupMeta.isEmpty()
+            || commitProgressKeeper.hasConsumerGroupProgress(consumerGroupId)) {
           consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, consumerGroupMeta);
         }
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
+    }
+  }
+
+  private void removeEmptyConsumerGroupWithoutProgress(final ConsumerGroupMeta consumerGroupMeta) {
+    if (consumerGroupMeta.isEmpty()
+        && !commitProgressKeeper.hasConsumerGroupProgress(consumerGroupMeta.getConsumerGroupId())) {
+      consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupMeta.getConsumerGroupId());
     }
   }
 

@@ -99,6 +99,7 @@ public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
   protected Session session;
@@ -243,6 +244,9 @@ public class SessionConnection {
     openReq.putToConfiguration("sql_dialect", sqlDialect);
     if (session.useEncryptedPassword) {
       openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+    }
+    if (!session.enableAutoCreateSchema) {
+      openReq.putToConfiguration(ENABLE_AUTO_CREATE_SCHEMA_KEY, Boolean.FALSE.toString());
     }
     if (database != null) {
       openReq.putToConfiguration("db", database);

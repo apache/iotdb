@@ -92,7 +92,7 @@ public class TsFilePlanRedoer {
   }
 
   void redoInsert(InsertNode node) throws WriteProcessException {
-    if (!node.hasValidMeasurements()) {
+    if (node.shouldSkipWrite()) {
       return;
     }
     boolean isSingleDevice = !(node instanceof RelationalInsertTabletNode);
@@ -155,7 +155,7 @@ public class TsFilePlanRedoer {
   void redoInsertRows(InsertRowsNode insertRowsNode) {
     int pointsInserted = 0;
     for (InsertRowNode node : insertRowsNode.getInsertRowNodeList()) {
-      if (!node.hasValidMeasurements()) {
+      if (node.shouldSkipWrite()) {
         continue;
       }
       if (tsFileResource != null) {

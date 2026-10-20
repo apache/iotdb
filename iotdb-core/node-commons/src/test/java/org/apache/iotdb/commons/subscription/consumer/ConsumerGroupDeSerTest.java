@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -37,6 +38,44 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 public class ConsumerGroupDeSerTest {
+
+  @Test
+  public void testEmptyGroupPreservesDialectAcrossSerializationAndRejoin() throws Exception {
+    for (final String dialect : new String[] {"tree", "table"}) {
+      final Map<String, String> attributes =
+          Collections.singletonMap(ConsumerConstant.SQL_DIALECT_KEY, dialect);
+      final ConsumerGroupMeta group =
+          new ConsumerGroupMeta("retained", 1L, new ConsumerMeta("consumer", 1L, attributes));
+      group.removeConsumer("consumer");
+      final ByteBuffer buffer = group.serialize();
+      final byte[] bytes = new byte[buffer.remaining()];
+      buffer.duplicate().get(bytes);
+      final ConsumerGroupMeta[] restoredGroups = {
+        group.deepCopy(),
+        ConsumerGroupMeta.deserialize(buffer),
+        ConsumerGroupMeta.deserialize(new ByteArrayInputStream(bytes))
+      };
+      for (final ConsumerGroupMeta restored : restoredGroups) {
+        Assert.assertEquals(group, restored);
+        Assert.assertTrue(restored.isEmpty());
+        Assert.assertEquals("table".equals(dialect), restored.visibleUnder(true));
+        final ConsumerMeta replacement = new ConsumerMeta("replacement", 2L, attributes);
+        restored.checkAuthorityBeforeJoinConsumerGroup(replacement);
+        Assert.assertThrows(
+            SubscriptionException.class,
+            () ->
+                restored.checkAuthorityBeforeJoinConsumerGroup(
+                    new ConsumerMeta(
+                        "other",
+                        2L,
+                        Collections.singletonMap(
+                            ConsumerConstant.SQL_DIALECT_KEY,
+                            "table".equals(dialect) ? "tree" : "table"))));
+        restored.addConsumer(replacement);
+        Assert.assertEquals("table".equals(dialect), restored.visibleUnder(true));
+      }
+    }
+  }
 
   @Test
   public void test() throws IOException {
