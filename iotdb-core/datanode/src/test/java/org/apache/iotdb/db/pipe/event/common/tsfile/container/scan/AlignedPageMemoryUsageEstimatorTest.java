@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
-import org.apache.iotdb.commons.path.PartialPath;
-
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -32,9 +30,9 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -57,7 +55,7 @@ public class AlignedPageMemoryUsageEstimatorTest {
         Assert.assertTrue(tsFile.delete());
       }
 
-      final List<IMeasurementSchema> schemas = new ArrayList<>();
+      final List<MeasurementSchema> schemas = new ArrayList<>();
       for (int i = 0; i < 4; ++i) {
         schemas.add(
             new MeasurementSchema(
@@ -70,18 +68,19 @@ public class AlignedPageMemoryUsageEstimatorTest {
           tablet.addValue("s" + measurement, row, (long) row + measurement);
         }
       }
+      tablet.rowSize = 8;
 
       try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
-        writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemas);
+        writer.registerAlignedTimeseries(new Path("root.sg.d"), schemas);
         writer.writeAligned(tablet);
       }
 
       try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
         final IDeviceID deviceID = reader.getDeviceMeasurementsMap().keySet().iterator().next();
-        final List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
-            reader.getAlignedChunkMetadata(deviceID, true);
+        final List<AlignedChunkMetadata> alignedChunkMetadataList =
+            reader.getAlignedChunkMetadata(deviceID);
         Assert.assertEquals(1, alignedChunkMetadataList.size());
-        final AbstractAlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
+        final AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
         final Chunk timeChunk =
             reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
         Assert.assertEquals(MetaMarker.CHUNK_HEADER, timeChunk.getHeader().getChunkType() & 0x3F);
