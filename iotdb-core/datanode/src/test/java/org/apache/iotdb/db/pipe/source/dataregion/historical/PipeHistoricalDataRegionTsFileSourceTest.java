@@ -39,7 +39,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
@@ -104,21 +103,41 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
           tempDir,
           "superset.tsfile",
           hybridProgressIndex(
-              new IoTProgressIndex(ImmutableMap.of(1, 100L, 2, 200L)),
+              iotProgressIndex(1, 100L, 2, 200L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
           hybridProgressIndex(
-              new IoTProgressIndex(1, 100L),
+              iotProgressIndex(1, 100L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 9))),
           false);
 
       assertMayTsFileContainUnprocessedData(
           tempDir,
           "missing-dimension.tsfile",
-          hybridProgressIndex(new IoTProgressIndex(1, 100L)),
+          hybridProgressIndex(iotProgressIndex(1, 100L)),
           hybridProgressIndex(
-              new IoTProgressIndex(1, 90L),
+              iotProgressIndex(1, 90L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
           true);
+
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "larger-iot.tsfile",
+          hybridProgressIndex(
+              iotProgressIndex(1, 100L, 2, 200L),
+              new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
+          hybridProgressIndex(
+              iotProgressIndex(1, 101L),
+              new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
+          true);
+
+      final ProgressIndex recoverProgressIndex =
+          new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10));
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "old-sequence-recover.tsfile",
+          hybridProgressIndex(recoverProgressIndex, iotProgressIndex(1, 100L)),
+          recoverProgressIndex,
+          false);
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
     }
@@ -541,6 +560,16 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
       result = result.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
     }
     return result;
+  }
+
+  private static IoTProgressIndex iotProgressIndex(
+      final int firstPeerId, final long firstSearchIndex, final long... peerIdAndSearchIndexPairs) {
+    final Map<Integer, Long> peerId2SearchIndex = new HashMap<>();
+    peerId2SearchIndex.put(firstPeerId, firstSearchIndex);
+    for (int i = 0; i < peerIdAndSearchIndexPairs.length; i += 2) {
+      peerId2SearchIndex.put((int) peerIdAndSearchIndexPairs[i], peerIdAndSearchIndexPairs[i + 1]);
+    }
+    return new IoTProgressIndex(peerId2SearchIndex);
   }
 
   private static void sortExtractedResources(
