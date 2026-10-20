@@ -26,12 +26,19 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -52,6 +59,7 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -59,6 +67,66 @@ import java.util.Map;
 import java.util.Set;
 
 public class PipeHistoricalDataRegionTsFileSourceTest {
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testHistoricalSourceSuppliesPinnedModsAfterOriginalFileRemoval() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalSourceMods").toFile();
+    final PipeHistoricalDataRegionTsFileSource source = new PipeHistoricalDataRegionTsFileSource();
+    final String pipeName = "historical_source_mods";
+    final long creationTime = 1L;
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    PipeTsFileInsertionEvent event = null;
+    try {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<>(
+                  Collections.singletonMap(
+                      PipeSourceConstant.SOURCE_MODS_ENABLE_KEY, Boolean.TRUE.toString())));
+      source.validate(new PipeParameterValidator(parameters));
+      source.customize(
+          parameters,
+          () ->
+              new PipeTaskSourceRuntimeEnvironment(
+                  pipeName, creationTime, 0, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0)));
+      Assert.assertEquals(resourcePipeName, getPrivateField(source, "pipeNameWithCreationTime"));
+
+      final File dataDir = new File(tempDir, "unsequence/root.db/0/0");
+      Assert.assertTrue(dataDir.mkdirs());
+      final TsFileResource resource =
+          createClosedTsFileResourceWithDevices(dataDir, "1-1-0-0.tsfile", "root.db.d0");
+      resource.getModFile().write(new Deletion(new PartialPath("root.db.d0.s1"), 0, 0, 1));
+      resource.getModFile().close();
+      Assert.assertTrue(manager.pinTsFileResource(resource, true, resourcePipeName));
+      ((Set<TsFileResource>) getPrivateField(source, "resourcesWithPinnedModFile")).add(resource);
+      ((Set<TsFileResource>) getPrivateField(source, "filteredTsFileResources")).add(resource);
+      setPrivateField(source, "pendingQueue", new ArrayDeque<>(Collections.singleton(resource)));
+      setPrivateField(source, "hasBeenStarted", true);
+      setPrivateField(source, "sloppyPattern", true);
+      setPrivateField(source, "sloppyTimeRange", true);
+
+      Assert.assertTrue(resource.remove());
+      event = (PipeTsFileInsertionEvent) source.supply();
+      Assert.assertNotNull(event);
+      Assert.assertTrue(event.isWithMod());
+      final File pinnedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              resource.getTsFile(), resourcePipeName);
+      Assert.assertEquals(pinnedTsFile, event.getTsFile());
+      Assert.assertEquals(
+          new File(pinnedTsFile + ModificationFile.FILE_SUFFIX), event.getModFile());
+      Assert.assertEquals(1, manager.getFileReferenceCount(event.getModFile(), resourcePipeName));
+      Assert.assertTrue(event.getModFile().exists());
+    } finally {
+      source.close();
+      if (event != null) {
+        event.clearReferenceCount(getClass().getName());
+      }
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
 
   @Test
   public void testGlobalTimeRangeRespectsHistoryEnable() throws Exception {
