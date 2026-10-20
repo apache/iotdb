@@ -123,6 +123,17 @@ public interface Operator extends AutoCloseable, Accountable {
    */
   long calculateMaxPeekMemory();
 
+  /**
+   * Returns the retained memory that a parent operator still needs to add to its peak estimate.
+   *
+   * <p>Most operators expose all of their retained input state separately, so the default is the
+   * complete retained size. Operators whose peak estimate already includes that state can override
+   * this method to avoid counting it again in a parent operator.
+   */
+  default long calculateRetainedSizeForParentMaxPeekMemory() {
+    return calculateRetainedSizeAfterCallingNext();
+  }
+
   /** return estimated max memory footprint for returned TsBlock when calling operator.next(). */
   long calculateMaxReturnSize();
 

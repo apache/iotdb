@@ -338,8 +338,13 @@ public abstract class AbstractSortOperator implements ProcessOperator {
   @Override
   public long calculateMaxPeekMemory() {
     return inputOperator.calculateMaxPeekMemoryWithCounter()
-        + inputOperator.calculateRetainedSizeAfterCallingNext()
+        + inputOperator.calculateRetainedSizeForParentMaxPeekMemory()
         + sortBufferManager.getSortBufferSize();
+  }
+
+  @Override
+  public long calculateRetainedSizeForParentMaxPeekMemory() {
+    return 0;
   }
 
   @Override
