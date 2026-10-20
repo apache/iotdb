@@ -19,6 +19,32 @@
 
 -->
 
+# Unreleased
+
+## Java client discovery and rolling upgrades
+
+`SHOW AVAILABLE URLS` excludes `Unknown`, `Stopped`, and `Removing` DataNodes, as well as
+`ReadOnly` nodes whose status reason is `Stopping`. Other `ReadOnly` nodes remain query endpoints.
+The Java SDK keeps its initial `nodeUrls` as recovery seeds when the latest discovered endpoints
+cannot be reached. Configure several stable seeds and keep at least one reachable during a rolling
+upgrade.
+
+Upgrade Java clients to a version with seed fallback **before upgrading the servers**. The server
+filter applies to every client. Older Java SDKs and the C++ client do not gain seed fallback from a
+server upgrade: their discovered list may lose a node that later becomes the only reachable node.
+For those clients, keep an endpoint in their last discovery snapshot reachable throughout maintenance,
+or use a stable explicit endpoint list with automatic discovery disabled until the client supports
+seed fallback. This change does not port the Java recovery mechanism to C++.
+
+Seed and discovered endpoints are deduplicated by their literal host/IP and port, without DNS
+resolution. Configure `nodeUrls` using the same address form as each DataNode's advertised
+`dn_rpc_address`; for example, do not mix `localhost` seeds with `127.0.0.1` discovery addresses for
+the same node. For wildcard bind addresses such as `0.0.0.0`, supply reachable addresses in
+`nodeUrls`; wildcard discovery rows do not clear the previous snapshot. Aliases can otherwise cause
+duplicate connection attempts, extra discovery refreshes,
+and reconnections on retryable responses. DNS names may represent multiple or changing addresses,
+so recovery does not resolve them to infer permanent node identity.
+
 # Apache IoTDB 2.0.10
 
 ## Features & Improvements

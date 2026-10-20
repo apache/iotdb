@@ -546,6 +546,7 @@ public class Session implements ISession {
       this.availableNodes =
           NodesSupplier.createNodeSupplier(
               getNodeUrls(),
+              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
               executorService,
               username,
               password,
@@ -605,7 +606,9 @@ public class Session implements ISession {
   }
 
   private List<TEndPoint> getNodeUrls() {
-    return SessionUtils.parseSeedNodeUrls(initialNodeUrls);
+    return defaultEndPoint == null
+        ? SessionUtils.parseSeedNodeUrls(initialNodeUrls)
+        : Collections.singletonList(defaultEndPoint.deepCopy());
   }
 
   @Override
@@ -4493,6 +4496,10 @@ public class Session implements ISession {
       return this;
     }
 
+    /**
+     * Configure recovery seeds using the same host/IP form as each DataNode's dn_rpc_address.
+     * Hostname aliases and IP literals are not DNS-deduplicated during recovery.
+     */
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;

@@ -1151,7 +1151,11 @@ public class SessionConnection {
           Collections.rotate(endPointList, -random.nextInt(endPointList.size()));
         }
         if (availableNodes instanceof INodeSupplier) {
-          endPointList.addAll(((INodeSupplier) availableNodes).getSeedNodes());
+          List<TEndPoint> seeds = new ArrayList<>(((INodeSupplier) availableNodes).getSeedNodes());
+          if (!seeds.isEmpty()) {
+            Collections.rotate(seeds, -random.nextInt(seeds.size()));
+          }
+          endPointList.addAll(seeds);
         }
         // Try every discovered endpoint before falling back to seeds, once per endpoint per round.
         endPointList = new ArrayList<>(new LinkedHashSet<>(endPointList));

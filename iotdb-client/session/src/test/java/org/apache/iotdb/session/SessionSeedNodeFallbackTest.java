@@ -22,6 +22,8 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.UrlUtils;
@@ -29,9 +31,14 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.session.pool.SessionPool;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransport;
@@ -45,10 +52,12 @@ import org.junit.Test;
 import org.powermock.reflect.Whitebox;
 
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -61,6 +70,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -74,6 +84,7 @@ import static org.mockito.Mockito.when;
 public class SessionSeedNodeFallbackTest {
   private final List<TestNode> nodes = new ArrayList<>();
   private final List<TEndPoint> attempts = new CopyOnWriteArrayList<>();
+  private final List<TEndPoint> queries = new CopyOnWriteArrayList<>();
   private final List<Runnable> refreshes = new ArrayList<>();
   private final List<SessionConnection> connections = new ArrayList<>();
   private volatile List<TEndPoint> advertised;
@@ -161,16 +172,76 @@ public class SessionSeedNodeFallbackTest {
   }
 
   @Test
-  public void testEmptyDiscoveryFallsBackWithoutLosingSeeds() throws Exception {
+  public void testEmptyDiscoveryKeepsPreviousSnapshot() {
+    advertised = endpoints(1, 2);
+    supplier.run();
+    attempts.clear();
     advertised = Collections.emptyList();
     supplier.run();
-    assertTrue(supplier.get().isEmpty());
-    assertFalse(supplier.getQueryEndPoint().isPresent());
-    assertTrue(reconnect(newConnection()));
+    assertEquals(endpoints(1, 2), supplier.get());
+    assertEquals(nodes.get(1).endpoint, supplier.getQueryEndPoint().get());
+    assertEquals(nodes.get(2).endpoint, supplier.getQueryEndPoint().get());
     assertEquals(endpoints(0, 1, 2), supplier.getSeedNodes());
-    advertised = endpoints(0, 1, 2);
-    refreshes.remove(0).run();
-    assertEquals(advertised, supplier.get());
+    assertTrue(attempts.isEmpty());
+  }
+
+  @Test
+  public void testWildcardDiscoveryKeepsSeedsAndLastSnapshot() {
+    advertised = Arrays.asList(new TEndPoint("0.0.0.0", 6667), new TEndPoint("::", 6667));
+    supplier.run();
+    assertEquals(endpoints(0, 1, 2), supplier.get());
+    List<TEndPoint> selected = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      selected.add(supplier.getQueryEndPoint().get());
+    }
+    assertEquals(new HashSet<>(endpoints(0, 1, 2)), new HashSet<>(selected));
+
+    advertised = endpoints(1, 2);
+    supplier.run();
+    advertised = Collections.singletonList(new TEndPoint("0.0.0.0", 6667));
+    supplier.run();
+    assertEquals(endpoints(1, 2), supplier.get());
+  }
+
+  @Test
+  public void testQueryStatusFailureDoesNotRotateConnections() {
+    assertQueryFailureDoesNotRotate(false);
+  }
+
+  @Test
+  public void testQueryApplicationFailureDoesNotRotateConnections() {
+    assertQueryFailureDoesNotRotate(true);
+  }
+
+  private void assertQueryFailureDoesNotRotate(boolean applicationError) {
+    advertised = endpoints(1, 2);
+    supplier.run();
+    nodes.forEach(
+        node -> {
+          node.failQuery = true;
+          node.queryApplicationError = applicationError;
+        });
+    queries.clear();
+    attempts.clear();
+    supplier.run();
+    assertEquals(endpoints(0), queries);
+    assertTrue(attempts.isEmpty());
+    assertEquals(endpoints(1, 2), supplier.get());
+
+    nodes.forEach(node -> node.failQuery = false);
+    advertised = endpoints(2);
+    supplier.run();
+    assertEquals(endpoints(2), supplier.get());
+    assertTrue(attempts.isEmpty());
+  }
+
+  @Test
+  public void testQueryFailureAfterConnectingDoesNotTryOtherCandidates() {
+    nodes.forEach(node -> node.failQuery = true);
+    supplier.run();
+    assertEquals(endpoints(0), attempts);
+    assertEquals(endpoints(0), queries);
+    assertEquals(endpoints(0, 1, 2), supplier.get());
   }
 
   @Test
@@ -184,9 +255,12 @@ public class SessionSeedNodeFallbackTest {
     assertFalse(reconnect(newConnection()));
     assertEquals(SessionConfig.RETRY_NUM * 3, attempts.size());
     for (int i = 0; i < SessionConfig.RETRY_NUM; i++) {
-      assertEquals(endpoints(1, 0, 2), attempts.subList(i * 3, (i + 1) * 3));
+      List<TEndPoint> round = attempts.subList(i * 3, (i + 1) * 3);
+      assertEquals(nodes.get(1).endpoint, round.get(0));
+      assertEquals(new HashSet<>(endpoints(0, 1, 2)), new HashSet<>(round));
     }
     assertTrue(refreshes.isEmpty());
+    assertEquals(endpoints(0, 1, 2), supplier.getSeedNodes());
   }
 
   @Test
@@ -213,19 +287,141 @@ public class SessionSeedNodeFallbackTest {
   }
 
   @Test
-  public void testSessionRetainsInitialUrlsAfterDefaultEndpointChanges() throws Exception {
-    List<String> urls = new ArrayList<>(Arrays.asList(url(0), url(1)));
-    Session session = new Session.Builder().nodeUrls(urls).build();
-    urls.clear();
-    session.defaultEndPoint = nodes.get(2).endpoint;
-    List<TEndPoint> seeds = Whitebox.invokeMethod(session, "getNodeUrls");
-    assertEquals(2, seeds.size());
-    assertTrue(seeds.containsAll(endpoints(0, 1)));
+  public void testNodeUrlsSessionReopenAfterFailover() throws Exception {
+    assertSessionReopenAfterFailover(false);
+  }
 
-    Session singleNode =
-        new Session(nodes.get(0).endpoint.getIp(), nodes.get(0).endpoint.getPort());
-    singleNode.defaultEndPoint = nodes.get(2).endpoint;
-    assertEquals(endpoints(0), Whitebox.invokeMethod(singleNode, "getNodeUrls"));
+  @Test
+  public void testSingleHostSessionReopenAfterFailover() throws Exception {
+    assertSessionReopenAfterFailover(true);
+  }
+
+  private void assertSessionReopenAfterFailover(boolean singleHost) throws Exception {
+    List<String> urls = new ArrayList<>(Collections.singletonList(url(0)));
+    Session session =
+        singleHost
+            ? new Session.Builder()
+                .host(nodes.get(0).endpoint.getIp())
+                .port(nodes.get(0).endpoint.getPort())
+                .build()
+            : new Session.Builder().nodeUrls(urls).build();
+    urls.clear();
+    advertised = endpoints(0, 1);
+    try {
+      session.open(false, 1000);
+      NodesSupplier first = Whitebox.getInternalState(session, "availableNodes");
+      awaitSnapshot(first, endpoints(0, 1));
+      nodes.get(0).online = false;
+      advertised = endpoints(1);
+      awaitSnapshot(first, endpoints(1));
+      SessionConnection connection = Whitebox.getInternalState(session, "defaultSessionConnection");
+      assertTrue(reconnect(connection));
+      assertEquals(nodes.get(1).endpoint, connection.getEndPoint());
+      session.close();
+
+      attempts.clear();
+      session.open(false, 1000);
+      NodesSupplier reopened = Whitebox.getInternalState(session, "availableNodes");
+      assertEquals(endpoints(0), reopened.getSeedNodes());
+      assertEquals(endpoints(1), reopened.get());
+      awaitSnapshot(reopened, endpoints(1));
+      for (int i = 0; i < 10; i++) {
+        try (SessionDataSet result = session.executeQueryStatement("SHOW AVAILABLE URLS")) {
+          assertTrue(result.hasNext());
+          result.next();
+          assertFalse(result.hasNext());
+        }
+      }
+      assertFalse(attempts.contains(nodes.get(0).endpoint));
+    } finally {
+      session.close();
+    }
+  }
+
+  private void awaitSnapshot(NodesSupplier current, List<TEndPoint> expected) throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (!expected.equals(current.get()) && System.nanoTime() < deadline) {
+      current.run();
+      TimeUnit.MILLISECONDS.sleep(10);
+    }
+    assertEquals(expected, current.get());
+  }
+
+  @Test
+  public void testPoolListConstructorCopiesUrlsForFutureSessions() throws Exception {
+    List<String> urls = new ArrayList<>(Collections.singletonList(url(0)));
+    SessionPool pool = new SessionPool(urls, "root", "root", 1);
+    try {
+      urls.clear();
+      try (SessionDataSetWrapper result = pool.executeQueryStatement("SHOW AVAILABLE URLS")) {
+        assertTrue(result.hasNext());
+      }
+      NodesSupplier current = Whitebox.getInternalState(pool, "availableNodes");
+      assertEquals(endpoints(0), current.getSeedNodes());
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
+  public void testCloseAbortsBlockedSessionOpenAndDoesNotTryRemainingCandidates() throws Exception {
+    supplier.close();
+    ExecutorService tasks = Executors.newCachedThreadPool();
+    Socket peer = null;
+    try (ServerSocket listener = new ServerSocket(0)) {
+      List<TEndPoint> seeds = new ArrayList<>();
+      seeds.add(new TEndPoint("127.0.0.1", listener.getLocalPort()));
+      seeds.addAll(endpoints(1, 2));
+      supplier = createSupplier(seeds, 0);
+      Future<Socket> accepted = tasks.submit(listener::accept);
+      Future<?> refresh = tasks.submit(supplier::run);
+      peer = accepted.get(5, TimeUnit.SECONDS);
+      peer.setSoTimeout(5000);
+      assertTrue(peer.getInputStream().read() >= 0);
+      // Timeout 0 means the peer can stall openSession forever unless close aborts the socket.
+      tasks.submit(supplier::close).get(5, TimeUnit.SECONDS);
+      refresh.get(5, TimeUnit.SECONDS);
+      assertTrue(attempts.isEmpty());
+      assertNull(Whitebox.getInternalState(supplier, "client"));
+      assertNull(Whitebox.getInternalState(supplier, "activeClient"));
+      supplier.run();
+      assertTrue(attempts.isEmpty());
+      while (peer.getInputStream().read() != -1) {
+        // Drain the already-written request before observing socket closure.
+      }
+    } finally {
+      if (peer != null) {
+        peer.close();
+      }
+      tasks.shutdownNow();
+      assertTrue(tasks.awaitTermination(5, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testCloseAbortsBlockedDiscoveryQuery() throws Exception {
+    advertised = endpoints(0);
+    supplier.close();
+    supplier = createSupplier(endpoints(0, 1, 2), 0);
+    supplier.run();
+    TestNode node = nodes.get(0);
+    node.queryEntered = new CountDownLatch(1);
+    node.queryRelease = new CountDownLatch(1);
+    ExecutorService tasks = Executors.newCachedThreadPool();
+    attempts.clear();
+    try {
+      Future<?> refresh = tasks.submit(supplier::run);
+      assertTrue(node.queryEntered.await(5, TimeUnit.SECONDS));
+      tasks.submit(supplier::close).get(5, TimeUnit.SECONDS);
+      refresh.get(5, TimeUnit.SECONDS);
+      assertTrue(attempts.isEmpty());
+      assertNull(Whitebox.getInternalState(supplier, "client"));
+      assertNull(Whitebox.getInternalState(supplier, "activeClient"));
+    } finally {
+      node.queryRelease.countDown();
+      tasks.shutdownNow();
+      assertTrue(tasks.awaitTermination(5, TimeUnit.SECONDS));
+    }
   }
 
   @Test
@@ -243,6 +439,7 @@ public class SessionSeedNodeFallbackTest {
                 supplier
                     .getQueryEndPoint()
                     .ifPresent(endpoint -> assertEquals(nodes.get(0).endpoint, endpoint));
+                assertTrue(supplier.getQueryEndPoint().isPresent());
               }
             });
     try {
@@ -274,6 +471,10 @@ public class SessionSeedNodeFallbackTest {
   }
 
   private NodesSupplier createSupplier(List<TEndPoint> seeds) {
+    return createSupplier(seeds, 1000);
+  }
+
+  private NodesSupplier createSupplier(List<TEndPoint> seeds, int timeout) {
     return NodesSupplier.createNodeSupplier(
         seeds,
         executor,
@@ -282,7 +483,7 @@ public class SessionSeedNodeFallbackTest {
         ZoneId.of("UTC"),
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        1000,
+        timeout,
         false,
         null,
         null,
@@ -332,6 +533,11 @@ public class SessionSeedNodeFallbackTest {
     private final ExecutorService workers = Executors.newCachedThreadPool();
     private final Thread thread;
     private volatile boolean online = true;
+    private volatile boolean failQuery;
+    private volatile boolean queryApplicationError;
+    private volatile CountDownLatch queryEntered;
+    private volatile CountDownLatch queryRelease;
+    private final ThreadLocal<TTransport> activeTransport = new ThreadLocal<>();
 
     private TestNode() throws Exception {
       ServerSocket listener = new ServerSocket(0);
@@ -353,6 +559,20 @@ public class SessionSeedNodeFallbackTest {
           .thenAnswer(
               invocation -> {
                 checkOnline();
+                queries.add(endpoint);
+                if (queryEntered != null) {
+                  queryEntered.countDown();
+                  queryRelease.await();
+                }
+                if (failQuery) {
+                  if (queryApplicationError) {
+                    throw new TApplicationException(
+                        TApplicationException.INTERNAL_ERROR, "Discovery query failed");
+                  }
+                  return new TSExecuteStatementResp(
+                      new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                          .setMessage("Discovery query failed"));
+                }
                 TsBlockBuilder block =
                     new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
                 for (TEndPoint address : advertised) {
@@ -380,6 +600,26 @@ public class SessionSeedNodeFallbackTest {
                   .protocolFactory(new TBinaryProtocol.Factory())
                   .transportFactory(DeepCopyRpcTransportFactory.INSTANCE)
                   .executorService(workers));
+      server.setServerEventHandler(
+          new TServerEventHandler() {
+            @Override
+            public void preServe() {}
+
+            @Override
+            public ServerContext createContext(TProtocol input, TProtocol output) {
+              return mock(ServerContext.class);
+            }
+
+            @Override
+            public void processContext(ServerContext context, TTransport input, TTransport output) {
+              activeTransport.set(input);
+            }
+
+            @Override
+            public void deleteContext(ServerContext context, TProtocol input, TProtocol output) {
+              activeTransport.remove();
+            }
+          });
       CountDownLatch ready = new CountDownLatch(1);
       thread =
           new Thread(
@@ -395,6 +635,12 @@ public class SessionSeedNodeFallbackTest {
 
     private void checkOnline() throws TException {
       if (!online) {
+        // A stopped node breaks the transport; a reachable peer returning an RPC error is
+        // different.
+        TTransport current = activeTransport.get();
+        if (current != null) {
+          current.close();
+        }
         throw new TException("Node is restarting");
       }
     }

@@ -69,6 +69,29 @@ public class ShowAvailableUrlsTaskTest {
     assertEquals(0, execute(null).getPositionCount());
   }
 
+  @Test
+  public void testReadOnlyStoppingIsExcludedButOtherReasonsRemainReadable() throws Exception {
+    List<TDataNodeInfo> nodes =
+        Arrays.asList(
+            readOnlyNode(6667, NodeStatus.STOPPING),
+            readOnlyNode(6668, NodeStatus.DISK_FULL),
+            readOnlyNode(6669, NodeStatus.MANUAL),
+            readOnlyNode(6670, null));
+    TsBlock result = execute(nodes);
+    assertEquals(3, result.getPositionCount());
+    for (int i = 0; i < 3; i++) {
+      assertEquals(6668 + i, result.getColumn(1).getInt(i));
+    }
+  }
+
+  private TDataNodeInfo readOnlyNode(int port, String reason) {
+    return new TDataNodeInfo()
+        .setStatus(NodeStatus.ReadOnly.getStatus())
+        .setStatusReason(reason)
+        .setRpcAddresss("127.0.0.1")
+        .setRpcPort(port);
+  }
+
   private TsBlock execute(List<TDataNodeInfo> nodes) throws Exception {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowAvailableUrlsTask.buildTsBlock(

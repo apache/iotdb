@@ -60,7 +60,9 @@ public class ShowAvailableUrlsTask implements IConfigTask {
         String status = dataNodeInfo.getStatus();
         if (NodeStatus.Removing.getStatus().equals(status)
             || NodeStatus.Unknown.getStatus().equals(status)
-            || NodeStatus.Stopped.getStatus().equals(status)) {
+            || NodeStatus.Stopped.getStatus().equals(status)
+            || (NodeStatus.ReadOnly.getStatus().equals(status)
+                && NodeStatus.STOPPING.equals(dataNodeInfo.getStatusReason()))) {
           continue;
         }
         builder.getTimeColumnBuilder().writeLong(0L);
