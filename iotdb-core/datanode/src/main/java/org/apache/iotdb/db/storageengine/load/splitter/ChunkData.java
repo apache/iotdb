@@ -191,7 +191,7 @@ public interface ChunkData extends TsFileData {
       return;
     }
     final ByteBuffer duplicate = data.duplicate();
-    final byte[] buffer = ChunkStreamBuffer.get();
+    final byte[] buffer = new byte[Math.min(duplicate.remaining(), 8192)];
     while (duplicate.hasRemaining()) {
       final int length = Math.min(duplicate.remaining(), buffer.length);
       duplicate.get(buffer, 0, length);

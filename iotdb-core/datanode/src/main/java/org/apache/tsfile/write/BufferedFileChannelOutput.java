@@ -36,6 +36,8 @@ import java.util.Objects;
  * configured buffer size is reached. The buffer is allocated at its full configured size when the
  * output is created, and it is flushed by {@link #force()}, {@link #flush()}, {@link
  * #truncate(long)}, a seek to another position, or {@link #close()}.
+ *
+ * <p>This class is not thread-safe; callers must serialize access to one instance.
  */
 public final class BufferedFileChannelOutput extends OutputStream implements TsFileOutput {
 
@@ -80,12 +82,12 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
   }
 
   @Override
-  public synchronized void write(final int b) throws IOException {
+  public void write(final int b) throws IOException {
     write((byte) b);
   }
 
   @Override
-  public synchronized void write(final byte b) throws IOException {
+  public void write(final byte b) throws IOException {
     if (bufferLength == bufferSize) {
       flushBuffer();
     }
@@ -93,13 +95,12 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
   }
 
   @Override
-  public synchronized void write(final byte[] bytes) throws IOException {
+  public void write(final byte[] bytes) throws IOException {
     write(bytes, 0, bytes.length);
   }
 
   @Override
-  public synchronized void write(final byte[] bytes, final int offset, final int length)
-      throws IOException {
+  public void write(final byte[] bytes, final int offset, final int length) throws IOException {
     Objects.checkFromIndexSize(offset, length, bytes.length);
     if (length == 0) {
       return;
@@ -118,7 +119,7 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
   }
 
   @Override
-  public synchronized void write(final ByteBuffer src) throws IOException {
+  public void write(final ByteBuffer src) throws IOException {
     final int length = src.remaining();
     if (length == 0) {
       return;
@@ -157,13 +158,13 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
   }
 
   @Override
-  public synchronized long getPosition() throws IOException {
+  public long getPosition() throws IOException {
     // The buffered bytes are already logically written, so a position query must not flush them.
     return channel.position() + bufferLength;
   }
 
   /** Moves the output to the given absolute position, flushing first when the position changes. */
-  synchronized void position(final long offset) throws IOException {
+  void position(final long offset) throws IOException {
     if (offset == channel.position() + bufferLength) {
       return;
     }
@@ -177,25 +178,25 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
   }
 
   @Override
-  public synchronized void flush() throws IOException {
+  public void flush() throws IOException {
     flushBuffer();
   }
 
   @Override
-  public synchronized void force() throws IOException {
+  public void force() throws IOException {
     flushBuffer();
     // Pass false to fsync file content without blocking on OS metadata modifications
     channel.force(false);
   }
 
   @Override
-  public synchronized void truncate(final long size) throws IOException {
+  public void truncate(final long size) throws IOException {
     flushBuffer();
     channel.truncate(size);
   }
 
   @Override
-  public synchronized void close() throws IOException {
+  public void close() throws IOException {
     try {
       flushBuffer();
     } finally {

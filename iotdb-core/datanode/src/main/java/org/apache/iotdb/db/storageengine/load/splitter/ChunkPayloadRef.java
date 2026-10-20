@@ -145,7 +145,7 @@ public class ChunkPayloadRef {
     if (size == 0) {
       return;
     }
-    final byte[] buffer = ChunkStreamBuffer.get();
+    final byte[] buffer = new byte[(int) Math.min(size, 8192L)];
     try (final RandomAccessFile input = new RandomAccessFile(file, "r")) {
       input.seek(offset);
       long remaining = size;
