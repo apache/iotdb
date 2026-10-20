@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -532,7 +533,7 @@ final class TsFileWriterManager {
 
   /** Formally imports sealed staged TsFiles into the target storage engine data regions. */
   void loadAll(final boolean isGeneratedByPipe, final boolean deleteStagedSource)
-      throws LoadFileException {
+      throws IOException, LoadFileException {
     for (final Map.Entry<TTimePartitionSlot, TsFileResource> entry :
         timePartition2Resource.entrySet()) {
       final DataRegion targetDataRegion = dataRegion;
@@ -545,6 +546,14 @@ final class TsFileWriterManager {
                 StorageEngineMessages.EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B,
                 tsFileResource.getTsFilePath(),
                 uuidDirName(tsFileResource.getTsFile())));
+      }
+
+      if (LoadConsensusCompat.usesIoTConsensusV2()) {
+        // V2 only replicates files carrying this node's progress. The coordinator's index may
+        // belong to another node and precede writes between PREPARE and COMMIT. Assign progress
+        // at import, and persist it so recovery keeps the file eligible for replication.
+        PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+        tsFileResource.serialize();
       }
 
       targetDataRegion.loadNewTsFile(
