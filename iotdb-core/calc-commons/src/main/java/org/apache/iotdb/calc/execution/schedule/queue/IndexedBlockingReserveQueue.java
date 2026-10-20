@@ -58,6 +58,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
       throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
     Preconditions.checkState(size + reservedSize < capacity, TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
+    Preconditions.checkState(!contains(element), SAME_ID_ELEMENT_ALREADY_EXISTS_ERROR_MSG);
     pushToQueue(element);
     size++;
     this.notifyAll();
@@ -68,8 +69,11 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
     if (element == null) {
       throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
+    Preconditions.checkState(reservedSize > 0, "No reserved space is available.");
+    Preconditions.checkState(!contains(element), SAME_ID_ELEMENT_ALREADY_EXISTS_ERROR_MSG);
+    Preconditions.checkState(
+        decreaseReservedSizeIfNecessary(element), "No reserved space is available.");
     pushToQueue(element);
-    decreaseReservedSizeIfNecessary(element);
     size++;
     this.notifyAll();
   }
