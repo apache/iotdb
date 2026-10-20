@@ -2535,4 +2535,87 @@ public final class DataNodePipeMessages {
       "[%s] 订阅 entry 需要 %d 字节，超过当前队列可用上限 %d 字节（DataNode 预算 %d 字节）。请减小写入 batch/字段大小或增加订阅物化内存。WAL 进度未推进。";
   public static final String LOG_SUBSCRIPTION_FAILED_TO_REPLAY_DELIVERY_BATCH_ARG_FROM_WAL_RETAINING_UNCOMMITTED_STATE_0654EACD =
       "Subscription 无法从 WAL 重放交付批次 {}；保留未提交状态";
+
+  // ===================== SUBSCRIPTION RECEIVER RESPONSES =====================
+
+  public static final String
+      MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262 =
+          "Subscription：请求分片格式错误。请从分片索引 0 开始重新发送完整请求。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E =
+          "Subscription：请求分片无效或顺序错误（orderId %d，sliceIndex %d，sliceCount %d，originBodySize %d 字节）。请从分片索引 0 开始重新发送完整请求。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027 =
+          "Subscription：请求体大小为 %d 字节，超过接收端上限 %d 字节。请将操作拆分为更小的请求。";
+
+  public static final String MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329 =
+      "缺少 consumer 配置，请先完成 handshake。";
+  public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8 =
+      "未知的 PipeSubscribeRequestType：%s。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HANDSHAKING_WITH_REQUEST_ARG_ARG_C1BC903B =
+          "Subscription：处理 handshake 请求 %s 时发生意外错误：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HEARTBEAT_WITH_REQUEST_ARG_ARG_790B328F =
+          "Subscription：处理 heartbeat 请求 %s 时发生意外错误：%s";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB =
+          "Subscription：在 ConfigNode 中为 consumer %s 获取节点端点失败，异常：%s。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4 =
+          "Subscription：处理 subscribe 请求 %s 时发生意外错误：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_UNSUBSCRIBING_WITH_REQUEST_ARG_ARG_1C15D8EC =
+          "Subscription：处理 unsubscribe 请求 %s 时发生意外错误：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_POLLING_WITH_REQUEST_ARG_ARG_DE2CF98B =
+          "Subscription：处理 poll 请求 %s 时发生意外错误：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_COMMITTING_WITH_REQUEST_ARG_ARG_9AA9866F =
+          "Subscription：处理 commit 请求 %s 时发生意外错误：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_CLOSING_WITH_REQUEST_ARG_ARG_1E3215D2 =
+          "Subscription：处理 close 请求 %s 时发生意外错误：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SEEKING_WITH_REQUEST_ARG_ARG_97D0AD1C =
+          "Subscription：处理 seek 请求 %s 时发生意外错误：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_UNSUPPORTED_SEEKTYPE_ARG_FOR_TOPIC_ARG_CONSENSUS_SUBSCRIPTION_ONLY_SUPPORTS_SEEKTOBEGINNING_SEEKTOEND_SEEK_TOPICPROGRESS_AND_SEEKAFTER_TOPICPROGRESS_5A3436C3 =
+          "Subscription：seekType %s 不支持用于 topic %s。Consensus subscription 仅支持 seekToBeginning、seekToEnd、seek(topicProgress) 和 seekAfter(topicProgress)。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_051923FB =
+          "Subscription：在 ConfigNode 中创建 consumer %s 失败，状态为 %s。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_6152986E =
+          "Subscription：在 ConfigNode 中创建 consumer %s 失败，异常为 %s。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_F31E2A0F =
+          "Subscription：在 ConfigNode 中关闭 consumer %s 失败，状态为 %s。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_11845DE5 =
+          "Subscription：在 ConfigNode 中关闭 consumer %s 失败，异常为 %s。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_9F933EBA =
+          "Subscription：在 ConfigNode 中订阅主题 %s 失败，consumer 为 %s，状态为 %s。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_0B6D1355 =
+          "Subscription：在 ConfigNode 中订阅主题 %s 失败，consumer 为 %s，异常为 %s。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_74DF0145 =
+          "Subscription：在 ConfigNode 中取消订阅主题 %s 失败，consumer 为 %s，状态为 %s。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_A92043B5 =
+          "Subscription：在 ConfigNode 中取消订阅主题 %s 失败，consumer 为 %s，异常为 %s。";
+
+  // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
+
+  public static final String MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238 =
+      "Pipe 数据传输错误：%s";
+  public static final String MESSAGE_FAIL_TO_LOAD_PIPEDATA_BECAUSE_ARG_49526D0C =
+      "加载 pipeData 失败，原因：%s";
+  public static final String MESSAGE_FAILED_TO_RESOLVE_LEGACY_PIPE_RECEIVER_FILE_ARG_ARG_9B82CF3F =
+      "解析 legacy pipe receiver 文件 %s 失败：%s";
+  public static final String
+      MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
+          "追加 legacy pipe receiver 文件 %s 失败，偏移量 %d，写入 %d 字节：%s";
 }

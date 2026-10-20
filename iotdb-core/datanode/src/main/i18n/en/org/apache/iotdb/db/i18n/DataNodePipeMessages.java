@@ -2710,4 +2710,87 @@ public final class DataNodePipeMessages {
       "[%s] Subscription entry requires %d bytes, above the current per-queue maximum %d bytes (DataNode budget %d bytes). Reduce the write batch/field size or increase subscription materialization memory. WAL progress has not advanced.";
   public static final String LOG_SUBSCRIPTION_FAILED_TO_REPLAY_DELIVERY_BATCH_ARG_FROM_WAL_RETAINING_UNCOMMITTED_STATE_0654EACD =
       "Subscription failed to replay delivery batch {} from WAL; retaining uncommitted state";
+
+  // ===================== SUBSCRIPTION RECEIVER RESPONSES =====================
+
+  public static final String
+      MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262 =
+          "Subscription: malformed request slice. Resend the complete request starting from slice index 0.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E =
+          "Subscription: invalid or out-of-order request slice (orderId %d, sliceIndex %d, sliceCount %d, originBodySize %d bytes). Resend the complete request starting from slice index 0.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027 =
+          "Subscription: request body size %d bytes exceeds the receiver limit of %d bytes. Split the operation into smaller requests.";
+
+  public static final String MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329 =
+      "Missing consumer config, please handshake first.";
+  public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8 =
+      "Unknown PipeSubscribeRequestType %s.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HANDSHAKING_WITH_REQUEST_ARG_ARG_C1BC903B =
+          "Subscription: something unexpected happened when handshaking with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HEARTBEAT_WITH_REQUEST_ARG_ARG_790B328F =
+          "Subscription: something unexpected happened when heartbeat with request %s: %s";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB =
+          "Subscription: Failed to fetch endpoints for consumer %s in config node, exception is %s.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4 =
+          "Subscription: something unexpected happened when subscribing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_UNSUBSCRIBING_WITH_REQUEST_ARG_ARG_1C15D8EC =
+          "Subscription: something unexpected happened when unsubscribing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_POLLING_WITH_REQUEST_ARG_ARG_DE2CF98B =
+          "Subscription: something unexpected happened when polling with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_COMMITTING_WITH_REQUEST_ARG_ARG_9AA9866F =
+          "Subscription: something unexpected happened when committing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_CLOSING_WITH_REQUEST_ARG_ARG_1E3215D2 =
+          "Subscription: something unexpected happened when closing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SEEKING_WITH_REQUEST_ARG_ARG_97D0AD1C =
+          "Subscription: something unexpected happened when seeking with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_UNSUPPORTED_SEEKTYPE_ARG_FOR_TOPIC_ARG_CONSENSUS_SUBSCRIPTION_ONLY_SUPPORTS_SEEKTOBEGINNING_SEEKTOEND_SEEK_TOPICPROGRESS_AND_SEEKAFTER_TOPICPROGRESS_5A3436C3 =
+          "Subscription: unsupported seekType %s for topic %s. Consensus subscription only supports seekToBeginning, seekToEnd, seek(topicProgress), and seekAfter(topicProgress).";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_051923FB =
+          "Subscription: Failed to create consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_6152986E =
+          "Subscription: Failed to create consumer %s in config node, exception is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_F31E2A0F =
+          "Subscription: Failed to close consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_11845DE5 =
+          "Subscription: Failed to close consumer %s in config node, exception is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_9F933EBA =
+          "Subscription: Failed to subscribe topics %s for consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_0B6D1355 =
+          "Subscription: Failed to subscribe topics %s for consumer %s in config node, exception is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_74DF0145 =
+          "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_A92043B5 =
+          "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, exception is %s.";
+
+  // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
+
+  public static final String MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238 =
+      "Pipe data transport error, %s";
+  public static final String MESSAGE_FAIL_TO_LOAD_PIPEDATA_BECAUSE_ARG_49526D0C =
+      "Fail to load pipeData because %s";
+  public static final String MESSAGE_FAILED_TO_RESOLVE_LEGACY_PIPE_RECEIVER_FILE_ARG_ARG_9B82CF3F =
+      "Failed to resolve legacy pipe receiver file %s: %s";
+  public static final String
+      MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
+          "Failed to append legacy pipe receiver file %s at offset %d with %d bytes: %s";
 }
