@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -272,7 +273,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                         "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -343,7 +344,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 // the other thread holds write lock and delete file successfully after copying list
                 cd1.countDown();
@@ -406,7 +407,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -512,7 +513,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -633,7 +634,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 // the other thread holds write lock and delete file successfully after copying list
                 cd1.countDown();
@@ -750,7 +751,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -860,7 +861,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -982,7 +983,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                         "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1054,7 +1055,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                         "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1125,7 +1126,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 // the other thread holds write lock and delete file successfully after copying list
                 cd1.countDown();
@@ -1189,7 +1190,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1296,7 +1297,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1418,7 +1419,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 // the other thread holds write lock and delete file successfully after copying list
                 cd1.countDown();
@@ -1534,7 +1535,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1644,7 +1645,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1766,7 +1767,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                         "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+                        seqResources, unseqResources, CommonUtils.getTTLLowerBound(Long.MAX_VALUE));
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);

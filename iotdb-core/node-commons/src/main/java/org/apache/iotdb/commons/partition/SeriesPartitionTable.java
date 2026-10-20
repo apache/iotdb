@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -47,6 +49,8 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+
+import static com.google.common.math.LongMath.saturatedAdd;
 
 public class SeriesPartitionTable {
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
@@ -176,14 +180,20 @@ public class SeriesPartitionTable {
       TConsensusGroupId regionId, long startTime, long endTime) {
     if (regionId.getId() == -1) {
       return seriesPartitionMap.keySet().stream()
-          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .filter(e -> isTimeSlotInQueryRange(e, startTime, endTime))
           .collect(Collectors.toList());
     } else {
       return seriesPartitionMap.keySet().stream()
-          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .filter(e -> isTimeSlotInQueryRange(e, startTime, endTime))
           .filter(e -> seriesPartitionMap.get(e).contains(regionId))
           .collect(Collectors.toList());
     }
+  }
+
+  private static boolean isTimeSlotInQueryRange(
+      TTimePartitionSlot timePartitionSlot, long startTime, long endTime) {
+    final long slotStartTime = timePartitionSlot.getStartTime();
+    return slotStartTime >= startTime && (endTime == Long.MAX_VALUE || slotStartTime < endTime);
   }
 
   /**
@@ -252,21 +262,45 @@ public class SeriesPartitionTable {
    * @param currentTimeSlot The current TimeSlot
    */
   public List<TTimePartitionSlot> autoCleanPartitionTable(
+      long TTL, TTimePartitionSlot currentTimeSlot) {
+    return cleanExpiredPartitions(
+        TTL,
+        currentTimeSlot,
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            TimePartitionUtils.getTimePartitionInterval(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+  }
+
+  public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot, String database) {
-    final long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval(database);
+    return cleanExpiredPartitions(
+        TTL, currentTimeSlot, TimePartitionUtils.getTimePartitionInterval(database));
+  }
+
+  private List<TTimePartitionSlot> cleanExpiredPartitions(
+      long TTL, TTimePartitionSlot currentTimeSlot, long timePartitionInterval) {
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
     Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
         seriesPartitionMap.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + timePartitionInterval + TTL
-          <= currentTimeSlot.getStartTime()) {
+      if (isTimePartitionExpired(timePartitionSlot, timePartitionInterval, TTL, currentTimeSlot)) {
         removedTimePartitions.add(timePartitionSlot);
         iterator.remove();
       }
     }
     return removedTimePartitions;
+  }
+
+  private static boolean isTimePartitionExpired(
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval,
+      long TTL,
+      TTimePartitionSlot currentTimeSlot) {
+    long partitionEndTime = saturatedAdd(timePartitionSlot.getStartTime(), timePartitionInterval);
+    long expireTime = saturatedAdd(partitionEndTime, TTL);
+    return expireTime <= currentTimeSlot.getStartTime();
   }
 
   public void merge(SeriesPartitionTable sourceMap) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -28,19 +29,21 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.io.IOException;
+
 /**
  * Return a series that the consecutive identical values in input series are removed (keeping only
  * the first one).
  */
 public class UDTFChangePoints implements UDTF {
   private boolean isFirst = true;
-  private Type dataType;
   private boolean cacheBoolean;
   private int cacheInt;
   private long cacheLong;
   private float cacheFloat;
   private double cacheDouble;
   private String cacheString;
+  private TypeServices.ChangePointProcessor changePointProcessor;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -50,96 +53,99 @@ public class UDTFChangePoints implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    dataType = parameters.getDataType(0);
+    Type dataType = parameters.getDataType(0);
+    changePointProcessor =
+        TypeServices.CHANGE_POINT_PROCESSOR_SERVICE.call(
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(dataType));
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    switch (dataType) {
-      case BOOLEAN:
-        if (isFirst) {
-          isFirst = false;
-          cacheBoolean = row.getBoolean(0);
-          collector.putBoolean(row.getTime(), cacheBoolean);
-        } else {
-          boolean rowData = row.getBoolean(0);
-          if (rowData != cacheBoolean) {
-            cacheBoolean = rowData;
-            collector.putBoolean(row.getTime(), cacheBoolean);
-          }
-        }
-        break;
-      case INT32:
-        if (isFirst) {
-          isFirst = false;
-          cacheInt = row.getInt(0);
-          collector.putInt(row.getTime(), cacheInt);
-        } else {
-          int rowData = row.getInt(0);
-          if (rowData != cacheInt) {
-            cacheInt = rowData;
-            collector.putInt(row.getTime(), cacheInt);
-          }
-        }
-        break;
-      case INT64:
-        if (isFirst) {
-          isFirst = false;
-          cacheLong = row.getLong(0);
-          collector.putLong(row.getTime(), cacheLong);
-        } else {
-          long rowData = row.getLong(0);
-          if (rowData != cacheLong) {
-            cacheLong = rowData;
-            collector.putLong(row.getTime(), cacheLong);
-          }
-        }
-        break;
-      case FLOAT:
-        if (isFirst) {
-          isFirst = false;
-          cacheFloat = row.getFloat(0);
-          collector.putFloat(row.getTime(), cacheFloat);
-        } else {
-          float rowData = row.getFloat(0);
-          if (rowData != cacheFloat) {
-            cacheFloat = rowData;
-            collector.putFloat(row.getTime(), cacheFloat);
-          }
-        }
-        break;
-      case DOUBLE:
-        if (isFirst) {
-          isFirst = false;
-          cacheDouble = row.getDouble(0);
-          collector.putDouble(row.getTime(), cacheDouble);
-        } else {
-          double rowData = row.getDouble(0);
-          if (rowData != cacheDouble) {
-            cacheDouble = rowData;
-            collector.putDouble(row.getTime(), cacheDouble);
-          }
-        }
-        break;
-      case TEXT:
-        if (isFirst) {
-          isFirst = false;
-          cacheString = row.getString(0);
-          collector.putString(row.getTime(), cacheString);
-        } else {
-          String rowData = row.getString(0);
-          if (!rowData.equals(cacheString)) {
-            cacheString = rowData;
-            collector.putString(row.getTime(), cacheString);
-          }
-        }
-      case STRING:
-      case BLOB:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        break;
+    changePointProcessor.transform(this, row, collector);
+  }
+
+  void transformBoolean(Row row, PointCollector collector) throws IOException {
+    if (isFirst) {
+      isFirst = false;
+      cacheBoolean = row.getBoolean(0);
+      collector.putBoolean(row.getTime(), cacheBoolean);
+    } else {
+      boolean rowData = row.getBoolean(0);
+      if (rowData != cacheBoolean) {
+        cacheBoolean = rowData;
+        collector.putBoolean(row.getTime(), cacheBoolean);
+      }
+    }
+  }
+
+  void transformInt(Row row, PointCollector collector) throws IOException {
+    if (isFirst) {
+      isFirst = false;
+      cacheInt = row.getInt(0);
+      collector.putInt(row.getTime(), cacheInt);
+    } else {
+      int rowData = row.getInt(0);
+      if (rowData != cacheInt) {
+        cacheInt = rowData;
+        collector.putInt(row.getTime(), cacheInt);
+      }
+    }
+  }
+
+  void transformLong(Row row, PointCollector collector) throws IOException {
+    if (isFirst) {
+      isFirst = false;
+      cacheLong = row.getLong(0);
+      collector.putLong(row.getTime(), cacheLong);
+    } else {
+      long rowData = row.getLong(0);
+      if (rowData != cacheLong) {
+        cacheLong = rowData;
+        collector.putLong(row.getTime(), cacheLong);
+      }
+    }
+  }
+
+  void transformFloat(Row row, PointCollector collector) throws IOException {
+    if (isFirst) {
+      isFirst = false;
+      cacheFloat = row.getFloat(0);
+      collector.putFloat(row.getTime(), cacheFloat);
+    } else {
+      float rowData = row.getFloat(0);
+      if (rowData != cacheFloat) {
+        cacheFloat = rowData;
+        collector.putFloat(row.getTime(), cacheFloat);
+      }
+    }
+  }
+
+  void transformDouble(Row row, PointCollector collector) throws IOException {
+    if (isFirst) {
+      isFirst = false;
+      cacheDouble = row.getDouble(0);
+      collector.putDouble(row.getTime(), cacheDouble);
+    } else {
+      double rowData = row.getDouble(0);
+      if (rowData != cacheDouble) {
+        cacheDouble = rowData;
+        collector.putDouble(row.getTime(), cacheDouble);
+      }
+    }
+  }
+
+  void transformString(Row row, PointCollector collector) throws IOException {
+    if (isFirst) {
+      isFirst = false;
+      cacheString = row.getString(0);
+      collector.putString(row.getTime(), cacheString);
+    } else {
+      String rowData = row.getString(0);
+      if (!rowData.equals(cacheString)) {
+        cacheString = rowData;
+        collector.putString(row.getTime(), cacheString);
+      }
     }
   }
 }

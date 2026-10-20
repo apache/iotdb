@@ -376,6 +376,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1619,7 +1620,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } else {
       try {
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+        if (status == NodeStatus.ReadOnly) {
+          CommonDescriptor.getInstance()
+              .getConfig()
+              .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+        } else {
+          CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+        }
         tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } catch (Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -1815,13 +1822,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           databaseToTTL.putAll(resp.getPathTTLMap());
           continue;
         }
+        PathPatternTree queryScope = new PathPatternTree();
+        queryScope.appendPathPattern(pathPattern);
+        queryScope.constructTree();
+        // Query patterns may contain wildcards before the trailing **. Only the authority
+        // scope is restricted to full paths and literal prefixes.
         for (PartialPath overlappedPathPattern :
-            authorityScope.getOverlappedPathPatterns(pathPattern)) {
+            queryScope.intersectWithFullPathPrefixTree(authorityScope).getAllPathPatterns()) {
           List<String> nodes = Arrays.asList(overlappedPathPattern.getNodes());
           TShowTTLReq req = new TShowTTLReq(nodes);
           TShowTTLResp resp = client.showTTL(req);
           databaseToTTL.putAll(resp.getPathTTLMap());
-          if (showTTLStatement.isShowAllTTL()) {
+          // TTL rules can be stored on the prefix itself as well as on prefix.**.
+          if (overlappedPathPattern.endWithMultiLevelWildcard()) {
             req.setPathPattern(nodes.subList(0, nodes.size() - 1));
             resp = client.showTTL(req);
             databaseToTTL.putAll(resp.getPathTTLMap());
@@ -4543,6 +4556,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public TPipeTransferResp handleTransferConfigPlan(
       final String clientId, final TPipeTransferReq req) {
+    return handleTransferConfigPlanAndGetReceiverNodeId(clientId, req).left;
+  }
+
+  public Pair<TPipeTransferResp, Integer> handleTransferConfigPlanAndGetReceiverNodeId(
+      final String clientId, final TPipeTransferReq req) {
     final TPipeConfigTransferReq configTransferReq =
         new TPipeConfigTransferReq(
             req.version,
@@ -4555,18 +4573,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TPipeConfigTransferResp pipeConfigTransferResp =
           configNodeClient.handleTransferConfigPlan(configTransferReq);
+      final int receiverNodeId =
+          ConfigNodeInfo.getInstance().getConfigNodeId(configNodeClient.getConfigNode());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode()
           != pipeConfigTransferResp.getStatus().getCode()) {
         LOGGER.warn(
             DataNodeQueryMessages.FAILED_TO_HANDLETRANSFERCONFIGPLAN_STATUS_IS,
             pipeConfigTransferResp);
       }
-      return new TPipeTransferResp(pipeConfigTransferResp.status)
-          .setBody(pipeConfigTransferResp.body);
+      return new Pair<>(
+          new TPipeTransferResp(pipeConfigTransferResp.status).setBody(pipeConfigTransferResp.body),
+          receiverNodeId);
     } catch (Exception e) {
-      return new TPipeTransferResp(
-          new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-              .setMessage(e.toString()));
+      return new Pair<>(
+          new TPipeTransferResp(
+              new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .setMessage(e.toString())),
+          -1);
     }
   }
 
@@ -5221,7 +5244,53 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
-          || TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists) {
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTableSetColumnProperties(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(columnName, stream);
+        ReadWriteIOUtils.write(properties, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.SET_COLUMN_PROPERTIES,
+              stream.toByteArray(),
+              false,
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         future.setException(

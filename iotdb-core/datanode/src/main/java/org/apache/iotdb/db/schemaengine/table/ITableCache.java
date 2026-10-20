@@ -29,6 +29,8 @@ import java.util.Map;
 
 public interface ITableCache {
 
+  long getInstanceVersion();
+
   void init(final byte[] tableInitializationBytes);
 
   void preUpdateTable(final String database, final TsTable table, final @Nullable String oldName);
@@ -49,6 +51,9 @@ public interface ITableCache {
   void invalidateAll();
 
   TsTable getTableInWrite(final String database, final String tableName);
+
+  /** Returns the committed local schema without contacting ConfigNode. */
+  TsTable getTableInCache(final String database, final String tableName);
 
   TsTable getTable(final String database, final String tableName);
 

@@ -70,6 +70,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
@@ -1393,9 +1394,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                       })
                   .collect(Collectors.toList())
               : tableModelMTree
-                  .getAllUsingTablesUnderSpecificDatabase(
+                  .getAllTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
+                  .filter(pair -> pair.getRight() != TableNodeStatus.PRE_CREATE)
+                  .map(Pair::getLeft)
                   .map(
                       tsTable ->
                           new TTableInfo(
@@ -1488,7 +1491,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       return new DescTableResp(
           StatusUtils.OK,
-          tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          tableModelMTree.getTableSchemaForDesc(databasePath, plan.getTableName()),
           null,
           null);
     } catch (final MetadataException e) {
@@ -1631,6 +1634,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             tableModelMTree.setTableProperties(
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
+                plan.getProperties()));
+  }
+
+  public TSStatus setTableColumnProperties(final SetTableColumnPropertiesPlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableColumnProperties(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnName(),
                 plan.getProperties()));
   }
 

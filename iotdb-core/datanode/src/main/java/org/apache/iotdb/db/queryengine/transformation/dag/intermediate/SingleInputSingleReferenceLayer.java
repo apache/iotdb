@@ -43,6 +43,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 public class SingleInputSingleReferenceLayer extends IntermediateLayer {
 
   private static final Logger LOGGER =
@@ -211,7 +213,8 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
-        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        long nextWindowTimeEnd =
+            Math.min(saturatedAdd(nextWindowTimeBegin, timeInterval), displayWindowEnd);
         while (currentEndTime < nextWindowTimeEnd) {
           final YieldableState state = parentLayerReader.yield();
           if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -282,7 +285,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
-            nextWindowTimeBegin + timeInterval - 1);
+            saturatedAdd(nextWindowTimeBegin, timeInterval - 1));
 
         hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -291,7 +294,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
       @Override
       public void readyForNext() {
         hasCached = false;
-        nextWindowTimeBegin += slidingStep;
+        nextWindowTimeBegin = saturatedAdd(nextWindowTimeBegin, slidingStep);
 
         tvList.setEvictionUpperBound(nextIndexBegin + 1);
       }

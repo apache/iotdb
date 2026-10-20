@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.insertquery;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -99,7 +100,7 @@ public class IoTDBInsertQueryIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("DROP DATABASE IF EXISTS test");
+      TestUtils.dropDatabaseWithRetry(statement, "test");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -460,7 +461,7 @@ public class IoTDBInsertQueryIT {
           e.getMessage(),
           e.getMessage()
               .contains(
-                  "700: line 1:9: mismatched input 'INSERT'. Expecting: '(', 'ANALYZE', 'EXECUTE', <query>"));
+                  "700: line 1:9: mismatched input 'INSERT'. Expecting: '(', 'ANALYZE', 'COPY', 'EXECUTE', <query>"));
     }
 
     try {
@@ -472,7 +473,7 @@ public class IoTDBInsertQueryIT {
           e.getMessage(),
           e.getMessage()
               .contains(
-                  "700: line 1:17: mismatched input 'INSERT'. Expecting: '(', 'EXECUTE', 'VERBOSE', <query>"));
+                  "700: line 1:17: mismatched input 'INSERT'. Expecting: '(', 'COPY', 'EXECUTE', 'VERBOSE', <query>"));
     }
   }
 

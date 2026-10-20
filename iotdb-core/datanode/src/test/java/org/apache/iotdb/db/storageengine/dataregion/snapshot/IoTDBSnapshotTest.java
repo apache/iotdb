@@ -149,7 +149,7 @@ public class IoTDBSnapshotTest {
   }
 
   @Test
-  public void testCreateSnapshotWithUnclosedTsFile()
+  public void testRejectSnapshotWithUnclosedTsFile()
       throws IOException, WriteProcessException, DirectoryNotLegalException {
     String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
     IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
@@ -163,16 +163,14 @@ public class IoTDBSnapshotTest {
       File snapshotDir = new File("target" + File.separator + "snapshot");
       Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
       try {
-        new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+        Assert.assertFalse(
+            new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
         File[] files =
             snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
         assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
-        int cnt = 0;
-        Assert.assertTrue(analyzer.isSnapshotComplete());
-        cnt = analyzer.getTotalFileCountInSnapshot();
+        Assert.assertFalse(analyzer.isSnapshotComplete());
         analyzer.close();
-        assertEquals(100, cnt);
         for (TsFileResource resource : resources) {
           Assert.assertTrue(resource.tryWriteLock());
         }

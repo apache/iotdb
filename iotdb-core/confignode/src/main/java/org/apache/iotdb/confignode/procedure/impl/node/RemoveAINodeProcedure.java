@@ -98,6 +98,7 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
                     removedAINode,
                     response.getMessage()));
           }
+          env.getConfigManager().getLoadManager().removeNodeCache(removedAINode.getAiNodeId());
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
@@ -132,6 +133,15 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
       ConfigNodeProcedureEnv configNodeProcedureEnv, RemoveAINodeState removeAINodeState)
       throws IOException, InterruptedException, ProcedureException {
     // no need to rollback
+  }
+
+  /**
+   * A failure in either state is retried instead of failing the procedure, which has nothing to
+   * roll back.
+   */
+  @Override
+  protected boolean isRollbackSupported(final RemoveAINodeState state) {
+    return false;
   }
 
   @Override

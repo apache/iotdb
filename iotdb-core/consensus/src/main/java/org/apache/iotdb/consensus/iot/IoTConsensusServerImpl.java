@@ -21,6 +21,9 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
+import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -42,6 +45,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
@@ -158,6 +162,8 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
+  private final UserDataTransferAuditHandler userDataTransferAuditHandler;
+  private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
   private IndexedConsensusRequest lastConsensusRequest;
 
   // Subscription queues receive IndexedConsensusRequest in real-time from write(),
@@ -196,6 +202,35 @@ public class IoTConsensusServerImpl {
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
       IoTConsensusConfig config)
       throws DiskSpaceInsufficientException {
+    this(
+        storageDir,
+        recvSnapshotDirs,
+        recvFolderStrategyType,
+        thisNode,
+        configuration,
+        stateMachine,
+        backgroundTaskService,
+        clientManager,
+        syncClientManager,
+        config,
+        UserDataTransferAuditHandler.NO_OP,
+        UserDataTransferAuditClassifier.NO_USER_DATA);
+  }
+
+  public IoTConsensusServerImpl(
+      String storageDir,
+      List<String> recvSnapshotDirs,
+      DirectoryStrategyType recvFolderStrategyType,
+      Peer thisNode,
+      Collection<Peer> configuration,
+      IStateMachine stateMachine,
+      ScheduledExecutorService backgroundTaskService,
+      IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
+      IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
+      IoTConsensusConfig config,
+      UserDataTransferAuditHandler userDataTransferAuditHandler,
+      UserDataTransferAuditClassifier userDataTransferAuditClassifier)
+      throws DiskSpaceInsufficientException {
     this.active = true;
     this.storageDir = storageDir;
     List<String> snapshotDirs = new ArrayList<>();
@@ -215,6 +250,8 @@ public class IoTConsensusServerImpl {
     this.configuration.addAll(configuration);
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
+    this.userDataTransferAuditHandler = userDataTransferAuditHandler;
+    this.userDataTransferAuditClassifier = userDataTransferAuditClassifier;
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.consensusReqReader =
         (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
@@ -322,7 +359,7 @@ public class IoTConsensusServerImpl {
               subscriptionQueueRegistry.offer(indexedConsensusRequest);
           logDispatcher.offer(indexedConsensusRequest, offeredToSubscription);
           if (!offeredToSubscription
-              && subscriptionQueueRegistry.isEmpty()
+              && !subscriptionQueueRegistry.hasQueues()
               && logger.isDebugEnabled()
               && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
@@ -391,6 +428,9 @@ public class IoTConsensusServerImpl {
   public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
+    final boolean auditSnapshotTransfer =
+        shouldAuditSnapshotTransfer(
+            userDataTransferAuditHandler, userDataTransferAuditClassifier, thisNode.getGroupId());
     long snapshotSizeSum = 0;
     for (File file : snapshotPaths) {
       snapshotSizeSum += file.length();
@@ -433,7 +473,19 @@ public class IoTConsensusServerImpl {
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
             ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
-            TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
+            final TSendSnapshotFragmentRes res;
+            try {
+              res = client.sendSnapshotFragment(req);
+              recordSnapshotTransferAttempt(
+                  targetPeer,
+                  auditSnapshotTransfer,
+                  isSuccess(res.getStatus()),
+                  isSuccess(res.getStatus()) ? null : String.valueOf(res.getStatus().getCode()),
+                  null);
+            } catch (Exception e) {
+              recordSnapshotTransferAttempt(targetPeer, auditSnapshotTransfer, false, null, e);
+              throw e;
+            }
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
                   String.format(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ERROR, targetPeer));
@@ -468,6 +520,41 @@ public class IoTConsensusServerImpl {
         CommonDateTimeUtils.convertMillisecondToDurationStr(
             (System.nanoTime() - startTime) / 1_000_000),
         snapshotDir);
+  }
+
+  private void recordSnapshotTransferAttempt(
+      Peer targetPeer,
+      boolean auditSnapshotTransfer,
+      boolean success,
+      String errorCode,
+      Throwable error) {
+    if (!auditSnapshotTransfer) {
+      return;
+    }
+    try {
+      userDataTransferAuditHandler.onAttempt(
+          new UserDataTransferAuditEvent(
+              thisNode.getEndpoint(),
+              thisNode.getEndpoint(),
+              targetPeer.getEndpoint(),
+              UserDataTransferProtectionMethod.fromTlsEnabled(config.getRpc().isEnableSSL()),
+              success,
+              errorCode != null ? errorCode : error == null ? null : error.getClass().getName()));
+    } catch (RuntimeException ignored) {
+      // Audit recording must not affect snapshot transmission.
+    }
+  }
+
+  static boolean shouldAuditSnapshotTransfer(
+      UserDataTransferAuditHandler auditHandler,
+      UserDataTransferAuditClassifier auditClassifier,
+      ConsensusGroupId groupId) {
+    try {
+      return auditHandler.isEnabled() && auditClassifier.containsUserData(groupId);
+    } catch (RuntimeException ignored) {
+      // Audit classification must not affect snapshot transmission.
+      return false;
+    }
   }
 
   public void receiveSnapshotFragment(
@@ -940,7 +1027,9 @@ public class IoTConsensusServerImpl {
           new IoTProgressIndex(thisNode.getNodeId(), searchIndex.get() + 1);
       ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
     }
-    return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request))
+    final List<IConsensusRequest> requests = Collections.singletonList(request);
+    return new IndexedConsensusRequest(searchIndex.get() + 1, requests)
+        .setContainsUserData(containsUserData(request))
         .setPhysicalTime(assignPhysicalTimeInMs())
         .setNodeId(thisNode.getNodeId());
   }
@@ -958,6 +1047,33 @@ public class IoTConsensusServerImpl {
     req.setPhysicalTime(physicalTime);
     req.setNodeId(nodeId);
     return req;
+  }
+
+  public boolean containsUserData() {
+    try {
+      return userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId());
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect consensus replication.
+      return false;
+    }
+  }
+
+  public boolean containsUserData(List<IConsensusRequest> requests) {
+    for (IConsensusRequest request : requests) {
+      if (containsUserData(request)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean containsUserData(IConsensusRequest request) {
+    try {
+      return userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId(), request);
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect consensus replication.
+      return false;
+    }
   }
 
   public TSStatus syncIdleWriterSafeTimeBarrierToPeer(final Peer targetPeer) {
@@ -990,7 +1106,7 @@ public class IoTConsensusServerImpl {
   }
 
   public boolean hasSubscriptionConsumers() {
-    return !subscriptionQueueRegistry.isEmpty();
+    return subscriptionQueueRegistry.hasQueues();
   }
 
   private long assignPhysicalTimeInMs() {
@@ -1121,6 +1237,10 @@ public class IoTConsensusServerImpl {
     return thisNode;
   }
 
+  public UserDataTransferAuditHandler getUserDataTransferAuditHandler() {
+    return userDataTransferAuditHandler;
+  }
+
   public List<Peer> getConfiguration() {
     List<Peer> result = new ArrayList<>(configuration);
     Collections.sort(result);
@@ -1146,9 +1266,21 @@ public class IoTConsensusServerImpl {
   public void registerSubscriptionQueue(
       final BlockingQueue<IndexedConsensusRequest> queue,
       final SubscriptionWalRetentionPolicy retentionPolicy,
-      final LongSupplier committedRetainedMinVersionIdSupplier) {
-    subscriptionQueueRegistry.register(
-        queue, retentionPolicy, committedRetainedMinVersionIdSupplier);
+      final LongSupplier retainedMinVersionIdSupplier) {
+    registerSubscriptionQueue(queue, retentionPolicy, retainedMinVersionIdSupplier, null);
+  }
+
+  public void registerSubscriptionQueue(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier retainedMinVersionIdSupplier,
+      final String retentionId) {
+    if (retentionId == null) {
+      subscriptionQueueRegistry.register(queue, retentionPolicy, retainedMinVersionIdSupplier);
+    } else {
+      subscriptionQueueRegistry.register(
+          queue, retentionPolicy, retainedMinVersionIdSupplier, retentionId);
+    }
     // Immediately re-evaluate the safe delete index with new subscription awareness
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
@@ -1161,6 +1293,16 @@ public class IoTConsensusServerImpl {
         System.identityHashCode(this));
   }
 
+  public void replaceDetachedSubscriptionRetentionWithQueue(
+      final String retentionId,
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.replaceDetachedRetentionWithQueue(
+        retentionId, queue, retentionPolicy, committedRetainedMinVersionIdSupplier);
+    checkAndUpdateSafeDeletedSearchIndex();
+  }
+
   public void deregisterSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
     subscriptionQueueRegistry.unregister(queue);
     // Re-evaluate: with fewer subscribers, more WAL may be deletable
@@ -1170,6 +1312,30 @@ public class IoTConsensusServerImpl {
             .LOG_DEREGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_REMAINING_SUBSCRIPTION_QUEUES_ARG_B86E31AF,
         consensusGroupId,
         subscriptionQueueRegistry.size());
+  }
+
+  public void replaceSubscriptionQueueWithDetachedRetention(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.replaceQueueWithDetachedRetention(
+        queue, retentionId, retentionPolicy, committedRetainedMinVersionIdSupplier);
+    checkAndUpdateSafeDeletedSearchIndex();
+  }
+
+  public void registerDetachedSubscriptionRetention(
+      final String retentionId,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.registerDetachedRetention(
+        retentionId, retentionPolicy, committedRetainedMinVersionIdSupplier);
+    checkAndUpdateSafeDeletedSearchIndex();
+  }
+
+  public void deregisterDetachedSubscriptionRetention(final String retentionId) {
+    subscriptionQueueRegistry.unregisterDetachedRetention(retentionId);
+    checkAndUpdateSafeDeletedSearchIndex();
   }
 
   public long getSyncLag() {
@@ -1320,7 +1486,7 @@ public class IoTConsensusServerImpl {
     final SubscriptionRetentionBound subscriptionRetentionBound =
         subscriptionWalRetentionCalculator.calculate(
             subscriptionQueueRegistry.getRetentionPolicies(),
-            subscriptionQueueRegistry.getCommittedRetainedMinVersionIds());
+            subscriptionQueueRegistry.getRetainedMinVersionIds());
 
     consensusReqReader.setSafelyDeletedSearchIndex(
         Math.min(replicationIndex, subscriptionRetentionBound.getSafelyDeletedSearchIndex()));
@@ -1464,7 +1630,14 @@ public class IoTConsensusServerImpl {
         for (int i = 0; i < insertNodes.size(); i++) {
           IConsensusRequest insertNode = insertNodes.get(i);
           insertNode.markAsGeneratedByRemoteConsensusLeader();
-          TSStatus status = stateMachine.write(insertNode);
+          // Reject requests that became read-only while queued. This is an early rejection only:
+          // the state machine must also fence the full apply against storage shutdown, since the
+          // replica can become read-only after this check.
+          TSStatus status =
+              isReadOnly()
+                  ? RpcUtils.getStatus(
+                      TSStatusCode.SYSTEM_READ_ONLY, ConsensusMessages.SYNC_LOG_SYSTEM_READ_ONLY)
+                  : stateMachine.write(insertNode);
           subStatus.add(status);
           if (RetryUtils.needRetryForWrite(status.getCode())) {
             for (int j = i + 1; j < insertNodes.size(); j++) {

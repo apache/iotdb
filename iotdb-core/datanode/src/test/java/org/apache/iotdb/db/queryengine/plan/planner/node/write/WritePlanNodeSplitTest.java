@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -56,6 +57,7 @@ import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +65,7 @@ import java.util.Map;
 
 public class WritePlanNodeSplitTest {
 
+  long prevTimePartitionOrigin;
   long prevTimePartitionInterval;
 
   Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -78,13 +81,17 @@ public class WritePlanNodeSplitTest {
 
   @Before
   public void setUp() {
+    prevTimePartitionOrigin = CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
     prevTimePartitionInterval =
         CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(0);
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(100);
     TDatabaseSchema databaseSchema = new TDatabaseSchema();
     databaseSchema.setTimePartitionInterval(100);
     TimePartitionUtils.updateDatabaseTimePartitionConfig("root.sg1", databaseSchema);
     TimePartitionUtils.updateDatabaseTimePartitionConfig("root.sg2", databaseSchema);
+    TimePartitionUtils.setTimePartitionOrigin(0);
+    TimePartitionUtils.setTimePartitionInterval(100);
 
     executorClassName = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
     seriesSlotPartitionNum = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
@@ -270,6 +277,53 @@ public class WritePlanNodeSplitTest {
     for (WritePlanNode insertNode : insertTabletNodeList) {
       Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 10);
     }
+  }
+
+  @Test
+  public void testInsertTabletDoesNotSplitAtLongMaxValueWithinLastPartition()
+      throws IllegalPathException {
+    final long lastPartitionStartTime =
+        TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE, "root.sg1").getStartTime();
+    final List<TTimePartitionSlot> expectedTimePartitionSlots =
+        Collections.singletonList(new TTimePartitionSlot(lastPartitionStartTime));
+
+    InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node boundary"));
+    insertTabletNode.setTargetPath(new PartialPath("root.sg1.d1"));
+    insertTabletNode.setTimes(new long[] {lastPartitionStartTime, Long.MAX_VALUE});
+
+    Assert.assertEquals(
+        expectedTimePartitionSlots, insertTabletNode.getTimePartitionSlots("root.sg1"));
+
+    InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
+    insertTabletStatement.setTimes(new long[] {lastPartitionStartTime, Long.MAX_VALUE});
+
+    Assert.assertEquals(
+        expectedTimePartitionSlots, insertTabletStatement.getTimePartitionSlots("root.sg1"));
+  }
+
+  @Test
+  public void testInsertTabletSplitsAtExactLongMaxValueUpperBound() throws IllegalPathException {
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(1);
+    TimePartitionUtils.setTimePartitionInterval(1);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig(
+        "root.sg1", new TDatabaseSchema().setTimePartitionInterval(1).setTimePartitionOrigin(0));
+    final List<TTimePartitionSlot> expectedTimePartitionSlots =
+        Arrays.asList(
+            new TTimePartitionSlot(Long.MAX_VALUE - 1), new TTimePartitionSlot(Long.MAX_VALUE));
+
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(new PlanNodeId("plan node exact boundary"));
+    insertTabletNode.setTargetPath(new PartialPath("root.sg1.d1"));
+    insertTabletNode.setTimes(new long[] {Long.MAX_VALUE - 1, Long.MAX_VALUE});
+
+    Assert.assertEquals(
+        expectedTimePartitionSlots, insertTabletNode.getTimePartitionSlots("root.sg1"));
+
+    InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
+    insertTabletStatement.setTimes(new long[] {Long.MAX_VALUE - 1, Long.MAX_VALUE});
+
+    Assert.assertEquals(
+        expectedTimePartitionSlots, insertTabletStatement.getTimePartitionSlots("root.sg1"));
   }
 
   @Test
@@ -550,6 +604,9 @@ public class WritePlanNodeSplitTest {
     databaseSchema.setTimePartitionInterval(prevTimePartitionInterval);
     TimePartitionUtils.updateDatabaseTimePartitionConfig("root.sg1", databaseSchema);
     TimePartitionUtils.updateDatabaseTimePartitionConfig("root.sg2", databaseSchema);
+    TimePartitionUtils.setTimePartitionInterval(prevTimePartitionInterval);
+    TimePartitionUtils.setTimePartitionOrigin(prevTimePartitionOrigin);
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevTimePartitionInterval);
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(prevTimePartitionOrigin);
   }
 }

@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFi
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
@@ -95,6 +96,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAg
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -675,8 +677,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
 
     if (deviceTableScanNode != null) {
-      boxValue.add(
-          String.format("DeviceNumber: %s", deviceTableScanNode.getDeviceEntries().size()));
+      boxValue.add(String.format("DeviceNumber: %s", deviceTableScanNode.getDeviceEntryCount()));
       boxValue.add(String.format("ScanOrder: %s", deviceTableScanNode.getScanOrder()));
       if (deviceTableScanNode.getTimePredicate().isPresent()) {
         boxValue.add(
@@ -798,7 +799,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
           String.format("Project-Expressions: %s", node.getProjection().getMap().values()));
     }
 
-    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntries().size()));
+    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntryCount()));
     boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
@@ -864,6 +865,40 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Into-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitCopyTo(CopyToNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.MESSAGE_COPYTO_ARG_38343199, node.getPlanNodeId().getId()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.MESSAGE_TARGETFILE_ARG_EC484B24, node.getTargetFilePath()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.MESSAGE_FORMAT_ARG_CE5DC4EE,
+            node.getCopyToOptions().getFormat()));
+    if (node.getCopyToOptions() instanceof CopyToTsFileOptions options) {
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.MESSAGE_TARGETTABLE_ARG_00BE4714,
+              options.getTargetTableName()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.MESSAGE_TIMECOLUMN_ARG_54F6A2A6,
+              options.getTargetTimeColumn()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.MESSAGE_TAGCOLUMNS_ARG_6520A0C2,
+              options.getTargetTagColumns()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46,
+              options.getTargetMemoryThreshold()));
+    }
     return render(node, boxValue, context);
   }
 

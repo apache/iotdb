@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -58,7 +57,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 @RunWith(Parameterized.class)
-public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
+public class CompactionWithAllNullRowsTest extends AbstractTableModelCompactionTest {
 
   private final String performerType;
   private String threadName;

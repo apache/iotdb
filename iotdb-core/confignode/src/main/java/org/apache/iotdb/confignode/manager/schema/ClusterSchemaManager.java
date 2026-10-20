@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -1526,13 +1527,26 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
+  public Optional<TsTable> getTableWithUsingStatusIfExists(
+      final String database, final String tableName) throws MetadataException {
+    final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
+        getTableAndStatusIfExists(database, tableName);
+    if (tableAndStatus.isEmpty()) {
+      return Optional.empty();
+    }
+    if (TableNodeStatus.PRE_DELETE == tableAndStatus.get().getRight()) {
+      throw new TableInDeletionException(database, tableName);
+    }
+    return Optional.of(tableAndStatus.get().getLeft());
+  }
+
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1587,7 +1601,7 @@ public class ClusterSchemaManager {
       final TSDataType dataType,
       final boolean isGeneratedByPipe)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1624,7 +1638,7 @@ public class ClusterSchemaManager {
       final String newName,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1677,7 +1691,7 @@ public class ClusterSchemaManager {
       final String newName,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1762,7 +1776,7 @@ public class ClusterSchemaManager {
       final Map<String, String> updatedProperties,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1820,6 +1834,61 @@ public class ClusterSchemaManager {
             updatedTable.removeProp(k);
           }
         });
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
+  }
+
+  public synchronized Pair<TSStatus, TsTable> updateTableColumnProperties(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final Map<String, String> originalProperties,
+      final Map<String, String> updatedProperties)
+      throws MetadataException {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    final Optional<Pair<TSStatus, TsTable>> result =
+        checkTable4View(database, originalTable, false);
+    if (result.isPresent()) {
+      return result.get();
+    }
+
+    if (Objects.isNull(originalTable.getColumnSchema(columnName))) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_NOT_EXISTS,
+              String.format("Column '%s' does not exist", columnName)),
+          null);
+    }
+
+    final TsTable updatedTable = new TsTable(originalTable);
+    final TsTableColumnSchema updatedColumn = updatedTable.getColumnSchema(columnName);
+    updatedProperties
+        .keySet()
+        .removeIf(
+            key -> Objects.equals(updatedProperties.get(key), updatedColumn.getProps().get(key)));
+    if (updatedProperties.isEmpty()) {
+      return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
+    }
+
+    for (final Map.Entry<String, String> entry : updatedProperties.entrySet()) {
+      final String key = entry.getKey();
+      final String value = entry.getValue();
+      originalProperties.put(key, updatedColumn.getProps().get(key));
+      if (Objects.nonNull(value)) {
+        updatedColumn.getProps().put(key, value);
+      } else {
+        updatedColumn.getProps().remove(key);
+      }
+    }
+
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 

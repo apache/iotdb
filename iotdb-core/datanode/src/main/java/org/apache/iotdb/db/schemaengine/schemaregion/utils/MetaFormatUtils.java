@@ -22,15 +22,18 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT;
@@ -99,6 +102,26 @@ public class MetaFormatUtils {
       throws MetadataException {
     for (String measurement : measurements) {
       checkNodeName(measurement);
+    }
+  }
+
+  /** Validate the shared measurement/alias namespace before creating any member of a batch. */
+  public static void checkSchemaMeasurementAliases(
+      final PartialPath devicePath, final List<String> measurements, final List<String> aliases)
+      throws MetadataException {
+    if (aliases == null) {
+      return;
+    }
+    final Set<String> measurementNames = new HashSet<>(measurements);
+    final Set<String> aliasNames = new HashSet<>();
+    for (int i = 0; i < measurements.size(); i++) {
+      final String alias = aliases.get(i);
+      if (alias != null
+          && (!aliasNames.add(alias)
+              || (measurementNames.contains(alias) && !alias.equals(measurements.get(i))))) {
+        throw new AliasAlreadyExistException(
+            devicePath.concatAsMeasurementPath(measurements.get(i)).getFullPath(), alias);
+      }
     }
   }
 

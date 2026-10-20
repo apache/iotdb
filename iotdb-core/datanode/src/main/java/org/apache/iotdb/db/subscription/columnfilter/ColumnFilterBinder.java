@@ -125,6 +125,13 @@ public class ColumnFilterBinder {
     return new BindTableResult(selectedColumnNames, timeSelected);
   }
 
+  /** Compiles a table's current schema without parsing the topic expression again. */
+  static ColumnFilterMatcher bindTableFilter(
+      final Expression expression, final String database, final TsTable table) {
+    final BindTableResult result = bindTable(expression, database, table);
+    return ColumnFilterMatcher.forTableSelection(result.selectedColumnNames, result.timeSelected);
+  }
+
   private static boolean evaluate(
       final Expression expression,
       final String database,

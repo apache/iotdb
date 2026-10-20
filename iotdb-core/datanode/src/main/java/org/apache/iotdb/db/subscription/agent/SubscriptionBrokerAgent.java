@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -40,7 +39,6 @@ import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQue
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
-import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterBinder;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
@@ -48,7 +46,6 @@ import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPref
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -90,7 +87,6 @@ public class SubscriptionBrokerAgent {
 
   private final Map<String, ColumnFilterMatcher> topicNameToColumnFilterMatcher =
       new ConcurrentHashMap<>();
-  private final ColumnFilterBinder columnFilterBinder = new ColumnFilterBinder();
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
@@ -226,6 +222,14 @@ public class SubscriptionBrokerAgent {
       }
     }
     return false;
+  }
+
+  public int requeueInFlightEvents(final ConsumerConfig consumerConfig) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final String consumerId = consumerConfig.getConsumerId();
+    return getBrokers(consumerGroupId).stream()
+        .mapToInt(broker -> broker.requeueInFlightEvents(consumerId))
+        .sum();
   }
 
   public int refreshInFlightEventLeases(
@@ -662,7 +666,8 @@ public class SubscriptionBrokerAgent {
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
-      final boolean initialActive) {
+      final boolean initialActive,
+      final boolean replaceDetachedRetention) {
     final ConsensusPrefetchingQueue queue =
         getOrCreateBroker(
                 consumerGroupId,
@@ -684,7 +689,8 @@ public class SubscriptionBrokerAgent {
                 fallbackCommittedRegionProgress,
                 tailStartSearchIndex,
                 initialRuntimeVersion,
-                initialActive);
+                initialActive,
+                replaceDetachedRetention);
     prefetchingQueueCount.invalidate();
     return queue;
   }
@@ -709,20 +715,22 @@ public class SubscriptionBrokerAgent {
     }
   }
 
+  public void wakeUpConsensusPrefetchingQueues(final String topicName, final boolean isTableModel) {
+    for (final List<ISubscriptionBroker> brokers : consumerGroupIdToBrokers.values()) {
+      final ConsensusSubscriptionBroker broker =
+          getBroker(brokers, ConsensusSubscriptionBroker.class);
+      if (Objects.nonNull(broker)) {
+        broker.wakeUpPrefetchingQueues(topicName, isTableModel);
+      }
+    }
+  }
+
   public void refreshColumnFilter(final String topicName, final TopicConfig topicConfig) {
     final ColumnFilterMatcher matcher;
     try {
-      final Map<String, Map<String, TsTable>> bindingTables =
-          getColumnFilterBindingTables(topicConfig);
-      if (Objects.isNull(bindingTables)) {
-        topicNameToColumnFilterMatcher.remove(topicName);
-        LOGGER.info(
-            DataNodeMiscMessages.SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE, topicName);
-        return;
-      }
       matcher =
-          ColumnFilterMatcher.fromBoundColumnFilter(
-              columnFilterBinder.bind(topicConfig, bindingTables));
+          ColumnFilterMatcher.fromTopicConfig(
+              topicConfig, DataNodeTableCache.getInstance()::getTableInCache);
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED, topicName, e);
       topicNameToColumnFilterMatcher.put(topicName, EMPTY_COLUMN_FILTER_MATCHER);
@@ -774,49 +782,15 @@ public class SubscriptionBrokerAgent {
         : ColumnFilterMatcher.matchAll();
   }
 
-  private static Map<String, Map<String, TsTable>> getColumnFilterBindingTables(
-      final TopicConfig topicConfig) {
-    if (Objects.isNull(topicConfig)
-        || !topicConfig.isTableTopic()
-        || topicConfig.isColumnFilterTrivial()) {
-      return Collections.emptyMap();
-    }
-
-    final String database =
-        topicConfig.getStringOrDefault(
-            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
-    final String tableName =
-        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
-    if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
-        || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
-        || !isLiteralTopicPattern(database)
-        || !isLiteralTopicPattern(tableName)) {
-      return DataNodeTableCache.getInstance().getTableSnapshot();
-    }
-
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
-    return Objects.isNull(table)
-        ? null
-        : Collections.singletonMap(database, Collections.singletonMap(tableName, table));
-  }
-
-  private static boolean isLiteralTopicPattern(final String pattern) {
-    final String regexMetaCharacters = ".*+?[](){}\\|^$";
-    return Objects.nonNull(pattern)
-        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
-  }
-
-  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
-    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
-  }
-
   public void dropColumnFilter(final String topicName) {
     topicNameToColumnFilterMatcher.remove(topicName);
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_COLUMN_FILTER, topicName);
   }
 
   public void unbindConsensusPrefetchingQueue(
-      final String consumerGroupId, final String topicName) {
+      final String consumerGroupId,
+      final String topicName,
+      final boolean retainProgressAfterUnsubscribe) {
     final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
@@ -825,7 +799,7 @@ public class SubscriptionBrokerAgent {
           consumerGroupId);
       return;
     }
-    broker.unbindConsensusPrefetchingQueue(topicName);
+    broker.unbindConsensusPrefetchingQueue(topicName, retainProgressAfterUnsubscribe);
     prefetchingQueueCount.invalidate();
   }
 

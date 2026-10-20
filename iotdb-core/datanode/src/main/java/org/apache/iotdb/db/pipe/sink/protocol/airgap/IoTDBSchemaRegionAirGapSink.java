@@ -313,7 +313,7 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
           pipeSchemaRegionSnapshotEvent.toString(),
           true);
     } else {
-      LOGGER.info(
+      LOGGER.debug(
           DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_SCHEMA_REGION_SNAPSHOT_AND,
           mtreeSnapshotFile,
           tagLogSnapshotFile,

@@ -602,6 +602,11 @@ public class QetchAlgorithm {
   }
 
   public void closeNowDataSegment() {
+    if (nowSection == null) {
+      // An input with fewer than two points has no section to match.
+      isNewDataSegment = true;
+      return;
+    }
     // after close operator,either dataLastLastSection or dataLastSection is not null
     closeNowSection();
     if (dataLastLastSection != null && dataLastSection != null) {
