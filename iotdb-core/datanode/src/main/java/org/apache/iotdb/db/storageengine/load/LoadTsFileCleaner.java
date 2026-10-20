@@ -350,14 +350,22 @@ public class LoadTsFileCleaner {
   }
 
   private static boolean replicasReached(final DataRegion dataRegion, final long searchIndex) {
-    final long safelyDeletedSearchIndex =
-        dataRegion
-            .getWALNode()
-            .map(wal -> wal.getSafelyDeletedSearchIndex())
-            .orElse(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
-
-    return safelyDeletedSearchIndex == ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-        || safelyDeletedSearchIndex >= searchIndex;
+    // IoTConsensusV2 and consensus implementations without a WAL replicate the staged payload
+    // directly, so no follower can read it back from this node's WAL. IoTConsensus V1, however,
+    // must report a real watermark before its staged references are safe to delete.
+    if (LoadConsensusCompat.usesIoTConsensusV2()) {
+      return true;
+    }
+    return dataRegion
+        .getWALNode()
+        .map(
+            wal -> {
+              final long safelyDeletedSearchIndex = wal.getSafelyDeletedSearchIndex();
+              return safelyDeletedSearchIndex
+                      != ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+                  && safelyDeletedSearchIndex >= searchIndex;
+            })
+        .orElse(true);
   }
 
   // -------------------------------------------------------------------------
