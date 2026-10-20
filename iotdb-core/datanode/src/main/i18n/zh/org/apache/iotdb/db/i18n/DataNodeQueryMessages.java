@@ -20,6 +20,23 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "将 TsFile %s 转换为 tablet 失败。状态：%s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "将 TsFile %s 转换为 tablet 失败：%s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "tablet 转换未返回状态";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "执行语句 %s 时，在转换为 tablet 前读取 TsFile 模型信息失败：%s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "将 TsFile 转换为 tablet 后加载仍失败。详情：%s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD 被拒绝：uuid={}，region={}，endpoint={}，status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "目标节点拒绝 LOAD，且未返回状态或消息";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "分发 LOAD %s（region %s）到节点 %s 失败：%s";
+
   public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
       "SchemaRegion 不可用，请稍后重试。";
 

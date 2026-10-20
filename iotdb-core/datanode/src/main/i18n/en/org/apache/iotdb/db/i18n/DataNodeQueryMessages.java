@@ -20,6 +20,23 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "Failed to convert TsFile %s to tablets. Status: %s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "Failed to convert TsFile %s to tablets: %s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "Tablet conversion returned no status";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "Failed to read TsFile model information before tablet conversion for statement %s: %s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "Failed to load TsFiles after tablet conversion. Details: %s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD rejected: uuid={}, region={}, endpoint={}, status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "Target node rejected LOAD without a status or a message";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "Failed to dispatch LOAD %s for region %s to node %s: %s";
+
   public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
       "Schema region is unavailable. Please retry later.";
 
