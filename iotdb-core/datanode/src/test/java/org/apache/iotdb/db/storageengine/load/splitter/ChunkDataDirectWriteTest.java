@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData.ChunkLayout;
 
@@ -68,6 +69,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_MASK;
 import static org.apache.tsfile.common.constant.TsFileConstant.VALUE_COLUMN_MASK;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -77,6 +79,29 @@ public class ChunkDataDirectWriteTest {
 
   private static final int DEFAULT_POINT_COUNT = 100;
   private static final IDeviceID DEFAULT_DEVICE = new StringArrayDeviceID("root", "sg", "d1");
+
+  @Test
+  public void testInlineChunkPayloadIsDeserializedAsSlice() throws Exception {
+    final byte[] payload = new byte[] {1, 2, 3, 4, 5};
+    final ByteBuffer serialized = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + payload.length);
+    serialized.put((byte) 0); // not a reference
+    serialized.putInt(payload.length);
+    serialized.put(payload);
+    serialized.flip();
+
+    final List<ChunkPayloadRef> refs = new ArrayList<>();
+    final ByteBuffer deserialized =
+        ChunkData.deserializeChunkPayload(
+            new LoadTsFilePieceNode.ByteBufferInputStream(serialized), refs);
+
+    assertTrue(refs.isEmpty());
+    assertEquals(payload.length, deserialized.remaining());
+    // The payload stays inside the assembled piece body instead of being copied into a new array.
+    assertSame(serialized.array(), deserialized.array());
+    for (int i = 0; i < payload.length; i++) {
+      assertEquals(payload[i], deserialized.get(i));
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Direct Write (Bypass SerDe) Tests

@@ -480,16 +480,18 @@ public class TsFileSplitter {
       }
     }
     for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
-      chunkData.endChunk();
       timePartitionSlots.add(chunkData.getTimePartitionSlot());
       if (deletions.isEmpty()
           && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+        // Check before encoding: the chunk that crosses the limit does not have to be turned into
+        // standard chunks only to be rejected.
         throw new LoadFileException(
             String.format(
                 StorageEngineMessages
                     .STORAGE_EXCEPTION_TIME_PARTITION_SLOTS_SIZE_IS_GREATER_THAN_S_D076F78E,
                 CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
       }
+      chunkData.endChunk();
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
@@ -549,7 +551,9 @@ public class TsFileSplitter {
     if (isAligned) {
       TimePageReader timePageReader = new TimePageReader(pageHeader, pageData, timeDecoder);
       long[] times = timePageReader.getNextTimeBatch();
-      return new Pair<>(times, new Object[times.length]);
+      // The values of an aligned time page are never used: the value columns are decoded by
+      // decodeValuePage. Returning null avoids allocating a page-sized array of nulls.
+      return new Pair<>(times, null);
     }
 
     valueDecoder.reset();

@@ -112,19 +112,7 @@ public class ChunkPayloadRef {
    *     outside of this DataNode's LOAD directories
    */
   public byte[] readPayload() {
-    final File file = locateFile();
-    // Checked against the file before the buffer is allocated: without it a reference to bytes past
-    // the end of the staged file would still allocate its full size and fail later, and a huge size
-    // would be allocated only to be thrown away.
-    if (offset + size > file.length()) {
-      throw new ChunkPayloadUnavailableException(
-          String.format(
-              StorageEngineMessages
-                  .EXCEPTION_THE_CHUNK_PAYLOAD_OF_ARG_BYTES_AT_OFFSET_ARG_IS_LONGER_THAN_THE_STAGED_FILE_ARG_14081256,
-              size,
-              offset,
-              file.getAbsolutePath()));
-    }
+    final File file = locatePayloadFile();
     try (final RandomAccessFile input = new RandomAccessFile(file, "r")) {
       final byte[] payload = new byte[(int) size];
       input.seek(offset);
@@ -146,6 +134,62 @@ public class ChunkPayloadRef {
               e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * Streams the referenced bytes into {@code stream} without materializing them in a byte array.
+   * Used when a payload has to be inlined into a request but is still stored in the staged file.
+   */
+  public void writePayloadTo(final DataOutputStream stream) throws IOException {
+    final File file = locatePayloadFile();
+    if (size == 0) {
+      return;
+    }
+    final byte[] buffer = new byte[(int) Math.min(size, 8192L)];
+    try (final RandomAccessFile input = new RandomAccessFile(file, "r")) {
+      input.seek(offset);
+      long remaining = size;
+      while (remaining > 0) {
+        final int read = input.read(buffer, 0, (int) Math.min(buffer.length, remaining));
+        if (read < 0) {
+          throw new EOFException();
+        }
+        stream.write(buffer, 0, read);
+        remaining -= read;
+      }
+    } catch (final EOFException e) {
+      throw new ChunkPayloadUnavailableException(
+          String.format(
+              StorageEngineMessages.EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D,
+              file.getAbsolutePath(),
+              offset),
+          e);
+    } catch (final IOException | ArithmeticException | NegativeArraySizeException e) {
+      throw new ChunkPayloadUnavailableException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_FAILED_TO_READ_BACK_THE_STAGED_PIECE_FILE_ARG_ARG_3F54CB90,
+              file.getAbsolutePath(),
+              e.getMessage()),
+          e);
+    }
+  }
+
+  private File locatePayloadFile() {
+    final File file = locateFile();
+    // Checked against the file before the buffer is allocated: without it a reference to bytes past
+    // the end of the staged file would still allocate its full size and fail later, and a huge size
+    // would be allocated only to be thrown away.
+    if (offset + size > file.length()) {
+      throw new ChunkPayloadUnavailableException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_THE_CHUNK_PAYLOAD_OF_ARG_BYTES_AT_OFFSET_ARG_IS_LONGER_THAN_THE_STAGED_FILE_ARG_14081256,
+              size,
+              offset,
+              file.getAbsolutePath()));
+    }
+    return file;
   }
 
   /**
