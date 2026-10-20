@@ -121,15 +121,6 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
-  public DataNodeConfig setLoadWriteThroughputBytesPerSecond(
-      double loadWriteThroughputBytesPerSecond) {
-    properties.setProperty(
-        "load_write_throughput_bytes_per_second",
-        String.valueOf(loadWriteThroughputBytesPerSecond));
-    return this;
-  }
-
-  @Override
   public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
     properties.setProperty(
         "compaction_schedule_interval_in_ms", String.valueOf(compactionScheduleInterval));

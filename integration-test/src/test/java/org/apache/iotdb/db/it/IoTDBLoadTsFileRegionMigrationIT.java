@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -52,6 +53,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -90,6 +92,16 @@ public class IoTDBLoadTsFileRegionMigrationIT {
    */
   private static final double THROTTLED_LOAD_WRITE_THROUGHPUT_BYTES_PER_SECOND = 1;
 
+  /** Sets the LOAD write throughput in the DataNode properties before the cluster starts. */
+  private static void setLoadWriteThroughput(final double bytesPerSecond) {
+    final MppDataNodeConfig dataNodeConfig =
+        (MppDataNodeConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig();
+    final Properties properties = new Properties();
+    properties.setProperty(
+        "load_write_throughput_bytes_per_second", String.valueOf(bytesPerSecond));
+    dataNodeConfig.updateProperties(properties);
+  }
+
   private File tmpDir;
 
   @BeforeClass
@@ -100,10 +112,7 @@ public class IoTDBLoadTsFileRegionMigrationIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("1:10:1:1:1:0");
     EnvFactory.getEnv().getConfig().getCommonConfig().setTargetChunkPointNum(1_000);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxNumberOfPointsInPage(500);
-    EnvFactory.getEnv()
-        .getConfig()
-        .getDataNodeConfig()
-        .setLoadWriteThroughputBytesPerSecond(THROTTLED_LOAD_WRITE_THROUGHPUT_BYTES_PER_SECOND);
+    setLoadWriteThroughput(THROTTLED_LOAD_WRITE_THROUGHPUT_BYTES_PER_SECOND);
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()

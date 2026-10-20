@@ -46,8 +46,6 @@ public interface DataNodeConfig {
   DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
       long loadActiveListeningCheckIntervalSeconds);
 
-  DataNodeConfig setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond);
-
   DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval);
 
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
