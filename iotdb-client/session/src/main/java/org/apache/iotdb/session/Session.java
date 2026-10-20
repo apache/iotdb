@@ -88,6 +88,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -563,7 +564,10 @@ public class Session implements ISession {
               enableRPCCompaction,
               version.toString());
     } else {
-      this.availableNodes = new DummyNodesSupplier(getNodeUrls());
+      // A static supplier has no separate seed tier. Keep every configured address after reopen.
+      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
     }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;

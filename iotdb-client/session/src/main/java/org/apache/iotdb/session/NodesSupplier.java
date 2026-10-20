@@ -96,6 +96,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   // Refresh serialization is independent of the short client-publication/cleanup critical section.
   private final ReentrantLock refreshLock = new ReentrantLock();
+  // Accessed under refreshLock, in failure order, until a discovery query succeeds.
+  private final Set<TEndPoint> queryFailedNodes = new LinkedHashSet<>();
   private final Object clientLock = new Object();
   private ThriftConnection client;
   private ThriftConnection activeClient;
@@ -288,6 +290,11 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         Collections.rotate(seeds, -ThreadLocalRandom.current().nextInt(seeds.size()));
       }
       candidates.addAll(seeds);
+      // Defer query-failed nodes across refresh rounds without losing them as recovery candidates.
+      // Remember all failures so two failing nodes cannot starve a third, healthy candidate.
+      queryFailedNodes.retainAll(candidates);
+      candidates.removeAll(queryFailedNodes);
+      candidates.addAll(queryFailedNodes);
       for (TEndPoint endPoint : candidates) {
         if (closed) {
           return;
@@ -319,13 +326,21 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     }
   }
 
-  /** Return false only when the connection failed and another candidate should be tried. */
+  /** Return false only when the transport failed and another candidate should be tried now. */
   private boolean refreshFrom(ThriftConnection current) {
     if (closed) {
       return true;
     }
     try {
-      updateDataNodeList(current);
+      if (updateDataNodeList(current)) {
+        queryFailedNodes.clear();
+      } else {
+        // End this round on a query error, but try another candidate on the next refresh.
+        // Moving repeated failures to the end also permits recovery after a cluster-wide outage.
+        queryFailedNodes.remove(current.endPoint);
+        queryFailedNodes.add(current.endPoint);
+        destroyClient(current);
+      }
     } catch (IoTDBConnectionException e) {
       destroyClient(current);
       return false;
@@ -409,7 +424,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     }
   }
 
-  private void updateDataNodeList(ThriftConnection current) throws IoTDBConnectionException {
+  private boolean updateDataNodeList(ThriftConnection current) throws IoTDBConnectionException {
     try (SessionDataSet sessionDataSet =
         current.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
       updateAvailableNodes(sessionDataSet);
@@ -421,13 +436,14 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         throw e;
       }
       // A Thrift application error also means the peer responded; it is not a transport failure.
+      return false;
     } catch (Exception e) {
-      // A query error (for example no ConfigNode leader) is not evidence of a dead endpoint.
-      // Keep this connection and snapshot, and let the next scheduled refresh retry the query.
       if (!closed) {
         LOGGER.warn(SessionMessages.FAILED_TO_FETCH_DATA_NODE_LIST, current.endPoint);
       }
+      return false;
     }
+    return true;
   }
 
   private void updateAvailableNodes(SessionDataSet sessionDataSet) throws Exception {

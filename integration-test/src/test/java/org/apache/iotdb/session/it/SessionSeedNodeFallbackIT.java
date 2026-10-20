@@ -35,6 +35,7 @@ import org.apache.iotdb.session.NodesSupplier;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,21 +95,21 @@ public class SessionSeedNodeFallbackIT {
       assertQuery(session, pool);
       NodesSupplier sessionSupplier = supplier(session);
       NodesSupplier poolSupplier = supplier(pool);
+      Set<TEndPoint> runningNodes =
+          new HashSet<>(Arrays.asList(endpoint(0), endpoint(1), endpoint(2)));
       for (int index = 0; index < 3; index++) {
         EnvFactory.getEnv().shutdownDataNode(index);
         awaitStatus(index, EnvUtils.getNodeStatusAfterLocalStop());
-        sessionSupplier.run();
-        poolSupplier.run();
-        assertFalse(sessionSupplier.get().contains(endpoint(index)));
-        assertFalse(poolSupplier.get().contains(endpoint(index)));
+        runningNodes.remove(endpoint(index));
+        awaitSnapshot(sessionSupplier, runningNodes);
+        awaitSnapshot(poolSupplier, runningNodes);
         assertQuery(session, pool);
 
         EnvFactory.getEnv().startDataNode(index);
         awaitStatus(index, NodeStatus.Running);
-        sessionSupplier.run();
-        poolSupplier.run();
-        assertTrue(sessionSupplier.get().contains(endpoint(index)));
-        assertTrue(poolSupplier.get().contains(endpoint(index)));
+        runningNodes.add(endpoint(index));
+        awaitSnapshot(sessionSupplier, runningNodes);
+        awaitSnapshot(poolSupplier, runningNodes);
         assertQuery(session, pool);
       }
     } finally {
@@ -139,11 +140,9 @@ public class SessionSeedNodeFallbackIT {
     NodesSupplier business = createSupplier(executor);
     NodesSupplier background = createSupplier(executor);
     try (Session session = new Session.Builder().nodeUrls(urls()).enableAutoFetch(false).build()) {
-      business.run();
-      background.run();
-      assertEquals(
-          new HashSet<>(Arrays.asList(endpoint(1), endpoint(2))), new HashSet<>(business.get()));
-      assertEquals(business.get(), background.get());
+      Set<TEndPoint> discovered = new HashSet<>(Arrays.asList(endpoint(1), endpoint(2)));
+      awaitSnapshot(business, discovered);
+      awaitSnapshot(background, discovered);
       session.open(false, 1000, new ConcurrentHashMap<>(), business);
 
       EnvFactory.getEnv().startDataNode(0);
@@ -159,8 +158,7 @@ public class SessionSeedNodeFallbackIT {
       try (SessionDataSet result = session.executeQueryStatement("SHOW AVAILABLE URLS")) {
         assertEquals(Collections.singleton(endpoint(0)), readEndpoints(result));
       }
-      background.run();
-      assertEquals(Collections.singletonList(endpoint(0)), background.get());
+      awaitSnapshot(background, Collections.singleton(endpoint(0)));
       assertEquals(3, background.getSeedNodes().size());
       // Wait for the immediate refresh requested by business reconnection, not a 60-second poll.
       executor.submit(() -> {}).get(10, TimeUnit.SECONDS);
@@ -240,5 +238,17 @@ public class SessionSeedNodeFallbackIT {
         .ensureNodeStatus(
             Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(index)),
             Collections.singletonList(status));
+  }
+
+  private void awaitSnapshot(NodesSupplier current, Set<TEndPoint> expected) {
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              // run() can return immediately while a scheduled refresh is still in flight.
+              current.run();
+              assertEquals(expected, new HashSet<>(current.get()));
+            });
   }
 }

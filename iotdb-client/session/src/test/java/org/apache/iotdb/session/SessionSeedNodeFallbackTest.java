@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
@@ -204,44 +205,105 @@ public class SessionSeedNodeFallbackTest {
   }
 
   @Test
-  public void testQueryStatusFailureDoesNotRotateConnections() {
-    assertQueryFailureDoesNotRotate(false);
+  public void testQueryStatusFailureMovesDiscoveryToAnotherNodeNextRound() {
+    assertQueryFailureMovesDiscovery(false);
   }
 
   @Test
-  public void testQueryApplicationFailureDoesNotRotateConnections() {
-    assertQueryFailureDoesNotRotate(true);
+  public void testQueryApplicationFailureMovesDiscoveryToAnotherNodeNextRound() {
+    assertQueryFailureMovesDiscovery(true);
   }
 
-  private void assertQueryFailureDoesNotRotate(boolean applicationError) {
-    advertised = endpoints(1, 2);
+  private void assertQueryFailureMovesDiscovery(boolean applicationError) {
     supplier.run();
-    nodes.forEach(
-        node -> {
-          node.failQuery = true;
-          node.queryApplicationError = applicationError;
-        });
+    nodes.get(0).failQuery = true;
+    nodes.get(0).queryApplicationError = applicationError;
+    advertised = endpoints(1, 2);
     queries.clear();
     attempts.clear();
     supplier.run();
     assertEquals(endpoints(0), queries);
     assertTrue(attempts.isEmpty());
+    assertEquals(endpoints(0, 1, 2), supplier.get());
+
+    // Node 0 is still reachable but cannot query the ConfigNode. Do not pin discovery to it.
+    supplier.run();
+    assertEquals(endpoints(0, 1), queries);
+    assertEquals(endpoints(1), attempts);
     assertEquals(endpoints(1, 2), supplier.get());
 
-    nodes.forEach(node -> node.failQuery = false);
     advertised = endpoints(2);
     supplier.run();
     assertEquals(endpoints(2), supplier.get());
-    assertTrue(attempts.isEmpty());
+    assertEquals(endpoints(0, 1, 1), queries);
+    assertEquals(endpoints(1), attempts);
   }
 
   @Test
-  public void testQueryFailureAfterConnectingDoesNotTryOtherCandidates() {
-    nodes.forEach(node -> node.failQuery = true);
+  public void testClusterQueryStatusFailuresAreBounded() {
+    assertClusterQueryFailuresAreBounded(false);
+  }
+
+  @Test
+  public void testClusterQueryApplicationFailuresAreBounded() {
+    assertClusterQueryFailuresAreBounded(true);
+  }
+
+  private void assertClusterQueryFailuresAreBounded(boolean applicationError) {
+    nodes.forEach(
+        node -> {
+          node.failQuery = true;
+          node.queryApplicationError = applicationError;
+        });
+    for (int i = 0; i < 6; i++) {
+      supplier.run();
+      // One new session and one query per refresh, even when every node returns an error.
+      assertEquals(i + 1, attempts.size());
+      assertEquals(i + 1, queries.size());
+      assertEquals(nodes.get(i % 3).endpoint, queries.get(i));
+      assertEquals(endpoints(0, 1, 2), supplier.get());
+    }
+    assertEquals(queries, attempts);
+
+    // The first two candidates still fail. Discovery must eventually reach the recovered third.
+    nodes.get(2).failQuery = false;
+    advertised = endpoints(2);
+    for (int i = 0; i < 3; i++) {
+      supplier.run();
+      assertEquals(7 + i, attempts.size());
+      assertEquals(7 + i, queries.size());
+    }
+    assertEquals(endpoints(2), supplier.get());
     supplier.run();
-    assertEquals(endpoints(0), attempts);
+    assertEquals(9, attempts.size());
+    assertEquals(10, queries.size());
+    assertEquals(nodes.get(2).endpoint, queries.get(9));
+  }
+
+  @Test
+  public void testDiscoveryQueryFailuresEventuallyReachRecoverySeed() {
+    advertised = endpoints(0, 1);
+    supplier.run();
+    nodes.get(0).failQuery = true;
+    nodes.get(1).failQuery = true;
+    advertised = endpoints(2);
+    queries.clear();
+    attempts.clear();
+    supplier.run();
     assertEquals(endpoints(0), queries);
-    assertEquals(endpoints(0, 1, 2), supplier.get());
+    assertTrue(attempts.isEmpty());
+    assertEquals(endpoints(0, 1), supplier.get());
+
+    supplier.run();
+    assertEquals(endpoints(0, 1), queries);
+    assertEquals(endpoints(1), attempts);
+    assertEquals(endpoints(0, 1), supplier.get());
+
+    supplier.run();
+    assertEquals(endpoints(0, 1, 2), queries);
+    assertEquals(endpoints(1, 2), attempts);
+    assertEquals(endpoints(2), supplier.get());
+    assertEquals(endpoints(0, 1, 2), supplier.getSeedNodes());
   }
 
   @Test
@@ -294,6 +356,38 @@ public class SessionSeedNodeFallbackTest {
   @Test
   public void testSingleHostSessionReopenAfterFailover() throws Exception {
     assertSessionReopenAfterFailover(true);
+  }
+
+  @Test
+  public void testStaticNodeUrlsSurviveReopenAndSecondFailover() throws Exception {
+    nodes.get(1).online = false;
+    try (Session session =
+        new Session.Builder()
+            .nodeUrls(Arrays.asList(url(0), url(1), url(0)))
+            .enableAutoFetch(false)
+            .build()) {
+      session.open(false, 1000);
+      assertEquals(nodes.get(0).endpoint, session.defaultEndPoint);
+      nodes.get(0).online = false;
+      nodes.get(1).online = true;
+      assertTrue(reconnect(session.defaultSessionConnection));
+      assertEquals(nodes.get(1).endpoint, session.defaultEndPoint);
+      session.close();
+
+      session.open(false, 1000);
+      INodeSupplier reopened = Whitebox.getInternalState(session, "availableNodes");
+      assertEquals(endpoints(1, 0), reopened.get());
+      nodes.get(1).online = false;
+      nodes.get(0).online = true;
+      assertTrue(reconnect(session.defaultSessionConnection));
+      assertEquals(nodes.get(0).endpoint, session.defaultEndPoint);
+      advertised = endpoints(0);
+      try (SessionDataSet result = session.executeQueryStatement("SHOW AVAILABLE URLS")) {
+        assertTrue(result.hasNext());
+        result.next();
+        assertFalse(result.hasNext());
+      }
+    }
   }
 
   private void assertSessionReopenAfterFailover(boolean singleHost) throws Exception {
