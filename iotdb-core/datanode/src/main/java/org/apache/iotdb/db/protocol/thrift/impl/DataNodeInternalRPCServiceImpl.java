@@ -228,6 +228,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
@@ -450,6 +451,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final DataNodeContext dataNodeContext;
 
+  private final SystemMetrics systemMetrics;
+
   private final ExecutorService schemaExecutor =
       new WrappedThreadPoolExecutor(
           0,
@@ -465,7 +468,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private static final String SYSTEM = "system";
 
   public DataNodeInternalRPCServiceImpl(DataNodeContext dataNodeContext) {
+    this(dataNodeContext, SystemMetrics.getInstance());
+  }
+
+  DataNodeInternalRPCServiceImpl(DataNodeContext dataNodeContext, SystemMetrics systemMetrics) {
     super();
+    this.systemMetrics = systemMetrics;
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     this.dataNodeContext = dataNodeContext;
@@ -1629,15 +1637,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return new TPullCommitProgressResp(RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION))
-          .setCommitRegionProgress(Collections.emptyMap());
+          .setCommitRegionProgress(Collections.emptyMap())
+          .setSubscriptionProgress(Collections.emptyMap());
     }
 
     try {
       final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
       final Map<String, ByteBuffer> regionProgress =
           SubscriptionAgent.broker().collectAllRegionCommitProgress(dataNodeId);
+      final Map<String, ByteBuffer> subscriptionProgress =
+          SubscriptionAgent.broker().collectAllProgressSnapshots();
       return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
-          .setCommitRegionProgress(regionProgress);
+          .setCommitRegionProgress(regionProgress)
+          .setSubscriptionProgress(subscriptionProgress);
     } catch (Exception e) {
       LOGGER.warn(
           DataNodeMiscMessages.MISC_LOG_ERROR_OCCURRED_WHEN_PULLING_COMMIT_PROGRESS_48C12E4B, e);
@@ -2552,23 +2564,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private void sampleDiskLoad(TLoadSample loadSample) {
-    double availableDisk =
-        MetricService.getInstance()
-            .getAutoGauge(
-                SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                SYSTEM)
-            .getValue();
-    double totalDisk =
-        MetricService.getInstance()
-            .getAutoGauge(
-                SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                SYSTEM)
-            .getValue();
+  void sampleDiskLoad(TLoadSample loadSample) {
+    double availableDisk = systemMetrics.getSystemDiskAvailableSpace();
+    double totalDisk = systemMetrics.getSystemDiskTotalSpace();
 
     if (availableDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = availableDisk / totalDisk;

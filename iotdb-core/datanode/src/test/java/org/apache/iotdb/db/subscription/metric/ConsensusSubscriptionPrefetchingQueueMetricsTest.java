@@ -114,6 +114,26 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
               eq(firstRegionId.toString()));
       verify(metricService)
           .createAutoGauge(
+              eq(Metric.SUBSCRIPTION_CONSENSUS_REMAINING_EVENT_COUNT.toString()),
+              eq(MetricLevel.IMPORTANT),
+              eq(firstQueue),
+              any(),
+              eq(Tag.NAME.toString()),
+              eq(queueId),
+              eq(Tag.REGION.toString()),
+              eq(firstRegionId.toString()));
+      verify(metricService)
+          .createAutoGauge(
+              eq(Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString()),
+              eq(MetricLevel.IMPORTANT),
+              eq(firstQueue),
+              any(),
+              eq(Tag.NAME.toString()),
+              eq(queueId),
+              eq(Tag.REGION.toString()),
+              eq(firstRegionId.toString()));
+      verify(metricService)
+          .createAutoGauge(
               eq(Metric.SUBSCRIPTION_CONSENSUS_LAG.toString()),
               eq(MetricLevel.IMPORTANT),
               eq(secondQueue),

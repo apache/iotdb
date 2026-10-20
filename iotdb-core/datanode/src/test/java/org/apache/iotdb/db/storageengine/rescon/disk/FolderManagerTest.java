@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
@@ -37,8 +40,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -184,6 +189,26 @@ public class FolderManagerTest {
       assertTrue(e.getMessage().contains("Can't get next folder"));
     } catch (Exception e) {
       fail("Should have thrown DiskSpaceInsufficientException");
+    }
+  }
+
+  @Test
+  public void testFolderManagerCanSkipNodeStatusChangeWhenDiskFull() {
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    NodeStatus originalStatus = commonConfig.getNodeStatus();
+    String originalStatusReason = commonConfig.getStatusReason();
+    commonConfig.setNodeStatus(NodeStatus.Running);
+    commonConfig.setStatusReason(null);
+
+    try {
+      new FolderManager(Collections.emptyList(), strategyType, false);
+      fail("Expected DiskSpaceInsufficientException");
+    } catch (DiskSpaceInsufficientException e) {
+      assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
+      assertEquals(null, commonConfig.getStatusReason());
+    } finally {
+      commonConfig.setNodeStatus(originalStatus);
+      commonConfig.setStatusReason(originalStatusReason);
     }
   }
 }

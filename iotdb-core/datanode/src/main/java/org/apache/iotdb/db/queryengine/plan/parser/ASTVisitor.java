@@ -4546,6 +4546,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.topicName != null) {
       showSubscriptionsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
     }
+    showSubscriptionsStatement.setDetails(ctx.DETAILS() != null);
 
     return showSubscriptionsStatement;
   }

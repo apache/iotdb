@@ -743,7 +743,7 @@ showTopics
     ;
 
 showSubscriptions
-    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    : SHOW SUBSCRIPTIONS (DETAILS)? (ON topicName=identifier)?
     ;
 
 dropSubscription

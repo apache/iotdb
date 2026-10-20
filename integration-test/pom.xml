@@ -324,6 +324,10 @@
                         <configuration>
                             <groups>${integrationTest.includedGroups}</groups>
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
+                            <!-- Subscription IT is maintained and executed by the enterprise edition. -->
+                            <excludes>
+                                <exclude>**/subscription/it/**</exclude>
+                            </excludes>
                             <useSystemClassLoader>false</useSystemClassLoader>
                             <parallel>none</parallel>
                             <forkCount>${integrationTest.forkCount}</forkCount>

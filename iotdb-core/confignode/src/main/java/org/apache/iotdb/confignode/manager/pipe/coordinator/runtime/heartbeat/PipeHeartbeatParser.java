@@ -37,6 +37,8 @@ import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,16 +171,12 @@ public class PipeHeartbeatParser {
         }
       }
 
-      final Set<Integer> requiredDataRegionIds = new HashSet<>();
-      for (final Map.Entry<Integer, PipeTaskMeta> entry :
-          pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
-        if (configManager
-            .getPartitionManager()
-            .isRegionGroupExists(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, entry.getKey()))) {
-          requiredDataRegionIds.add(entry.getKey());
-        }
-      }
+      // Align with copyAndFilterOutNonWorkingDataRegionPipeTasks: CN's task table contains every
+      // user-visible DataRegion, but DataNodes only create / complete tasks for regions that match
+      // the source pattern. Waiting on unmatched regions would prevent snapshot pipes from
+      // dropping.
+      final Set<Integer> requiredDataRegionIds =
+          collectRequiredDataRegionIds(pipeMetaFromCoordinator);
 
       // Remove completed pipes only when every required DataRegion has been reported complete.
       // Relying on the region-level reports (instead of the DataNode-level boolean) prevents a
@@ -339,6 +337,67 @@ public class PipeHeartbeatParser {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Collect DataRegion ids that this pipe must wait on before auto-drop. Schema / Config regions
+   * are skipped; DataRegions that the source pattern will not listen to are skipped as well, using
+   * the same {@link DataRegionListeningFilter} as task push-down.
+   *
+   * <p>If database / schema lookup fails, the region is kept (same conservative behavior as {@code
+   * copyAndFilterOutNonWorkingDataRegionPipeTasks}).
+   */
+  private Set<Integer> collectRequiredDataRegionIds(final PipeMeta pipeMetaFromCoordinator) {
+    final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
+    final Set<Integer> requiredDataRegionIds = new HashSet<>();
+    for (final Map.Entry<Integer, PipeTaskMeta> entry :
+        pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final TConsensusGroupId dataRegionId =
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, entry.getKey());
+      if (!configManager.getPartitionManager().isRegionGroupExists(dataRegionId)) {
+        continue;
+      }
+      if (shouldKeepDataRegionAsRequired(staticMeta, dataRegionId)) {
+        requiredDataRegionIds.add(entry.getKey());
+      }
+    }
+    return requiredDataRegionIds;
+  }
+
+  private boolean shouldKeepDataRegionAsRequired(
+      final PipeStaticMeta staticMeta, final TConsensusGroupId dataRegionId) {
+    if (staticMeta.isSourceExternal()) {
+      return true;
+    }
+
+    final String database;
+    try {
+      database = configManager.getPartitionManager().getRegionDatabase(dataRegionId);
+      if (database == null) {
+        return true;
+      }
+    } catch (final Exception ignored) {
+      return true;
+    }
+
+    final boolean isTableModel;
+    try {
+      final TDatabaseSchema schema =
+          configManager.getClusterSchemaManager().getDatabaseSchemaByName(database);
+      if (schema == null) {
+        return true;
+      }
+      isTableModel = schema.isIsTableModel();
+    } catch (final Exception ignored) {
+      return true;
+    }
+
+    try {
+      return DataRegionListeningFilter.shouldDatabaseBeListened(
+          staticMeta.getSourceParameters(), isTableModel, database, staticMeta.getPipeType());
+    } catch (final Exception ignored) {
+      return true;
     }
   }
 }

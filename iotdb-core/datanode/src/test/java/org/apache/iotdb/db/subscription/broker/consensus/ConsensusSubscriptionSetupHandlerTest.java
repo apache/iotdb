@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -52,16 +51,8 @@ public class ConsensusSubscriptionSetupHandlerTest {
 
   @Test
   public void testRuntimeUpdatesAreIgnoredWhenSubscriptionIsDisabled() {
-    final boolean subscriptionEnabled =
-        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
-    try {
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(false);
-
-      ConsensusSubscriptionSetupHandler.applyRuntimeState(null, null);
-      ConsensusSubscriptionSetupHandler.onRegionRouteChanged(null, 0);
-    } finally {
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
-    }
+    ConsensusSubscriptionSetupHandler.applyRuntimeState(null, null);
+    ConsensusSubscriptionSetupHandler.onRegionRouteChanged(null, 0);
   }
 
   @Test

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
@@ -39,26 +38,19 @@ public class DataNodeInternalRPCServiceImplSubscriptionDisabledTest {
 
   @Test
   public void testSubscriptionRuntimeRPCsAreNoOpWhenSubscriptionIsDisabled() {
-    final boolean subscriptionEnabled =
-        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
-    try {
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(false);
-      final DataNodeInternalRPCServiceImpl service =
-          new DataNodeInternalRPCServiceImpl(Mockito.mock(DataNodeContext.class));
+    final DataNodeInternalRPCServiceImpl service =
+        new DataNodeInternalRPCServiceImpl(Mockito.mock(DataNodeContext.class));
 
-      final TPullCommitProgressResp pullResp = service.pullCommitProgress(null);
-      Assert.assertEquals(
-          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(), pullResp.getStatus().getCode());
-      Assert.assertTrue(pullResp.isSetCommitRegionProgress());
-      Assert.assertTrue(pullResp.getCommitRegionProgress().isEmpty());
-      Assert.assertEquals(
-          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-          service.syncSubscriptionProgress(null).getCode());
-      Assert.assertEquals(
-          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-          service.pushSubscriptionRuntime(null).getCode());
-    } finally {
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
-    }
+    final TPullCommitProgressResp pullResp = service.pullCommitProgress(null);
+    Assert.assertEquals(
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(), pullResp.getStatus().getCode());
+    Assert.assertTrue(pullResp.isSetCommitRegionProgress());
+    Assert.assertTrue(pullResp.getCommitRegionProgress().isEmpty());
+    Assert.assertEquals(
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+        service.syncSubscriptionProgress(null).getCode());
+    Assert.assertEquals(
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+        service.pushSubscriptionRuntime(null).getCode());
   }
 }

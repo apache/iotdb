@@ -145,6 +145,66 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         queue,
         ConsensusPrefetchingQueue::getInitializedStatus,
         key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_REMAINING_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getRemainingEventCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_RAW_WAL_GAP.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getRawWalGap,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_CURRENT_WAL_SEARCH_INDEX.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getCurrentWalSearchIndex,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_NEXT_READ_SEARCH_INDEX.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getCurrentReadSearchIndex,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_IN_FLIGHT_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionUncommittedEventCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCHED_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getPrefetchedEventCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_PENDING_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getPendingEventCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_POLL_TIME.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getLastPollTimeMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_PROGRESS_TIME.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getLastProgressTimeMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getProgressStatus,
+        key.getTags());
   }
 
   private void createRate(final QueueMetricsKey key) {
@@ -217,6 +277,44 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_ACTIVE.toString(), key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_INITIALIZED.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_REMAINING_EVENT_COUNT.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_RAW_WAL_GAP.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_CURRENT_WAL_SEARCH_INDEX.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_NEXT_READ_SEARCH_INDEX.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_IN_FLIGHT_EVENT_COUNT.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCHED_EVENT_COUNT.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_PENDING_EVENT_COUNT.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_POLL_TIME.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_PROGRESS_TIME.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString(),
+        key.getTags());
   }
 
   private void removeRate(final QueueMetricsKey key) {

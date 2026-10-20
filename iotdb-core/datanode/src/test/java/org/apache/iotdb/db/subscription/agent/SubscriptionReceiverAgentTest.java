@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,29 +52,34 @@ import java.util.function.Supplier;
 public class SubscriptionReceiverAgentTest {
 
   @Test
+  public void testDisabledSubscriptionRejectsRequest() throws IOException {
+    final SubscriptionReceiverAgent agent =
+        new SubscriptionReceiverAgent(
+            () -> {
+              throw new AssertionError(
+                  "Receiver must not be created when subscription is disabled");
+            },
+            false,
+            () -> false);
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode(),
+        agent.handle(createHandshakeRequest("group", "consumer"), "root").getStatus().getCode());
+  }
+
+  @Test
   public void testTimeoutCheckerIsNotScheduledWhenSubscriptionIsDisabled() throws Exception {
-    final boolean subscriptionEnabled =
-        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
-    try {
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(false);
+    final SubscriptionReceiverAgent agent = new SubscriptionReceiverAgent();
 
-      final SubscriptionReceiverAgent agent = new SubscriptionReceiverAgent();
-
-      Assert.assertNull(getReceiverTimeoutChecker(agent));
-    } finally {
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
-    }
+    Assert.assertNull(getReceiverTimeoutChecker(agent));
   }
 
   @Test
   public void testTimeoutCheckerIsScheduledWhenSubscriptionIsEnabled() throws Exception {
-    final boolean subscriptionEnabled =
-        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
     SubscriptionReceiverAgent agent = null;
     try {
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(true);
-
-      agent = new SubscriptionReceiverAgent();
+      agent =
+          new SubscriptionReceiverAgent(() -> new FakeSubscriptionReceiver(true), true, () -> true);
 
       Assert.assertNotNull(getReceiverTimeoutChecker(agent));
     } finally {
@@ -85,7 +89,6 @@ public class SubscriptionReceiverAgentTest {
           receiverTimeoutChecker.shutdownNow();
         }
       }
-      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
     }
   }
 
@@ -213,7 +216,7 @@ public class SubscriptionReceiverAgentTest {
           receivers.add(receiver);
           return receiver;
         };
-    return new SubscriptionReceiverAgent(constructor, false);
+    return new SubscriptionReceiverAgent(constructor, false, () -> true);
   }
 
   private ScheduledExecutorService getReceiverTimeoutChecker(final SubscriptionReceiverAgent agent)
