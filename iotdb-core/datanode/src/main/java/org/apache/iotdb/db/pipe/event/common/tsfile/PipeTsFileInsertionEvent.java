@@ -573,6 +573,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               holderMessage),
           e);
     } finally {
+      // Retries must repeat the privilege check, so release its metadata only with the event.
+      tableNames = null;
+      treeSchemaMap = null;
       if (Objects.nonNull(pipeName)) {
         try {
           PipeDataNodeSinglePipeMetrics.getInstance()
@@ -949,10 +952,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   e.getMessage());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg, e);
-    } finally {
-      // GC useless
-      tableNames = null;
-      treeSchemaMap = null;
     }
   }
 
