@@ -2538,6 +2538,16 @@ public final class DataNodePipeMessages {
 
   // ===================== SUBSCRIPTION RECEIVER RESPONSES =====================
 
+  public static final String
+      MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262 =
+          "Subscription：请求分片格式错误。请从分片索引 0 开始重新发送完整请求。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E =
+          "Subscription：请求分片无效或顺序错误（orderId %d，sliceIndex %d，sliceCount %d，originBodySize %d 字节）。请从分片索引 0 开始重新发送完整请求。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027 =
+          "Subscription：请求体大小为 %d 字节，超过接收端上限 %d 字节。请将操作拆分为更小的请求。";
+
   public static final String MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329 =
       "缺少 consumer 配置，请先完成 handshake。";
   public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8 =

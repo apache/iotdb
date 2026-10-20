@@ -141,12 +141,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
-  private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ERROR_RESP =
-      new TPipeSubscribeResp(
-          new TSStatus(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode()),
-          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
-          PipeSubscribeResponseType.ACK.getType());
-
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
   private volatile String authenticatedUsername;
@@ -155,8 +149,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private volatile boolean consumerFenced;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
+  private final int maxReassembledRequestBodySize = getMaxReassembledRequestBodySize();
   private final PipeSubscribeSliceReqHandler sliceReqHandler =
-      new PipeSubscribeSliceReqHandler(getMaxReassembledRequestBodySize());
+      new PipeSubscribeSliceReqHandler(maxReassembledRequestBodySize);
   private long consumerStateVersion;
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
@@ -304,15 +299,39 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       sliceReq = PipeSubscribeSliceReq.fromTPipeSubscribeReq(thriftReq);
     } catch (final RuntimeException e) {
       sliceReqHandler.clear();
-      return SUBSCRIPTION_SLICE_ERROR_RESP;
+      return createSliceErrorResp(
+          DataNodePipeMessages
+              .MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262);
     }
     if (!sliceReqHandler.receiveSlice(sliceReq)) {
-      return SUBSCRIPTION_SLICE_ERROR_RESP;
+      if (sliceReq.getOriginBodySize() > maxReassembledRequestBodySize) {
+        return createSliceErrorResp(
+            String.format(
+                DataNodePipeMessages
+                    .MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027,
+                sliceReq.getOriginBodySize(),
+                maxReassembledRequestBodySize));
+      }
+      return createSliceErrorResp(
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E,
+              sliceReq.getOrderId(),
+              sliceReq.getSliceIndex(),
+              sliceReq.getSliceCount(),
+              sliceReq.getOriginBodySize()));
     }
     return sliceReqHandler
         .makeReqIfComplete()
         .map(this::handle)
         .orElse(SUBSCRIPTION_SLICE_ACK_RESP);
+  }
+
+  private static TPipeSubscribeResp createSliceErrorResp(final String message) {
+    return new TPipeSubscribeResp(
+        RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_TYPE_ERROR, message),
+        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+        PipeSubscribeResponseType.ACK.getType());
   }
 
   private static int getMaxReassembledRequestBodySize() {

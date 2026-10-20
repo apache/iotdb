@@ -33,6 +33,8 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqBuilder;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -43,6 +45,7 @@ import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -299,6 +302,83 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testMalformedSliceReturnsMessageAndAllowsCompleteRequestRetry() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+
+    receiver.handle(
+        PipeSubscribeSliceReqBuilder.buildSliceReq(heartbeatReq, 1, 0, sliceCount, bodySizeLimit));
+    final TSStatus status =
+        receiver
+            .handle(
+                new TPipeSubscribeReq()
+                    .setVersion(PipeSubscribeRequestVersion.VERSION_1.getVersion())
+                    .setType(PipeSubscribeRequestType.SLICE.getType())
+                    .setBody(ByteBuffer.allocate(1)))
+            .getStatus();
+
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        DataNodePipeMessages
+            .MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262,
+        status.getMessage());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 1, 1, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 2, 0, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 2, 1, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testOversizedSliceReturnsRequestedSizeAndReceiverLimit() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final int maxBodySize = (int) getField(receiver, "maxReassembledRequestBodySize");
+    final int requestedBodySize = maxBodySize + 1;
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+    final TPipeSubscribeReq sliceReq =
+        PipeSubscribeSliceReqBuilder.buildSliceReq(heartbeatReq, 1, 0, sliceCount, bodySizeLimit);
+    // Advertise an oversized body without allocating it. The size follows the order ID, version,
+    // and type in the slice header.
+    sliceReq.body.putInt(Integer.BYTES + Byte.BYTES + Short.BYTES, requestedBodySize);
+
+    final TSStatus status = receiver.handle(sliceReq).getStatus();
+
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format(
+            DataNodePipeMessages
+                .MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027,
+            requestedBodySize,
+            maxBodySize),
+        status.getMessage());
+  }
+
+  @Test
   public void testNonSliceRequestClearsIncompleteSlices() throws Exception {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
     final TPipeSubscribeReq heartbeatReq =
@@ -317,14 +397,22 @@ public class SubscriptionReceiverV1Test {
     Assert.assertEquals(
         TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
         receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
-    Assert.assertEquals(
-        TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(),
+    final TSStatus status =
         receiver
             .handle(
                 PipeSubscribeSliceReqBuilder.buildSliceReq(
                     heartbeatReq, 1, 1, sliceCount, bodySizeLimit))
-            .getStatus()
-            .getCode());
+            .getStatus();
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format(
+            DataNodePipeMessages
+                .MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E,
+            1,
+            1,
+            sliceCount,
+            heartbeatReq.body.remaining()),
+        status.getMessage());
   }
 
   @Test
