@@ -628,8 +628,7 @@ public class TableLogicalPlanner {
   }
 
   private RelationPlan planExplainAnalyze(final ExplainAnalyze statement, final Analysis analysis) {
-    RelationPlan originalQueryPlan =
-        planStatementWithoutOutput(analysis, statement.getStatement());
+    RelationPlan originalQueryPlan = planStatementWithoutOutput(analysis, statement.getStatement());
     Symbol symbol =
         symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
 
