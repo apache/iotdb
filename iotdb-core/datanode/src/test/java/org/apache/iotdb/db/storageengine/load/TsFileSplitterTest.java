@@ -22,8 +22,12 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import com.sun.management.ThreadMXBean;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
@@ -48,6 +52,7 @@ import org.apache.tsfile.write.schema.Schema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.apache.tsfile.write.writer.tsmiterator.TSMIterator;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -55,12 +60,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TsFileSplitterTest {
 
@@ -90,6 +97,98 @@ public class TsFileSplitterTest {
       Assert.assertEquals(1, chunkDataList.size());
     } finally {
       Assert.assertTrue(sourceTsFile.delete());
+    }
+  }
+
+  @Test
+  public void testSplitAlignedChunkAcrossManyTimePartitionsDecodesEachPageOnce() throws Exception {
+    // One point per time partition in a single chunk group makes every value page span as many
+    // time partitions as the page holds points. Such a page must be decoded once and shared by the
+    // partitions that it covers: decoding it once per partition allocates one page-sized array per
+    // partition, i.e. O(points * partitions) objects, which exhausts the DataNode heap when a
+    // TsFile stores its points one time partition apart.
+    final int pointsPerPage = 1024;
+    final int pointCount = 2 * pointsPerPage;
+    final File sourceTsFile = new File("split-aligned-many-partitions-source.tsfile");
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final int originalPartitionSlotsLimit = config.getLoadTsFileSpiltPartitionMaxSize();
+    final int originalMaxPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    try {
+      config.setLoadTsFileSpiltPartitionMaxSize(pointCount + 1);
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pointsPerPage);
+      writeTableTsFileWithOnePointPerTimePartition(sourceTsFile, pointCount);
+
+      final AtomicInteger emittedChunkDataCount = new AtomicInteger();
+      final long allocatedBytes =
+          splitAndMeasureAllocatedBytes(sourceTsFile, emittedChunkDataCount);
+
+      Assert.assertEquals(pointCount, emittedChunkDataCount.get());
+      // Decoding the pages per partition too and recomputing the partition bounds per point both
+      // make this O(points * partitions) in allocations, which is hundreds of megabytes here.
+      Assert.assertTrue(
+          "splitting "
+              + pointCount
+              + " single-point time partitions allocated "
+              + allocatedBytes
+              + " bytes",
+          allocatedBytes < 128L * 1024 * 1024);
+    } finally {
+      config.setLoadTsFileSpiltPartitionMaxSize(originalPartitionSlotsLimit);
+      TSFileDescriptor.getInstance()
+          .getConfig()
+          .setMaxNumberOfPointsInPage(originalMaxPointsInPage);
+      if (sourceTsFile.exists()) {
+        Assert.assertTrue(sourceTsFile.delete());
+      }
+    }
+  }
+
+  private long splitAndMeasureAllocatedBytes(
+      final File sourceTsFile, final AtomicInteger emittedChunkDataCount) throws Exception {
+    final java.lang.management.ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+    Assume.assumeTrue(
+        "the JVM does not report the allocations of a thread",
+        threadMXBean instanceof ThreadMXBean);
+    final long allocatedBytesBefore =
+        ((ThreadMXBean) threadMXBean).getCurrentThreadAllocatedBytes();
+    new TsFileSplitter(
+            sourceTsFile,
+            tsFileData -> {
+              if (tsFileData instanceof ChunkData) {
+                emittedChunkDataCount.incrementAndGet();
+              }
+              return true;
+            })
+        .splitTsFileByDataPartition();
+    return ((ThreadMXBean) threadMXBean).getCurrentThreadAllocatedBytes() - allocatedBytesBefore;
+  }
+
+  private void writeTableTsFileWithOnePointPerTimePartition(final File tsFile, final int pointCount)
+      throws Exception {
+    if (tsFile.exists()) {
+      Assert.assertTrue(tsFile.delete());
+    }
+    final long baseTime =
+        TimePartitionUtils.getTimePartitionSlot(1_700_000_000_000L).getStartTime();
+    final long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
+
+    try (final TsFileIOWriter writer = new TsFileIOWriter(tsFile)) {
+      writer.setSchema(createSchema());
+      writer.startChunkGroup(new StringArrayDeviceID("table1", "tagA"));
+
+      final AlignedChunkWriterImpl chunkWriter =
+          new AlignedChunkWriterImpl(
+              Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64)));
+      for (int i = 0; i < pointCount; i++) {
+        final long time = baseTime + i * timePartitionInterval;
+        chunkWriter.getTimeChunkWriter().write(time);
+        chunkWriter.getValueChunkWriterByIndex(0).write(time, (long) i, false);
+      }
+      chunkWriter.writeToFileWriter(writer);
+
+      writer.endChunkGroup();
+      writer.endFile();
     }
   }
 

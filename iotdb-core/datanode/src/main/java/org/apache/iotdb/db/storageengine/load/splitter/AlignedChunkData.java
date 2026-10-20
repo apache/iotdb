@@ -398,6 +398,13 @@ public class AlignedChunkData implements ChunkData {
 
   private void writePageBuffersToWriter(final AlignedChunkWriterImpl writer)
       throws IOException, PageException {
+    // The partition bounds do not depend on the point and TimePartitionUtils derives them with
+    // BigInteger arithmetic, so resolve them once per ChunkData instead of once per buffered point:
+    // a page that covers thousands of time partitions otherwise costs O(points * partitions) bound
+    // computations and the matching allocation churn. The end time is the overflow-safe one, so the
+    // last representable partition still keeps its upper bound.
+    final long partitionStart = timePartitionSlot.getStartTime();
+    final long partitionEnd = TimePartitionUtils.getTimePartitionEndTime(partitionStart);
     for (final PageBuffer page : pageBuffers) {
       if (!page.needDecode) {
         // Skip empty pages: an aligned series stores an all-null column as an empty page, and
@@ -416,7 +423,7 @@ public class AlignedChunkData implements ChunkData {
       if (page.valueBatch == null) {
         boolean hasPoint = false;
         for (final long time : page.timeBatch) {
-          if (!isInCurrentTimePartition(time)) {
+          if (time < partitionStart || time > partitionEnd) {
             continue;
           }
           writer.writeTime(time);
@@ -429,11 +436,12 @@ public class AlignedChunkData implements ChunkData {
         final TSDataType dataType = chunkHeaderList.get(page.chunkIndex).getDataType();
         boolean hasPoint = false;
         for (int i = 0; i < page.timeBatch.length; i++) {
-          if (!isInCurrentTimePartition(page.timeBatch[i])) {
+          final long time = page.timeBatch[i];
+          if (time < partitionStart || time > partitionEnd) {
             continue;
           }
           writeValueToAlignedChunkWriter(
-              writer, page.timeBatch[i], page.valueBatch[i], dataType, page.chunkIndex - 1);
+              writer, time, page.valueBatch[i], dataType, page.chunkIndex - 1);
           hasPoint = true;
         }
         if (hasPoint) {
@@ -441,15 +449,6 @@ public class AlignedChunkData implements ChunkData {
         }
       }
     }
-  }
-
-  protected boolean isInCurrentTimePartition(final long time) {
-    final long partitionStart = timePartitionSlot.getStartTime();
-    // Use the overflow-safe end time. A naive "start + interval - 1" wraps around for the last
-    // representable partition (and equals the start when interval == 1), which would either drop
-    // the upper bound or exclude points that belong to the current partition.
-    final long partitionEnd = TimePartitionUtils.getTimePartitionEndTime(partitionStart);
-    return time >= partitionStart && time <= partitionEnd;
   }
 
   private void writeValueToAlignedChunkWriter(
