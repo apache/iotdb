@@ -40,8 +40,10 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -370,7 +372,7 @@ public class ProcedureExecutor<Env> {
    *
    * @param proc procedure
    */
-  private void executeProcedure(Procedure<Env> proc) {
+  private void executeProcedure(Procedure<Env> proc) throws InterruptedException {
     if (proc.isFinished()) {
       LOG.debug(ProcedureMessages.IS_ALREADY_FINISHED, proc);
       return;
@@ -689,7 +691,7 @@ public class ProcedureExecutor<Env> {
    * @return lock state
    */
   private LockStateResult<Env> executeRootStackRollback(
-      Long rootProcId, RootProcedureStack<Env> procedureStack) {
+      Long rootProcId, RootProcedureStack<Env> procedureStack) throws InterruptedException {
     Procedure<Env> rootProcedure = procedures.get(rootProcId);
     ProcedureException exception = rootProcedure.getException();
     if (exception == null) {
@@ -700,12 +702,31 @@ public class ProcedureExecutor<Env> {
           () -> store.update(rootProcedure), "root procedure rollback");
     }
     List<Procedure<Env>> subprocStack = procedureStack.getSubproceduresStack();
+    // Decide which procedures must keep the states they have executed before anything is rolled
+    // back: the decision reads the state history, which the rollback itself shrinks. Identity is
+    // used because procedures override equals with the data of the operation they run.
+    final Set<Procedure<Env>> proceduresKeepingTheirStates =
+        Collections.newSetFromMap(new IdentityHashMap<>());
+    for (Procedure<Env> procedure : subprocStack) {
+      // A null slot is a procedure whose record was deleted before the snapshot this stack was
+      // rebuilt from, so there is nothing left to roll back for it.
+      if (procedure != null && !procedure.isSuccess() && !procedure.isRollbackSupported()) {
+        proceduresKeepingTheirStates.add(procedure);
+      }
+    }
     int stackTail = subprocStack.size();
     while (stackTail-- > 0) {
       Procedure<Env> procedure = subprocStack.get(stackTail);
+      if (procedure == null) {
+        continue;
+      }
       if (procedure.isSuccess()) {
         subprocStack.remove(stackTail);
         cleanupAfterRollback(procedure);
+        continue;
+      }
+      if (proceduresKeepingTheirStates.contains(procedure)) {
+        // Finished below, once the rest of the stack has been rolled back.
         continue;
       }
       ProcedureLockState lockState = acquireLock(procedure);
@@ -730,10 +751,107 @@ public class ProcedureExecutor<Env> {
       }
     }
 
+    if (!proceduresKeepingTheirStates.isEmpty()) {
+      // The children go first: releasing a child's lock writes its record back, which has to be
+      // covered by the root's cleanup. The root is finished last so that no write of a child
+      // follows the write which persists the root as finished.
+      for (Procedure<Env> procedure : proceduresKeepingTheirStates) {
+        if (procedure.hasParent()) {
+          finishWithoutRollback(procedure);
+        }
+      }
+      for (Procedure<Env> procedure : proceduresKeepingTheirStates) {
+        if (!procedure.hasParent()) {
+          finishWithoutRollback(procedure);
+        }
+      }
+      subprocStack.removeIf(proceduresKeepingTheirStates::contains);
+    }
+
     LOG.info(
         ProcedureMessages.ROLLED_BACK_TIME_DURATION_IS, rootProcedure, rootProcedure.elapsedTime());
     rootProcedureCleanup(rootProcedure);
     return new LockStateResult<>(ProcedureLockState.LOCK_ACQUIRED, rootProcedure);
+  }
+
+  /**
+   * Finishes a procedure without undoing any of the states it has executed. The failure is still
+   * reported, as the operation the procedure was part of did not complete; what is dropped is only
+   * the bookkeeping of the rollback, so that neither this rollback nor the one a new leader
+   * recovers touches this procedure again.
+   */
+  private void finishWithoutRollback(final Procedure<Env> procedure) throws InterruptedException {
+    // The unlock persists the procedure through doReleaseLock(). It is done first, while the
+    // procedure is neither marked finished nor stripped of its state history, so that a snapshot
+    // taken right after this write is still a state recovery resumes. Forcing the release matters
+    // because the procedure is not finished yet, so releaseLock() would otherwise keep the lock of
+    // procedures which hold it across steps.
+    releaseLockIfHeld(procedure);
+    if (procedure.hasParent()) {
+      // Mark the procedure finished before dropping its state history, so that a worker which
+      // picks it up concurrently returns at the isFinished() check instead of rolling it back.
+      if (!procedure.isSuccess()) {
+        procedure.setState(ProcedureState.ROLLEDBACK);
+      }
+      procedure.abandonRollback();
+      try {
+        store.delete(procedure.getProcId());
+        // do not remove this procedure when exception occurred
+        procedures.remove(procedure.getProcId());
+      } catch (final Exception e) {
+        LOG.warn(ProcedureMessages.FAILED_TO_DELETE_PROCEDURE_ON_ROLLBACK, e);
+      }
+    } else {
+      // A child which never executed has no rollback step and is not visited above, so its record
+      // goes with the ones of the children which were.
+      // Every child record has to be gone before the root may be persisted as finished: a snapshot
+      // holding a finished root beside a child record makes recover() fail on that child. Deleting
+      // is idempotent, so it is retried until durable.
+      final long[] childProcIds = rollbackStack.get(procedure.getProcId()).getSubprocedureIds();
+      for (final long childProcId : childProcIds) {
+        RetryUtils.executeWithEndlessBackoffRetry(
+            () -> store.delete(childProcId),
+            ProcedureMessages.LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1);
+        // The retry helper also returns on interruption. Abort the entire rollback before
+        // marking the root finished or letting the caller clean it up.
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException();
+        }
+      }
+      if (!procedure.isSuccess()) {
+        procedure.setState(ProcedureState.ROLLEDBACK);
+      }
+      procedure.abandonRollback();
+      // The stack indexes and the states just dropped are persisted here, so that the rollback
+      // recovered by a new leader leaves this procedure out. Endless retry since this step is not
+      // idempotent.
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> store.update(procedure),
+          ProcedureMessages.LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354);
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException();
+      }
+    }
+    procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
+    LOG.info(
+        ProcedureMessages
+            .LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9,
+        procedure);
+  }
+
+  /**
+   * The rollback loop skipped acquireLock() for procedures finished without rollback, so a lock
+   * restored by restoreLock() on load is still recorded in lockedWhenLoading instead of locked.
+   * Finish that bookkeeping and release the lock here: rootProcedureCleanup() releases only the
+   * locks that hasLock() reports, and a procedure finished without rollback must not keep holding
+   * its lock.
+   */
+  private void releaseLockIfHeld(final Procedure<Env> procedure) {
+    if (procedure.hasLock() || procedure.isLockedWhenLoading()) {
+      if (acquireLock(procedure) == ProcedureLockState.LOCK_ACQUIRED) {
+        releaseLock(procedure, true);
+      }
+    }
   }
 
   private ProcedureLockState acquireLock(Procedure<Env> proc) {

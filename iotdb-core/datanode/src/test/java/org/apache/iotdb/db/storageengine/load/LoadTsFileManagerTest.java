@@ -20,15 +20,22 @@
 package org.apache.iotdb.db.storageengine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -634,10 +641,8 @@ public class LoadTsFileManagerTest {
   }
 
   @Test
-  public void testAbortedConsensusTaskReleasesStagedFilesWhenNoWatermarkIsReported()
-      throws Exception {
-    // Without a consensus watermark (single replica) nothing can read the staged bytes back, so the
-    // directory of a finished task is deleted right away.
+  public void testAbortedConsensusTaskReleasesStagedFilesWithoutAWAL() throws Exception {
+    // Protocols without a V1 WAL do not expand staged references from the WAL.
     final String loadId = "aborted-load";
     final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
     final List<LoadTsFileConsensusNode.PieceRef> refs =
@@ -660,8 +665,8 @@ public class LoadTsFileManagerTest {
     try (final WALNode walNode =
         new WALNode("load-retention-test", new File(tempDir, "wal").getAbsolutePath())) {
       Mockito.when(dataRegion.getWALNode()).thenReturn(Optional.of(walNode));
-      // The watermark lags behind the command, so a follower may still need the staged bytes.
-      walNode.setSafelyDeletedSearchIndex(5L);
+      // Until V1 reports its first watermark, a follower may still need the staged bytes.
+      walNode.setSafelyDeletedSearchIndex(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
 
       final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
       final String loadId = "retained-load";
@@ -681,6 +686,10 @@ public class LoadTsFileManagerTest {
       final File progress = LoadTsFileProgress.progressFileFor(staged);
       assertTrue(progress.isFile());
       assertNotNull(LoadTsFileProgress.readTerminal(progress));
+
+      // A reported watermark that still lags behind the command must keep the staged bytes too.
+      walNode.setSafelyDeletedSearchIndex(5L);
+      assertTrue(staged.isFile());
 
       // Once every follower got past the command, the directory is released.
       walNode.setSafelyDeletedSearchIndex(10L);
@@ -706,6 +715,27 @@ public class LoadTsFileManagerTest {
 
     assertFalse(taskDir.exists());
     assertFalse(manager.prepare(prepareNode("finished-load"), Collections.emptyMap()));
+  }
+
+  @Test
+  public void testRecoveredFinishedTaskWaitsForTheFirstWatermark() throws Exception {
+    useWatermarkWALNode(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
+    final File taskDir = new File(tempDir, "root.load_manager_test-0/recovered-finished-load");
+    assertTrue(taskDir.mkdirs());
+    final File stagedFile = new File(taskDir, "123.tsfile");
+    Files.write(stagedFile.toPath(), new byte[] {1, 2, 3});
+    new LoadTsFileProgress(stagedFile).recordTerminal(LoadTsFileConsensusOp.ABORT, 7L);
+
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      assertTrue("a restart must keep bytes until replication is confirmed", stagedFile.isFile());
+      assertFalse(manager.prepare(prepareNode(taskDir.getName()), Collections.emptyMap()));
+
+      advanceWatermark(7L);
+      assertFalse(taskDir.exists());
+    } finally {
+      manager.stop();
+    }
   }
 
   @Test
@@ -775,10 +805,84 @@ public class LoadTsFileManagerTest {
   }
 
   @Test
+  public void testIoTConsensusV2CommitUsesReceivingNodeProgress() throws Exception {
+    assertCommittedProgress(true, config.getDataNodeId() + 1);
+  }
+
+  @Test
+  public void testIoTConsensusV2CommitAdvancesPreparedProgress() throws Exception {
+    assertCommittedProgress(true, config.getDataNodeId());
+  }
+
+  @Test
+  public void testOtherConsensusCommitPreservesCoordinatorProgress() throws Exception {
+    assertCommittedProgress(false, config.getDataNodeId() + 1);
+  }
+
+  private void assertCommittedProgress(final boolean useIoTConsensusV2, final int coordinatorNodeId)
+      throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(useIoTConsensusV2);
+    final String loadId = "load-progress";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      emulateStagedFileImport();
+      final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+      manager.writePiece(piece);
+      final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+      final RecoverProgressIndex preparedLocalProgress =
+          PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      final ProgressIndex coordinatorProgress =
+          new RecoverProgressIndex(
+              coordinatorNodeId,
+              preparedLocalProgress.getDataNodeId2LocalIndex().get(config.getDataNodeId()));
+      assertTrue(
+          manager.prepare(
+              prepareNode(loadId),
+              Collections.singletonMap(new TTimePartitionSlot(0L), coordinatorProgress)));
+
+      // A local write after PREPARE must precede the progress assigned when the file is imported.
+      final ProgressIndex interveningWrite =
+          PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      final LoadTsFileConsensusNode commit = commitNode(loadId);
+      assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+
+      final TsFileResource imported =
+          new TsFileResource(new File(new File(tempDir, "data"), staged.getName()));
+      imported.deserialize();
+      imported.setStatus(TsFileResourceStatus.NORMAL);
+      final ProgressIndex persistedProgress = imported.getMaxProgressIndexAfterClose();
+      final PipeTsFileInsertionEvent event = Mockito.mock(PipeTsFileInsertionEvent.class);
+      Mockito.when(event.forceGetProgressIndex()).thenReturn(persistedProgress);
+      assertEquals(
+          "A V2 LOAD must remain eligible for consensus replication after resource recovery",
+          useIoTConsensusV2,
+          IoTConsensusV2Processor.isShouldReplicate(event));
+      if (useIoTConsensusV2) {
+        assertTrue(persistedProgress.isAfter(interveningWrite));
+      } else {
+        assertEquals(coordinatorProgress, persistedProgress);
+      }
+    } finally {
+      manager.stop();
+      LoadConsensusCompat.setIoTConsensusV2ForTest(null);
+    }
+  }
+
+  @Test
   public void testCommitKeepsTheStagedBytesWhileAReplicaMayStillNeedThem() throws Exception {
     // The watermark lags behind the COMMIT command, so a replica that catches up from this node's
     // WAL still has to expand the pieces of the task from the staging directory.
-    useWatermarkWALNode(5L);
+    assertCommitKeepsTheStagedBytes(5L);
+  }
+
+  @Test
+  public void testCommitKeepsTheStagedBytesBeforeTheFirstWatermark() throws Exception {
+    assertCommitKeepsTheStagedBytes(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
+  }
+
+  private void assertCommitKeepsTheStagedBytes(final long safelyDeletedSearchIndex)
+      throws Exception {
+    useWatermarkWALNode(safelyDeletedSearchIndex);
     emulateStagedFileImport();
 
     final String loadId = "committed-load";

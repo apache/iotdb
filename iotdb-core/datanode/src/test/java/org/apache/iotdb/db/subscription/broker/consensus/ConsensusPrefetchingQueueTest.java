@@ -1197,11 +1197,12 @@ public class ConsensusPrefetchingQueueTest {
     final double previousQueueRatio = memoryManager.getMaxMemoryRatioForQueue();
     final AtomicLongMemoryBlock testMemoryBlock =
         new AtomicLongMemoryBlock("SubscriptionPendingTest", null, 100L);
+    final AtomicInteger firstQueueWakeups = new AtomicInteger();
     final BlockingQueue<IndexedConsensusRequest> firstQueue =
         (BlockingQueue<IndexedConsensusRequest>)
             constructor.newInstance(
                 8,
-                (Runnable) () -> {},
+                (Runnable) () -> firstQueueWakeups.incrementAndGet(),
                 (Supplier<SubscriptionQueueRejectionReason>)
                     () -> SubscriptionQueueRejectionReason.NONE,
                 (Consumer<SubscriptionQueueRejectionReason>) reason -> {});
@@ -1218,12 +1219,14 @@ public class ConsensusPrefetchingQueueTest {
     try {
       final IndexedConsensusRequest sharedRequest = createSizedRequest(1L, 10L, 30);
       assertTrue(firstQueue.offer(sharedRequest));
+      assertEquals(1, firstQueueWakeups.get());
       assertTrue(secondQueue.offer(sharedRequest));
       assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
       assertEquals(40L, retainedBytesMethod.invoke(firstQueue));
       assertEquals(40L, retainedBytesMethod.invoke(secondQueue));
 
       assertFalse(firstQueue.offer(createSizedRequest(2L, 10L, 30)));
+      assertEquals(2, firstQueueWakeups.get());
       assertEquals(
           SubscriptionQueueRejectionReason.CONSENSUS_REQUEST_MEMORY_LIMIT,
           ((SubscriptionQueueAdmission) firstQueue).getLastRejectionReason());

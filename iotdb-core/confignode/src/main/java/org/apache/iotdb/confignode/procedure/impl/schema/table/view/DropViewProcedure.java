@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
@@ -51,6 +52,23 @@ public class DropViewProcedure extends DropTableProcedure {
         table.getTableName(),
         null,
         new TUpdateTree2TableView(TreeToTableViewTrieOperationType.REMOVE.getOperationType()));
+  }
+
+  /**
+   * A view holds no data, so the procedure goes straight from PRE_DELETE to DROP_TABLE. The view is
+   * removed from the ConfigNode once DROP_TABLE has completed; before that it can still be
+   * restored, so the procedure is not rolled back from COMMIT_DELETE on.
+   */
+  @Override
+  protected boolean isRollbackSupported(final DropTableState state) {
+    switch (state) {
+      case CHECK_AND_INVALIDATE_TABLE:
+      case PRE_DELETE:
+      case DROP_TABLE:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

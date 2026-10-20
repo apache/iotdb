@@ -88,6 +88,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -125,6 +126,7 @@ public class Session implements ISession {
           new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
+  private final List<String> initialNodeUrls;
   protected String username;
   protected String password;
   protected boolean useEncryptedPassword;
@@ -367,6 +369,8 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
+    this.initialNodeUrls =
+        Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -434,8 +438,9 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
-    nodeUrls = shuffleNodeUrls(nodeUrls);
+    nodeUrls = shuffleNodeUrls(new ArrayList<>(nodeUrls));
     this.nodeUrls = nodeUrls;
+    this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -451,11 +456,13 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = shuffleNodeUrls(new ArrayList<>(builder.nodeUrls));
+      this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
       this.enableQueryRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+      this.initialNodeUrls =
+          Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
       this.enableQueryRedirection = builder.enableRedirection;
     }
     this.enableThriftRpcCompaction = builder.isThriftRpcCompactionEnabled;
@@ -540,6 +547,7 @@ public class Session implements ISession {
       this.availableNodes =
           NodesSupplier.createNodeSupplier(
               getNodeUrls(),
+              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
               executorService,
               username,
               password,
@@ -556,7 +564,10 @@ public class Session implements ISession {
               enableRPCCompaction,
               version.toString());
     } else {
-      this.availableNodes = new DummyNodesSupplier(getNodeUrls());
+      // A static supplier has no separate seed tier. Keep every configured address after reopen.
+      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
     }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
@@ -599,11 +610,9 @@ public class Session implements ISession {
   }
 
   private List<TEndPoint> getNodeUrls() {
-    if (defaultEndPoint != null) {
-      return Collections.singletonList(defaultEndPoint);
-    } else {
-      return SessionUtils.parseSeedNodeUrls(nodeUrls);
-    }
+    return defaultEndPoint == null
+        ? SessionUtils.parseSeedNodeUrls(initialNodeUrls)
+        : Collections.singletonList(defaultEndPoint.deepCopy());
   }
 
   @Override
@@ -4491,6 +4500,10 @@ public class Session implements ISession {
       return this;
     }
 
+    /**
+     * Configure recovery seeds using the same host/IP form as each DataNode's dn_rpc_address.
+     * Hostname aliases and IP literals are not DNS-deduplicated during recovery.
+     */
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;

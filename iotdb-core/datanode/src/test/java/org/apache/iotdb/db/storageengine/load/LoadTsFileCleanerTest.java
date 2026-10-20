@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
@@ -183,6 +184,47 @@ public class LoadTsFileCleanerTest {
     } finally {
       manager.stop();
       config.setLoadCleanupTaskIdleTimeoutSeconds(900L);
+    }
+  }
+
+  @Test
+  public void testAFinishedTaskWaitsForTheFirstWatermark() throws Exception {
+    final String loadId = "unreported-watermark-task";
+    final File taskDir = new File(tempDir, loadId);
+    Assert.assertTrue(taskDir.mkdirs());
+    stageOneChunk(taskDir, 5L);
+    final LoadTsFileCleaner cleaner = LoadTsFileCleaner.getInstance();
+    cleaner.register(loadId, dataRegion, taskDir, 7L, LoadTsFileConsensusOp.ABORT);
+
+    walWatermark.set(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
+    cleaner.sweepRegisteredTasks();
+    Assert.assertTrue("an unreported watermark does not confirm replication", taskDir.exists());
+
+    walWatermark.set(5L);
+    cleaner.sweepRegisteredTasks();
+    Assert.assertTrue("the terminal command is not replicated yet", taskDir.exists());
+
+    walWatermark.set(7L);
+    cleaner.sweepRegisteredTasks();
+    Assert.assertFalse("the terminal command is replicated", taskDir.exists());
+  }
+
+  @Test
+  public void testIoTConsensusV2DoesNotWaitForAWALWatermark() throws Exception {
+    final String loadId = "v2-finished-task";
+    final File taskDir = new File(tempDir, loadId);
+    Assert.assertTrue(taskDir.mkdirs());
+    stageOneChunk(taskDir, 5L);
+    final LoadTsFileCleaner cleaner = LoadTsFileCleaner.getInstance();
+    cleaner.register(loadId, dataRegion, taskDir, 7L, LoadTsFileConsensusOp.ABORT);
+    walWatermark.set(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
+
+    LoadConsensusCompat.setIoTConsensusV2ForTest(Boolean.TRUE);
+    try {
+      cleaner.sweepRegisteredTasks();
+      Assert.assertFalse("V2 does not expand staged references from the WAL", taskDir.exists());
+    } finally {
+      LoadConsensusCompat.setIoTConsensusV2ForTest(null);
     }
   }
 
