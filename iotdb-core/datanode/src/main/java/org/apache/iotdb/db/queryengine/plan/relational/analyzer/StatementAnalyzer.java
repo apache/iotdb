@@ -1410,7 +1410,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN);
       queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override
@@ -1437,7 +1439,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
       queryContext.setExplainOutputFormat(node.getOutputFormat());
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override

@@ -106,6 +106,66 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
+  public void testExplainCopyTable() throws Exception {
+    assertExplainCopyToContainsNodes("explain", "table1");
+  }
+
+  @Test
+  public void testExplainCopyQueryJson() throws Exception {
+    assertExplainCopyToContainsNodes(
+        "explain (format json)", "(select * from table1 order by time desc limit 3)");
+  }
+
+  @Test
+  public void testExplainAnalyzeCopyTable() throws Exception {
+    assertExplainCopyToContainsNodes("explain analyze", "table1(time, tag1, tag2, s1, s2)");
+  }
+
+  @Test
+  public void testExplainAnalyzeCopyQueryJson() throws Exception {
+    assertExplainCopyToContainsNodes(
+        "explain analyze verbose (format json)",
+        "(select * from table1 order by time desc limit 3)");
+  }
+
+  private void assertExplainCopyToContainsNodes(String explainPrefix, String source)
+      throws Exception {
+    File targetDirectory = Files.createTempDirectory("iotdb-explain-copy-to").toFile();
+    File targetFile = new File(targetDirectory, "result.tsfile");
+    String targetPath = targetFile.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+    String exportDirectoryPath =
+        targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      session.executeNonQueryStatement(
+          "set configuration \"copy_to_allowed_export_dirs\"='" + exportDirectoryPath + "'");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              explainPrefix
+                  + " copy "
+                  + source
+                  + " to '"
+                  + targetPath
+                  + "' (memory_threshold 1000000)")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        StringBuilder output = new StringBuilder();
+        while (iterator.next()) {
+          output.append(iterator.getString(1)).append('\n');
+        }
+        String result = output.toString();
+        Assert.assertTrue(result, result.contains("TableScan"));
+        Assert.assertTrue(result, result.contains("CopyTo"));
+      } finally {
+        session.executeNonQueryStatement("set configuration \"copy_to_allowed_export_dirs\"=''");
+      }
+    } finally {
+      Files.deleteIfExists(targetFile.toPath());
+      Files.deleteIfExists(targetDirectory.toPath());
+    }
+  }
+
+  @Test
   public void testCopyTable()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =

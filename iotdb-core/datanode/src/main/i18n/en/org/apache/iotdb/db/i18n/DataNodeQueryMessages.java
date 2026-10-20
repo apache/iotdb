@@ -3938,4 +3938,11 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
 
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "TargetFile: %s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "Format: %s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "TargetTable: %s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "TimeColumn: %s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
 }

@@ -254,7 +254,7 @@ public class TableLogicalPlanner {
       return createRelationPlan(analysis, (Query) statement);
     }
     if (statement instanceof Explain) {
-      return createRelationPlan(analysis, (Query) ((Explain) statement).getStatement());
+      return planStatementWithoutOutput(analysis, ((Explain) statement).getStatement());
     }
     if (statement instanceof WrappedStatement) {
       return createRelationPlan(analysis, ((WrappedStatement) statement));
@@ -353,14 +353,14 @@ public class TableLogicalPlanner {
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
     if (plan.getRoot() instanceof CopyToNode) {
+      outputs.addAll(plan.getRoot().getOutputSymbols());
       for (ColumnHeader columnHeader :
           ((CopyToNode) plan.getRoot()).getCopyToOptions().getRespColumnHeaders()) {
-        outputs.add(new Symbol(columnHeader.getColumnName()));
         names.add(columnHeader.getColumnName());
         columnHeaders.add(columnHeader);
       }
-    } else if (queryContext.isExplainAnalyze() && !queryContext.isInnerTriggeredQuery()) {
-      outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
+    } else if (plan.getRoot() instanceof ExplainAnalyzeNode) {
+      outputs.addAll(plan.getRoot().getOutputSymbols());
       names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
       columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
     } else {
@@ -629,7 +629,7 @@ public class TableLogicalPlanner {
 
   private RelationPlan planExplainAnalyze(final ExplainAnalyze statement, final Analysis analysis) {
     RelationPlan originalQueryPlan =
-        createRelationPlan(analysis, (Query) (statement.getStatement()));
+        planStatementWithoutOutput(analysis, statement.getStatement());
     Symbol symbol =
         symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
 
@@ -642,7 +642,9 @@ public class TableLogicalPlanner {
             queryContext.getTimeOut(),
             symbol,
             // recording permittedOutputs of ExplainAnalyzeNode's child
-            getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan),
+            statement.getStatement() instanceof CopyTo
+                ? originalQueryPlan.getRoot().getOutputSymbols()
+                : getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan),
             statement.getOutputFormat());
     return new RelationPlan(
         newRoot,
@@ -689,6 +691,12 @@ public class TableLogicalPlanner {
       analysis.setSortNode(true);
     }
 
+    List<Symbol> outputSymbols = new ArrayList<>();
+    for (ColumnHeader columnHeader : statement.getOptions().getRespColumnHeaders()) {
+      outputSymbols.add(
+          symbolAllocator.newSymbol(
+              columnHeader.getColumnName(), TypeFactory.getType(columnHeader.getColumnType())));
+    }
     PlanNode newRoot =
         new CopyToNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -699,7 +707,8 @@ public class TableLogicalPlanner {
             getChildPermittedOutputs(
                 analysis, statement.getQueryStatement(), innerQueryRelationPlan),
             innerQueryRespDatasetHeader,
-            outputNode.getOutputSymbols());
+            outputNode.getOutputSymbols(),
+            outputSymbols);
     return new RelationPlan(
         newRoot,
         innerQueryRelationPlan.getScope(),

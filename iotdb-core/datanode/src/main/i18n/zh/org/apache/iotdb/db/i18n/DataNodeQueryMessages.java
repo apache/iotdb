@@ -4694,4 +4694,11 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
 
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "目标文件：%s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "格式：%s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "目标表：%s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "时间列：%s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TAG 列：%s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "内存阈值：%s";
 }
