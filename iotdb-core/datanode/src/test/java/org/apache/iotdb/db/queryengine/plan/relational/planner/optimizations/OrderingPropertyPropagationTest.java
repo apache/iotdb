@@ -447,6 +447,34 @@ public class OrderingPropertyPropagationTest {
   }
 
   @Test
+  public void testCopyToWithoutFromKeepsRegularSort() {
+    for (String prefix : List.of("", "EXPLAIN ", "EXPLAIN ANALYZE ")) {
+      PlanTester tester = new PlanTester();
+      PlanNode logical =
+          tester
+              .createPlan(
+                  prefix
+                      + "COPY (SELECT CAST(1 AS TIMESTAMP) AS time, 1 AS v)"
+                      + " TO 'constant.tsfile' (MEMORY_THRESHOLD 1000000)")
+              .getRootNode();
+      CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+      assertFalse(((CopyToTsFileOptions) copyTo.getCopyToOptions()).isGenerateNewTimeColumn());
+      List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+      assertEquals(1, sorts.size());
+      assertCopyToOrdering(copyTo, sorts.get(0).getOrderingScheme(), "time");
+      assertTrue(findNodes(logical, StreamSortNode.class).isEmpty());
+      assertTrue(findNodes(logical, DeviceTableScanNode.class).isEmpty());
+
+      CopyToNode distributedCopyTo = onlyCopyTo(findNodes(tester, CopyToNode.class));
+      sorts = findNodes(tester, SortNode.class);
+      assertEquals(1, sorts.size());
+      assertCopyToOrdering(distributedCopyTo, sorts.get(0).getOrderingScheme(), "time");
+      assertTrue(findNodes(tester, StreamSortNode.class).isEmpty());
+      assertTrue(findNodes(tester, DeviceTableScanNode.class).isEmpty());
+    }
+  }
+
+  @Test
   public void testCopyToSortUsesStreamingScanAndDistributedMerge() {
     for (String source :
         List.of(
