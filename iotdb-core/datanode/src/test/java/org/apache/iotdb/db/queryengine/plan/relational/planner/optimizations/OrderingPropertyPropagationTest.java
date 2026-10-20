@@ -540,8 +540,7 @@ public class OrderingPropertyPropagationTest {
     List<MergeSortNode> merges = findNodes(tester, MergeSortNode.class);
     assertFalse(merges.isEmpty());
     for (MergeSortNode merge : merges) {
-      assertCopyToOrdering(
-          distributedCopyTo, merge.getOrderingScheme(), "k2", "k1", "k3", "t");
+      assertCopyToOrdering(distributedCopyTo, merge.getOrderingScheme(), "k2", "k1", "k3", "t");
     }
     assertTrue(findNodes(tester, SortNode.class).isEmpty());
   }
