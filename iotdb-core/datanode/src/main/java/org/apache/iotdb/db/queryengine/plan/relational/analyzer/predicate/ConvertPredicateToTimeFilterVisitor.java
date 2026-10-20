@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredi
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
@@ -39,6 +40,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
@@ -70,14 +72,14 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     checkArgument(valueList instanceof InListExpression);
     List<Expression> values = ((InListExpression) valueList).getValues();
     for (Expression value : values) {
-      checkArgument(value instanceof LongLiteral);
+      checkArgument(isTimeLiteral(value));
     }
     if (values.size() == 1) {
       return TimeFilterApi.eq(getLongValue(values.get(0)));
     }
     Set<Long> longValues = new HashSet<>();
     for (Expression value : values) {
-      longValues.add(((LongLiteral) value).getParsedValue());
+      longValues.add(getLongValue(value));
     }
     return TimeFilterApi.in(longValues);
   }
@@ -317,6 +319,23 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
   }
 
   public static long getLongValue(Expression expression) {
+    if (isTimestampLiteral(expression)) {
+      return Long.parseLong(((GenericLiteral) expression).getValue());
+    }
     return ((LongLiteral) expression).getParsedValue();
+  }
+
+  private static boolean isTimeLiteral(Expression expression) {
+    return expression instanceof LongLiteral || isTimestampLiteral(expression);
+  }
+
+  // A constant TIMESTAMP expression, such as CAST(1000 AS TIMESTAMP), is folded into a
+  // GenericLiteral whose value is the timestamp as a long in the current precision.
+  private static boolean isTimestampLiteral(Expression expression) {
+    return expression instanceof GenericLiteral
+        && TimestampType.TIMESTAMP
+            .getTypeEnum()
+            .name()
+            .equals(((GenericLiteral) expression).getType());
   }
 }
