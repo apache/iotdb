@@ -31,9 +31,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +48,8 @@ public class SystemInfoTest {
   private DataRegionInfo dataRegionInfo;
   private TsFileProcessor currentProcessor;
   private TsFileProcessor largerProcessor;
+  private ExecutorService originalFlushSubmitter;
+  private ExecutorService flushSubmitter;
 
   @Before
   public void setUp() throws Exception {
@@ -51,13 +58,19 @@ public class SystemInfoTest {
     setMemoryThreshold("memorySizeForMemtable", 1000L);
     setMemoryThreshold("FLUSH_THRESHOLD", 500.0);
     setMemoryThreshold("REJECT_THRESHOLD", 800.0);
+    Field field = SystemInfo.class.getDeclaredField("flushTaskSubmitThreadPool");
+    field.setAccessible(true);
+    originalFlushSubmitter = (ExecutorService) field.get(systemInfo);
+    flushSubmitter = mock(ExecutorService.class);
+    field.set(systemInfo, flushSubmitter);
 
     DataRegion dataRegion = mock(DataRegion.class);
     when(dataRegion.getDatabaseName()).thenReturn("root.test");
     dataRegionInfo = new DataRegionInfo(dataRegion);
     currentProcessor = mock(TsFileProcessor.class);
     largerProcessor = mock(TsFileProcessor.class);
-    when(currentProcessor.getWorkMemTable()).thenReturn(mock(IMemTable.class));
+    mockWorkMemTable(currentProcessor);
+    mockWorkMemTable(largerProcessor);
     when(currentProcessor.getWorkMemTableRamCost()).thenReturn(100L);
     when(largerProcessor.getWorkMemTableRamCost()).thenReturn(600L);
     dataRegionInfo.initTsFileProcessorInfo(currentProcessor);
@@ -65,7 +78,8 @@ public class SystemInfoTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws Exception {
+    setMemoryThreshold("flushTaskSubmitThreadPool", originalFlushSubmitter);
     systemInfo.close();
     systemInfo.loadWriteMemory();
   }
@@ -89,6 +103,83 @@ public class SystemInfoTest {
 
     Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
     verify(currentProcessor).setWorkMemTableShouldFlush();
+  }
+
+  @Test
+  public void testRepeatedReportsSubmitEachMemtableOnce() throws Exception {
+    dataRegionInfo.addStorageGroupMemCost(900);
+
+    for (int i = 0; i < 10; i++) {
+      Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+    }
+    Assert.assertTrue(systemInfo.isRejected());
+    verify(currentProcessor).setWorkMemTableShouldFlush();
+    verify(largerProcessor).setWorkMemTableShouldFlush();
+    verify(flushSubmitter, times(2)).submit(any(Runnable.class));
+  }
+
+  @Test
+  public void testRepeatedReportsForFirstTabletSubmitOnce() throws Exception {
+    when(currentProcessor.getWorkMemTableRamCost()).thenReturn(0L);
+    dataRegionInfo.addStorageGroupMemCost(900);
+
+    for (int i = 0; i < 10; i++) {
+      Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+    }
+    verify(currentProcessor).setWorkMemTableShouldFlush();
+    verify(flushSubmitter, times(2)).submit(any(Runnable.class));
+  }
+
+  @Test
+  public void testNewMemtableCanBeScheduledAfterPreviousFlush() throws Exception {
+    dataRegionInfo.addStorageGroupMemCost(900);
+    Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+
+    mockWorkMemTable(currentProcessor);
+    Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+    verify(currentProcessor, times(2)).setWorkMemTableShouldFlush();
+    verify(largerProcessor).setWorkMemTableShouldFlush();
+    verify(flushSubmitter, times(3)).submit(any(Runnable.class));
+  }
+
+  @Test
+  public void testMarkedCurrentProcessorCannotReachHardMemoryLimit() throws Exception {
+    dataRegionInfo.addStorageGroupMemCost(900);
+    Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+    dataRegionInfo.addStorageGroupMemCost(100);
+
+    try {
+      systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor);
+      Assert.fail("Expected WriteProcessRejectException");
+    } catch (WriteProcessRejectException expected) {
+      Assert.assertTrue(systemInfo.isRejected());
+      verify(currentProcessor).setWorkMemTableShouldFlush();
+      verify(flushSubmitter, times(2)).submit(any(Runnable.class));
+    }
+  }
+
+  @Test
+  public void testNoCurrentMemtableCannotBypassRejection() throws Exception {
+    when(currentProcessor.getWorkMemTable()).thenReturn(null);
+    when(currentProcessor.getWorkMemTableRamCost()).thenReturn(0L);
+    dataRegionInfo.addStorageGroupMemCost(900);
+
+    Assert.assertFalse(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+    Assert.assertTrue(systemInfo.isRejected());
+    verify(currentProcessor, never()).setWorkMemTableShouldFlush();
+    verify(largerProcessor).setWorkMemTableShouldFlush();
+  }
+
+  @Test
+  public void testRejectionClearsAfterMemoryIsReleased() throws Exception {
+    dataRegionInfo.addStorageGroupMemCost(900);
+    Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+
+    dataRegionInfo.releaseStorageGroupMemCost(500);
+    systemInfo.resetStorageGroupStatus(dataRegionInfo);
+    Assert.assertFalse(systemInfo.isRejected());
+    Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
+    verify(flushSubmitter, times(2)).submit(any(Runnable.class));
   }
 
   @Test
@@ -117,5 +208,19 @@ public class SystemInfoTest {
     Field field = SystemInfo.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(systemInfo, value);
+  }
+
+  private void mockWorkMemTable(TsFileProcessor processor) {
+    IMemTable memTable = mock(IMemTable.class);
+    AtomicBoolean marked = new AtomicBoolean();
+    when(memTable.shouldFlush()).thenAnswer(invocation -> marked.get());
+    when(processor.getWorkMemTable()).thenReturn(memTable);
+    doAnswer(
+            invocation -> {
+              marked.set(true);
+              return null;
+            })
+        .when(processor)
+        .setWorkMemTableShouldFlush();
   }
 }

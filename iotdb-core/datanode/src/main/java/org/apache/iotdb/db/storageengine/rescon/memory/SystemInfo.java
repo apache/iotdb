@@ -144,8 +144,10 @@ public class SystemInfo {
         // The writer holds its region's write lock. Waiting for another processor in that region
         // to flush would prevent the flush submitter from acquiring the same lock. Let this writer
         // finish and flush its own memtable, subject to the hard memory limit below.
-        tsFileProcessor.setWorkMemTableShouldFlush();
-        flushTaskSubmitThreadPool.submit(tsFileProcessor::submitAFlushTask);
+        if (!tsFileProcessor.getWorkMemTable().shouldFlush()) {
+          tsFileProcessor.setWorkMemTableShouldFlush();
+          flushTaskSubmitThreadPool.submit(tsFileProcessor::submitAFlushTask);
+        }
         currentProcessorSelected = true;
       }
       if (currentProcessorSelected) {
@@ -459,8 +461,12 @@ public class SystemInfo {
       }
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
-      selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
+      // A marked memtable already has a flush pending. Count its memory towards the target,
+      // but do not enqueue another task on every report while the region write lock is held.
+      if (!selectedTsFileProcessor.getWorkMemTable().shouldFlush()) {
+        selectedTsFileProcessor.setWorkMemTableShouldFlush();
+        flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
+      }
       if (selectedTsFileProcessor == currentTsFileProcessor) {
         isCurrentTsFileProcessorSelected = true;
       }

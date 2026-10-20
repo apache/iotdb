@@ -27,6 +27,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AutoResizingBufferTest {
@@ -167,6 +169,11 @@ public class AutoResizingBufferTest {
         transport.readAll(actual, 0, actual.length);
         Assert.assertArrayEquals(payload, actual);
         long largeFrameMemory = memoryControl.getUsedMemoryInBytes();
+        byte[] largeWriteBuffer = transport.writeBuffer.getBuffer();
+        byte[] largeReadBuffer = transport.readBuffer.getBuffer();
+        long cooldown = System.currentTimeMillis() + RpcUtils.MIN_SHRINK_INTERVAL;
+        setLastShrinkTime(transport.writeBuffer, cooldown);
+        setLastShrinkTime(transport.readBuffer, cooldown);
 
         for (int i = 0; i <= RpcUtils.MAX_BUFFER_OVERSIZE_TIME; i++) {
           transport.write(new byte[] {42});
@@ -175,12 +182,214 @@ public class AutoResizingBufferTest {
           transport.readAll(smallFrame, 0, smallFrame.length);
           Assert.assertEquals(42, smallFrame[0]);
         }
+        Assert.assertSame(largeWriteBuffer, transport.writeBuffer.getBuffer());
+        Assert.assertSame(largeReadBuffer, transport.readBuffer.getBuffer());
+
+        setLastShrinkTime(transport.writeBuffer, 0);
+        setLastShrinkTime(transport.readBuffer, 0);
+        transport.write(new byte[] {42});
+        transport.flush();
+        byte[] smallFrame = new byte[1];
+        transport.readAll(smallFrame, 0, 1);
+        Assert.assertEquals(42, smallFrame[0]);
         Assert.assertTrue(transport.writeBuffer.getBuffer().length < payload.length);
         Assert.assertTrue(transport.readBuffer.getBuffer().length < payload.length);
+        Assert.assertTrue(transport.writeBuffer.getBuffer().length >= 100);
+        Assert.assertTrue(transport.readBuffer.getBuffer().length >= 100);
         Assert.assertTrue(memoryControl.getUsedMemoryInBytes() < largeFrameMemory);
+
+        byte[] shrunkBuffer = transport.writeBuffer.getBuffer();
+        for (int i = 0; i <= RpcUtils.MAX_BUFFER_OVERSIZE_TIME; i++) {
+          transport.write(new byte[] {42});
+          transport.flush();
+          transport.readAll(smallFrame, 0, 1);
+          Assert.assertEquals(42, smallFrame[0]);
+        }
+        Assert.assertSame(shrunkBuffer, transport.writeBuffer.getBuffer());
       }
       Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
     }
+  }
+
+  @Test
+  public void testRepeatedLargeFramesKeepWriteCapacity() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    for (boolean compressed : new boolean[] {false, true}) {
+      try (TElasticFramedTransport transport = newFramedTransport(compressed)) {
+        byte[] payload = new byte[1000];
+        new Random(0).nextBytes(payload);
+        transport.write(payload);
+        transport.flush();
+        byte[] actual = new byte[payload.length];
+        transport.readAll(actual, 0, actual.length);
+        Assert.assertArrayEquals(payload, actual);
+        byte[] writeBuffer = transport.writeBuffer.getBuffer();
+        for (int i = 0; i < 3 * (RpcUtils.MAX_BUFFER_OVERSIZE_TIME + 1); i++) {
+          setLastShrinkTime(transport.writeBuffer, 0);
+          long allocationCount = AutoResizingBufferMemoryManager.getMemoryAllocationCount();
+          transport.write(payload);
+          transport.flush();
+          Assert.assertSame(writeBuffer, transport.writeBuffer.getBuffer());
+          Assert.assertEquals(
+              allocationCount, AutoResizingBufferMemoryManager.getMemoryAllocationCount());
+          transport.readAll(actual, 0, actual.length);
+          Assert.assertArrayEquals(payload, actual);
+        }
+      }
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+    }
+  }
+
+  @Test
+  public void testSmallWritesDoNotShrinkAnUnfinishedFrame() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    for (boolean compressed : new boolean[] {false, true}) {
+      try (TElasticFramedTransport transport = newFramedTransport(compressed)) {
+        byte[] payload = new byte[1000];
+        new Random(0).nextBytes(payload);
+        transport.write(payload);
+        transport.flush();
+        byte[] actual = new byte[payload.length];
+        transport.readAll(actual, 0, actual.length);
+        Assert.assertArrayEquals(payload, actual);
+        byte[] writeBuffer = transport.writeBuffer.getBuffer();
+        setLastShrinkTime(transport.writeBuffer, 0);
+
+        int prefixLength = RpcUtils.MAX_BUFFER_OVERSIZE_TIME + 1;
+        for (int i = 0; i < prefixLength; i++) {
+          transport.write(payload, i, 1);
+          Assert.assertSame(writeBuffer, transport.writeBuffer.getBuffer());
+          Assert.assertEquals(i + 1, transport.writeBuffer.getPos());
+        }
+        transport.write(payload, prefixLength, payload.length - prefixLength);
+        Assert.assertSame(writeBuffer, transport.writeBuffer.getBuffer());
+        transport.flush();
+        transport.readAll(actual, 0, actual.length);
+        Assert.assertArrayEquals(payload, actual);
+      }
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+    }
+  }
+
+  @Test
+  public void testLargeFrameReuseDoesNotStarveAnotherConnection() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    for (boolean compressed : new boolean[] {false, true}) {
+      memoryControl.setLimit(Long.MAX_VALUE);
+      try (TElasticFramedTransport transport = newFramedTransport(compressed);
+          AutoScalingBufferReadTransport anotherConnection =
+              new AutoScalingBufferReadTransport(100)) {
+        byte[] payload = new byte[1000];
+        new Random(0).nextBytes(payload);
+        transport.write(payload);
+        transport.flush();
+        byte[] writeBuffer = transport.writeBuffer.getBuffer();
+        long retainedMemory = memoryControl.getUsedMemoryInBytes();
+        // Only leave enough quota for the other connection to grow from 100 to 200 bytes.
+        memoryControl.setLimit(retainedMemory + 100);
+        for (int i = 0; i < 3 * (RpcUtils.MAX_BUFFER_OVERSIZE_TIME + 1); i++) {
+          setLastShrinkTime(transport.writeBuffer, 0);
+          transport.write(payload, 0, 600);
+          transport.write(payload, 600, 400);
+          transport.flush();
+          Assert.assertSame(writeBuffer, transport.writeBuffer.getBuffer());
+        }
+        transport.write(payload, 0, 600);
+        transport.write(payload, 600, 300);
+        Assert.assertSame(writeBuffer, transport.writeBuffer.getBuffer());
+        TMemoryBuffer input = new TMemoryBuffer(0);
+        input.write(payload, 0, 200);
+        anotherConnection.fill(input, 200);
+
+        Assert.assertEquals(0, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+        Assert.assertEquals(retainedMemory + 100, memoryControl.getUsedMemoryInBytes());
+        Assert.assertArrayEquals(
+            Arrays.copyOf(payload, 200), Arrays.copyOf(anotherConnection.getBuffer(), 200));
+        Assert.assertArrayEquals(
+            Arrays.copyOf(payload, 900), Arrays.copyOf(transport.writeBuffer.getBuffer(), 900));
+      }
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+    }
+  }
+
+  @Test
+  public void testFailedIncrementalGrowthPreservesFrameAndAccounting() throws Exception {
+    memoryControl.setLimit(120);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoScalingBufferWriteTransport transport = new AutoScalingBufferWriteTransport(100)) {
+      byte[] payload = new byte[130];
+      new Random(0).nextBytes(payload);
+      transport.write(payload, 0, 90);
+      byte[] originalBuffer = transport.getBuffer();
+      try {
+        transport.write(payload, 90, 40);
+        Assert.fail("Expected TTransportException");
+      } catch (TTransportException expected) {
+        Assert.assertSame(originalBuffer, transport.getBuffer());
+        Assert.assertEquals(90, transport.getPos());
+        Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
+        Assert.assertArrayEquals(
+            Arrays.copyOf(payload, 90), Arrays.copyOf(transport.getBuffer(), 90));
+      }
+
+      memoryControl.setLimit(130);
+      transport.write(payload, 90, 40);
+      Assert.assertEquals(130, transport.getBuffer().length);
+      Assert.assertEquals(130, transport.getPos());
+      Assert.assertEquals(130, memoryControl.getUsedMemoryInBytes());
+      Assert.assertArrayEquals(payload, transport.getBuffer());
+      Assert.assertEquals(1, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+      transport.close();
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testConcurrentReadBuffersEnforceSharedBudget() throws Exception {
+    memoryControl.setLimit(1000);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    AutoScalingBufferReadTransport first = new AutoScalingBufferReadTransport(100);
+    AutoScalingBufferReadTransport second = new AutoScalingBufferReadTransport(100);
+    AutoScalingBufferReadTransport third = new AutoScalingBufferReadTransport(100);
+    try {
+      byte[] payload = new byte[400];
+      payload[399] = 42;
+      TMemoryBuffer input = new TMemoryBuffer(0);
+      input.write(payload);
+      first.fill(input, payload.length);
+      input.write(payload);
+      second.fill(input, payload.length);
+      Assert.assertEquals(900, memoryControl.getUsedMemoryInBytes());
+
+      input.write(payload);
+      try {
+        third.fill(input, payload.length);
+        Assert.fail("Expected TTransportException");
+      } catch (TTransportException expected) {
+        Assert.assertEquals(900, memoryControl.getUsedMemoryInBytes());
+        Assert.assertEquals(1, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+      }
+
+      first.close();
+      third.fill(input, payload.length);
+      Assert.assertEquals(800, memoryControl.getUsedMemoryInBytes());
+      Assert.assertEquals(42, second.getBuffer()[399]);
+      Assert.assertEquals(42, third.getBuffer()[399]);
+    } finally {
+      first.close();
+      second.close();
+      third.close();
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
   }
 
   @Test
@@ -319,6 +528,18 @@ public class AutoResizingBufferTest {
     Field field = AutoResizingBuffer.class.getDeclaredField("lastShrinkTime");
     field.setAccessible(true);
     field.set(buffer, lastShrinkTime);
+  }
+
+  private void setLastShrinkTime(Object transport, long lastShrinkTime) throws Exception {
+    Field field = transport.getClass().getDeclaredField("buf");
+    field.setAccessible(true);
+    setLastShrinkTime((AutoResizingBuffer) field.get(transport), lastShrinkTime);
+  }
+
+  private TElasticFramedTransport newFramedTransport(boolean compressed) throws Exception {
+    return compressed
+        ? new TSnappyElasticFramedTransport(new TMemoryBuffer(0), 100, 2048, true)
+        : new TElasticFramedTransport(new TMemoryBuffer(0), 100, 2048, true);
   }
 
   private static class TestMemoryControl implements AutoResizingBufferMemoryControl {
