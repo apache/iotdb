@@ -51,56 +51,16 @@ mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
 # Format code (requires JDK 17+; auto-skipped on JDK <17)
 mvn spotless:apply
 
-# Format code in integration-test module
-mvn spotless:apply -P with-integration-tests
-
 # Check formatting without applying
 mvn spotless:check
 ```
 
 ## Integration Tests
 
-Integration tests live in `integration-test/` (not included in default build). They require the `with-integration-tests` profile:
-
-```bash
-# Build template-node first (needed once, or after code changes)
-mvn clean package -DskipTests -pl integration-test -am -P with-integration-tests
-
-# Run tree-model ITs (simple: 1 ConfigNode + 1 DataNode)
-mvn clean verify -DskipUTs -pl integration-test -am -P with-integration-tests
-
-# Run tree-model ITs (cluster: 1 ConfigNode + 3 DataNodes)
-mvn clean verify -DskipUTs -pl integration-test -am -PClusterIT -P with-integration-tests
-
-# Run table-model ITs (simple)
-mvn clean verify -DskipUTs -pl integration-test -am -PTableSimpleIT -P with-integration-tests
-
-# Run table-model ITs (cluster)
-mvn clean verify -DskipUTs -pl integration-test -am -PTableClusterIT -P with-integration-tests
-
-# Run a single IT class (tree-model simple, 1C1D)
-mvn clean verify -DskipUTs -Dit.test=ClassName -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -P with-integration-tests
-
-# Run a single IT class (tree-model cluster, 1C3D)
-mvn clean verify -DskipUTs -Dit.test=ClassName -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -PClusterIT -P with-integration-tests
-
-# Run a single IT class (table-model simple, 1C1D)
-mvn clean verify -DskipUTs -Dit.test=ClassName -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -PTableSimpleIT -P with-integration-tests
-
-# Run a single IT class (table-model cluster, 1C3D)
-mvn clean verify -DskipUTs -Dit.test=ClassName -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -PTableClusterIT -P with-integration-tests
-
-# Run a single test method within an IT class (use ClassName#methodName)
-mvn clean verify -DskipUTs -Dit.test=ClassName#methodName -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -PTableSimpleIT -P with-integration-tests
-
-# Build the Edge distribution and run its dedicated Tree/Table read-write IT
-mvn clean package -DskipTests -pl distribution -am
-mvn verify -DskipUTs -Dit.test=IoTDBEdgeBasicIT -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -P EdgeIT -P with-integration-tests
-```
-
-When verifying a new feature, only run the specific IT classes/methods that were added or modified in the current branch — do not run all ITs.
-
-To run integration tests from IntelliJ: enable the `with-integration-tests` profile in Maven sidebar, then run test cases directly.
+Before editing or running integration tests, read and follow
+[integration-test/AGENTS.md](integration-test/AGENTS.md). It contains the IT authoring rules,
+formatting and build commands, test profiles, targeted verification, and Edge/IDE instructions.
+Keep IT-specific rules and commands in that module-level file.
 
 ## Code Style
 
@@ -202,7 +162,7 @@ The project uses compile-time i18n via the `build-helper-maven-plugin`. The prop
 
 ### Code Style
 
-- **Always run `mvn spotless:apply` after editing Java files**: Spotless runs `spotless:check` automatically during the `compile` phase. Format violations cause an immediate BUILD FAILURE. Make it a habit to run `mvn spotless:apply -pl <module>` right after editing, not at the end. For files under `integration-test/`, add `-P with-integration-tests`.
+- **Always run `mvn spotless:apply` after editing Java files**: Spotless runs `spotless:check` automatically during the `compile` phase. Format violations cause an immediate BUILD FAILURE. Make it a habit to run `mvn spotless:apply -pl <module>` right after editing, not at the end.
 - **Always run `black` and `isort` after editing Python files under `iotdb-core/ainode/`**: The AINode Code Style Check CI runs `black --check .` and `isort --check-only --profile black .` on that directory. Run `cd iotdb-core/ainode && black . && isort --profile black .` before committing. Requires `pip install black==25.1.0 isort==6.0.1`.
 - **Gson version compatibility**: `JsonObject.isEmpty()` / `JsonArray.isEmpty()` may not be available in the Gson version used by this project. Use `size() > 0` instead and add a comment explaining why.
 
