@@ -528,34 +528,39 @@ public class ConsensusPrefetchingQueue {
           Objects.isNull(reason) ? SubscriptionQueueRejectionReason.QUEUE_CAPACITY : reason;
       lastOfferRejectionReason.set(effectiveReason);
       rejectionListener.accept(effectiveReason);
-      return false;
+      return effectiveReason != SubscriptionQueueRejectionReason.INACTIVE_OR_CLOSED;
     }
 
     @Override
     public boolean offer(final IndexedConsensusRequest request) {
       final boolean offered;
+      boolean wakeupRequired = false;
       synchronized (this) {
         final SubscriptionQueueRejectionReason admissionReason = admissionSupplier.get();
         if (admissionReason != SubscriptionQueueRejectionReason.NONE) {
-          return reject(admissionReason);
-        }
-        if (!requestMemoryManager.reserve(request)) {
-          return reject(SubscriptionQueueRejectionReason.CONSENSUS_REQUEST_MEMORY_LIMIT);
-        }
-        try {
-          offered = super.offer(request);
-        } catch (final Throwable t) {
-          requestMemoryManager.free(request);
-          throw t;
-        }
-        if (offered) {
-          retainedRequestBytes.addAndGet(request.getRetainedMemorySize());
+          wakeupRequired = reject(admissionReason);
+          offered = false;
+        } else if (!requestMemoryManager.reserve(request)) {
+          wakeupRequired = reject(SubscriptionQueueRejectionReason.CONSENSUS_REQUEST_MEMORY_LIMIT);
+          offered = false;
         } else {
-          requestMemoryManager.free(request);
-          reject(SubscriptionQueueRejectionReason.QUEUE_CAPACITY);
+          try {
+            offered = super.offer(request);
+          } catch (final Throwable t) {
+            requestMemoryManager.free(request);
+            throw t;
+          }
+          if (offered) {
+            retainedRequestBytes.addAndGet(request.getRetainedMemorySize());
+          } else {
+            requestMemoryManager.free(request);
+            wakeupRequired = reject(SubscriptionQueueRejectionReason.QUEUE_CAPACITY);
+          }
         }
       }
-      if (offered) {
+      // The rejected request remains available in WAL. Wake the replay worker so a queue that has
+      // already gone dormant does not wait for a later successful realtime offer to make progress.
+      if (offered || wakeupRequired) {
         wakeupHook.run();
       }
       return offered;

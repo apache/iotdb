@@ -180,6 +180,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private Queue<PersistentResource> pendingQueue;
   private final Map<TsFileResource, Set<String>> filteredTsFileResources2TableNames =
       new HashMap<>();
+  private final Set<TsFileResource> resourcesWithPinnedModFile = new HashSet<>();
   private final Map<PersistentResource, Long> pendingResource2ReplicateIndexForIoTV2 =
       new HashMap<>();
   private final Set<PersistentResource> historicalProgressReportResources = new HashSet<>();
@@ -805,8 +806,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                 // Pin the resource, in case the file is removed by compaction or anything.
                 // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
                 try {
-                  PipeDataNodeResourceManager.tsfile()
-                      .pinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime);
+                  if (PipeDataNodeResourceManager.tsfile()
+                      .pinTsFileResource(
+                          resource, shouldTransferModFile, pipeNameWithCreationTime)) {
+                    resourcesWithPinnedModFile.add(resource);
+                  }
                   return false;
                 } catch (final IOException e) {
                   ++statistics.pinFailedCount;
@@ -1225,7 +1229,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     } finally {
       try {
         PipeDataNodeResourceManager.tsfile()
-            .unpinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime);
+            .unpinTsFileResource(
+                resource, pipeNameWithCreationTime, resourcesWithPinnedModFile.remove(resource));
       } catch (final IOException e) {
         LOGGER.warn(
             DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_SKIPPED_HISTORICAL_TSFILERESOURCE,
@@ -1337,7 +1342,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       if (shouldUnpinResource) {
         try {
           PipeDataNodeResourceManager.tsfile()
-              .unpinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime);
+              .unpinTsFileResource(
+                  resource, pipeNameWithCreationTime, resourcesWithPinnedModFile.remove(resource));
         } catch (final IOException e) {
           LOGGER.warn(
               DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_CREATING,
@@ -1462,7 +1468,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               try {
                 PipeDataNodeResourceManager.tsfile()
                     .unpinTsFileResource(
-                        (TsFileResource) resource, shouldTransferModFile, pipeNameWithCreationTime);
+                        (TsFileResource) resource,
+                        pipeNameWithCreationTime,
+                        resourcesWithPinnedModFile.remove(resource));
               } catch (final IOException e) {
                 LOGGER.warn(
                     DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING,
@@ -1476,6 +1484,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       pendingQueue = null;
     }
     pendingResource2ReplicateIndexForIoTV2.clear();
+    resourcesWithPinnedModFile.clear();
     historicalProgressReportResources.clear();
     pendingHistoricalProgressIndexToReport = null;
   }
