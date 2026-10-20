@@ -689,12 +689,6 @@ public class TableDistributedPlanGenerator
     for (PlanNode child : childrenNodes) {
       if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
         result.add(child);
-      } else if (groupingInvalidatedByCollect(
-          child, node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()))) {
-        SortNode sort =
-            new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false);
-        nodeOrderingMap.put(sort.getPlanNodeId(), sort.getOrderingScheme());
-        result.add(sort);
       } else {
         GroupNode subGroupNode =
             new GroupNode(
@@ -1106,7 +1100,7 @@ public class TableDistributedPlanGenerator
     if (needFinalAggregation) {
       OrderingScheme childOrdering = nodeOrderingMap.get(result.get(0).getPlanNodeId());
       finalAggregation.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, result));
-      return Collections.singletonList(validateAggregationGrouping(finalAggregation));
+      return Collections.singletonList(finalAggregation);
     }
     return result;
   }
@@ -2051,7 +2045,7 @@ public class TableDistributedPlanGenerator
     }
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = commonOrdering(childrenNodes);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (node.isStreamable()) {
       // Child has Ordering, we need to check if it is the Ordering we expected
       if (childOrdering != null) {
@@ -2124,7 +2118,7 @@ public class TableDistributedPlanGenerator
                       if (physicalAggregation.isStreamable() && childOrdering != null) {
                         nodeOrderingMap.put(planNodeId, expectedOrderingSchema);
                       }
-                      return validateAggregationGrouping(aggregationNode);
+                      return aggregationNode;
                     })
                 .collect(Collectors.toList());
 
@@ -2134,10 +2128,10 @@ public class TableDistributedPlanGenerator
             new CollectNode(queryId.genPlanNodeId(), aggregationNodes.get(0).getOutputSymbols());
         collectNode.setChildren(aggregationNodes);
         splitResult.left.setChild(collectNode);
-        return Collections.singletonList(validateAggregationGrouping(splitResult.left));
+        return Collections.singletonList(splitResult.left);
       }
 
-      return Collections.singletonList(validateAggregationGrouping(physicalAggregation));
+      return Collections.singletonList(physicalAggregation);
     }
 
     // We cannot do multi-stage Aggregate if any aggregation-function is distinct.
@@ -2150,9 +2144,7 @@ public class TableDistributedPlanGenerator
               nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes);
       node.setChild(physicalChild);
       return Collections.singletonList(
-          validateAggregationGrouping(
-              withRateFunctionInputOrdering(
-                  node, nodeOrderingMap.get(physicalChild.getPlanNodeId()))));
+          withRateFunctionInputOrdering(node, nodeOrderingMap.get(physicalChild.getPlanNodeId())));
     }
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode intermediate = splitResult.right;
@@ -2175,73 +2167,13 @@ public class TableDistributedPlanGenerator
                   if (node.isStreamable() && childOrdering != null) {
                     nodeOrderingMap.put(planNodeId, expectedOrderingSchema);
                   }
-                  return validateAggregationGrouping(aggregationNode);
+                  return aggregationNode;
                 })
             .collect(Collectors.toList());
     splitResult.left.setChild(
         mergeChildrenViaCollectOrMergeSort(
             nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
-    return Collections.singletonList(validateAggregationGrouping(splitResult.left));
-  }
-
-  private AggregationNode validateAggregationGrouping(AggregationNode node) {
-    if (!node.getPreGroupedSymbols().isEmpty()
-        && groupingInvalidatedByCollect(node.getChild(), node.getPreGroupedSymbols())) {
-      node.setPreGroupedSymbols(ImmutableList.of());
-      nodeOrderingMap.remove(node.getPlanNodeId());
-    }
-    return node;
-  }
-
-  /** Whether an unordered fan-in invalidates a previously established grouping property. */
-  private boolean groupingInvalidatedByCollect(PlanNode node, List<Symbol> grouping) {
-    if (grouping.isEmpty()) {
-      return false;
-    }
-    if ((node instanceof CollectNode || node instanceof UnionNode)
-        && node.getChildren().size() > 1) {
-      return true;
-    }
-    OrderingScheme ordering = nodeOrderingMap.get(node.getPlanNodeId());
-    if (ordering != null && prefixMatched(ordering, grouping)) {
-      return false;
-    }
-    // A completed aggregation emits each full grouping key once, even when it hashes its input.
-    if (node instanceof AggregationNode) {
-      AggregationNode aggregation = (AggregationNode) node;
-      if (!aggregation.getStep().isOutputPartial()
-          && aggregation.getGroupingSetCount() == 1
-          && grouping.containsAll(aggregation.getGroupingKeys())) {
-        return false;
-      }
-    }
-    if (node instanceof ProjectNode) {
-      ProjectNode project = (ProjectNode) node;
-      List<Symbol> inputs = new ArrayList<>();
-      for (Symbol symbol : grouping) {
-        Expression expression = project.getAssignments().get(symbol);
-        if (!(expression instanceof SymbolReference)) {
-          // A computed key cannot inherit a branch-local continuity proof.
-          return containsUnorderedCollect(project.getChild());
-        }
-        inputs.add(Symbol.from(expression));
-      }
-      return groupingInvalidatedByCollect(project.getChild(), inputs);
-    }
-    for (PlanNode child : node.getChildren()) {
-      if (groupingInvalidatedByCollect(child, grouping)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean containsUnorderedCollect(PlanNode node) {
-    if ((node instanceof CollectNode || node instanceof UnionNode)
-        && node.getChildren().size() > 1) {
-      return true;
-    }
-    return node.getChildren().stream().anyMatch(this::containsUnorderedCollect);
+    return Collections.singletonList(splitResult.left);
   }
 
   private static AggregationNode withRateFunctionInputOrdering(
@@ -2369,8 +2301,7 @@ public class TableDistributedPlanGenerator
         throw new IllegalStateException(
             DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
-      resultTableScanNodeList =
-          Collections.singletonList(validateAggregationGrouping(finalAggregation));
+      resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }
 
     return resultTableScanNodeList;
@@ -2529,7 +2460,7 @@ public class TableDistributedPlanGenerator
             mergeChildrenViaCollectOrMergeSort(
                 nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
       }
-      return Collections.singletonList(validateAggregationGrouping(finalAggregation));
+      return Collections.singletonList(finalAggregation);
     }
     return result;
   }
@@ -2746,8 +2677,7 @@ public class TableDistributedPlanGenerator
         throw new IllegalStateException(
             DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
-      resultTableScanNodeList =
-          Collections.singletonList(validateAggregationGrouping(finalAggregation));
+      resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }
 
     return resultTableScanNodeList;
@@ -2933,7 +2863,7 @@ public class TableDistributedPlanGenerator
             mergeChildrenViaCollectOrMergeSort(
                 nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
       }
-      return Collections.singletonList(validateAggregationGrouping(finalAggregation));
+      return Collections.singletonList(finalAggregation);
     }
     return result;
   }
@@ -4077,8 +4007,7 @@ public class TableDistributedPlanGenerator
     public void clearExpectedOrderingScheme() {
       expectedOrderingScheme = null;
       hasSortProperty = false;
-      // Grouping pushdown depends on this ordering. A boundary such as a global window
-      // must not pass an outer Group's partitioning request to its scans.
+      // Grouping pushdown requires an ordering; a global window clears that requirement.
       pushDownGrouping = false;
     }
 

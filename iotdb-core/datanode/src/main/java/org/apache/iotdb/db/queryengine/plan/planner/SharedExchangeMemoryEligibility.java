@@ -19,20 +19,35 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /** Select shared budgets only for FIs whose fan-in can consume any ready input. */
-final class SharedExchangeMemoryEligibility {
+public final class SharedExchangeMemoryEligibility {
+  private static final Set<String> UNORDERED_AGGREGATIONS =
+      Set.of("count", "sum", "avg", "min", "max");
+
   private SharedExchangeMemoryEligibility() {}
 
-  static boolean isEligible(PlanNode root) {
+  public static boolean isEligible(PlanNode root) {
     boolean hasCollect = false;
     Deque<PlanNode> nodes = new ArrayDeque<>();
     nodes.push(root);
@@ -49,6 +64,9 @@ final class SharedExchangeMemoryEligibility {
       // Core relational nodes need not implement the serialization-only PlanNode.getType().
       boolean anyReady = node instanceof CollectNode || node instanceof UnionNode;
       hasCollect |= anyReady;
+      if (!canConsumeUnordered(node)) {
+        return false;
+      }
       List<PlanNode> children = node.getChildren();
       // Unknown multi-input operators are not implicitly safe. In particular, sequential sinks
       // and joins can wait for an input while another input holds the entire shared budget.
@@ -58,5 +76,39 @@ final class SharedExchangeMemoryEligibility {
       nodes.addAll(children);
     }
     return hasCollect;
+  }
+
+  private static boolean canConsumeUnordered(PlanNode node) {
+    if (node instanceof AggregationNode) {
+      AggregationNode aggregation = (AggregationNode) node;
+      return aggregation.getPreGroupedSymbols().isEmpty()
+          && aggregation.getAggregations().values().stream()
+              .allMatch(
+                  function ->
+                      function.getOrderingScheme().isEmpty()
+                          && !function.isInputOrderedByTimeAscending()
+                          && UNORDERED_AGGREGATIONS.contains(
+                              function
+                                  .getResolvedFunction()
+                                  .getSignature()
+                                  .getName()
+                                  .toLowerCase(Locale.ROOT)));
+    }
+    // Do not infer safety from the number of children. Windows, streaming grouping and
+    // TopK can depend on order even when they have only one input. Unknown
+    // consumers conservatively retain sequential consumption within this FI.
+    return node instanceof CollectNode
+        || node instanceof UnionNode
+        || node instanceof OutputNode
+        || node instanceof ProjectNode
+        || node instanceof FilterNode
+        || node instanceof IdentitySinkNode
+        || node instanceof ExchangeNode
+        || node instanceof FillNode
+        || node instanceof CopyToNode
+        || node instanceof LimitNode
+        || node instanceof OffsetNode
+        || node.getClass() == SortNode.class
+        || node.getChildren().isEmpty();
   }
 }

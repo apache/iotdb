@@ -120,6 +120,10 @@ public class LocalExecutionPlanContextBudgetTest {
   private static PlanNode node(PlanNodeType type, PlanNode... children) {
     Class<? extends PlanNode> nodeClass;
     switch (type) {
+      case IDENTITY_SINK:
+        nodeClass =
+            org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode.class;
+        break;
       case TABLE_EXCHANGE_NODE:
         nodeClass = org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode.class;
         break;
