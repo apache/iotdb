@@ -4107,6 +4107,7 @@ public final class DataNodeQueryMessages {
       "已经在取消中";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "内部错误调度";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "调度器关闭";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "内存不足，无法执行查询任务。";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
