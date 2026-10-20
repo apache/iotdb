@@ -1435,4 +1435,6 @@ public final class ProcedureMessages {
           "Procedure {} is past its commit point; keeping every state it executed.";
   public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 =
       "finish procedure without rollback";
+  public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
+      "delete child procedures without rollback";
 }
