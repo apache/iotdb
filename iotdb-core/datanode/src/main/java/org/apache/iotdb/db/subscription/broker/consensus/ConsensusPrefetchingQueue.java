@@ -4741,8 +4741,8 @@ public class ConsensusPrefetchingQueue {
   private static LiveWALMetaDataSnapshot captureLiveWALMetaDataSnapshot(final WALNode walNode) {
     while (true) {
       final long versionId = walNode.getCurrentWALFileVersion();
-      final WALMetaData metadata = walNode.getCurrentWALMetaDataSnapshot();
-      if (versionId == walNode.getCurrentWALFileVersion()) {
+      final WALMetaData metadata = walNode.getWALMetaDataSnapshot(versionId);
+      if (metadata != null && versionId == walNode.getCurrentWALFileVersion()) {
         return new LiveWALMetaDataSnapshot(versionId, metadata);
       }
     }

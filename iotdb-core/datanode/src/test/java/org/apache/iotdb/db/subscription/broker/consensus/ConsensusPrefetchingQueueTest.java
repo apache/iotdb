@@ -104,6 +104,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -1813,7 +1814,7 @@ public class ConsensusPrefetchingQueueTest {
       flushedMetadata.add(Integer.BYTES, 1L, 0L, 0L, 7, 1L);
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getCurrentWALFileVersion()).thenReturn(0L);
-      when(walNode.getCurrentWALMetaDataSnapshot())
+      when(walNode.getWALMetaDataSnapshot(anyLong()))
           .thenAnswer(ignored -> rolled.get() ? flushedMetadata.copy() : new WALMetaData());
       doAnswer(
               ignored -> {
@@ -1876,7 +1877,7 @@ public class ConsensusPrefetchingQueueTest {
       final WALNode walNode = mock(WALNode.class);
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+      when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(new WALMetaData());
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
       queue =

@@ -2271,6 +2271,12 @@ public final class DataNodePipeMessages {
           "Subscription WAL replay skipped %d unreadable retained WAL file(s) in queue %s, region %s. Historical data may be lost. Details (recent files; full details in server log): %s";
   public static final String MESSAGE_UNKNOWN_AD921D60 = "unknown";
   public static final String
+      MESSAGE_WAL_METADATA_SNAPSHOT_FOR_FILE_ARG_VERSIONID_ARG_IS_UNAVAILABLE_AFTER_ROTATION_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_D99C12A0 =
+          "WAL metadata snapshot for file %s (versionId=%d) is unavailable after rotation; replay will retry without skipping";
+  public static final String
+      EXCEPTION_WAL_FILE_ARG_VERSIONID_ARG_IS_MISSING_FROM_TWO_SUCCESSIVE_DIRECTORY_SCANS_AFTER_A_NEWER_WAL_FILE_BECAME_VISIBLE_1E170B4B =
+          "WAL file %s (versionId=%d) is missing from two successive directory scans after a newer WAL file became visible";
+  public static final String
       MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
           "WAL file %s (versionId=%d, entryOffset=%d) is temporarily unreadable; replay will retry without skipping: %s";
   public static final String
