@@ -106,14 +106,25 @@ public class IoTDBTestUtilsIT {
   public void testAssertDataAlwaysObservationPeriod() {
     final BaseEnv env = EnvFactory.getEnv();
     final Consumer<String> handleFailure = message -> fail(message);
+    // Enterprise editions create root.__audit during startup, so scope the count to an unused path.
     assertObservationPeriod(
         () ->
             TestUtils.assertDataAlwaysOnEnv(
-                env, "count databases", "count,", Collections.singleton("0,"), 1, (String) null));
+                env,
+                "count databases root.iotdb_test_utils_nonexistent",
+                "count,",
+                Collections.singleton("0,"),
+                1,
+                (String) null));
     assertObservationPeriod(
         () ->
             TestUtils.assertDataAlwaysOnEnv(
-                env, "count databases", "count,", Collections.singleton("0,"), 1, handleFailure));
+                env,
+                "count databases root.iotdb_test_utils_nonexistent",
+                "count,",
+                Collections.singleton("0,"),
+                1,
+                handleFailure));
     assertObservationPeriod(
         () ->
             TestUtils.assertDataAlwaysOnEnv(
