@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -455,7 +456,12 @@ public class TsFileSplitter {
 
   private void handleModification(List<ModEntry> deletions) throws LoadFileException {
     for (final ModEntry mod : deletions) {
-      consumer.apply(new DeletionData(mod));
+      if (!consumer.apply(new DeletionData(mod))) {
+        throw new IllegalStateException(
+            String.format(
+                DataNodeQueryMessages.DISPATCH_TSFILEDATA_ERROR_WHEN_PARSING_TSFILE_S,
+                tsFile.getPath()));
+      }
     }
   }
 

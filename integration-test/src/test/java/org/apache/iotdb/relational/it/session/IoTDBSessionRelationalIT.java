@@ -439,7 +439,7 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("CREATE TABLE partial_insert (s1 boolean)");
       try {
         session.executeNonQueryStatement(
-            "insert into partial_insert(time, s1) values (10000,true),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
+            "insert into partial_insert(time, s1) values (10000,true),(11000,null),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertEquals(
@@ -449,11 +449,9 @@ public class IoTDBSessionRelationalIT {
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from partial_insert order by time");
-      // Partial insertion retains timestamps even when the only FIELD value is rejected.
-      long[] timestamps =
-          new long[] {10000, 20000, 30000, 35000, 40000, 50000, 60000, 70000, 80000, 90000};
-      Boolean[] values =
-          new Boolean[] {true, false, null, null, false, true, null, null, null, null};
+      // Rows without any valid FIELD are skipped during partial insertion.
+      long[] timestamps = new long[] {10000, 11000, 20000, 40000, 50000};
+      Boolean[] values = new Boolean[] {true, null, false, false, true};
       int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rec = dataSet.next();
@@ -805,23 +803,12 @@ public class IoTDBSessionRelationalIT {
         fail("Insert should fail");
       } catch (StatementExecutionException e) {
         assertEquals(
-            "507: Fail to insert measurements [f1, f2] "
-                + "caused by [Incompatible data type of column f1: DOUBLE/INT32, "
-                + "Incompatible data type of column f2: DOUBLE/INT32]",
-            e.getMessage());
+            "507: No column other than Time present, please check the request", e.getMessage());
       }
       tablet.reset();
       for (int phase = 0; phase < 2; phase++) {
         try (SessionDataSet dataSet =
             session.executeQueryStatement("select * from field_wrong_type order by time")) {
-          for (int row = 0; row < 10; row++) {
-            assertTrue(dataSet.hasNext());
-            RowRecord record = dataSet.next();
-            assertEquals(row, record.getFields().get(0).getLongV());
-            assertEquals("tag:" + row, record.getFields().get(1).getStringValue());
-            assertNull(record.getFields().get(2).getDataType());
-            assertNull(record.getFields().get(3).getDataType());
-          }
           assertFalse(dataSet.hasNext());
         }
         if (phase == 0) {
@@ -1555,23 +1542,11 @@ public class IoTDBSessionRelationalIT {
             fail("Exception expected: from=" + from + ", to=" + to);
           } catch (StatementExecutionException e) {
             assertEquals(
-                "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
-                    + from
-                    + "/"
-                    + to
-                    + "]",
-                e.getMessage());
+                "507: No column other than Time present, please check the request", e.getMessage());
           }
           // time, tag1, m1
           try (SessionDataSet dataSet =
               session.executeQueryStatement("select * from table" + testNum + " order by time")) {
-            for (int row = 0; row < 2; row++) {
-              assertTrue(dataSet.hasNext());
-              RowRecord record = dataSet.next();
-              assertEquals(row, record.getFields().get(0).getLongV());
-              assertEquals("d1", record.getFields().get(1).getStringValue());
-              assertNull(record.getFields().get(2).getDataType());
-            }
             assertFalse(dataSet.hasNext());
           }
         } else {

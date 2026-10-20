@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -72,6 +73,30 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class AnalyzeUtilsTest {
+
+  @Test
+  public void testSchemaFailureIsNotOverwrittenByPartialInsertError() {
+    final InsertRowStatement row = new InsertRowStatement();
+    row.setMeasurements(new String[] {"field"});
+    row.setDataTypes(new TSDataType[] {TSDataType.INT64});
+    row.setValues(new Object[] {1L});
+    final Analysis analysis = new Analysis();
+
+    AnalyzeUtils.validateSchema(
+        analysis,
+        row,
+        () -> {
+          row.markFailedMeasurement(0, new IllegalArgumentException("type mismatch"));
+          throw new SemanticException(
+              DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK);
+        });
+
+    assertTrue(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertEquals(
+        DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK,
+        analysis.getFailStatus().getMessage());
+  }
 
   @Test
   public void testRejectedOnlyFieldStillLooksUpRowAndTabletPartition() throws Exception {

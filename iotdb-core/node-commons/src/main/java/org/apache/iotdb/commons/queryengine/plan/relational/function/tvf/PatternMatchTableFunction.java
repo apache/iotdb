@@ -175,17 +175,17 @@ public class PatternMatchTableFunction implements TableFunction {
     boolean isPatternFromOrigin =
         (Boolean) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SMOOTH_ON_PATTERN);
 
-    QetchAlgorithm qetchAlgorithm = new QetchAlgorithm();
-    qetchAlgorithm.setThreshold(threshold);
-    qetchAlgorithm.setSmoothValue(smoothValue);
-    qetchAlgorithm.setHeightLimit(heightLimit);
-    qetchAlgorithm.setWidthLimit(widthLimit);
-    qetchAlgorithm.setIsPatternFromOrigin(isPatternFromOrigin);
-    qetchAlgorithm.parsePattern2Automaton(pattern);
-
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
+        // Matching state and pass-through row indexes belong to one input partition.
+        QetchAlgorithm qetchAlgorithm = new QetchAlgorithm();
+        qetchAlgorithm.setThreshold(threshold);
+        qetchAlgorithm.setSmoothValue(smoothValue);
+        qetchAlgorithm.setHeightLimit(heightLimit);
+        qetchAlgorithm.setWidthLimit(widthLimit);
+        qetchAlgorithm.setIsPatternFromOrigin(isPatternFromOrigin);
+        qetchAlgorithm.parsePattern2Automaton(pattern);
         return new ShapeMatchDataProcessor(qetchAlgorithm);
       }
     };

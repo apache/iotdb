@@ -20,6 +20,23 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "Failed to convert TsFile %s to tablets. Status: %s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "Failed to convert TsFile %s to tablets: %s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "Tablet conversion returned no status";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "Failed to read TsFile model information before tablet conversion for statement %s: %s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "Failed to load TsFiles after tablet conversion. Details: %s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD rejected: uuid={}, region={}, endpoint={}, status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "Target node rejected LOAD without a status or a message";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "Failed to dispatch LOAD %s for region %s to node %s: %s";
+
   public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
       "Schema region is unavailable. Please retry later.";
 
@@ -280,6 +297,9 @@ public final class DataNodeQueryMessages {
           + " (configure copy_to_allowed_export_dirs to permit it): ";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "Data type of target time column is not TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "Specified TIME column %s does not exist in the query result";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "Duplicate column names in query dataset.";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -2561,6 +2581,8 @@ public final class DataNodeQueryMessages {
       "Inconsistent numbers of non-time column names and values: %d-%d";
   public static final String IS_NOT_SUPPORTED_FOR_PROPERTY_VALUE_OF_SET_CONFIGURATION =
       " is not supported for property value of 'set configuration'. ";
+  public static final String EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD =
+      "DEFAULT is not supported for SET CONFIGURATION";
   public static final String NOTE_THAT_THE_SYNTAX_FOR_SET_CONFIGURATION_IN_THE_TREE_MODEL_IS_NOT_EXACTLY_THE_SAME_AS =
       "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.";
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
@@ -4034,6 +4056,14 @@ public final class DataNodeQueryMessages {
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
+
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "TargetFile: %s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "Format: %s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "TargetTable: %s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "TimeColumn: %s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData contains no physical chunk";

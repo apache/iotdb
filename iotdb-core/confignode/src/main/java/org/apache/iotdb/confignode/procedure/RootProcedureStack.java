@@ -89,7 +89,9 @@ public class RootProcedureStack<Env> {
   protected synchronized ProcedureException getException() {
     if (subprocStack != null) {
       for (Procedure<Env> proc : subprocStack) {
-        if (proc.hasException()) {
+        // Null slots come from procedures whose records were deleted before the stack was
+        // rebuilt, see ProcedureExecutor#executeRootStackRollback.
+        if (proc != null && proc.hasException()) {
           return proc.getException();
         }
       }

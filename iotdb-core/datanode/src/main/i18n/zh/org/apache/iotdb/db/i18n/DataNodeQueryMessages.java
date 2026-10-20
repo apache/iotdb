@@ -20,6 +20,23 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "将 TsFile %s 转换为 tablet 失败。状态：%s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "将 TsFile %s 转换为 tablet 失败：%s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "tablet 转换未返回状态";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "执行语句 %s 时，在转换为 tablet 前读取 TsFile 模型信息失败：%s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "将 TsFile 转换为 tablet 后加载仍失败。详情：%s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD 被拒绝：uuid={}，region={}，endpoint={}，status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "目标节点拒绝 LOAD，且未返回状态或消息";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "分发 LOAD %s（region %s）到节点 %s 失败：%s";
+
   public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
       "SchemaRegion 不可用，请稍后重试。";
 
@@ -268,6 +285,9 @@ public final class DataNodeQueryMessages {
       "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "指定的 TIME 列 %s 在查询结果中不存在";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "查询数据集中存在重复的列名。";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -2933,6 +2953,8 @@ public final class DataNodeQueryMessages {
   public static final String IS_NOT_SUPPORTED_FOR_PROPERTY_VALUE_OF_SET_CONFIGURATION =
 
       " 不支持作为 'set configuration' 的属性值。";
+  public static final String EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD =
+      "DEFAULT 不支持用于 SET CONFIGURATION";
   public static final String NOTE_THAT_THE_SYNTAX_FOR_SET_CONFIGURATION_IN_THE_TREE_MODEL_IS_NOT_EXACTLY_THE_SAME_AS =
 
       "注意：树模型中的 'set configuration' 语法与表模型中的语法并不完全相同。";
@@ -4790,6 +4812,14 @@ public final class DataNodeQueryMessages {
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
+
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "目标文件：%s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "格式：%s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "目标表：%s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "时间列：%s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TAG 列：%s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "内存阈值：%s";
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData 中不包含任何物理 chunk";

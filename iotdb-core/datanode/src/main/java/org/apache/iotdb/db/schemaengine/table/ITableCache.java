@@ -52,6 +52,9 @@ public interface ITableCache {
 
   TsTable getTableInWrite(final String database, final String tableName);
 
+  /** Returns the committed local schema without contacting ConfigNode. */
+  TsTable getTableInCache(final String database, final String tableName);
+
   TsTable getTable(final String database, final String tableName);
 
   TsTable getTable(String database, final String tableName, final boolean force);

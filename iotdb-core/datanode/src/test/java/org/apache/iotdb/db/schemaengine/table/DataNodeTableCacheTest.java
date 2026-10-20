@@ -53,6 +53,26 @@ public class DataNodeTableCacheTest {
   private static final String TABLE_NAME = "table1";
 
   @Test
+  public void localReadUsesCommittedSchemaWithoutResolvingPendingUpdates() {
+    final ITableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      final TsTable initial = createTable(TABLE_NAME);
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, initial, null);
+      Assert.assertNull(cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      Assert.assertSame(initial, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
+      final TsTable updated = new TsTable(initial);
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, updated, null);
+      Assert.assertSame(initial, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      Assert.assertSame(updated, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
+  }
+
+  @Test
   public void interruptedFetchDoesNotLeakSemaphorePermit() throws Exception {
     final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(DATABASE);

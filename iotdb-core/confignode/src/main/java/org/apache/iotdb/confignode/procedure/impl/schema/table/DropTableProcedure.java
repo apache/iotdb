@@ -386,9 +386,22 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
   }
 
+  /**
+   * The data is deleted logically once DELETE_DATA has completed: the deletion is applied to every
+   * data region, and only the physical removal of the mod files continues in the background. The
+   * procedure is therefore not rolled back once it has moved on to DELETE_DEVICES. A view holds no
+   * data and goes straight to DROP_TABLE, see {@link DropViewProcedure}.
+   */
   @Override
   protected boolean isRollbackSupported(final DropTableState state) {
-    return state == DropTableState.CHECK_AND_INVALIDATE_TABLE || state == DropTableState.PRE_DELETE;
+    switch (state) {
+      case CHECK_AND_INVALIDATE_TABLE:
+      case PRE_DELETE:
+      case DELETE_DATA:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

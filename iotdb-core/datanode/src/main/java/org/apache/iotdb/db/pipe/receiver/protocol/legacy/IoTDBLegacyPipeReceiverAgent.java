@@ -164,9 +164,11 @@ public class IoTDBLegacyPipeReceiverAgent {
         handleTsFilePipeData(tsFilePipeData, fileDir);
       }
     } catch (final IOException e) {
-      LOGGER.error(DataNodePipeMessages.PIPE_DATA_TRANSPORT_ERROR, e.getMessage());
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR, "Pipe data transport error, " + e.getMessage());
+      final String errorMessage =
+          String.format(
+              DataNodePipeMessages.MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238, e.getMessage());
+      LOGGER.error(errorMessage, e);
+      return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, errorMessage);
     }
 
     // step3. load PipeData
@@ -181,9 +183,12 @@ public class IoTDBLegacyPipeReceiverAgent {
           DataNodePipeMessages.LOAD_PIPEDATA_WITH_SERIALIZE_NUMBER_SUCCESSFULLY,
           pipeData.getSerialNumber());
     } catch (final PipeException e) {
-      LOGGER.error(DataNodePipeMessages.FAIL_TO_LOAD_PIPEDATA_BECAUSE, e.getMessage());
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR, "Fail to load pipeData because " + e.getMessage());
+      final String errorMessage =
+          String.format(
+              DataNodePipeMessages.MESSAGE_FAIL_TO_LOAD_PIPEDATA_BECAUSE_ARG_49526D0C,
+              e.getMessage());
+      LOGGER.error(errorMessage, e);
+      return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, errorMessage);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
@@ -273,8 +278,14 @@ public class IoTDBLegacyPipeReceiverAgent {
       fileWithoutPatch = resolveFileInFileDataDir(fileDir, fileName);
       file = resolveFileInFileDataDir(fileDir, fileName + PATCH_SUFFIX);
     } catch (final IOException e) {
-      LOGGER.warn(e.getMessage());
-      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
+      final String errorMessage =
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_FAILED_TO_RESOLVE_LEGACY_PIPE_RECEIVER_FILE_ARG_ARG_9B82CF3F,
+              fileName,
+              e.getMessage());
+      LOGGER.warn(errorMessage, e);
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, errorMessage);
     }
 
     // step2. check startIndex
@@ -284,8 +295,8 @@ public class IoTDBLegacyPipeReceiverAgent {
     }
 
     // step3. append file
+    final int length = buff.remaining();
     try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
-      final int length = buff.remaining();
       randomAccessFile.seek(startIndex);
       final byte[] byteArray = new byte[length];
       buff.get(byteArray);
@@ -294,8 +305,16 @@ public class IoTDBLegacyPipeReceiverAgent {
       LOGGER.debug(
           DataNodePipeMessages.SYNC_START_AT_TO_IS_DONE, fileName, startIndex, startIndex + length);
     } catch (final IOException e) {
-      LOGGER.error(e.getMessage());
-      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
+      final String errorMessage =
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06,
+              fileName,
+              startIndex,
+              length,
+              e.getMessage());
+      LOGGER.error(errorMessage, e);
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, errorMessage);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");

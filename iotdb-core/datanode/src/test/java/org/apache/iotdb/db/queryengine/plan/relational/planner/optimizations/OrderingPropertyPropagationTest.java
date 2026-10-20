@@ -20,31 +20,42 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class OrderingPropertyPropagationTest {
@@ -435,6 +446,276 @@ public class OrderingPropertyPropagationTest {
         plan("SELECT * FROM (SELECT *, diff(s1) AS d FROM table1) ORDER BY " + TAGS + ", s1");
     assertFalse(findNodes(diff, SortNode.class).isEmpty());
     assertTrue(findNodes(diff, StreamSortNode.class).isEmpty());
+  }
+
+  @Test
+  public void testPlainQueryPreservesOrderBy() {
+    PlanTester tester = new PlanTester();
+    PlanNode logical =
+        tester
+            .createPlan("SELECT time, tag1, tag2, tag3, s1 FROM table1 ORDER BY time DESC")
+            .getRootNode();
+    List<SortNode> sorts = findNodes(logical, SortNode.class);
+    assertEquals(1, sorts.size());
+    Symbol time = sorts.get(0).getOrderingScheme().getOrderBy().get(0);
+    assertEquals("time", time.getName());
+    assertEquals(DESC_NULLS_LAST, sorts.get(0).getOrderingScheme().getOrdering(time));
+
+    SortNode queryRoot = Mockito.spy(sorts.get(0));
+    PlanOptimizer.Context context = Mockito.mock(PlanOptimizer.Context.class);
+    Mockito.when(context.getAnalysis()).thenReturn(tester.getAnalysis());
+    assertSame(queryRoot, new RemoveRedundantSortForCopyTo().optimize(queryRoot, context));
+    Mockito.verify(queryRoot, Mockito.never()).getChild();
+    Mockito.verify(queryRoot, Mockito.never()).getChildren();
+    assertSame(logical, new RemoveRedundantSortForCopyTo().optimize(logical, context));
+
+    List<MergeSortNode> merges = findNodes(tester, MergeSortNode.class);
+    assertFalse(merges.isEmpty());
+    for (MergeSortNode merge : merges) {
+      assertEquals(List.of(time), merge.getOrderingScheme().getOrderBy());
+      assertEquals(DESC_NULLS_LAST, merge.getOrderingScheme().getOrdering(time));
+    }
+  }
+
+  @Test
+  public void testCopyToWithoutFromKeepsRegularSort() {
+    for (String prefix : List.of("", "EXPLAIN ", "EXPLAIN ANALYZE ")) {
+      PlanTester tester = new PlanTester();
+      PlanNode logical =
+          tester
+              .createPlan(
+                  prefix
+                      + "COPY (SELECT CAST(1 AS TIMESTAMP) AS time, 1 AS v)"
+                      + " TO 'constant.tsfile' (MEMORY_THRESHOLD 1000000)")
+              .getRootNode();
+      CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+      assertFalse(((CopyToTsFileOptions) copyTo.getCopyToOptions()).isGenerateNewTimeColumn());
+      List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+      assertEquals(1, sorts.size());
+      assertCopyToOrdering(copyTo, sorts.get(0).getOrderingScheme(), "time");
+      assertTrue(findNodes(logical, StreamSortNode.class).isEmpty());
+      assertTrue(findNodes(logical, DeviceTableScanNode.class).isEmpty());
+
+      CopyToNode distributedCopyTo = onlyCopyTo(findNodes(tester, CopyToNode.class));
+      sorts = findNodes(tester, SortNode.class);
+      assertEquals(1, sorts.size());
+      assertCopyToOrdering(distributedCopyTo, sorts.get(0).getOrderingScheme(), "time");
+      assertTrue(findNodes(tester, StreamSortNode.class).isEmpty());
+      assertTrue(findNodes(tester, DeviceTableScanNode.class).isEmpty());
+    }
+  }
+
+  @Test
+  public void testCopyToSortUsesStreamingScanAndDistributedMerge() {
+    for (String source :
+        List.of(
+            "table1",
+            "table1(time, tag1, tag2, tag3, s1)",
+            "(SELECT time, tag1, tag2, tag3, s1 FROM table1)",
+            "(SELECT time, tag1, tag2, tag3, s1 FROM table1 ORDER BY time DESC)",
+            "(SELECT time, tag1, tag2, tag3, s1 FROM table1 ORDER BY s1 DESC)")) {
+      PlanTester tester = new PlanTester();
+      PlanNode logical = tester.createPlan("COPY " + source + " TO 'copy.tsfile'").getRootNode();
+      assertTrue(tester.getAnalysis().isQuery());
+      assertTrue(tester.getAnalysis().hasSortNode());
+      CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+      List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+      assertEquals(1, sorts.size());
+      assertTrue(sorts.get(0) instanceof StreamSortNode);
+      assertCopyToOrdering(
+          copyTo, sorts.get(0).getOrderingScheme(), "tag1", "tag2", "tag3", "time");
+
+      CopyToNode distributedCopyTo = onlyCopyTo(findNodes(tester, CopyToNode.class));
+      List<MergeSortNode> merges = findNodes(tester, MergeSortNode.class);
+      assertFalse(merges.isEmpty());
+      for (MergeSortNode merge : merges) {
+        assertCopyToOrdering(
+            distributedCopyTo, merge.getOrderingScheme(), "tag1", "tag2", "tag3", "time");
+      }
+      assertTrue(findNodes(tester, SortNode.class).isEmpty());
+      List<DeviceTableScanNode> scans = findNodes(tester, DeviceTableScanNode.class);
+      assertFalse(scans.isEmpty());
+      scans.forEach(scan -> assertEquals(Ordering.ASC, scan.getScanOrder()));
+    }
+  }
+
+  @Test
+  public void testExplainCopyToRemovesRedundantSort() {
+    for (String prefix : List.of("EXPLAIN ", "EXPLAIN ANALYZE ")) {
+      PlanTester tester = new PlanTester();
+      PlanNode logical =
+          tester
+              .createPlan(
+                  prefix
+                      + "COPY (SELECT time, tag1, tag2, tag3, s1 FROM table1 ORDER BY time DESC)"
+                      + " TO 'copy_explain.tsfile'")
+              .getRootNode();
+      CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+      List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+      assertEquals(1, sorts.size());
+      assertTrue(sorts.get(0) instanceof StreamSortNode);
+      assertCopyToOrdering(
+          copyTo, sorts.get(0).getOrderingScheme(), "tag1", "tag2", "tag3", "time");
+      onlyCopyTo(findNodes(tester, CopyToNode.class));
+      assertTrue(findNodes(tester, SortNode.class).isEmpty());
+    }
+  }
+
+  @Test
+  public void testCopyToSortPreservesInnerTopKAndOffset() {
+    for (String orderColumn : List.of("time", "s1")) {
+      PlanTester tester = new PlanTester();
+      PlanNode logical =
+          tester
+              .createPlan(
+                  "COPY (SELECT time, s1 FROM table1 ORDER BY "
+                      + orderColumn
+                      + " DESC OFFSET 2 LIMIT 3) TO 'copy_limit.tsfile'")
+              .getRootNode();
+      CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+      List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+      assertEquals(1, sorts.size());
+      assertCopyToOrdering(copyTo, sorts.get(0).getOrderingScheme(), "time");
+      List<OffsetNode> offsets = findNodes(sorts.get(0), OffsetNode.class);
+      assertEquals(1, offsets.size());
+      assertEquals(2, offsets.get(0).getCount());
+      List<TopKNode> topKs = findNodes(offsets.get(0), TopKNode.class);
+      assertEquals(1, topKs.size());
+      Symbol orderSymbol =
+          copyTo.getInnerQueryOutputSymbols().get(orderColumn.equals("time") ? 0 : 1);
+      assertEquals(5, topKs.get(0).getCount());
+      assertEquals(List.of(orderSymbol), topKs.get(0).getOrderingScheme().getOrderBy());
+      assertEquals(DESC_NULLS_LAST, topKs.get(0).getOrderingScheme().getOrdering(orderSymbol));
+
+      CopyToNode distributedCopyTo = onlyCopyTo(findNodes(tester, CopyToNode.class));
+      List<SortNode> outerSorts = sortsAbove(tester, OffsetNode.class);
+      assertEquals(1, outerSorts.size());
+      assertCopyToOrdering(distributedCopyTo, outerSorts.get(0).getOrderingScheme(), "time");
+      offsets = findNodes(tester, OffsetNode.class);
+      assertEquals(1, offsets.size());
+      assertEquals(2, offsets.get(0).getCount());
+      topKs = findNodes(tester, TopKNode.class);
+      assertFalse(topKs.isEmpty());
+      for (TopKNode topK : topKs) {
+        assertEquals(5, topK.getCount());
+        assertEquals(List.of(orderSymbol), topK.getOrderingScheme().getOrderBy());
+        assertEquals(DESC_NULLS_LAST, topK.getOrderingScheme().getOrdering(orderSymbol));
+      }
+    }
+  }
+
+  @Test
+  public void testCopyToSortPreservesOffsetWithoutLimit() {
+    PlanTester tester = new PlanTester();
+    PlanNode logical =
+        tester
+            .createPlan(
+                "COPY (SELECT time, s1 FROM table1 ORDER BY time DESC OFFSET 2)"
+                    + " TO 'copy_offset.tsfile'")
+            .getRootNode();
+    CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+    List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+    assertEquals(2, sorts.size());
+    assertCopyToOrdering(copyTo, sorts.get(0).getOrderingScheme(), "time");
+    List<OffsetNode> offsets = findNodes(sorts.get(0), OffsetNode.class);
+    assertEquals(1, offsets.size());
+    assertEquals(2, offsets.get(0).getCount());
+    List<SortNode> innerSorts = findNodes(offsets.get(0), SortNode.class);
+    assertEquals(1, innerSorts.size());
+    Symbol time = copyTo.getInnerQueryOutputSymbols().get(0);
+    assertEquals(DESC_NULLS_LAST, innerSorts.get(0).getOrderingScheme().getOrdering(time));
+
+    onlyCopyTo(findNodes(tester, CopyToNode.class));
+    assertEquals(1, sortsAbove(tester, OffsetNode.class).size());
+    offsets = findNodes(tester, OffsetNode.class);
+    assertEquals(1, offsets.size());
+    assertEquals(2, offsets.get(0).getCount());
+  }
+
+  @Test
+  public void testCopyToSortResolvesAliasesAndTargetTagOrder() {
+    PlanTester tester = new PlanTester();
+    PlanNode logical =
+        tester
+            .createPlan(
+                "COPY (SELECT time AS t, tag1 AS k1, tag2 AS k2, tag3 AS k3, s1 AS v"
+                    + " FROM table1) TO 'copy_alias.tsfile' WITH (TIME t, TAGS(k2, k1, k3))")
+            .getRootNode();
+    CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+    List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+    assertEquals(1, sorts.size());
+    assertTrue(sorts.get(0) instanceof StreamSortNode);
+    assertCopyToOrdering(copyTo, sorts.get(0).getOrderingScheme(), "k2", "k1", "k3", "t");
+
+    CopyToNode distributedCopyTo = onlyCopyTo(findNodes(tester, CopyToNode.class));
+    List<MergeSortNode> merges = findNodes(tester, MergeSortNode.class);
+    assertFalse(merges.isEmpty());
+    for (MergeSortNode merge : merges) {
+      assertCopyToOrdering(distributedCopyTo, merge.getOrderingScheme(), "k2", "k1", "k3", "t");
+    }
+    assertTrue(findNodes(tester, SortNode.class).isEmpty());
+  }
+
+  @Test
+  public void testCopyToGeneratedTimePreservesInnerOrderBy() {
+    PlanTester tester = new PlanTester();
+    PlanNode logical =
+        tester
+            .createPlan("COPY (SELECT s1 FROM table1 ORDER BY s1 DESC) TO 'copy_generated.tsfile'")
+            .getRootNode();
+    CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+    assertTrue(((CopyToTsFileOptions) copyTo.getCopyToOptions()).isGenerateNewTimeColumn());
+    List<SortNode> sorts = findNodes(copyTo.getChild(), SortNode.class);
+    assertEquals(1, sorts.size());
+    Symbol value = copyTo.getInnerQueryOutputSymbols().get(0);
+    assertEquals(List.of(value), sorts.get(0).getOrderingScheme().getOrderBy());
+    assertEquals(DESC_NULLS_LAST, sorts.get(0).getOrderingScheme().getOrdering(value));
+
+    onlyCopyTo(findNodes(tester, CopyToNode.class));
+    sorts = findNodes(tester, SortNode.class);
+    assertFalse(sorts.isEmpty());
+    for (SortNode sort : sorts) {
+      assertEquals(List.of(value), sort.getOrderingScheme().getOrderBy());
+      assertEquals(DESC_NULLS_LAST, sort.getOrderingScheme().getOrdering(value));
+    }
+  }
+
+  @Test
+  public void testCopyToGeneratedTimeNeedsNoSort() {
+    PlanTester tester = new PlanTester();
+    PlanNode logical =
+        tester
+            .createPlan("COPY (SELECT tag1, tag2, tag3, s1 FROM table1) TO 'copy_generated.tsfile'")
+            .getRootNode();
+    CopyToNode copyTo = onlyCopyTo(findNodes(logical, CopyToNode.class));
+    assertTrue(((CopyToTsFileOptions) copyTo.getCopyToOptions()).isGenerateNewTimeColumn());
+    assertFalse(tester.getAnalysis().hasSortNode());
+    assertTrue(findNodes(logical, SortNode.class).isEmpty());
+    onlyCopyTo(findNodes(tester, CopyToNode.class));
+    assertTrue(findNodes(tester, SortNode.class).isEmpty());
+    assertTrue(findNodes(tester, MergeSortNode.class).isEmpty());
+  }
+
+  private static CopyToNode onlyCopyTo(List<CopyToNode> nodes) {
+    assertEquals(1, nodes.size());
+    return nodes.get(0);
+  }
+
+  private static void assertCopyToOrdering(
+      CopyToNode copyTo, OrderingScheme ordering, String... columnNames) {
+    List<String> outputNames =
+        copyTo.getInnerQueryDatasetHeader().getColumnHeaders().stream()
+            .map(ColumnHeader::getColumnName)
+            .collect(Collectors.toList());
+    List<Symbol> expected = new ArrayList<>();
+    for (String columnName : columnNames) {
+      int index = outputNames.indexOf(columnName);
+      assertTrue(columnName, index >= 0);
+      expected.add(copyTo.getInnerQueryOutputSymbols().get(index));
+    }
+    assertEquals(expected, ordering.getOrderBy());
+    expected.forEach(symbol -> assertEquals(ASC_NULLS_FIRST, ordering.getOrdering(symbol)));
+    assertTrue(copyTo.getChild().getOutputSymbols().containsAll(expected));
   }
 
   private static PlanTester plan(String sql) {

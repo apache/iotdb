@@ -1458,15 +1458,6 @@ public class TypeServices {
                   };
             };
 
-    static {
-      EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
-      TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
-      MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.check();
-      EVENT_WINDOW_MANAGER_PROVIDER_SERVICE.check();
-      OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
-      MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
-    }
-
     private Aggregation() {
       // Utility class
     }
