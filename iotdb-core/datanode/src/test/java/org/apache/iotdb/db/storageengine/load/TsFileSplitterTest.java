@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 
 import com.sun.management.ThreadMXBean;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -103,6 +104,29 @@ public class TsFileSplitterTest {
       Assert.assertEquals(1, chunkDataList.size());
     } finally {
       Assert.assertTrue(sourceTsFile.delete());
+    }
+  }
+
+  @Test
+  public void testSplitRejectsMoreTimePartitionsThanTheConfiguredLimit() throws Exception {
+    final File sourceTsFile = new File("split-partition-limit-source.tsfile");
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final int originalPartitionSlotsLimit = config.getLoadTsFileSpiltPartitionMaxSize();
+    try {
+      config.setLoadTsFileSpiltPartitionMaxSize(2);
+      writeTableTsFileWithOnePointPerTimePartition(sourceTsFile, 3);
+
+      try {
+        new TsFileSplitter(sourceTsFile, tsFileData -> true).splitTsFileByDataPartition();
+        Assert.fail("expected the splitter to reject more time partitions than the limit");
+      } catch (final LoadFileException e) {
+        // expected: the third partition crosses the configured limit
+      }
+    } finally {
+      config.setLoadTsFileSpiltPartitionMaxSize(originalPartitionSlotsLimit);
+      if (sourceTsFile.exists()) {
+        Assert.assertTrue(sourceTsFile.delete());
+      }
     }
   }
 

@@ -54,6 +54,7 @@ import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -109,6 +110,28 @@ public class ChunkDataDirectWriteTest {
 
   // An entire non-aligned chunk reaches the writer untouched, with no serialize/deserialize round
   // trip in between
+  @Test
+  public void testNonArrayChunkPayloadUsesBlockCopyPath() throws Exception {
+    final ByteBuffer payload = ByteBuffer.allocateDirect(10_000);
+    for (int i = 0; i < payload.capacity(); i++) {
+      payload.put((byte) i);
+    }
+    payload.flip();
+
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (final DataOutputStream output = new DataOutputStream(bytes)) {
+      ChunkData.serializeChunkPayload(output, payload, null, true);
+    }
+
+    final ByteBuffer deserialized =
+        ChunkData.deserializeChunkPayload(
+            new DataInputStream(new ByteArrayInputStream(bytes.toByteArray())), new ArrayList<>());
+    assertEquals(payload.remaining(), deserialized.remaining());
+    for (int i = 0; i < payload.remaining(); i++) {
+      assertEquals(payload.get(i), deserialized.get(i));
+    }
+  }
+
   @Test
   public void testNonAlignedChunkDataCanWriteWithoutSerdeRoundTrip() throws Exception {
     final NonAlignedChunkData chunkData = createNonAlignedChunkData(DEFAULT_DEVICE, "s1");
