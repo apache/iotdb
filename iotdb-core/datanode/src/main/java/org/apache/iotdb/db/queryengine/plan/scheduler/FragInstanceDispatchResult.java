@@ -26,13 +26,21 @@ public class FragInstanceDispatchResult {
 
   private TSStatus failureStatus;
 
+  private final boolean failureCausedByInterruption;
+
   public FragInstanceDispatchResult(boolean successful) {
     this.successful = successful;
+    this.failureCausedByInterruption = false;
   }
 
   public FragInstanceDispatchResult(TSStatus failureStatus) {
+    this(failureStatus, false);
+  }
+
+  public FragInstanceDispatchResult(TSStatus failureStatus, boolean failureCausedByInterruption) {
     this.successful = false;
     this.failureStatus = failureStatus;
+    this.failureCausedByInterruption = failureCausedByInterruption;
   }
 
   public boolean isSuccessful() {
@@ -41,5 +49,9 @@ public class FragInstanceDispatchResult {
 
   public TSStatus getFailureStatus() {
     return failureStatus;
+  }
+
+  public boolean isFailureCausedByInterruption() {
+    return failureCausedByInterruption;
   }
 }

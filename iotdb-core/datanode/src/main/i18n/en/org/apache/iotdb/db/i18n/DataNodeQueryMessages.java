@@ -1243,6 +1243,7 @@ public final class DataNodeQueryMessages {
       "Interrupted when dispatching read async";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "Interrupted when dispatching write async";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "Interrupted errors: %s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "Deserialize ConsensusGroupId failed. ";
   public static final String CAN_T_CONNECT_TO_NODE =

@@ -19,9 +19,17 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -29,13 +37,19 @@ import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import ch.qos.logback.classic.Level;
@@ -52,6 +66,7 @@ import org.mockito.stubbing.OngoingStubbing;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -356,6 +371,138 @@ public class IoTDBInternalLocalReporterTest {
     verifyReloadInterrupt(null, null, false);
   }
 
+  @Test
+  public void testRemoteWriteInterruptedDuringReloadDoesNotWarn() throws Exception {
+    verifyRemoteDispatchInterruption(false, false, null);
+  }
+
+  @Test
+  public void testRemoteAutoCreateInterruptedDuringReloadDoesNotWarn() throws Exception {
+    verifyRemoteDispatchInterruption(true, false, null);
+  }
+
+  @Test
+  public void testRemoteInterruptionSurvivesClearedThreadFlag() throws Exception {
+    verifyRemoteDispatchInterruption(false, true, null);
+  }
+
+  @Test
+  public void testRemoteInterruptionDoesNotReplaceExistingFailure() throws Exception {
+    verifyRemoteDispatchInterruption(
+        false, false, new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode()));
+  }
+
+  @Test
+  public void testRemoteInterruptionDoesNotHideExistingException() throws Exception {
+    verifyRemoteDispatchInterruption(
+        false, false, null, new IllegalStateException("existing write failure"));
+  }
+
+  private void verifyRemoteDispatchInterruption(
+      boolean autoCreate, boolean clearInterrupt, TSStatus recordedFailure) throws Exception {
+    verifyRemoteDispatchInterruption(autoCreate, clearInterrupt, recordedFailure, null);
+  }
+
+  private void verifyRemoteDispatchInterruption(
+      boolean autoCreate,
+      boolean clearInterrupt,
+      TSStatus recordedFailure,
+      Throwable recordedException)
+      throws Exception {
+    service = Executors.newSingleThreadScheduledExecutor();
+    reporter = newReporter(service);
+    MPPQueryContext context = mock(MPPQueryContext.class);
+    when(context.getQueryId()).thenReturn(new QueryId("remote_metric"));
+    IPlanner planner = mock(IPlanner.class);
+    when(planner.analyze(context)).thenReturn(mock(IAnalysis.class));
+    ExecutorService notifications = mock(ExecutorService.class);
+    QueryExecution queryExecution = new QueryExecution(planner, context, notifications);
+    QueryStateMachine stateMachine = stateMachine(queryExecution);
+    if (recordedFailure != null) {
+      stateMachine.transitionToFailed(recordedFailure);
+    } else if (recordedException != null) {
+      stateMachine.transitionToFailed(recordedException);
+    } else {
+      stateMachine.transitionToPlanned();
+    }
+
+    TEndPoint endpoint = new TEndPoint("192.0.2.1", 10730);
+    TDataNodeLocation remote = new TDataNodeLocation().setInternalEndPoint(endpoint);
+    TRegionReplicaSet region =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            Collections.singletonList(remote));
+    PlanNode node = mock(PlanNode.class);
+    when(node.serializeToByteBuffer()).thenReturn(ByteBuffer.allocate(0));
+    when(node.getChildren()).thenReturn(Collections.emptyList());
+    PlanFragment fragment = mock(PlanFragment.class);
+    when(fragment.getPlanNodeTree()).thenReturn(node);
+    FragmentInstance instance = mock(FragmentInstance.class);
+    when(instance.getHostDataNode()).thenReturn(remote);
+    when(instance.getRegionReplicaSet()).thenReturn(region);
+    when(instance.getFragment()).thenReturn(fragment);
+    DistributedQueryPlan plan = mock(DistributedQueryPlan.class);
+    when(plan.getInstances()).thenReturn(Collections.singletonList(instance));
+
+    @SuppressWarnings("unchecked")
+    IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clients =
+        mock(IClientManager.class);
+    AsyncDataNodeInternalServiceClient client = mock(AsyncDataNodeInternalServiceClient.class);
+    when(clients.borrowClient(endpoint)).thenReturn(client);
+    CountDownLatch dispatched = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              // Leave the RPC response pending so the real AsyncPlanNodeSender waits.
+              dispatched.countDown();
+              return null;
+            })
+        .when(client)
+        .sendBatchPlanNode(any(TSendBatchPlanNodeReq.class), any());
+    ClusterScheduler scheduler =
+        new ClusterScheduler(context, stateMachine, plan, QueryType.WRITE, null, null, clients);
+    AtomicReference<ExecutionResult> returnedResult = new AtomicReference<>();
+    OngoingStubbing<ExecutionResult> execution = execution();
+    if (autoCreate) {
+      execution = execution.thenReturn(result(TSStatusCode.METADATA_ERROR));
+    }
+    execution.thenAnswer(
+        invocation -> {
+          scheduler.start();
+          if (clearInterrupt) {
+            Thread.interrupted();
+          }
+          // Deliver the getStatus() listener immediately, also exercising its normal return
+          // path when the interrupt flag has been consumed after dispatch.
+          doAnswer(
+                  notification -> {
+                    notification.<Runnable>getArgument(0).run();
+                    return null;
+                  })
+              .when(notifications)
+              .execute(any(Runnable.class));
+          ExecutionResult result = queryExecution.getStatus();
+          returnedResult.set(result);
+          return result;
+        });
+
+    writeMetric();
+    assertTrue(dispatched.await(5, TimeUnit.SECONDS));
+    reporter.stop();
+    assertTrue(service.awaitTermination(5, TimeUnit.SECONDS));
+
+    ExecutionResult result = returnedResult.get();
+    if (recordedFailure != null) {
+      assertSame(recordedFailure, result.status);
+    } else {
+      assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.getCode());
+    }
+    boolean hasRecordedFailure = recordedFailure != null || recordedException != null;
+    assertEquals(hasRecordedFailure, hasWarning());
+    assertEquals(!hasRecordedFailure, result.failureCausedByInterruption);
+    executedStatements(autoCreate ? 2 : 1);
+    verify(client).sendBatchPlanNode(any(TSendBatchPlanNodeReq.class), any());
+  }
+
   private void verifyReloadInterrupt(
       TSStatus recordedFailure, Throwable recordedException, boolean autoCreate) throws Exception {
     service = Executors.newSingleThreadScheduledExecutor();
@@ -408,9 +555,7 @@ public class IoTDBInternalLocalReporterTest {
     when(planner.analyze(context)).thenReturn(mock(IAnalysis.class));
     ExecutorService notifications = mock(ExecutorService.class);
     QueryExecution execution = new QueryExecution(planner, context, notifications);
-    Field stateMachineField = QueryExecution.class.getDeclaredField("stateMachine");
-    stateMachineField.setAccessible(true);
-    QueryStateMachine stateMachine = (QueryStateMachine) stateMachineField.get(execution);
+    QueryStateMachine stateMachine = stateMachine(execution);
     if (recordedFailure != null) {
       stateMachine.transitionToFailed(recordedFailure);
     } else if (recordedException != null) {
@@ -426,6 +571,12 @@ public class IoTDBInternalLocalReporterTest {
         .when(notifications)
         .execute(any(Runnable.class));
     return execution;
+  }
+
+  private QueryStateMachine stateMachine(QueryExecution execution) throws Exception {
+    Field stateMachineField = QueryExecution.class.getDeclaredField("stateMachine");
+    stateMachineField.setAccessible(true);
+    return (QueryStateMachine) stateMachineField.get(execution);
   }
 
   private IoTDBInternalLocalReporter newReporter(ScheduledExecutorService executor) {

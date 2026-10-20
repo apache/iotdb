@@ -644,11 +644,14 @@ public class QueryExecution implements IQueryExecution {
     } catch (InterruptedException e) {
       // TODO: (xingtanzjr) use more accurate error handling
       Thread.currentThread().interrupt();
-      // An interrupted waiter can still observe a failure recorded before the interruption.
-      // Preserve its identity so callers do not mistake that failure for shutdown cancellation.
+      // Dispatch may already have converted an interruption to a failure status. Preserve its
+      // recorded origin without reclassifying an unrelated failure.
       TSStatus failureStatus = stateMachine.getFailureStatus();
       if (failureStatus != null) {
-        return new ExecutionResult(context.getQueryId(), failureStatus);
+        return new ExecutionResult(
+            context.getQueryId(),
+            failureStatus,
+            stateMachine.isFailureCausedByInterruption(failureStatus));
       }
       return new ExecutionResult(
           context.getQueryId(),
@@ -656,12 +659,14 @@ public class QueryExecution implements IQueryExecution {
           // A terminal query may have failed with an exception that has no dedicated status code.
           !stateMachine.getState().isDone());
     } catch (ExecutionException e) {
+      TSStatus failureStatus = stateMachine.getFailureStatus();
       return new ExecutionResult(
           context.getQueryId(),
-          stateMachine.getFailureStatus() == null
+          failureStatus == null
               ? RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
-              : stateMachine.getFailureStatus());
+              : failureStatus,
+          stateMachine.isFailureCausedByInterruption(failureStatus));
     }
   }
 
@@ -732,7 +737,8 @@ public class QueryExecution implements IQueryExecution {
         || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion())) {
       planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus);
     }
-    return new ExecutionResult(context.getQueryId(), tsstatus);
+    return new ExecutionResult(
+        context.getQueryId(), tsstatus, stateMachine.isFailureCausedByInterruption(tsstatus));
   }
 
   public DistributedQueryPlan getDistributedPlan() {

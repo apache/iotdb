@@ -1223,6 +1223,7 @@ public final class DataNodeQueryMessages {
       "异步分发读取操作时被中断";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "异步分发写入操作时被中断";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "中断错误：%s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "反序列化 ConsensusGroupId 失败。";
   public static final String CAN_T_CONNECT_TO_NODE =
