@@ -42,7 +42,13 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
@@ -238,6 +244,118 @@ public class TsFileSplitterTest {
     outputStream.write(TSFileConfig.MAGIC_STRING.getBytes());
     Files.write(tsFile.toPath(), outputStream.toByteArray());
     return tsFile;
+  }
+
+  @Test
+  public void testSplitAlignedValueChunkWithUndecodedPagesPreservesValues() throws Exception {
+    assertAlignedValueChunkSplitPreservesValues(2);
+  }
+
+  @Test
+  public void testSplitAlignedValueChunkSpanningTimePartitionsPreservesValues() throws Exception {
+    // A page that covers two time partitions has to be decoded and written once per partition. The
+    // partition ranges are located by binary search, so this also checks that no point is dropped
+    // or duplicated at the partition boundary.
+    assertAlignedValueChunkSplitPreservesValues(4);
+  }
+
+  private void assertAlignedValueChunkSplitPreservesValues(final int maxNumberOfPointsInPage)
+      throws Exception {
+    final File sourceTsFile =
+        new File("split-table-aligned-values-" + maxNumberOfPointsInPage + "-source.tsfile");
+    final File targetTsFile =
+        new File("split-table-aligned-values-" + maxNumberOfPointsInPage + "-target.tsfile");
+    final IDeviceID deviceID = new StringArrayDeviceID("table1", "tagA");
+    final int pointsPerPartition = 2;
+    final int partitionCount = 2;
+    final long baseTime =
+        TimePartitionUtils.getTimePartitionSlot(1_700_000_000_000L).getStartTime();
+    final long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
+    final int pointCount = pointsPerPartition * partitionCount;
+    final long[] times = new long[pointCount];
+    final long[] values = new long[pointCount];
+
+    final int previousMaxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    try {
+      TSFileDescriptor.getInstance()
+          .getConfig()
+          .setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+      if (sourceTsFile.exists()) {
+        Assert.assertTrue(sourceTsFile.delete());
+      }
+      try (final TsFileIOWriter writer = new TsFileIOWriter(sourceTsFile)) {
+        writer.setSchema(createSchema());
+        writer.startChunkGroup(deviceID);
+        final AlignedChunkWriterImpl chunkWriter =
+            new AlignedChunkWriterImpl(
+                Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64)));
+        for (int partition = 0; partition < partitionCount; partition++) {
+          for (int i = 0; i < pointsPerPartition; i++) {
+            final int index = partition * pointsPerPartition + i;
+            times[index] = baseTime + partition * timePartitionInterval + i;
+            values[index] = index;
+            chunkWriter.getTimeChunkWriter().write(times[index]);
+            chunkWriter.getValueChunkWriterByIndex(0).write(times[index], values[index], false);
+          }
+        }
+        chunkWriter.writeToFileWriter(writer);
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+
+      final List<ChunkData> emittedChunkDataList = new ArrayList<>();
+      new TsFileSplitter(
+              sourceTsFile,
+              tsFileData -> {
+                if (tsFileData instanceof ChunkData) {
+                  emittedChunkDataList.add((ChunkData) tsFileData);
+                }
+                return true;
+              })
+          .splitTsFileByDataPartition();
+
+      Assert.assertEquals(partitionCount, emittedChunkDataList.size());
+      if (targetTsFile.exists()) {
+        Assert.assertTrue(targetTsFile.delete());
+      }
+      try (final TsFileIOWriter writer = new TsFileIOWriter(targetTsFile)) {
+        writer.setSchema(createSchema());
+        writer.startChunkGroup(deviceID);
+        for (final ChunkData chunkData : emittedChunkDataList) {
+          writeSerializedChunkDataToWriter(chunkData, writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+
+      try (final TsFileReader reader = new TsFileReader(targetTsFile)) {
+        final QueryDataSet dataSet =
+            reader.query(
+                QueryExpression.create(
+                    Collections.singletonList(new Path(deviceID, "s1", true)), null));
+        int index = 0;
+        while (dataSet.hasNext()) {
+          final RowRecord row = dataSet.next();
+          Assert.assertEquals(times[index], row.getTimestamp());
+          final Field field = row.getField(0);
+          Assert.assertNotNull(field);
+          Assert.assertEquals(values[index], field.getLongV());
+          index++;
+        }
+        Assert.assertEquals(pointCount, index);
+      }
+    } finally {
+      TSFileDescriptor.getInstance()
+          .getConfig()
+          .setMaxNumberOfPointsInPage(previousMaxNumberOfPointsInPage);
+      if (sourceTsFile.exists()) {
+        Assert.assertTrue(sourceTsFile.delete());
+      }
+      if (targetTsFile.exists()) {
+        Assert.assertTrue(targetTsFile.delete());
+      }
+    }
   }
 
   @Test

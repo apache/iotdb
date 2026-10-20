@@ -28,6 +28,7 @@ import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -50,11 +51,14 @@ import javax.annotation.Nonnull;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
@@ -325,10 +329,6 @@ public class AlignedChunkData implements ChunkData {
   }
 
   protected void encodeAndBuildChunks() throws IOException, PageException {
-    final AlignedChunkWriterImpl writer = createAlignedChunkWriter();
-
-    writePageBuffersToWriter(writer);
-
     // One aligned ChunkData may accumulate pages from several physical Chunks before it is
     // consumed. Encode every Chunk represented by the current buffers, while leaving Chunks that
     // were sealed by an earlier endChunk() untouched.
@@ -336,7 +336,40 @@ public class AlignedChunkData implements ChunkData {
     for (final PageBuffer pageBuffer : pageBuffers) {
       bufferedChunkIndexes.add(pageBuffer.chunkIndex);
     }
+
+    // A chunk whose pages were never split only needs its page headers and data copied. Building it
+    // through AlignedChunkWriterImpl would encode every page again and then copy the whole chunk
+    // out
+    // of the writer's growable buffer, so its peak cost is roughly four times the chunk size.
+    final Map<Integer, Chunk> directlyBuiltChunks = new LinkedHashMap<>();
     for (final int chunkIndex : bufferedChunkIndexes) {
+      final Chunk chunk =
+          buildChunkFromUndecodedPages(
+              chunkIndex,
+              chunkHeaderList.get(chunkIndex),
+              chunkIndex == 0 ? TIME_COLUMN_MASK : VALUE_COLUMN_MASK);
+      if (chunk != null) {
+        directlyBuiltChunks.put(chunkIndex, chunk);
+      }
+    }
+
+    final AlignedChunkWriterImpl writer =
+        directlyBuiltChunks.size() == bufferedChunkIndexes.size()
+            ? null
+            : createAlignedChunkWriter();
+    if (writer != null) {
+      writePageBuffersToWriter(writer, directlyBuiltChunks.keySet());
+    }
+
+    for (final int chunkIndex : bufferedChunkIndexes) {
+      final Chunk directChunk = directlyBuiltChunks.get(chunkIndex);
+      if (directChunk != null) {
+        entireChunks.add(directChunk);
+        dataSize +=
+            directChunk.getData().remaining() + directChunk.getChunkStatistic().getSerializedSize();
+        continue;
+      }
+
       final ChunkHeader sourceHeader = chunkHeaderList.get(chunkIndex);
       final ByteBuffer encodedData;
       final Statistics<?> statistics;
@@ -359,6 +392,84 @@ public class AlignedChunkData implements ChunkData {
           createEncodedChunkHeader(sourceHeader, encodedData.remaining(), pageCount, mask);
       entireChunks.add(new Chunk(encodedHeader, encodedData, null, statistics));
       dataSize += encodedData.remaining() + statistics.getSerializedSize();
+    }
+  }
+
+  /**
+   * Reassembles a chunk from pages that were stored without decoding. Returns {@code null} when the
+   * chunk has a decoded page, an empty page whose statistics cannot be merged, or no page at all;
+   * the caller then falls back to {@link AlignedChunkWriterImpl}.
+   */
+  protected Chunk buildChunkFromUndecodedPages(
+      final int chunkIndex, final ChunkHeader sourceHeader, final int mask) throws IOException {
+    // A time chunk header carries VECTOR, and its pages use TimeStatistics rather than the
+    // LongStatistics that Statistics.getStatsByType(INT64) would create.
+    final TSDataType statisticsType = sourceHeader.getDataType();
+    Statistics<?> statistics = null;
+    int totalSize = 0;
+    int pageCount = 0;
+    for (final PageBuffer page : pageBuffers) {
+      if (page.chunkIndex != chunkIndex) {
+        continue;
+      }
+      if (page.needDecode || page.pageHeader == null || page.pageHeader.getStatistics() == null) {
+        return null;
+      }
+      if (page.pageData.remaining() == 0) {
+        continue;
+      }
+      if (statistics == null) {
+        statistics = Statistics.getStatsByType(statisticsType);
+      }
+      statistics.mergeStatistics(page.pageHeader.getStatistics());
+      totalSize += page.pageHeader.getSerializedPageSize();
+      pageCount++;
+    }
+    if (statistics == null) {
+      return null;
+    }
+
+    final ByteBuffer encodedData = ByteBuffer.allocate(totalSize);
+    final OutputStream headerStream = new ByteBufferOutputStream(encodedData);
+    for (final PageBuffer page : pageBuffers) {
+      if (page.chunkIndex != chunkIndex || page.pageData.remaining() == 0) {
+        continue;
+      }
+      page.pageHeader.serializeTo(headerStream);
+      encodedData.put(page.pageData.duplicate());
+    }
+    encodedData.flip();
+    // A chunk with one page is normally written with ONLY_ONE_PAGE_CHUNK_HEADER, whose page
+    // header does not carry statistics. The pages copied here keep their statistics, so use the
+    // multi-page marker to make them readable.
+    final ChunkHeader encodedHeader =
+        pageCount == 1
+            ? new ChunkHeader(
+                (byte) (MetaMarker.CHUNK_HEADER | mask),
+                sourceHeader.getMeasurementID(),
+                totalSize,
+                sourceHeader.getDataType(),
+                sourceHeader.getCompressionType(),
+                sourceHeader.getEncodingType())
+            : createEncodedChunkHeader(sourceHeader, totalSize, pageCount, mask);
+    return new Chunk(encodedHeader, encodedData, null, statistics);
+  }
+
+  private static final class ByteBufferOutputStream extends OutputStream {
+    private final ByteBuffer buffer;
+
+    private ByteBufferOutputStream(final ByteBuffer buffer) {
+      this.buffer = buffer;
+    }
+
+    @Override
+    public void write(final int b) {
+      buffer.put((byte) b);
+    }
+
+    @Override
+    public void write(final byte[] bytes, final int offset, final int length) {
+      buffer.put(bytes, offset, length);
     }
   }
 
@@ -396,7 +507,8 @@ public class AlignedChunkData implements ChunkData {
     return new AlignedChunkWriterImpl(timeSchema, valueSchemaList, encryptParameter);
   }
 
-  private void writePageBuffersToWriter(final AlignedChunkWriterImpl writer)
+  private void writePageBuffersToWriter(
+      final AlignedChunkWriterImpl writer, final Set<Integer> directlyBuiltChunkIndexes)
       throws IOException, PageException {
     // The partition bounds do not depend on the point and TimePartitionUtils derives them with
     // BigInteger arithmetic, so resolve them once per ChunkData instead of once per buffered point:
@@ -406,6 +518,9 @@ public class AlignedChunkData implements ChunkData {
     final long partitionStart = timePartitionSlot.getStartTime();
     final long partitionEnd = TimePartitionUtils.getTimePartitionEndTime(partitionStart);
     for (final PageBuffer page : pageBuffers) {
+      if (directlyBuiltChunkIndexes.contains(page.chunkIndex)) {
+        continue;
+      }
       if (!page.needDecode) {
         // Skip empty pages: an aligned series stores an all-null column as an empty page, and
         // writing its page header alone yields a chunk that cannot be parsed back.
@@ -420,35 +535,58 @@ public class AlignedChunkData implements ChunkData {
         }
         continue;
       }
+      // Times inside a page are sorted, so the points of this partition are one contiguous range.
+      // Locating that range with two binary searches avoids rescanning the whole page for every
+      // partition: a page that covers thousands of partitions used to cost O(points * partitions)
+      // bound comparisons even after the bounds themselves were cached.
+      final int from = lowerBound(page.timeBatch, partitionStart);
+      final int to = upperBound(page.timeBatch, partitionEnd);
       if (page.valueBatch == null) {
-        boolean hasPoint = false;
-        for (final long time : page.timeBatch) {
-          if (time < partitionStart || time > partitionEnd) {
-            continue;
-          }
-          writer.writeTime(time);
-          hasPoint = true;
+        for (int i = from; i < to; i++) {
+          writer.writeTime(page.timeBatch[i]);
         }
-        if (hasPoint) {
+        if (from < to) {
           writer.sealCurrentTimePage();
         }
       } else {
         final TSDataType dataType = chunkHeaderList.get(page.chunkIndex).getDataType();
-        boolean hasPoint = false;
-        for (int i = 0; i < page.timeBatch.length; i++) {
-          final long time = page.timeBatch[i];
-          if (time < partitionStart || time > partitionEnd) {
-            continue;
-          }
+        for (int i = from; i < to; i++) {
           writeValueToAlignedChunkWriter(
-              writer, time, page.valueBatch[i], dataType, page.chunkIndex - 1);
-          hasPoint = true;
+              writer, page.timeBatch[i], page.valueBatch[i], dataType, page.chunkIndex - 1);
         }
-        if (hasPoint) {
+        if (from < to) {
           writer.sealCurrentValuePage(page.chunkIndex - 1);
         }
       }
     }
+  }
+
+  private static int lowerBound(final long[] times, final long key) {
+    int low = 0;
+    int high = times.length;
+    while (low < high) {
+      final int mid = (low + high) >>> 1;
+      if (times[mid] < key) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
+  }
+
+  private static int upperBound(final long[] times, final long key) {
+    int low = 0;
+    int high = times.length;
+    while (low < high) {
+      final int mid = (low + high) >>> 1;
+      if (times[mid] <= key) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
   }
 
   private void writeValueToAlignedChunkWriter(

@@ -72,6 +72,15 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
     // Process each standalone value chunk
     for (int i = 0; i < chunkHeaderList.size(); i++) {
       final ChunkHeader chunkHeader = chunkHeaderList.get(i);
+      final Chunk directlyBuiltChunk =
+          buildChunkFromUndecodedPages(i, chunkHeader, VALUE_COLUMN_MASK);
+      if (directlyBuiltChunk != null) {
+        entireChunks.add(directlyBuiltChunk);
+        dataSize +=
+            directlyBuiltChunk.getData().remaining()
+                + directlyBuiltChunk.getChunkStatistic().getSerializedSize();
+        continue;
+      }
       MeasurementSchema measurementSchema =
           new MeasurementSchema(
               chunkHeader.getMeasurementID(),
