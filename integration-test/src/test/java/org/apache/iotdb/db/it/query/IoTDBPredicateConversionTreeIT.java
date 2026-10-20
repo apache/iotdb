@@ -34,6 +34,9 @@ import java.sql.Connection;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -289,5 +292,52 @@ public class IoTDBPredicateConversionTreeIT {
         "SELECT int64_col FROM " + DEVICE_ID + " WHERE int64_col <= 1.0E19",
         expectedHeaderInt64,
         allInt64Rows);
+  }
+
+  @Test
+  public void testWhereAndHavingWithNot() {
+    // Non align by device: WHERE with NOT
+    String[] expectedWhereHeader = new String[] {TIMESTAMP_STR, DEVICE_ID + ".int32_col"};
+    String[] whereRetArray = new String[] {"1,20,", "8,1000,", "9,-29,", "10,-30,"};
+    resultSetEqualTest(
+        "SELECT int32_col FROM " + DEVICE_ID + " WHERE NOT (int32_col > 20 AND int32_col < 40)",
+        expectedWhereHeader,
+        whereRetArray);
+
+    // Non align by device: HAVING with NOT
+    String[] expectedHavingHeader = new String[] {TIMESTAMP_STR, count(DEVICE_ID + ".int32_col")};
+    String[] havingRetArray = new String[] {"5,1,", "7,1,"};
+    resultSetEqualTest(
+        "SELECT count(int32_col) FROM "
+            + DEVICE_ID
+            + " GROUP BY ([1,11),2ms) HAVING NOT (count(int32_col) > 1)",
+        expectedHavingHeader,
+        havingRetArray);
+
+    // Align by device: WHERE with NOT
+    String[] expectedWhereAlignByDeviceHeader = new String[] {TIMESTAMP_STR, DEVICE, "int32_col"};
+    String[] whereAlignByDeviceRetArray =
+        new String[] {
+          "1,root.test_pred.d1,20,",
+          "8,root.test_pred.d1,1000,",
+          "9,root.test_pred.d1,-29,",
+          "10,root.test_pred.d1,-30,",
+        };
+    resultSetEqualTest(
+        "SELECT int32_col FROM root.test_pred.* WHERE NOT (int32_col > 20 AND int32_col < 40) ALIGN BY DEVICE",
+        expectedWhereAlignByDeviceHeader,
+        whereAlignByDeviceRetArray);
+
+    // Align by device: HAVING with NOT
+    String[] expectedHavingAlignByDeviceHeader =
+        new String[] {TIMESTAMP_STR, DEVICE, count("int32_col")};
+    String[] havingAlignByDeviceRetArray =
+        new String[] {
+          "5,root.test_pred.d1,1,", "7,root.test_pred.d1,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count(int32_col) FROM root.test_pred.* GROUP BY ([1,11),2ms) HAVING NOT (count(int32_col) > 1) ALIGN BY DEVICE",
+        expectedHavingAlignByDeviceHeader,
+        havingAlignByDeviceRetArray);
   }
 }
