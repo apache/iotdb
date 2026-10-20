@@ -36,13 +36,6 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   private final byte[] values;
 
-  private int hash;
-
-  // indicate whether hash has been calculated
-  private boolean hasCalculatedHash;
-
-  private String stringCache;
-
   /** if the bytes v is modified, the modification is visible to this binary. */
   public Binary(byte[] v) {
     this.values = v;
@@ -94,11 +87,7 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   @Override
   public int hashCode() {
-    if (!hasCalculatedHash) {
-      hash = Arrays.hashCode(values);
-      hasCalculatedHash = true;
-    }
-    return hash;
+    return Arrays.hashCode(values);
   }
 
   /**
@@ -121,10 +110,7 @@ public class Binary implements Comparable<Binary>, Serializable {
     if (values == null) {
       return null;
     }
-    if (stringCache == null) {
-      stringCache = new String(this.values, STRING_CHARSET);
-    }
-    return stringCache;
+    return new String(this.values, STRING_CHARSET);
   }
 
   public String getTextEncodingType() {
