@@ -20,16 +20,22 @@
 package org.apache.iotdb.db.storageengine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -796,6 +802,70 @@ public class LoadTsFileManagerTest {
 
     assertTrue(taskDir.exists());
     assertFalse(manager.prepare(prepareNode("in-progress-load"), Collections.emptyMap()));
+  }
+
+  @Test
+  public void testIoTConsensusV2CommitUsesReceivingNodeProgress() throws Exception {
+    assertCommittedProgress(true, config.getDataNodeId() + 1);
+  }
+
+  @Test
+  public void testIoTConsensusV2CommitAdvancesPreparedProgress() throws Exception {
+    assertCommittedProgress(true, config.getDataNodeId());
+  }
+
+  @Test
+  public void testOtherConsensusCommitPreservesCoordinatorProgress() throws Exception {
+    assertCommittedProgress(false, config.getDataNodeId() + 1);
+  }
+
+  private void assertCommittedProgress(final boolean useIoTConsensusV2, final int coordinatorNodeId)
+      throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(useIoTConsensusV2);
+    final String loadId = "load-progress";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      emulateStagedFileImport();
+      final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+      manager.writePiece(piece);
+      final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+      final RecoverProgressIndex preparedLocalProgress =
+          PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      final ProgressIndex coordinatorProgress =
+          new RecoverProgressIndex(
+              coordinatorNodeId,
+              preparedLocalProgress.getDataNodeId2LocalIndex().get(config.getDataNodeId()));
+      assertTrue(
+          manager.prepare(
+              prepareNode(loadId),
+              Collections.singletonMap(new TTimePartitionSlot(0L), coordinatorProgress)));
+
+      // A local write after PREPARE must precede the progress assigned when the file is imported.
+      final ProgressIndex interveningWrite =
+          PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      final LoadTsFileConsensusNode commit = commitNode(loadId);
+      assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+
+      final TsFileResource imported =
+          new TsFileResource(new File(new File(tempDir, "data"), staged.getName()));
+      imported.deserialize();
+      imported.setStatus(TsFileResourceStatus.NORMAL);
+      final ProgressIndex persistedProgress = imported.getMaxProgressIndexAfterClose();
+      final PipeTsFileInsertionEvent event = Mockito.mock(PipeTsFileInsertionEvent.class);
+      Mockito.when(event.forceGetProgressIndex()).thenReturn(persistedProgress);
+      assertEquals(
+          "A V2 LOAD must remain eligible for consensus replication after resource recovery",
+          useIoTConsensusV2,
+          IoTConsensusV2Processor.isShouldReplicate(event));
+      if (useIoTConsensusV2) {
+        assertTrue(persistedProgress.isAfter(interveningWrite));
+      } else {
+        assertEquals(coordinatorProgress, persistedProgress);
+      }
+    } finally {
+      manager.stop();
+      LoadConsensusCompat.setIoTConsensusV2ForTest(null);
+    }
   }
 
   @Test
