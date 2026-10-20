@@ -297,6 +297,9 @@ public final class DataNodeQueryMessages {
           + " (configure copy_to_allowed_export_dirs to permit it): ";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "Data type of target time column is not TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "Specified TIME column %s does not exist in the query result";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "Duplicate column names in query dataset.";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -4053,6 +4056,14 @@ public final class DataNodeQueryMessages {
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
+
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "TargetFile: %s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "Format: %s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "TargetTable: %s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "TimeColumn: %s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData contains no physical chunk";

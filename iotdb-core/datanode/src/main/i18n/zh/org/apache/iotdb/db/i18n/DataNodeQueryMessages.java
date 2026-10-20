@@ -285,6 +285,9 @@ public final class DataNodeQueryMessages {
       "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "指定的 TIME 列 %s 在查询结果中不存在";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "查询数据集中存在重复的列名。";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -4809,6 +4812,14 @@ public final class DataNodeQueryMessages {
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
+
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "目标文件：%s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "格式：%s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "目标表：%s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "时间列：%s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TAG 列：%s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "内存阈值：%s";
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData 中不包含任何物理 chunk";
