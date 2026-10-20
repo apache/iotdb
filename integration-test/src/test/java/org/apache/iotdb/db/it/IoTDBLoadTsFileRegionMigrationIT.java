@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -84,8 +85,8 @@ public class IoTDBLoadTsFileRegionMigrationIT {
   private static final int DATA_NODE_NUM = 3;
 
   /**
-   * Keep the LOAD blocked after its first piece until the migration has been submitted, so the two
-   * operations cannot silently run one after the other on a fast machine.
+   * Keep the LOAD blocked after it dispatches a piece until the migration becomes active, so the
+   * two operations cannot silently run one after the other on a fast machine.
    */
   private static final double THROTTLED_LOAD_WRITE_THROUGHPUT_BYTES_PER_SECOND = 1;
 
@@ -179,8 +180,11 @@ public class IoTDBLoadTsFileRegionMigrationIT {
             "migrate region " + migration[0] + " from " + migration[1] + " to " + migration[2]);
       }
 
-      // The migration procedure is submitted asynchronously. Resume the throttled LOAD now so the
-      // two operations overlap instead of running one after the other.
+      // The migration procedure is submitted asynchronously. Keep the LOAD throttled until the
+      // procedure has actually started changing the region replicas, then resume it so the two
+      // operations overlap instead of running one after the other.
+      awaitRegionMigrationActive(migration[0]);
+      Assert.assertFalse("the LOAD finished while the migration was starting", load.isDone());
       restoreLoadWriteThroughput();
 
       // The LOAD may follow the migration with a refreshed route or fall back to the tablet path,
@@ -247,6 +251,33 @@ public class IoTDBLoadTsFileRegionMigrationIT {
               }
             });
     return migration.get();
+  }
+
+  /** Waits until the migration procedure has started changing the region's replicas. */
+  private static void awaitRegionMigrationActive(final int regionId) {
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .pollInterval(200, TimeUnit.MILLISECONDS)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              try (final Connection connection = EnvFactory.getEnv().getConnection();
+                  final Statement statement = connection.createStatement();
+                  final ResultSet resultSet = statement.executeQuery("show regions")) {
+                while (resultSet.next()) {
+                  if (!"DataRegion".equals(resultSet.getString(ColumnHeaderConstant.TYPE))
+                      || regionId != resultSet.getInt(ColumnHeaderConstant.REGION_ID)) {
+                    continue;
+                  }
+                  final String status = resultSet.getString(ColumnHeaderConstant.STATUS);
+                  if (RegionStatus.Adding.getStatus().equals(status)
+                      || RegionStatus.Removing.getStatus().equals(status)) {
+                    return;
+                  }
+                }
+              }
+              Assert.fail("region " + regionId + " has not started migrating");
+            });
   }
 
   /** Waits until the migrated region left the source DataNode and reached the destination. */
