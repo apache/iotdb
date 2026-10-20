@@ -1083,12 +1083,12 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   /**
-   * Check metadata of columns and return array that mapping existed metadata to index of data
-   * column.
+   * Register missing measurements in insertion order, then reorder values and bitmaps into the
+   * memchunk's column order.
    *
    * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
    *     have been deleted, there will be null in its slot.
-   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
+   * @return values and bitmaps aligned with this memchunk's schema list
    */
   private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
       List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
@@ -1097,20 +1097,16 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
       IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
       if (measurementSchema != null) {
-        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementId());
-        // Index is null means this measurement was not in this AlignedTVList before.
-        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
-        // And the reorderedColumnValues should extend one more column for the new measurement
+        Integer index = measurementIndexMap.get(measurementSchema.getMeasurementId());
         if (index == null) {
-          index = this.list.getTsDataTypes().size();
-          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementId(), index);
-          this.schemaList.add(schemaListInInsertPlan.get(i));
-          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
-          reorderedColumnValues =
-              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
+          // Keep writes without new measurements on a single-pass path. Only the first missing
+          // measurement triggers a batch extension and one resize of the reordered arrays.
+          extendColumnsInInsertPlan(schemaListInInsertPlan, i);
+          reorderedColumnValues = Arrays.copyOf(reorderedColumnValues, schemaList.size());
           if (reorderedBitMaps != null) {
-            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
+            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, schemaList.size());
           }
+          index = measurementIndexMap.get(measurementSchema.getMeasurementId());
         }
         reorderedColumnValues[index] = columnValues[i];
         if (bitMaps != null) {
@@ -1119,6 +1115,21 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
     }
     return new Pair<>(reorderedColumnValues, reorderedBitMaps);
+  }
+
+  private void extendColumnsInInsertPlan(
+      List<IMeasurementSchema> schemaListInInsertPlan, int startIndex) {
+    List<TSDataType> newDataTypes = new ArrayList<>();
+    for (int i = startIndex; i < schemaListInInsertPlan.size(); i++) {
+      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
+      if (measurementSchema != null
+          && !measurementIndexMap.containsKey(measurementSchema.getMeasurementId())) {
+        measurementIndexMap.put(measurementSchema.getMeasurementId(), schemaList.size());
+        schemaList.add(measurementSchema);
+        newDataTypes.add(measurementSchema.getType());
+      }
+    }
+    list.extendColumns(newDataTypes);
   }
 
   public long[] getAnySatisfiedTimestamp(
