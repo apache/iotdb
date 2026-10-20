@@ -55,6 +55,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMe
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -274,7 +275,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     // hard-link it to each pipe dir
     this.tsFile = Objects.isNull(tsFile) ? resource.getTsFile() : tsFile;
 
-    this.isWithMod = isWithMod && resource.anyModFileExists();
+    // Historical files and their mods have already been pinned. Compaction may have removed
+    // the original resource before this event is created, so inspect the pinned mods later.
+    this.isWithMod = isWithMod && (isGeneratedByHistoricalExtractor || resource.anyModFileExists());
     this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
     // TODO: process the shared mod file
     this.sharedModFile =
@@ -463,9 +466,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     final File originalTsFile = tsFile;
     final File originalModFile = modFile;
+    final boolean originalIsWithMod = isWithMod;
     File increasedTsFile = null;
     boolean increased = false;
     try {
+      if (isGeneratedByHistoricalExtractor) {
+        tsFile =
+            PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                tsFile, pipeTsFileResourcePipeName);
+        if (isWithMod) {
+          modFile = ModificationFile.getExclusiveMods(tsFile);
+          isWithMod = modFile.exists();
+          if (!isWithMod) {
+            modFile = null;
+          }
+        }
+      }
       increasedTsFile =
           PipeDataNodeResourceManager.tsfile()
               .increaseFileReference(tsFile, true, pipeTsFileResourcePipeName);
@@ -490,6 +506,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
       tsFile = originalTsFile;
       modFile = originalModFile;
+      isWithMod = originalIsWithMod;
       LOGGER.warn(
           String.format(
               DataNodePipeMessages.INCREASE_REFERENCE_COUNT_TSFILE_OR_MODFILE_ERROR_HOLDER_FMT,
