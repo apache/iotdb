@@ -39,6 +39,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -198,7 +200,15 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
         case REMOVE_REGION_LOCATION_CACHE:
           tsStatus = handler.removeRegionLocation(regionId, targetDataNode);
           if (tsStatus == null || tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            return retryStep(state);
+            return retryStep(
+                state,
+                new ProcedureException(
+                    String.format(
+                        ProcedureMessages
+                            .EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168,
+                        regionId,
+                        state,
+                        getCycles() + 1)));
           }
           if (!handler.isIoTConsensusV1DataRegion(regionId)) {
             return finishRemoval(state);
@@ -208,7 +218,8 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
           break;
         case RESET_IOT_CONSENSUS_V1_PEER_LIST:
           if (!handler.resetPeerListAfterRemoveForIoTConsensusV1(regionId, targetDataNode)) {
-            return retryStep(state);
+            // The replica metadata is already committed. Peer list reconciliation is best effort.
+            return retryStep(state, null);
           }
           return finishRemoval(state);
         default:
@@ -216,8 +227,11 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
       }
     } catch (Exception e) {
       LOGGER.error(ProcedureMessages.REMOVEREGIONPEER_STATE_FAILED, state, e);
-      if (state == REMOVE_REGION_LOCATION_CACHE || state == RESET_IOT_CONSENSUS_V1_PEER_LIST) {
-        return retryStep(state);
+      if (state == REMOVE_REGION_LOCATION_CACHE) {
+        return retryStep(state, new ProcedureException(e));
+      }
+      if (state == RESET_IOT_CONSENSUS_V1_PEER_LIST) {
+        return retryStep(state, null);
       }
       return Flow.NO_MORE_STATE;
     }
@@ -225,28 +239,15 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
     return Flow.HAS_MORE_STATE;
   }
 
-  private Flow retryStep(RemoveRegionPeerState state) {
+  private Flow retryStep(
+      RemoveRegionPeerState state, @Nullable ProcedureException failureOnExhaustion) {
     if (getCycles() >= MAX_FINALIZATION_RETRY) {
-      ProcedureException failure =
-          new ProcedureException(
-              String.format(
-                  ProcedureMessages
-                      .EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168,
-                  regionId,
-                  state,
-                  getCycles() + 1));
-      LOGGER.error(ProcedureMessages.REMOVEREGIONPEER_STATE_FAILED, state, failure);
-      setFailure(failure);
+      if (failureOnExhaustion != null) {
+        setFailure(failureOnExhaustion);
+      }
       return Flow.NO_MORE_STATE;
     }
     setNextState(state);
-    LOGGER.warn(
-        ProcedureMessages.LOG_PIDARG_REMOVEREGION_STATE_ARG_FAILED_RETRY_ARG_ARG_IN_ARG_MS_41B8ECB5,
-        getProcId(),
-        state,
-        getCycles() + 1,
-        MAX_FINALIZATION_RETRY,
-        FINALIZATION_RETRY_INTERVAL_MS);
     try {
       Thread.sleep(FINALIZATION_RETRY_INTERVAL_MS);
     } catch (InterruptedException e) {

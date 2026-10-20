@@ -812,8 +812,6 @@ public final class ProcedureMessages {
   public static final String
       LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4 =
           "将 {} 在 DataNode {} 上的 peer 列表重置为 {} 失败：{}";
-  public static final String LOG_PIDARG_REMOVEREGION_STATE_ARG_FAILED_RETRY_ARG_ARG_IN_ARG_MS_41B8ECB5 =
-      "[pid{}][RemoveRegion] 状态 {} 失败，第 {}/{} 次重试将在 {} 毫秒后进行。";
   public static final String
       EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168 =
           "Region %s 的 peer 移除收尾在状态 %s 尝试 %d 次后失败。";
