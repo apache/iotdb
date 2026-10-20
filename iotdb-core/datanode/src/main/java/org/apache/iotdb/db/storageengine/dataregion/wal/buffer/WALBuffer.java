@@ -893,6 +893,17 @@ public class WALBuffer extends AbstractWALBuffer {
     return writer == null ? new WALMetaData() : writer.snapshotMetaData();
   }
 
+  /** Returns null if rotation has already installed a writer for another file version. */
+  public WALMetaData getWALMetaDataSnapshot(final long fileVersionId) {
+    final WALWriter writer = currentWALFileWriter;
+    // The writer and currentWALFileVersion are published separately during rotation. Bind the
+    // snapshot to the captured writer itself, including while the version field is still old.
+    return writer != null
+            && WALFileUtils.parseVersionId(writer.getLogFile().getName()) == fileVersionId
+        ? writer.snapshotMetaData()
+        : null;
+  }
+
   public CheckpointManager getCheckpointManager() {
     return checkpointManager;
   }

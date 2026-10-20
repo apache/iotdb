@@ -1054,6 +1054,10 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentWALMetaDataSnapshot();
   }
 
+  public WALMetaData getWALMetaDataSnapshot(final long fileVersionId) {
+    return buffer.getWALMetaDataSnapshot(fileVersionId);
+  }
+
   @Override
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();

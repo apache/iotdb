@@ -476,7 +476,7 @@ public class ConsensusPrefetchingQueueWriterOrderingTest {
     when(walNode.getLogDirectory()).thenReturn(directory);
     when(walNode.getCurrentSearchIndex()).thenReturn(currentIndex);
     when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-    when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+    when(walNode.getWALMetaDataSnapshot(1L)).thenReturn(new WALMetaData());
     return walNode;
   }
 
