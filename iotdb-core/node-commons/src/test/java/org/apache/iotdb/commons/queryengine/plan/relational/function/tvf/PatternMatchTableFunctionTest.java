@@ -50,15 +50,37 @@ public class PatternMatchTableFunctionTest {
     assertPartitionStateIsIsolated("1,{2,3,2}+,1");
   }
 
+  @Test
+  public void testSingletonPartitions() {
+    assertSingletonPartitions("1,2,3,2,1");
+  }
+
+  @Test
+  public void testRegexSingletonPartitions() {
+    assertSingletonPartitions("1,{2,3,2}+,1");
+  }
+
+  private void assertSingletonPartitions(String pattern) {
+    assertPartitionStateIsIsolated(
+        pattern, new double[][] {{1}, {1, 2, 3, 2, 1}, {10}, {10, 20, 30, 20, 10}, {1}});
+  }
+
   private void assertPartitionStateIsIsolated(String pattern) {
+    assertPartitionStateIsIsolated(
+        pattern, new double[][] {{1, 2, 3, 2, 1}, {10, 20, 30, 20, 10}, {2, 3, 2, 1}});
+  }
+
+  private void assertPartitionStateIsIsolated(String pattern, double[][] partitions) {
     TableFunctionProcessorProvider provider = createProvider(pattern);
-    double[][] partitions = {{1, 2, 3, 2, 1}, {10, 20, 30, 20, 10}, {2, 3, 2, 1}};
     for (double[] values : partitions) {
       Column[] expected = processPartition(createProvider(pattern).getDataProcessor(), values);
       Column[] actual = processPartition(provider.getDataProcessor(), values);
-      assertEquals(values.length, expected[2].getPositionCount());
-      assertEquals(values.length, actual[2].getPositionCount());
-      for (int i = 0; i < values.length; i++) {
+      int expectedRows = values.length == 1 ? 0 : values.length;
+      for (int column = 0; column < actual.length; column++) {
+        assertEquals(expectedRows, expected[column].getPositionCount());
+        assertEquals(expectedRows, actual[column].getPositionCount());
+      }
+      for (int i = 0; i < expectedRows; i++) {
         assertEquals(i, actual[2].getLong(i));
         assertEquals(expected[0].getInt(i), actual[0].getInt(i));
         assertEquals(expected[1].getDouble(i), actual[1].getDouble(i), 1e-9);

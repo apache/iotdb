@@ -72,8 +72,11 @@ public class IoTDBWindowTVFIT {
         "insert into t1 values (1, 1, 0),(2, 2, 0),(3, 1, 0),(4, 1, 0),(5, 1, 0),(6, 1.2, 0),(7, 1, 0),(8, 1, 0),(9, 2, 0),(10, 3, 0),(11, 4, 0),(12, 3, 0),(13, 2, 0),(14, 3, 0),(15, 4, 0),(16, 2, 0),(17, 1, 0),(18, 1, 0),(19, 1, 0),(20, 1, 0),(21, 1, 0),(41, 1, 0),(42, 2, 0),(43, 3, 0),(44, 4, 0),(45, 3, 0),(46, 2, 0),(47, 2, 0),(48, 2, 0),(49, 2, 0),(50, 2, 0),(51, 2, 0),(52, 2, 0)",
         "CREATE TABLE pattern_partitions(device_id STRING TAG, value DOUBLE FIELD)",
         "INSERT INTO pattern_partitions(time, device_id, value) VALUES "
+            + "(1, 'd0', 1), "
             + "(1, 'd1', 1), (2, 'd1', 2), (3, 'd1', 3), (4, 'd1', 2), (5, 'd1', 1), "
-            + "(1, 'd2', 10), (2, 'd2', 20), (3, 'd2', 30), (4, 'd2', 20), (5, 'd2', 10)",
+            + "(1, 'd1_singleton', 10), "
+            + "(1, 'd2', 10), (2, 'd2', 20), (3, 'd2', 30), (4, 'd2', 20), (5, 'd2', 10), "
+            + "(1, 'd3', 1)",
         // M4 table function test data
         "CREATE TABLE table1(device_id STRING TAG, s1 DOUBLE FIELD, s2 DOUBLE FIELD, s3 STRING FIELD)",
         "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.001+08:00, 'device_1', 15.0, 12.0, 'OK')",
@@ -1087,6 +1090,7 @@ public class IoTDBWindowTVFIT {
 
   private void assertPatternMatchPartitions(String pattern) {
     String[] expectedHeader = {"match_index", "time", "device_id", "value"};
+    // Singleton partitions before, between, and after the matching devices produce no rows.
     String[] expectedRows = {
       "0,1970-01-01T00:00:00.001Z,d1,1.0,",
       "0,1970-01-01T00:00:00.002Z,d1,2.0,",
