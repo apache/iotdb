@@ -19,12 +19,14 @@
 package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.TreeToTableViewReference;
@@ -142,7 +144,6 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
    * @parm Partial path, eg: root.db.dev01.**;
    * @return true if a new reference was registered; false if it was already present
    */
-  // todo, log;
   @Override
   public boolean addView(
       final String database,
@@ -364,11 +365,13 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
    */
   @Override
   public Set<TreeToTableViewReference> getTreeToTableViews(PartialPath path) {
+    // A fenced DataNode must not answer from its possibly stale index, not even with "no view
+    // covers this path": the caller has to know that the cache is unavailable rather than empty.
+    failIfMetadataLeaseFenced();
     if (!hasView) {
       // the answer for every path when no view is registered at all
       return Collections.emptySet();
     }
-
     final String[] nodes = path.getNodes();
     readWriteLock.readLock().lock();
     try {
@@ -444,6 +447,12 @@ public class TreeToTableViewCache implements ITreeToTableViewCache {
       parent.deleteChild(current.getName());
       current = parent;
     }
+  }
+
+  void failIfMetadataLeaseFenced() {
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(
+            MetadataLeaseFencedException.LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   private static final class TreeToTableViewCacheHolder {

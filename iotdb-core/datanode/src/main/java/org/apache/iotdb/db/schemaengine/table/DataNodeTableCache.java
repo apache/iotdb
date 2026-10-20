@@ -202,18 +202,6 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  /**
-   * The case that pre update Table and pre delete Table procedures targeting the same table are
-   * executed serially by CN.
-   *
-   * <p>Consider the scenario:
-   *
-   * <ol>
-   *   <li>Drop the table first: DN executed pre update but missed the commit phase
-   *   <li>Create table second: DN executed pre update, which overwrites the result of the drop
-   *       table procedure in {@link #specialStatusMap}
-   * </ol>
-   */
   @Override
   public void preUpdateTable(String database, final TsTable table, final String oldName) {
     database = PathUtils.unQualifyDatabaseName(database);
