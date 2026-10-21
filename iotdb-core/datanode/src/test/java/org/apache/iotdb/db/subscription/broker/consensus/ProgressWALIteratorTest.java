@@ -1193,6 +1193,11 @@ public class ProgressWALIteratorTest {
     try {
       try (WALWriter writer = new WALWriter(localWal, WALFileVersion.V3)) {
         writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+        final ByteBuffer separator = ByteBuffer.allocate(WALInfoEntry.FIXED_SERIALIZED_SIZE);
+        separator.put(WALEntryType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE.getCode());
+        separator.putLong(-1L);
+        writer.write(
+            separator, singleEntryMeta(WALInfoEntry.FIXED_SERIALIZED_SIZE, -1L, -1L, 0L, -1, -1L));
         writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 2L));
       }
       try (WALWriter writer = new WALWriter(followerWal, WALFileVersion.V3)) {
@@ -1248,6 +1253,49 @@ public class ProgressWALIteratorTest {
     } finally {
       Files.deleteIfExists(localWal.toPath());
       Files.deleteIfExists(followerWal.toPath());
+      Files.deleteIfExists(targetWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testAdvanceToKeepsIncompleteWriterMetadata() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-incomplete-progress");
+    final File historyWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File targetWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    try {
+      try (WALWriter writer = new WALWriter(targetWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(6L), singleEntryMeta(19, 6L, 1L, 600L, 7, 6L));
+        writer.write(searchableEntry(7L), singleEntryMeta(19, 7L, 1L, 700L, 7, 7L));
+      }
+      // Only the complete non-search sentinel may be ignored. A missing writer, time or
+      // sequence on a searchable entry must still force sequential replay.
+      final long[][] incompleteProgress = {
+        {100L, -1L, -1L}, {0L, -1L, 1L}, {0L, 7L, -1L}, {-1L, 7L, 1L}
+      };
+      for (final long[] progress : incompleteProgress) {
+        try (WALWriter writer = new WALWriter(historyWal, WALFileVersion.V3)) {
+          writer.write(
+              searchableEntry(-1L),
+              singleEntryMeta(19, -1L, 1L, progress[0], (int) progress[1], progress[2]));
+          writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 2L));
+        }
+        try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 6L)) {
+          iterator.advanceTo(6L, (physicalTime, nodeId, localSeq) -> true);
+          final ProgressWALIterator.ScanBudget budget =
+              new ProgressWALIterator.ScanBudget(1, Long.MAX_VALUE);
+          assertFalse(iterator.hasNext(budget));
+          assertTrue(budget.hasYielded());
+          assertEquals(-1L, iterator.next().getSearchIndex());
+        }
+        Files.delete(historyWal.toPath());
+      }
+    } finally {
+      Files.deleteIfExists(historyWal.toPath());
       Files.deleteIfExists(targetWal.toPath());
       Files.deleteIfExists(dir);
     }

@@ -428,6 +428,11 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       final long physicalTime = physicalTimes.get(entryIndex);
       final int nodeId = nodeIds.get(entryIndex);
       final long localSeq = localSeqs.get(entryIndex);
+      if (nodeId < 0 && physicalTime == 0L && localSeq < 0L) {
+        // Non-search WAL entries (such as separators) do not participate in subscription
+        // progress and must not prevent a covered historical file from being skipped.
+        continue;
+      }
       if (nodeId < 0
           || physicalTime < 0
           || localSeq < 0
