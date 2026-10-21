@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -130,9 +131,11 @@ public class ClusterTemplateManager implements ITemplateManager {
               e,
               TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(
+              DataNodeSchemaMessages.CREATE_TEMPLATE_ERROR, statement.getName(), e.getMessage()),
+          e,
+          TSStatusCode.CREATE_TEMPLATE_ERROR);
     }
   }
 
@@ -175,9 +178,10 @@ public class ClusterTemplateManager implements ITemplateManager {
         throw new IoTDBRuntimeException(resp.getStatus());
       }
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(DataNodeSchemaMessages.GET_ALL_TEMPLATE_ERROR, e.getMessage()),
+          e,
+          TSStatusCode.UNDEFINED_TEMPLATE);
     }
     return templatesList;
   }
@@ -196,10 +200,18 @@ public class ClusterTemplateManager implements ITemplateManager {
         throw new IoTDBException(resp.status);
       }
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(DataNodeSchemaMessages.GET_TEMPLATE_INFO_ERROR, name, e.getMessage()),
+          e,
+          TSStatusCode.UNDEFINED_TEMPLATE);
     }
+  }
+
+  private static RuntimeException wrapTemplateRpcException(
+      String message, Exception cause, TSStatusCode statusCode) {
+    IoTDBException exception = new IoTDBException(message, statusCode.getStatusCode());
+    exception.addSuppressed(cause);
+    return new RuntimeException(exception);
   }
 
   @Override
@@ -256,7 +268,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                     try {
                       listPath.add(new PartialPath(item));
                     } catch (IllegalPathException e) {
-                      e.printStackTrace();
+                      LOGGER.error(DataNodeSchemaMessages.ILLEGAL_PATH_LOG, item, e);
                     }
                   });
         }

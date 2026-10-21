@@ -37,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
@@ -108,8 +109,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info of one certain
@@ -508,9 +507,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
                 } catch (IOException e) {
                   logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
+                      DataNodeSchemaMessages.FAILED_TO_RECOVER_TAG_INDEX,
+                      measurementMNode.getName(),
+                      storageGroupFullPath,
+                      schemaRegionId,
+                      measurementMNode.getOffset(),
+                      e);
                 }
               },
               deviceMNode -> {
