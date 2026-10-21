@@ -31,7 +31,8 @@ import java.util.function.Consumer;
 
 public class IoTDBSubscriptionITConstant {
 
-  private static final long AWAITILITY_POLL_DELAY_SECOND = 1L;
+  // Conditions may already hold when the assertion starts; only wait between retries.
+  private static final long AWAITILITY_POLL_DELAY_SECOND = 0L;
   private static final long AWAITILITY_POLL_INTERVAL_SECOND = 1L;
   private static final long AWAITILITY_AT_MOST_SECOND = 600L;
 
