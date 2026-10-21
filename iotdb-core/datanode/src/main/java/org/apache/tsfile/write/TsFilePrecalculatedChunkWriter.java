@@ -109,12 +109,18 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
   public TsFilePrecalculatedChunkWriter(final File file, final FileChannel channel)
       throws IOException {
+    this(file, channel, false);
+  }
+
+  /** Resumes a staged file, preserving a completed PREPARE when it is already sealed. */
+  public TsFilePrecalculatedChunkWriter(
+      final File file, final FileChannel channel, final boolean sealed) throws IOException {
     this.file = file;
     this.out =
         new WritableFileChannelOutput(
             Objects.requireNonNull(
                 channel, StorageEngineMessages.EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB));
-    this.sealed = false;
+    this.sealed = sealed;
     this.maxPhysicalFileSize = channel.size();
     LOGGER.info(
         StorageEngineMessages

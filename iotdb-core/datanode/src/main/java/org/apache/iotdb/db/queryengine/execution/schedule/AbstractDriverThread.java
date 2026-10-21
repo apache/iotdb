@@ -67,8 +67,11 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         try {
           next = queue.poll();
         } catch (InterruptedException e) {
-          logger.warn(
-              DataNodeQueryMessages.EXECUTOR_FAILED_TO_POLL_DRIVER_TASK_FROM_QUEUE, this.getName());
+          if (!closed) {
+            logger.warn(
+                DataNodeQueryMessages.EXECUTOR_FAILED_TO_POLL_DRIVER_TASK_FROM_QUEUE,
+                this.getName());
+          }
           Thread.currentThread().interrupt();
           break;
         }
@@ -86,7 +89,14 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
             Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
-            if (rootCause instanceof CorruptedTsFileException) {
+            if (closed && rootCause instanceof InterruptedException) {
+              Thread.currentThread().interrupt();
+              // Still abort the task below so that shutdown releases its query resources.
+              next.setAbortCause(
+                  new DriverTaskAbortedException(
+                      next.getDriverTaskId().getFullId(),
+                      DriverTaskAbortedException.BY_SCHEDULER_SHUTDOWN));
+            } else if (rootCause instanceof CorruptedTsFileException) {
               // CorruptedTsFileException no longer chains the original IOException as its
               // cause (it uses addSuppressed instead), so getRootCause returns the exception
               // itself and we can match it here.

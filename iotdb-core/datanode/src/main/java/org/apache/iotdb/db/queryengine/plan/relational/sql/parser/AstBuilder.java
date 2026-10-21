@@ -1874,6 +1874,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {
@@ -1905,6 +1907,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {

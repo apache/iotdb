@@ -49,6 +49,7 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
   private final Consumer<TTimePartitionSlot> progressIndexCallback;
 
   private final List<ChunkData> nonDirectionalChunkData = new ArrayList<>();
+  private boolean isProcessingDeletions;
 
   public TsFileSplitConsumer(
       final LoadSingleTsFileNode singleTsFileNode,
@@ -111,10 +112,17 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
   }
 
   private boolean addOrSendDeletionData(final DeletionData deletionData) throws LoadFileException {
-    // Route pending chunks first to ensure deletions never precede the chunks they apply to
+    // The receiver broadcasts each deletion to all staged partitions of its region. Stage all
+    // chunks first, then send each deletion once per region, including partitions already evicted.
     routeChunkData();
-    dispatcher.addDeletionToAll(deletionData);
-    return true;
+    if (!isProcessingDeletions) {
+      if (!dispatcher.flushAll()) {
+        return false;
+      }
+      isProcessingDeletions = true;
+    }
+    dispatcher.addDeletionToAllRegions(deletionData);
+    return dispatcher.dispatchLargestUntilMemoryEnough();
   }
 
   // -------------------------------------------------------------------------
@@ -157,6 +165,7 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
   /** Drops all unrouted chunks, clears partition buffers, and releases cached memory accounting. */
   void clear() {
     nonDirectionalChunkData.clear();
+    isProcessingDeletions = false;
     dispatcher.clear();
     memoryBuffer.clear();
   }

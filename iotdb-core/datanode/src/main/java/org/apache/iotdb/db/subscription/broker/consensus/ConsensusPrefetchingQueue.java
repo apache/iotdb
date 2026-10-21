@@ -1758,6 +1758,34 @@ public class ConsensusPrefetchingQueue {
     }
 
     acquireReadLock();
+    PrefetchRoundResult result = null;
+    try {
+      result = drivePrefetchOnceUnderReadLock();
+      return result;
+    } finally {
+      try {
+        final ProgressWALIterator iterator = subscriptionWALIterator;
+        walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
+        // Keep unread segments across immediately rescheduled scan slices. Releasing them here
+        // would reload and decompress the same segment after every entry/time budget yield.
+        // Paused queues still return their direct memory while retaining cursors and fragments.
+        if (Objects.isNull(result) || result.getType() != PrefetchRoundResult.Type.RESCHEDULE_NOW) {
+          if (Objects.nonNull(iterator)) {
+            iterator.releaseReadBuffers();
+          }
+          for (final WriterReplayState state : orderedWriterReplay.values()) {
+            if (Objects.nonNull(state.iterator)) {
+              state.iterator.releaseReadBuffers();
+            }
+          }
+        }
+      } finally {
+        releaseReadLock();
+      }
+    }
+  }
+
+  private PrefetchRoundResult drivePrefetchOnceUnderReadLock() {
     try {
       final ProgressWALIterator.ScanBudget walScanBudget = newWalScanBudget();
       if (isClosed || closeRequested || !prefetchInitialized) {
@@ -1945,10 +1973,6 @@ public class ConsensusPrefetchingQueue {
         return PrefetchRoundResult.dormant();
       }
       return PrefetchRoundResult.rescheduleAfter(100L);
-    } finally {
-      final ProgressWALIterator iterator = subscriptionWALIterator;
-      walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
-      releaseReadLock();
     }
   }
 
@@ -4741,8 +4765,8 @@ public class ConsensusPrefetchingQueue {
   private static LiveWALMetaDataSnapshot captureLiveWALMetaDataSnapshot(final WALNode walNode) {
     while (true) {
       final long versionId = walNode.getCurrentWALFileVersion();
-      final WALMetaData metadata = walNode.getCurrentWALMetaDataSnapshot();
-      if (versionId == walNode.getCurrentWALFileVersion()) {
+      final WALMetaData metadata = walNode.getWALMetaDataSnapshot(versionId);
+      if (metadata != null && versionId == walNode.getCurrentWALFileVersion()) {
         return new LiveWALMetaDataSnapshot(versionId, metadata);
       }
     }

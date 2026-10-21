@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -54,6 +55,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -71,10 +73,12 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -466,6 +470,37 @@ final class TsFileWriterManager {
   // Consensus Lifecycle: PREPARE & LOAD
   // -------------------------------------------------------------------------
 
+  private void validateStagedFiles(
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd)
+      throws IOException, LoadFileException {
+    final Set<TTimePartitionSlot> partitions = new HashSet<>(timePartition2Writer.keySet());
+    if (timePartition2ExpectedDataEnd != null) {
+      partitions.addAll(timePartition2ExpectedDataEnd.keySet());
+    }
+    for (final TTimePartitionSlot partition : partitions) {
+      final TsFilePrecalculatedChunkWriter writer = timePartition2Writer.get(partition);
+      final File stagedFile =
+          writer == null
+              ? new File(taskDir, stagedFileName(partition) + TsFileConstant.TSFILE_SUFFIX)
+              : writer.getFile();
+      final LoadTsFileProgress progress = timePartition2Progress.get(partition);
+      final long fileLength = stagedFile.length();
+      final long expectedDataEnd = expectedDataEndOf(timePartition2ExpectedDataEnd, partition);
+      if (writer == null
+          || progress == null
+          || !progress.isReady(fileLength)
+          || (expectedDataEnd >= 0L && fileLength < expectedDataEnd)) {
+        throw new LoadFileException(
+            String.format(
+                StorageEngineMessages.EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19,
+                stagedFile.getAbsolutePath(),
+                uuidDirName(stagedFile),
+                Math.max(progress == null ? 0L : progress.getTotalLength(), expectedDataEnd),
+                fileLength));
+      }
+    }
+  }
+
   /**
    * Seals modification files, validates chunk continuity, and seals TsFiles in the PREPARE round.
    */
@@ -477,12 +512,16 @@ final class TsFileWriterManager {
     checkNotClosed();
     touch();
 
-    // 1. Close modification files first to freeze deletion views
+    // Validate every announced partition before sealing any file. A missing partition or a file
+    // without durable chunk records must not turn into a successful partial import.
+    validateStagedFiles(timePartition2ExpectedDataEnd);
+
+    // Close modification files to freeze deletion views.
     for (final ModificationFile modFile : timePartition2ModificationFile.values()) {
       modFile.close();
     }
 
-    // 2. Validate continuity and seal writer metadata zone
+    // Seal writer metadata zones only after every partition has passed validation.
     for (final Map.Entry<TTimePartitionSlot, TsFilePrecalculatedChunkWriter> entry :
         timePartition2Writer.entrySet()) {
       final TsFilePrecalculatedChunkWriter writer = entry.getValue();
@@ -490,23 +529,6 @@ final class TsFileWriterManager {
         continue;
       }
 
-      final LoadTsFileProgress progress = timePartition2Progress.get(entry.getKey());
-      if (progress != null && progress.exists() && progress.getTotalLength() > 0) {
-        final long fileLength = writer.getFile().length();
-        final long expectedDataEnd =
-            expectedDataEndOf(timePartition2ExpectedDataEnd, entry.getKey());
-        if (!progress.isReady(fileLength)
-            || (expectedDataEnd >= 0L && fileLength < expectedDataEnd)) {
-          throw new LoadFileException(
-              String.format(
-                  StorageEngineMessages
-                      .EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19,
-                  writer.getFile().getAbsolutePath(),
-                  uuidDirName(writer.getFile()),
-                  Math.max(progress.getTotalLength(), expectedDataEnd),
-                  fileLength));
-        }
-      }
       // Rebuild from the staged devices so recovered writers also retain the table schemas that
       // Pipe needs to enumerate table data in the sealed file.
       if (PathUtils.isTableModelDatabase(dataRegion.getDatabaseName())) {
@@ -721,7 +743,21 @@ final class TsFileWriterManager {
       final TTimePartitionSlot timePartitionSlot =
           new TTimePartitionSlot(parseTimePartitionStart(tsFile.getName()));
       final long resumeOffset = progress.getTotalLength();
-      if (tsFile.length() > resumeOffset) {
+      final TsFileResource resource = new TsFileResource(tsFile);
+      boolean sealed = false;
+      if (resource.resourceFileExists()) {
+        try (final TsFileSequenceReader reader =
+            new TsFileSequenceReader(tsFile.getAbsolutePath(), false)) {
+          sealed = TSFileConfig.MAGIC_STRING.equals(reader.readTailMagic());
+        }
+        if (sealed) {
+          resource.deserialize();
+          resource.setStatus(TsFileResourceStatus.NORMAL);
+        }
+      }
+      // A resource sidecar and a completed footer record a successful PREPARE. Its coordinator
+      // may send COMMIT immediately after recovery, so preserve both the sealed bytes and marks.
+      if (!sealed && tsFile.length() > resumeOffset) {
         try (final FileChannel truncatingChannel =
             FileChannel.open(tsFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)) {
           truncatingChannel.truncate(resumeOffset);
@@ -745,15 +781,15 @@ final class TsFileWriterManager {
       try {
         channel =
             FileChannel.open(tsFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
-        channel.position(resumeOffset);
+        channel.position(sealed ? tsFile.length() : resumeOffset);
         final TsFilePrecalculatedChunkWriter writer =
-            new TsFilePrecalculatedChunkWriter(tsFile, channel);
+            new TsFilePrecalculatedChunkWriter(tsFile, channel, sealed);
         writer.setRejectHoles(LoadConsensusCompat.usesIoTConsensusV2());
         writer.restoreChunkMetadata(restoreChunkMetadata(records));
         publishedLengths.put(tsFile, tsFile.length());
 
         timePartition2Writer.put(timePartitionSlot, writer);
-        timePartition2Resource.put(timePartitionSlot, new TsFileResource(tsFile));
+        timePartition2Resource.put(timePartitionSlot, resource);
         timePartition2Progress.put(timePartitionSlot, progress);
 
         final File modificationFile = ModificationFile.getExclusiveMods(tsFile);
@@ -928,11 +964,15 @@ final class TsFileWriterManager {
 
   /** The name a staged file of this region and time partition has. */
   private String stagedFileName(final TTimePartitionSlot timePartitionSlot) {
+    return stagedFilePrefix() + timePartitionSlot.getStartTime();
+  }
+
+  private String stagedFilePrefix() {
     return String.join(
         IoTDBConstant.FILE_NAME_SEPARATOR,
         dataRegion.getDatabaseName(),
         dataRegion.getDataRegionIdString(),
-        Long.toString(timePartitionSlot.getStartTime()));
+        "");
   }
 
   private static String uuidDirName(final File tsFile) {
@@ -940,10 +980,12 @@ final class TsFileWriterManager {
     return parent == null ? tsFile.getName() : parent.getName();
   }
 
-  private static long parseTimePartitionStart(final String tsFileName) {
-    final String baseName = tsFileName.substring(0, tsFileName.lastIndexOf('.'));
-    final int lastDash = baseName.lastIndexOf(IoTDBConstant.FILE_NAME_SEPARATOR);
-    return Long.parseLong(baseName.substring(lastDash + 1));
+  private long parseTimePartitionStart(final String tsFileName) {
+    // The partition may be negative: its sign is part of the number, not a name separator.
+    return Long.parseLong(
+        tsFileName.substring(
+            stagedFilePrefix().length(),
+            tsFileName.length() - TsFileConstant.TSFILE_SUFFIX.length()));
   }
 
   /** The bytes this piece added to each staged file, as the refs a replica reads them back with. */
