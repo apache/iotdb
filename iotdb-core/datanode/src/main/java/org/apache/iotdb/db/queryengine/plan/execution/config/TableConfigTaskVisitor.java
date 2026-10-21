@@ -1030,10 +1030,6 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
               map.put(
                   key, String.valueOf(parseBooleanFromLiteral(value, NEED_LAST_CACHE_PROPERTY)));
               break;
-            case TsTable.AUTO_SYNC_SCHEMA:
-              map.put(
-                  key, String.valueOf(parseBooleanFromLiteral(value, TsTable.AUTO_SYNC_SCHEMA)));
-              break;
             default:
               break;
           }
