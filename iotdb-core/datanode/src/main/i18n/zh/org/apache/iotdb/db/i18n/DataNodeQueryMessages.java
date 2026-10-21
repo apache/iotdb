@@ -1243,6 +1243,7 @@ public final class DataNodeQueryMessages {
       "异步分发读取操作时被中断";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "异步分发写入操作时被中断";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "中断错误：%s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "反序列化 ConsensusGroupId 失败。";
   public static final String CAN_T_CONNECT_TO_NODE =
@@ -4127,6 +4128,7 @@ public final class DataNodeQueryMessages {
       "已经在取消中";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "内部错误调度";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "调度器关闭";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "内存不足，无法执行查询任务。";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
