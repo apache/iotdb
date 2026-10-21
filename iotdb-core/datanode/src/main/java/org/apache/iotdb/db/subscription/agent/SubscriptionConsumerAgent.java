@@ -76,13 +76,7 @@ public class SubscriptionConsumerAgent {
     try {
       executeWithConsumerGroupLock(
           consumerGroupId,
-          () -> {
-            if (consumerGroupMetaFromCoordinator.isEmpty()) {
-              handleDropConsumerGroupInternal(consumerGroupId);
-            } else {
-              handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
-            }
-          });
+          () -> handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator));
       return null;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -103,6 +97,22 @@ public class SubscriptionConsumerAgent {
       final ConsumerGroupMeta metaFromCoordinator) {
     final String consumerGroupId = metaFromCoordinator.getConsumerGroupId();
     final ConsumerGroupMeta metaInAgent = getConsumerGroupMeta(consumerGroupId);
+
+    if (metaFromCoordinator.isEmpty()) {
+      if (Objects.nonNull(metaInAgent)) {
+        cleanupConsumerGroupSubscriptions(consumerGroupId, metaInAgent, true);
+      }
+      final boolean retainProgress =
+          ConsensusSubscriptionSetupHandler.retainConfiguredProgressForConsumerGroup(
+              consumerGroupId, metaFromCoordinator.visibleUnder(true));
+      dropConsumerGroupBroker(consumerGroupId);
+      if (retainProgress) {
+        replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+      } else {
+        removeConsumerGroupMeta(consumerGroupId);
+      }
+      return;
+    }
 
     // if consumer group meta does not exist on local agent
     if (Objects.isNull(metaInAgent)) {
@@ -249,6 +259,11 @@ public class SubscriptionConsumerAgent {
       cleanupConsumerGroupSubscriptions(consumerGroupId, consumerGroupMeta);
     }
 
+    dropConsumerGroupBroker(consumerGroupId);
+    removeConsumerGroupMeta(consumerGroupId);
+  }
+
+  private void dropConsumerGroupBroker(final String consumerGroupId) {
     if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
       if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
         final String exceptionMessage =
@@ -262,8 +277,6 @@ public class SubscriptionConsumerAgent {
               .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXISTED_9F09E4DE,
           consumerGroupId);
     }
-
-    removeConsumerGroupMeta(consumerGroupId);
   }
 
   private ConsumerGroupMeta getConsumerGroupMeta(final String consumerGroupId) {
@@ -329,6 +342,13 @@ public class SubscriptionConsumerAgent {
 
   private void cleanupConsumerGroupSubscriptions(
       final String consumerGroupId, final ConsumerGroupMeta consumerGroupMeta) {
+    cleanupConsumerGroupSubscriptions(consumerGroupId, consumerGroupMeta, false);
+  }
+
+  private void cleanupConsumerGroupSubscriptions(
+      final String consumerGroupId,
+      final ConsumerGroupMeta consumerGroupMeta,
+      final boolean retainConfiguredProgress) {
     final Set<String> consensusTopics = new LinkedHashSet<>();
     for (final String topicName : consumerGroupMeta.getSubscribedTopicNames()) {
       if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
@@ -339,8 +359,10 @@ public class SubscriptionConsumerAgent {
       }
     }
     ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
-        consumerGroupId, consensusTopics, false);
-    ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForConsumerGroup(consumerGroupId);
+        consumerGroupId, consensusTopics, retainConfiguredProgress);
+    if (!retainConfiguredProgress) {
+      ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForConsumerGroup(consumerGroupId);
+    }
   }
 
   public boolean isConsumerExisted(final String consumerGroupId, final String consumerId) {

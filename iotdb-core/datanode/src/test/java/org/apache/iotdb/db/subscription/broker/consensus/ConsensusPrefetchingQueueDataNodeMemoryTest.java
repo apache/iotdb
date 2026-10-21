@@ -66,7 +66,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -662,7 +661,7 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
   }
 
   @Test
-  public void testRealtimeBacklogIsDrainedBeforeMorePendingEntriesAreConverted() throws Exception {
+  public void testWriterBarrierDoesNotMaterializeBlockedPendingEntries() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final int originalBatchMaxDelay =
         CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
@@ -690,21 +689,19 @@ public class ConsensusPrefetchingQueueDataNodeMemoryTest {
       assertTrue(pendingEntries(queue).offer(createRequest(1L)));
       queue.drivePrefetchOnce();
 
-      assertEquals(1, conversionCount.get());
-      assertEquals(2L, queue.getCurrentReadSearchIndex());
-      assertEquals("1", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
+      assertEquals(0, conversionCount.get());
+      assertEquals(1L, queue.getCurrentReadSearchIndex());
+      assertEquals("0", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
       assertEquals(0, queue.getPrefetchedEventCount());
 
       assertTrue(pendingEntries(queue).offer(createRequest(2L)));
       queue.drivePrefetchOnce();
 
-      assertEquals(1, conversionCount.get());
-      assertEquals(2L, queue.getCurrentReadSearchIndex());
-      assertEquals("1", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
-      assertEquals("1", queue.coreReportMessage().get("pendingEntriesSize"));
-      assertEquals("true", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
-      assertFalse(pendingEntries(queue).offer(createRequest(3L)));
-      assertEquals("SUBSCRIPTION_WRITER_BACKLOG", queue.getLastAdmissionRejectionCode());
+      assertEquals(0, conversionCount.get());
+      assertEquals(1L, queue.getCurrentReadSearchIndex());
+      assertEquals("0", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
+      assertEquals("2", queue.coreReportMessage().get("pendingEntriesSize"));
+      assertEquals(0L, queue.getRetainedTabletBytes());
       assertEquals(0L, queue.getSubscriptionMemoryRejectionCount());
 
       queue.setActiveWriterNodeIds(Collections.singleton(7));

@@ -81,6 +81,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -2076,6 +2077,24 @@ public class DataRegionTest {
     Assert.assertFalse(dataRegion.getTsFileManager().contains(tsFileResource, true));
     Assert.assertFalse(
         dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileResource.getProcessor()));
+  }
+
+  @Test
+  public void testDeletedRegionStopsItsLoadManagerAndRefusesANewOne() throws Exception {
+    final LoadTsFileManager manager = dataRegion.getLoadTsFileManager();
+    Assert.assertFalse(manager.isStopped());
+
+    StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
+
+    Assert.assertTrue(manager.isStopped());
+    // The region keeps the one manager it published, stopped.
+    Assert.assertSame(manager, dataRegion.getLoadTsFileManagerIfPresent().orElse(null));
+    try {
+      dataRegion.getLoadTsFileManager();
+      Assert.fail("A deleted region has to refuse to publish a LOAD manager");
+    } catch (final IllegalStateException e) {
+      Assert.assertTrue(e.getMessage().contains("is deleted"));
+    }
   }
 
   public static class DummyDataRegion extends DataRegion {

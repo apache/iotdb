@@ -212,7 +212,15 @@ public class CreateTableProcedure
 
   @Override
   protected boolean isRollbackSupported(final CreateTableState state) {
-    return true;
+    switch (state) {
+      case CHECK_TABLE_EXISTENCE:
+      case PRE_CREATE:
+      case PRE_RELEASE:
+      case COMMIT_CREATE:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

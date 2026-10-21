@@ -1372,6 +1372,15 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
                   .FAILED_TO_S_PIPE_S_IN_IOTDB_SOURCE_PASSWORD_MUST_BE_SET_WHEN_THE_USERNAME_IS_SPECIFIED,
               isAlter ? DataNodeQueryMessages.ALTER : DataNodeQueryMessages.CREATE,
               pipeName));
+    } else {
+      updatePipeUserIdFromUsername(
+          replacedSourceAttributes,
+          sourceParameters,
+          PipeSourceConstant.SOURCE_IOTDB_USER_ID,
+          PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+          PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+          PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+          PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
     }
   }
 
@@ -1444,6 +1453,15 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
                   .FAILED_TO_S_PIPE_S_IN_WRITE_BACK_SINK_PASSWORD_MUST_BE_SET_WHEN_THE_USERNAME_IS,
               isAlter ? DataNodeQueryMessages.ALTER : DataNodeQueryMessages.CREATE,
               pipeName));
+    } else {
+      updatePipeUserIdFromUsername(
+          connectorAttributes,
+          connectorParameters,
+          PipeSinkConstant.SINK_IOTDB_USER_ID,
+          PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+          PipeSinkConstant.SINK_IOTDB_USER_KEY,
+          PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+          PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
     }
   }
 
@@ -1512,6 +1530,14 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       sourceAttributes.put(
           SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+      updatePipeUserIdFromUsername(
+          sourceAttributes,
+          sourceParameters,
+          PipeSourceConstant.SOURCE_IOTDB_USER_ID,
+          PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+          PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+          PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+          PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
     }
   }
 
@@ -1526,6 +1552,26 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
         PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       sinkAttributes.put(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+      updatePipeUserIdFromUsername(
+          sinkAttributes,
+          sinkParameters,
+          PipeSinkConstant.SINK_IOTDB_USER_ID,
+          PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+          PipeSinkConstant.SINK_IOTDB_USER_KEY,
+          PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+          PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
+    }
+  }
+
+  private static void updatePipeUserIdFromUsername(
+      final Map<String, String> attributes,
+      final PipeParameters parameters,
+      final String userIdAttributeKey,
+      final String... usernameAttributeKeys) {
+    final String username = parameters.getStringByKeys(usernameAttributeKeys);
+    if (username != null) {
+      attributes.put(
+          userIdAttributeKey, String.valueOf(AuthorityChecker.getUserId(username).orElse(-1L)));
     }
   }
 

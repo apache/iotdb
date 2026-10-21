@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMe
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.InOrder;
 
@@ -55,6 +56,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class PipeProcessorSubtaskWorkerTest {
+
+  @BeforeClass
+  public static void initializeSubtaskMock() {
+    // Mockito/Byte Buddy initialization can be slow in a fresh CI fork. Keep that class loading
+    // outside the test timeouts so they measure worker notifications instead of mock startup.
+    mock(PipeProcessorSubtask.class);
+  }
 
   @Test(timeout = 30000)
   public void testOneHundredWaitingPipesDoNotWaitForWorkerPolling() throws Exception {

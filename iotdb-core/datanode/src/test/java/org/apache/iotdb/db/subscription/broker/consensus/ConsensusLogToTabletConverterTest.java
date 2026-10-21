@@ -67,6 +67,31 @@ public class ConsensusLogToTabletConverterTest {
   private static final String DATABASE_NAME = "db";
 
   @Test
+  public void testReplayRequiresCompleteAndDecodableWalFragments() {
+    final List<IConsensusRequest> fragments = new ArrayList<>();
+    final RelationalInsertRowNode node = StatementTestUtils.genInsertRowNode(1);
+    node.setSearchIndex(1);
+    final WALInfoEntry entry = new WALInfoEntry(1L, node);
+    final ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
+    entry.serialize(new WALByteBufferForTest(buffer));
+    buffer.flip();
+    fragments.add(new IoTConsensusRequest(buffer));
+    final IndexedConsensusRequest request = new IndexedConsensusRequest(1, fragments);
+    Assert.assertNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+
+    node.setLastFragment(true);
+    final WALInfoEntry completeEntry = new WALInfoEntry(1L, node);
+    final ByteBuffer complete = ByteBuffer.allocate(completeEntry.serializedSize());
+    completeEntry.serialize(new WALByteBufferForTest(complete));
+    complete.flip();
+    request.getRequests().set(0, new IoTConsensusRequest(complete));
+    Assert.assertNotNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+
+    request.getRequests().add(0, new IoTConsensusRequest(ByteBuffer.allocate(1)));
+    Assert.assertNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+  }
+
+  @Test
   public void testRepeatedWalDeserializationPreservesAllFragments() {
     final List<IConsensusRequest> fragments = new ArrayList<>();
     for (int row = 1; row <= 2; row++) {
@@ -393,6 +418,45 @@ public class ConsensusLogToTabletConverterTest {
         createConverterWithTagFilter("id1 = \"missing\"", "m1");
 
     Assert.assertTrue(converter.convert(StatementTestUtils.genInsertRowNode(7)).isEmpty());
+  }
+
+  @Test
+  public void testReplaySnapshotPreservesTagFilter() throws Exception {
+    final ConsensusLogToTabletConverter converter =
+        createConverterWithTagFilter("id1 IN (\"id:10\", \"id:12\")", "m1");
+    final ConsensusLogToTabletConverter snapshot = converter.snapshotForReplay();
+
+    final List<Tablet> tablets = snapshot.convert(StatementTestUtils.genInsertTabletNode(3, 10));
+
+    Assert.assertEquals(1, tablets.size());
+    Assert.assertEquals(2, tablets.get(0).getRowSize());
+    Assert.assertArrayEquals(new long[] {10L, 12L}, tablets.get(0).getTimestamps());
+    Assert.assertTrue(converter.hasSameReplayProjection(snapshot));
+  }
+
+  @Test
+  public void testReplayProjectionChangesWhenTagFilterChanges() throws Exception {
+    final TablePattern tablePattern =
+        new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName());
+    final ColumnFilterMatcher columnFilterMatcher =
+        ColumnFilterMatcher.ofSelectedColumnNames(new HashSet<>(Arrays.asList("m1")));
+    final ConsensusLogToTabletConverter original =
+        new ConsensusLogToTabletConverter(
+            null, tablePattern, columnFilterMatcher, TagFilterMatcher.matchAll(), DATABASE_NAME);
+    final TagFilterMatcher tagFilterMatcher =
+        TagFilterMatcher.fromTopicConfig(
+            new TopicConfig(
+                Map.of(
+                    "__system.sql-dialect",
+                    "table",
+                    TopicConstant.TAG_FILTER_KEY,
+                    "id1 = \"id:10\"")));
+    final ConsensusLogToTabletConverter updated =
+        new ConsensusLogToTabletConverter(
+            null, tablePattern, columnFilterMatcher, tagFilterMatcher, DATABASE_NAME);
+
+    Assert.assertFalse(
+        original.snapshotForReplay().hasSameReplayProjection(updated.snapshotForReplay()));
   }
 
   @Test

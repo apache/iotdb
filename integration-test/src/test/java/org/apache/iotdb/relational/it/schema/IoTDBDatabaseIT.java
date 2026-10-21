@@ -803,11 +803,12 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement();
+        final Statement diagnosticStatement = TestUtils.createSingleNodeStatement(connection)) {
       // Test table query
       statement.execute("use information_schema");
 
-      try (final ResultSet resultSet = statement.executeQuery("SHOW PIPE MEMORY")) {
+      try (final ResultSet resultSet = diagnosticStatement.executeQuery("SHOW PIPE MEMORY")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(13, metaData.getColumnCount());
         assertEquals("block_id", metaData.getColumnName(1));
@@ -835,7 +836,7 @@ public class IoTDBDatabaseIT {
         assertTrue(hasFloatingMemory);
       }
       try (final ResultSet resultSet =
-          statement.executeQuery("select * from information_schema.pipe_memory")) {
+          diagnosticStatement.executeQuery("select * from information_schema.pipe_memory")) {
         boolean hasFloatingMemory = false;
         while (resultSet.next()) {
           if ("FloatingMemory".equals(resultSet.getString(2))) {

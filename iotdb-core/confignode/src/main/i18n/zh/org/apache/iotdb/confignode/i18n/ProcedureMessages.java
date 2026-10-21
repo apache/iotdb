@@ -806,6 +806,15 @@ public final class ProcedureMessages {
       "RemoveRegionLocation：从 DataNode {} 移除 region {}，结果为 {}";
   public static final String REMOVEREGIONPEER_STATE_FAILED = "RemoveRegionPeer 状态 {} 失败";
   public static final String REMOVEREGIONPEER_STATE_SUCCESS = "RemoveRegionPeer 状态 {} 成功";
+  public static final String
+      LOG_CANNOT_RECONCILE_PEER_LIST_FOR_ARG_AFTER_REMOVING_DATANODE_ARG_THE_CURRENT_REPLICA_SET_STILL_CONTAINS_THE_REMOVED_DATANODE_DBBF45DC =
+          "无法纠正 {} 在移除 DataNode {} 后的 peer 列表：当前副本集仍包含已移除的 DataNode。";
+  public static final String
+      LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4 =
+          "将 {} 在 DataNode {} 上的 peer 列表重置为 {} 失败：{}";
+  public static final String
+      EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168 =
+          "Region %s 的 peer 移除收尾在状态 %s 尝试 %d 次后失败。";
   public static final String REMOVEREGION_RATIS_TRANSFER_LEADER_FAIL_BUT_PROCEDURE_WILL_CONTINUE =
       "[RemoveRegion] Ratis 转换 leader 失败，但 procedure 将继续。";
   public static final String REMOVE_CONFIG_NODE = "移除 ConfigNode";
@@ -1515,4 +1524,10 @@ public final class ProcedureMessages {
       "DataNode setSystemStatus RPC 失败：%s：%s：%s； ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
       "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
+  public static final String
+      LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9 =
+          "流程 {} 已越过提交点，保留它执行过的所有状态。";
+  public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 = "结束流程（不回滚）";
+  public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
+      "删除子流程（不回滚）";
 }

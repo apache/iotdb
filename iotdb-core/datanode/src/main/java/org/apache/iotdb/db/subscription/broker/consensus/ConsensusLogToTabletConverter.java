@@ -140,6 +140,19 @@ public class ConsensusLogToTabletConverter {
     return databaseName;
   }
 
+  /** Freezes the column and TAG filters used by a delivered batch for later WAL replay. */
+  ConsensusLogToTabletConverter snapshotForReplay() {
+    return new ConsensusLogToTabletConverter(
+        treePattern, tablePattern, getColumnFilterMatcher(), getTagFilterMatcher(), databaseName);
+  }
+
+  boolean hasSameReplayProjection(final ConsensusLogToTabletConverter other) {
+    return treePattern == other.treePattern
+        && tablePattern == other.tablePattern
+        && fallbackColumnFilterMatcher == other.fallbackColumnFilterMatcher
+        && fallbackTagFilterMatcher == other.fallbackTagFilterMatcher;
+  }
+
   boolean isTableModel() {
     return Objects.nonNull(tablePattern);
   }
@@ -162,6 +175,16 @@ public class ConsensusLogToTabletConverter {
    * DataRegionStateMachine.grabPlanNode()}.
    */
   static InsertNode deserializeToInsertNode(final IndexedConsensusRequest indexedRequest) {
+    return deserializeToInsertNode(indexedRequest, false);
+  }
+
+  /** WAL replay must wait until every fragment, including the seal, is readable. */
+  static InsertNode deserializeCompleteInsertNode(final IndexedConsensusRequest indexedRequest) {
+    return deserializeToInsertNode(indexedRequest, true);
+  }
+
+  private static InsertNode deserializeToInsertNode(
+      final IndexedConsensusRequest indexedRequest, final boolean requireComplete) {
     final List<SearchNode> searchNodes = new ArrayList<>();
     PlanNode nonSearchNode = null;
 
@@ -187,6 +210,9 @@ public class ConsensusLogToTabletConverter {
             indexedRequest.getSearchIndex(),
             e.getMessage(),
             e);
+        if (requireComplete) {
+          return null;
+        }
         continue;
       }
 
@@ -209,6 +235,9 @@ public class ConsensusLogToTabletConverter {
     }
 
     if (!searchNodes.isEmpty()) {
+      if (requireComplete && !searchNodes.get(searchNodes.size() - 1).isLastFragment()) {
+        return null;
+      }
       final PlanNode merged = searchNodes.get(0).merge(searchNodes);
       if (merged instanceof InsertNode) {
         final InsertNode mergedInsert = (InsertNode) merged;

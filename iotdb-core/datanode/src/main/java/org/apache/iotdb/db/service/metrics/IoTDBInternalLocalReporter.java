@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
@@ -72,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -81,24 +84,27 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalLocalReporter.class);
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
+  private final Coordinator coordinator;
   private final SessionInfo sessionInfo;
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
   private Future<?> currentServiceFuture;
-  private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private final ScheduledExecutorService service;
+  private volatile boolean stopped;
 
   public IoTDBInternalLocalReporter() {
-    partitionFetcher = ClusterPartitionFetcher.getInstance();
-    schemaFetcher = ClusterSchemaFetcher.getInstance();
-    sessionInfo =
+    this(
+        Executors.newSingleThreadScheduledExecutor(),
+        Coordinator.getInstance(),
         new SessionInfo(
             0,
             new UserEntity(
                 AuthorityChecker.SUPER_USER_ID,
                 AuthorityChecker.SUPER_USER,
                 IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
-            ZoneId.systemDefault());
+            ZoneId.systemDefault()),
+        ClusterPartitionFetcher.getInstance(),
+        ClusterSchemaFetcher.getInstance());
 
     IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
         ConfigNodeClientManager.getInstance();
@@ -125,13 +131,29 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     }
   }
 
+  IoTDBInternalLocalReporter(
+      ScheduledExecutorService service,
+      Coordinator coordinator,
+      SessionInfo sessionInfo,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    this.service = service;
+    this.coordinator = coordinator;
+    this.sessionInfo = sessionInfo;
+    this.partitionFetcher = partitionFetcher;
+    this.schemaFetcher = schemaFetcher;
+  }
+
   @Override
   public InternalReporterType getType() {
     return InternalReporterType.IOTDB;
   }
 
   @Override
-  public boolean start() {
+  public synchronized boolean start() {
+    if (isStopping()) {
+      return false;
+    }
     if (currentServiceFuture != null) {
       LOGGER.warn(DataNodeMiscMessages.INTERNAL_REPORTER_ALREADY_STARTED);
       return false;
@@ -148,7 +170,9 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   }
 
   @Override
-  public boolean stop() {
+  public synchronized boolean stop() {
+    // Publish this before interrupting an in-flight write, including during reporter reload.
+    stopped = true;
     if (currentServiceFuture != null) {
       currentServiceFuture.cancel(true);
       currentServiceFuture = null;
@@ -166,32 +190,86 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
 
   @Override
   protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {
-    service.execute(
-        () -> {
-          try {
-            TSStatus result = insertRecord(valueMap, prefix, time);
-            if (result.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
-              createTimeSeries(valueMap, prefix);
-              result = insertRecord(valueMap, prefix, time);
-            }
-            if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.warn(DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE, result);
-            }
-          } catch (IoTDBConnectionException e1) {
-            LOGGER.warn(
-                DataNodeMiscMessages
-                    .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_CONNECTION_B0FC4929,
-                e1);
-          } catch (IllegalPathException | QueryProcessException e2) {
-            LOGGER.warn(
-                DataNodeMiscMessages
-                    .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_INTERNAL_E5C64806,
-                e2);
-          }
-        });
+    if (isStopping()) {
+      return;
+    }
+    try {
+      service.execute(() -> writeMetric(valueMap, prefix, time));
+    } catch (RejectedExecutionException e) {
+      // stop() can shut down the executor between the check above and submission.
+      if (!stopped) {
+        throw e;
+      }
+    }
   }
 
-  private TSStatus insertRecord(Map<String, Object> valueMap, String prefix, long time)
+  private void writeMetric(Map<String, Object> valueMap, String prefix, long time) {
+    if (isStopping()) {
+      return;
+    }
+    try {
+      ExecutionResult result = insertRecord(valueMap, prefix, time);
+      if (result.status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode() && !isStopping()) {
+        createTimeSeries(valueMap, prefix);
+        if (isStopping()) {
+          return;
+        }
+        result = insertRecord(valueMap, prefix, time);
+      }
+      if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (isExpectedShutdownFailure(result)) {
+          LOGGER.debug(DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE, result.status);
+        } else {
+          LOGGER.warn(DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE, result.status);
+        }
+      }
+    } catch (IoTDBConnectionException e1) {
+      if (isInterruptedDuringShutdown(e1)) {
+        LOGGER.debug(
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_CONNECTION_B0FC4929,
+            e1);
+      } else {
+        LOGGER.warn(
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_CONNECTION_B0FC4929,
+            e1);
+      }
+    } catch (IllegalPathException | QueryProcessException e2) {
+      if (isInterruptedDuringShutdown(e2)) {
+        LOGGER.debug(
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_INTERNAL_E5C64806,
+            e2);
+      } else {
+        LOGGER.warn(
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_INTERNAL_E5C64806,
+            e2);
+      }
+    }
+  }
+
+  private boolean isStopping() {
+    return stopped || CommonDescriptor.getInstance().getConfig().isStopping();
+  }
+
+  private boolean isExpectedShutdownFailure(ExecutionResult result) {
+    return isStopping()
+        && (result.failureCausedByInterruption
+            || (CommonDescriptor.getInstance().getConfig().isStopping()
+                && result.status.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()));
+  }
+
+  private boolean isInterruptedDuringShutdown(Exception e) {
+    if (isStopping() && ErrorHandlingCommonUtils.getRootCause(e) instanceof InterruptedException) {
+      Thread.currentThread().interrupt();
+      return true;
+    }
+    return false;
+  }
+
+  private ExecutionResult insertRecord(Map<String, Object> valueMap, String prefix, long time)
       throws IoTDBConnectionException, QueryProcessException, IllegalPathException {
     TSInsertRecordReq request = new TSInsertRecordReq();
     List<String> measurements = new ArrayList<>();
@@ -214,10 +292,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
 
     InsertRowStatement s = StatementGenerator.createStatement(request);
     final long queryId = SESSION_MANAGER.requestQueryId();
-    ExecutionResult result =
-        COORDINATOR.executeForTreeModel(
-            s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
-    return result.status;
+    return coordinator.executeForTreeModel(
+        s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
   }
 
   private void createTimeSeries(Map<String, Object> valueMap, String prefix)
@@ -244,10 +320,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     final long queryId = SESSION_MANAGER.requestQueryId();
 
     ExecutionResult result =
-        COORDINATOR.executeForTreeModel(
+        coordinator.executeForTreeModel(
             s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
     if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES, paths, result.status);
+      if (isExpectedShutdownFailure(result)) {
+        LOGGER.debug(DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES, paths, result.status);
+      } else {
+        LOGGER.warn(DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES, paths, result.status);
+      }
     }
   }
 

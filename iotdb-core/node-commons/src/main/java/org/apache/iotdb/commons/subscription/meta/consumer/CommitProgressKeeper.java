@@ -30,9 +30,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CommitProgressKeeper {
@@ -97,38 +100,75 @@ public class CommitProgressKeeper {
 
   public synchronized void removeTopicProgress(
       final String consumerGroupId, final String topicName) {
+    final Set<String> prefixes = getTopicProgressKeyPrefixes(consumerGroupId, topicName);
+    regionProgressMap
+        .keySet()
+        .removeIf(
+            key ->
+                prefixes.stream()
+                    .anyMatch(prefix -> isValidRegionAndDataNodeProgressKey(key, prefix)));
+  }
+
+  public synchronized boolean hasTopicProgress(
+      final String consumerGroupId, final String topicName) {
+    final Set<String> prefixes = getTopicProgressKeyPrefixes(consumerGroupId, topicName);
+    return regionProgressMap.keySet().stream()
+        .anyMatch(
+            key ->
+                prefixes.stream()
+                    .anyMatch(prefix -> isValidRegionAndDataNodeProgressKey(key, prefix)));
+  }
+
+  private static Set<String> getTopicProgressKeyPrefixes(
+      final String consumerGroupId, final String topicName) {
+    final Set<String> prefixes = new HashSet<>();
     final String versionedTopicKeyPrefix =
         VERSIONED_KEY_PREFIX
             + encodeKeyComponent(consumerGroupId)
             + KEY_COMPONENT_SEPARATOR
             + encodeKeyComponent(topicName)
             + KEY_COMPONENT_SEPARATOR;
-    final String legacyTopicKeyPrefix =
-        String.valueOf(consumerGroupId) + KEY_SEPARATOR + String.valueOf(topicName) + KEY_SEPARATOR;
-    final boolean legacyTopicKeyIsUnambiguous =
-        isLegacyKeyUnambiguous(consumerGroupId, topicName, "");
-    regionProgressMap
-        .keySet()
-        .removeIf(
-            key ->
-                isValidRegionAndDataNodeProgressKey(key, versionedTopicKeyPrefix)
-                    || (legacyTopicKeyIsUnambiguous
-                        && isValidRegionAndDataNodeProgressKey(key, legacyTopicKeyPrefix)));
+    prefixes.add(versionedTopicKeyPrefix);
+    if (isLegacyKeyUnambiguous(consumerGroupId, topicName, "")) {
+      prefixes.add(consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR);
+    }
+    return prefixes;
   }
 
   public synchronized void removeConsumerGroupProgress(final String consumerGroupId) {
+    removeConsumerGroupProgressExceptTopics(consumerGroupId, Collections.emptySet());
+  }
+
+  public synchronized void removeConsumerGroupProgressExceptTopics(
+      final String consumerGroupId, final Set<String> retainedTopicNames) {
     final String versionedConsumerGroupKeyPrefix =
         VERSIONED_KEY_PREFIX + encodeKeyComponent(consumerGroupId) + KEY_COMPONENT_SEPARATOR;
     final String consumerGroupString = String.valueOf(consumerGroupId);
     final String legacyConsumerGroupKeyPrefix =
         consumerGroupString.contains(KEY_SEPARATOR) ? null : consumerGroupString + KEY_SEPARATOR;
+    final Set<String> retainedPrefixes = new HashSet<>();
+    retainedTopicNames.forEach(
+        topic -> retainedPrefixes.addAll(getTopicProgressKeyPrefixes(consumerGroupId, topic)));
     regionProgressMap
         .keySet()
         .removeIf(
             key ->
-                key.startsWith(versionedConsumerGroupKeyPrefix)
-                    || (legacyConsumerGroupKeyPrefix != null
-                        && key.startsWith(legacyConsumerGroupKeyPrefix)));
+                (key.startsWith(versionedConsumerGroupKeyPrefix)
+                        || (legacyConsumerGroupKeyPrefix != null
+                            && key.startsWith(legacyConsumerGroupKeyPrefix)))
+                    && retainedPrefixes.stream()
+                        .noneMatch(prefix -> isValidRegionAndDataNodeProgressKey(key, prefix)));
+  }
+
+  public synchronized boolean hasConsumerGroupProgress(final String consumerGroupId) {
+    final String versionedPrefix =
+        VERSIONED_KEY_PREFIX + encodeKeyComponent(consumerGroupId) + KEY_COMPONENT_SEPARATOR;
+    final String legacyPrefix = consumerGroupId + KEY_SEPARATOR;
+    return regionProgressMap.keySet().stream()
+        .anyMatch(
+            key ->
+                key.startsWith(versionedPrefix)
+                    || (!consumerGroupId.contains(KEY_SEPARATOR) && key.startsWith(legacyPrefix)));
   }
 
   private static boolean isValidRegionAndDataNodeProgressKey(
