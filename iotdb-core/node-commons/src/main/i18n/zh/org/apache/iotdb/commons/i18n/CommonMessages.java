@@ -266,8 +266,8 @@ public final class CommonMessages {
   public static final String EXCEPTION_LTTB_WINDOW_BOUNDARIES_EXCEED_THE_TIMESTAMP_RANGE_7C0FC7E2 =
       "LTTB 窗口边界超出 TIMESTAMP 的取值范围。";
   public static final String
-      EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00 =
-          "LTTB 缓冲区超过每个处理器 %d 字节的内存上限。";
+      EXCEPTION_LTTB_BUFFERS_EXCEED_LTTB_BUFFER_SIZE_IN_BYTES_ARG_BYTES_26BDE62D =
+          "LTTB 缓冲区超过 lttb_buffer_size_in_bytes 限制（%d 字节）。";
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";

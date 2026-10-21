@@ -122,6 +122,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLoc
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.ITableFunctionFactory;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionProcessorMemoryBudget;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
@@ -1816,6 +1817,12 @@ public abstract class TableOperatorGenerator<
       return new TableFunctionOperator(
           operatorContext,
           processorProvider,
+          // The budget is taken from the provider itself, so the operator reserves exactly what the
+          // processors of this provider enforce. A user-defined function reports nothing.
+          processorProvider instanceof TableFunctionProcessorMemoryBudget
+              ? ((TableFunctionProcessorMemoryBudget) processorProvider)
+                  .getEstimatedMaxBufferedBytes()
+              : 0L,
           operator,
           inputDataTypes,
           outputDataTypes,

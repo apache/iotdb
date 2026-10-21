@@ -371,8 +371,8 @@ public final class CommonMessages {
   public static final String EXCEPTION_LTTB_WINDOW_BOUNDARIES_EXCEED_THE_TIMESTAMP_RANGE_7C0FC7E2 =
       "LTTB window boundaries exceed the TIMESTAMP range.";
   public static final String
-      EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00 =
-          "LTTB buffers exceed the per-processor memory limit of %d bytes.";
+      EXCEPTION_LTTB_BUFFERS_EXCEED_LTTB_BUFFER_SIZE_IN_BYTES_ARG_BYTES_26BDE62D =
+          "LTTB buffers exceed lttb_buffer_size_in_bytes (%d bytes).";
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";

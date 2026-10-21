@@ -31,10 +31,15 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -45,6 +50,13 @@ public class IoTDBLTTBTableFunctionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    // Four data region groups per database, so a partition can be split across regions and a
+    // per-fragment LTTB or an unordered merge would produce visibly wrong results.
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultDataRegionGroupNumPerDatabase(4);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
@@ -60,7 +72,7 @@ public class IoTDBLTTBTableFunctionIT {
               + "(3, 'd1', 2.0, 9.0),"
               + "(4, 'd1', 0.0, 1.0),"
               + "(5, 'd1', 0.0, 0.0),"
-              + "(0, 'd2', null, null),"
+              + "(0, 'd2', 0.0, 0.0),"
               + "(1, 'd2', null, null)");
       statement.execute(
           "CREATE TABLE sparse(device STRING TAG, value DOUBLE FIELD, marker INT32 FIELD)");
@@ -69,6 +81,12 @@ public class IoTDBLTTBTableFunctionIT {
               + "(0, 'd1', 0.0, 1), (1, 'd1', 1.0, 1), (2, 'd1', 2.0, 1),"
               + "(3, 'd1', null, 1), (4, 'd1', null, 1), (5, 'd1', null, 1),"
               + "(6, 'd1', 0.0, 1), (7, 'd1', 0.0, 1), (8, 'd1', 0.0, 1)");
+      // Two devices share one site tag; both write t = 0 so the partition has a duplicate
+      // timestamp.
+      statement.execute("CREATE TABLE shared(site STRING TAG, device STRING TAG, s1 DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO shared(time, site, device, s1) VALUES "
+              + "(0, 'a', 'x1', 1.0), (1, 'a', 'x1', 2.0), (0, 'a', 'x2', 3.0), (1, 'a', 'x2', 4.0)");
       statement.execute("CREATE TABLE integral_values(device STRING TAG, value INT64 FIELD)");
       long baseline = 1L << 60;
       long[] deltas = {0, 1, 8, 2, 0, 0};
@@ -79,6 +97,33 @@ public class IoTDBLTTBTableFunctionIT {
                 + ", 'd1', "
                 + (baseline + deltas[i])
                 + ")");
+      }
+      // Two partitions ('p' and 'q'), eight devices each, interleaved timestamps: the devices of
+      // one
+      // partition carry disjoint time ranges, so the partition is ordered once the rows are merged
+      // and a fragment-local sample would return one sample per region.
+      statement.execute(
+          "CREATE TABLE regions(part STRING TAG, device STRING TAG, s1 DOUBLE FIELD)");
+      for (int device = 0; device < 8; device++) {
+        for (int row = 0; row < 4; row++) {
+          long time = device * 4L + row;
+          statement.execute(
+              "INSERT INTO regions(time, part, device, s1) VALUES ("
+                  + time
+                  + ", 'p', 'p"
+                  + device
+                  + "', "
+                  + (time % 7)
+                  + ".0)");
+          statement.execute(
+              "INSERT INTO regions(time, part, device, s1) VALUES ("
+                  + time
+                  + ", 'q', 'q"
+                  + device
+                  + "', "
+                  + (time % 5)
+                  + ".0)");
+        }
       }
       statement.execute("FLUSH");
     } catch (Exception e) {
@@ -100,8 +145,7 @@ public class IoTDBLTTBTableFunctionIT {
         new String[] {
           "0,d1,1970-01-01T00:00:00.000Z,0.0,1970-01-01T00:00:00.000Z,0.0,",
           "0,d1,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.003Z,9.0,",
-          "0,d1,1970-01-01T00:00:00.005Z,0.0,1970-01-01T00:00:00.005Z,0.0,",
-          "0,d2,null,null,null,null,"
+          "0,d1,1970-01-01T00:00:00.005Z,0.0,1970-01-01T00:00:00.005Z,0.0,"
         },
         DATABASE_NAME);
   }
@@ -114,9 +158,11 @@ public class IoTDBLTTBTableFunctionIT {
             + "ORDER BY window_index",
         new String[] {"window_index", "device", "s1_time", "s1"},
         new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,0.0,",
           "0,d1,1970-01-01T00:00:00.001Z,1.0,",
           "1,d1,1970-01-01T00:00:00.002Z,8.0,",
-          "2,d1,1970-01-01T00:00:00.004Z,0.0,"
+          "2,d1,1970-01-01T00:00:00.004Z,0.0,",
+          "2,d1,1970-01-01T00:00:00.005Z,0.0,"
         },
         DATABASE_NAME);
 
@@ -126,9 +172,11 @@ public class IoTDBLTTBTableFunctionIT {
             + "ORIGIN => 1970-01-01T00:00:00.000+00:00) ORDER BY window_start",
         new String[] {"window_start", "window_end", "device", "s1_time", "s1"},
         new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.002Z,d1,1970-01-01T00:00:00.000Z,0.0,",
           "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.002Z,d1,1970-01-01T00:00:00.001Z,1.0,",
           "1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.004Z,d1,1970-01-01T00:00:00.002Z,8.0,",
-          "1970-01-01T00:00:00.004Z,1970-01-01T00:00:00.006Z,d1,1970-01-01T00:00:00.004Z,0.0,"
+          "1970-01-01T00:00:00.004Z,1970-01-01T00:00:00.006Z,d1,1970-01-01T00:00:00.004Z,0.0,",
+          "1970-01-01T00:00:00.004Z,1970-01-01T00:00:00.006Z,d1,1970-01-01T00:00:00.005Z,0.0,"
         },
         DATABASE_NAME);
   }
@@ -162,7 +210,7 @@ public class IoTDBLTTBTableFunctionIT {
             + "ORDER BY device",
         new String[] {"window_index", "device", "s1_time", "s1"},
         new String[] {
-          "0,d1,1970-01-01T00:00:00.000Z,0.0,", "0,d2,null,null,",
+          "0,d1,1970-01-01T00:00:00.000Z,0.0,", "0,d2,1970-01-01T00:00:00.000Z,0.0,",
         },
         DATABASE_NAME);
   }
@@ -175,18 +223,20 @@ public class IoTDBLTTBTableFunctionIT {
         "SELECT * FROM LTTB(" + data + "SIZE => 3) ORDER BY window_index",
         new String[] {"window_index", "device", "value_time", "value"},
         new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,0.0,",
           "0,d1,1970-01-01T00:00:00.002Z,2.0,",
-          "1,d1,null,null,",
-          "2,d1,1970-01-01T00:00:00.006Z,0.0,"
+          "2,d1,1970-01-01T00:00:00.006Z,0.0,",
+          "2,d1,1970-01-01T00:00:00.008Z,0.0,"
         },
         DATABASE_NAME);
     tableResultSetEqualTest(
         "SELECT * FROM LTTB(" + data + "SIZE => 3ms) ORDER BY window_start",
         new String[] {"window_start", "window_end", "device", "value_time", "value"},
         new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.003Z,d1,1970-01-01T00:00:00.000Z,0.0,",
           "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.003Z,d1,1970-01-01T00:00:00.002Z,2.0,",
-          "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.006Z,d1,null,null,",
-          "1970-01-01T00:00:00.006Z,1970-01-01T00:00:00.009Z,d1,1970-01-01T00:00:00.006Z,0.0,"
+          "1970-01-01T00:00:00.006Z,1970-01-01T00:00:00.009Z,d1,1970-01-01T00:00:00.006Z,0.0,",
+          "1970-01-01T00:00:00.006Z,1970-01-01T00:00:00.009Z,d1,1970-01-01T00:00:00.008Z,0.0,"
         },
         DATABASE_NAME);
   }
@@ -228,11 +278,163 @@ public class IoTDBLTTBTableFunctionIT {
         prefix + "SIZE => 2) ORDER BY window_index",
         new String[] {"window_index", "device", "value_time", "value"},
         new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,1152921504606846976,",
           "0,d1,1970-01-01T00:00:00.001Z,1152921504606846977,",
           "1,d1,1970-01-01T00:00:00.002Z,1152921504606846984,",
-          "2,d1,1970-01-01T00:00:00.004Z,1152921504606846976,"
+          "2,d1,1970-01-01T00:00:00.004Z,1152921504606846976,",
+          "2,d1,1970-01-01T00:00:00.005Z,1152921504606846976,"
         },
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testSlideSmallerThanSizeKeepsOneAnchorChain() {
+    // SIZE => 2, SLIDE => 1: overlapping count windows. F(t0) is reported by the first window and
+    // L(t5) by the last one, and the windows in between continue the same anchor chain.
+    String data =
+        "DATA => (SELECT time, device, s1 FROM metrics WHERE device = 'd1') "
+            + "PARTITION BY device ORDER BY time, TIMECOL => 'time', ";
+    tableResultSetEqualTest(
+        "SELECT * FROM LTTB(" + data + "SIZE => 2, SLIDE => 1) ORDER BY window_index, s1_time",
+        new String[] {"window_index", "device", "s1_time", "s1"},
+        new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,0.0,",
+          "0,d1,1970-01-01T00:00:00.001Z,1.0,",
+          "1,d1,1970-01-01T00:00:00.002Z,8.0,",
+          "2,d1,1970-01-01T00:00:00.003Z,2.0,",
+          "3,d1,1970-01-01T00:00:00.003Z,2.0,",
+          "4,d1,1970-01-01T00:00:00.004Z,0.0,",
+          "5,d1,1970-01-01T00:00:00.005Z,0.0,"
+        },
+        DATABASE_NAME);
+    // The time-window form with SLIDE < SIZE starts a window one slide before the first point.
+    tableResultSetEqualTest(
+        "SELECT * FROM LTTB(" + data + "SIZE => 2ms, SLIDE => 1ms) ORDER BY window_start, s1_time",
+        new String[] {"window_start", "window_end", "device", "s1_time", "s1"},
+        new String[] {
+          "1969-12-31T23:59:59.999Z,1970-01-01T00:00:00.001Z,d1,1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.002Z,d1,1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.003Z,d1,1970-01-01T00:00:00.002Z,8.0,",
+          "1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.004Z,d1,1970-01-01T00:00:00.003Z,2.0,",
+          "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.005Z,d1,1970-01-01T00:00:00.003Z,2.0,",
+          "1970-01-01T00:00:00.004Z,1970-01-01T00:00:00.006Z,d1,1970-01-01T00:00:00.004Z,0.0,",
+          "1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.007Z,d1,1970-01-01T00:00:00.005Z,0.0,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSlideLargerThanSizeSkipsTheGap() {
+    // SIZE => 1, SLIDE => 2 keeps only the windows that receive a row: [0,1), [2,3), [4,5).
+    String data =
+        "DATA => (SELECT time, device, s1 FROM metrics WHERE device = 'd1') "
+            + "PARTITION BY device ORDER BY time, TIMECOL => 'time', ";
+    tableResultSetEqualTest(
+        "SELECT * FROM LTTB(" + data + "SIZE => 1, SLIDE => 2) ORDER BY window_index, s1_time",
+        new String[] {"window_index", "device", "s1_time", "s1"},
+        new String[] {
+          "0,d1,1970-01-01T00:00:00.000Z,0.0,",
+          "1,d1,1970-01-01T00:00:00.002Z,8.0,",
+          "2,d1,1970-01-01T00:00:00.004Z,0.0,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTimeWindowWithUnalignedOriginShiftsBoundaries() {
+    String data =
+        "DATA => (SELECT time, device, s1 FROM metrics WHERE device = 'd1') "
+            + "PARTITION BY device ORDER BY time, TIMECOL => 'time', ";
+    tableResultSetEqualTest(
+        "SELECT * FROM LTTB("
+            + data
+            + "SIZE => 2ms, ORIGIN => 1970-01-01T00:00:00.001+00:00) "
+            + "ORDER BY window_start, s1_time",
+        new String[] {"window_start", "window_end", "device", "s1_time", "s1"},
+        new String[] {
+          "1969-12-31T23:59:59.999Z,1970-01-01T00:00:00.001Z,d1,1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.003Z,d1,1970-01-01T00:00:00.002Z,8.0,",
+          "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.005Z,d1,1970-01-01T00:00:00.003Z,2.0,",
+          "1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.007Z,d1,1970-01-01T00:00:00.005Z,0.0,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testInvalidTimeColumnIsRejected() {
+    tableAssertTestFail(
+        "SELECT * FROM LTTB(DATA => metrics PARTITION BY device ORDER BY time, "
+            + "TIMECOL => 's1', N => 3)",
+        "701: ",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM LTTB(DATA => metrics PARTITION BY device ORDER BY time, "
+            + "TIMECOL => 'missing', N => 3)",
+        "701: ",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDuplicateTimestampsAcrossDevicesInOnePartitionAreRejected() {
+    // Both devices are tagged 'shared', so PARTITION BY site puts t = 0 of each device into one
+    // partition and the duplicate check has to reject it.
+    tableAssertTestFail(
+        "SELECT * FROM LTTB(DATA => (SELECT time, site, s1 FROM shared ORDER BY time) "
+            + "PARTITION BY site ORDER BY time, TIMECOL => 'time', N => 3)",
+        "701: LTTB does not support duplicate timestamps, but timestamp 0 appears more than once"
+            + " in the same partition.",
+        DATABASE_NAME);
+  }
+
+  /**
+   * A partitioned GroupNode does not make a partition complete within one branch, so LTTB has to
+   * run once over the partitions merged in order. With four data region groups and a partition
+   * whose devices carry disjoint time ranges, a per-region sample or an unordered merge changes the
+   * result; {@code N => 1000} returns every eligible point, so all three inputs must agree.
+   */
+  @Test
+  public void testNonDirectScanInputsMatchTheDirectScan() throws SQLException {
+    String direct =
+        "SELECT window_index, part, s1_time, s1 FROM LTTB("
+            + "DATA => regions PARTITION BY part ORDER BY time, TIMECOL => 'time', N => 1000) "
+            + "ORDER BY part, s1_time";
+    String windowFunctionInput =
+        "SELECT window_index, part, s1_time, s1 FROM LTTB("
+            + "DATA => (SELECT time, part, s1, "
+            + "row_number() OVER (PARTITION BY part, device ORDER BY time) AS rn FROM regions) "
+            + "PARTITION BY part ORDER BY time, TIMECOL => 'time', N => 1000) "
+            + "ORDER BY part, s1_time";
+    String sessionInput =
+        "SELECT window_index, part, s1_time, s1 FROM LTTB("
+            + "DATA => (SELECT time, part, s1 FROM SESSION("
+            + "DATA => regions PARTITION BY (part, device) ORDER BY time, TIMECOL => 'time', "
+            + "GAP => 1m)) PARTITION BY part ORDER BY time, TIMECOL => 'time', N => 1000) "
+            + "ORDER BY part, s1_time";
+
+    List<String> expected = queryRows(direct);
+    // 8 devices x 4 rows per partition, 2 partitions.
+    assertEquals(64, expected.size());
+    assertEquals(expected, queryRows(windowFunctionInput));
+    assertEquals(expected, queryRows(sessionInput));
+  }
+
+  private static List<String> queryRows(String sql) throws SQLException {
+    List<String> rows = new ArrayList<>();
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        while (resultSet.next()) {
+          StringBuilder row = new StringBuilder();
+          for (int i = 1; i <= columnCount; i++) {
+            row.append(resultSet.getString(i)).append('|');
+          }
+          rows.add(row.toString());
+        }
+      }
+    }
+    return rows;
   }
 
   @Test

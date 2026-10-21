@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.LTTBTableFunction;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
@@ -57,6 +59,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.node;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
@@ -960,6 +963,32 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher, group(tableScan("testdb.table1", TABLE1_COLUMNS)))));
+  }
+
+  /**
+   * A window function input plans a per-branch GroupNode that is not registered in the ordering
+   * map, so the non-split branch has to take the ordering from the GroupNode itself. Without that
+   * the children are merged by a CollectNode and partitions are mixed.
+   */
+  @Test
+  public void testLTTBOverWindowFunctionInputIsMergedInOrder() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM LTTB(DATA => (SELECT time, tag3, s1, "
+            + "row_number() OVER (PARTITION BY tag3, s1 ORDER BY time) AS rn FROM table1) "
+            + "PARTITION BY tag3 ORDER BY time, TIMECOL => 'time', N => 4)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    // The per-branch GroupNode is not registered in the ordering map, so the non-split branch must
+    // read its ordering from the node itself and merge the children with a MergeSort. With a
+    // CollectNode the partitions of different regions would be interleaved, and splitting LTTB per
+    // region would return one sample per region instead of one sample per partition.
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            node(
+                TableFunctionProcessorNode.class,
+                group(node(WindowNode.class, mergeSort(exchange(), exchange(), exchange()))))));
   }
 
   @Test

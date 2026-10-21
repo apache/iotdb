@@ -43,16 +43,4 @@ public interface TableFunctionProcessorProvider {
     throw new UnsupportedOperationException(
         UdfApiMessages.TABLE_FUNCTION_DOES_NOT_PROCESS_LEAF_DATA);
   }
-
-  /**
-   * The bytes the processors of this provider may hold in their own buffers while a partition is
-   * being processed, above what {@code process} returns. The engine adds this to the estimated
-   * memory of the {@linkplain TableFunctionDataProcessor} operator, so a table function that
-   * accumulates input (rather than emitting a result per record) is visible to memory management
-   * and can be back-pressured. The default is {@code 0} for table functions that keep no state
-   * across calls.
-   */
-  default long getEstimatedMaxBufferedBytes() {
-    return 0L;
-  }
 }

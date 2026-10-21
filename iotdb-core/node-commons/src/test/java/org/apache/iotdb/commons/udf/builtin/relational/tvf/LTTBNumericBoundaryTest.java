@@ -109,7 +109,12 @@ public class LTTBNumericBoundaryTest {
     assertArrayEquals(new long[] {0, 2, 5}, longValues(target[1]));
     for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
       Column[] output = sample(mode, 2, 2, 0, times(6), values);
-      assertArrayEquals(new long[] {1, 2, 4}, longValues(output[output.length - 2]));
+      // F(t0) and L(t5) are reported by the first and the last window, and the windows in between
+      // keep their own picks, so the time values span the exact int64 range without wrapping.
+      assertArrayEquals(new long[] {0L, 1L, 2L, 4L, 5L}, longValues(output[output.length - 2]));
+      assertArrayEquals(
+          new long[] {Long.MIN_VALUE, 0L, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE},
+          longValues(output[output.length - 1]));
     }
   }
 
@@ -152,8 +157,9 @@ public class LTTBNumericBoundaryTest {
     Column[] output =
         sample(
             "COUNT_WINDOW", Long.MAX_VALUE, Long.MAX_VALUE, 0, times(2), new Long[][] {{1L}, {2L}});
-    assertArrayEquals(new long[] {0}, longValues(output[0]));
-    assertArrayEquals(new long[] {0}, longValues(output[1]));
+    // Two rows: F(t0) and L(t1) of the single window that received input.
+    assertArrayEquals(new long[] {0, 0}, longValues(output[0]));
+    assertArrayEquals(new long[] {0, 1}, longValues(output[1]));
   }
 
   private static void assertFloatingScaleInvariant(double[] values) {
@@ -220,11 +226,15 @@ public class LTTBNumericBoundaryTest {
             Long.MAX_VALUE - 2,
             new long[] {Long.MAX_VALUE - 2, Long.MAX_VALUE - 1, Long.MAX_VALUE},
             new Long[][] {{0L}, {8L}, {1L}});
-    assertEquals(1, output[0].getPositionCount());
+    // F(Long.MAX_VALUE - 2) and L(Long.MAX_VALUE - 1) are two rows of the same window; the last
+    // input lies in the following gap, so it belongs to no window.
+    assertEquals(2, output[0].getPositionCount());
     assertEquals(Long.MAX_VALUE - 2, output[0].getLong(0));
     assertEquals(Long.MAX_VALUE, output[1].getLong(0));
-    // Both candidate endpoints form zero-area triangles. The last input is in the following gap.
     assertEquals(Long.MAX_VALUE - 2, output[2].getLong(0));
+    assertEquals(0L, output[3].getLong(0));
+    assertEquals(Long.MAX_VALUE - 1, output[2].getLong(1));
+    assertEquals(8L, output[3].getLong(1));
   }
 
   @Test(timeout = 5000)

@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionProcessorMemoryBudget;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -69,30 +70,35 @@ import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentC
  *       the column has no more than {@code N} eligible points). The output uses a fixed {@code
  *       window_index = 0}.
  *   <li><b>Window/bucket mode</b> ({@code SIZE}, optional {@code SLIDE}/{@code ORIGIN}): windows
- *       are built exactly like M4 (time windows for duration literals, count windows for integers).
- *       {@code SIZE} defines a bucket, not the input range of a separate standard LTTB invocation.
- *       One anchor chain is maintained per partition and participant column: for the current bucket
- *       {@code A} is the point selected by the preceding bucket of that column ({@code B} in turn
- *       becomes the anchor of the following bucket), {@code B} ranges over the current bucket's
- *       eligible points, and {@code C} is the average point of the next bucket that carries data
- *       for that column (or the bucket's own last eligible point when there is none). Overlapping
- *       buckets ({@code SLIDE < SIZE}) do not restart the chain, and the state is independent
- *       between partitions and between participant columns.
+ *       are built exactly like M4 (time windows for duration literals, count windows for integers),
+ *       but {@code SIZE} defines a bucket rather than the input range of a separate standard LTTB
+ *       invocation. The result is standard LTTB whose buckets are the windows:
+ *       <ul>
+ *         <li>Per partition and participant column, the first eligible point {@code F} and the last
+ *             eligible point {@code L} that fall in a window are buckets of their own and are
+ *             always returned, as in the original algorithm. {@code F} is reported by the first
+ *             window that contains it and {@code L} by the last one.
+ *         <li>Every other window contributes one bucket made of its remaining eligible points. The
+ *             anchor chain starts at {@code F}: for a window bucket {@code A} is the previously
+ *             selected point, {@code C} is the average point of the next window bucket that has
+ *             points ({@code L} when there is none), ties go to the earliest point, and buckets
+ *             without points are skipped. Overlapping windows ({@code SLIDE < SIZE}) keep one
+ *             chain, and the state is independent between partitions and columns.
+ *       </ul>
  * </ul>
  *
- * <p>Bucket mode emits one row per window that carries input, and at most one selected point per
- * participant column in a row; a column with no eligible point in a window emits {@code NULL} in
- * its place, and a window in which every participant column is {@code NULL} still emits a single
- * all-{@code NULL} row (padding by output position). Bucket mode does <em>not</em> preserve the
- * first and last eligible points: an endpoint used as {@code A} or as {@code C} is a triangle
- * vertex, not a selected point, so it appears in the output only when it also wins its bucket. A
- * bucket holding just one or two eligible points therefore still contributes a single row per
- * column: with two points the areas are equal and the tie resolves to the earlier one. First/last
- * preservation and the return-all-points case apply to target-count mode only.
+ * <p>Bucket mode emits, per window, up to three rows per participant column: {@code F}, the point
+ * selected from the window bucket, and {@code L}. Rows are padded by position as in M4, and a
+ * window in which no participant column has an eligible point emits no row. Target-count mode emits
+ * as many rows as the column with the most selected points and no row when that number is zero.
  *
  * <p>{@code NULL} participant values are ignored per column; every non-null value, including {@code
- * NaN} and the infinities, participates in the selection and is reproduced in the output. Ties in
- * the triangle area are broken deterministically by the earliest timestamp (stable input order).
+ * NaN} and the infinities, is eligible and is reproduced in the output. A non-finite value cannot
+ * serve as a triangle vertex, though: the anchor is the most recent finite selected point (or the
+ * first finite eligible point), the lookahead average uses finite points only and skips buckets
+ * without one, and a bucket without a finite candidate returns its earliest point without moving
+ * the anchor. Ties in the triangle area are broken deterministically by the earliest timestamp
+ * (stable input order).
  *
  * <p>The timestamps of the input rows of one partition must be unique. As soon as two rows of the
  * same partition carry the same timestamp the query fails with a semantic error ({@code 701}); the
@@ -123,12 +129,13 @@ public class LTTBTableFunction implements TableFunction {
   public static final int MAX_BUFFERED_POINTS = 1 << 22;
 
   /**
-   * Shared budget for point buffers and selection state across all columns of one processor. It is
-   * the default of {@code lttb_buffer_size_in_bytes}; operators can tune the live value with that
-   * hot-reloadable configuration parameter for workloads with large partitions or many overlapping
-   * windows.
+   * Fallback for {@code lttb_buffer_size_in_bytes} when it is not positive. The configured default
+   * in {@code iotdb-system.properties.template} is {@code 0}, which {@code IoTDBDescriptor}
+   * resolves to {@code min(32 MiB, operator memory / query_thread_count / 2)}; this constant
+   * therefore only matches {@link org.apache.iotdb.commons.conf.CommonConfig}'s initial value and
+   * keeps a misconfigured node bounded.
    */
-  public static final long DEFAULT_MAX_BUFFER_BYTES = 64L * 1024 * 1024;
+  public static final long DEFAULT_MAX_BUFFER_BYTES = 32L * 1024 * 1024;
 
   public static final String MODE_PROPERTY = "__LTTB_MODE";
   public static final String PARTITION_TYPES_PROPERTY = "__LTTB_PARTITION_TYPES";
@@ -149,11 +156,14 @@ public class LTTBTableFunction implements TableFunction {
   }
 
   /**
-   * The live per-processor buffer budget, read from the hot-reloadable {@code
-   * lttb_buffer_size_in_bytes} configuration parameter. Values that are not positive fall back to
-   * {@link #DEFAULT_MAX_BUFFER_BYTES} so a misconfigured node still bounds memory instead of
-   * buffering without limit. Processors read this once at construction, so a reload applies to
-   * queries that start afterwards.
+   * The live value of the hot-reloadable {@code lttb_buffer_size_in_bytes} configuration parameter.
+   * Values that are not positive fall back to {@link #DEFAULT_MAX_BUFFER_BYTES} so a misconfigured
+   * node still bounds memory instead of buffering without limit.
+   *
+   * <p>This is read once per {@linkplain TableFunctionProcessorProvider}, in {@link
+   * #getProcessorProvider(TableFunctionHandle)}. Every processor of that provider enforces the same
+   * value, and the operator reserves the same value, so a hot reload cannot make the two differ for
+   * a running query; it applies to providers created afterwards.
    */
   public static long maxBufferBytes() {
     long configured = CommonDescriptor.getInstance().getConfig().getLttbBufferSize();
@@ -320,44 +330,74 @@ public class LTTBTableFunction implements TableFunction {
         WindowTVFUtils.parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
     Type[] participantTypes =
         WindowTVFUtils.parseTypes((String) handle.getProperty(PARTICIPANT_TYPES_PROPERTY));
+    // Resolved once so that every processor of this provider enforces the same limit the operator
+    // reserves, even if lttb_buffer_size_in_bytes is hot-reloaded while the query runs.
+    long maxBufferedBytes = maxBufferBytes();
 
-    return new TableFunctionProcessorProvider() {
-      @Override
-      public TableFunctionDataProcessor getDataProcessor() {
-        ParticipantColumn[] participantColumns =
-            createParticipantColumns(participantTypes, partitionTypes.length + 1);
-        switch (mode) {
-          case TARGET_COUNT:
-            return new TargetCountLTTBDataProcessor(
-                (long) handle.getProperty(N_PARAMETER_NAME), partitionTypes, participantColumns);
-          case TIME_WINDOW:
-            return new TimeWindowLTTBDataProcessor(
-                (long) handle.getProperty(SIZE_PARAMETER_NAME),
-                (long) handle.getProperty(SLIDE_PARAMETER_NAME),
-                (long) handle.getProperty(ORIGIN_PARAMETER_NAME),
-                partitionTypes,
-                participantColumns);
-          case COUNT_WINDOW:
-            return new CountWindowLTTBDataProcessor(
-                (long) handle.getProperty(SIZE_PARAMETER_NAME),
-                (long) handle.getProperty(SLIDE_PARAMETER_NAME),
-                partitionTypes,
-                participantColumns);
-          default:
-            throw new IllegalStateException(String.valueOf(mode));
-        }
-      }
+    return new LTTBProcessorProvider(
+        mode, partitionTypes, participantTypes, handle, maxBufferedBytes);
+  }
 
-      /**
-       * Every LTTB processor buffers the points of the partition (or of the windows it keeps open)
-       * until it can select the output points, so the whole per-processor budget is reportable as
-       * memory the operator holds while the partition is processed.
-       */
-      @Override
-      public long getEstimatedMaxBufferedBytes() {
-        return maxBufferBytes();
+  /**
+   * The provider of one LTTB invocation. It reports the budget it resolved at construction, so the
+   * operator reserves exactly the limit its processors enforce.
+   */
+  private static final class LTTBProcessorProvider
+      implements TableFunctionProcessorProvider, TableFunctionProcessorMemoryBudget {
+    private final Mode mode;
+    private final Type[] partitionTypes;
+    private final Type[] participantTypes;
+    private final MapTableFunctionHandle handle;
+    private final long maxBufferedBytes;
+
+    private LTTBProcessorProvider(
+        Mode mode,
+        Type[] partitionTypes,
+        Type[] participantTypes,
+        MapTableFunctionHandle handle,
+        long maxBufferedBytes) {
+      this.mode = mode;
+      this.partitionTypes = partitionTypes;
+      this.participantTypes = participantTypes;
+      this.handle = handle;
+      this.maxBufferedBytes = maxBufferedBytes;
+    }
+
+    @Override
+    public long getEstimatedMaxBufferedBytes() {
+      return maxBufferedBytes;
+    }
+
+    @Override
+    public TableFunctionDataProcessor getDataProcessor() {
+      ParticipantColumn[] participantColumns =
+          createParticipantColumns(participantTypes, partitionTypes.length + 1);
+      switch (mode) {
+        case TARGET_COUNT:
+          return new TargetCountLTTBDataProcessor(
+              (long) handle.getProperty(N_PARAMETER_NAME),
+              partitionTypes,
+              participantColumns,
+              maxBufferedBytes);
+        case TIME_WINDOW:
+          return new TimeWindowLTTBDataProcessor(
+              (long) handle.getProperty(SIZE_PARAMETER_NAME),
+              (long) handle.getProperty(SLIDE_PARAMETER_NAME),
+              (long) handle.getProperty(ORIGIN_PARAMETER_NAME),
+              partitionTypes,
+              participantColumns,
+              maxBufferedBytes);
+        case COUNT_WINDOW:
+          return new CountWindowLTTBDataProcessor(
+              (long) handle.getProperty(SIZE_PARAMETER_NAME),
+              (long) handle.getProperty(SLIDE_PARAMETER_NAME),
+              partitionTypes,
+              participantColumns,
+              maxBufferedBytes);
+        default:
+          throw new IllegalStateException(String.valueOf(mode));
       }
-    };
+    }
   }
 
   private static ParticipantColumn[] createParticipantColumns(Type[] types, int firstInputIndex) {
@@ -376,11 +416,18 @@ public class LTTBTableFunction implements TableFunction {
    * Standard LTTB selection over an ordered point sequence.
    *
    * <p>When {@code count <= n} every index is returned. Otherwise the first and last points are
-   * retained and the {@code count - 2} intermediate points are divided into {@code n - 2} buckets;
-   * bucket {@code i} covers {@code [floor(i*(count-2)/(n-2))+1, floor((i+1)*(count-2)/(n-2))+1)}.
-   * For every bucket the candidate forming the largest triangle with the previously selected point
-   * and the average point of the next bucket wins (the last bucket uses the final point). Ties are
-   * broken by the earliest timestamp.
+   * retained, bucket {@code i} covers {@code [floor(i*(count-2)/(n-2))+1,
+   * floor((i+1)*(count-2)/(n-2))+1)}, and for every bucket the candidate forming the largest
+   * triangle with the anchor and the lookahead average wins. The last bucket uses the final point
+   * as the lookahead, and ties are broken by the earliest timestamp.
+   *
+   * <p>{@code NaN} and infinite values are eligible points, but they cannot serve as a triangle
+   * vertex: an undefined area would make every candidate tie and the bucket would return its
+   * earliest point regardless of the data. The anchor is therefore the most recent finite selected
+   * point (or the first finite point), the lookahead average uses only finite points and skips
+   * buckets without one, and a bucket with no finite candidate returns its earliest point without
+   * moving the anchor. Non-finite points are still selected and returned when their bucket has no
+   * finite alternative.
    *
    * @return ascending indexes of the selected points
    */
@@ -403,31 +450,61 @@ public class LTTBTableFunction implements TableFunction {
     selected[selectedCount++] = 0;
     long bucketCount = n - 2;
     long intermediate = count - 2L;
+    // The anchor starts at the earliest finite point so that every area it participates in has a
+    // representable origin. It only moves to a selected point; a bucket with no finite candidate
+    // leaves it in place.
     int anchor = 0;
+    while (anchor < count && !isFiniteValue(values, integralValues, anchor)) {
+      anchor++;
+    }
+    boolean hasAnchor = anchor < count;
     for (long bucket = 0; bucket < bucketCount; bucket++) {
       int currentStart = (int) (bucket * intermediate / bucketCount) + 1;
       int currentEnd = (int) ((bucket + 1) * intermediate / bucketCount) + 1;
-
-      long anchorTime = times[anchor];
-      double anchorValue = values[anchor];
-      long integralAnchor = integralValues == null ? 0 : integralValues[anchor];
-      double avgTime;
-      double avgValue;
       int nextEnd =
           bucket == bucketCount - 1 ? count : (int) ((bucket + 2) * intermediate / bucketCount) + 1;
+
+      long anchorTime = times[hasAnchor ? anchor : 0];
+      double anchorValue = hasAnchor ? values[anchor] : 0;
+      long integralAnchor = hasAnchor && integralValues != null ? integralValues[anchor] : 0;
+      double avgTime;
+      double avgValue;
+      int lookaheadEnd;
+      if (bucket == bucketCount - 1) {
+        lookaheadEnd = count;
+      } else {
+        lookaheadEnd = nextEnd;
+      }
       if (bucket == bucketCount - 1) {
         avgTime = differenceAsDouble(times[count - 1], anchorTime);
         avgValue = relativeValue(values, integralValues, count - 1, anchorValue, integralAnchor);
       } else {
         double sumTime = 0;
         double sumValue = 0;
-        for (int i = currentEnd; i < nextEnd; i++) {
+        int finiteCount = 0;
+        for (int i = currentEnd; i < lookaheadEnd; i++) {
+          if (!isFiniteValue(values, integralValues, i)) {
+            continue;
+          }
           sumTime += differenceAsDouble(times[i], anchorTime);
           sumValue += relativeValue(values, integralValues, i, anchorValue, integralAnchor);
+          finiteCount++;
         }
-        int nextSize = nextEnd - currentEnd;
-        avgTime = sumTime / nextSize;
-        avgValue = sumValue / nextSize;
+        if (finiteCount == 0) {
+          // No finite point in the next bucket: use the last finite point of the partition.
+          int fallback = count - 1;
+          while (fallback >= 0 && !isFiniteValue(values, integralValues, fallback)) {
+            fallback--;
+          }
+          if (fallback < 0) {
+            fallback = count - 1;
+          }
+          avgTime = differenceAsDouble(times[fallback], anchorTime);
+          avgValue = relativeValue(values, integralValues, fallback, anchorValue, integralAnchor);
+        } else {
+          avgTime = sumTime / finiteCount;
+          avgValue = sumValue / finiteCount;
+        }
       }
 
       int pick =
@@ -457,10 +534,13 @@ public class LTTBTableFunction implements TableFunction {
                 values,
                 integralValues,
                 currentEnd,
-                nextEnd);
+                lookaheadEnd);
       }
       selected[selectedCount++] = pick;
-      anchor = pick;
+      if (isFiniteValue(values, integralValues, pick)) {
+        anchor = pick;
+        hasAnchor = true;
+      }
     }
     selected[selectedCount] = count - 1;
     return selected;
@@ -497,6 +577,11 @@ public class LTTBTableFunction implements TableFunction {
     return integralValues != null || Double.isFinite(values[index]);
   }
 
+  /** Whether the participant value at {@code index} can serve as a triangle vertex. */
+  private static boolean isFiniteValue(double[] values, long[] integralValues, int index) {
+    return integralValues != null || Double.isFinite(values[index]);
+  }
+
   private static int argMaxArea(
       long[] times,
       double[] values,
@@ -508,10 +593,10 @@ public class LTTBTableFunction implements TableFunction {
       long integralAnchor,
       double nextTime,
       double nextValue) {
-    // The exact fallback rebuilds the lookahead sum from the original points, so a non-finite
-    // average over representable points is still recoverable; only the anchor origin has to be
-    // representable, because it is converted to BigDecimal directly. A non-finite anchor value can
-    // only arise from non-finite input, which no arithmetic can repair.
+    // An undefined area means one of the vertices is not representable exactly (NaN or infinity);
+    // such a candidate cannot be scored. An overflow over representable input is different: the
+    // exact fallback recomputes it from the original points, so the whole bucket switches to it —
+    // but only when the anchor is itself representable, because the fallback converts it directly.
     boolean exactIsPossible = Double.isFinite(anchorValue);
     int pick = start;
     double maxArea = -1;
@@ -640,7 +725,7 @@ public class LTTBTableFunction implements TableFunction {
         throw new SemanticException(
             String.format(
                 CommonMessages
-                    .EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00,
+                    .EXCEPTION_LTTB_BUFFERS_EXCEED_LTTB_BUFFER_SIZE_IN_BYTES_ARG_BYTES_26BDE62D,
                 limit));
       }
       reservedBytes += bytes;
@@ -694,21 +779,70 @@ public class LTTBTableFunction implements TableFunction {
       }
     }
 
-    private void write(
-        ColumnBuilder timeBuilder, ColumnBuilder valueBuilder, PointBuffer buffer, int index) {
-      timeBuilder.writeLong(buffer.times[index]);
+    private boolean isNull(Record record) {
+      return record.isNull(inputIndex);
+    }
+
+    /** The value as a double, which is lossy only for INT64 values above 2^53. */
+    private double floatingValue(Record record) {
       switch (type) {
         case INT32:
-          valueBuilder.writeInt((int) buffer.integralValues[index]);
+          return record.getInt(inputIndex);
+        case INT64:
+          return record.getLong(inputIndex);
+        case FLOAT:
+          return record.getFloat(inputIndex);
+        case DOUBLE:
+          return record.getDouble(inputIndex);
+        default:
+          throw new IllegalArgumentException(
+              String.format(
+                  CommonMessages.EXCEPTION_UNSUPPORTED_LTTB_VALUE_TYPE_ARG_3E60F6FE, type));
+      }
+    }
+
+    /** The exact value of an integral column, or {@code 0} for a floating-point column. */
+    private long integralValue(Record record) {
+      switch (type) {
+        case INT32:
+          return record.getInt(inputIndex);
+        case INT64:
+          return record.getLong(inputIndex);
+        default:
+          return 0L;
+      }
+    }
+
+    private void write(
+        ColumnBuilder timeBuilder, ColumnBuilder valueBuilder, PointBuffer buffer, int index) {
+      writePoint(
+          timeBuilder,
+          valueBuilder,
+          buffer.times[index],
+          buffer.values[index],
+          buffer.integralValues == null ? 0L : buffer.integralValues[index]);
+    }
+
+    /** Writes one point; the integral value is only meaningful for an integral column. */
+    private void writePoint(
+        ColumnBuilder timeBuilder,
+        ColumnBuilder valueBuilder,
+        long time,
+        double value,
+        long integral) {
+      timeBuilder.writeLong(time);
+      switch (type) {
+        case INT32:
+          valueBuilder.writeInt((int) integral);
           break;
         case INT64:
-          valueBuilder.writeLong(buffer.integralValues[index]);
+          valueBuilder.writeLong(integral);
           break;
         case FLOAT:
-          valueBuilder.writeFloat((float) buffer.values[index]);
+          valueBuilder.writeFloat((float) value);
           break;
         case DOUBLE:
-          valueBuilder.writeDouble(buffer.values[index]);
+          valueBuilder.writeDouble(value);
           break;
         default:
           throw new IllegalArgumentException(
@@ -771,6 +905,62 @@ public class LTTBTableFunction implements TableFunction {
       size++;
     }
 
+    /** Appends a point whose exact integral value is only meaningful for an integral column. */
+    void add(long time, double value, long integral) {
+      if (integralValues == null) {
+        addFloating(time, value);
+      } else {
+        ensureCapacity();
+        times[size] = time;
+        values[size] = value;
+        integralValues[size] = integral;
+        size++;
+      }
+    }
+
+    /** Drops the last point, which is used to move the partition's last eligible point out. */
+    void truncateLast() {
+      size--;
+    }
+
+    /** Average timestamp of the finite points, relative to {@code origin}. */
+    double finiteAverageTime(long origin) {
+      double sum = 0;
+      int count = 0;
+      for (int i = 0; i < size; i++) {
+        if (!Double.isFinite(values[i])) {
+          continue;
+        }
+        sum += differenceAsDouble(times[i], origin);
+        count++;
+      }
+      return sum / count;
+    }
+
+    /** Average value of the finite points, relative to {@code origin}. */
+    double finiteAverageValue(double origin, long integralOrigin) {
+      double sum = 0;
+      int count = 0;
+      for (int i = 0; i < size; i++) {
+        if (!Double.isFinite(values[i])) {
+          continue;
+        }
+        sum += relativeValue(values, integralValues, i, origin, integralOrigin);
+        count++;
+      }
+      return sum / count;
+    }
+
+    /** Whether at least one point has a finite value. */
+    boolean hasFinitePoint() {
+      for (int i = 0; i < size; i++) {
+        if (Double.isFinite(values[i])) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     private void ensureCapacity() {
       if (size < times.length) {
         return;
@@ -812,22 +1002,6 @@ public class LTTBTableFunction implements TableFunction {
 
     double value(int index) {
       return values[index];
-    }
-
-    double averageTime(long origin) {
-      double sum = 0;
-      for (int i = 0; i < size; i++) {
-        sum += differenceAsDouble(times[i], origin);
-      }
-      return sum / size;
-    }
-
-    double averageValue(double origin, long integralOrigin) {
-      double sum = 0;
-      for (int i = 0; i < size; i++) {
-        sum += relativeValue(values, integralValues, i, origin, integralOrigin);
-      }
-      return sum / size;
     }
   }
 
@@ -935,13 +1109,17 @@ public class LTTBTableFunction implements TableFunction {
   private static final class TargetCountLTTBDataProcessor extends AbstractLTTBDataProcessor {
     private final long n;
     private final PointBuffer[] buffers;
-    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(maxBufferBytes());
+    private final BufferMemoryBudget memoryBudget;
     private boolean hasRows;
 
     private TargetCountLTTBDataProcessor(
-        long n, Type[] partitionTypes, ParticipantColumn[] participantColumns) {
+        long n,
+        Type[] partitionTypes,
+        ParticipantColumn[] participantColumns,
+        long maxBufferedBytes) {
       super(partitionTypes, participantColumns);
       this.n = n;
+      this.memoryBudget = new BufferMemoryBudget(maxBufferedBytes);
       memoryBudget.reserve(RamUsageEstimator.sizeOfObjectArray(participantColumns.length));
       this.buffers = newBuffers(memoryBudget);
     }
@@ -972,7 +1150,7 @@ public class LTTBTableFunction implements TableFunction {
       }
       memoryBudget.reserve(selectionBytes);
       int[][] selections = new int[participantColumns.length][];
-      int rowCount = 1;
+      int rowCount = 0;
       for (int i = 0; i < participantColumns.length; i++) {
         PointBuffer buffer = buffers[i];
         selections[i] =
@@ -997,16 +1175,17 @@ public class LTTBTableFunction implements TableFunction {
     }
   }
 
-  /** One window (= one LTTB bucket) worth of eligible points. */
+  /**
+   * One window of the partition: the eligible points that fall in it, per participant column. The
+   * first and last eligible point of a partition are not stored here, because they form buckets of
+   * their own.
+   */
   private abstract static class WindowState {
     protected final PointBuffer[] buffers;
-    protected final PointBuffer[] nextNonemptyBuffers;
     protected final long endExclusive;
-    protected int unresolvedColumns;
 
     private WindowState(PointBuffer[] buffers, long endExclusive) {
       this.buffers = buffers;
-      this.nextNonemptyBuffers = new PointBuffer[buffers.length];
       this.endExclusive = endExclusive;
     }
 
@@ -1054,12 +1233,54 @@ public class LTTBTableFunction implements TableFunction {
     }
   }
 
+  /** One output cell of window mode: a selected point, or the first/last eligible point. */
+  private static final class WindowRow {
+    private final long time;
+    private final double value;
+    private final long integral;
+
+    private WindowRow(long time, double value, long integral) {
+      this.time = time;
+      this.value = value;
+      this.integral = integral;
+    }
+
+    private static WindowRow of(PointBuffer buffer, int index) {
+      return new WindowRow(
+          buffer.times[index],
+          buffer.values[index],
+          buffer.integralValues == null ? 0L : buffer.integralValues[index]);
+    }
+  }
+
   /**
-   * Window/bucket mode. Windows are constructed like M4 and emitted in window order; a window is
-   * emitted only once the following window with data is closed (or in {@link #finish}), because the
-   * average point of that following window is the third vertex of the LTTB triangle. Anchors are
-   * chained per participant column across the windows of the partition; windows without data for a
-   * column leave its anchor untouched.
+   * Window/bucket mode. Windows are constructed like M4, and {@code SIZE} defines a bucket rather
+   * than the input range of a separate standard LTTB invocation; the result is standard LTTB whose
+   * buckets are the windows:
+   *
+   * <ul>
+   *   <li>Per partition and participant column, the first eligible point {@code F} and the last
+   *       eligible point {@code L} that fall in a window are buckets of their own and are always
+   *       returned. {@code F} is reported by the first window that contains it and {@code L} by the
+   *       last one, so a window emits up to three rows: {@code F}, its selected point and {@code
+   *       L}.
+   *   <li>Every other window contributes one bucket made of its remaining eligible points. The
+   *       anchor chain starts at {@code F}: for a window bucket {@code A} is the previously
+   *       selected point, {@code C} is the average point of the next window bucket that has points
+   *       (and {@code L} when there is none), ties go to the earliest point, and buckets without
+   *       points are skipped. Overlapping windows ({@code SLIDE < SIZE}) keep one chain.
+   *   <li>A window in which no participant column has an eligible point emits no row.
+   * </ul>
+   *
+   * <p>Rows are padded by position, as in M4. {@code L} is only known at the end of the partition,
+   * so a window is emitted once the bucket that supplies its {@code C} is closed and known not to
+   * end the partition, or in {@link #finish}.
+   *
+   * <p>Non-finite values stay eligible, but a {@code NaN} or infinite point cannot be a triangle
+   * vertex: {@code A} is the most recent finite selected point (or the first finite eligible
+   * point), {@code C} averages only finite points and skips buckets without one, falling back to
+   * the last finite eligible point, and a bucket without a finite candidate returns its earliest
+   * point without moving {@code A}.
    */
   private abstract static class AbstractWindowLTTBDataProcessor<W extends WindowState>
       extends AbstractLTTBDataProcessor {
@@ -1072,26 +1293,70 @@ public class LTTBTableFunction implements TableFunction {
     protected final long slide;
     protected final Deque<W> activeWindows = new ArrayDeque<>();
     private final Deque<W> pendingWindows = new ArrayDeque<>();
-    private final WindowState[] lastNonemptyWindows;
-    private final BufferMemoryBudget memoryBudget = new BufferMemoryBudget(maxBufferBytes());
+    private final BufferMemoryBudget memoryBudget;
     private final long windowMetadataBytes;
+
+    private final boolean[] hasFirstEligible;
+    private final long[] firstEligibleTimes;
+    private final double[] firstEligibleValues;
+    private final long[] integralFirstEligibleValues;
+    private final WindowState[] firstEligibleWindows;
+    private final boolean[] hasLastEligible;
+    private final long[] lastEligibleTimes;
+    private final double[] lastEligibleValues;
+    private final long[] integralLastEligibleValues;
+    private final long[] lastEligiblePositions;
+    private final boolean[] hasLastFinite;
+    private final long[] lastFiniteTimes;
+    private final double[] lastFiniteValues;
+    private final long[] integralLastFiniteValues;
+    private final boolean[] hasFirstFinite;
+    private final long[] firstFiniteTimes;
+    private final double[] firstFiniteValues;
+    private final long[] integralFirstFiniteValues;
     private final boolean[] hasAnchor;
     private final long[] anchorTimes;
     private final double[] anchorValues;
     private final long[] integralAnchorValues;
+    private final WindowState[] lastRowWindows;
+    private boolean finishing;
 
     protected AbstractWindowLTTBDataProcessor(
-        long size, long slide, Type[] partitionTypes, ParticipantColumn[] participantColumns) {
+        long size,
+        long slide,
+        Type[] partitionTypes,
+        ParticipantColumn[] participantColumns,
+        long maxBufferedBytes) {
       super(partitionTypes, participantColumns);
       this.size = size;
       this.slide = slide;
+      this.memoryBudget = new BufferMemoryBudget(maxBufferedBytes);
+      int columnCount = participantColumns.length;
       this.windowMetadataBytes =
-          WINDOW_INSTANCE_SIZE + 2 * RamUsageEstimator.sizeOfObjectArray(participantColumns.length);
-      this.lastNonemptyWindows = new WindowState[participantColumns.length];
-      this.hasAnchor = new boolean[participantColumns.length];
-      this.anchorTimes = new long[participantColumns.length];
-      this.anchorValues = new double[participantColumns.length];
-      this.integralAnchorValues = new long[participantColumns.length];
+          WINDOW_INSTANCE_SIZE + 3 * RamUsageEstimator.sizeOfObjectArray(columnCount);
+      this.hasFirstEligible = new boolean[columnCount];
+      this.firstEligibleTimes = new long[columnCount];
+      this.firstEligibleValues = new double[columnCount];
+      this.integralFirstEligibleValues = new long[columnCount];
+      this.firstEligibleWindows = new WindowState[columnCount];
+      this.hasLastEligible = new boolean[columnCount];
+      this.lastEligibleTimes = new long[columnCount];
+      this.lastEligibleValues = new double[columnCount];
+      this.integralLastEligibleValues = new long[columnCount];
+      this.lastEligiblePositions = new long[columnCount];
+      this.hasLastFinite = new boolean[columnCount];
+      this.lastFiniteTimes = new long[columnCount];
+      this.lastFiniteValues = new double[columnCount];
+      this.integralLastFiniteValues = new long[columnCount];
+      this.hasFirstFinite = new boolean[columnCount];
+      this.firstFiniteTimes = new long[columnCount];
+      this.firstFiniteValues = new double[columnCount];
+      this.integralFirstFiniteValues = new long[columnCount];
+      this.hasAnchor = new boolean[columnCount];
+      this.anchorTimes = new long[columnCount];
+      this.anchorValues = new double[columnCount];
+      this.integralAnchorValues = new long[columnCount];
+      this.lastRowWindows = new WindowState[columnCount];
     }
 
     protected final PointBuffer[] newWindowBuffers() {
@@ -1121,130 +1386,322 @@ public class LTTBTableFunction implements TableFunction {
     protected abstract void processRecord(
         Record input, long time, List<ColumnBuilder> properColumnBuilders);
 
-    /** Close windows in order and link each column to its next nonempty, closed bucket. */
-    protected final void emitClosedWindows(long position, List<ColumnBuilder> builders) {
-      while (!activeWindows.isEmpty() && activeWindows.peekFirst().endExclusive <= position) {
-        closeWindow(activeWindows.removeFirst());
-      }
-      emitReadyWindows(builders, false);
-    }
-
-    private void closeWindow(W window) {
+    /**
+     * Adds one input row to every open window that contains it. The first eligible point of a
+     * column is kept aside as the {@code F} bucket instead of being added to a window bucket.
+     */
+    protected final void collectIntoWindows(long position, Record input, long time) {
       for (int i = 0; i < participantColumns.length; i++) {
-        if (!window.buffers[i].isEmpty()) {
-          WindowState previous = lastNonemptyWindows[i];
-          if (previous != null) {
-            previous.nextNonemptyBuffers[i] = window.buffers[i];
-            previous.unresolvedColumns--;
+        // A point that falls in a gap of a SLIDE > SIZE layout belongs to no window at all.
+        if (participantColumns[i].isNull(input) || activeWindows.isEmpty()) {
+          continue;
+        }
+        double value = participantColumns[i].floatingValue(input);
+        long integral = participantColumns[i].integralValue(input);
+        if (Double.isFinite(value)) {
+          if (!hasFirstFinite[i]) {
+            hasFirstFinite[i] = true;
+            firstFiniteTimes[i] = time;
+            firstFiniteValues[i] = value;
+            integralFirstFiniteValues[i] = integral;
           }
-          lastNonemptyWindows[i] = window;
-          window.unresolvedColumns++;
+          hasLastFinite[i] = true;
+          lastFiniteTimes[i] = time;
+          lastFiniteValues[i] = value;
+          integralLastFiniteValues[i] = integral;
+        }
+        if (!hasFirstEligible[i]) {
+          hasFirstEligible[i] = true;
+          firstEligibleTimes[i] = time;
+          firstEligibleValues[i] = value;
+          integralFirstEligibleValues[i] = integral;
+          firstEligibleWindows[i] = activeWindows.peekFirst();
+          continue;
+        }
+        hasLastEligible[i] = true;
+        lastEligibleTimes[i] = time;
+        lastEligibleValues[i] = value;
+        integralLastEligibleValues[i] = integral;
+        lastEligiblePositions[i] = position;
+        for (W window : activeWindows) {
+          window.buffers[i].add(time, value, integral);
         }
       }
-      pendingWindows.addLast(window);
     }
 
-    private void emitReadyWindows(List<ColumnBuilder> builders, boolean finishing) {
-      while (!pendingWindows.isEmpty()
-          && (finishing || pendingWindows.peekFirst().unresolvedColumns == 0)) {
-        W current = pendingWindows.removeFirst();
-        emitWindow(current, builders);
-        releaseWindow(current);
+    /** Moves the windows that ended before {@code position} into the pending queue. */
+    protected final void emitClosedWindows(long position, List<ColumnBuilder> builders) {
+      while (!activeWindows.isEmpty() && activeWindows.peekFirst().endExclusive <= position) {
+        pendingWindows.addLast(activeWindows.removeFirst());
       }
+      emitReadyWindows(builders);
     }
 
     @Override
     public final void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      moveLastEligibleOutOfBuckets();
+      emitReadyWindows(properColumnBuilders);
+      Arrays.fill(firstEligibleWindows, null);
+      Arrays.fill(lastRowWindows, null);
+    }
+
+    /**
+     * {@code L} is the last eligible point of a column and is a bucket of its own, but it was
+     * collected into the window buckets that contain it. Now that the partition has ended, remove
+     * it from the bucket it ends and remember which window reports it.
+     */
+    private void moveLastEligibleOutOfBuckets() {
+      finishing = true;
       while (!activeWindows.isEmpty()) {
-        closeWindow(activeWindows.removeFirst());
+        pendingWindows.addLast(activeWindows.removeFirst());
       }
-      emitReadyWindows(properColumnBuilders, true);
-      Arrays.fill(lastNonemptyWindows, null);
+      for (WindowState window : pendingWindows) {
+        for (int i = 0; i < participantColumns.length; i++) {
+          PointBuffer bucket = window.buffers[i];
+          if (bucket.isEmpty() || !containsPosition(window, lastEligiblePositions[i])) {
+            continue;
+          }
+          if (bucket.time(bucket.size() - 1) == lastEligibleTimes[i]) {
+            bucket.truncateLast();
+            lastRowWindows[i] = window;
+          }
+        }
+      }
+      for (int i = 0; i < participantColumns.length; i++) {
+        if (!hasLastEligible[i]) {
+          // A single eligible point is both F and L and was already reported as F.
+          lastRowWindows[i] = null;
+        }
+      }
     }
 
     @Override
     public final void beforeDestroy() {
       activeWindows.clear();
       pendingWindows.clear();
-      Arrays.fill(lastNonemptyWindows, null);
+      Arrays.fill(firstEligibleWindows, null);
+      Arrays.fill(lastRowWindows, null);
       // Also covers a reservation made by a window whose construction failed at the limit.
       memoryBudget.reservedBytes = 0;
     }
 
-    private void emitWindow(W current, List<ColumnBuilder> builders) {
-      int[] selectedIndexes = new int[participantColumns.length];
+    protected final void emitReadyWindows(List<ColumnBuilder> builders) {
+      while (!pendingWindows.isEmpty() && isReady(pendingWindows.peekFirst())) {
+        W window = pendingWindows.removeFirst();
+        emitWindow(window, builders);
+        releaseWindow(window);
+      }
+    }
+
+    /**
+     * Whether the first pending window can be emitted. A window that contains {@code L} must wait
+     * for the end of the partition, and so must a window whose {@code C} would come from a bucket
+     * that can still lose {@code L}.
+     */
+    private boolean isReady(W window) {
+      if (finishing) {
+        return true;
+      }
       for (int i = 0; i < participantColumns.length; i++) {
-        PointBuffer bucket = current.buffers[i];
-        if (bucket.isEmpty()) {
-          selectedIndexes[i] = NOT_SELECTED;
+        if (containsPosition(window, lastEligiblePositions[i])) {
+          return false;
+        }
+        PointBuffer bucket = window.buffers[i];
+        if (bucket.isEmpty() || !bucket.hasFinitePoint()) {
           continue;
         }
-        if (!hasAnchor[i]) {
-          // The first eligible point of the partition seeds the anchor, as in standard LTTB.
-          hasAnchor[i] = true;
-          anchorTimes[i] = bucket.time(0);
-          anchorValues[i] = bucket.value(0);
-          if (bucket.integralValues != null) {
-            integralAnchorValues[i] = bucket.integralValues[0];
-          }
+        WindowState lookahead = findLookahead(window, i);
+        if (lookahead == null || containsPosition(lookahead, lastEligiblePositions[i])) {
+          return false;
         }
-        double nextTime;
-        double nextValue;
-        PointBuffer next = current.nextNonemptyBuffers[i];
-        if (next != null) {
-          nextTime = next.averageTime(anchorTimes[i]);
-          nextValue = next.averageValue(anchorValues[i], integralAnchorValues[i]);
+      }
+      return true;
+    }
+
+    /** The next closed window after {@code window} whose bucket of {@code column} supplies C. */
+    private WindowState findLookahead(WindowState window, int column) {
+      for (WindowState candidate : pendingWindows) {
+        if (candidate.endExclusive <= window.endExclusive) {
+          continue;
+        }
+        PointBuffer bucket = candidate.buffers[column];
+        if (!bucket.isEmpty() && bucket.hasFinitePoint()) {
+          return candidate;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * A one-point lookahead used by the exact fallback when {@code C} is the last eligible point.
+     */
+    private PointBuffer singlePoint(long time, double value, int column) {
+      PointBuffer point = new PointBuffer(participantColumns[column].isIntegral(), null);
+      point.add(
+          time,
+          value,
+          participantColumns[column].isIntegral() ? integralLastFiniteValues[column] : 0L);
+      return point;
+    }
+
+    /** Whether {@code position} falls in {@code window}; every window is {@code size} long. */
+    private boolean containsPosition(WindowState window, long position) {
+      return position >= window.endExclusive - size && position < window.endExclusive;
+    }
+
+    private void emitWindow(W window, List<ColumnBuilder> builders) {
+      WindowRow[][] rows = new WindowRow[participantColumns.length][];
+      int rowCount = 0;
+      for (int i = 0; i < participantColumns.length; i++) {
+        rows[i] = selectWindowRows(window, i);
+        rowCount = Math.max(rowCount, rows[i].length);
+      }
+      // A window in which no participant column has an eligible point emits nothing.
+      for (int row = 0; row < rowCount; row++) {
+        window.writeWindowColumns(builders);
+        writeWindowRow(builders, window.getWindowColumnCount(), rows, row);
+      }
+    }
+
+    private void writeWindowRow(
+        List<ColumnBuilder> builders, int windowColumnCount, WindowRow[][] rows, int row) {
+      int builderIndex = windowColumnCount;
+      for (int i = 0; i < partitionTypes.length; i++) {
+        WindowTVFUtils.writeValue(
+            builders.get(builderIndex++), partitionValues[i], partitionTypes[i]);
+      }
+      for (int i = 0; i < participantColumns.length; i++) {
+        ColumnBuilder timeBuilder = builders.get(builderIndex++);
+        ColumnBuilder valueBuilder = builders.get(builderIndex++);
+        if (row < rows[i].length) {
+          WindowRow cell = rows[i][row];
+          participantColumns[i].writePoint(
+              timeBuilder, valueBuilder, cell.time, cell.value, cell.integral);
         } else {
-          int last = bucket.size() - 1;
-          nextTime = differenceAsDouble(bucket.time(last), anchorTimes[i]);
-          nextValue =
-              relativeValue(
-                  bucket.values,
-                  bucket.integralValues,
-                  last,
-                  anchorValues[i],
-                  integralAnchorValues[i]);
+          timeBuilder.appendNull();
+          valueBuilder.appendNull();
         }
-        int pick =
-            argMaxArea(
+      }
+    }
+
+    /**
+     * The rows of one window for one participant column, in output order: {@code F}, the point
+     * selected from the window bucket, and {@code L}.
+     */
+    private WindowRow[] selectWindowRows(W window, int column) {
+      WindowRow first = window == firstEligibleWindows[column] ? firstEligibleRow(column) : null;
+      WindowRow last = window == lastRowWindows[column] ? lastEligibleRow(column) : null;
+      PointBuffer bucket = window.buffers[column];
+      WindowRow pick = bucket.isEmpty() ? null : pickInBucket(window, column, bucket);
+      WindowRow[] result =
+          new WindowRow[(first == null ? 0 : 1) + (pick == null ? 0 : 1) + (last == null ? 0 : 1)];
+      int index = 0;
+      if (first != null) {
+        result[index++] = first;
+      }
+      if (pick != null) {
+        result[index++] = pick;
+      }
+      if (last != null) {
+        result[index] = last;
+      }
+      return result;
+    }
+
+    private WindowRow firstEligibleRow(int column) {
+      return new WindowRow(
+          firstEligibleTimes[column],
+          firstEligibleValues[column],
+          integralFirstEligibleValues[column]);
+    }
+
+    private WindowRow lastEligibleRow(int column) {
+      return new WindowRow(
+          lastEligibleTimes[column],
+          lastEligibleValues[column],
+          integralLastEligibleValues[column]);
+    }
+
+    /** Selects the point of {@code bucket} with the largest triangle against {@code A} and C. */
+    private WindowRow pickInBucket(W window, int column, PointBuffer bucket) {
+      long anchorTime;
+      double anchorValue;
+      long integralAnchor;
+      if (hasAnchor[column]) {
+        anchorTime = anchorTimes[column];
+        anchorValue = anchorValues[column];
+        integralAnchor = integralAnchorValues[column];
+      } else if (hasFirstFinite[column]) {
+        // The chain starts at F, or at the first finite eligible point when F is not finite.
+        anchorTime = firstFiniteTimes[column];
+        anchorValue = firstFiniteValues[column];
+        integralAnchor = integralFirstFiniteValues[column];
+      } else {
+        // Only non-finite values exist; every area is undefined and the earliest point wins.
+        return WindowRow.of(bucket, 0);
+      }
+
+      WindowState lookaheadWindow = findLookahead(window, column);
+      double nextTime;
+      double nextValue;
+      PointBuffer exactLookahead;
+      if (lookaheadWindow != null) {
+        PointBuffer lookahead = lookaheadWindow.buffers[column];
+        nextTime = lookahead.finiteAverageTime(anchorTime);
+        nextValue = lookahead.finiteAverageValue(anchorValue, integralAnchor);
+        exactLookahead = lookahead;
+      } else if (finishing && hasLastFinite[column]) {
+        // No later bucket carries a finite point: C is the last finite eligible point.
+        nextTime = differenceAsDouble(lastFiniteTimes[column], anchorTime);
+        nextValue =
+            participantColumns[column].isIntegral()
+                ? differenceAsDouble(integralLastFiniteValues[column], integralAnchor)
+                : lastFiniteValues[column] - anchorValue;
+        exactLookahead = singlePoint(lastFiniteTimes[column], lastFiniteValues[column], column);
+      } else {
+        return WindowRow.of(bucket, 0);
+      }
+
+      int pick =
+          argMaxArea(
+              bucket.times,
+              bucket.values,
+              bucket.integralValues,
+              0,
+              bucket.size(),
+              anchorTime,
+              anchorValue,
+              integralAnchor,
+              nextTime,
+              nextValue);
+      if (pick == NOT_SELECTED && exactLookahead != null) {
+        pick =
+            argMaxAreaExactly(
                 bucket.times,
                 bucket.values,
                 bucket.integralValues,
                 0,
                 bucket.size(),
-                anchorTimes[i],
-                anchorValues[i],
-                integralAnchorValues[i],
-                nextTime,
-                nextValue);
-        if (pick == NOT_SELECTED) {
-          PointBuffer lookahead = next == null ? bucket : next;
-          pick =
-              argMaxAreaExactly(
-                  bucket.times,
-                  bucket.values,
-                  bucket.integralValues,
-                  0,
-                  bucket.size(),
-                  anchorTimes[i],
-                  anchorValues[i],
-                  integralAnchorValues[i],
-                  lookahead.times,
-                  lookahead.values,
-                  lookahead.integralValues,
-                  next == null ? bucket.size() - 1 : 0,
-                  lookahead.size());
-        }
-        selectedIndexes[i] = pick;
-        anchorTimes[i] = bucket.time(pick);
-        anchorValues[i] = bucket.value(pick);
-        if (bucket.integralValues != null) {
-          integralAnchorValues[i] = bucket.integralValues[pick];
-        }
+                anchorTime,
+                anchorValue,
+                integralAnchor,
+                exactLookahead.times,
+                exactLookahead.values,
+                exactLookahead.integralValues,
+                0,
+                exactLookahead.size());
       }
-      current.writeWindowColumns(builders);
-      writeRow(builders, current.getWindowColumnCount(), current.buffers, selectedIndexes);
+      if (pick == NOT_SELECTED) {
+        // The bucket has no finite candidate; return its earliest point and keep A unchanged.
+        return WindowRow.of(bucket, 0);
+      }
+      WindowRow row = WindowRow.of(bucket, pick);
+      hasAnchor[column] = true;
+      anchorTimes[column] = row.time;
+      anchorValues[column] = row.value;
+      integralAnchorValues[column] = row.integral;
+      return row;
     }
   }
 
@@ -1260,8 +1717,9 @@ public class LTTBTableFunction implements TableFunction {
         long slide,
         long origin,
         Type[] partitionTypes,
-        ParticipantColumn[] participantColumns) {
-      super(size, slide, partitionTypes, participantColumns);
+        ParticipantColumn[] participantColumns,
+        long maxBufferedBytes) {
+      super(size, slide, partitionTypes, participantColumns, maxBufferedBytes);
       this.origin = origin;
     }
 
@@ -1296,9 +1754,8 @@ public class LTTBTableFunction implements TableFunction {
         }
       }
 
-      for (TimeWindowState window : activeWindows) {
-        collect(input, time, window.buffers);
-      }
+      collectIntoWindows(time, input, time);
+      emitReadyWindows(properColumnBuilders);
     }
 
     /** First aligned start whose window ends strictly after the current timestamp. */
@@ -1348,8 +1805,12 @@ public class LTTBTableFunction implements TableFunction {
     private boolean windowsExhausted;
 
     private CountWindowLTTBDataProcessor(
-        long size, long slide, Type[] partitionTypes, ParticipantColumn[] participantColumns) {
-      super(size, slide, partitionTypes, participantColumns);
+        long size,
+        long slide,
+        Type[] partitionTypes,
+        ParticipantColumn[] participantColumns,
+        long maxBufferedBytes) {
+      super(size, slide, partitionTypes, participantColumns, maxBufferedBytes);
     }
 
     @Override
@@ -1378,10 +1839,9 @@ public class LTTBTableFunction implements TableFunction {
         }
       }
 
-      for (CountWindowState window : activeWindows) {
-        collect(input, time, window.buffers);
-      }
+      collectIntoWindows(rowCount, input, time);
       rowCount++;
+      emitReadyWindows(properColumnBuilders);
     }
   }
 }

@@ -72,7 +72,11 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   private final boolean isDeclaredAsPassThrough;
   private final IoTDBLocal ioTDBLocal;
 
-  /** Bytes the data processors may buffer internally while a partition is processed. */
+  /**
+   * Bytes the data processors may buffer internally while a partition is processed. It is resolved
+   * once from the provider, which also gives the same value to every processor it creates, so the
+   * reservation and the enforced limit cannot diverge.
+   */
   private final long estimatedMaxBufferedBytes;
 
   private TableFunctionDataProcessor processor;
@@ -85,6 +89,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   public TableFunctionOperator(
       CommonOperatorContext operatorContext,
       TableFunctionProcessorProvider processorProvider,
+      long estimatedMaxBufferedBytes,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
@@ -104,7 +109,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
         new PartitionRecognizer(
             partitionChannels, requiredChannels, passThroughChannels, inputDataTypes);
     this.isDeclaredAsPassThrough = isDeclaredAsPassThrough;
-    this.estimatedMaxBufferedBytes = processorProvider.getEstimatedMaxBufferedBytes();
+    this.estimatedMaxBufferedBytes = estimatedMaxBufferedBytes;
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.properBlockBuilder = new TsBlockBuilder(outputDataTypes.subList(0, properChannelCount));

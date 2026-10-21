@@ -569,8 +569,12 @@ public class CommonConfig {
   /** Max number of rows for cte materialization */
   private int maxRowsInCteBuffer = 1000;
 
-  /** The per-processor memory budget of the LTTB table function */
-  private long lttbBufferSize = 64 * 1024 * 1024L;
+  /**
+   * The per-processor memory budget of the LTTB table function. The shipped value is {@code 0},
+   * which the DataNode resolves to {@code min(32 MiB, operator memory / query_thread_count / 2)};
+   * this initial value matches {@link #sortBufferSize}.
+   */
+  private long lttbBufferSize = 32 * 1024 * 1024L;
 
   CommonConfig() {
     // Empty constructor

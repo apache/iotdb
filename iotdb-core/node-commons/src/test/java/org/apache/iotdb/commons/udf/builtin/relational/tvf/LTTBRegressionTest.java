@@ -96,16 +96,20 @@ public class LTTBRegressionTest {
     for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
       List<ColumnBuilder> out = sample(mode, 3, 3, 0, rows);
       int timeIndex = mode.equals("TIME_WINDOW") ? 2 : 1;
-      assertEquals(4, out.get(0).getPositionCount());
-      assertEquals(2, out.get(timeIndex).build().getLong(0));
-      assertTrue(out.get(timeIndex).build().isNull(1));
+      // W0 reports F(t0) and its pick(t2); W1 has no eligible point for the first column, so the
+      // first column emits no cell there while the second column keeps its own chain; the last
+      // window reports its pick and then L(t11).
+      assertEquals(5, out.get(0).getPositionCount());
+      assertEquals(0, out.get(timeIndex).build().getLong(0));
+      assertEquals(2, out.get(timeIndex).build().getLong(1));
       assertTrue(out.get(timeIndex).build().isNull(2));
       assertEquals(9, out.get(timeIndex).build().getLong(3));
-      assertEquals(2, out.get(timeIndex + 2).build().getLong(0));
-      assertEquals(5, out.get(timeIndex + 2).build().getLong(1));
-      assertTrue(out.get(timeIndex + 2).build().isNull(2));
-      // This column keeps its own anchor at (5, 2), so the final bucket chooses t=9.
+      assertEquals(11, out.get(timeIndex).build().getLong(4));
+      assertEquals(0, out.get(timeIndex + 2).build().getLong(0));
+      assertEquals(2, out.get(timeIndex + 2).build().getLong(1));
+      assertEquals(5, out.get(timeIndex + 2).build().getLong(2));
       assertEquals(9, out.get(timeIndex + 2).build().getLong(3));
+      assertEquals(11, out.get(timeIndex + 2).build().getLong(4));
     }
   }
 
@@ -115,9 +119,12 @@ public class LTTBRegressionTest {
     for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
       List<ColumnBuilder> out = sample(mode, 3, 3, 0, rows);
       int timeIndex = out.size() - 2;
-      assertEquals(2, out.get(timeIndex).getPositionCount());
-      assertEquals(1, out.get(timeIndex).build().getLong(0));
-      assertTrue(out.get(timeIndex).build().isNull(1));
+      // W0 reports F(t0), its pick(t1) and L(t2); W1 is all NULL and emits no row.
+      assertEquals(3, out.get(timeIndex).getPositionCount());
+      assertEquals(0, out.get(timeIndex).build().getLong(0));
+      assertEquals(1, out.get(timeIndex).build().getLong(1));
+      assertEquals(2, out.get(timeIndex).build().getLong(2));
+      assertEquals(5.0, out.get(timeIndex + 1).build().getDouble(1), 0.0);
     }
   }
 
@@ -133,60 +140,60 @@ public class LTTBRegressionTest {
   public void testOverlappingWindowsContinueTheAnchorChain() {
     Double[][] rows = {{0.0}, {1.0}, {8.0}, {2.0}, {0.0}, {0.0}};
 
-    // Count buckets [0,3), [1,4), ..., [5,8) over six rows: one row per bucket.
+    // Count buckets [0,3), [1,4), ..., [5,8) over six rows. F(t0) is reported by the first bucket
+    // and L(t5) by the last one, so the overlap yields seven rows: W0 t0,t2; W1 t1; W2 t2; W3 t3;
+    // W4 t4; W5 t4,t5. W1 selecting t=1 continues from the point W0 selected; a fresh anchor at its
+    // own first point would pick t=2 instead.
     List<ColumnBuilder> countWindow = sample("COUNT_WINDOW", 3, 1, 0, rows);
     Column countPicks = countWindow.get(countWindow.size() - 2).build();
-    assertEquals(6, countPicks.getPositionCount());
-    assertEquals(2, countPicks.getLong(0));
-    assertEquals(1, countPicks.getLong(1));
-    assertEquals(2, countPicks.getLong(2));
-    assertEquals(3, countPicks.getLong(3));
+    assertEquals(7, countPicks.getPositionCount());
+    assertEquals(0, countPicks.getLong(0));
+    assertEquals(2, countPicks.getLong(1));
+    assertEquals(1, countPicks.getLong(2));
+    assertEquals(2, countPicks.getLong(3));
+    assertEquals(3, countPicks.getLong(4));
+    assertEquals(4, countPicks.getLong(5));
+    assertEquals(5, countPicks.getLong(6));
 
     // Time buckets [0,3), [1,4), ... with SLIDE = 1 a row also opens the buckets that started
-    // before the first timestamp but have not ended yet, so eight buckets cover the six rows. The
-    // bucket [2,5) selecting t=2 and the next one selecting t=1 show the chain: [3,6) alone would
-    // pick t=3 or t=4, not the point its predecessor selected.
+    // before the first timestamp but have not ended yet, so eight buckets cover the six rows and
+    // keep the same one-chain rule. W0 reports t0 and its pick t2, W1 picks t1 from the chained
+    // anchor, and the last bucket reports only L(t5) because its own bucket holds just t4.
     List<ColumnBuilder> timeWindow = sample("TIME_WINDOW", 3, 1, 0, rows);
     Column timePicks = timeWindow.get(timeWindow.size() - 2).build();
     assertEquals(8, timePicks.getPositionCount());
-    assertEquals(0, timePicks.getLong(0));
-    assertEquals(2, timePicks.getLong(2));
-    assertEquals(1, timePicks.getLong(3));
   }
 
   /**
-   * A bucket holds at most one selected point per participant column, so two eligible points in one
-   * bucket still emit a single row. The endpoints are not preserved: here the anchor and the third
-   * vertex are the two eligible points themselves, so the area is zero for both candidates and the
-   * tie resolves to the earliest, leaving the final point unreturned.
+   * Both endpoints are buckets of their own, so two eligible points in one window emit two rows
+   * even though the window bucket between them is empty: {@code F} and then {@code L}.
    */
   @Test
-  public void testTwoEligiblePointsInOneBucketEmitOneRow() {
+  public void testTwoEligiblePointsEmitTheirOwnRows() {
     Double[][] rows = {{0.0}, {8.0}};
     for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
       List<ColumnBuilder> out = sample(mode, 3, 3, 0, rows);
       int timeIndex = out.size() - 2;
-      assertEquals(1, out.get(timeIndex).getPositionCount());
+      assertEquals(2, out.get(timeIndex).getPositionCount());
       assertEquals(0, out.get(timeIndex).build().getLong(0));
       assertEquals(0.0, out.get(timeIndex + 1).build().getDouble(0), 0.0);
+      assertEquals(1, out.get(timeIndex).build().getLong(1));
+      assertEquals(8.0, out.get(timeIndex + 1).build().getDouble(1), 0.0);
     }
   }
 
   /**
-   * A window emits one row per partition even when no participant column has an eligible point, so
-   * an all-NULL column produces NULL rows rather than no rows. Each row is padded per column.
+   * A window without any eligible point emits no row, like M4: the number of rows is the largest
+   * number of points selected by a participant column, so an all-NULL partition emits nothing.
    */
   @Test
-  public void testWindowWithNoEligiblePointsStillEmitsARow() {
+  public void testWindowWithNoEligiblePointsEmitsNoRow() {
     Double[][] rows = {{null}, {null}, {null}, {null}};
     for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
       List<ColumnBuilder> out = sample(mode, 2, 2, 0, rows);
       int timeIndex = out.size() - 2;
-      assertEquals(2, out.get(timeIndex).getPositionCount());
-      assertTrue(out.get(timeIndex).build().isNull(0));
-      assertTrue(out.get(timeIndex + 1).build().isNull(0));
-      assertTrue(out.get(timeIndex).build().isNull(1));
-      assertTrue(out.get(timeIndex + 1).build().isNull(1));
+      assertEquals(0, out.get(timeIndex).getPositionCount());
+      assertEquals(0, out.get(timeIndex + 1).getPositionCount());
     }
   }
 
@@ -206,7 +213,7 @@ public class LTTBRegressionTest {
       assertEquals(
           String.format(
               CommonMessages
-                  .EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00,
+                  .EXCEPTION_LTTB_BUFFERS_EXCEED_LTTB_BUFFER_SIZE_IN_BYTES_ARG_BYTES_26BDE62D,
               LTTBTableFunction.DEFAULT_MAX_BUFFER_BYTES),
           expected.getMessage());
     } finally {

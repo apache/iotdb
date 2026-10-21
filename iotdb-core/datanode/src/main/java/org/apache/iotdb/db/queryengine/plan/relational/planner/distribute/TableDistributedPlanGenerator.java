@@ -2884,7 +2884,13 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+      // The per-branch GroupNodes created by visitGroup are not registered in nodeOrderingMap, so
+      // their ordering has to be read from the node itself. Every child is then either such a
+      // GroupNode or a node whose ordering starts with the same scheme, so a MergeSort is valid.
+      OrderingScheme childOrdering =
+          node.getChild() instanceof GroupNode
+              ? ((GroupNode) node.getChild()).getOrderingScheme()
+              : nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
       node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
       return Collections.singletonList(node);
     } else {
@@ -2899,11 +2905,13 @@ public class TableDistributedPlanGenerator
     if (!isPartitionedGroup(node.getChild())) {
       return false;
     }
-    // LTTB needs whole partitions, which the partitioned GroupNode above this node already
-    // guarantees: every fragment receives complete partitions and the ordering is preserved, so a
-    // fragment-local sample is a valid standard LTTB result for that partition and no exclusion is
-    // needed. FFT is excluded because its transform over the whole partition is not splittable.
-    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName());
+    // LTTB samples a whole partition and FFT transforms a whole partition, so neither may run once
+    // per fragment: a partitioned GroupNode does not make a partition complete within one branch.
+    // The function therefore has to run once, over the partitions merged in order. The split rule
+    // itself is a separate planner issue; the exclusion can be revisited once that is fixed.
+    String functionName = node.getName();
+    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName);
   }
 
   private boolean isPartitionedGroup(PlanNode node) {

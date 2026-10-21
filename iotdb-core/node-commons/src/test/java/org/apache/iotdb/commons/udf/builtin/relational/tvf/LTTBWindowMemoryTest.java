@@ -151,10 +151,20 @@ public class LTTBWindowMemoryTest {
         }
         processor.finish(builders, null);
         ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
-        assertEquals(3, times.getPositionCount());
-        assertEquals(1, times.build().getLong(0));
-        assertEquals(2, times.build().getLong(1));
-        assertEquals(4, times.build().getLong(2));
+        ColumnBuilder valuesBuilder = builders.get(timeWindow ? 3 : 2);
+        // W0 reports F(t0) and its pick(t1); W1 reports its pick(t2); W2 reports its pick(t4) and
+        // L(t5).
+        assertEquals(5, times.getPositionCount());
+        assertEquals(0, times.build().getLong(0));
+        assertEquals(1, times.build().getLong(1));
+        assertEquals(2, times.build().getLong(2));
+        assertEquals(4, times.build().getLong(3));
+        assertEquals(5, times.build().getLong(4));
+        assertEquals(0.0, valuesBuilder.build().getDouble(0), 0.0);
+        assertEquals(1.0, valuesBuilder.build().getDouble(1), 0.0);
+        assertEquals(8.0, valuesBuilder.build().getDouble(2), 0.0);
+        assertEquals(0.0, valuesBuilder.build().getDouble(3), 0.0);
+        assertEquals(0.0, valuesBuilder.build().getDouble(4), 0.0);
       } finally {
         processor.beforeDestroy();
       }
@@ -215,7 +225,7 @@ public class LTTBWindowMemoryTest {
       assertEquals(
           String.format(
               CommonMessages
-                  .EXCEPTION_LTTB_BUFFERS_EXCEED_THE_PER_PROCESSOR_MEMORY_LIMIT_OF_ARG_BYTES_954FEF00,
+                  .EXCEPTION_LTTB_BUFFERS_EXCEED_LTTB_BUFFER_SIZE_IN_BYTES_ARG_BYTES_26BDE62D,
               limit),
           e.getMessage());
     }
