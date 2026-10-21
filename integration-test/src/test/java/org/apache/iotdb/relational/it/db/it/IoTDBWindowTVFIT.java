@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -43,6 +44,8 @@ import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -1076,6 +1079,49 @@ public class IoTDBWindowTVFIT {
         "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
         "Invalid pattern",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testPatternMatchEmptyRepetitionGroups() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      for (String data : new String[] {"t1", "(SELECT * FROM t1 WHERE time < 0)"}) {
+        for (String pattern :
+            new String[] {
+              "1,{,}+,1",
+              "1,{}+,1",
+              "1,{ , , }*,1",
+              "{,}+,1,2",
+              "1,2,{,}+",
+              "1,{2,{,}+,3}+,1",
+              "1,{{,}*}+,1"
+            }) {
+          SQLException exception =
+              assertThrows(
+                  SQLException.class,
+                  () ->
+                      statement.execute(
+                          "SELECT * FROM pattern_match(data => "
+                              + data
+                              + " ORDER BY time, data_col => 'value', pattern => '"
+                              + pattern
+                              + "', smooth => 0.0, threshold => 100.0)"));
+          assertEquals(
+              exception.getMessage(),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+              exception.getErrorCode());
+          assertTrue(
+              exception.getMessage(),
+              exception
+                  .getMessage()
+                  .contains(
+                      "Invalid pattern: '"
+                          + pattern
+                          + "'. Repetition groups must contain at least one numeric data point."));
+        }
+      }
+    }
   }
 
   @Test
