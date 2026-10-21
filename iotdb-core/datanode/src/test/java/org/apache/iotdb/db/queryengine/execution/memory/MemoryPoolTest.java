@@ -230,55 +230,50 @@ public class MemoryPoolTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  public void testPublicationDuringDeregistrationCannotPoisonOtherQueries() throws Exception {
-    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "a", MemorySide.INPUT);
-    pool.registerPlanNodeIdToQueryMemoryMap("holder", "fi", "b", MemorySide.INPUT);
-    Assert.assertTrue(pool.tryReserve("holder", "fi", "a", 512, 512));
-    Assert.assertTrue(pool.tryReserve("holder", "fi", "b", 512, 512));
-    Field accounts = MemoryPool.class.getDeclaredField("queryMemoryReservations");
-    accounts.setAccessible(true);
-    Map<String, Map<String, Object>> queries =
-        (Map<String, Map<String, Object>>) accounts.get(pool);
-    Object fragment = queries.get(QUERY_ID).get(FRAGMENT_INSTANCE_ID);
-    Field pendingField = fragment.getClass().getDeclaredField("pendingReservations");
-    pendingField.setAccessible(true);
-    AtomicInteger publicationAttempts = new AtomicInteger();
-    List<MemoryReservationResult> detached = new ArrayList<>();
-    List<MemoryReservationResult> healthy = new ArrayList<>();
-    pendingField.set(
-        fragment,
-        new java.util.concurrent.ConcurrentHashMap<
-            Long, MemoryPool.MemoryReservationFuture<Void>>() {
-          @Override
-          public Collection<MemoryPool.MemoryReservationFuture<Void>> values() {
-            // A waiter published after this snapshot was the missed-request race in deregistration.
-            Collection<MemoryPool.MemoryReservationFuture<Void>> snapshot =
-                new ArrayList<>(super.values());
-            publicationAttempts.incrementAndGet();
-            try {
-              detached.add(
-                  pool.reserveWithPriority(
-                      QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 32, 512, false));
-            } catch (IllegalArgumentException expected) {
-              // Publication must be refused once deregistration has closed this account.
-            }
-            pool.registerPlanNodeIdToQueryMemoryMap("waiting", "fi", "later", MemorySide.INPUT);
-            healthy.add(pool.reserveWithPriority("waiting", "fi", "later", 32, 512, false));
-            return snapshot;
-          }
-        });
+  public void testPublicationIntoDeregisteredFragmentIsRejected() {
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, MemorySide.INPUT);
+    pool.markFragmentDeregisteredForTest(QUERY_ID, FRAGMENT_INSTANCE_ID);
+    // The account is still in the map but marked deregistered, so publication must be refused
+    // without charging any bytes.
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 32, 512, false));
+    Assert.assertEquals(0, pool.getReservedBytes());
+    Assert.assertEquals(0, pool.getMemoryReservationSize());
     pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
-    Assert.assertEquals(1, publicationAttempts.get());
-    pool.free("holder", "fi", "a", 512);
-    Assert.assertTrue(healthy.get(0).getFuture().isDone());
-    pool.free("holder", "fi", "b", 512);
+  }
+
+  @Test
+  public void testDeregistrationDoesNotPoisonOtherQueries() throws Exception {
+    // Fill the pool from an unrelated fragment so that both later waiters block on capacity.
+    pool.registerPlanNodeIdToQueryMemoryMap("other", "fi", "o1", MemorySide.INPUT);
+    pool.registerPlanNodeIdToQueryMemoryMap("other", "fi", "o2", MemorySide.INPUT);
+    Assert.assertTrue(pool.tryReserve("other", "fi", "o1", 512, 512));
+    Assert.assertTrue(pool.tryReserve("other", "fi", "o2", 512, 512));
+    // A pending waiter in the fragment about to be deregistered, and one in another fragment.
+    pool.registerPlanNodeIdToQueryMemoryMap(
+        QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, MemorySide.INPUT);
+    MemoryPool.MemoryReservationResult detached =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 32, 512, false);
+    Assert.assertFalse(detached.getFuture().isDone());
+    pool.registerPlanNodeIdToQueryMemoryMap("waiting", "fi", "later", MemorySide.INPUT);
+    MemoryPool.MemoryReservationResult healthy =
+        pool.reserveWithPriority("waiting", "fi", "later", 32, 512, false);
+    Assert.assertFalse(healthy.getFuture().isDone());
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, true);
+    // The deregistered fragment's waiter is detached without completion; the other one is
+    // untouched and stays wakeable by released capacity.
+    Assert.assertFalse(detached.getFuture().isDone());
+    Assert.assertFalse(healthy.getFuture().isDone());
+    pool.free("other", "fi", "o1", 512);
+    Assert.assertTrue(healthy.getFuture().isDone());
+    pool.free("other", "fi", "o2", 512);
+    Assert.assertEquals(32, pool.tryCancel(detached.getFuture()));
     pool.free("waiting", "fi", "later", 32);
-    for (MemoryReservationResult request : detached) {
-      Assert.assertFalse(request.getFuture().isDone());
-      Assert.assertEquals(32, pool.tryCancel(request.getFuture()));
-    }
-    pool.deRegisterFragmentInstanceFromQueryMemoryMap("holder", "fi", true);
     pool.deRegisterFragmentInstanceFromQueryMemoryMap("waiting", "fi", true);
+    pool.deRegisterFragmentInstanceFromQueryMemoryMap("other", "fi", true);
     Assert.assertEquals(0, pool.getReservedBytes());
     Assert.assertEquals(0, pool.getMemoryReservationSize());
     Assert.assertEquals(0, pool.getQueryMemoryReservationSize());

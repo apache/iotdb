@@ -52,6 +52,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -138,9 +139,10 @@ public class ParallelizeGroupingTest {
             ImmutableList.of(left, right),
             ImmutableListMultimap.of(key, key, key, key),
             ImmutableList.of(key));
-    assertTrue(
-        optimizeGroup(new GroupNode(new PlanNodeId("group"), union, ordering, 1))
-            instanceof SortNode);
+    PlanNode optimized = optimizeGroup(new GroupNode(new PlanNodeId("group"), union, ordering, 1));
+    assertTrue(optimized instanceof SortNode);
+    // The multi-branch fan-in must not leave a segmented GroupNode above it.
+    assertFalse(optimized instanceof GroupNode);
     // An explicit sort above the fan-in restores the grouping property.
     SortNode restored = new SortNode(new PlanNodeId("restored"), union, ordering, false, false);
     assertTrue(
@@ -149,12 +151,14 @@ public class ParallelizeGroupingTest {
   }
 
   private PlanNode optimizeGroup(GroupNode group) {
+    Analysis analysis = new Analysis(null, Collections.emptyMap());
+    analysis.setQuery(true);
     return new ParallelizeGrouping()
         .optimize(
             group,
             new PlanOptimizer.Context(
                 SESSION_INFO,
-                new Analysis(null, Collections.emptyMap()),
+                analysis,
                 TEST_MATADATA,
                 new MPPQueryContext(new QueryId("group_union")),
                 new SymbolAllocator(),

@@ -468,6 +468,21 @@ public class MemoryPool {
   }
 
   /**
+   * Marks a fragment account as deregistered without removing it from the map, mirroring the
+   * production mark that precedes the pending-request drain. Lets tests deterministically exercise
+   * the publication rejection of a closed account.
+   */
+  @TestOnly
+  public void markFragmentDeregisteredForTest(String queryId, String fragmentInstanceId) {
+    FragmentMemoryReservation fragment =
+        queryMemoryReservations.get(queryId).get(fragmentInstanceId);
+    synchronized (fragment) {
+      fragment.deregistered = true;
+      setPlanNodesDeregistered(fragment, true);
+    }
+  }
+
+  /**
    * Cancel the specified memory reservation. If the reservation has finished, do nothing.
    *
    * @param future The future returned from {@link #reserveWithPriority(String, String, String,

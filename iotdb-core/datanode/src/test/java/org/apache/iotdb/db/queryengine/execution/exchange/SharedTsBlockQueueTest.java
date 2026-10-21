@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -277,6 +279,17 @@ public class SharedTsBlockQueueTest {
       Assert.assertEquals(4, upstream.getNumOfBufferedTsBlocks());
       Assert.assertEquals(1, downstream.getNumOfBufferedTsBlocks());
       Assert.assertEquals(320, pool.getReservedBytes());
+      // Both queues are producer-side OUTPUT buffers of the same fragment instance.
+      String fullFragmentInstanceId =
+          FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(id);
+      Assert.assertEquals(
+          320,
+          pool.getFragmentMemoryReservedBytes(
+              id.queryId, fullFragmentInstanceId, MemorySide.OUTPUT));
+      Assert.assertEquals(
+          0,
+          pool.getFragmentMemoryReservedBytes(
+              id.queryId, fullFragmentInstanceId, MemorySide.INPUT));
     } finally {
       downstream.close();
       upstream.close();

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Aggrega
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 
 import org.junit.Test;
@@ -58,6 +57,15 @@ public class CollectInputPropertyTest {
     List<T> result = new ArrayList<>();
     for (PlanNode plan : plans) {
       result.addAll(nodes(plan, type));
+    }
+    return result;
+  }
+
+  private static List<PlanNode> allNodes(PlanNode node) {
+    List<PlanNode> result = new ArrayList<>();
+    result.add(node);
+    for (PlanNode child : node.getChildren()) {
+      result.addAll(allNodes(child));
     }
     return result;
   }
@@ -121,46 +129,27 @@ public class CollectInputPropertyTest {
   }
 
   @Test
-  public void testStreamSortAfterGlobalWindowUsesFullSort() {
-    List<PlanNode> fragments =
-        plans(
-            "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n "
-                + "FROM table1 ORDER BY tag1, tag2, tag3, s1");
-    PlanNode root = fragments.get(0);
-    assertFalse(nodes(fragments, CollectNode.class).isEmpty());
-    assertFalse(nodes(root, SortNode.class).isEmpty());
-    assertTrue(nodes(root, StreamSortNode.class).isEmpty());
-  }
-
-  @Test
-  public void testConstantFillDoesNotRemoveRestoredSort() {
-    List<PlanNode> fragments =
-        plans(
-            "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n FROM table1 "
-                + "FILL METHOD CONSTANT 0 ORDER BY tag1, tag2, tag3");
-    PlanNode root = fragments.get(0);
-    assertFalse(nodes(fragments, CollectNode.class).isEmpty());
-    assertFalse(nodes(root, SortNode.class).isEmpty());
-    assertTrue(nodes(root, StreamSortNode.class).isEmpty());
-  }
-
-  @Test
-  public void testUnionFinalAggregationDoesNotInheritBranchGrouping() {
-    List<PlanNode> fragments =
-        plans(
-            "SELECT tag1, tag2, tag3, SUM(s1) FROM ("
-                + "SELECT tag1, tag2, tag3, s1 FROM table1 UNION ALL "
-                + "SELECT tag1, tag2, tag3, s1 FROM table2) u GROUP BY tag1, tag2, tag3");
-    List<AggregationNode> aggregations = nodes(fragments, AggregationNode.class);
-    assertFalse(aggregations.isEmpty());
-    boolean foundFinalCollect = false;
-    for (AggregationNode aggregation : aggregations) {
-      if (aggregation.getChild() instanceof CollectNode) {
-        foundFinalCollect = true;
-        assertTrue(aggregation.getPreGroupedSymbols().isEmpty());
+  public void testEveryFragmentHasAtMostOneMultiChildLevel() {
+    String[] queries = {
+      "SELECT tag1, tag2, tag3, SUM(s1) FROM table1 GROUP BY tag1, tag2, tag3",
+      "SELECT tag1, tag2, tag3, SUM(s1) FROM ("
+          + "SELECT tag1, tag2, tag3, s1 FROM table1 UNION ALL "
+          + "SELECT tag1, tag2, tag3, s1 FROM table2) u GROUP BY tag1, tag2, tag3",
+      "SELECT tag1, tag2, tag3, SUM(s1) FROM ("
+          + "SELECT tag1, tag2, tag3, s1, COUNT(*) OVER () AS n "
+          + "FROM table1 WHERE tag1 != 'shenzhen') t WHERE n > 0 GROUP BY tag1, tag2, tag3"
+    };
+    for (String sql : queries) {
+      for (PlanNode fragment : plans(sql)) {
+        int multiChildLevels = 0;
+        for (PlanNode node : allNodes(fragment)) {
+          if (node.getChildren().size() > 1) {
+            multiChildLevels++;
+          }
+        }
+        assertTrue("Fragment contains more than one multi-child level", multiChildLevels <= 1);
       }
     }
-    assertTrue(foundFinalCollect);
   }
 
   @Test

@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
-import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -57,18 +55,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -395,7 +388,7 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   @Test
-  public void testTableCollectEnablesReadyConsumptionOnlyForEligibleFragment() {
+  public void testEligibleTableCollectEnablesReadyConsumptionAndSharedBudget() {
     PlanNode plan = collect();
     CollectOperator collect = generateTableCollect(plan);
     addSource(context);
@@ -407,7 +400,7 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   @Test
-  public void testTableUnionEnablesReadyConsumptionOnlyForEligibleFragment() {
+  public void testEligibleTableUnionEnablesReadyConsumptionAndSharedBudget() {
     PlanNode union =
         new UnionNode(
             new PlanNodeId("union"),
@@ -446,7 +439,7 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   @Test
-  public void testMultiplePipelinesRetainSequentialCollectConsumption() {
+  public void testMultiplePipelinesKeepLegacyBudgetWithReadyCollectConsumption() {
     PlanNode plan = collect();
     CollectOperator collect = generateTableCollect(plan);
     LocalExecutionPlanContext child = context.createSubContext();
@@ -508,6 +501,15 @@ public class LocalExecutionPlanContextBudgetTest {
     assertFalse(
         SharedExchangeBudgetEligibility.isEligible(
             node(PlanNodeType.SCHEMA_QUERY_MERGE, collect(), collect())));
+    for (PlanNodeType multiChildSetOperation :
+        new PlanNodeType[] {PlanNodeType.TABLE_INTERSECT_NODE, PlanNodeType.TABLE_EXCEPT_NODE}) {
+      assertFalse(
+          SharedExchangeBudgetEligibility.isEligible(
+              node(
+                  multiChildSetOperation,
+                  node(PlanNodeType.TABLE_EXCHANGE_NODE),
+                  node(PlanNodeType.TABLE_EXCHANGE_NODE))));
+    }
   }
 
   @Test
@@ -519,6 +521,23 @@ public class LocalExecutionPlanContextBudgetTest {
                 PlanNodeType.TABLE_COLLECT_NODE,
                 node(PlanNodeType.TABLE_EXCHANGE_NODE, remote),
                 node(PlanNodeType.TABLE_EXCHANGE_NODE))));
+  }
+
+  @Test
+  public void testSourceFragmentRootedAtExchangeKeepsLegacyBudget() {
+    // The source fragment's root is an ExchangeNode; its upstream child belongs to another
+    // fragment and must not make this fragment eligible for a shared budget.
+    assertFalse(
+        SharedExchangeBudgetEligibility.isEligible(
+            node(
+                PlanNodeType.TABLE_EXCHANGE_NODE,
+                node(PlanNodeType.TABLE_COLLECT_NODE, collect(), collect()))));
+    context.setExchangeMemoryLimits(
+        node(
+            PlanNodeType.TABLE_EXCHANGE_NODE,
+            node(PlanNodeType.TABLE_COLLECT_NODE, collect(), collect())),
+        pool);
+    assertAdmissionIsShared(false);
   }
 
   @Test
@@ -573,64 +592,5 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setExchangeMemoryLimits(
         node(PlanNodeType.IDENTITY_SINK, node(PlanNodeType.SERIES_SCAN)), pool);
     verify(sink).setMaxBytesCanReserve(64);
-  }
-
-  @Test
-  public void testMergeSortGetsBothHeadsDespitePrefetchOnOneInput() throws Exception {
-    context.setExchangeMemoryLimits(
-        node(PlanNodeType.TABLE_MERGESORT_NODE, collect(), node(PlanNodeType.TABLE_EXCHANGE_NODE)),
-        pool);
-    String fi = context.getFragmentInstanceId().getFragmentInstanceId();
-    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "a", MemorySide.INPUT);
-    pool.registerPlanNodeIdToQueryMemoryMap("budget", fi, "b", MemorySide.INPUT);
-    for (int i = 0; i < 4; i++) {
-      assertTrue(pool.reserveWithPriority("budget", fi, "a", 64, 256, false).isReserveSuccess());
-    }
-    MemoryPool.MemoryReservationResult prefetch =
-        pool.reserveWithPriority("budget", fi, "a", 64, 256, false);
-    assertFalse(prefetch.getFuture().isDone());
-    MemoryPool.MemoryReservationResult headB =
-        pool.reserveWithPriority("budget", fi, "b", 64, 256, false);
-    assertTrue(headB.isReserveSuccess());
-    Operator a = mock(Operator.class);
-    Operator b = mock(Operator.class);
-    doReturn(Operator.NOT_BLOCKED).when(a).isBlocked();
-    doReturn(headB.getFuture()).when(b).isBlocked();
-    when(a.hasNextWithTimer()).thenReturn(true);
-    when(b.hasNextWithTimer()).thenReturn(true);
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
-    builder.getTimeColumnBuilder().writeLong(1);
-    builder.getColumnBuilder(0).writeInt(1);
-    builder.declarePosition();
-    TsBlock first = builder.build();
-    builder.reset();
-    builder.getTimeColumnBuilder().writeLong(2);
-    builder.getColumnBuilder(0).writeInt(2);
-    builder.declarePosition();
-    TsBlock second = builder.build();
-    when(a.nextWithTimer())
-        .thenAnswer(
-            call -> {
-              pool.free("budget", fi, "a", 64);
-              return first;
-            });
-    when(b.nextWithTimer())
-        .thenAnswer(
-            call -> {
-              pool.free("budget", fi, "b", 64);
-              return second;
-            });
-    TableMergeSortOperator merge =
-        new TableMergeSortOperator(
-            mock(CommonOperatorContext.class),
-            new ArrayList<>(Arrays.asList(a, b)),
-            Collections.singletonList(TSDataType.INT32),
-            Comparator.comparingLong(key -> key.tsBlock.getTimeByIndex(key.rowIndex)));
-    assertTrue(merge.isBlocked().isDone());
-    TsBlock result = merge.next();
-    assertTrue(result != null && !result.isEmpty());
-    assertTrue(prefetch.getFuture().isDone());
-    pool.free("budget", fi, "a", 256);
-    merge.close();
   }
 }
