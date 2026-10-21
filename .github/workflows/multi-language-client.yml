@@ -168,8 +168,8 @@ jobs:
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
           
-          # Pinned OpenSSL 3.x (Apache-2.0): 'choco install openssl' now installs
-          # OpenSSL 4.0, which removed the legacy TLS-method APIs Thrift uses.
+          # Keep system-OpenSSL validation on the same major version as the
+          # default bundled OpenSSL 3.x (Apache-2.0).
           $sslZip = "$env:RUNNER_TEMP\openssl-3.5.3.zip"
           $sslDir = "$env:RUNNER_TEMP\openssl-3"
           curl.exe -L --fail --retry 3 -o $sslZip 'https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.3.zip'
