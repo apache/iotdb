@@ -53,11 +53,6 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
 
   private static final ByteBuffer EMPTY_CHUNK_DATA = ByteBuffer.allocate(0);
 
-  // Used for splitter
-  public BatchedAlignedValueChunkData(AlignedChunkData alignedChunkData) {
-    super(alignedChunkData);
-  }
-
   // Used for deserialize
   public BatchedAlignedValueChunkData(IDeviceID device, TTimePartitionSlot timePartitionSlot) {
     super(device, timePartitionSlot);

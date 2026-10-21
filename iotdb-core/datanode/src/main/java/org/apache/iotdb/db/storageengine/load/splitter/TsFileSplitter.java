@@ -61,6 +61,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -472,20 +473,15 @@ public class TsFileSplitter {
       return;
     }
 
-    // Insertion-ordered on purpose: the chunks of a series must keep the page order of the
-    // source TsFile, so that the emitted pieces (and the replicas applying them) write the time
-    // partitions in ascending order.
-    Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new LinkedHashMap<>();
-    for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
-      List<AlignedChunkData> alignedChunkDataList = entry.getValue();
-      for (int i = 0; i < alignedChunkDataList.size(); i++) {
-        AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
-        BatchedAlignedValueChunkData chunkData =
-            chunkDataMap.computeIfAbsent(oldChunkData, BatchedAlignedValueChunkData::new);
-        alignedChunkDataList.set(i, chunkData);
-      }
+    // Insertion-ordered and de-duplicating on purpose: the chunks of a series must keep the page
+    // order of the source TsFile, so that the emitted pieces (and the replicas applying them) write
+    // the time partitions in ascending order, and a chunk filled by more than one page index is
+    // only written once.
+    final Set<AlignedChunkData> chunkDataSet = new LinkedHashSet<>();
+    for (final Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
+      chunkDataSet.addAll(entry.getValue());
     }
-    for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
+    for (final AlignedChunkData chunkData : chunkDataSet) {
       timePartitionSlots.add(chunkData.getTimePartitionSlot());
       if (deletions.isEmpty()
           && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {

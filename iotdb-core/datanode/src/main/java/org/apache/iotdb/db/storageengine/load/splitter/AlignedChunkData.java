@@ -55,7 +55,6 @@ import java.io.OutputStream;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -156,16 +155,6 @@ public class AlignedChunkData implements ChunkData {
     chunkHeaderList.add(chunkHeader);
     pageNumbers.add(0);
     currentChunkIndex = 0;
-    addAttrDataSize();
-  }
-
-  protected AlignedChunkData(final AlignedChunkData alignedChunkData) {
-    this(
-        alignedChunkData.device,
-        alignedChunkData.timePartitionSlot,
-        alignedChunkData.encryptParameter);
-    this.satisfiedLengthQueue = new LinkedList<>(alignedChunkData.satisfiedLengthQueue);
-    this.needDecodeChunk = alignedChunkData.needDecodeChunk;
     addAttrDataSize();
   }
 
@@ -560,7 +549,6 @@ public class AlignedChunkData implements ChunkData {
     // Cache partition bounds: resolving them per point performs BigInteger work and allocations.
     final long partitionStart = timePartitionSlot.getStartTime();
     final long partitionEnd = TimePartitionUtils.getTimePartitionEndTime(partitionStart);
-    final Set<Integer> chunkIndexesWithData = chunkIndexesWithData(directlyBuiltChunkIndexes);
     for (final PageBuffer page : pageBuffers) {
       if (directlyBuiltChunkIndexes.contains(page.chunkIndex)) {
         continue;
@@ -571,7 +559,7 @@ public class AlignedChunkData implements ChunkData {
         // of a value chunk with the pages of its time chunk by position, so dropping the page would
         // shift every later page of the value chunk onto the wrong timestamps. A chunk that has no
         // page with data at all keeps the zero-page layout of an all-null column instead.
-        if (page.pageData.remaining() == 0 && !chunkIndexesWithData.contains(page.chunkIndex)) {
+        if (page.pageData.remaining() == 0 && !hasPageWithData(page.chunkIndex)) {
           continue;
         }
         if (page.chunkIndex == 0) {
@@ -608,23 +596,19 @@ public class AlignedChunkData implements ChunkData {
   }
 
   /**
-   * Chunk indexes written here that carry at least one point. Their empty pages are written too so
-   * that the page sequence of every value chunk stays aligned with the page sequence of the time
-   * chunk; a chunk without any point keeps the zero-page layout of an all-null column.
+   * Whether the chunk written here carries at least one point. The empty pages of such a chunk are
+   * written as well, so that the page sequence of every value chunk stays aligned with the page
+   * sequence of the time chunk; a chunk without any point keeps the zero-page layout of an all-null
+   * column. Only empty pages ask this question, so the scan stays off the common path.
    */
-  private Set<Integer> chunkIndexesWithData(final Set<Integer> directlyBuiltChunkIndexes) {
-    final Set<Integer> chunkIndexesWithData = new HashSet<>();
+  private boolean hasPageWithData(final int chunkIndex) {
     for (final PageBuffer page : pageBuffers) {
-      if (directlyBuiltChunkIndexes.contains(page.chunkIndex)) {
-        continue;
-      }
-      final boolean hasData =
-          page.needDecode ? page.satisfiedLength > 0 : page.pageData.remaining() > 0;
-      if (hasData) {
-        chunkIndexesWithData.add(page.chunkIndex);
+      if (page.chunkIndex == chunkIndex
+          && (page.needDecode ? page.satisfiedLength > 0 : page.pageData.remaining() > 0)) {
+        return true;
       }
     }
-    return chunkIndexesWithData;
+    return false;
   }
 
   private static int lowerBound(final long[] times, final int low, final int high, final long key) {
