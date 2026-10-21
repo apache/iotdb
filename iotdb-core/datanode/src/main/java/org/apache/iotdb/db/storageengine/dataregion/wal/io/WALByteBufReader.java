@@ -132,6 +132,10 @@ public class WALByteBufReader implements Closeable {
     return metaData;
   }
 
+  public void releaseReadBuffers() {
+    walInputStream.releaseReadBuffers();
+  }
+
   @Override
   public void close() throws IOException {
     logStream.close();

@@ -114,6 +114,52 @@ public class WALCompressionTest {
   }
 
   @Test
+  public void testReleaseReadBuffersPreservesPositionAcrossSegmentsAndSeeks() throws Exception {
+    byte[] expected = new byte[24];
+    for (int i = 0; i < expected.length; i++) {
+      expected[i] = (byte) i;
+    }
+    for (CompressionType compression :
+        new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.LZ4}) {
+      IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(compression);
+      try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
+        writer.setCompressedByteBuffer(ByteBuffer.allocate(128));
+        for (int start = 0; start < expected.length; start += 8) {
+          ByteBuffer segment = ByteBuffer.allocate(8);
+          segment.put(expected, start, 8);
+          writer.write(segment);
+        }
+      }
+      try (WALInputStream stream = new WALInputStream(walFile)) {
+        Assert.assertEquals(0, stream.read());
+        int available = stream.available();
+        stream.releaseReadBuffers();
+        stream.releaseReadBuffers();
+        Assert.assertEquals(available, stream.available());
+        Assert.assertEquals(1, stream.getLogicalReadOffset());
+        byte[] crossSegment = new byte[10];
+        stream.read(crossSegment);
+        Assert.assertArrayEquals(java.util.Arrays.copyOfRange(expected, 1, 11), crossSegment);
+        stream.releaseReadBuffers();
+        stream.skipToGivenLogicalPosition(4);
+        stream.releaseReadBuffers();
+        ByteBuffer restOfSegment = ByteBuffer.allocate(4);
+        stream.read(restOfSegment);
+        Assert.assertArrayEquals(
+            java.util.Arrays.copyOfRange(expected, 4, 8), restOfSegment.array());
+        // A pause exactly at the segment boundary must load the next segment without replaying it.
+        stream.releaseReadBuffers();
+        Assert.assertEquals(8, stream.read());
+        stream.releaseReadBuffers();
+        ByteBuffer tail = ByteBuffer.allocate(15);
+        stream.read(tail);
+        Assert.assertArrayEquals(java.util.Arrays.copyOfRange(expected, 9, 24), tail.array());
+      }
+      Files.delete(walFile.toPath());
+    }
+  }
+
+  @Test
   public void testSkipToGivenPositionWithoutCompression()
       throws NoSuchFieldException,
           ClassNotFoundException,

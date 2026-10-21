@@ -1948,6 +1948,16 @@ public class ConsensusPrefetchingQueue {
     } finally {
       final ProgressWALIterator iterator = subscriptionWALIterator;
       walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
+      // Readers outlive a round, but their direct segment buffers must not be retained by every
+      // inactive/backpressured queue. Keep their cursors and request fragments for the next round.
+      if (Objects.nonNull(iterator)) {
+        iterator.releaseReadBuffers();
+      }
+      for (final WriterReplayState state : orderedWriterReplay.values()) {
+        if (Objects.nonNull(state.iterator)) {
+          state.iterator.releaseReadBuffers();
+        }
+      }
       releaseReadLock();
     }
   }

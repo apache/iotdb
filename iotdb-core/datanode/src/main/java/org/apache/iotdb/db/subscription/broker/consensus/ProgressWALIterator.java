@@ -562,6 +562,15 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     resetCurrentFileTracking();
   }
 
+  /**
+   * Drops segment buffers between prefetch rounds without discarding buffered request fragments.
+   */
+  public void releaseReadBuffers() {
+    if (currentReader != null) {
+      currentReader.releaseReadBuffers();
+    }
+  }
+
   private IndexedConsensusRequest advance(final ScanBudget scanBudget) throws IOException {
     while (true) {
       if (scanBudget != null && scanBudget.shouldYield()) {
