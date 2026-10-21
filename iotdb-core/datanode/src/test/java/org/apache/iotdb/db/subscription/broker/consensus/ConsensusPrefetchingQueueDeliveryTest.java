@@ -771,9 +771,11 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   }
 
   private static int deliveryRecordCount(final ConsensusPrefetchingQueue queue) throws Exception {
-    final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("deliveryBatches");
+    final Field ledgerField = ConsensusPrefetchingQueue.class.getDeclaredField("deliveryLedger");
+    ledgerField.setAccessible(true);
+    final Field field = DeliveryLedger.class.getDeclaredField("deliveryBatches");
     field.setAccessible(true);
-    return ((java.util.Map<?, ?>) field.get(queue)).size();
+    return ((java.util.Map<?, ?>) field.get(ledgerField.get(queue))).size();
   }
 
   @SuppressWarnings("unchecked")
