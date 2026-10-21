@@ -52,6 +52,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -417,7 +418,12 @@ public class AlignedChunkData implements ChunkData {
         statistics = Statistics.getStatsByType(statisticsType);
       }
       statistics.mergeStatistics(page.pageHeader.getStatistics());
-      totalSize += page.pageHeader.getSerializedPageSize();
+      try {
+        totalSize = Math.addExact(totalSize, page.pageHeader.getSerializedPageSize());
+      } catch (final ArithmeticException e) {
+        // A chunk that does not fit in one buffer cannot be assembled here: re-encode it instead.
+        return null;
+      }
       pageCount++;
     }
     if (statistics == null) {
@@ -426,12 +432,35 @@ public class AlignedChunkData implements ChunkData {
 
     final ByteBuffer encodedData = ByteBuffer.allocate(totalSize);
     final OutputStream headerStream = new ByteBufferOutputStream(encodedData);
-    for (final PageBuffer page : chunkPages) {
-      if (page.pageData.remaining() == 0) {
-        continue;
+    try {
+      for (final PageBuffer page : chunkPages) {
+        if (page.pageData.remaining() == 0) {
+          continue;
+        }
+        // The pages are copied as they were read, so each page header has to serialize back to
+        // exactly the bytes getSerializedPageSize() accounted for. Verify that instead of trusting
+        // it: a header that serializes longer would overflow the buffer, and a shorter one would
+        // leave a chunk whose declared data size does not describe its pages.
+        final int expectedPageSize = page.pageHeader.getSerializedPageSize();
+        final int pageDataSize = page.pageData.remaining();
+        if (expectedPageSize < pageDataSize || expectedPageSize > encodedData.remaining()) {
+          return null;
+        }
+        final int pageStart = encodedData.position();
+        page.pageHeader.serializeTo(headerStream);
+        if (encodedData.position() - pageStart != expectedPageSize - pageDataSize
+            || pageDataSize > encodedData.remaining()) {
+          return null;
+        }
+        encodedData.put(page.pageData.duplicate());
       }
-      page.pageHeader.serializeTo(headerStream);
-      encodedData.put(page.pageData.duplicate());
+    } catch (final BufferOverflowException e) {
+      // Defensive only: the checks above already keep every write within the allocated size.
+      return null;
+    }
+    if (encodedData.position() != totalSize) {
+      // Never hand out a chunk whose header advertises more bytes than it carries.
+      return null;
     }
     encodedData.flip();
     // A chunk with one page is normally written with ONLY_ONE_PAGE_CHUNK_HEADER, whose page
@@ -526,8 +555,10 @@ public class AlignedChunkData implements ChunkData {
         }
         continue;
       }
-      // Timestamps within a page are monotonically increasing; binary-search the contiguous slice
-      // for this partition, starting the upper bound at the lower bound.
+      // Timestamps within a page are strictly increasing: a chunk group writer rejects an
+      // out-of-order point (see Aligned/NonAlignedChunkGroupWriterImpl#checkIsHistoryData), so the
+      // points of this partition are always a contiguous slice and the upper bound can start at the
+      // lower bound.
       final int from = lowerBound(page.timeBatch, 0, page.timeBatch.length, partitionStart);
       final int to = upperBound(page.timeBatch, from, page.timeBatch.length, partitionEnd);
       if (from >= to) {

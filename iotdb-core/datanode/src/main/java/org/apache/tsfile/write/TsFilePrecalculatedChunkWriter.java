@@ -19,6 +19,7 @@
 
 package org.apache.tsfile.write;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -87,6 +88,14 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
   private long maxPhysicalFileSize;
   private boolean sealed;
 
+  /**
+   * The buffer size of the staged file output, from {@code load_tsfile_write_buffer_size_in_byte}.
+   * Only the caller knows the configuration; the output itself stays independent of it.
+   */
+  private static int loadTsFileWriteBufferSize() {
+    return IoTDBDescriptor.getInstance().getConfig().getLoadTsFileWriteBufferSize();
+  }
+
   public TsFilePrecalculatedChunkWriter(final File file) throws IOException {
     this.file =
         Objects.requireNonNull(file, StorageEngineMessages.EXCEPTION_FILE_CANNOT_BE_NULL_29A83D70);
@@ -96,7 +105,8 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
                 file.toPath(),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING));
+                StandardOpenOption.TRUNCATE_EXISTING),
+            loadTsFileWriteBufferSize());
     this.sealed = false;
     startFile();
     this.maxPhysicalFileSize = out.getPosition();
@@ -119,7 +129,8 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
     this.out =
         new BufferedFileChannelOutput(
             Objects.requireNonNull(
-                channel, StorageEngineMessages.EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB));
+                channel, StorageEngineMessages.EXCEPTION_CHANNEL_CANNOT_BE_NULL_0F79E0FB),
+            loadTsFileWriteBufferSize());
     this.sealed = sealed;
     this.maxPhysicalFileSize = channel.size();
     LOGGER.info(

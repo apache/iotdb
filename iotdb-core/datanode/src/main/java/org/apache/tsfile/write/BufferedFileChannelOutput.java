@@ -19,7 +19,6 @@
 
 package org.apache.tsfile.write;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
@@ -33,16 +32,13 @@ import java.util.Objects;
 
 /**
  * A {@link TsFileOutput} that buffers writes and hands them to the {@link FileChannel} once the
- * configured buffer size is reached. The buffer is allocated at its full configured size when the
+ * buffer size the caller passes in is reached. The buffer is allocated at its full size when the
  * output is created, and it is flushed by {@link #force()}, {@link #flush()}, {@link
  * #truncate(long)}, a seek to another position, or {@link #close()}.
  *
  * <p>This class is not thread-safe; callers must serialize access to one instance.
  */
 public final class BufferedFileChannelOutput extends OutputStream implements TsFileOutput {
-
-  /** The buffer size used when the configured size is not positive. */
-  private static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
 
   private final FileChannel channel;
   private final int bufferSize;
@@ -52,11 +48,6 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
   private final ByteBuffer bufferView;
 
   private int bufferLength;
-
-  /** Creates an output that buffers {@code load_tsfile_write_buffer_size_in_byte} bytes. */
-  public BufferedFileChannelOutput(final FileChannel channel) {
-    this(channel, configuredBufferSize());
-  }
 
   /**
    * Creates an output that buffers the given number of bytes.
@@ -74,11 +65,6 @@ public final class BufferedFileChannelOutput extends OutputStream implements TsF
     this.bufferSize = bufferSize;
     this.buffer = new byte[bufferSize];
     this.bufferView = ByteBuffer.wrap(buffer);
-  }
-
-  private static int configuredBufferSize() {
-    final int configured = IoTDBDescriptor.getInstance().getConfig().getLoadTsFileWriteBufferSize();
-    return configured > 0 ? configured : DEFAULT_BUFFER_SIZE;
   }
 
   @Override
