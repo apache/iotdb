@@ -59,7 +59,7 @@ public class IoTDBMetricIT {
           + LABEL_NAME_REGEX
           + "=\""
           + LABEL_VALUE_REGEX
-          + "\",)*})? [+-]?[0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?";
+          + "\",)*})? ([+-]?[0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|NaN|[+-]Inf)";
   private static final String HELP_PREFIX = "# HELP ";
   private static final String HELP_REGEX = HELP_PREFIX + METRIC_NAME_REGEX;
   private static final String TYPE_PREFIX = "# TYPE ";
@@ -74,7 +74,7 @@ public class IoTDBMetricIT {
   private static final String WRONG_USERNAME = "bad";
   private static final String WRONG_PASSWORD = "!!";
 
-  private static boolean isValidPrometheusTextFormat(String metrics) {
+  static boolean isValidPrometheusTextFormat(String metrics) {
     String[] lines = metrics.split("\\n");
     boolean valid = true;
 
