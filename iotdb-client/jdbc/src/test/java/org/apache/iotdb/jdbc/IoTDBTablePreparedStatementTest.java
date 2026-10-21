@@ -22,11 +22,15 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -35,8 +39,15 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
+import java.sql.ResultSet;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -58,6 +69,7 @@ public class IoTDBTablePreparedStatementTest {
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
     when(connection.getSqlDialect()).thenReturn("table");
+    when(connection.getTimeFactor()).thenReturn(1_000);
     when(execStatementResp.getStatus()).thenReturn(Status_SUCCESS);
     when(execStatementResp.getQueryId()).thenReturn(queryId);
 
@@ -81,6 +93,8 @@ public class IoTDBTablePreparedStatementTest {
     // Mock for executePreparedStatement
     when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
         .thenReturn(execStatementResp);
+
+    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(Status_SUCCESS);
   }
 
   /** Count the number of '?' placeholders in a SQL string, ignoring those inside quotes */
@@ -236,5 +250,128 @@ public class IoTDBTablePreparedStatementTest {
         ArgumentCaptor.forClass(TSExecutePreparedReq.class);
     verify(client).executePreparedStatement(argument.capture());
     assertTrue(argument.getValue().getParameters() != null);
+  }
+
+  // ========== Table Model result column mapping tests ==========
+
+  private static TsBlockBuilder int32BlockBuilder(int columnCount) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.nCopies(columnCount, TSDataType.INT32));
+    builder.getTimeColumnBuilder().writeLong(1000L);
+    builder.declarePosition();
+    return builder;
+  }
+
+  private TSExecuteStatementResp buildQueryResp(
+      List<String> columns, List<Integer> mapping, TsBlockBuilder blockBuilder) throws IOException {
+    TSExecuteStatementResp resp = new TSExecuteStatementResp();
+    resp.setStatus(Status_SUCCESS);
+    resp.setQueryId(1L);
+    resp.setColumns(columns);
+    List<String> dataTypeList = new ArrayList<>();
+    for (int i = 0; i < columns.size(); i++) {
+      dataTypeList.add(TSDataType.INT32.name());
+    }
+    resp.setDataTypeList(dataTypeList);
+    resp.setIgnoreTimeStamp(true);
+    resp.setTableModel(true);
+    if (mapping != null) {
+      resp.setColumnIndex2TsBlockColumnIndexList(mapping);
+    }
+    resp.setQueryResult(
+        Collections.singletonList(new TsBlockSerde().serialize(blockBuilder.build())));
+    resp.setMoreData(false);
+    return resp;
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementReorderedColumns() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(2);
+    blockBuilder.getColumnBuilder(0).writeInt(10); // physical column 0
+    blockBuilder.getColumnBuilder(1).writeInt(20); // physical column 1
+
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("b", "a"), Arrays.asList(1, 0), blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT b, a FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(20, rs.getInt(1));
+      assertEquals(10, rs.getInt(2));
+      assertEquals(20, rs.getInt("b"));
+      assertEquals(10, rs.getInt("a"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementRepeatedProjection() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(1);
+    blockBuilder.getColumnBuilder(0).writeInt(10); // physical column 0, referenced twice
+
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("x", "y"), Arrays.asList(0, 0), blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT a AS x, a AS y FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(10, rs.getInt(1));
+      assertEquals(10, rs.getInt(2));
+      assertEquals(10, rs.getInt("x"));
+      assertEquals(10, rs.getInt("y"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementIdentityMapping() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(2);
+    blockBuilder.getColumnBuilder(0).writeInt(10);
+    blockBuilder.getColumnBuilder(1).writeInt(20);
+
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("a", "b"), Arrays.asList(0, 1), blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT a, b FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(10, rs.getInt(1));
+      assertEquals(20, rs.getInt(2));
+      assertEquals(10, rs.getInt("a"));
+      assertEquals(20, rs.getInt("b"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementMissingMappingFallsBack() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(2);
+    blockBuilder.getColumnBuilder(0).writeInt(10);
+    blockBuilder.getColumnBuilder(1).writeInt(20);
+
+    // No columnIndex2TsBlockColumnIndexList: the client must keep its own derivation
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("a", "b"), null, blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT a, b FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(10, rs.getInt(1));
+      assertEquals(20, rs.getInt(2));
+      assertEquals(10, rs.getInt("a"));
+      assertEquals(20, rs.getInt("b"));
+    }
   }
 }
