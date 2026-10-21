@@ -599,19 +599,6 @@ public class TsFileSplitter {
     }
   }
 
-  /**
-   * handle empty page in aligned chunk, if uncompressedSize and compressedSize are both 0, and the
-   * statistics is null, then the page is empty.
-   *
-   * @param pageHeader page header
-   * @return true if the page is empty
-   */
-  private boolean isEmptyPage(PageHeader pageHeader) {
-    return pageHeader.getUncompressedSize() == 0
-        && pageHeader.getCompressedSize() == 0
-        && pageHeader.getStatistics() == null;
-  }
-
   private TsPrimitiveType[] decodeValuePage(
       TsFileSequenceReader reader,
       ChunkHeader chunkHeader,
@@ -619,7 +606,9 @@ public class TsFileSplitter {
       long[] times,
       Decoder valueDecoder)
       throws IOException {
-    if (pageHeader.getSerializedPageSize() == 0) {
+    // An empty page stands for an all-null slice of the column. It has to expand to one null per
+    // time of the page, otherwise the decoded values would not line up with the decoded times.
+    if (pageHeader.getUncompressedSize() == 0) {
       return new TsPrimitiveType[times.length];
     }
 

@@ -440,6 +440,19 @@ public class LoadTsFileManagerTest {
     assertArrayEquals(payload, output.toByteArray());
   }
 
+  @Test
+  public void testEmptyChunkPayloadRefNeedsNoStagedFile() throws Exception {
+    // An empty payload owns no bytes, so it can be read back even after the staged file is gone:
+    // resolving a missing file first would fail a forward that has nothing to copy.
+    final File cleanedUp = new File(tempDir, "cleaned-up.tsfile");
+    final ChunkPayloadRef empty = new ChunkPayloadRef(cleanedUp.getAbsolutePath(), 0L, 0L);
+
+    assertArrayEquals(new byte[0], empty.readPayload());
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    empty.writePayloadTo(new DataOutputStream(output));
+    assertEquals(0, output.size());
+  }
+
   /**
    * A PREPARE of a task that is still missing a piece must fail instead of sealing the file.
    *

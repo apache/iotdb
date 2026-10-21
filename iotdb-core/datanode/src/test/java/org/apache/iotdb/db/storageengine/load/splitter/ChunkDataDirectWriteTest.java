@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkData.ChunkLayout;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -70,6 +71,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_MASK;
 import static org.apache.tsfile.common.constant.TsFileConstant.VALUE_COLUMN_MASK;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -246,6 +248,47 @@ public class ChunkDataDirectWriteTest {
     final Chunk valueChunk = chunks.get(1);
     assertEquals(valueChunk.getData().remaining(), valueChunk.getHeader().getDataSize());
     assertEquals(VALUE_COLUMN_MASK, valueChunk.getHeader().getChunkType() & VALUE_COLUMN_MASK);
+  }
+
+  // An empty page of an undecoded chunk (an all-null column) carries no statistics, but it still
+  // occupies a page slot: the aligned reader pairs the pages of a value chunk with the pages of its
+  // time chunk by position, so the page has to be copied as the single byte it serializes to
+  // instead of forcing the whole chunk through the re-encoding path
+  @Test
+  public void testEmptyUndecodedPageKeepsItsPageSlot() throws Exception {
+    final Statistics<?> pageStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
+    pageStatistics.update(1L);
+    pageStatistics.update(2L);
+    final PageHeader pageHeader = new PageHeader(8, 4, pageStatistics);
+
+    final List<AlignedChunkData.PageBuffer> pages = new ArrayList<>();
+    pages.add(
+        new AlignedChunkData.PageBuffer(0, new PageHeader(0, 0, null), ByteBuffer.allocate(0)));
+    pages.add(new AlignedChunkData.PageBuffer(0, pageHeader, ByteBuffer.wrap(new byte[4])));
+
+    final Chunk chunk =
+        createAlignedTimeChunkData(DEFAULT_DEVICE)
+            .buildChunkFromUndecodedPages(createTimeChunkHeader(), TIME_COLUMN_MASK, pages);
+
+    assertNotNull("an empty page must not force the chunk to be re-encoded", chunk);
+    assertEquals(2, chunk.getChunkStatistic().getCount());
+    // One byte for the kept empty page plus the page that was read from the source file.
+    assertEquals(1 + pageHeader.getSerializedPageSize(), chunk.getData().remaining());
+  }
+
+  // A chunk whose pages are all empty keeps the zero-page layout of an all-null column
+  @Test
+  public void testAllEmptyUndecodedPagesStayAnEmptyChunk() throws Exception {
+    final List<AlignedChunkData.PageBuffer> pages = new ArrayList<>();
+    pages.add(
+        new AlignedChunkData.PageBuffer(0, new PageHeader(0, 0, null), ByteBuffer.allocate(0)));
+    pages.add(
+        new AlignedChunkData.PageBuffer(0, new PageHeader(0, 0, null), ByteBuffer.allocate(0)));
+
+    assertNull(
+        "an all-null chunk has to keep the zero-page layout",
+        createAlignedTimeChunkData(DEFAULT_DEVICE)
+            .buildChunkFromUndecodedPages(createTimeChunkHeader(), TIME_COLUMN_MASK, pages));
   }
 
   // -------------------------------------------------------------------------

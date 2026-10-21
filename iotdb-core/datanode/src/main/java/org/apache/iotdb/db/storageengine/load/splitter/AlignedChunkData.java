@@ -55,6 +55,7 @@ import java.io.OutputStream;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -395,8 +396,8 @@ public class AlignedChunkData implements ChunkData {
 
   /**
    * Reassembles a chunk from pages that were stored without decoding. Returns {@code null} when the
-   * chunk has a decoded page, an empty page whose statistics cannot be merged, or no page at all;
-   * the caller then falls back to {@link AlignedChunkWriterImpl}.
+   * chunk has a decoded page, a non-empty page without statistics, or no page with data at all; the
+   * caller then falls back to {@link AlignedChunkWriterImpl}.
    */
   protected Chunk buildChunkFromUndecodedPages(
       final ChunkHeader sourceHeader, final int mask, final List<PageBuffer> chunkPages)
@@ -407,12 +408,30 @@ public class AlignedChunkData implements ChunkData {
     Statistics<?> statistics = null;
     int totalSize = 0;
     int pageCount = 0;
+    int emptyPageCount = 0;
     for (final PageBuffer page : chunkPages) {
-      if (page.needDecode || page.pageHeader == null || page.pageHeader.getStatistics() == null) {
+      if (page.needDecode) {
+        // A decoded page is kept as points instead of bytes, so it cannot be copied as it is.
+        return null;
+      }
+      if (page.pageHeader == null) {
         return null;
       }
       if (page.pageData.remaining() == 0) {
+        // An empty page (an aligned series stores an all-null column as an empty page) has no data
+        // and no statistics, but it still occupies one page slot. The aligned reader pairs the
+        // pages of a value chunk with the pages of its time chunk by position, so dropping it would
+        // shift every later page of the value chunk onto the wrong timestamps. It is kept as the
+        // single 0 varint it serializes to, unless the whole chunk is empty: an all-null chunk
+        // keeps the zero-page layout instead.
+        emptyPageCount++;
         continue;
+      }
+      // A non-empty page without statistics belongs to a single-page chunk: the statistics of such
+      // a chunk live in the chunk metadata, not in the page header, and cannot be rebuilt from the
+      // page bytes. Such a chunk cannot be assembled here and has to go through the writer path.
+      if (page.pageHeader.getStatistics() == null) {
+        return null;
       }
       if (statistics == null) {
         statistics = Statistics.getStatsByType(statisticsType);
@@ -429,14 +448,18 @@ public class AlignedChunkData implements ChunkData {
     if (statistics == null) {
       return null;
     }
+    pageCount += emptyPageCount;
+    try {
+      // Each kept empty page is exactly the one byte of the 0 varint that represents it.
+      totalSize = Math.addExact(totalSize, emptyPageCount);
+    } catch (final ArithmeticException e) {
+      return null;
+    }
 
     final ByteBuffer encodedData = ByteBuffer.allocate(totalSize);
     final OutputStream headerStream = new ByteBufferOutputStream(encodedData);
     try {
       for (final PageBuffer page : chunkPages) {
-        if (page.pageData.remaining() == 0) {
-          continue;
-        }
         // The pages are copied as they were read, so each page header has to serialize back to
         // exactly the bytes getSerializedPageSize() accounted for. Verify that instead of trusting
         // it: a header that serializes longer would overflow the buffer, and a shorter one would
@@ -537,14 +560,18 @@ public class AlignedChunkData implements ChunkData {
     // Cache partition bounds: resolving them per point performs BigInteger work and allocations.
     final long partitionStart = timePartitionSlot.getStartTime();
     final long partitionEnd = TimePartitionUtils.getTimePartitionEndTime(partitionStart);
+    final Set<Integer> chunkIndexesWithData = chunkIndexesWithData(directlyBuiltChunkIndexes);
     for (final PageBuffer page : pageBuffers) {
       if (directlyBuiltChunkIndexes.contains(page.chunkIndex)) {
         continue;
       }
       if (!page.needDecode) {
-        // Skip empty pages: an aligned series stores an all-null column as an empty page, and
-        // writing its page header alone yields a chunk that cannot be parsed back.
-        if (page.pageData.remaining() == 0) {
+        // An empty page (an aligned series stores an all-null column as an empty page) has to be
+        // written whenever its chunk also has a page with data: the aligned reader pairs the pages
+        // of a value chunk with the pages of its time chunk by position, so dropping the page would
+        // shift every later page of the value chunk onto the wrong timestamps. A chunk that has no
+        // page with data at all keeps the zero-page layout of an all-null column instead.
+        if (page.pageData.remaining() == 0 && !chunkIndexesWithData.contains(page.chunkIndex)) {
           continue;
         }
         if (page.chunkIndex == 0) {
@@ -578,6 +605,26 @@ public class AlignedChunkData implements ChunkData {
         writer.sealCurrentValuePage(page.chunkIndex - 1);
       }
     }
+  }
+
+  /**
+   * Chunk indexes written here that carry at least one point. Their empty pages are written too so
+   * that the page sequence of every value chunk stays aligned with the page sequence of the time
+   * chunk; a chunk without any point keeps the zero-page layout of an all-null column.
+   */
+  private Set<Integer> chunkIndexesWithData(final Set<Integer> directlyBuiltChunkIndexes) {
+    final Set<Integer> chunkIndexesWithData = new HashSet<>();
+    for (final PageBuffer page : pageBuffers) {
+      if (directlyBuiltChunkIndexes.contains(page.chunkIndex)) {
+        continue;
+      }
+      final boolean hasData =
+          page.needDecode ? page.satisfiedLength > 0 : page.pageData.remaining() > 0;
+      if (hasData) {
+        chunkIndexesWithData.add(page.chunkIndex);
+      }
+    }
+    return chunkIndexesWithData;
   }
 
   private static int lowerBound(final long[] times, final int low, final int high, final long key) {
