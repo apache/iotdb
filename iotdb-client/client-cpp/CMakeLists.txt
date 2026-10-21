@@ -135,6 +135,10 @@ add_library(iotdb_session SHARED
         ${SESSION_RPC_SRCS}
         ${THRIFT_GENERATED_SRCS})
 
+# Thrift 0.25 generates vector<bool>::emplace_back(), which requires C++17
+# with libc++. Keep this private to the library; examples and consumers use C++11.
+set_target_properties(iotdb_session PROPERTIES CXX_STANDARD 17)
+
 if(WIN32)
     set_target_properties(iotdb_session PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()

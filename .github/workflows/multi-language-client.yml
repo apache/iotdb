@@ -211,6 +211,14 @@ jobs:
           else
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -Diotdb.openssl.from.source=OFF
           fi
+      - name: Test installed SDK with a C++11 consumer
+        shell: bash
+        run: |
+          cmake -S iotdb-client/client-cpp/test/cmake/cxx11-consumer \
+            -B iotdb-client/client-cpp/target/cxx11-consumer \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/iotdb-client/client-cpp/target/install"
+          cmake --build iotdb-client/client-cpp/target/cxx11-consumer --config Release
+          ctest --test-dir iotdb-client/client-cpp/target/cxx11-consumer -C Release --output-on-failure
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v6

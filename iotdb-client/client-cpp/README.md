@@ -28,6 +28,10 @@ not need Maven, Thrift, Boost, or this source tree to use it in your own
 application. Unpack the zip, point your build system at its `include/` and
 `lib/` directories, and deploy the IoTDB runtime library with your executable.
 
+Building the SDK from source requires a C++17-capable compiler for the internal
+library and generated Thrift code. Applications using the packaged public API
+can continue to compile as C++11.
+
 ## Use a packaged SDK in your project
 
 ### 1. Pick and unpack the right package
