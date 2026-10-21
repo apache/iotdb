@@ -33,6 +33,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -64,18 +65,36 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final @Nonnull Map<String, Binary> attributeSetMap) {
+    return setAttribute(database, tableName, attributeSetMap, attributeSetMap.keySet());
+  }
+
+  int setAttribute(
+      final String database,
+      final String tableName,
+      final @Nonnull Map<String, Binary> attributeSetMap,
+      final @Nonnull Collection<String> fetchedAttributeNames) {
     return (deviceSchema.compareAndSet(null, new TableAttributeSchema())
             ? TableAttributeSchema.INSTANCE_SIZE
             : 0)
-        + updateAttribute(database, tableName, attributeSetMap);
+        + updateAttribute(database, tableName, attributeSetMap, fetchedAttributeNames);
   }
 
   int updateAttribute(
       final String database, final String tableName, final @Nonnull Map<String, Binary> updateMap) {
+    return updateAttribute(database, tableName, updateMap, Collections.emptyList());
+  }
+
+  int updateAttribute(
+      final String database,
+      final String tableName,
+      final @Nonnull Map<String, Binary> updateMap,
+      final @Nonnull Collection<String> fetchedAttributeNames) {
     // Shall only call this for original table device
     final TableAttributeSchema schema = (TableAttributeSchema) deviceSchema.get();
     final int result =
-        Objects.nonNull(schema) ? schema.updateAttribute(database, tableName, updateMap) : 0;
+        Objects.nonNull(schema)
+            ? schema.updateAttribute(database, tableName, updateMap, fetchedAttributeNames)
+            : 0;
     return Objects.nonNull(deviceSchema.get()) ? result : 0;
   }
 
@@ -106,6 +125,12 @@ public class TableDeviceCacheEntry {
     return map instanceof TableAttributeSchema
         ? ((TableAttributeSchema) map).getAttributeMap()
         : Collections.emptyMap();
+  }
+
+  boolean containsAttributes(final Collection<String> attributeNames) {
+    final IDeviceSchema schema = deviceSchema.get();
+    return schema instanceof TableAttributeSchema
+        && ((TableAttributeSchema) schema).containsAttributes(attributeNames);
   }
 
   /////////////////////////////// Tree model ///////////////////////////////

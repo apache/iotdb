@@ -200,7 +200,10 @@ public class TableDeviceSchemaFetcher {
         }
 
         schema.setResult(fetchedDeviceSchema);
-        fetchedDeviceSchema.forEach((key, value) -> cache.putAttributes(database, key, value));
+        final List<String> fetchedAttributeNames =
+            getFetchedAttributeNames(columnHeaderList, tableInstance);
+        fetchedDeviceSchema.forEach(
+            (key, value) -> cache.putAttributes(database, key, value, fetchedAttributeNames));
 
         return fetchedDeviceSchema;
       } else {
@@ -533,10 +536,13 @@ public class TableDeviceSchemaFetcher {
     final IDeviceID deviceID = convertTagValuesToDeviceID(tableInstance.getTableName(), tagValues);
     final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
-    // 1. AttributeMap == null means cache miss
+    // 1. AttributeMap == null or an unfetched attribute means cache miss
     // 2. DeviceEntryList == null means that this is update statement, shall not get from cache and
     // shall reach the SchemaRegion to update
-    if (Objects.isNull(attributeMap) || Objects.isNull(deviceEntryList) || Objects.isNull(check)) {
+    if (Objects.isNull(attributeMap)
+        || !cache.containsAttributes(database, deviceID, attributeColumns)
+        || Objects.isNull(deviceEntryList)
+        || Objects.isNull(check)) {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
       }
@@ -731,6 +737,8 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList,
       final AbstractDeviceEntryMaterializer materializer) {
     final Column[] columns = tsBlock.getValueColumns();
+    final List<String> fetchedAttributeNames =
+        getFetchedAttributeNames(columnHeaderList, tableInstance);
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       final String[] nodes = new String[tableInstance.getTagNum() + 1];
       final Map<String, Binary> attributeMap = new HashMap<>();
@@ -755,7 +763,7 @@ public class TableDeviceSchemaFetcher {
       // Only cache those exact device query
       // Fetch paths is null iff there are fuzzy queries related to id columns
       if (Objects.nonNull(statement.getPartitionKeyList())) {
-        cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
+        cache.putAttributes(statement.getDatabase(), deviceID, attributeMap, fetchedAttributeNames);
       }
     }
   }
@@ -846,5 +854,18 @@ public class TableDeviceSchemaFetcher {
         attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(rowIndex));
       }
     }
+  }
+
+  private static List<String> getFetchedAttributeNames(
+      final List<ColumnHeader> columnHeaderList, final TsTable tableInstance) {
+    return columnHeaderList.stream()
+        .map(ColumnHeader::getColumnName)
+        .map(tableInstance::getColumnSchema)
+        .filter(Objects::nonNull)
+        .filter(
+            columnSchema ->
+                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+        .map(TsTableColumnSchema::getColumnName)
+        .collect(Collectors.toList());
   }
 }

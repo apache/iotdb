@@ -276,6 +276,39 @@ public class TableDeviceSchemaCacheTest {
   }
 
   @Test
+  public void testDeviceCacheTracksFetchedAttributes() {
+    final TableDeviceSchemaCache cache = createTestCache();
+    final IDeviceID deviceID =
+        convertTagValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_0"});
+
+    cache.putAttributes(
+        database1,
+        deviceID,
+        Collections.singletonMap(attributeName1, new Binary("new", TSFileConfig.STRING_CHARSET)),
+        Collections.singletonList(attributeName1));
+    Assert.assertTrue(
+        cache.containsAttributes(database1, deviceID, Collections.singletonList(attributeName1)));
+    Assert.assertFalse(
+        cache.containsAttributes(
+            database1, deviceID, Arrays.asList(attributeName1, attributeName2)));
+
+    // A fetched null attribute is not present in the value map, but is still a complete cache hit.
+    cache.putAttributes(
+        database1, deviceID, Collections.emptyMap(), Collections.singletonList(attributeName2));
+    Assert.assertTrue(
+        cache.containsAttributes(
+            database1, deviceID, Arrays.asList(attributeName1, attributeName2)));
+    Assert.assertNull(cache.getDeviceAttribute(database1, deviceID).get(attributeName2));
+
+    cache.updateAttributes(
+        database1, deviceID, Collections.singletonMap(attributeName1, Binary.EMPTY_VALUE));
+    Assert.assertTrue(
+        cache.containsAttributes(
+            database1, deviceID, Arrays.asList(attributeName1, attributeName2)));
+    Assert.assertFalse(cache.getDeviceAttribute(database1, deviceID).containsKey(attributeName1));
+  }
+
+  @Test
   public void testLastCache() {
     final TableDeviceSchemaCache cache = createTestCache();
 

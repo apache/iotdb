@@ -58,6 +58,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -84,9 +85,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  * SchemaRegion} anyway. This may not update the attributes in {@link SchemaRegion} since the
  * attributes in cache may be stale, but it's okay and {@link SchemaRegion} will just do nothing.
  *
- * <p>3. When the attributeMap does not contain an attributeKey, then the value is {@code null}.
- * Note that we do not tell whether an attributeKey exists here, and it shall be judged from table
- * schema.
+ * <p>3. When the attributeMap does not contain an attributeKey, then the value is {@code null}. The
+ * cache separately tracks whether an attribute was fetched, so a missing key can represent a known
+ * null value without being confused with an incomplete cache entry.
  */
 @ThreadSafe
 public class TableDeviceSchemaCache {
@@ -168,8 +169,24 @@ public class TableDeviceSchemaCache {
   }
 
   // The input deviceId shall have its tailing nulls trimmed
+  public boolean containsAttributes(
+      final String database, final IDeviceID deviceId, final Collection<String> attributeNames) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
+    return entry != null && entry.containsAttributes(attributeNames);
+  }
+
+  // The input deviceId shall have its tailing nulls trimmed
   public void putAttributes(
       final String database, final IDeviceID deviceId, final Map<String, Binary> attributeMap) {
+    putAttributes(database, deviceId, attributeMap, attributeMap.keySet());
+  }
+
+  public void putAttributes(
+      final String database,
+      final IDeviceID deviceId,
+      final Map<String, Binary> attributeMap,
+      final Collection<String> fetchedAttributeNames) {
     readWriteLock.readLock().lock();
     try {
       // Avoid stale table
@@ -181,7 +198,9 @@ public class TableDeviceSchemaCache {
           new TableId(database, deviceId.getTableName()),
           deviceId,
           new TableDeviceCacheEntry(),
-          entry -> entry.setAttribute(database, deviceId.getTableName(), attributeMap),
+          entry ->
+              entry.setAttribute(
+                  database, deviceId.getTableName(), attributeMap, fetchedAttributeNames),
           true);
     } finally {
       readWriteLock.readLock().unlock();
