@@ -259,7 +259,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionOrigin,TimePartitionInterval,",
           Collections.emptySet());
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.**", "Time", Collections.emptySet());
+          receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
 
       TestUtils.executeNonQuery(senderEnv, "CREATE ROLE test", null);
 
