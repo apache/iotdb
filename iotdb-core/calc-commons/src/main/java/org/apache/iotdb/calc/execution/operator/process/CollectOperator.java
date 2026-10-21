@@ -178,15 +178,6 @@ public class CollectOperator implements ProcessOperator {
     return peak;
   }
 
-  /**
-   * Collect's peak includes the retained state of every live child. A parent must not add that
-   * state once more when it estimates its own peak.
-   */
-  @Override
-  public long calculateRetainedSizeForParentMaxPeekMemory() {
-    return 0;
-  }
-
   @Override
   public long calculateMaxReturnSize() {
     long maxReturnSize = 0;

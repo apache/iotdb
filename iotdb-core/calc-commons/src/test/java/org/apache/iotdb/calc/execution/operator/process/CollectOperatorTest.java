@@ -413,7 +413,6 @@ public class CollectOperatorTest {
     CollectOperator collect = collect(a, b);
     assertEquals(80, collect.calculateRetainedSizeAfterCallingNext());
     assertEquals(150, collect.calculateMaxPeekMemory());
-    assertEquals(0, collect.calculateRetainedSizeForParentMaxPeekMemory());
     assertEquals(20, collect.calculateMaxReturnSize());
     assertTrue(collect.ramBytesUsed() > 0);
     a.hasNext = false;

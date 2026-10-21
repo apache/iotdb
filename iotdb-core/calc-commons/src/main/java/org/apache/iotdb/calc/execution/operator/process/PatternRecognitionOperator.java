@@ -437,12 +437,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
     long maxPeekMemoryFromCurrent =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     return Math.max(maxPeekMemoryFromInput, maxPeekMemoryFromCurrent)
-        + child.calculateRetainedSizeForParentMaxPeekMemory();
-  }
-
-  @Override
-  public long calculateRetainedSizeForParentMaxPeekMemory() {
-    return 0;
+        + child.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
