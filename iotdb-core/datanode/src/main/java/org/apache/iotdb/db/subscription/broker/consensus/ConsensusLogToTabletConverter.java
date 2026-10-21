@@ -526,8 +526,7 @@ public class ConsensusLogToTabletConverter {
       return Collections.emptyList();
     }
 
-    final Tablet prunedTablet =
-        TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, getColumnFilterMatcher());
+    final Tablet prunedTablet = projectAndPruneTableModelTablet(tablet);
     return Objects.nonNull(prunedTablet)
         ? Collections.singletonList(prunedTablet)
         : Collections.emptyList();
@@ -600,8 +599,7 @@ public class ConsensusLogToTabletConverter {
             Objects.nonNull(validBitMaps) ? validBitMaps.toArray(new BitMap[0]) : null,
             rowCount);
 
-    final Tablet prunedTablet =
-        TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, getColumnFilterMatcher());
+    final Tablet prunedTablet = projectAndPruneTableModelTablet(tablet);
     return Objects.nonNull(prunedTablet)
         ? Collections.singletonList(prunedTablet)
         : Collections.emptyList();
@@ -613,6 +611,11 @@ public class ConsensusLogToTabletConverter {
       tablets.addAll(convertRelationalInsertRowNode((RelationalInsertRowNode) rowNode));
     }
     return tablets;
+  }
+
+  private Tablet projectAndPruneTableModelTablet(final Tablet sourceTablet) {
+    return TabletColumnPruner.pruneTableModelTablet(
+        sourceTablet, databaseName, getColumnFilterMatcher());
   }
 
   private Tablet buildTableModelTabletFromRow(

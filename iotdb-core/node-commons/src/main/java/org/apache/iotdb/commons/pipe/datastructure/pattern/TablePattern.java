@@ -85,6 +85,10 @@ public class TablePattern {
     return tablePattern == null || tablePattern.matcher(table).matches();
   }
 
+  public boolean matchesDatabaseAndTable(final String database, final String table) {
+    return matchesDatabase(database) && matchesTable(table);
+  }
+
   public String getDatabasePattern() {
     return databasePattern == null
         ? EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE

@@ -90,9 +90,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_SYNC_LOG,
               groupId,
               req.getLogEntries().size());
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TSyncLogEntriesRes(Collections.singletonList(status));
     }
     if (impl.isReadOnly()) {
@@ -154,9 +152,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "TSyncWriterSafeTimeBarrierReq");
-      LOGGER.error(message);
-      final TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      final TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TSyncWriterSafeTimeBarrierRes().setStatus(status);
     }
     impl.observeRemoteWriterSafeTimeBarrier(
@@ -180,9 +176,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "inactivatePeer");
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TInactivatePeerRes(status);
     }
     impl.setActive(false);
@@ -203,9 +197,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "inactivatePeer");
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TActivatePeerRes(status);
     }
     KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE);
@@ -225,9 +217,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "buildSyncLogChannel");
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TBuildSyncLogChannelRes(status);
     }
     TSStatus responseStatus;
@@ -248,9 +238,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "buildSyncLogChannel");
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TRemoveSyncLogChannelRes(status);
     }
     TSStatus responseStatus;
@@ -310,9 +298,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "buildSyncLogChannel");
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TSendSnapshotFragmentRes(status);
     }
     TSStatus responseStatus;
@@ -338,9 +324,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "buildSyncLogChannel");
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TTriggerSnapshotLoadRes(status);
     }
     if (!impl.loadSnapshot(req.snapshotId)) {
@@ -370,9 +354,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
               ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
               groupId,
               "buildSyncLogChannel");
-      LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
+      TSStatus status = getConsensusGroupNotExistStatus(message);
       return new TCleanupTransferredSnapshotRes(status);
     }
     TSStatus responseStatus;
@@ -385,6 +367,11 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       responseStatus.setMessage(e.getMessage());
     }
     return new TCleanupTransferredSnapshotRes(responseStatus);
+  }
+
+  private static TSStatus getConsensusGroupNotExistStatus(String message) {
+    LOGGER.error(message);
+    return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()).setMessage(message);
   }
 
   public void handleClientExit() {}
