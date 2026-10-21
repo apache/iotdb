@@ -44,6 +44,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemAligne
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryManager;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -95,11 +97,20 @@ public abstract class AbstractMemTable implements IMemTable {
   /** Memory size of data points, including TEXT values. */
   private long memSize = 0;
 
-  /**
-   * Memory usage of all TVLists memory usage regardless of whether these TVLists are full,
-   * including TEXT values.
-   */
-  private long tvListRamCost = 0;
+  private final long memTableId = memTableIdCounter.incrementAndGet();
+
+  private final WriteMemoryBlock arrayMemoryBlock =
+      new WriteMemoryBlock(
+          "MemTable[" + memTableId + "].Arrays", WriteMemoryBlock.Category.MEMTABLE_ARRAY);
+  private final WriteMemoryBlock binaryMemoryBlock =
+      new WriteMemoryBlock(
+          "MemTable[" + memTableId + "].Binary", WriteMemoryBlock.Category.MEMTABLE_BINARY);
+  private final WriteMemoryBlock structureMemoryBlock =
+      new WriteMemoryBlock(
+          "MemTable[" + memTableId + "].Structure", WriteMemoryBlock.Category.MEMTABLE_STRUCTURE);
+  private final WriteMemoryBlock recoveredMemoryBlock =
+      new WriteMemoryBlock(
+          "MemTable[" + memTableId + "].Recovered", WriteMemoryBlock.Category.MEMTABLE_RECOVERED);
 
   private int seriesNumber = 0;
 
@@ -114,8 +125,6 @@ public abstract class AbstractMemTable implements IMemTable {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   private long minPlanIndex = Long.MAX_VALUE;
-
-  private final long memTableId = memTableIdCounter.incrementAndGet();
 
   private final long createdTime = System.currentTimeMillis();
 
@@ -584,7 +593,10 @@ public abstract class AbstractMemTable implements IMemTable {
     totalValueCount = 0;
     nullValueCount = 0;
     totalPointsNumThreshold = 0;
-    tvListRamCost = 0;
+    arrayMemoryBlock.clear();
+    binaryMemoryBlock.clear();
+    structureMemoryBlock.clear();
+    recoveredMemoryBlock.clear();
     maxPlanIndex = 0;
     minPlanIndex = 0;
   }
@@ -957,18 +969,44 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void setWriteMemoryManager(WriteMemoryManager manager) {
+    arrayMemoryBlock.attachTo(manager);
+    binaryMemoryBlock.attachTo(manager);
+    structureMemoryBlock.attachTo(manager);
+    recoveredMemoryBlock.attachTo(manager);
+  }
+
+  @Override
+  public WriteMemoryBlock getArrayMemoryBlock() {
+    return arrayMemoryBlock;
+  }
+
+  @Override
+  public WriteMemoryBlock getBinaryMemoryBlock() {
+    return binaryMemoryBlock;
+  }
+
+  @Override
+  public WriteMemoryBlock getStructureMemoryBlock() {
+    return structureMemoryBlock;
+  }
+
+  @Override
   public void addTVListRamCost(long cost) {
-    this.tvListRamCost += cost;
+    arrayMemoryBlock.add(cost);
   }
 
   @Override
   public void releaseTVListRamCost(long cost) {
-    this.tvListRamCost -= cost;
+    arrayMemoryBlock.release(cost);
   }
 
   @Override
   public long getTVListsRamCost() {
-    return tvListRamCost;
+    return arrayMemoryBlock.getUsedMemoryInBytes()
+        + binaryMemoryBlock.getUsedMemoryInBytes()
+        + structureMemoryBlock.getUsedMemoryInBytes()
+        + recoveredMemoryBlock.getUsedMemoryInBytes();
   }
 
   @Override
@@ -993,9 +1031,18 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void release() {
+    if (arrayMemoryBlock.isClosed()) {
+      return;
+    }
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       entry.getValue().release();
     }
+    // Preserve the existing write-accounting release point. Query-held TVLists and the array
+    // pool retain their existing resource ownership; this is not a measurement of heap liveness.
+    arrayMemoryBlock.close();
+    binaryMemoryBlock.close();
+    structureMemoryBlock.close();
+    recoveredMemoryBlock.close();
   }
 
   @Override
@@ -1064,7 +1111,7 @@ public abstract class AbstractMemTable implements IMemTable {
     WALWriteUtils.write((byte) -1, buffer);
     buffer.putInt(seriesNumber);
     buffer.putLong(memSize);
-    buffer.putLong(tvListRamCost);
+    buffer.putLong(getTVListsRamCost());
     buffer.putLong(totalPointsNum);
     buffer.putLong(totalPointsNumThreshold);
     buffer.putLong(maxPlanIndex);
@@ -1087,7 +1134,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws IOException {
     seriesNumber = stream.readInt();
     memSize = stream.readLong();
-    tvListRamCost = stream.readLong();
+    recoveredMemoryBlock.add(stream.readLong());
     totalPointsNum = stream.readLong();
     totalPointsNumThreshold = stream.readLong();
     maxPlanIndex = stream.readLong();
@@ -1119,7 +1166,7 @@ public abstract class AbstractMemTable implements IMemTable {
       DataInputStream stream, boolean multiTvListInMemChunk) throws IOException {
     seriesNumber = stream.readInt();
     memSize = stream.readLong();
-    tvListRamCost = stream.readLong();
+    recoveredMemoryBlock.add(stream.readLong());
     totalPointsNum = stream.readLong();
     totalPointsNumThreshold = stream.readLong();
     maxPlanIndex = stream.readLong();

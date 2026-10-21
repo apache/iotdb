@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.schemaengine.metric;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -30,6 +35,9 @@ import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,6 +59,8 @@ import static org.mockito.Mockito.when;
 public class SchemaMemMetricTableTest {
 
   private static final String TABLE = "t1";
+  private static final String DATABASE = "root.prometheus_metric_test";
+  private static final int SCHEMA_REGION_ID = 4321;
 
   private final MetricService service = MetricService.getInstance();
   private final MetricConfig config = MetricConfigDescriptor.getInstance().getMetricConfig();
@@ -95,6 +105,39 @@ public class SchemaMemMetricTableTest {
     checkTableMetrics(metric, metric::bindTableMetrics, table2DevicesNum);
   }
 
+  @Test
+  public void testSchemaRegionSeriesMetricsIncludeTableMeasurements() {
+    final ITableCache tableCache = DataNodeTableCache.getInstance();
+    tableCache.invalid(DATABASE);
+    final TsTable table = new TsTable(TABLE);
+    table.addColumnSchema(
+        new FieldColumnSchema("s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    table.addColumnSchema(
+        new FieldColumnSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    tableCache.preUpdateTable(DATABASE, table, null);
+    tableCache.commitUpdateTable(DATABASE, TABLE, null);
+
+    final MemSchemaRegionStatistics statistics =
+        new MemSchemaRegionStatistics(SCHEMA_REGION_ID, new MemSchemaEngineStatistics());
+    statistics.addMeasurement(2);
+    statistics.addView(1);
+    statistics.getTable2DevicesNumMap().put(TABLE, 3L);
+    final SchemaRegionMemMetric metric = new SchemaRegionMemMetric(statistics, DATABASE);
+
+    service.addMetricSet(metric);
+    try {
+      assertEquals(
+          9, getSchemaRegionGauge("schema_region_series_cnt", SCHEMA_REGION_ID).getValue(), 0);
+      assertEquals(
+          8,
+          getSchemaRegionGauge("schema_region_non_view_series_cnt", SCHEMA_REGION_ID).getValue(),
+          0);
+    } finally {
+      service.removeMetricSet(metric);
+      tableCache.invalid(DATABASE);
+    }
+  }
+
   private void checkTableMetrics(
       final IMetricSet metric,
       final Consumer<String> bindTableMetrics,
@@ -129,5 +172,17 @@ public class SchemaMemMetricTableTest {
       }
     }
     return null;
+  }
+
+  private AutoGauge getSchemaRegionGauge(final String name, final int schemaRegionId) {
+    for (final Map.Entry<MetricInfo, IMetric> entry : service.getAllMetrics().entrySet()) {
+      if (name.equals(entry.getKey().getTags().get(Tag.NAME.toString()))
+          && ("SchemaRegion[" + schemaRegionId + "]")
+              .equals(entry.getKey().getTags().get(Tag.REGION.toString()))) {
+        return (AutoGauge) entry.getValue();
+      }
+    }
+    throw new AssertionError(
+        "Gauge " + name + " for SchemaRegion[" + schemaRegionId + "] is missing");
   }
 }
