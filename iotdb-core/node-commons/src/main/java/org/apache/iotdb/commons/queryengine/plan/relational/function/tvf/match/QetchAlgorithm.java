@@ -75,7 +75,15 @@ public class QetchAlgorithm {
 
   public QetchAlgorithm() {}
 
-  private List<PatternSegment> parsePattern2DataSegment(String pattern) {
+  public static void validatePattern(String pattern) {
+    parseAndValidatePattern(pattern);
+  }
+
+  private static List<String> parseAndValidatePattern(String pattern) {
+    if (pattern == null) {
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS, pattern));
+    }
     // this pattern is divided by ",", such as "{,1,2,1,},3,6,9"
     // "()" claim as a point while "{}" claim as a repeat regex sign "+" which is supported to nest
 
@@ -114,6 +122,53 @@ public class QetchAlgorithm {
       }
     }
 
+    int pointCount = 0;
+    Deque<Integer> groupStarts = new ArrayDeque<>();
+    for (String piece : patternPieces) {
+      if (piece.equals("{")) {
+        groupStarts.push(pointCount);
+      } else if (piece.equals("}*") || piece.equals("}+")) {
+        if (groupStarts.isEmpty()) {
+          throw new IllegalArgumentException(
+              String.format(
+                  QueryMessages.EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4, pattern));
+        }
+        if (groupStarts.pop() == pointCount) {
+          throw new IllegalArgumentException(
+              String.format(
+                  QueryMessages
+                      .EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB,
+                  pattern));
+        }
+      } else {
+        try {
+          Double.parseDouble(piece);
+        } catch (NumberFormatException e) {
+          throw new IllegalArgumentException(
+              String.format(
+                  QueryMessages
+                      .EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323,
+                  pattern,
+                  piece),
+              e);
+        }
+        pointCount++;
+      }
+    }
+    if (!groupStarts.isEmpty()) {
+      throw new IllegalArgumentException(
+          String.format(
+              QueryMessages.EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4, pattern));
+    }
+    if (pointCount < 2) {
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS, pattern));
+    }
+    return patternPieces;
+  }
+
+  private List<PatternSegment> parsePattern2DataSegment(String pattern) {
+    List<String> patternPieces = parseAndValidatePattern(pattern);
     // classify the Pieces to different dataSegment
     List<PatternSegment> patternSegments = new ArrayList<>();
     PatternSegment patternSegment = null;

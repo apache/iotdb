@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function.tvf;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.QetchAlgorithm;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
-import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -32,13 +38,83 @@ import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class PatternMatchTableFunctionTest {
+
+  @Test
+  public void testRejectEmptyRepetitionGroups() {
+    for (String pattern :
+        new String[] {
+          "1,{,}+,1",
+          "1,{}+,1",
+          "1,{ , , }*,1",
+          "{,}+,1,2",
+          "1,2,{,}+",
+          "1,{2,{,}+,3}+,1",
+          "1,{{,}*}+,1"
+        }) {
+      String expectedMessage =
+          String.format(
+              QueryMessages
+                  .EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB,
+              pattern);
+      assertInvalidPattern(pattern, expectedMessage);
+      IllegalArgumentException exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> new QetchAlgorithm().parsePattern2Automaton(pattern));
+      assertEquals(expectedMessage, exception.getMessage());
+    }
+  }
+
+  @Test
+  public void testRejectMalformedPatternsDuringAnalysis() {
+    for (String pattern : new String[] {null, "", "1", "abc,def,ghi"}) {
+      assertInvalidPattern(
+          pattern, String.format(QueryMessages.INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS, pattern));
+    }
+    for (String pattern : new String[] {"1,{2,3,1", "1,2,3}+,1"}) {
+      assertInvalidPattern(
+          pattern,
+          String.format(
+              QueryMessages.EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4, pattern));
+    }
+    assertInvalidPattern(
+        "1,{2,3},1", String.format(QueryMessages.INVALID_PATTERN_MISSING_REPEAT_SIGN, "1,{2,3},1"));
+    assertInvalidPattern(
+        "1,--2,3",
+        String.format(
+            QueryMessages.EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323,
+            "1,--2,3",
+            "--2"));
+  }
+
+  @Test
+  public void testAcceptNonEmptyRepetitionGroups() {
+    for (String pattern :
+        new String[] {"1,{2,3,2}+,1", "1,{,2,3,2,}*,1", "1,{{2,3,2}+}+,1", "1,{2,{3,2}+,1}+,1"}) {
+      assertNotNull(createProvider(pattern).getDataProcessor());
+    }
+  }
+
+  private void assertInvalidPattern(String pattern, String expectedMessage) {
+    UDFException exception =
+        assertThrows(
+            UDFException.class,
+            () -> new PatternMatchTableFunction().analyze(createArguments(pattern)));
+    assertEquals(expectedMessage, exception.getMessage());
+  }
 
   @Test
   public void testPartitionStateIsIsolated() {
@@ -122,16 +198,30 @@ public class PatternMatchTableFunctionTest {
   }
 
   private TableFunctionProcessorProvider createProvider(String pattern) {
-    MapTableFunctionHandle handle =
-        new MapTableFunctionHandle.Builder()
-            .addProperty("PATTERN", pattern)
-            .addProperty("SMOOTH", 0.0)
-            .addProperty("THRESHOLD", 100.0)
-            .addProperty("WIDTH", 1000.0)
-            .addProperty("HEIGHT", 1000.0)
-            .addProperty("SMOOTH_ON_PATTERN", false)
-            .build();
-    return new PatternMatchTableFunction().getProcessorProvider(handle);
+    PatternMatchTableFunction function = new PatternMatchTableFunction();
+    return function.getProcessorProvider(
+        function.analyze(createArguments(pattern)).getTableFunctionHandle());
+  }
+
+  private Map<String, Argument> createArguments(String pattern) {
+    Map<String, Argument> arguments = new HashMap<>();
+    arguments.put(
+        "DATA",
+        new TableArgument(
+            Arrays.asList(Optional.of("time"), Optional.of("value")),
+            Arrays.asList(Type.TIMESTAMP, Type.DOUBLE),
+            Collections.emptyList(),
+            Collections.singletonList("time"),
+            false));
+    arguments.put("TIME_COL", new ScalarArgument(Type.STRING, "time"));
+    arguments.put("DATA_COL", new ScalarArgument(Type.STRING, "value"));
+    arguments.put("PATTERN", new ScalarArgument(Type.STRING, pattern));
+    arguments.put("SMOOTH", new ScalarArgument(Type.DOUBLE, 0.0));
+    arguments.put("THRESHOLD", new ScalarArgument(Type.DOUBLE, 100.0));
+    arguments.put("WIDTH", new ScalarArgument(Type.DOUBLE, 1000.0));
+    arguments.put("HEIGHT", new ScalarArgument(Type.DOUBLE, 1000.0));
+    arguments.put("SMOOTH_ON_PATTERN", new ScalarArgument(Type.BOOLEAN, false));
+    return arguments;
   }
 
   private Column[] processPartition(TableFunctionDataProcessor processor, double[] values) {
