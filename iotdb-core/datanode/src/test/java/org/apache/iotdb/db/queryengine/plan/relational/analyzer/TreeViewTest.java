@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
@@ -65,6 +66,9 @@ public class TreeViewTest {
 
   @Before
   public void setup() {
+    // This planner test has no ConfigNode heartbeats and may exceed the default lease timeout.
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     TsTable tsTable = new TsTable(DEVICE_VIEW_TEST_TABLE);
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test" + ".**");
@@ -74,7 +78,13 @@ public class TreeViewTest {
 
   @After
   public void tearDown() {
-    DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
+    try {
+      DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
+    } finally {
+      // Renew before restoring the timeout to avoid racing the background lease check.
+      MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
+      MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
+    }
   }
 
   @Test
