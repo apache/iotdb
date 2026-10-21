@@ -399,6 +399,13 @@ public class ImportDataTable extends AbstractImportData {
     String regex = "\\(([^()]+)\\)$";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
+      String normalizedHeaderName = headerName.toLowerCase(Locale.ROOT);
+      // A complete table column name takes precedence over a possible type suffix.
+      if (dataTypes.containsKey(normalizedHeaderName)) {
+        headerNameMap.put(normalizedHeaderName, headerName);
+        headerTypeMap.put(normalizedHeaderName, dataTypes.get(normalizedHeaderName));
+        continue;
+      }
       Matcher matcher = pattern.matcher(headerName);
       String type;
       String headerNameWithoutType;
@@ -408,7 +415,7 @@ public class ImportDataTable extends AbstractImportData {
         headerNameMap.put(headerNameWithoutType, headerName);
         headerTypeMap.put(headerNameWithoutType, getType(type.toUpperCase(Locale.ROOT)));
       } else {
-        headerNameMap.put(headerName.toLowerCase(Locale.ROOT), headerName);
+        headerNameMap.put(normalizedHeaderName, headerName);
       }
     }
   }

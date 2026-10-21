@@ -107,6 +107,19 @@ public abstract class ImportTsFileBase implements Runnable {
     operation.processFileGroup(Paths.get(filePath), target);
   }
 
+  protected static void resetCounters() {
+    loadFileSuccessfulNum.reset();
+    loadFileFailedNum.reset();
+    processingLoadSuccessfulFileSuccessfulNum.reset();
+    processingLoadFailedFileSuccessfulNum.reset();
+  }
+
+  protected static boolean hasFailures() {
+    return loadFileFailedNum.sum() > 0
+        || loadFileSuccessfulNum.sum() != processingLoadSuccessfulFileSuccessfulNum.sum()
+        || ImportTsFileScanTool.getTsFileQueueSize() > 0;
+  }
+
   protected static void printResult(final long startTime) {
     IOT_PRINTER.println(
         "Successfully load "

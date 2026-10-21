@@ -594,7 +594,57 @@ public class DataToolRegressionTest extends AbstractDataTool {
   @Test
   public void testTableCsvRoundTripPreservesWhitespaceAndParenthesesInColumnNames()
       throws Exception {
-    String column = "value(double) with space";
+    assertTableCsvRoundTrip("value(double) with space");
+  }
+
+  @Test
+  public void testTableCsvRoundTripPreservesTrailingParenthesesInColumnNames() throws Exception {
+    for (String column : List.of("value(foo)", "value(double)", "value(foo)(double)")) {
+      assertTableCsvRoundTrip(column);
+    }
+  }
+
+  @Test
+  public void testTableCsvPrefersCompleteColumnNameOverTypeSuffix() throws Exception {
+    Map<String, TSDataType> types = new LinkedHashMap<>();
+    types.put("value", TSDataType.DOUBLE);
+    types.put("value(double)", TSDataType.DOUBLE);
+    Map<String, ColumnCategory> categories = new LinkedHashMap<>();
+    categories.put("value", ColumnCategory.FIELD);
+    categories.put("value(double)", ColumnCategory.FIELD);
+    set(ImportDataTable.class, "dataTypes", types);
+    set(ImportDataTable.class, "columnCategory", categories);
+    ITableSessionPool pool = mock(ITableSessionPool.class);
+    ITableSession session = mock(ITableSession.class);
+    when(pool.getSession()).thenReturn(session);
+    set(ImportDataTable.class, "sessionPool", pool);
+    doAnswer(
+            invocation -> {
+              Tablet tablet = invocation.getArgument(0);
+              assertEquals(2, tablet.getSchemas().size());
+              assertEquals("value(double)", tablet.getSchemas().get(1).getMeasurementName());
+              assertEquals(1, tablet.getRowSize());
+              assertEquals(1L, tablet.getTimestamps()[0]);
+              assertEquals(1.5, ((double[]) tablet.getValues()[1])[0], 0);
+              assertEquals(0, ((double[]) tablet.getValues()[0])[0], 0);
+              return null;
+            })
+        .when(session)
+        .insert(any(Tablet.class));
+    Path csv = directory.resolve("parentheses.csv");
+    Files.writeString(csv, "TIME,VALUE(DOUBLE)\n1,1.5\n");
+    try (CSVParser records = readCsvFile(csv.toString())) {
+      new ImportDataTable()
+          .writeData(
+              records.getHeaderNames(),
+              records.getRecords(),
+              directory.resolve("parentheses.failed").toString());
+    }
+    verify(session).insert(any(Tablet.class));
+    assertFalse(Files.exists(directory.resolve("parentheses.failed")));
+  }
+
+  private void assertTableCsvRoundTrip(String column) throws Exception {
     set(ImportDataTable.class, "dataTypes", Map.of(column, TSDataType.DOUBLE));
     set(ImportDataTable.class, "columnCategory", Map.of(column, ColumnCategory.FIELD));
     ITableSessionPool pool = mock(ITableSessionPool.class);
