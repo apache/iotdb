@@ -2313,9 +2313,6 @@ public class ProcedureManager {
     if (req == null || !req.isSetViewInfos()) {
       return new TAutoSyncViewColumnsResp(RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
     }
-    final long startTime = System.currentTimeMillis();
-    LOGGER.info(
-        ManagerMessages.LOG_RECEIVED_ARG_ADD_VIEW_COLUMN_REQUESTS_6ED6D52F, req.getViewInfosSize());
 
     final List<TAutoSyncViewColumnsFailure> failedViews = new ArrayList<>();
     final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures =
@@ -2356,12 +2353,6 @@ public class ProcedureManager {
     if (!failedViews.isEmpty()) {
       response.setFailedViews(failedViews);
     }
-    LOGGER.info(
-        ManagerMessages
-            .LOG_ADD_VIEW_COLUMN_REQUESTS_FOR_ARG_VIEWS_FINISHED_IN_ARG_MS_ARG_VIEWS_FAILED_4A4E0506,
-        req.getViewInfosSize(),
-        System.currentTimeMillis() - startTime,
-        failedViews.size());
     return response;
   }
 
@@ -2455,11 +2446,6 @@ public class ProcedureManager {
       final List<TAutoSyncViewColumnsFailure> failedViews) {
     List<Pair<TAlterOrDropTableReq, TSStatus>> pending = overlappingReqs;
     for (int round = 0; round < OVERLAP_RETRY_ROUNDS && !pending.isEmpty(); round++) {
-      LOGGER.info(
-          ManagerMessages
-              .LOG_ADD_VIEW_COLUMN_OVERLAP_RETRY_ROUND_ARG_HAS_ARG_PENDING_REQUESTS_43EC58EA,
-          round + 1,
-          pending.size());
       try {
         Thread.sleep(OVERLAP_RETRY_WAIT_MS);
       } catch (final InterruptedException e) {
@@ -2478,13 +2464,6 @@ public class ProcedureManager {
     }
 
     for (final Pair<TAlterOrDropTableReq, TSStatus> request : pending) {
-      LOGGER.info(
-          ManagerMessages
-              .LOG_ADD_VIEW_COLUMN_REQUEST_FOR_ARG_ARG_STILL_FAILS_AFTER_ARG_RETRY_ROUNDS_ARG_0181431F,
-          request.getLeft().database,
-          request.getLeft().tableName,
-          OVERLAP_RETRY_ROUNDS,
-          request.getRight());
       failedViews.add(
           new TAutoSyncViewColumnsFailure(
               request.getLeft().database, request.getLeft().tableName, request.getRight()));

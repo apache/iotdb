@@ -2922,8 +2922,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             ViewColumnAutoSyncTrigger.sync(
                 device2Measurements, EXTEND_DEVICE_TEMPLATE_ID_PREFIX + newTemplate.getId());
           } catch (final Exception e) {
-            // todo
-            LOGGER.warn(
+            ViewColumnAutoSyncTrigger.LOGGER.warn(
                 DataNodeMiscMessages
                     .LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554,
                 newTemplate.getName(),

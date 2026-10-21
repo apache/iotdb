@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.AbstractConfigNodeInfo;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -72,12 +73,19 @@ import java.util.Set;
  */
 public class ViewColumnAutoSyncTrigger {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ViewColumnAutoSyncTrigger.class);
+  // Public so that the schema write path, which invokes sync and catches its failures, logs them
+  // with the logger of the feature; logback routes this logger to its own error file.
+  public static final Logger LOGGER = LoggerFactory.getLogger(ViewColumnAutoSyncTrigger.class);
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
   public static final String QUERY_ID_PREFIX = "tree_to_table_add_column";
   public static final String EXTEND_DEVICE_TEMPLATE_ID_PREFIX = "template_";
+
+  /** How many devices, and how many measurements per device, a fenced lease log line shows. */
+  private static final int MAX_LOGGED_DEVICES = 10;
+
+  private static final int MAX_LOGGED_MEASUREMENTS_PER_DEVICE = 10;
 
   /**
    * Adds the columns the views covering the given devices need.
@@ -99,8 +107,18 @@ public class ViewColumnAutoSyncTrigger {
     }
 
     // the views to be added columns
-    final Map<TreeToTableViewReference, Set<Pair<String, TSDataType>>> view2Measurements =
-        collectViewMeasurements(device2Measurements);
+    final Map<TreeToTableViewReference, Set<Pair<String, TSDataType>>> view2Measurements;
+    try {
+      view2Measurements = collectViewMeasurements(device2Measurements);
+    } catch (final MetadataLeaseFencedException e) {
+      // The DataNode is isolated: neither the index nor the table cache it consults may be used.
+      // Give up this round and record the measurements which cannot be added while it is fenced.
+      LOGGER.error(
+          DataNodeSchemaMessages
+              .LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44,
+          formatDeviceMeasurements(device2Measurements));
+      return;
+    }
     if (view2Measurements.isEmpty()) {
       return;
     }
@@ -120,7 +138,7 @@ public class ViewColumnAutoSyncTrigger {
         return;
       }
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
+        LOGGER.error(
             DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC,
             operationId,
             resp.getStatus());
@@ -140,6 +158,46 @@ public class ViewColumnAutoSyncTrigger {
       LOGGER.warn(
           DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652, operationId, e);
     }
+  }
+
+  /**
+   * A bounded, human readable form of the measurements, so that the log line of a batch write stays
+   * short: at most {@link #MAX_LOGGED_DEVICES} devices and {@link
+   * #MAX_LOGGED_MEASUREMENTS_PER_DEVICE} measurements per device are written, the rest is
+   * summarized.
+   */
+  private static String formatDeviceMeasurements(
+      final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements) {
+    final StringBuilder builder = new StringBuilder("{");
+    int loggedDevices = 0;
+    for (final Map.Entry<PartialPath, List<Pair<String, TSDataType>>> entry :
+        device2Measurements.entrySet()) {
+      if (loggedDevices == MAX_LOGGED_DEVICES) {
+        builder.append("... (").append(device2Measurements.size()).append(" devices in total)}");
+        return builder.toString();
+      }
+      if (loggedDevices > 0) {
+        builder.append(", ");
+      }
+      builder.append(entry.getKey().getFullPath()).append("=[");
+      final List<Pair<String, TSDataType>> measurements = entry.getValue();
+      for (int i = 0; i < measurements.size(); i++) {
+        if (i == MAX_LOGGED_MEASUREMENTS_PER_DEVICE) {
+          builder.append("... (").append(measurements.size()).append(" measurements in total)");
+          break;
+        }
+        if (i > 0) {
+          builder.append(", ");
+        }
+        builder
+            .append(measurements.get(i).getLeft())
+            .append(':')
+            .append(measurements.get(i).getRight());
+      }
+      builder.append(']');
+      loggedDevices++;
+    }
+    return builder.append('}').toString();
   }
 
   /**

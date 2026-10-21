@@ -699,16 +699,4 @@ public final class ManagerMessages {
 
   public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
       "ConfigNode leader 正在等待节点状态持久化。";
-
-  public static final String LOG_RECEIVED_ARG_ADD_VIEW_COLUMN_REQUESTS_6ED6D52F =
-      "收到 {} 个树转表视图加列请求";
-  public static final String
-      LOG_ADD_VIEW_COLUMN_OVERLAP_RETRY_ROUND_ARG_HAS_ARG_PENDING_REQUESTS_43EC58EA =
-          "树转表视图加列重叠重试第 {} 轮，仍有 {} 个请求待处理";
-  public static final String
-      LOG_ADD_VIEW_COLUMN_REQUEST_FOR_ARG_ARG_STILL_FAILS_AFTER_ARG_RETRY_ROUNDS_ARG_0181431F =
-          "视图 {}.{} 的树转表视图加列请求重试 {} 轮后仍然失败：{}";
-  public static final String
-      LOG_ADD_VIEW_COLUMN_REQUESTS_FOR_ARG_VIEWS_FINISHED_IN_ARG_MS_ARG_VIEWS_FAILED_4A4E0506 =
-          "{} 个视图的树转表视图加列请求在 {} ms 内完成，其中 {} 个失败";
 }

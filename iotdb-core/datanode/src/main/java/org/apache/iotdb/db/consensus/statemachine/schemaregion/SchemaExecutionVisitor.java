@@ -495,7 +495,9 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         ViewColumnAutoSyncTrigger.sync(createdMeasurements, operationId);
       }
     } catch (final Throwable e) {
-      logger.error(
+      // Logged with the logger of the feature, so that every failure of the auto column addition,
+      // including the ones the trigger itself does not see, reaches its dedicated log file.
+      ViewColumnAutoSyncTrigger.LOGGER.error(
           DataNodeSchemaMessages.LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F, operationId, e);
     }
   }

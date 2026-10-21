@@ -746,5 +746,8 @@ public final class DataNodeSchemaMessages {
   public static final String
       LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984 =
           "树转表视图 {}.{} 的属性更新为 {}";
+  public static final String
+      LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
+          "自动扩列时元数据租约已隔离，本次放弃；涉及的测点为 {}";
 
 }
