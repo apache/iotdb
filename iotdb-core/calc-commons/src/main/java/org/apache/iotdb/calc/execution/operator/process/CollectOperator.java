@@ -161,6 +161,14 @@ public class CollectOperator implements ProcessOperator {
     }
   }
 
+  /**
+   * Every live child holds its retained state while one of them is advanced from its retained size
+   * to its peak, so the instant peak is {@code retained + max(child.peak - child.retained)}.
+   *
+   * <p>In executed distributed plans every child is an ExchangeOperator whose retained size is
+   * zero, so this degenerates to {@code max(child.peak)} and no parent peak formula counts any
+   * child state twice.
+   */
   @Override
   public long calculateMaxPeekMemory() {
     long retained = calculateRetainedSizeAfterCallingNext();
