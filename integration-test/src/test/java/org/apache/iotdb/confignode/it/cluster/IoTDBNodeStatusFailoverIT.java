@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -232,47 +233,51 @@ public class IoTDBNodeStatusFailoverIT {
   @Test
   public void testLiveOldLeaderPartitionAndQuorumRecovery() throws Exception {
     init(3);
-    int stopped = stoppedFixture(0);
-    int first = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    TConfigNodeLocation firstLocation = configLocation(cluster(), first);
-    for (int i = 0; i < 3; i++) {
-      control(i, "partition:" + firstLocation.getConfigNodeId());
-    }
-    int majorityLeader = awaitOtherLeader(first);
-    assertTrue(
-        "Partition must leave the old leader process alive",
-        EnvFactory.getEnv().getConfigNodeWrapper(first).isAlive());
-    assertSuccess(control(majorityLeader, "update:" + stopped + ":Removing"));
-    try {
-      assertStatus(0, stopped, NodeStatus.Removing);
-    } catch (SQLException e) {
-      // Preserve a failure for SQL routing without skipping consensus recovery assertions.
-      failures.addError(
-          new AssertionError(
-              "SHOW through the healthy DataNode cannot reach the elected majority", e));
-    }
-    heal();
-    awaitPersisted(first, stopped, NodeStatus.Removing);
-    transfer(first);
-    assertStatus(0, stopped, NodeStatus.Removing);
+    // Keep authentication outside the fault window; SHOW must still reach the current leader.
+    try (Connection connection = queryConnection()) {
+      int stopped = stopDataNode(0);
+      assertStatus(0, stopped, NodeStatus.Stopped, connection);
+      int first = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+      TConfigNodeLocation firstLocation = configLocation(cluster(), first);
+      for (int i = 0; i < 3; i++) {
+        control(i, "partition:" + firstLocation.getConfigNodeId());
+      }
+      int majorityLeader = awaitOtherLeader(first);
+      assertTrue(
+          "Partition must leave the old leader process alive",
+          EnvFactory.getEnv().getConfigNodeWrapper(first).isAlive());
+      assertSuccess(control(majorityLeader, "update:" + stopped + ":Removing"));
+      try {
+        assertStatus(0, stopped, NodeStatus.Removing, connection);
+      } catch (SQLException e) {
+        // Preserve a failure for SQL routing without skipping consensus recovery assertions.
+        failures.addError(
+            new AssertionError(
+                "SHOW through the healthy DataNode cannot reach the elected majority", e));
+      }
+      heal();
+      awaitPersisted(first, stopped, NodeStatus.Removing);
+      transfer(first);
+      assertStatus(0, stopped, NodeStatus.Removing, connection);
 
-    // Keep every process alive but prevent any pair of ConfigRegion voters communicating.
-    for (int i = 0; i < 3; i++) {
-      control(i, "partition:*");
+      // Keep every process alive but prevent any pair of ConfigRegion voters communicating.
+      for (int i = 0; i < 3; i++) {
+        control(i, "partition:*");
+      }
+      Properties noQuorum = control(first, "update:" + stopped + ":Running");
+      assertNotEquals(
+          "No quorum cannot confirm clearing Removing", "200", noQuorum.getProperty("code"));
+      assertEquals(
+          "Removing", control(first, "inspect:" + stopped).getProperty("persisted." + stopped));
+      heal();
+      int recovered = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+      assertSuccess(control(recovered, "update:" + stopped + ":Running"));
+      for (int i = 0; i < 3; i++) {
+        awaitPersisted(i, stopped, null);
+      }
+      transfer((recovered + 1) % 3);
+      assertStatus(0, stopped, NodeStatus.Unknown, connection);
     }
-    Properties noQuorum = control(first, "update:" + stopped + ":Running");
-    assertNotEquals(
-        "No quorum cannot confirm clearing Removing", "200", noQuorum.getProperty("code"));
-    assertEquals(
-        "Removing", control(first, "inspect:" + stopped).getProperty("persisted." + stopped));
-    heal();
-    int recovered = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    assertSuccess(control(recovered, "update:" + stopped + ":Running"));
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, stopped, null);
-    }
-    transfer((recovered + 1) % 3);
-    assertStatus(0, stopped, NodeStatus.Unknown);
   }
 
   private void init(int dataNodes) throws Exception {
@@ -535,6 +540,12 @@ public class IoTDBNodeStatusFailoverIT {
   }
 
   private int stoppedFixture(int index) throws Exception {
+    int nodeId = stopDataNode(index);
+    assertStatus(index, nodeId, NodeStatus.Stopped);
+    return nodeId;
+  }
+
+  private int stopDataNode(int index) throws Exception {
     TDataNodeLocation node = dataLocation(cluster(), index);
     EnvFactory.getEnv().getDataNodeWrapper(index).stopForcibly();
     assertFalse(EnvFactory.getEnv().getDataNodeWrapper(index).isAlive());
@@ -542,7 +553,6 @@ public class IoTDBNodeStatusFailoverIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       assertEquals(200, client.reportDataNodeShutdown(node).getCode());
     }
-    assertStatus(index, node.getDataNodeId(), NodeStatus.Stopped);
     return node.getDataNodeId();
   }
 
@@ -563,14 +573,30 @@ public class IoTDBNodeStatusFailoverIT {
   }
 
   private void assertStatus(int index, int nodeId, NodeStatus expected) throws Exception {
+    assertConfigNodeStatus(index, nodeId, expected);
+    // Pin the SQL connection to the healthy query node; do not fan out to stopped DataNodes.
+    try (Connection connection = queryConnection()) {
+      assertSqlStatus(connection, nodeId, expected);
+    }
+  }
+
+  private void assertStatus(int index, int nodeId, NodeStatus expected, Connection connection)
+      throws Exception {
+    assertConfigNodeStatus(index, nodeId, expected);
+    assertSqlStatus(connection, nodeId, expected);
+  }
+
+  private void assertConfigNodeStatus(int index, int nodeId, NodeStatus expected) throws Exception {
     EnvFactory.getEnv()
         .ensureNodeStatus(
             Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(index)),
             Collections.singletonList(expected));
     assertEquals(expected.getStatus(), cluster().getNodeStatus().get(nodeId));
-    // Pin the SQL connection to the healthy query node; do not fan out to stopped DataNodes.
-    try (Connection connection = queryConnection();
-        Statement statement = connection.createStatement()) {
+  }
+
+  private void assertSqlStatus(Connection connection, int nodeId, NodeStatus expected)
+      throws SQLException {
+    try (Statement statement = connection.createStatement()) {
       for (String sql : new String[] {"SHOW CLUSTER", "SHOW DATANODES"}) {
         boolean found = false;
         try (ResultSet rows = statement.executeQuery(sql)) {
@@ -728,8 +754,8 @@ public class IoTDBNodeStatusFailoverIT {
 
   private Connection queryConnection() throws SQLException {
     Properties properties = new Properties();
-    properties.setProperty("user", "root");
-    properties.setProperty("password", "root");
+    properties.setProperty("user", SessionConfig.DEFAULT_USER);
+    properties.setProperty("password", SessionConfig.DEFAULT_PASSWORD);
     properties.setProperty("network_timeout", "15000");
     properties.setProperty("sql_dialect", "tree");
     return DriverManager.getConnection(
