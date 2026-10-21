@@ -581,4 +581,5 @@ public final class CalcMessages {
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "Aggregate function [%s] requires %d arguments, but got %d";
+
 }

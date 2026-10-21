@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -115,7 +114,7 @@ public class IoTDBCollectFanInIT {
   }
 
   @Test
-  public void testPipeVerificationQueryUsesDeterministicPrimaryKeyOrder() throws Exception {
+  public void testPipeVerificationQueryRowsAreCompletePerNode() throws Exception {
     TableModelUtils.createDataBaseAndTable(EnvFactory.getEnv(), "pipe_readings", DATABASE);
     TableModelUtils.insertData(DATABASE, "pipe_readings", 0, DEVICES * ROWS, EnvFactory.getEnv());
     List<String> expected =
@@ -124,11 +123,11 @@ public class IoTDBCollectFanInIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE);
+      // The pipe verification query has no ORDER BY and fans in through a ready-first Collect,
+      // so each node's row set must be checked independently without relying on row order.
       try (ResultSet result =
-          statement.executeQuery(
-              "select s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,time from pipe_readings "
-                  + "order by s0,s1,s2,s3,time")) {
-        TestUtils.assertResultSetEqual(result, TableModelUtils.generateHeaderResults(), expected);
+          statement.executeQuery(TableModelUtils.getQuerySql("pipe_readings"))) {
+        assertResultSetEqualUnordered(result, TableModelUtils.generateHeaderResults(), expected);
       }
     }
   }

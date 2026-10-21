@@ -40,6 +40,7 @@ import java.util.List;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
@@ -65,7 +66,8 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
   @Test
   public void testAnyAndSomeComparisonInWhereClauseWithoutNull() {
     String sql;
-    String expectedHeader;
+    String expectedHeaderStr;
+    String[] expectedHeader;
     String[] retArray;
 
     // Test case: where s > any (subquery), s does not contain null value
@@ -73,10 +75,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > any (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -85,10 +87,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > some (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -97,10 +99,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s >= any (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -109,10 +111,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s >= some (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -121,10 +123,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < any (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -133,10 +135,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < some (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -145,10 +147,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s <= any (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -157,10 +159,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s <= some (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -169,11 +171,12 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = any (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
-      assertUnorderedResult(
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          Arrays.asList(retArray));
+          retArray,
+          DATABASE_NAME);
     }
 
     // Test case: where s = some (subquery), s does not contain null value
@@ -181,11 +184,12 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = some (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
-      assertUnorderedResult(
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          Arrays.asList(retArray));
+          retArray,
+          DATABASE_NAME);
     }
 
     // Test case: where s != any (subquery), s does not contain null value
@@ -193,10 +197,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s != any (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -205,10 +209,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s != some (SELECT %s FROM table1 WHERE device_id = 'd01')";
     retArray = new String[] {"30,", "40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
   }
@@ -216,7 +220,8 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
   @Test
   public void testAllComparisonInWhereClauseWithoutNull() {
     String sql;
-    String expectedHeader;
+    String expectedHeaderStr;
+    String[] expectedHeader;
     String[] retArray;
 
     // Test case: where s > all (subquery), s does not contain null value
@@ -224,10 +229,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > all (SELECT %s FROM table3 WHERE device_id = 'd01')";
     retArray = new String[] {"50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -236,10 +241,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s >= all (SELECT %s FROM table3 WHERE device_id = 'd01')";
     retArray = new String[] {"40,", "50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -248,10 +253,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < all (SELECT %s FROM table3 WHERE device_id = 'd01')";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -260,10 +265,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s <= all (SELECT %s FROM table3 WHERE device_id = 'd01')";
     retArray = new String[] {"30,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -272,10 +277,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = all (SELECT %s FROM table3 WHERE device_id = 'd01')";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -284,11 +289,12 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s != all (SELECT %s FROM table3 WHERE device_id = 'd01')";
     retArray = new String[] {"50,", "60,", "70,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
-      assertUnorderedResult(
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          Arrays.asList(retArray));
+          retArray,
+          DATABASE_NAME);
     }
   }
 
@@ -374,7 +380,8 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
   @Test
   public void testAllComparisonInWhereClauseWithNull() {
     String sql;
-    String expectedHeader;
+    String expectedHeaderStr;
+    String[] expectedHeader;
     String[] retArray;
 
     // Test case: where s1 > all (subquery), s1 in table3 contains null value.
@@ -382,10 +389,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s > all (SELECT s1 FROM table3)";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -394,10 +401,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s >= all (SELECT s1 FROM table3)";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -406,10 +413,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < all (SELECT s1 FROM table3)";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -418,10 +425,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s <= all (SELECT s1 FROM table3)";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -430,10 +437,10 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = all (SELECT s1 FROM table3)";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
+      expectedHeaderStr = measurement + ",";
       assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
+          expectedHeaderStr,
           Arrays.asList(retArray));
     }
 
@@ -442,11 +449,12 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and cast(%s as INT32) != all (SELECT s1 FROM table3)";
     retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      expectedHeader = measurement + ",";
-      assertUnorderedResult(
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          Arrays.asList(retArray));
+          retArray,
+          DATABASE_NAME);
     }
   }
 
@@ -544,82 +552,82 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
 
   public void testQuantifiedComparisonInSelectClause() {
     String sql;
-    String expectedHeader;
+    String[] expectedHeader;
     String[] retArray;
 
     // Test case: select s > any(subquery)
     sql =
         "SELECT %s > any(SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"false,", "true,", "true,", "true,", "true,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s > some(subquery)
     sql =
         "SELECT %s > some(SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"false,", "true,", "true,", "true,", "true,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s > all(subquery)
     sql =
         "SELECT %s > all(SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"false,", "false,", "false,", "false,", "false,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s < any(subquery), subquery contains null value
     sql = "SELECT %s < any(SELECT (%s) from table3) from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"null,", "null,", "null,", "null,", "null,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s < some(subquery), subquery contains null value
     sql = "SELECT %s < some(SELECT (%s) from table3) from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"null,", "null,", "null,", "null,", "null,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s <= any(subquery), subquery contains null value
     sql = "SELECT %s <= any(SELECT (%s) from table3) from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"true,", "null,", "null,", "null,", "null,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s <= some(subquery), subquery contains null value
     sql = "SELECT %s <= some(SELECT (%s) from table3) from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"true,", "null,", "null,", "null,", "null,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s != all(subquery), subquery contains null value
     sql = "SELECT %s != all(SELECT (%s) from table3) from table1 where device_id = 'd01'";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"false,", "false,", "null,", "null,", "null,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s != all(subquery), subquery result contains null value and s not in
@@ -627,11 +635,11 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
     // value result set
     sql =
         "SELECT %s != all(SELECT (%s) from table3 where device_id = 'd_null') from table1 where device_id = 'd02' and %s != 30";
-    expectedHeader = "_col0,";
+    expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"null,", "null,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      assertUnorderedResult(
-          String.format(sql, measurement, measurement), expectedHeader, Arrays.asList(retArray));
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
   }
 

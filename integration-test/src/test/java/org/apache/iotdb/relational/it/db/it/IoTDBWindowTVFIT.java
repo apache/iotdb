@@ -142,7 +142,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:25:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m) ORDER BY stock_id, time, window_start, window_end",
+        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -671,7 +671,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:12:00.000Z,2021-01-01T09:24:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m) ORDER BY stock_id, time, window_start, window_end",
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -694,7 +694,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:06:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m, ORIGIN => 2021-01-01T09:06:00) ORDER BY stock_id, time, window_start, window_end",
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m, ORIGIN => 2021-01-01T09:06:00) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
