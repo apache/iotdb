@@ -851,9 +851,8 @@ public class ConsensusPrefetchingQueueTest {
               WALFileUtils.getLogFileName(2L, 3L, WALFileStatus.CONTAINS_SEARCH_INDEX));
       writeWalMetadata(firstWal, 1L, 2L, 1002L, 7);
       writeWalMetadata(nextWal, 2L, 4L, 1004L, 7);
-      try (WALWriter ignored = new WALWriter(liveWal, WALFileVersion.V3)) {
-        // Keep a live successor so both data WAL files are eligible for boundary checks.
-      }
+      // The v2 metadata becomes eligible for retention checks only after the mocked WAL rolls.
+      writeWalMetadata(liveWal, 3L, 7L, 1007L, 7);
       assertEquals(3, WALFileUtils.listAllWALFiles(walDirectory).length);
       assertFalse(ProgressWALIterator.isHeaderOnlyWalFile(firstWal));
 
@@ -866,7 +865,8 @@ public class ConsensusPrefetchingQueueTest {
       final WALNode walNode = mock(WALNode.class);
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getSortedWalFilesSnapshot()).thenReturn(new File[] {firstWal, nextWal, liveWal});
-      when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
+      final AtomicLong currentWalVersion = new AtomicLong(2L);
+      when(walNode.getCurrentWALFileVersion()).thenAnswer(ignored -> currentWalVersion.get());
       assertEquals(2L, walNode.getCurrentWALFileVersion());
 
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -936,9 +936,43 @@ public class ConsensusPrefetchingQueueTest {
       assertEquals(0L, retentionSupplier.get().getAsLong());
 
       committedProgress.set(
-          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1001L, 1L))));
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1004L, 4L))));
+      assertTrue((Boolean) refreshRetentionBound.invoke(queue));
+      // Advancing past v1 must not reopen v0, which is still retained for replay.
+      assertEquals(2, progressWalReaderOpenCount.get());
+      assertEquals(2L, committedBound.getLong(queue));
+
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1005L, 5L))));
+      assertFalse((Boolean) refreshRetentionBound.invoke(queue));
+      // The current WAL file stays retained without repeatedly scanning the sealed prefix.
+      assertEquals(2, progressWalReaderOpenCount.get());
+      assertEquals(0L, retentionSupplier.get().getAsLong());
+
+      final File nextLiveWal =
+          new File(
+              walDirectory,
+              WALFileUtils.getLogFileName(3L, 4L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+      try (WALWriter ignored = new WALWriter(nextLiveWal, WALFileVersion.V3)) {
+        // Rolling v2 makes its previously live metadata a sealed retention requirement.
+      }
+      currentWalVersion.set(3L);
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1006L, 6L))));
+      assertFalse((Boolean) refreshRetentionBound.invoke(queue));
+      assertEquals(3, progressWalReaderOpenCount.get());
+      assertEquals(2L, committedBound.getLong(queue));
+
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1007L, 7L))));
       assertTrue((Boolean) refreshRetentionBound.invoke(queue));
       assertEquals(3, progressWalReaderOpenCount.get());
+      assertEquals(3L, committedBound.getLong(queue));
+
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1001L, 1L))));
+      assertTrue((Boolean) refreshRetentionBound.invoke(queue));
+      assertEquals(4, progressWalReaderOpenCount.get());
       assertEquals(0L, committedBound.getLong(queue));
       assertEquals(0L, retentionSupplier.get().getAsLong());
     } finally {
@@ -2514,6 +2548,140 @@ public class ConsensusPrefetchingQueueTest {
         queue.close();
       }
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testAckRetentionRefreshDoesNotBlockEventRecycling() throws Exception {
+    for (final boolean silent : new boolean[] {false, true}) {
+      final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+      final File systemDir = temporaryFolder.newFolder("ack-retention-system-" + silent);
+      final File walDirectory = temporaryFolder.newFolder("ack-retention-wal-" + silent);
+      final int originalRecycleInterval =
+          CommonDescriptor.getInstance()
+              .getConfig()
+              .getSubscriptionRecycleUncommittedEventIntervalMs();
+      final CountDownLatch retentionReadStarted = new CountDownLatch(1);
+      final CountDownLatch releaseRetentionRead = new CountDownLatch(1);
+      final AtomicBoolean blockRetentionRead = new AtomicBoolean(false);
+      final ExecutorService executor = Executors.newFixedThreadPool(2);
+      ConsensusPrefetchingQueue queue = null;
+      try {
+        IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+        final File firstWal =
+            new File(
+                walDirectory,
+                WALFileUtils.getLogFileName(0L, 0L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+        final File nextWal =
+            new File(
+                walDirectory,
+                WALFileUtils.getLogFileName(1L, 1L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+        final File liveWal =
+            new File(
+                walDirectory,
+                WALFileUtils.getLogFileName(2L, 2L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+        writeWalMetadata(firstWal, 1L, 1L, 1001L, 7);
+        writeWalMetadata(nextWal, 2L, 2L, 1002L, 7);
+        try (WALWriter ignored = new WALWriter(liveWal, WALFileVersion.V3)) {
+          // Keep both data files sealed for retention checks.
+        }
+        final WALNode walNode = mock(WALNode.class);
+        when(walNode.getLogDirectory()).thenReturn(walDirectory);
+        when(walNode.getSortedWalFilesSnapshot())
+            .thenReturn(new File[] {firstWal, nextWal, liveWal});
+        when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
+        when(walNode.getCurrentSearchIndex()).thenReturn(2L);
+        final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+        when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+        when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+        final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+        when(converter.convert(any()))
+            .thenReturn(Collections.singletonList(createTablet()), Collections.emptyList());
+        when(converter.getDatabaseName()).thenReturn("db");
+        queue =
+            new ConsensusPrefetchingQueue(
+                "consumerGroup",
+                "topic",
+                TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+                new DataRegionId(1),
+                serverImpl,
+                new SubscriptionWalRetentionPolicy(
+                    "topic",
+                    SubscriptionWalRetentionPolicy.UNBOUNDED,
+                    SubscriptionWalRetentionPolicy.UNBOUNDED),
+                converter,
+                newCommitManager(systemDir),
+                new RegionProgress(Collections.emptyMap()),
+                1L,
+                1L,
+                true) {
+              @Override
+              ProgressWALReader openProgressWALReader(final File walFile) throws IOException {
+                if (blockRetentionRead.get()) {
+                  retentionReadStarted.countDown();
+                  try {
+                    assertTrue(releaseRetentionRead.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+                  } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException(e);
+                  }
+                }
+                return super.openProgressWALReader(walFile);
+              }
+            };
+        queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1024L * 1024L));
+        assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+        assertTrue(pendingEntries(queue).offer(createRequest(2L)));
+        queue.drivePrefetchOnce();
+        final Method commitAndRetention =
+            ConsensusPrefetchingQueue.class.getDeclaredMethod(
+                "commitAndRefreshWalRetention", WriterId.class, WriterProgress.class);
+        commitAndRetention.setAccessible(true);
+        commitAndRetention.invoke(
+            queue, new WriterId("DataRegion[1]", 7), new WriterProgress(1000L, 0L));
+        final SubscriptionEvent event = queue.poll("consumer");
+        assertNotNull(event);
+        assertTrue(queue.getRetainedTabletBytes() > 0L);
+        final Field timestampField =
+            SubscriptionEvent.class.getDeclaredField("lastPolledTimestamp");
+        timestampField.setAccessible(true);
+        ((AtomicLong) timestampField.get(event)).set(System.currentTimeMillis() - 1000L);
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setSubscriptionRecycleUncommittedEventIntervalMs(1);
+
+        final ConsensusPrefetchingQueue activeQueue = queue;
+        blockRetentionRead.set(true);
+        final Future<Boolean> ack =
+            executor.submit(
+                () ->
+                    silent
+                        ? activeQueue.ackSilent("consumer", event.getCommitContext())
+                        : activeQueue.ack("consumer", event.getCommitContext()));
+        assertTrue(retentionReadStarted.await(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        final Method recycle =
+            ConsensusPrefetchingQueue.class.getDeclaredMethod("recycleInFlightEvents");
+        recycle.setAccessible(true);
+        // A slow retention read must not keep the event-map bucket locked by ACK and stall
+        // a shared prefetch worker trying to recycle that event.
+        executor.submit(() -> recycle.invoke(activeQueue)).get(5, TimeUnit.SECONDS);
+        assertEquals(0L, activeQueue.getSubscriptionUncommittedEventCount());
+        assertEquals(0L, activeQueue.getRetainedTabletBytes());
+        assertFalse(ack.isDone());
+        releaseRetentionRead.countDown();
+        assertTrue(ack.get(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+      } finally {
+        releaseRetentionRead.countDown();
+        executor.shutdownNow();
+        assertTrue(executor.awaitTermination(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        if (queue != null) {
+          queue.close();
+        }
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setSubscriptionRecycleUncommittedEventIntervalMs(originalRecycleInterval);
+        IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+      }
     }
   }
 
