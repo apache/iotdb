@@ -224,5 +224,9 @@ public final class JdbcMessages {
       "无法与 %s 建立连接：可能正在使用新版本客户端连接旧版本 IoTDB 实例："
       + "%s。";
   public static final String EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055 = "无法与 %s 建立连接：%s。";
+  public static final String EXCEPTION_TIMESTAMP_ARG_OUT_RANGE_TIME_PRECISION_ARG_E25E3001 = "时间戳 %s 超出了时间精度 %s 可表示的范围";
+  public static final String EXCEPTION_CANNOT_CONVERT_ARG_COLUMN_ARG_FBFBC158 = "无法将 %s 类型的列转换为 %s";
+  public static final String EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC = "getObject 的目标类型不能为 null";
+  public static final String LOG_SHOW_TABLES_ERROR_ARG_068CF1BA = "查询表信息出错：{}";
 
 }

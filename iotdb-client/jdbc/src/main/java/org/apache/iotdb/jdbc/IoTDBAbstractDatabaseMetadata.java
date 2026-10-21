@@ -415,10 +415,15 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     for (List<Object> valuesInRow : valuesList) {
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
       for (int j = 0; j < tsDataTypeList.size(); j++) {
+        Object value = valuesInRow.get(j);
+        if (value == null) {
+          tsBlockBuilder.getColumnBuilder(j).appendNull();
+          continue;
+        }
         TSDataType columnType = tsDataTypeList.get(j);
         COLUMN_VALUE_WRITER_SERVICE
             .call(Type.fromTsDataType(columnType))
-            .write(tsBlockBuilder.getColumnBuilder(j), valuesInRow.get(j));
+            .write(tsBlockBuilder.getColumnBuilder(j), value);
       }
       tsBlockBuilder.declarePosition();
     }

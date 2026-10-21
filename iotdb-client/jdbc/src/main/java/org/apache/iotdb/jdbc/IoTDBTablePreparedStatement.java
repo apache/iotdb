@@ -199,12 +199,15 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     req.setParameters(
         PreparedParameterSerde.serialize(parameterValues, parameterTypes, parameterCount));
     req.setStatementId(getStmtId());
+    req.setFetchSize(getRequestFetchSize());
     if (queryTimeout > 0) {
       req.setTimeout(queryTimeout * 1000L);
     }
 
+    clearCancelled();
     try {
       TSExecuteStatementResp resp = client.executePreparedStatement(req);
+      setQueryId(resp.isSetQueryId() ? resp.getQueryId() : -1);
       RpcUtils.verifySuccess(resp.getStatus());
       return resp;
     } catch (TException | StatementExecutionException e) {
@@ -446,10 +449,27 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    // Use millisecond value for SQL compatibility with TIMESTAMP columns
-    long timestampMs = x.getTime();
-    setPreparedParameterValue(parameterIndex, timestampMs, Types.BIGINT);
-    this.parameters.put(parameterIndex, Long.toString(timestampMs));
+    // The server reads time values in its own precision (ms, us or ns)
+    long time = toServerTime(x);
+    setPreparedParameterValue(parameterIndex, time, Types.BIGINT);
+    this.parameters.put(parameterIndex, Long.toString(time));
+  }
+
+  private long toServerTime(Timestamp x) throws SQLException {
+    int timeFactor = getTimeFactor();
+    // getTime() carries the milliseconds of getNanos(), so only its whole seconds are used
+    long seconds = Math.floorDiv(x.getTime(), 1_000L);
+    try {
+      return Math.addExact(
+          Math.multiplyExact(seconds, timeFactor), x.getNanos() / (1_000_000_000 / timeFactor));
+    } catch (ArithmeticException e) {
+      throw new SQLException(
+          String.format(
+              JdbcMessages.EXCEPTION_TIMESTAMP_ARG_OUT_RANGE_TIME_PRECISION_ARG_E25E3001,
+              x,
+              RpcUtils.getTimePrecision(timeFactor)),
+          e);
+    }
   }
 
   @Override
