@@ -29,9 +29,6 @@ import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -77,34 +74,49 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
   @Override
   public void run() {
     String filePath = "";
-    File file = null;
-    try {
-      if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
-        while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
-          file = new File(filePath);
+    if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+      while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
+        File file = new File(filePath);
+        try {
           if (file.getName().endsWith(Constants.TSFILE_SUFFIXS)) {
             importFromTsFile(file);
           }
+        } catch (Exception e) {
+          handleUnexpectedError(file, e);
         }
-      } else {
-        while ((filePath = ImportDataScanTool.pollFromQueue()) != null) {
-          file = new File(filePath);
+      }
+    } else {
+      while ((filePath = ImportDataScanTool.pollFromQueue()) != null) {
+        File file = new File(filePath);
+        try {
           if (file.getName().endsWith(Constants.SQL_SUFFIXS)) {
             importFromSqlFile(file);
           } else {
             importFromCsvFile(file);
           }
+        } catch (Exception e) {
+          handleUnexpectedError(file, e);
         }
       }
-    } catch (Exception e) {
-      importFailed.set(true);
-      loadFileFailedNum.increment();
-      ioTPrinter.println(
-          String.format(
-              CliMessages.MESSAGE_ARG_UNEXPECTED_ERROR_OCCURRED_ARG_E7255EE6,
-              file == null ? filePath : file.getName(),
-              e.getMessage()));
     }
+  }
+
+  private static void handleUnexpectedError(File file, Exception e) {
+    markFileFailed();
+    ioTPrinter.println(
+        String.format(
+            CliMessages.MESSAGE_ARG_UNEXPECTED_ERROR_OCCURRED_ARG_E7255EE6,
+            file.getName(),
+            e.getMessage()));
+  }
+
+  protected static void markImportFailed() {
+    importFailed.set(true);
+  }
+
+  protected static void markFileFailed() {
+    markImportFailed();
+    loadFileFailedNum.increment();
   }
 
   protected abstract Runnable getAsyncImportRunnable();
@@ -167,59 +179,7 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
     final String relativePath = ImportTsFileScanTool.getRelativePath(file);
     final Path target = Paths.get(isSuccess ? successDir : failDir).resolve(relativePath);
     final ImportTsFileOperation operation = isSuccess ? successOperation : failOperation;
-    final List<String> suffixes = new ArrayList<>();
-    suffixes.add("");
-    for (String suffix : new String[] {".resource", ".mods"}) {
-      if (Files.exists(Paths.get(file + suffix))) {
-        suffixes.add(suffix);
-      }
-    }
-    if (operation == ImportTsFileOperation.CP
-        || operation == ImportTsFileOperation.HARDLINK
-        || operation == ImportTsFileOperation.MV) {
-      // Check every destination before moving any file in the TsFile/sidecar group.
-      for (String suffix : suffixes) {
-        Path destination = Paths.get(target + suffix);
-        if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
-          throw new FileAlreadyExistsException(destination.toString());
-        }
-      }
-      Files.createDirectories(target.getParent());
-    }
-    for (String suffix : suffixes) {
-      processFile(
-          Paths.get(file + suffix),
-          Paths.get(target + suffix),
-          operation == ImportTsFileOperation.HARDLINK && !suffix.isEmpty()
-              ? ImportTsFileOperation.CP
-              : operation);
-    }
-  }
-
-  private static void processFile(Path source, Path target, ImportTsFileOperation operation)
-      throws IOException {
-    switch (operation) {
-      case DELETE:
-        Files.deleteIfExists(source);
-        break;
-      case CP:
-        Files.copy(source, target);
-        break;
-      case HARDLINK:
-        try {
-          Files.createLink(target, source);
-        } catch (FileAlreadyExistsException e) {
-          throw e;
-        } catch (IOException | UnsupportedOperationException e) {
-          Files.copy(source, target);
-        }
-        break;
-      case MV:
-        Files.move(source, target);
-        break;
-      default:
-        break;
-    }
+    operation.processFileGroup(Paths.get(file), target);
   }
 
   protected void processFailFile(final String filePath, final Exception e) {

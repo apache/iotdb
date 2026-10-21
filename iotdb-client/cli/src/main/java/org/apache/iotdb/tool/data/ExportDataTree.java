@@ -231,7 +231,6 @@ public class ExportDataTree extends AbstractExportData {
                   String.join(",", names),
                   iterator.getLong(1),
                   String.join(",", values)));
-          processedRows++;
           if (++currentLines >= linesPerFile) {
             writer.close();
             writer = null;
@@ -239,6 +238,7 @@ public class ExportDataTree extends AbstractExportData {
             currentLines = 0;
           }
         }
+        processedRows++;
         if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
           ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
           lastPrintTime = System.currentTimeMillis();

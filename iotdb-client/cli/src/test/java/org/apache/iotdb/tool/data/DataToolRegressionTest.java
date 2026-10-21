@@ -23,9 +23,11 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tool.common.ImportTsFileOperation;
+import org.apache.iotdb.tool.tsfile.ImportTsFileBase;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
 import org.apache.commons.csv.CSVParser;
@@ -57,6 +59,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -88,6 +91,7 @@ public class DataToolRegressionTest extends AbstractDataTool {
             ExportDataTable.class,
             ImportDataTree.class,
             ImportDataTable.class,
+            ImportTsFileBase.class,
             ImportTsFileScanTool.class)) {
       for (Field field : owner.getDeclaredFields()) {
         if (Modifier.isStatic(field.getModifiers()) && !Modifier.isFinal(field.getModifiers())) {
@@ -413,6 +417,154 @@ public class DataToolRegressionTest extends AbstractDataTool {
   }
 
   @Test
+  public void testFailedCsvBatchDoesNotSkipNextFile() throws Exception {
+    Path bad = directory.resolve("a_bad.csv");
+    Path good = directory.resolve("b_good.csv");
+    Files.writeString(bad, "Time,root.a.d1.s1(INT32)\n1,11\n");
+    Files.writeString(good, "Time,root.a.d2.s1(INT32)\n1,22\n");
+    SessionPool pool = mock(SessionPool.class);
+    set(ImportDataTree.class, "sessionPool", pool);
+    AtomicInteger goodInserted = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (((List<?>) invocation.getArgument(0)).contains("root.a.d1")) {
+                throw new StatementExecutionException("type mismatch");
+              }
+              if (((List<?>) invocation.getArgument(0)).contains("root.a.d2")) {
+                goodInserted.incrementAndGet();
+              }
+              return null;
+            })
+        .when(pool)
+        .insertRecords(any(), any(), any(), any(), any());
+    ImportDataScanTool.putToQueue(bad.toString());
+    ImportDataScanTool.putToQueue(good.toString());
+
+    assertFalse(AbstractImportData.init(new ImportDataTree()));
+
+    assertEquals(1, goodInserted.get());
+    assertNull(ImportDataScanTool.pollFromQueue());
+  }
+
+  @Test
+  public void testRejectedCsvAndFailedSqlAffectImportExitStatus() throws Exception {
+    Path badCsv = directory.resolve("bad_header.csv");
+    Files.writeString(badCsv, "ts,root.a.d1.s1(INT32)\n1,11\n");
+    ImportDataScanTool.putToQueue(badCsv.toString());
+    assertFalse(AbstractImportData.init(new ImportDataTree()));
+
+    Path badTableCsv = directory.resolve("bad_table_header.csv");
+    Files.writeString(badTableCsv, "ts,v\n1,11\n");
+    ImportDataScanTool.putToQueue(badTableCsv.toString());
+    assertFalse(AbstractImportData.init(new ImportDataTable()));
+
+    Path failedTreeSql = directory.resolve("failed_tree.sql");
+    Files.writeString(failedTreeSql, "insert into root.a.d1(time,s1) values(1,11)\n");
+    SessionPool treePool = mock(SessionPool.class);
+    set(ImportDataTree.class, "sessionPool", treePool);
+    doThrow(new StatementExecutionException("statement failed"))
+        .when(treePool)
+        .executeNonQueryStatement(anyString());
+    ImportDataScanTool.putToQueue(failedTreeSql.toString());
+    assertFalse(AbstractImportData.init(new ImportDataTree()));
+
+    Path failedTableSql = directory.resolve("failed_table.sql");
+    Files.writeString(failedTableSql, "insert into db.t(time,v) values(1,11)\n");
+    ITableSessionPool tablePool = mock(ITableSessionPool.class);
+    ITableSession tableSession = mock(ITableSession.class);
+    when(tablePool.getSession()).thenReturn(tableSession);
+    doThrow(new StatementExecutionException("statement failed"))
+        .when(tableSession)
+        .executeNonQueryStatement(anyString());
+    set(ImportDataTable.class, "sessionPool", tablePool);
+    ImportDataScanTool.putToQueue(failedTableSql.toString());
+    assertFalse(AbstractImportData.init(new ImportDataTable()));
+  }
+
+  @Test
+  public void testRejectedFilesAreCountedOnceInBothModels() throws Exception {
+    Path empty = directory.resolve("empty.csv");
+    Path header = directory.resolve("invalid.csv");
+    Path extension = directory.resolve("input.other");
+    Files.writeString(empty, "");
+    Files.writeString(header, "ts,v\n1,11\n");
+    Files.writeString(extension, "Time,v\n1,11\n");
+    for (AbstractImportData importer : List.of(new ImportDataTree(), new ImportDataTable())) {
+      for (Path source :
+          List.of(
+              empty,
+              header,
+              extension,
+              directory.resolve("missing.csv"),
+              directory.resolve("missing.sql"))) {
+        long failures = loadFileFailedNum.sum();
+        long successes = loadFileSuccessfulNum.sum();
+        ImportDataScanTool.putToQueue(source.toString());
+        assertFalse(AbstractImportData.init(importer));
+        assertEquals(failures + 1, loadFileFailedNum.sum());
+        assertEquals(successes, loadFileSuccessfulNum.sum());
+      }
+    }
+  }
+
+  @Test
+  public void testFailedDeviceCsvDoesNotSkipNextFile() throws Exception {
+    Path bad = directory.resolve("a_bad.csv");
+    Path good = directory.resolve("b_good.csv");
+    Files.writeString(bad, "Time,Device,s1(INT32)\n1,root.a.d1,11\n");
+    Files.writeString(good, "Time,Device,s1(INT32)\n1,root.a.d2,22\n");
+    SessionPool pool = mock(SessionPool.class);
+    set(ImportDataTree.class, "sessionPool", pool);
+    AtomicInteger goodInserted = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if ("root.a.d1".equals(invocation.getArgument(0))) {
+                throw new StatementExecutionException("type mismatch");
+              }
+              goodInserted.incrementAndGet();
+              return null;
+            })
+        .when(pool)
+        .insertRecordsOfOneDevice(anyString(), any(), any(), any(), any());
+    ImportDataScanTool.putToQueue(bad.toString());
+    ImportDataScanTool.putToQueue(good.toString());
+    assertFalse(AbstractImportData.init(new ImportDataTree()));
+    assertEquals(1, goodInserted.get());
+    assertNull(ImportDataScanTool.pollFromQueue());
+  }
+
+  @Test
+  public void testFailedTableCsvDoesNotSkipNextFile() throws Exception {
+    Path bad = directory.resolve("a_bad.csv");
+    Path good = directory.resolve("b_good.csv");
+    Files.writeString(bad, "Time,v(INT32)\n1,11\n");
+    Files.writeString(good, "Time,v(INT32)\n2,22\n");
+    set(ImportDataTable.class, "dataTypes", Map.of("v", TSDataType.INT32));
+    set(ImportDataTable.class, "columnCategory", Map.of("v", ColumnCategory.FIELD));
+    ITableSessionPool pool = mock(ITableSessionPool.class);
+    ITableSession session = mock(ITableSession.class);
+    when(pool.getSession()).thenReturn(session);
+    set(ImportDataTable.class, "sessionPool", pool);
+    AtomicInteger goodInserted = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              Tablet tablet = invocation.getArgument(0);
+              if (tablet.getTimestamps()[0] == 1L) {
+                throw new StatementExecutionException("type mismatch");
+              }
+              goodInserted.incrementAndGet();
+              return null;
+            })
+        .when(session)
+        .insert(any(Tablet.class));
+    ImportDataScanTool.putToQueue(bad.toString());
+    ImportDataScanTool.putToQueue(good.toString());
+    assertFalse(AbstractImportData.init(new ImportDataTable()));
+    assertEquals(1, goodInserted.get());
+    assertNull(ImportDataScanTool.pollFromQueue());
+  }
+
+  @Test
   public void testTypedTableCsvUsesOriginalHeaderSpelling() throws Exception {
     Map<String, TSDataType> types = new LinkedHashMap<>();
     types.put("id", TSDataType.STRING);
@@ -594,6 +746,78 @@ public class DataToolRegressionTest extends AbstractDataTool {
       fail("Expected archival error to propagate");
     } catch (IOException expected) {
       assertEquals("source", Files.readString(source));
+    }
+  }
+
+  @Test
+  public void testImportTsFileArchivalPreservesRelativePathsAndSidecars() throws Exception {
+    for (boolean isSuccess : List.of(false, true)) {
+      for (ImportTsFileOperation operation :
+          List.of(
+              ImportTsFileOperation.CP, ImportTsFileOperation.HARDLINK, ImportTsFileOperation.MV)) {
+        Path root = Files.createDirectories(directory.resolve("tsfile-" + isSuccess + operation));
+        Path input = Files.createDirectories(root.resolve("input"));
+        Files.createDirectories(input.resolve("a"));
+        Path archive = Files.createDirectories(root.resolve("archive"));
+        ImportTsFileBase.setSuccessAndFailDirAndOperation(
+            archive.resolve("success").toString(),
+            operation,
+            archive.resolve("fail").toString(),
+            operation);
+        ImportTsFileScanTool.setSourceFullPath(input.toString());
+
+        for (String name : List.of("a/b.tsfile", "a_b.tsfile")) {
+          Path source = input.resolve(name);
+          for (String suffix : List.of("", ".resource", ".mods")) {
+            Files.writeString(Path.of(source + suffix), name + suffix);
+          }
+          ImportTsFileBase.processingFile(source.toString(), isSuccess);
+        }
+
+        Path destination = archive.resolve(isSuccess ? "success" : "fail");
+        for (String name : List.of("a/b.tsfile", "a_b.tsfile")) {
+          for (String suffix : List.of("", ".resource", ".mods")) {
+            assertEquals(name + suffix, Files.readString(destination.resolve(name + suffix)));
+            assertEquals(
+                operation != ImportTsFileOperation.MV, Files.exists(input.resolve(name + suffix)));
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testImportTsFileArchiveConflictsKeepSourceFiles() throws Exception {
+    for (boolean isSuccess : List.of(false, true)) {
+      for (String conflict : List.of("", ".resource", ".mods")) {
+        Path root = Files.createDirectories(directory.resolve("conflict-" + isSuccess + conflict));
+        Path input = Files.createDirectories(root.resolve("input"));
+        Path archive = Files.createDirectories(root.resolve("archive"));
+        Path source = input.resolve("one.tsfile");
+        for (String suffix : List.of("", ".resource", ".mods")) {
+          Files.writeString(Path.of(source + suffix), "source" + suffix);
+        }
+        Path occupied = archive.resolve("one.tsfile" + conflict);
+        Files.writeString(occupied, "existing");
+        ImportTsFileScanTool.setSourceFullPath(input.toString());
+        ImportTsFileBase.setSuccessAndFailDirAndOperation(
+            archive.toString(),
+            ImportTsFileOperation.MV,
+            archive.toString(),
+            ImportTsFileOperation.MV);
+        try {
+          ImportTsFileBase.processingFile(source.toString(), isSuccess);
+          fail("Expected existing archive file to be rejected");
+        } catch (FileAlreadyExistsException expected) {
+          assertEquals("existing", Files.readString(occupied));
+          for (String suffix : List.of("", ".resource", ".mods")) {
+            assertEquals("source" + suffix, Files.readString(Path.of(source + suffix)));
+            if (!suffix.equals(conflict)) {
+              assertFalse(Files.exists(archive.resolve("one.tsfile" + suffix)));
+            }
+          }
+        }
+      }
     }
   }
 
