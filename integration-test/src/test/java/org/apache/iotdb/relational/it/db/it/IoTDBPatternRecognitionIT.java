@@ -355,43 +355,37 @@ public class IoTDBPatternRecognitionIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "        A AS true "
-            + ") AS m ORDER BY m.time";
+            + ") AS m";
     // LAST(totalprice)
-    tableResultSetEqualTest(format(sql, "totalprice"), expectedHeader, retArray1, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql, "RPR_LAST(totalprice)"), expectedHeader, retArray1, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql, "RPR_LAST(totalprice, 0)"), expectedHeader, retArray1, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql, "RUNNING RPR_LAST(totalprice)"), expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "totalprice"), expectedHeader, retArray1);
+    assertUnorderedTableResult(format(sql, "RPR_LAST(totalprice)"), expectedHeader, retArray1);
+    assertUnorderedTableResult(format(sql, "RPR_LAST(totalprice, 0)"), expectedHeader, retArray1);
+    assertUnorderedTableResult(
+        format(sql, "RUNNING RPR_LAST(totalprice)"), expectedHeader, retArray1);
 
     // FINAL LAST(totalprice)
-    tableResultSetEqualTest(
-        format(sql, "FINAL RPR_LAST(totalprice)"), expectedHeader, retArray2, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "FINAL RPR_LAST(totalprice)"), expectedHeader, retArray2);
 
     // FIRST(totalprice)
-    tableResultSetEqualTest(
-        format(sql, "RPR_FIRST(totalprice)"), expectedHeader, retArray3, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql, "RPR_FIRST(totalprice, 0)"), expectedHeader, retArray3, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql, "RUNNING RPR_FIRST(totalprice)"), expectedHeader, retArray3, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql, "FINAL RPR_FIRST(totalprice)"), expectedHeader, retArray3, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "RPR_FIRST(totalprice)"), expectedHeader, retArray3);
+    assertUnorderedTableResult(format(sql, "RPR_FIRST(totalprice, 0)"), expectedHeader, retArray3);
+    assertUnorderedTableResult(
+        format(sql, "RUNNING RPR_FIRST(totalprice)"), expectedHeader, retArray3);
+    assertUnorderedTableResult(
+        format(sql, "FINAL RPR_FIRST(totalprice)"), expectedHeader, retArray3);
 
     // LAST(totalprice, 2)
-    tableResultSetEqualTest(
-        format(sql, "RPR_LAST(totalprice, 2)"), expectedHeader, retArray4, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "RPR_LAST(totalprice, 2)"), expectedHeader, retArray4);
 
     // FINAL LAST(totalprice, 2)
-    tableResultSetEqualTest(
-        format(sql, "FINAL RPR_LAST(totalprice, 2)"), expectedHeader, retArray5, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "FINAL RPR_LAST(totalprice, 2)"), expectedHeader, retArray5);
 
     // FIRST(totalprice, 2)
-    tableResultSetEqualTest(
-        format(sql, "RPR_FIRST(totalprice, 2)"), expectedHeader, retArray6, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql, "FINAL RPR_FIRST(totalprice, 2)"), expectedHeader, retArray6, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "RPR_FIRST(totalprice, 2)"), expectedHeader, retArray6);
+    assertUnorderedTableResult(
+        format(sql, "FINAL RPR_FIRST(totalprice, 2)"), expectedHeader, retArray6);
   }
 
   @Test
@@ -450,26 +444,20 @@ public class IoTDBPatternRecognitionIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "        A AS true "
-            + ") AS m ORDER BY m.time";
+            + ") AS m";
     // PREV(totalprice)
-    tableResultSetEqualTest(
-        format(sql1, "PREV(totalprice)"), expectedHeader1, retArray1, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql1, "PREV(totalprice, 1)"), expectedHeader1, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql1, "PREV(totalprice)"), expectedHeader1, retArray1);
+    assertUnorderedTableResult(format(sql1, "PREV(totalprice, 1)"), expectedHeader1, retArray1);
 
     // PREV(totalprice, 2)
-    tableResultSetEqualTest(
-        format(sql1, "PREV(totalprice, 2)"), expectedHeader1, retArray2, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql1, "PREV(totalprice, 2)"), expectedHeader1, retArray2);
 
     // NEXT(totalprice)
-    tableResultSetEqualTest(
-        format(sql1, "NEXT(totalprice)"), expectedHeader1, retArray3, DATABASE_NAME);
-    tableResultSetEqualTest(
-        format(sql1, "NEXT(totalprice, 1)"), expectedHeader1, retArray3, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql1, "NEXT(totalprice)"), expectedHeader1, retArray3);
+    assertUnorderedTableResult(format(sql1, "NEXT(totalprice, 1)"), expectedHeader1, retArray3);
 
     // NEXT(totalprice, 2)
-    tableResultSetEqualTest(
-        format(sql1, "NEXT(totalprice, 2)"), expectedHeader1, retArray4, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql1, "NEXT(totalprice, 2)"), expectedHeader1, retArray4);
 
     String[] expectedHeader2 = new String[] {"price"};
     String sql2 =
@@ -584,62 +572,62 @@ public class IoTDBPatternRecognitionIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "        A AS true "
-            + ") AS m ORDER BY m.time";
+            + ") AS m";
     // PREV(FIRST(totalprice))
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_FIRST(totalprice))"), expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_FIRST(totalprice))"), expectedHeader, retArray1);
     // PREV(FIRST(totalprice), 2)
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_FIRST(totalprice), 2)"), expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_FIRST(totalprice), 2)"), expectedHeader, retArray1);
 
     // PREV(FIRST(totalprice, 2))
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_FIRST(totalprice, 2))"), expectedHeader, retArray2, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_FIRST(totalprice, 2))"), expectedHeader, retArray2);
     // PREV(FIRST(totalprice, 2), 2)
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_FIRST(totalprice, 2), 2)"), expectedHeader, retArray3, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_FIRST(totalprice, 2), 2)"), expectedHeader, retArray3);
 
     // PREV(LAST(totalprice))
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_LAST(totalprice))"), expectedHeader, retArray4, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_LAST(totalprice))"), expectedHeader, retArray4);
     // PREV(LAST(totalprice), 2)
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_LAST(totalprice), 2)"), expectedHeader, retArray5, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_LAST(totalprice), 2)"), expectedHeader, retArray5);
 
     // PREV(LAST(totalprice, 1))
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_LAST(totalprice, 1))"), expectedHeader, retArray5, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_LAST(totalprice, 1))"), expectedHeader, retArray5);
     // PREV(LAST(totalprice, 1), 2)
-    tableResultSetEqualTest(
-        format(sql, "PREV(RPR_LAST(totalprice, 1), 2)"), expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "PREV(RPR_LAST(totalprice, 1), 2)"), expectedHeader, retArray1);
 
     // NEXT(FIRST(totalprice))
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_FIRST(totalprice))"), expectedHeader, retArray2, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_FIRST(totalprice))"), expectedHeader, retArray2);
     // NEXT(FIRST(totalprice), 2)
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_FIRST(totalprice), 2)"), expectedHeader, retArray6, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_FIRST(totalprice), 2)"), expectedHeader, retArray6);
 
     // NEXT(FIRST(totalprice, 1))
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_FIRST(totalprice, 1))"), expectedHeader, retArray6, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_FIRST(totalprice, 1))"), expectedHeader, retArray6);
     // NEXT(FIRST(totalprice, 1), 2)
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_FIRST(totalprice, 1), 2)"), expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_FIRST(totalprice, 1), 2)"), expectedHeader, retArray1);
 
     // NEXT(LAST(totalprice))
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_LAST(totalprice))"), expectedHeader, retArray7, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_LAST(totalprice))"), expectedHeader, retArray7);
     // NEXT(LAST(totalprice), 2)
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_LAST(totalprice), 2)"), expectedHeader, retArray8, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_LAST(totalprice), 2)"), expectedHeader, retArray8);
 
     // NEXT(LAST(totalprice, 2))
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_LAST(totalprice, 2))"), expectedHeader, retArray9, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_LAST(totalprice, 2))"), expectedHeader, retArray9);
     // NEXT(LAST(totalprice, 2), 2)
-    tableResultSetEqualTest(
-        format(sql, "NEXT(RPR_LAST(totalprice, 2), 2)"), expectedHeader, retArray10, DATABASE_NAME);
+    assertUnorderedTableResult(
+        format(sql, "NEXT(RPR_LAST(totalprice, 2), 2)"), expectedHeader, retArray10);
   }
 
   @Test
@@ -673,9 +661,9 @@ public class IoTDBPatternRecognitionIT {
             + "        A AS A.totalprice = 80, "
             + "        L AS L.totalprice < 80, "
             + "        H AS H.totalprice > 80 "
-            + ") AS m ORDER BY m.time";
+            + ") AS m";
 
-    tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(sql, expectedHeader, retArray1);
   }
 
   @Test
@@ -709,9 +697,9 @@ public class IoTDBPatternRecognitionIT {
             + "        A AS A.totalprice = 80, "
             + "        L AS L.totalprice < 80, "
             + "        H AS H.totalprice > 80 "
-            + ") AS m ORDER BY m.time";
+            + ") AS m";
 
-    tableResultSetEqualTest(sql, expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(sql, expectedHeader, retArray1);
   }
 
   @Test
@@ -796,52 +784,48 @@ public class IoTDBPatternRecognitionIT {
         DATABASE_NAME);
 
     // pattern concatenation
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         format(
-            sql + " ORDER BY m.time",
+            sql,
             "PATTERN (A B C) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
                 + "    C AS C.totalprice = PREV (C.totalprice)"),
         expectedHeader,
-        retArray3,
-        DATABASE_NAME);
+        retArray3);
 
     // pattern alternation
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         format(
-            sql + " ORDER BY m.time",
+            sql,
             "PATTERN (B | C | A) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
                 + "    C AS C.totalprice <= PREV (C.totalprice)"),
         expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+        retArray4);
 
     // pattern permutation
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         format(
-            sql + " ORDER BY m.time",
+            sql,
             "PATTERN (PERMUTE(B, C)) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
                 + "    C AS C.totalprice < PREV (C.totalprice)"),
         expectedHeader,
-        retArray5,
-        DATABASE_NAME);
+        retArray5);
 
     // grouped pattern
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         format(
-            sql + " ORDER BY m.time",
+            sql,
             "PATTERN (((A) (B (C)))) "
                 + "DEFINE "
                 + "    B AS B.totalprice < PREV (B.totalprice), "
                 + "    C AS C.totalprice = PREV (C.totalprice)"),
         expectedHeader,
-        retArray3,
-        DATABASE_NAME);
+        retArray3);
   }
 
   @Test
@@ -901,68 +885,29 @@ public class IoTDBPatternRecognitionIT {
             + "        B AS B.totalprice <= PREV(B.totalprice) "
             + ") AS m";
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B*)"), expectedHeader, retArray1, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B*)"), expectedHeader, retArray1);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B*?)"),
-        expectedHeader,
-        retArray2,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B*?)"), expectedHeader, retArray2);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B+)"), expectedHeader, retArray3, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B+)"), expectedHeader, retArray3);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B+?)"),
-        expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B+?)"), expectedHeader, retArray4);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B?)"), expectedHeader, retArray5, DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B?)"), expectedHeader, retArray5);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B??)"),
-        expectedHeader,
-        retArray2,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B??)"), expectedHeader, retArray2);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{,})"),
-        expectedHeader,
-        retArray1,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{,})"), expectedHeader, retArray1);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{,}?)"),
-        expectedHeader,
-        retArray2,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{,}?)"), expectedHeader, retArray2);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{1,})"),
-        expectedHeader,
-        retArray3,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{1,})"), expectedHeader, retArray3);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{1,}?)"),
-        expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{1,}?)"), expectedHeader, retArray4);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{2,})"),
-        expectedHeader,
-        retArray3,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{2,})"), expectedHeader, retArray3);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{2,}?)"),
-        expectedHeader,
-        retArray6,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{2,}?)"), expectedHeader, retArray6);
 
     tableResultSetEqualTest(
         format(sql, "PATTERN (B{5,})"), expectedHeader, new String[] {}, DATABASE_NAME);
@@ -970,43 +915,29 @@ public class IoTDBPatternRecognitionIT {
     tableResultSetEqualTest(
         format(sql, "PATTERN (B{5,}?)"), expectedHeader, new String[] {}, DATABASE_NAME);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{,1})"),
-        expectedHeader,
-        retArray5,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{,1})"), expectedHeader, retArray5);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{,1}?)"),
-        expectedHeader,
-        retArray2,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{,1}?)"), expectedHeader, retArray2);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{1,1})"),
-        expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{1,1})"), expectedHeader, retArray4);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{1,1}?)"),
-        expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{1,1}?)"), expectedHeader, retArray4);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{1})"),
-        expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{1})"), expectedHeader, retArray4);
 
-    tableResultSetEqualTest(
-        format(sql + " ORDER BY m.time", "PATTERN (B{1}?)"),
-        expectedHeader,
-        retArray4,
-        DATABASE_NAME);
+    assertUnorderedTableResult(format(sql, "PATTERN (B{1}?)"), expectedHeader, retArray4);
   }
 
+  /**
+   * Asserts the query result with order-insensitive, multiplicity-preserving comparison.
+   *
+   * <p>These queries deliberately have no final ORDER BY: adding one (e.g. a final ORDER BY on
+   * m.time) would create an outer full Sort whose static sort-buffer reservation can exhaust the
+   * fragment instance's operators memory block and trigger error 719 ("There is not enough memory
+   * to execute current fragment instance") when fragment-instance memory releases are delayed under
+   * the tests' tight memory configuration. Unordered assertions keep the tests deterministic
+   * without the Sort.
+   */
   private static void assertUnorderedTableResult(
       String sql, String[] expectedHeader, String[] retArray) {
     String header = String.join(",", expectedHeader) + ",";

@@ -31,8 +31,12 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
+import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -205,7 +209,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:06:00.000Z,2,2,3,20.0,10.0,30.0,60.0,15.0,20.0,20.0,",
           "2025-01-01T00:07:00.000Z,2,3,3,30.0,10.0,60.0,60.0,20.0,20.0,30.0,",
         };
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         "SELECT m.time, m.match, m.count1, m.count2, m.max, m.min, m.sum1, m.sum2, m.avg1, m.avg2, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
@@ -227,10 +231,9 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ORDER BY m.time ",
+            + ") AS m ",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        retArray);
   }
 
   @Test
@@ -259,7 +262,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:06:00.000Z,2,B,2,2,2,0,1,1,1,20.0,",
           "2025-01-01T00:07:00.000Z,2,C,3,3,3,1,1,1,1,30.0,",
         };
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         "SELECT m.time, m.match, m.label, m.count_0, m.count_1, m.count_2, m.count_c, m.final_count_c, m.count_u, m.final_count_u, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
@@ -282,10 +285,9 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ORDER BY m.time ",
+            + ") AS m ",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        retArray);
   }
 
   @Test
@@ -312,7 +314,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:06:00.000Z,2,B,30.0,0.0,30.0,20.0,20.0,20.0,",
           "2025-01-01T00:07:00.000Z,2,C,60.0,30.0,30.0,20.0,20.0,30.0,",
         };
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         "SELECT m.time, m.match, m.label, m.sum, m.sum_c, m.final_sum_c, m.sum_u, m.final_sum_u, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
@@ -333,10 +335,9 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ORDER BY m.time ",
+            + ") AS m ",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        retArray);
   }
 
   @Test
@@ -363,7 +364,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:06:00.000Z,2,B,15.0,0.0,30.0,20.0,20.0,20.0,",
           "2025-01-01T00:07:00.000Z,2,C,20.0,30.0,30.0,20.0,20.0,30.0,",
         };
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         "SELECT m.time, m.match, m.label, m.avg, m.avg_c, m.final_avg_c, m.avg_u, m.final_avg_u, m.totalprice "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
@@ -384,10 +385,9 @@ public class IoTDBPatternAggregationIT {
             + "        B AS B.totalprice = 20, "
             + "        C AS C.totalprice = 30, "
             + "        D AS D.totalprice = 40 "
-            + ") AS m ORDER BY m.time ",
+            + ") AS m ",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        retArray);
   }
 
   @Test
@@ -406,7 +406,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:06:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:06:00.000Z,2025-01-01T00:05:00.000Z,10.0,20.0,",
           "2025-01-01T00:07:00.000Z,2,2025-01-01T00:05:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:07:00.000Z,2025-01-01T00:05:00.000Z,10.0,30.0,"
         };
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         "SELECT m.time, m.match, m.firstTime, m.lastTime, m.maxTime, m.minTime, m.firstVal, m.lastVal "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
@@ -426,10 +426,9 @@ public class IoTDBPatternAggregationIT {
             + "      B AS totalprice = 20, "
             + "      C AS totalprice = 30, "
             + "      D AS totalprice = 40 "
-            + ") AS m ORDER BY m.time ",
+            + ") AS m ",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        retArray);
   }
 
   @Test
@@ -453,7 +452,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:05:00.000Z,1,7.0,-8.0,3.2,40.7,40.7,32.56,6.379655,6.379655,5.706137,"
         };
 
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         "SELECT m.time, m.match, m.mode, m.extreme, "
             + "ROUND(m.avg, 6) AS avg, "
             + "ROUND(m.var_0, 6) AS var_0, ROUND(m.var_1, 6) AS var_1, ROUND(m.var_2, 6) AS var_2, "
@@ -476,10 +475,9 @@ public class IoTDBPatternAggregationIT {
             + "    PATTERN (A+) "
             + "    DEFINE "
             + "      A AS true "
-            + ") AS m ORDER BY m.time ",
+            + ") AS m ",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        retArray);
   }
 
   @Test
@@ -493,7 +491,7 @@ public class IoTDBPatternAggregationIT {
           "2025-01-01T00:03:00.000Z,1,A,5.0,4.0,5.0,",
           "2025-01-01T00:04:00.000Z,1,B,7.0,8.5,13.0,",
         };
-    tableResultSetEqualTest(
+    assertUnorderedTableResult(
         "SELECT m.time, m.match, m.label, m.avg, m.running_avg_b, m.totalprice "
             + "FROM t2 "
             + "MATCH_RECOGNIZE ( "
@@ -507,10 +505,9 @@ public class IoTDBPatternAggregationIT {
             + "    PATTERN ((A | B)*) "
             + "    DEFINE "
             + "        A AS AVG(totalprice) = 5 "
-            + ") AS m ORDER BY m.time ",
+            + ") AS m ",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        retArray);
   }
 
   @Test
@@ -578,5 +575,29 @@ public class IoTDBPatternAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  /**
+   * Asserts the query result with order-insensitive, multiplicity-preserving comparison.
+   *
+   * <p>These queries deliberately have no final ORDER BY: adding one (e.g. a final ORDER BY on
+   * m.time) would create an outer full Sort whose static sort-buffer reservation can exhaust the
+   * fragment instance's operators memory block and trigger error 719 ("There is not enough memory
+   * to execute current fragment instance") when fragment-instance memory releases are delayed under
+   * the tests' tight memory configuration. Unordered assertions keep the tests deterministic
+   * without the Sort.
+   */
+  private static void assertUnorderedTableResult(
+      String sql, String[] expectedHeader, String[] retArray) {
+    String header = String.join(",", expectedHeader) + ",";
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("use " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertUnorderedQueryResult(sql, resultSet, header, Arrays.asList(retArray));
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
   }
 }
