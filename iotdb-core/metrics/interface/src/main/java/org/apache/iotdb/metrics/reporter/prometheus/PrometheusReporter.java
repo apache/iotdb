@@ -46,6 +46,7 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
@@ -71,6 +72,7 @@ public class PrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PrometheusReporter.class);
   private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final int PROMETHEUS_RESPONSE_CHUNK_SIZE = 8 * 1024;
   private final AbstractMetricManager metricManager;
   private DisposableServer httpServer;
 
@@ -105,7 +107,8 @@ public class PrometheusReporter implements Reporter {
                               return Mono.empty();
                             }
                             return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
-                                .sendString(Mono.just(scrape()));
+                                .sendString(
+                                    splitMetricsIntoChunks(scrape()), StandardCharsets.UTF_8);
                           }));
       if (METRIC_CONFIG.isEnableSSL()) {
         SslContext sslContext;
@@ -133,6 +136,27 @@ public class PrometheusReporter implements Reporter {
         MetricsMessages.LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8,
         METRIC_CONFIG.getPrometheusReporterPort());
     return true;
+  }
+
+  static Flux<String> splitMetricsIntoChunks(final String metrics) {
+    // Encoding one snapshot into a single direct ByteBuf requires a contiguous allocation sized
+    // for every series. Generate bounded chunks on demand so slow scrapes do not pin that buffer.
+    return Flux.generate(
+        () -> 0,
+        (start, sink) -> {
+          if (start >= metrics.length()) {
+            sink.complete();
+            return start;
+          }
+          int end = start + Math.min(PROMETHEUS_RESPONSE_CHUNK_SIZE, metrics.length() - start);
+          if (end < metrics.length()
+              && Character.isHighSurrogate(metrics.charAt(end - 1))
+              && Character.isLowSurrogate(metrics.charAt(end))) {
+            end--;
+          }
+          sink.next(metrics.substring(start, end));
+          return end;
+        });
   }
 
   private boolean authenticate(HttpServerRequest req, HttpServerResponse res) {
