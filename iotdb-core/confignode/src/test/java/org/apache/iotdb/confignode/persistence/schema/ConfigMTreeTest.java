@@ -513,10 +513,11 @@ public class ConfigMTreeTest {
 
     root.preDeleteColumn(database, table.getTableName(), "measurement", false);
 
-    final TableSchemaDetails details = root.getTableSchemaDetails(database, table.getTableName());
-    Assert.assertTrue(details.preDeletedColumns.contains("measurement"));
+    ConfigMTree.TableSchemaDetails tableSchemaDetails =
+        root.getTableSchemaDetails(database, table.getTableName());
+    Assert.assertTrue(tableSchemaDetails.preDeletedColumns.contains("measurement"));
     // The pending data type change is moot once the column is dropped.
-    Assert.assertFalse(details.preAlteredColumns.containsKey("measurement"));
+    Assert.assertFalse(tableSchemaDetails.preAlteredColumns.containsKey("measurement"));
   }
 
   @Test
