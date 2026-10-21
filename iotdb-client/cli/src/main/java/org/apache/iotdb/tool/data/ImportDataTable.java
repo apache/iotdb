@@ -384,19 +384,15 @@ public class ImportDataTable extends AbstractImportData {
       List<String> headerNames,
       Map<String, TSDataType> headerTypeMap,
       Map<String, String> headerNameMap) {
-    String regex = "(?<=\\()\\S+(?=\\))";
+    String regex = "\\(([^()]+)\\)$";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
       Matcher matcher = pattern.matcher(headerName);
       String type;
       String headerNameWithoutType;
       if (matcher.find()) {
-        type = matcher.group();
-        headerNameWithoutType =
-            headerName
-                .replace("(" + type + ")", "")
-                .replaceAll("\\s+", "")
-                .toLowerCase(Locale.ROOT);
+        type = matcher.group(1);
+        headerNameWithoutType = headerName.substring(0, matcher.start()).toLowerCase(Locale.ROOT);
         headerNameMap.put(headerNameWithoutType, headerName);
         headerTypeMap.put(headerNameWithoutType, getType(type.toUpperCase(Locale.ROOT)));
       } else {

@@ -31,9 +31,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -165,20 +165,34 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
 
   protected void processingFile(final String file, final boolean isSuccess) throws IOException {
     final String relativePath = ImportTsFileScanTool.getRelativePath(file);
-    final String target =
-        (isSuccess ? successDir : failDir)
-            + File.separator
-            + relativePath.replace(File.separator, "_");
+    final Path target = Paths.get(isSuccess ? successDir : failDir).resolve(relativePath);
     final ImportTsFileOperation operation = isSuccess ? successOperation : failOperation;
-    processFile(Paths.get(file), Paths.get(target), operation);
+    final List<String> suffixes = new ArrayList<>();
+    suffixes.add("");
     for (String suffix : new String[] {".resource", ".mods"}) {
-      Path sidecar = Paths.get(file + suffix);
-      if (Files.exists(sidecar)) {
-        processFile(
-            sidecar,
-            Paths.get(target + suffix),
-            operation == ImportTsFileOperation.HARDLINK ? ImportTsFileOperation.CP : operation);
+      if (Files.exists(Paths.get(file + suffix))) {
+        suffixes.add(suffix);
       }
+    }
+    if (operation == ImportTsFileOperation.CP
+        || operation == ImportTsFileOperation.HARDLINK
+        || operation == ImportTsFileOperation.MV) {
+      // Check every destination before moving any file in the TsFile/sidecar group.
+      for (String suffix : suffixes) {
+        Path destination = Paths.get(target + suffix);
+        if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
+          throw new FileAlreadyExistsException(destination.toString());
+        }
+      }
+      Files.createDirectories(target.getParent());
+    }
+    for (String suffix : suffixes) {
+      processFile(
+          Paths.get(file + suffix),
+          Paths.get(target + suffix),
+          operation == ImportTsFileOperation.HARDLINK && !suffix.isEmpty()
+              ? ImportTsFileOperation.CP
+              : operation);
     }
   }
 
@@ -189,21 +203,19 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
         Files.deleteIfExists(source);
         break;
       case CP:
-        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(source, target);
         break;
       case HARDLINK:
         try {
           Files.createLink(target, source);
         } catch (FileAlreadyExistsException e) {
-          if (!Files.isSameFile(source, target)) {
-            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-          }
+          throw e;
         } catch (IOException | UnsupportedOperationException e) {
-          Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+          Files.copy(source, target);
         }
         break;
       case MV:
-        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        Files.move(source, target);
         break;
       default:
         break;

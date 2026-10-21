@@ -44,6 +44,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -439,6 +440,50 @@ public class DataToolRegressionTest extends AbstractDataTool {
   }
 
   @Test
+  public void testTableCsvRoundTripPreservesWhitespaceAndParenthesesInColumnNames()
+      throws Exception {
+    String column = "value(double) with space";
+    set(ImportDataTable.class, "dataTypes", Map.of(column, TSDataType.DOUBLE));
+    set(ImportDataTable.class, "columnCategory", Map.of(column, ColumnCategory.FIELD));
+    ITableSessionPool pool = mock(ITableSessionPool.class);
+    ITableSession session = mockTable("t");
+    when(pool.getSession()).thenReturn(session);
+    set(ImportDataTable.class, "sessionPool", pool);
+    doAnswer(
+            invocation -> {
+              Tablet tablet = invocation.getArgument(0);
+              assertEquals(1, tablet.getSchemas().size());
+              assertEquals(column, tablet.getSchemas().get(0).getMeasurementName());
+              assertEquals(1, tablet.getRowSize());
+              assertEquals(1L, tablet.getTimestamps()[0]);
+              assertEquals(1.5, ((double[]) tablet.getValues()[0])[0], 0);
+              return null;
+            })
+        .when(session)
+        .insert(any(Tablet.class));
+    exportType = "csv";
+    for (boolean typed : List.of(false, true)) {
+      needDataTypePrinted = typed;
+      SessionDataSet result =
+          dataSet(List.of("time", column), List.of("TIMESTAMP", "DOUBLE"), new Object[] {1L, 1.5});
+      when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
+      int index = typed ? 1 : 0;
+      assertTrue(new ExportDataTable().exportBySql("select * from t", index));
+      String csv = "dump" + index + "_0.csv";
+      assertEquals("time," + column + (typed ? "(DOUBLE)" : ""), firstLine(csv));
+      try (CSVParser records = readCsvFile(directory.resolve(csv).toString())) {
+        new ImportDataTable()
+            .writeData(
+                records.getHeaderNames(),
+                records.getRecords(),
+                directory.resolve("roundtrip.failed").toString());
+      }
+    }
+    verify(session, times(2)).insert(any(Tablet.class));
+    assertFalse(Files.exists(directory.resolve("roundtrip.failed")));
+  }
+
+  @Test
   public void testSuccessArchivalPreservesFilesAndSidecars() throws Exception {
     for (ImportTsFileOperation operation :
         List.of(
@@ -458,18 +503,79 @@ public class DataToolRegressionTest extends AbstractDataTool {
       assertTrue(Files.isDirectory(archive));
       for (String suffix : List.of("", ".resource", ".mods")) {
         assertEquals(
-            "content" + suffix, Files.readString(archive.resolve("nested_one.tsfile" + suffix)));
+            "content" + suffix, Files.readString(archive.resolve("nested/one.tsfile" + suffix)));
         assertEquals(operation != ImportTsFileOperation.MV, Files.exists(Path.of(source + suffix)));
-      }
-      if (operation == ImportTsFileOperation.HARDLINK) {
-        new ImportDataTree().processingFile(source.toString(), true);
-        assertEquals("content", Files.readString(archive.resolve("nested_one.tsfile")));
       }
       Path other = input.resolve("other.tsfile");
       Files.writeString(other, "other");
       new ImportDataTree().processingFile(other.toString(), true);
       assertEquals("other", Files.readString(archive.resolve("other.tsfile")));
-      assertEquals("content", Files.readString(archive.resolve("nested_one.tsfile")));
+      assertEquals("content", Files.readString(archive.resolve("nested/one.tsfile")));
+    }
+  }
+
+  @Test
+  public void testArchivalPreservesCollidingFlattenedNames() throws Exception {
+    for (boolean isSuccess : List.of(false, true)) {
+      for (ImportTsFileOperation operation :
+          List.of(
+              ImportTsFileOperation.CP, ImportTsFileOperation.HARDLINK, ImportTsFileOperation.MV)) {
+        Path root = Files.createDirectories(directory.resolve(isSuccess + "-" + operation));
+        Path input = Files.createDirectories(root.resolve("input"));
+        Path archive = root.resolve("archive");
+        Files.createDirectories(input.resolve("a"));
+        successDir = failDir = archive.toString();
+        successOperation = failOperation = operation;
+        ImportTsFileScanTool.setSourceFullPath(input.toString());
+        for (String name : List.of("a/b.tsfile", "a_b.tsfile")) {
+          Path source = input.resolve(name);
+          for (String suffix : List.of("", ".resource", ".mods")) {
+            Files.writeString(Path.of(source + suffix), name + suffix);
+          }
+          new ImportDataTree().processingFile(source.toString(), isSuccess);
+        }
+        for (String name : List.of("a/b.tsfile", "a_b.tsfile")) {
+          for (String suffix : List.of("", ".resource", ".mods")) {
+            assertEquals(name + suffix, Files.readString(archive.resolve(name + suffix)));
+            assertEquals(
+                operation != ImportTsFileOperation.MV, Files.exists(input.resolve(name + suffix)));
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testExistingArchiveFilesAreNotOverwritten() throws Exception {
+    for (ImportTsFileOperation operation :
+        List.of(
+            ImportTsFileOperation.CP, ImportTsFileOperation.HARDLINK, ImportTsFileOperation.MV)) {
+      for (String conflict : List.of("", ".resource", ".mods")) {
+        Path root = Files.createDirectories(directory.resolve(operation + "-" + conflict));
+        Path input = Files.createDirectories(root.resolve("input"));
+        Path archive = Files.createDirectories(root.resolve("archive"));
+        Path source = input.resolve("one.tsfile");
+        for (String suffix : List.of("", ".resource", ".mods")) {
+          Files.writeString(Path.of(source + suffix), "source" + suffix);
+        }
+        Path occupied = archive.resolve("one.tsfile" + conflict);
+        Files.writeString(occupied, "existing");
+        successDir = archive.toString();
+        successOperation = operation;
+        ImportTsFileScanTool.setSourceFullPath(input.toString());
+        try {
+          new ImportDataTree().processingFile(source.toString(), true);
+          fail("Expected existing archive file to be rejected");
+        } catch (FileAlreadyExistsException expected) {
+          assertEquals("existing", Files.readString(occupied));
+          for (String suffix : List.of("", ".resource", ".mods")) {
+            assertEquals("source" + suffix, Files.readString(Path.of(source + suffix)));
+            if (!suffix.equals(conflict)) {
+              assertFalse(Files.exists(archive.resolve("one.tsfile" + suffix)));
+            }
+          }
+        }
+      }
     }
   }
 
