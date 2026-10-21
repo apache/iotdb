@@ -46,6 +46,7 @@ public class SystemInfoTest {
 
   private SystemInfo systemInfo;
   private DataRegionInfo dataRegionInfo;
+  private WriteMemoryBlock memoryBlock;
   private TsFileProcessor currentProcessor;
   private TsFileProcessor largerProcessor;
   private ExecutorService originalFlushSubmitter;
@@ -67,6 +68,10 @@ public class SystemInfoTest {
     DataRegion dataRegion = mock(DataRegion.class);
     when(dataRegion.getDatabaseName()).thenReturn("root.test");
     dataRegionInfo = new DataRegionInfo(dataRegion);
+    memoryBlock =
+        dataRegionInfo
+            .getWriteMemoryManager()
+            .createBlock("test-memtable", WriteMemoryBlock.Category.MEMTABLE_ARRAY);
     currentProcessor = mock(TsFileProcessor.class);
     largerProcessor = mock(TsFileProcessor.class);
     mockWorkMemTable(currentProcessor);
@@ -80,13 +85,14 @@ public class SystemInfoTest {
   @After
   public void tearDown() throws Exception {
     setMemoryThreshold("flushTaskSubmitThreadPool", originalFlushSubmitter);
+    memoryBlock.close();
     systemInfo.close();
     systemInfo.loadWriteMemory();
   }
 
   @Test
   public void testRejectedWriterCannotFlushSmallerCurrentProcessor() throws Exception {
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
 
     Assert.assertFalse(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
     Assert.assertTrue(systemInfo.isRejected());
@@ -97,7 +103,7 @@ public class SystemInfoTest {
   @Test
   public void testRejectedWriterFirstTabletCannotBypassSelection() throws Exception {
     when(currentProcessor.getWorkMemTableRamCost()).thenReturn(0L);
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
 
     Assert.assertFalse(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
     verify(currentProcessor, never()).setWorkMemTableShouldFlush();
@@ -106,7 +112,7 @@ public class SystemInfoTest {
 
   @Test
   public void testRepeatedReportsSubmitEachMemtableOnce() throws Exception {
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
 
     for (int i = 0; i < 10; i++) {
       Assert.assertFalse(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
@@ -120,7 +126,7 @@ public class SystemInfoTest {
   @Test
   public void testRepeatedReportsForFirstTabletSubmitOnce() throws Exception {
     when(currentProcessor.getWorkMemTableRamCost()).thenReturn(0L);
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
 
     for (int i = 0; i < 10; i++) {
       Assert.assertFalse(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
@@ -134,7 +140,7 @@ public class SystemInfoTest {
   public void testNewMemtableCanBeScheduledAfterPreviousFlush() throws Exception {
     when(currentProcessor.getWorkMemTableRamCost()).thenReturn(700L);
     when(largerProcessor.getWorkMemTableRamCost()).thenReturn(100L);
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
     Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
 
     mockWorkMemTable(currentProcessor);
@@ -148,9 +154,9 @@ public class SystemInfoTest {
   public void testMarkedCurrentProcessorCannotReachHardMemoryLimit() throws Exception {
     when(currentProcessor.getWorkMemTableRamCost()).thenReturn(700L);
     when(largerProcessor.getWorkMemTableRamCost()).thenReturn(100L);
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
     Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
-    dataRegionInfo.addStorageGroupMemCost(100);
+    memoryBlock.add(100);
 
     try {
       systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor);
@@ -166,7 +172,7 @@ public class SystemInfoTest {
   public void testNoCurrentMemtableCannotBypassRejection() throws Exception {
     when(currentProcessor.getWorkMemTable()).thenReturn(null);
     when(currentProcessor.getWorkMemTableRamCost()).thenReturn(0L);
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
 
     Assert.assertFalse(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
     Assert.assertTrue(systemInfo.isRejected());
@@ -176,10 +182,10 @@ public class SystemInfoTest {
 
   @Test
   public void testRejectionClearsAfterMemoryIsReleased() throws Exception {
-    dataRegionInfo.addStorageGroupMemCost(900);
+    memoryBlock.add(900);
     Assert.assertFalse(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
 
-    dataRegionInfo.releaseStorageGroupMemCost(500);
+    memoryBlock.release(500);
     systemInfo.resetStorageGroupStatus(dataRegionInfo);
     Assert.assertFalse(systemInfo.isRejected());
     Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
@@ -190,7 +196,7 @@ public class SystemInfoTest {
   public void testCurrentProcessorCannotExceedHardMemoryLimit() throws Exception {
     when(currentProcessor.getWorkMemTableRamCost()).thenReturn(700L);
     when(largerProcessor.getWorkMemTableRamCost()).thenReturn(100L);
-    dataRegionInfo.addStorageGroupMemCost(1100);
+    memoryBlock.add(1100);
 
     try {
       systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor);
@@ -202,7 +208,7 @@ public class SystemInfoTest {
 
   @Test
   public void testNormalFlushStillSelectsLargestMemtable() throws Exception {
-    dataRegionInfo.addStorageGroupMemCost(700);
+    memoryBlock.add(700);
 
     Assert.assertTrue(systemInfo.reportStorageGroupStatus(dataRegionInfo, currentProcessor));
     Assert.assertFalse(systemInfo.isRejected());
