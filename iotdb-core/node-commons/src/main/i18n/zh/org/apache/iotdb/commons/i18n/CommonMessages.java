@@ -238,4 +238,7 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
           "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_IS_READ_ONLY_D10B3340 = "内存块 %s 为只读";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_ALREADY_USES_MUTABLE_ACCOUNTING_6F7DCB3F =
+      "内存块 %s 已使用可变计量";
 }

@@ -1591,6 +1591,15 @@ public final class StorageEngineMessages {
   public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "在快照中未找到 {} 关联的资源文件";
   public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "淘汰的不存在/已存在时间序列数量：{}/{}({})，总请求数：{}";
 
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_IS_CLOSED_9E2561DF =
+      "写入内存块 %s 已关闭";
+  public static final String EXCEPTION_WRITE_MEMORY_SIZE_MUST_BE_NON_NEGATIVE_ARG_2CBCF358 =
+      "写入内存大小不能为负数：%s";
+  public static final String EXCEPTION_CANNOT_RELEASE_ARG_BYTES_FROM_WRITE_MEMORY_BLOCK_ARG_WITH_ARG_BYTES_3783A614 =
+      "无法释放 %s 字节：写入内存块 %s 当前占用 %s 字节";
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_ALREADY_BELONGS_TO_ANOTHER_MANAGER_A05A8229 =
+      "写入内存块 %s 已属于其他管理器";
+
   public static final String EXCEPTION_CHUNK_LAYOUT_IS_MISSING_E87C71C0 = "缺少 Chunk layout";
   public static final String EXCEPTION_CHUNK_HEADER_LIST_IS_EMPTY_5DE68C78 = "Chunk header 列表为空。";
   public static final String EXCEPTION_FAILED_TO_ENCODE_CHUNK_USING_ALIGNEDCHUNKWRITERIMPL_5AAF9AA8 =

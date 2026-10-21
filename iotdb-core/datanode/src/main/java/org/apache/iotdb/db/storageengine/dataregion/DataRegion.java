@@ -372,7 +372,7 @@ public class DataRegion implements IDataRegionForQuery {
               .build();
 
   /** database info for mem control. */
-  private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+  private final DataRegionInfo dataRegionInfo;
 
   /** whether it's ready from recovery. */
   private boolean isReady = false;
@@ -431,6 +431,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     this.databaseName = databaseName;
+    this.dataRegionInfo = new DataRegionInfo(this);
     this.fileFlushPolicy = fileFlushPolicy;
     this.isTableModel = isTableModelDatabase(databaseName);
     this.delayAnalyzer =
@@ -512,6 +513,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.isTableModel = isTableModelDatabase(databaseName);
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionIdString));
+    this.dataRegionInfo = new DataRegionInfo(this);
     this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString, "");
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
@@ -1073,7 +1075,9 @@ public class DataRegion implements IDataRegionForQuery {
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+        TsFileProcessorInfo tsFileProcessorInfo =
+            new TsFileProcessorInfo(
+                dataRegionInfo, tsFileProcessor.getTsFileResource().getTsFilePath());
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
         this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
         // get chunkMetadata size
@@ -2322,7 +2326,9 @@ public class DataRegion implements IDataRegionForQuery {
             this::flushCallback,
             sequence);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+    TsFileProcessorInfo tsFileProcessorInfo =
+        new TsFileProcessorInfo(
+            dataRegionInfo, tsFileProcessor.getTsFileResource().getTsFilePath());
     tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
 
