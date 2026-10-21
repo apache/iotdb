@@ -264,6 +264,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     }
     currentSegmentOffset = startPosition;
     if (suspendedSegmentOffset >= 0) {
+      if (suspendedSegmentPosition >= dataBuffer.limit()) {
+        throw new EOFException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
+      }
       dataBuffer.position(suspendedSegmentPosition);
       suspendedSegmentOffset = -1;
       suspendedSegmentRemaining = 0;

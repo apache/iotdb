@@ -53,10 +53,13 @@ import org.junit.Test;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -156,6 +159,30 @@ public class WALCompressionTest {
         Assert.assertArrayEquals(java.util.Arrays.copyOfRange(expected, 9, 24), tail.array());
       }
       Files.delete(walFile.toPath());
+    }
+  }
+
+  @Test
+  public void testReleasedReadBufferDetectsShortenedSegment() throws Exception {
+    try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
+      ByteBuffer segment = ByteBuffer.allocate(8);
+      segment.putLong(42L);
+      writer.write(segment);
+    }
+    try (WALInputStream stream = new WALInputStream(walFile)) {
+      for (int i = 0; i < 3; i++) {
+        stream.read();
+      }
+      stream.releaseReadBuffers();
+      try (FileChannel channel = FileChannel.open(walFile.toPath(), StandardOpenOption.WRITE)) {
+        channel.position(WALFileVersion.V3.getVersionBytes().length);
+        ByteBuffer header = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+        header.put(CompressionType.UNCOMPRESSED.serialize()).putInt(2).flip();
+        while (header.hasRemaining()) {
+          channel.write(header);
+        }
+      }
+      Assert.assertThrows(EOFException.class, stream::read);
     }
   }
 
