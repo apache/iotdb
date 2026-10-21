@@ -68,8 +68,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
-
 public class IoTDBJDBCResultSet implements ResultSet {
 
   public static final String OBJECT_ERR_MSG = "OBJECT Type only support getString";
@@ -697,8 +695,18 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public <T> T getObject(String arg0, Class<T> arg1) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
+    return getObject(findColumnIndex(columnLabel), type);
+  }
+
+  // findColumn() fails with an unchecked exception for an unknown label
+  private int findColumnIndex(String columnLabel) throws SQLException {
+    int index = ioTDBRpcDataSet.getColumnNameList().indexOf(columnLabel);
+    if (index < 0) {
+      throw new SQLException(
+          String.format(JdbcMessages.EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278, columnLabel));
+    }
+    return index + 1;
   }
 
   @Override
@@ -788,12 +796,20 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
-    return convertToTimestamp(getLong(columnIndex), statement.getTimeFactor());
+    try {
+      return ioTDBRpcDataSet.getTimestamp(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public Timestamp getTimestamp(String columnName) throws SQLException {
-    return new Timestamp(getLong(columnName));
+    try {
+      return ioTDBRpcDataSet.getTimestamp(columnName);
+    } catch (StatementExecutionException | IllegalArgumentException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override

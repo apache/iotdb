@@ -229,5 +229,6 @@ public final class JdbcMessages {
   public static final String EXCEPTION_CANNOT_CONVERT_ARG_COLUMN_ARG_FBFBC158 = "Cannot convert a %s column to %s";
   public static final String EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC = "The target type of getObject must not be null";
   public static final String LOG_SHOW_TABLES_ERROR_ARG_068CF1BA = "Show tables error: {}";
+  public static final String EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278 = "Unknown column name: %s";
 
 }

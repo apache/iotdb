@@ -436,6 +436,87 @@ public class IoTDBRelationalDatabaseMetadataTest {
     }
   }
 
+  // ========== getPrimaryKeys ==========
+
+  @Test
+  public void testGetPrimaryKeysReportsRealNamesOfTimeAndTagColumns() throws Exception {
+    responses.put(
+        COLUMNS_QUERY,
+        informationSchemaColumns(
+            informationSchemaColumn("db_1", "sensor_data", "ts", "TIMESTAMP", "TIME"),
+            informationSchemaColumn("db_1", "sensor_data", "region", "STRING", "TAG"),
+            informationSchemaColumn("db_1", "sensor_data", "model", "STRING", "ATTRIBUTE"),
+            informationSchemaColumn("db_1", "sensor_data", "plant", "STRING", "TAG"),
+            informationSchemaColumn("db_1", "sensor_data", "temperature", "FLOAT", "FIELD")));
+
+    List<String> keys = new ArrayList<>();
+    // Some tools escape the names as if they were patterns
+    try (ResultSet rs = metadata.getPrimaryKeys(null, "db\\_1", "sensor\\_data")) {
+      while (rs.next()) {
+        assertNull(rs.getString("TABLE_CAT"));
+        assertEquals("db_1", rs.getString("TABLE_SCHEM"));
+        assertEquals("sensor_data", rs.getString("TABLE_NAME"));
+        assertEquals("PRIMARY", rs.getString("PK_NAME"));
+        keys.add(rs.getString("COLUMN_NAME") + "#" + rs.getInt("KEY_SEQ"));
+      }
+    }
+    assertEquals(Arrays.asList("ts#1", "region#2", "plant#3"), keys);
+  }
+
+  @Test
+  public void testGetPrimaryKeysMatchesExactNamesWhetherEscapedOrNot() throws Exception {
+    responses.put(COLUMNS_QUERY, informationSchemaColumns());
+
+    metadata.getPrimaryKeys(null, "db_1", "it's").close();
+    metadata.getPrimaryKeys(null, "db\\_1", "sensor\\_data").close();
+    metadata.getPrimaryKeys(null, null, "t1").close();
+
+    assertEquals(
+        Arrays.asList(
+            "select * from information_schema.columns"
+                + " where database like 'db\\_1' escape '\\'"
+                + " and table_name like 'it''s' escape '\\'",
+            "select * from information_schema.columns"
+                + " where database like 'db\\_1' escape '\\'"
+                + " and table_name like 'sensor\\_data' escape '\\'",
+            "select * from information_schema.columns where table_name like 't1' escape '\\'"),
+        executedStatements);
+  }
+
+  @Test
+  public void testGetPrimaryKeysReturnsEmptyResultSetForUnknownTable() throws Exception {
+    responses.put(COLUMNS_QUERY, informationSchemaColumns());
+
+    try (ResultSet rs = metadata.getPrimaryKeys(null, "db_1", "no_such_table")) {
+      assertFalse(rs.next());
+    }
+  }
+
+  @Test
+  public void testGetPrimaryKeysFallsBackToDescribeTable() throws Exception {
+    responses.put(COLUMNS_QUERY, failure("no permission on information_schema"));
+    responses.put(
+        "show tables details from \"db_1\"",
+        showTablesDetails(showTablesRow("sensor_data", ""), showTablesRow("sensorXdata", "")));
+    responses.put(
+        "desc \"db_1\".\"sensor_data\" details",
+        describeTableDetails(
+            new Object[] {"ts", "TIMESTAMP", "TIME", "USING", null},
+            new Object[] {"region", "STRING", "TAG", "USING", null},
+            new Object[] {"temperature", "FLOAT", "FIELD", "USING", null}));
+
+    List<String> keys = new ArrayList<>();
+    try (ResultSet rs = metadata.getPrimaryKeys(null, "db_1", "sensor_data")) {
+      while (rs.next()) {
+        assertNull(rs.getString("TABLE_CAT"));
+        assertEquals("db_1", rs.getString("TABLE_SCHEM"));
+        assertEquals("sensor_data", rs.getString("TABLE_NAME"));
+        keys.add(rs.getString("COLUMN_NAME") + "#" + rs.getInt("KEY_SEQ"));
+      }
+    }
+    assertEquals(Arrays.asList("ts#1", "region#2"), keys);
+  }
+
   // ========== fake server responses ==========
 
   private static Object[] informationSchemaTable(String database, String table, String comment) {

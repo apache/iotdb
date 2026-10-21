@@ -228,5 +228,6 @@ public final class JdbcMessages {
   public static final String EXCEPTION_CANNOT_CONVERT_ARG_COLUMN_ARG_FBFBC158 = "无法将 %s 类型的列转换为 %s";
   public static final String EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC = "getObject 的目标类型不能为 null";
   public static final String LOG_SHOW_TABLES_ERROR_ARG_068CF1BA = "查询表信息出错：{}";
+  public static final String EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278 = "未知列名：%s";
 
 }

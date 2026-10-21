@@ -684,29 +684,11 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = connection.createStatement();
-    boolean legacyMode = true;
-    ResultSet rs;
-
+    List<ColumnInfo> columns;
     try {
-      String sql =
-          String.format(
-              "select * from information_schema.columns where database like '%s'  escape '\\' and table_name like '%s' escape '\\' and (category='TAG' or category='TIME')",
-              schemaPattern, tableNamePattern);
-      rs = stmt.executeQuery(sql);
-    } catch (SQLException e) {
-      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-
-      try {
-        String sql =
-            String.format(
-                "desc %s.%s", removeEscape(schemaPattern), removeEscape(tableNamePattern));
-        rs = stmt.executeQuery(sql);
-        legacyMode = false;
-      } catch (SQLException e1) {
-        LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-        throw e;
-      }
-
+      // The arguments are names rather than patterns, but some tools escape them anyway
+      columns =
+          listColumns(stmt, toExactPattern(schemaPattern), toExactPattern(tableNamePattern), null);
     } finally {
       stmt.close();
     }
@@ -726,65 +708,41 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
     List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
 
-    int count = 1;
-    while (rs.next()) {
-      String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName");
-      String category = legacyMode ? rs.getString("category") : rs.getString("Category");
+    Map<List<String>, Integer> keySeqs = new HashMap<>();
+    for (ColumnInfo column : columns) {
+      String category = column.category();
       if (category.equals("TAG") || category.equals("TIME")) {
         List<Object> valueInRow = new ArrayList<>();
-        for (int i = 0; i < fields.length; ++i) {
-          if (i == 0) {
-            valueInRow.add(schemaPattern);
-          } else if (i == 1) {
-            valueInRow.add(schemaPattern);
-          } else if (i == 2) {
-            valueInRow.add(tableNamePattern);
-          } else if (i == 3) {
-            valueInRow.add(columnName);
-          } else if (i == 4) {
-            valueInRow.add(count++);
-          } else {
-            valueInRow.add(PRIMARY);
-          }
-        }
+        // TABLE_CAT: the table model has no catalogs
+        valueInRow.add(null);
+        valueInRow.add(column.database());
+        valueInRow.add(column.tableName());
+        valueInRow.add(column.columnName());
+        valueInRow.add(
+            keySeqs.merge(Arrays.asList(column.database(), column.tableName()), 1, Integer::sum));
+        valueInRow.add(PRIMARY);
         valuesList.add(valueInRow);
       }
     }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
-    } catch (IOException e) {
-      LOGGER.error(JdbcMessages.RELATIONAL_GET_PRIMARY_KEYS_ERROR, e.getMessage());
-    } finally {
-      close(null, stmt);
-    }
+    return toResultSet(stmt, fields, tsDataTypeList, valuesList);
+  }
 
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
+  /** A pattern matching exactly the given name, which may already be escaped like a pattern. */
+  private static String toExactPattern(String name) {
+    if (name == null) {
+      return null;
+    }
+    StringBuilder pattern = new StringBuilder();
+    for (char c : removeEscape(name).toCharArray()) {
+      if (c == '%' || c == '_' || c == SEARCH_STRING_ESCAPE) {
+        pattern.append(SEARCH_STRING_ESCAPE);
+      }
+      pattern.append(c);
+    }
+    return pattern.toString();
   }
 
   @Override

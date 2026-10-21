@@ -297,6 +297,7 @@ public class IoTDBJDBCResultSetTest {
       Assert.assertEquals("2", resultSet.getString(1));
       Assert.assertEquals(new Timestamp(2), resultSet.getObject(1));
       Assert.assertEquals(new Timestamp(2), resultSet.getTimestamp(1));
+      Assert.assertEquals(new Timestamp(2), resultSet.getTimestamp("Time"));
 
       // The strictly-typed ones must report a SQLException, not an unchecked exception.
       assertTimeColumnRejected(() -> resultSet.getBoolean(1));
@@ -313,20 +314,7 @@ public class IoTDBJDBCResultSetTest {
   @SuppressWarnings("resource")
   @Test
   public void testGetObjectConvertsToRequestedClass() throws Exception {
-    try (ResultSet resultSet =
-        executeTableModelQueryWithAllTypes(
-            1_000_000,
-            new Object[] {
-              true,
-              42,
-              7L,
-              1.5F,
-              2.25D,
-              "hello",
-              new byte[] {1, 2, 3},
-              1_700_000_000_123_456L,
-              20240115
-            })) {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(Boolean.TRUE, resultSet.getObject(1, Boolean.class));
       Assert.assertEquals(Integer.valueOf(42), resultSet.getObject(2, Integer.class));
@@ -362,34 +350,83 @@ public class IoTDBJDBCResultSetTest {
       Assert.assertNull(resultSet.getObject(8, Timestamp.class));
       Assert.assertNull(resultSet.getObject(9, LocalDate.class));
       Assert.assertTrue(resultSet.wasNull());
+      Assert.assertNull(resultSet.getObject("i", Integer.class));
     }
   }
 
   @SuppressWarnings("resource")
   @Test
   public void testGetObjectRejectsUnsupportedConversion() throws Exception {
-    try (ResultSet resultSet =
-        executeTableModelQueryWithAllTypes(
-            1_000, new Object[] {true, 42, 7L, 1.5F, 2.25D, "hello", new byte[0], 0L, 20240115})) {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000, allTypesRow())) {
       Assert.assertTrue(resultSet.next());
-      assertGetObjectRejected(() -> resultSet.getObject(6, Integer.class));
-      assertGetObjectRejected(() -> resultSet.getObject(1, Long.class));
-      assertGetObjectRejected(() -> resultSet.getObject(9, Timestamp.class));
-      assertGetObjectRejected(() -> resultSet.getObject(2, StringBuilder.class));
-      assertGetObjectRejected(() -> resultSet.getObject(2, (Class<?>) null));
+      assertRejectedWithSqlException(() -> resultSet.getObject(6, Integer.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(1, Long.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(9, Timestamp.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(2, StringBuilder.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(2, (Class<?>) null));
     }
   }
 
-  private void assertGetObjectRejected(ResultSetRead read) {
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectByLabelConvertsToRequestedClass() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(Integer.valueOf(42), resultSet.getObject("i", Integer.class));
+      Assert.assertEquals(Long.valueOf(7L), resultSet.getObject("l", Long.class));
+      Assert.assertEquals("hello", resultSet.getObject("s", String.class));
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getObject("ts", Timestamp.class));
+      Assert.assertEquals(LocalDate.of(2024, 1, 15), resultSet.getObject("dt", LocalDate.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject("s", Integer.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject("no_such_column", Integer.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampHonorsTimePrecisionByIndexAndLabel() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getTimestamp(8));
+      Assert.assertEquals(expectedTimestamp, resultSet.getTimestamp("ts"));
+      assertRejectedWithSqlException(() -> resultSet.getTimestamp("no_such_column"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampReturnsNullForSqlNull() throws Exception {
+    try (ResultSet resultSet =
+        executeTableModelQueryWithAllTypes(1_000, new Object[ALL_TYPES.size()])) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertNull(resultSet.getTimestamp(8));
+      Assert.assertTrue(resultSet.wasNull());
+      Assert.assertNull(resultSet.getTimestamp("ts"));
+      Assert.assertTrue(resultSet.wasNull());
+    }
+  }
+
+  private void assertRejectedWithSqlException(ResultSetRead read) {
     try {
       read.run();
-      Assert.fail("the conversion should have been rejected");
+      Assert.fail("the read should have been rejected");
     } catch (SQLException e) {
       // expected
     } catch (RuntimeException e) {
       Assert.fail(
           "expected a SQLException but got " + e.getClass().getName() + ": " + e.getMessage());
     }
+  }
+
+  /** One value of each type in ALL_TYPES; the TIMESTAMP is in microseconds. */
+  private static Object[] allTypesRow() {
+    return new Object[] {
+      true, 42, 7L, 1.5F, 2.25D, "hello", new byte[] {1, 2, 3}, 1_700_000_000_123_456L, 20240115
+    };
   }
 
   /** Runs a table-model query whose single row holds one column of each type in ALL_TYPES. */
