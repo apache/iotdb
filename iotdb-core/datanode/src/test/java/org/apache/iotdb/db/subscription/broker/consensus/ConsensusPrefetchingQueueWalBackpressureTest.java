@@ -374,11 +374,13 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
               deliveredLocalSeq, event.getCommitContext().getWriterProgress().getLocalSeq());
           assertTrue(queue.ack("consumer", event.getCommitContext()));
         }
-        assertEquals(
-            followerBeforePending ? oneTabletBytes : 0L, memoryManager.getUsedMemorySizeInBytes());
+        // Ordered replay retains blocked writer heads as raw requests until they can be emitted.
+        assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
       }
       assertEquals(requestCount, deliveredLocalSeq);
       if (followerBeforePending) {
+        assertTrue(queue.getRetainedRequestBytes() > 0L);
+        assertEquals(queue.getRetainedRequestBytes(), requestMemoryBlock.getUsedMemoryInBytes());
         // The replicated writer's later timestamp lets local requests drain in order. Removing
         // the local writer then releases that final follower entry without reading it again.
         queue.setActiveWriterNodeIds(Collections.singleton(WRITER_NODE_ID + 1));
@@ -412,7 +414,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
             missingWalGap
                 ? Arrays.asList(2L, 3L, 4L, 5L, 6L, 7L, 8L)
                 : (followerBeforePending
-                    ? Arrays.asList(1L, -1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L)
+                    ? Arrays.asList(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, -1L)
                     : Arrays.asList(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L)),
             conversions);
       }
