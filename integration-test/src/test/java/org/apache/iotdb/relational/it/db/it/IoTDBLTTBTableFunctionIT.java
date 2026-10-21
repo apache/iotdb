@@ -87,6 +87,37 @@ public class IoTDBLTTBTableFunctionIT {
       statement.execute(
           "INSERT INTO shared(time, site, device, s1) VALUES "
               + "(0, 'a', 'x1', 1.0), (1, 'a', 'x1', 2.0), (0, 'a', 'x2', 3.0), (1, 'a', 'x2', 4.0)");
+      // Eight devices of one query partition, each writing t = 0..3, so every timestamp occurs
+      // eight times in the partition. The eight devices own eight distinct series slots, which the
+      // partition allocator spreads over the four DataRegionGroups, so the rows sharing t = 0 are
+      // stored in different regions and the duplicate only becomes visible once the fragments are
+      // merged.
+      statement.execute(
+          "CREATE TABLE frag_dup(part STRING TAG, device STRING TAG, s1 DOUBLE FIELD)");
+      for (int device = 0; device < 8; device++) {
+        statement.execute(
+            "INSERT INTO frag_dup(time, part, device, s1) VALUES "
+                + "(0, 'p', 'f"
+                + device
+                + "', "
+                + (device + 1)
+                + ".0),"
+                + "(1, 'p', 'f"
+                + device
+                + "', "
+                + (device + 2)
+                + ".0),"
+                + "(2, 'p', 'f"
+                + device
+                + "', "
+                + (device + 3)
+                + ".0),"
+                + "(3, 'p', 'f"
+                + device
+                + "', "
+                + (device + 4)
+                + ".0)");
+      }
       statement.execute("CREATE TABLE integral_values(device STRING TAG, value INT64 FIELD)");
       long baseline = 1L << 60;
       long[] deltas = {0, 1, 8, 2, 0, 0};
@@ -384,6 +415,25 @@ public class IoTDBLTTBTableFunctionIT {
         "701: LTTB does not support duplicate timestamps, but timestamp 0 appears more than once"
             + " in the same partition.",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testDuplicateTimestampsAcrossDistributedFragmentsAreRejected() {
+    // Every timestamp of the partition is written by all eight devices, whose series slots are
+    // spread over the four DataRegionGroups of the database, so the duplicate rows are read from
+    // different regions. The function runs once over the merged partition, so the check sees the
+    // duplicates regardless of how many fragments supplied them.
+    String expected =
+        "701: LTTB does not support duplicate timestamps, but timestamp 0 appears more than once"
+            + " in the same partition.";
+    String prefix =
+        "SELECT * FROM LTTB(DATA => (SELECT time, part, s1 FROM frag_dup) "
+            + "PARTITION BY part ORDER BY time, TIMECOL => 'time', ";
+
+    tableAssertTestFail(prefix + "N => 3)", expected, DATABASE_NAME);
+    tableAssertTestFail(prefix + "SIZE => 3)", expected, DATABASE_NAME);
+    tableAssertTestFail(
+        prefix + "SIZE => 2ms, ORIGIN => 1970-01-01T00:00:00.000+00:00)", expected, DATABASE_NAME);
   }
 
   /**
