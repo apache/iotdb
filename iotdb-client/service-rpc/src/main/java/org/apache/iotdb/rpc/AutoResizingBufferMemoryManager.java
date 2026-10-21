@@ -124,6 +124,18 @@ public final class AutoResizingBufferMemoryManager {
       AutoResizingBufferMemoryManager.allocate(memoryControl, sizeInBytes);
     }
 
+    long allocate(long preferredSizeInBytes, long requiredSizeInBytes) throws IOException {
+      // Growth headroom is optional. If it does not fit, only wait for the bytes actually needed
+      // by the frame instead of rejecting a request that still fits within the memory budget.
+      if (preferredSizeInBytes > requiredSizeInBytes
+          && memoryControl.allocate(preferredSizeInBytes)) {
+        memoryAllocationCount.incrementAndGet();
+        return preferredSizeInBytes;
+      }
+      allocate(requiredSizeInBytes);
+      return requiredSizeInBytes;
+    }
+
     void release(long sizeInBytes) {
       AutoResizingBufferMemoryManager.release(memoryControl, sizeInBytes);
     }
