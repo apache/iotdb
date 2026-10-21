@@ -249,7 +249,7 @@ public class IoTDBOrderByWithAlignByDeviceTableViewIT {
     }
 
     tableResultSetEqualTest(
-        "SELECT time, value FROM overflow ORDER BY time", expectedHeader, retArray, DATABASE_NAME);
+        "SELECT time, value FROM overflow", expectedHeader, retArray, DATABASE_NAME);
   }
 
   // ORDER BY DEVICE

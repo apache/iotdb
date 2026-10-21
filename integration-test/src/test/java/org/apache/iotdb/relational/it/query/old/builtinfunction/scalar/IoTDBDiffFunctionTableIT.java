@@ -102,7 +102,7 @@ public class IoTDBDiffFunctionTableIT {
           "1970-02-27T20:53:20.001Z,3.0,null,"
         };
     tableResultSetEqualTest(
-        "select time,diff(s1), diff(s2) from (select * from table1 where device_id='d1' order by time) order by time",
+        "select time,diff(s1), diff(s2) from table1 where device_id='d1'",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -123,7 +123,7 @@ public class IoTDBDiffFunctionTableIT {
           "1970-02-27T20:53:20.001Z,null,null,"
         };
     tableResultSetEqualTest(
-        "select time, Diff(s1, false), diff(s2, false) from (select * from table1 where device_id='d1' order by time) order by time",
+        "select time, Diff(s1, false), diff(s2, false) from table1 where device_id='d1'",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -141,7 +141,7 @@ public class IoTDBDiffFunctionTableIT {
           "1970-01-01T00:00:00.005Z,5,5.0,"
         };
     tableResultSetEqualTest(
-        "select time, s1, s2 from (select * from table1 where device_id='d1' order by time) where diff(s1) between 1 and 2 order by time",
+        "select time, s1, s2 from table1 where device_id='d1' and diff(s1) between 1 and 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);

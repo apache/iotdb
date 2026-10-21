@@ -99,10 +99,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,2.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -115,10 +112,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,12345.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s2) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s2) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -131,10 +125,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,121.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s3) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s3) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -147,10 +138,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,10.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s4) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s4) from table1", expectedHeader, intRetArray, DATABASE_NAME);
   }
 
   @Test
@@ -167,10 +155,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,2.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s1, 1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s1, 1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -183,10 +168,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,12345.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s2, 1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s2, 1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -199,10 +181,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,120.5,"
         };
     tableResultSetEqualTest(
-        "select time, round(s3, 1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s3, 1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -215,10 +194,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,120.51,"
         };
     tableResultSetEqualTest(
-        "select time, round(s3, 2) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s3, 2) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -231,10 +207,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,120.511,"
         };
     tableResultSetEqualTest(
-        "select time, round(s3, 3) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s3, 3) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -247,10 +220,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,120.5112,"
         };
     tableResultSetEqualTest(
-        "select time, round(s3, 4) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s3, 4) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -263,10 +233,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,10.14342,"
         };
     tableResultSetEqualTest(
-        "select time, round(s4, 5) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s4, 5) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -279,10 +246,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,10.1,"
         };
     tableResultSetEqualTest(
-        "select time, round(s4, 1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s4, 1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
   }
 
   @Test
@@ -300,10 +264,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,0.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s1, -1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s1, -1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -316,10 +277,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,12340.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s2, -1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s2, -1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -332,10 +290,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,120.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s3,-1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s3,-1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
 
     intRetArray =
         new String[] {
@@ -348,10 +303,7 @@ public class IoTDBRoundFunctionTableIT {
           "2023-03-13T08:16:19.764Z,10.0,"
         };
     tableResultSetEqualTest(
-        "select time, round(s4, -1) from table1 ORDER BY time",
-        expectedHeader,
-        intRetArray,
-        DATABASE_NAME);
+        "select time, round(s4, -1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
   }
 
   @Test
