@@ -320,6 +320,20 @@ public class IoTDBRelationalDatabaseMetadataTest {
   }
 
   @Test
+  public void testGetColumnsReportsObjectAsDatabaseSpecificType() throws Exception {
+    responses.put(
+        COLUMNS_QUERY,
+        informationSchemaColumns(
+            informationSchemaColumn("db_1", "files", "content", "OBJECT", "FIELD")));
+
+    try (ResultSet rs = metadata.getColumns(null, "db_1", "files", null)) {
+      assertTrue(rs.next());
+      assertEquals("OBJECT", rs.getString("TYPE_NAME"));
+      assertEquals(Types.OTHER, rs.getInt("DATA_TYPE"));
+    }
+  }
+
+  @Test
   public void testGetColumnsDerivesNullabilityFromTimeCategory() throws Exception {
     responses.put(
         COLUMNS_QUERY,

@@ -42,6 +42,8 @@ import org.mockito.stubbing.Answer;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
@@ -361,6 +363,134 @@ public class IoTDBTablePreparedStatementTest {
     verify(client).executeUpdateStatement(argument.capture());
     assertEquals(
         "INSERT INTO t(time, s1) VALUES(1700000000123456, 1)", argument.getValue().getStatement());
+  }
+
+  // ========== LocalDate, client-side SQL completion and NaN/Infinity ==========
+
+  @Test
+  public void testSetObjectAcceptsLocalDateInClientCompletedSql() throws Exception {
+    LocalDate date = LocalDate.of(2024, 1, 15);
+    String expected = "INSERT INTO t(time, d) VALUES(1, '2024-01-15')";
+    String sql = "INSERT INTO t(time, d) VALUES(1, ?)";
+    assertEquals(expected, clientCompletedSql(sql, ps -> ps.setObject(1, date)));
+    assertEquals(expected, clientCompletedSql(sql, ps -> ps.setObject(1, date, Types.DATE)));
+    assertEquals(expected, clientCompletedSql(sql, ps -> ps.setObject(1, date, Types.DATE, 0)));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testSetObjectBindsLocalDateLikeSetDate() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT * FROM t WHERE d = ? AND e = ?", zoneId);
+    ps.setObject(1, LocalDate.of(2024, 1, 15));
+    ps.setDate(2, java.sql.Date.valueOf("2024-01-15"));
+    ps.execute();
+
+    List<PreparedParameterSerde.DeserializedParam> parameters = lastPreparedParameters();
+    assertEquals("2024-01-15", parameters.get(0).value);
+    assertEquals(parameters.get(1).type, parameters.get(0).type);
+    assertEquals(parameters.get(1).value, parameters.get(0).value);
+  }
+
+  @Test
+  public void testQuotedIdentifiersHideQuestionMarksAndQuotes() throws Exception {
+    assertEquals(
+        "INSERT INTO \"my?table\"(time, s1) VALUES(1, 'a')",
+        clientCompletedSql("INSERT INTO \"my?table\"(time, s1) VALUES(?, ?)", this::bindRow));
+    assertEquals(
+        "INSERT INTO \"it's\"(time, s1) VALUES(1, 'a')",
+        clientCompletedSql("INSERT INTO \"it's\"(time, s1) VALUES(?, ?)", this::bindRow));
+    assertEquals(
+        "INSERT INTO `a?b`(time, s1) VALUES(1, 'a')",
+        clientCompletedSql("INSERT INTO `a?b`(time, s1) VALUES(?, ?)", this::bindRow));
+  }
+
+  @Test
+  public void testStringLiteralsEscapeQuotesOnlyByDoublingThem() throws Exception {
+    // A backslash is an ordinary character, so 'C:\' ends at its second quote
+    assertEquals(
+        "INSERT INTO t(time, s1, s2) VALUES(1, 'C:\\', 'a')",
+        clientCompletedSql("INSERT INTO t(time, s1, s2) VALUES(?, 'C:\\', ?)", this::bindRow));
+    assertEquals(
+        "INSERT INTO t(time, s1, s2) VALUES(1, 'it''s ?', 'a')",
+        clientCompletedSql("INSERT INTO t(time, s1, s2) VALUES(?, 'it''s ?', ?)", this::bindRow));
+  }
+
+  @Test
+  public void testCommentsHideQuestionMarks() throws Exception {
+    assertEquals(
+        "INSERT INTO t(time, s1) VALUES(1, 'a') -- why?\n",
+        clientCompletedSql("INSERT INTO t(time, s1) VALUES(?, ?) -- why?\n", this::bindRow));
+    assertEquals(
+        "INSERT /* ? */ INTO t(time, s1) VALUES(1, 'a')",
+        clientCompletedSql("INSERT /* ? */ INTO t(time, s1) VALUES(?, ?)", this::bindRow));
+  }
+
+  @Test
+  public void testNaNIsSentAsStringInClientCompletedSql() throws Exception {
+    // The server has no NaN literal but stores the string 'NaN' as NaN in FLOAT/DOUBLE columns
+    assertEquals(
+        "INSERT INTO t(time, d, f) VALUES(1, 'NaN', 'NaN')",
+        clientCompletedSql(
+            "INSERT INTO t(time, d, f) VALUES(1, ?, ?)",
+            ps -> {
+              ps.setDouble(1, Double.NaN);
+              ps.setFloat(2, Float.NaN);
+            }));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testInfinityIsRejectedInClientCompletedSql() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "INSERT INTO t(time, d, f) VALUES(1, ?, ?)", zoneId);
+    assertThrows(SQLException.class, () -> ps.setDouble(1, Double.POSITIVE_INFINITY));
+    assertThrows(SQLException.class, () -> ps.setFloat(2, Float.NEGATIVE_INFINITY));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testInfinityIsBoundAsBinaryInServerPreparedQuery() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT * FROM t WHERE d < ?", zoneId);
+    ps.setDouble(1, Double.POSITIVE_INFINITY);
+    ps.execute();
+
+    assertEquals(Double.POSITIVE_INFINITY, lastPreparedParameters().get(0).value);
+  }
+
+  @FunctionalInterface
+  private interface ParameterBinder {
+    void bind(IoTDBTablePreparedStatement ps) throws SQLException;
+  }
+
+  private void bindRow(IoTDBTablePreparedStatement ps) throws SQLException {
+    ps.setLong(1, 1);
+    ps.setString(2, "a");
+  }
+
+  /** Runs a statement that the driver completes on the client and returns the SQL it sends. */
+  @SuppressWarnings("resource")
+  private String clientCompletedSql(String sql, ParameterBinder binder) throws Exception {
+    when(client.executeUpdateStatement(any(TSExecuteStatementReq.class)))
+        .thenReturn(new TSExecuteStatementResp(RpcUtils.SUCCESS_STATUS));
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+    binder.bind(ps);
+    ps.executeUpdate();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client, atLeastOnce()).executeUpdateStatement(argument.capture());
+    return argument.getValue().getStatement();
+  }
+
+  private List<PreparedParameterSerde.DeserializedParam> lastPreparedParameters() throws Exception {
+    return PreparedParameterSerde.deserialize(
+        ByteBuffer.wrap(lastPreparedExecution().getParameters()));
   }
 
   private static TSExecuteStatementResp preparedQueryResp(long queryId) {

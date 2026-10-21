@@ -163,7 +163,6 @@ public final class JdbcMessages {
       "不支持 setTransactionIsolation";
   public static final String NOT_SUPPORT_GET_TYPE_MAP = "不支持 getTypeMap";
   public static final String NOT_SUPPORT_SET_TYPE_MAP = "不支持 setTypeMap";
-  public static final String NOT_SUPPORT_READ_ONLY = "不支持 readOnly";
   public static final String NOT_SUPPORT_NATIVE_SQL = "不支持 nativeSQL";
   public static final String NOT_SUPPORT_RELEASE_SAVEPOINT =
       "不支持 releaseSavepoint";
@@ -229,5 +228,6 @@ public final class JdbcMessages {
   public static final String EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC = "getObject 的目标类型不能为 null";
   public static final String LOG_SHOW_TABLES_ERROR_ARG_068CF1BA = "查询表信息出错：{}";
   public static final String EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278 = "未知列名：%s";
+  public static final String EXCEPTION_CANNOT_BIND_ARG_IOTDB_SQL_HAS_NO_LITERAL_INFINITE_FLOATING_4068FF32 = "无法绑定 %s：IoTDB SQL 没有表示无穷大浮点数的字面量";
 
 }

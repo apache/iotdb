@@ -92,6 +92,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected static final String BLOB = "BLOB";
   protected static final String TIMESTAMP = "TIMESTAMP";
   protected static final String DATE = "DATE";
+  protected static final String OBJECT = "OBJECT";
 
   protected static String sqlKeywordsThatArentSQL92;
 
@@ -479,6 +480,9 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         return Types.TIMESTAMP;
       case DATE:
         return Types.DATE;
+      case OBJECT:
+        // Database-specific: getObject() describes the value instead of returning it
+        return Types.OTHER;
       default:
         break;
     }
@@ -500,6 +504,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       case "TEXT":
       case BLOB:
       case STRING:
+      case OBJECT:
         return Integer.MAX_VALUE;
       case TIMESTAMP:
         return 3;

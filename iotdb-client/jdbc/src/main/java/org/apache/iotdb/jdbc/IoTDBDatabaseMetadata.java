@@ -387,7 +387,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
       throws SQLException {
     try (Statement stmt = this.connection.createStatement()) {
 
-      if (this.connection.getCatalog().equals(catalog)) {
+      if (catalog != null && catalog.equals(this.connection.getCatalog())) {
         catalog = null;
       }
 

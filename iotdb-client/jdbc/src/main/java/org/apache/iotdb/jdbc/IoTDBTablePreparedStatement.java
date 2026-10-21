@@ -60,6 +60,7 @@ import java.sql.SQLXML;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -373,14 +374,32 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   public void setFloat(int parameterIndex, float x) throws SQLException {
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.FLOAT);
-    this.parameters.put(parameterIndex, Float.toString(x));
+    this.parameters.put(parameterIndex, floatingPointLiteral(x, Float.toString(x)));
   }
 
   @Override
   public void setDouble(int parameterIndex, double x) throws SQLException {
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.DOUBLE);
-    this.parameters.put(parameterIndex, Double.toString(x));
+    this.parameters.put(parameterIndex, floatingPointLiteral(x, Double.toString(x)));
+  }
+
+  /**
+   * The literal for a FLOAT or DOUBLE parameter of SQL completed on the client. IoTDB SQL has no
+   * NaN or Infinity literal, but stores the string 'NaN' as NaN and rejects Infinity in any form.
+   */
+  private String floatingPointLiteral(double value, String text) throws SQLException {
+    if (serverSidePrepared || Double.isFinite(value)) {
+      return text;
+    }
+    if (Double.isNaN(value)) {
+      return "'NaN'";
+    }
+    throw new SQLException(
+        String.format(
+            JdbcMessages
+                .EXCEPTION_CANNOT_BIND_ARG_IOTDB_SQL_HAS_NO_LITERAL_INFINITE_FLOATING_4068FF32,
+            text));
   }
 
   @Override
@@ -404,9 +423,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
+    setLocalDate(parameterIndex, x.toLocalDate());
+  }
+
+  private void setLocalDate(int parameterIndex, LocalDate x) throws SQLException {
     checkParameterIndex(parameterIndex);
     // Use ISO-8601 format YYYY-MM-DD for DATE columns
-    String dateStr = x.toLocalDate().toString();
+    String dateStr = x.toString();
     setPreparedParameterValue(parameterIndex, dateStr, Types.DATE);
     this.parameters.put(parameterIndex, "'" + dateStr + "'");
   }
@@ -497,6 +520,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       setTimestamp(parameterIndex, (Timestamp) x);
     } else if (x instanceof Date) {
       setDate(parameterIndex, (Date) x);
+    } else if (x instanceof LocalDate) {
+      setLocalDate(parameterIndex, (LocalDate) x);
     } else if (x instanceof Time) {
       setTime(parameterIndex, (Time) x);
     } else if (x instanceof byte[]) {
@@ -723,36 +748,51 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     return newSql.toString();
   }
 
+  /**
+   * Splits the SQL at its parameter markers, skipping string literals, quoted identifiers and
+   * comments as the table-model lexer does. Quotes are escaped only by doubling them; a backslash
+   * is an ordinary character.
+   */
   private List<String> splitSqlStatement(final String sql) {
     List<String> parts = new ArrayList<>();
-    int apCount = 0;
     int off = 0;
-    boolean skip = false;
-
-    for (int i = 0; i < sql.length(); i++) {
+    int i = 0;
+    while (i < sql.length()) {
       char c = sql.charAt(i);
-      if (skip) {
-        skip = false;
-        continue;
-      }
-      switch (c) {
-        case '\'':
-          apCount++;
-          break;
-        case '\\':
-          skip = true;
-          break;
-        case '?':
-          if ((apCount & 1) == 0) {
-            parts.add(sql.substring(off, i));
-            off = i + 1;
-          }
-          break;
-        default:
-          break;
+      if (c == '\'' || c == '"' || c == '`') {
+        i = skipQuoted(sql, i, c);
+      } else if (sql.startsWith("--", i)) {
+        int end = sql.indexOf('\n', i);
+        i = end < 0 ? sql.length() : end + 1;
+      } else if (sql.startsWith("/*", i)) {
+        int end = sql.indexOf("*/", i + 2);
+        i = end < 0 ? sql.length() : end + 2;
+      } else {
+        if (c == '?') {
+          parts.add(sql.substring(off, i));
+          off = i + 1;
+        }
+        i++;
       }
     }
     parts.add(sql.substring(off));
     return parts;
+  }
+
+  /** Returns the index just past the quoted text that starts at {@code start}. */
+  private static int skipQuoted(String sql, int start, char quote) {
+    int i = start + 1;
+    while (i < sql.length()) {
+      if (sql.charAt(i) == quote) {
+        if (i + 1 < sql.length() && sql.charAt(i + 1) == quote) {
+          // A doubled quote stands for the quote character itself
+          i += 2;
+          continue;
+        }
+        return i + 1;
+      }
+      i++;
+    }
+    return sql.length();
   }
 }
