@@ -41,7 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -109,7 +109,7 @@ public class IoTDBCollectFanInIT {
           "SELECT device, zone, value FROM readings1 UNION ALL "
               + "SELECT device, zone, value FROM readings1";
       try (ResultSet result = statement.executeQuery(sql)) {
-        assertUnorderedQueryResult(sql, result, "device,zone,value,", expectedRows);
+        assertResultSetEqualUnordered(result, "device,zone,value,", expectedRows);
       }
     }
   }

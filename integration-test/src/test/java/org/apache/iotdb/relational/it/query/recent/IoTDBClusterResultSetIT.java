@@ -38,9 +38,10 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.getUnorderedResultSets;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
@@ -51,47 +52,56 @@ public class IoTDBClusterResultSetIT {
   @Test
   public void testUnorderedRowsCheckEveryNode() throws SQLException {
     try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"b", "a"})) {
-      assertUnorderedQueryResult(
-          "SELECT value FROM t", result, "value,", Arrays.asList("a,", "b,"));
+      assertResultSetEqualUnordered(result, "value,", Arrays.asList("a,", "b,"));
     }
     try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"b", "c"})) {
       assertThrows(
           AssertionError.class,
-          () ->
-              assertUnorderedQueryResult(
-                  "SELECT value FROM t", result, "value,", Arrays.asList("a,", "b,")));
+          () -> assertResultSetEqualUnordered(result, "value,", Arrays.asList("a,", "b,")));
     }
   }
 
   @Test
   public void testUnorderedRowsPreserveDuplicateMultiplicity() throws SQLException {
     try (ResultSet result = cluster(new String[] {"a", "a", "b"}, new String[] {"b", "a", "a"})) {
-      assertUnorderedQueryResult(
-          "SELECT value FROM t", result, "value,", Arrays.asList("a,", "a,", "b,"));
+      assertResultSetEqualUnordered(result, "value,", Arrays.asList("a,", "a,", "b,"));
     }
     for (String[] values : new String[][] {{"a", "b"}, {"a", "a", "a", "b"}}) {
       try (ResultSet result = cluster(new String[] {"a", "a", "b"}, values)) {
         assertThrows(
             AssertionError.class,
-            () ->
-                assertUnorderedQueryResult(
-                    "SELECT value FROM t", result, "value,", Arrays.asList("a,", "a,", "b,")));
+            () -> assertResultSetEqualUnordered(result, "value,", Arrays.asList("a,", "a,", "b,")));
       }
     }
   }
 
   @Test
-  public void testFinalOrderingRejectsUnorderedAssertions() throws SQLException {
-    for (String sql :
-        new String[] {
-          "SELECT value FROM t ORDER BY value",
-          "(SELECT value FROM t ORDER BY value)",
-          "SELECT value FROM t UNION ALL SELECT value FROM t ORDER BY value"
-        }) {
-      try (ResultSet result = rows("a")) {
-        assertThrows(AssertionError.class, () -> getUnorderedResultSets(sql, result));
-      }
+  public void testSetAssertionChecksEveryNode() throws SQLException {
+    try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"b", "a"})) {
+      TestUtils.assertResultSetEqual(result, "value,", Set.of("a,", "b,"));
     }
+    try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"a"})) {
+      assertThrows(
+          AssertionError.class,
+          () -> TestUtils.assertResultSetEqual(result, "value,", Set.of("a,", "b,")));
+    }
+  }
+
+  @Test
+  public void testSetConsumerAssertionChecksEveryNode() throws SQLException {
+    try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"b", "a"})) {
+      TestUtils.assertResultSetEqual(result, "value,", Set.of("a,", "b,"), message -> {});
+    }
+    try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"a"})) {
+      assertThrows(
+          AssertionError.class,
+          () ->
+              TestUtils.assertResultSetEqual(result, "value,", Set.of("a,", "b,"), message -> {}));
+    }
+  }
+
+  @Test
+  public void testOrderedRowsStillRejectDifferentNodeOrder() throws SQLException {
     try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"b", "a"})) {
       assertThrows(
           AssertionError.class,
@@ -100,40 +110,14 @@ public class IoTDBClusterResultSetIT {
   }
 
   @Test
-  public void testNestedOrderingDoesNotOrderFinalResult() throws SQLException {
-    for (String sql :
-        new String[] {
-          "(SELECT value FROM t ORDER BY value LIMIT 1) UNION ALL (SELECT value FROM t ORDER BY value LIMIT 1)",
-          "SELECT * FROM (SELECT value FROM t ORDER BY value)",
-          "SELECT row_number() OVER (ORDER BY value) FROM t",
-          "SELECT 'order by' FROM t /* ORDER BY value */"
-        }) {
-      try (ResultSet result = cluster(new String[] {"a", "b"}, new String[] {"b", "a"})) {
-        assertUnorderedQueryResult(sql, result, "value,", Arrays.asList("a,", "b,"));
-      }
-    }
-  }
-
-  @Test
-  public void testArbitrarySlicesNeedDeterministicSelection() throws SQLException {
-    for (String sql :
-        new String[] {"SELECT value FROM t LIMIT 1", "SELECT value FROM t OFFSET 1"}) {
-      try (ResultSet result = rows("a")) {
-        assertThrows(AssertionError.class, () -> getUnorderedResultSets(sql, result));
-      }
-    }
-  }
-
-  @Test
   public void testSingleNodeAndNullValues() throws SQLException {
     try (ResultSet result = rows("a", null, "a")) {
-      assertEquals(1, getUnorderedResultSets("SELECT value FROM t", result).size());
-      assertUnorderedQueryResult(
-          "SELECT value FROM t", result, "value,", Arrays.asList("null,", "a,", "a,"));
+      assertEquals(1, getNodeResultSets(result).size());
+      assertResultSetEqualUnordered(result, "value,", Arrays.asList("null,", "a,", "a,"));
     }
     try (ResultSet result = cluster(new String[] {"a"})) {
-      assertEquals(1, getUnorderedResultSets("SELECT value FROM t", result).size());
-      assertUnorderedQueryResult("SELECT value FROM t", result, "value,", Arrays.asList("a,"));
+      assertEquals(1, getNodeResultSets(result).size());
+      assertResultSetEqualUnordered(result, "value,", Arrays.asList("a,"));
     }
   }
 

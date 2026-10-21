@@ -38,7 +38,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
@@ -430,7 +430,7 @@ public class IoTDBCorrelatedExistsSubqueryIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       try (ResultSet resultSet = statement.executeQuery(sql)) {
-        assertUnorderedQueryResult(sql, resultSet, expectedHeader, expectedRows);
+        assertResultSetEqualUnordered(resultSet, expectedHeader, expectedRows);
       }
     } catch (SQLException e) {
       e.printStackTrace();

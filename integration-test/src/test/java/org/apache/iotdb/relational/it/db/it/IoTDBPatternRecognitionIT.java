@@ -37,7 +37,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 
 import static java.lang.String.format;
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -945,7 +945,7 @@ public class IoTDBPatternRecognitionIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use " + DATABASE_NAME);
       try (ResultSet resultSet = statement.executeQuery(sql)) {
-        assertUnorderedQueryResult(sql, resultSet, header, Arrays.asList(retArray));
+        assertResultSetEqualUnordered(resultSet, header, Arrays.asList(retArray));
       }
     } catch (SQLException e) {
       fail(e.getMessage());

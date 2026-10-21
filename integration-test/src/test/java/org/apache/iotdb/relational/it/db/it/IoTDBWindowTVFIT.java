@@ -41,7 +41,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.CollectQueryAssertions.assertUnorderedQueryResult;
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -1710,7 +1709,7 @@ public class IoTDBWindowTVFIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use " + DATABASE_NAME);
       try (ResultSet resultSet = statement.executeQuery(sql)) {
-        assertUnorderedQueryResult(sql, resultSet, header, Arrays.asList(retArray));
+        assertResultSetEqualUnordered(resultSet, header, Arrays.asList(retArray));
       }
     } catch (SQLException e) {
       fail(e.getMessage());
