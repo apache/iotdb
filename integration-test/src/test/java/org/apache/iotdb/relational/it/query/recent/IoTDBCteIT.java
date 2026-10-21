@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -80,8 +81,6 @@ public class IoTDBCteIT {
         "INSERT INTO testtb VALUES(1000, 300.0, 'c', 'd2')",
       };
 
-  private static final String dropDbSqls = "DROP DATABASE IF EXISTS testdb";
-
   private static final String[] cteKeywords = {"", "materialized"};
 
   @BeforeClass
@@ -110,7 +109,7 @@ public class IoTDBCteIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute(dropDbSqls);
+      TestUtils.dropDatabaseWithRetry(statement, "testdb");
     } catch (Exception e) {
       fail(e.getMessage());
     }

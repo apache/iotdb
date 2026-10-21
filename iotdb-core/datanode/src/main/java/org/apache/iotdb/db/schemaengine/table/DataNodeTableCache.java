@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -328,7 +329,7 @@ public class DataNodeTableCache implements ITableCache {
             database,
             tableName);
         if (Objects.nonNull(oldName)) {
-          removeTableFromSpecialStatusMap(database, oldName);
+          repairMissedRenamePreUpdate(database, tableName, oldName);
         }
         return;
       }
@@ -367,6 +368,31 @@ public class DataNodeTableCache implements ITableCache {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  /**
+   * Repairs the cache after this DataNode missed the pre-update of a rename procedure. The
+   * ConfigNode has already renamed the table, so the new name can only be re-fetched, and the old
+   * name must not stay in the cache as a usable table.
+   */
+  private void repairMissedRenamePreUpdate(
+      final String database, final String newName, final String oldName) {
+    removeTableFromSpecialStatusMap(database, oldName);
+    // drop the old table
+    databaseTableMap.computeIfPresent(
+        database,
+        (databaseName, tables) -> {
+          tables.remove(oldName);
+          return tables;
+        });
+    // A placeholder makes the next lookup of the new name fetch its definition from the ConfigNode,
+    // which holds the committed rename.
+    if (Objects.isNull(getTableFromCache(database, newName))) {
+      specialStatusMap
+          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+          .put(newName, new Pair<>(new NonCommittableTsTable(newName), 0L));
+    }
+    instanceVersion.incrementAndGet();
   }
 
   private void commitDeleteTable(String database, final String tableName) {
@@ -435,6 +461,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @Override
   public long getInstanceVersion() {
     return instanceVersion.get();
   }
@@ -710,9 +737,11 @@ public class DataNodeTableCache implements ITableCache {
       if (targetTableIsStillDeleting) {
         throw new SemanticException(
             String.format(
-                DataNodeSchemaMessages.THE_TABLE_IS_IN_PRE_DELETE_STATE,
+                CommonMessages
+                    .EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F,
                 targetDatabase,
-                targetTable));
+                targetTable),
+            TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode());
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -795,6 +824,15 @@ public class DataNodeTableCache implements ITableCache {
       modified = true;
     }
     return modified ? builder.toString() : DataNodeSchemaMessages.COMPARE_TABLE_NOT_MODIFIED;
+  }
+
+  /** Returns the current local schema without fetching or resolving updates from ConfigNode. */
+  @Override
+  public TsTable getTableInCache(final String database, final String tableName) {
+    return getTableInCache(
+        PathUtils.unQualifyDatabaseName(database),
+        tableName,
+        LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   private TsTable getTableInCache(

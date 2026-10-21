@@ -769,14 +769,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final StringBuilder builder = new StringBuilder("root.");
     for (int i = 0; i < nodeNames.size(); i++) {
       if (nodeNames.get(i).nodeNameWithoutWildcard() != null) {
-        builder
-            .append("`")
-            .append(
-                parseNodeString(
-                    ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
-                        .getValue()))
-            .append("`")
-            .append(i == nodeNames.size() - 1 ? "" : ".");
+        final String nodeName =
+            parseNodeString(
+                ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                    .getValue());
+        if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+          builder.append(nodeName);
+        } else {
+          builder.append("`").append(nodeName).append("`");
+        }
+        builder.append(i == nodeNames.size() - 1 ? "" : ".");
       } else {
         builder.append(nodeNames.get(i).getText());
       }
@@ -880,6 +882,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -950,6 +954,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -1037,17 +1043,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
 
       Expression timeExpression = expressions.get(timeColumnIndex);
-      if (timeExpression instanceof LongLiteral) {
-        timestamp = ((LongLiteral) timeExpression).getParsedValue();
-      } else if (timeExpression instanceof NullLiteral) {
-        throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
-      } else {
-        timestamp =
-            parseDateTimeFormat(
-                ((StringLiteral) timeExpression).getValue(),
-                CommonDateTimeUtils.currentTime(),
-                zoneId);
-      }
+      timestamp = AstUtil.expressionToTimestamp(timeExpression, zoneId);
       nonTimeColCnt = expressions.size() - 1;
     }
 
@@ -1354,6 +1350,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
     final boolean hasWhereClause = ctx.WHERE() != null;
     return new ShowPipes(pipeName, hasWhereClause);
+  }
+
+  @Override
+  public Node visitShowPipeMemoryStatement(
+      final RelationalSqlParser.ShowPipeMemoryStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.PIPE_MEMORY,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override
@@ -1757,6 +1765,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitShowReceiversStatement(RelationalSqlParser.ShowReceiversStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.RECEIVERS,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  @Override
   public Node visitKillQueryStatement(RelationalSqlParser.KillQueryStatementContext ctx) {
     if (ctx.queryId == null) {
       return new KillQuery(null, getLocation(ctx));
@@ -1787,6 +1806,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
     for (Property property : properties) {
+      if (property.isSetToDefault()) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD);
+      }
       String key = property.getName().getValue();
       Expression propertyValue = property.getNonDefaultValue();
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
@@ -1850,6 +1874,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {
@@ -1881,6 +1907,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {

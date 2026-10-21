@@ -115,7 +115,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b modify sink ('username'='thulab', 'password'='StrngPsWd@623451')");
+          "alter pipe a2b modify sink ('sink.username'='thulab', 'sink.password'='StrngPsWd@623451')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Alter pipe shall not fail if user and password are specified");
@@ -187,6 +187,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
       final ResultSet result = statement.executeQuery("show pipes");
       Assert.assertTrue(result.next());
       Assert.assertFalse(result.next());
+
+      final ResultSet showCreateResult = statement.executeQuery("show create pipe a2b");
+      Assert.assertTrue(showCreateResult.next());
+      Assert.assertTrue(
+          showCreateResult.getString("Create Pipe").contains("'sink.password'='******'"));
+      Assert.assertFalse(showCreateResult.getString("Create Pipe").contains("StrngPsWd@623451"));
+      Assert.assertFalse(showCreateResult.next());
     } catch (Exception e) {
       fail(e.getMessage());
     }

@@ -361,9 +361,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
       if (failureType == PipeResourceFailureType.MEMORY_TIMEOUT) {
         PipeLogger.log(LOGGER::info, e, PipeMessages.TEMPORARILY_OUT_OF_MEMORY);
-      } else {
-        sleep4NonReportException();
       }
+      sleep4NonReportException();
     } else if (e instanceof PipeRuntimeSinkNonReportTimeConfigurableException) {
       if (lastExceptionTime == Long.MAX_VALUE) {
         lastExceptionTime = System.currentTimeMillis();

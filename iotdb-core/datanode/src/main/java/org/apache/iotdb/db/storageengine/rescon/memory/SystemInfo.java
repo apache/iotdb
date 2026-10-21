@@ -448,8 +448,12 @@ public class SystemInfo {
       }
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
-      selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
+      // A marked memtable already has a flush pending. Count its memory towards the target,
+      // but do not enqueue another task on every report while the region write lock is held.
+      if (!selectedTsFileProcessor.getWorkMemTable().shouldFlush()) {
+        selectedTsFileProcessor.setWorkMemTableShouldFlush();
+        flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
+      }
       if (selectedTsFileProcessor == currentTsFileProcessor) {
         isCurrentTsFileProcessorSelected = true;
       }

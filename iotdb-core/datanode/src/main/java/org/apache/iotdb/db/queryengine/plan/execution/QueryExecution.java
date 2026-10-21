@@ -439,14 +439,16 @@ public class QueryExecution implements IQueryExecution {
       cleanUpResultHandle();
     }
     context.releaseExternalTsFileQueryResources();
-    try {
-      DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              DataNodeQueryMessages
-                  .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-              context.getQueryId().getId()));
+    if (context.isDeviceEntrySpilled()) {
+      try {
+        DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
+      } catch (Exception e) {
+        LOGGER.warn(
+            String.format(
+                DataNodeQueryMessages
+                    .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                context.getQueryId().getId()));
+      }
     }
   }
 
@@ -642,19 +644,29 @@ public class QueryExecution implements IQueryExecution {
     } catch (InterruptedException e) {
       // TODO: (xingtanzjr) use more accurate error handling
       Thread.currentThread().interrupt();
+      // Dispatch may already have converted an interruption to a failure status. Preserve its
+      // recorded origin without reclassifying an unrelated failure.
+      TSStatus failureStatus = stateMachine.getFailureStatus();
+      if (failureStatus != null) {
+        return new ExecutionResult(
+            context.getQueryId(),
+            failureStatus,
+            stateMachine.isFailureCausedByInterruption(failureStatus));
+      }
       return new ExecutionResult(
           context.getQueryId(),
-          stateMachine.getFailureStatus() == null
-              ? RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
-              : stateMachine.getFailureStatus());
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()),
+          // A terminal query may have failed with an exception that has no dedicated status code.
+          !stateMachine.getState().isDone());
     } catch (ExecutionException e) {
+      TSStatus failureStatus = stateMachine.getFailureStatus();
       return new ExecutionResult(
           context.getQueryId(),
-          stateMachine.getFailureStatus() == null
+          failureStatus == null
               ? RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
-              : stateMachine.getFailureStatus());
+              : failureStatus,
+          stateMachine.isFailureCausedByInterruption(failureStatus));
     }
   }
 
@@ -725,7 +737,8 @@ public class QueryExecution implements IQueryExecution {
         || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion())) {
       planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus);
     }
-    return new ExecutionResult(context.getQueryId(), tsstatus);
+    return new ExecutionResult(
+        context.getQueryId(), tsstatus, stateMachine.isFailureCausedByInterruption(tsstatus));
   }
 
   public DistributedQueryPlan getDistributedPlan() {

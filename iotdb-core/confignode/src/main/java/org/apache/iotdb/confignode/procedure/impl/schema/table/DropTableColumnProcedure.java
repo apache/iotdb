@@ -233,6 +233,7 @@ public class DropTableColumnProcedure
     }
   }
 
+  /** The rollback of this procedure is a no-op, so it is never rolled back. */
   @Override
   protected boolean isRollbackSupported(final DropTableColumnState state) {
     return false;

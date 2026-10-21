@@ -39,16 +39,17 @@ import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum TableBuiltinTableFunction {
-  TUMBLE("tumble"),
-  HOP("hop"),
-  CUMULATE("cumulate"),
-  SESSION("session"),
-  VARIATION("variation"),
-  CAPACITY("capacity"),
+  TUMBLE("tumble", true),
+  HOP("hop", true),
+  CUMULATE("cumulate", true),
+  SESSION("session", true),
+  VARIATION("variation", true),
+  CAPACITY("capacity", true),
   M4("m4"),
   LTTB("lttb"),
   FFT("fft"),
@@ -60,9 +61,15 @@ public enum TableBuiltinTableFunction {
   XCORR("xcorr");
 
   private final String functionName;
+  private final boolean preservesInputOrder;
 
   TableBuiltinTableFunction(String functionName) {
+    this(functionName, false);
+  }
+
+  TableBuiltinTableFunction(String functionName, boolean preservesInputOrder) {
     this.functionName = functionName;
+    this.preservesInputOrder = preservesInputOrder;
   }
 
   public String getFunctionName() {
@@ -74,6 +81,21 @@ public enum TableBuiltinTableFunction {
           Arrays.stream(TableBuiltinTableFunction.values())
               .map(TableBuiltinTableFunction::getFunctionName)
               .collect(Collectors.toList()));
+
+  private static final Set<String> INPUT_ORDER_PRESERVING_FUNCTIONS =
+      Arrays.stream(values())
+          .filter(function -> function.preservesInputOrder)
+          .map(TableBuiltinTableFunction::getFunctionName)
+          .collect(Collectors.toSet());
+
+  /**
+   * Whether a built-in emits pass-through rows with nondecreasing input indices. Generated columns
+   * have no ordering guarantee. SESSION and VARIATION drain disjoint input ranges; CAPACITY emits
+   * all copies of the current row before advancing, including when its windows overlap.
+   */
+  public static boolean preservesInputOrder(String functionName) {
+    return INPUT_ORDER_PRESERVING_FUNCTIONS.contains(functionName.toLowerCase(Locale.ROOT));
+  }
 
   public static Set<String> getBuiltInTableFunctionName() {
     return BUILT_IN_TABLE_FUNCTION_NAME;

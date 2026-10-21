@@ -107,6 +107,8 @@ public final class CommonMessages {
   public static final String BASE_VALUE_SHOULD_NOT_BE_NULL =
       "When comparing, base value should never be null";
   public static final String SIZE_MUST_BE_POSITIVE = "Size must be greater than 0";
+  public static final String EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B =
+      "Thread count must be greater than or equal to 0";
 
   // --- sync ---
   public static final String UNEXPECTED_SERIALIZATION_ERROR =
@@ -116,18 +118,6 @@ public final class CommonMessages {
   public static final String ENCRYPT_PASSWORD_ERROR = "meet error while encrypting password.";
   public static final String CLASSLOADER_NOT_DETERMINED =
       "A ClassLoader to load the class could not be determined.";
-
-  // --- binaryallocator ---
-  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
-      "Binary allocator running GC eviction";
-  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
-      "Binary allocator is shutting down because of high GC time percentage {}%.";
-  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
-      "{} exits due to interruptedException.";
-  public static final String STOPPING_COMPONENT = "Stopping {}";
-  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
-      "unable to stop auto releaser after {} ms";
-  public static final String UNABLE_TO_STOP_EVICTOR = "unable to stop evictor after {} ms";
 
   // --- startcheck / system.properties ---
   public static final String IOTDB_VERSION_TOO_OLD = "IoTDB version is too old";
@@ -325,6 +315,9 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 =
           "disk_space_warning_threshold must be in [0, 1), but was ";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66 =
+          "subscription_cache_memory_usage_percentage must be in [0, 1], but was %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION =
       "the value of wpass should be in (0, 1)";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "No columns could be calculated.";
@@ -376,4 +369,7 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";
+  public static final String
+      EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
+          "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
 }

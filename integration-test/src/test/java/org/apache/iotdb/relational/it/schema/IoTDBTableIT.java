@@ -545,7 +545,7 @@ public class IoTDBTableIT {
           "speed,",
           Collections.singleton("null,"));
 
-      statement.execute("drop table table2");
+      TestUtils.dropTable(connection, "test2", "table2");
       try {
         statement.executeQuery("describe table2");
         fail();
@@ -886,6 +886,85 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testCreateViewFromTreePathWithSpaces() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.tv143_cmp_3");
+      statement.execute("CREATE TIMESERIES root.`tv143_cmp_3`.`a b`.`d1`.s1 INT32");
+      statement.execute("INSERT INTO root.`tv143_cmp_3`.`a b`.`d1`(time,s1) VALUES (1,10)");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE tv143_cmp_3");
+      statement.execute("USE tv143_cmp_3");
+      statement.execute(
+          "CREATE VIEW v (device STRING TAG, value INT32 FIELD FROM s1) WITH (ttl='INF') "
+              + "AS root.\"`tv143_cmp_3`\".\"`a b`\".**");
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SELECT value FROM v ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(10, resultSet.getInt("value"));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testShowCreateViewPreservesQuotedTreePath() throws Exception {
+    final String[][] pathNodes = {
+      {"`a``b`", "\"`a``b`\""},
+      {"`a b`", "\"`a b`\""},
+      {"`a\"b`", "\"`a\"\"b`\""}
+    };
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.show_create_view_source");
+      for (int i = 0; i < pathNodes.length; i++) {
+        final String device = "root.show_create_view_source." + pathNodes[i][0] + ".d1";
+        statement.execute("CREATE TIMESERIES " + device + ".s1 INT32");
+        statement.execute("INSERT INTO " + device + "(time,s1) VALUES (1," + (10 + i) + ")");
+      }
+      statement.execute("CREATE TIMESERIES root.show_create_view_source.ab.d1.s1 INT32");
+      statement.execute("INSERT INTO root.show_create_view_source.ab.d1(time,s1) VALUES (1,999)");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE show_create_view_db");
+      statement.execute("USE show_create_view_db");
+      for (int i = 0; i < pathNodes.length; i++) {
+        final String viewName = "v" + i;
+        final String prefixPath = "root.\"show_create_view_source\"." + pathNodes[i][1] + ".**";
+        statement.execute(
+            "CREATE VIEW "
+                + viewName
+                + " (device STRING TAG, value INT32 FIELD FROM s1) AS "
+                + prefixPath);
+        for (final String command : new String[] {"SHOW CREATE VIEW ", "SHOW CREATE TABLE "}) {
+          final String createSql;
+          try (final ResultSet resultSet = statement.executeQuery(command + viewName)) {
+            assertTrue(resultSet.next());
+            assertEquals(viewName, resultSet.getString(1));
+            createSql = resultSet.getString(2);
+            assertTrue(createSql.endsWith(" AS " + prefixPath));
+            assertFalse(resultSet.next());
+          }
+          statement.execute("DROP VIEW " + viewName);
+          statement.execute(createSql);
+          TestUtils.assertResultSetEqual(
+              statement.executeQuery("SELECT value FROM " + viewName + " ORDER BY time"),
+              "value,",
+              Collections.singleton((10 + i) + ","));
+        }
+      }
+    }
+  }
+
+  @Test
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
@@ -1192,14 +1271,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"`1`\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"`1`\".**,"));
 
       statement.execute("create table a ()");
       try {
@@ -1226,6 +1305,42 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testAsyncDropTableProgress() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement();
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
+      statement.execute("create database async_drop_db");
+      statement.execute("use async_drop_db");
+      statement.execute("create table drop_target (device string tag, reading int32)");
+      // The drop may finish before the first query. Its completed result remains visible until
+      // the procedure cleaner evicts it, so verify that result after waiting for completion.
+      TestUtils.dropTable(connection, "async_drop_db", "drop_target");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables from async_drop_db"),
+          "TableName,TTL(ms),",
+          Collections.emptySet());
+      try (final ResultSet resultSet =
+          procedureStatement.executeQuery(
+              "select procedure_id, state, progress, error_message, "
+                  + "written_mod_file_count, remaining_mod_file_count "
+                  + "from information_schema.drop_table_procedures "
+                  + "where database = 'async_drop_db' and table_name = 'drop_target'")) {
+        assertTrue(resultSet.next());
+        assertTrue(resultSet.getLong(1) >= 0);
+        assertEquals("SUCCESS", resultSet.getString(2));
+        assertEquals("SUCCESS", resultSet.getString(3));
+        Assert.assertNull(resultSet.getString(4));
+        assertEquals(0, resultSet.getLong(5));
+        assertFalse(resultSet.wasNull());
+        assertEquals(0, resultSet.getLong(6));
+        assertFalse(resultSet.wasNull());
+        assertFalse(resultSet.next());
       }
     }
   }

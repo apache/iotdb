@@ -33,7 +33,7 @@ public class NaryComputation extends Computation {
 
   @Override
   public Object evaluate(List<Object> values) {
-    List<Object> operandValues = new ArrayList<>();
+    List<Object> operandValues = new ArrayList<>(terms.size());
     for (Computation term : terms) {
       operandValues.add(term.evaluate(values));
     }

@@ -33,6 +33,11 @@ public interface SubscriptionReceiver {
 
   void handleExit();
 
+  /** Releases the in-flight events held by this receiver's current consumer. */
+  default void releaseInFlightEvents() {
+    // no-op for receivers without subscription event ownership
+  }
+
   void handleTimeout();
 
   /**
@@ -46,6 +51,14 @@ public interface SubscriptionReceiver {
    * receiver has not completed a handshake (or has already been invalidated).
    */
   String getConsumerGroupId();
+
+  /**
+   * Returns the identifier shared by all DataNode connections of the current consumer instance, or
+   * {@code null} for a legacy client.
+   */
+  default String getConsumerInstanceId() {
+    return null;
+  }
 
   /**
    * Invalidates this receiver so that requests from an obsolete connection cannot affect a new

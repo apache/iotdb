@@ -183,10 +183,6 @@ public class LogDispatcher {
     impl.checkAndUpdateSafeDeletedSearchIndex();
   }
 
-  public synchronized void reloadConfig(IoTConsensusConfig config) {
-    threads.forEach(thread -> thread.reloadConfig(config));
-  }
-
   public void offer(IndexedConsensusRequest request) {
     offer(request, true);
   }
@@ -194,8 +190,14 @@ public class LogDispatcher {
   public void offer(IndexedConsensusRequest request, boolean keepRequestsForSubscription) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
-      request.buildSerializedRequests();
-      if (!keepRequestsForSubscription) {
+      // A request that deferred its serialization keeps only its source objects, which stay small,
+      // so that the entries waiting in the queues to be replicated do not retain their payloads.
+      // Such requests materialize their bytes when a batch is built instead.
+      final boolean serializationDeferred = request.hasDeferredRequests();
+      if (!serializationDeferred) {
+        request.buildSerializedRequests();
+      }
+      if (!keepRequestsForSubscription && !serializationDeferred) {
         request.clearRequests();
       }
       synchronized (this) {
@@ -234,7 +236,7 @@ public class LogDispatcher {
 
     private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_MS = 10_000L;
     private static final long START_INDEX = 1;
-    private volatile IoTConsensusConfig config;
+    private final IoTConsensusConfig config;
     private final Peer peer;
     private final IndexController controller;
     // A sliding window class that manages asynchronous pendingBatches
@@ -291,11 +293,6 @@ public class LogDispatcher {
 
     public IoTConsensusConfig getConfig() {
       return config;
-    }
-
-    private void reloadConfig(IoTConsensusConfig config) {
-      this.config = config;
-      syncStatus.reloadConfig(config);
     }
 
     public int getPendingEntriesSize() {
@@ -384,16 +381,11 @@ public class LogDispatcher {
             IndexedConsensusRequest request =
                 pendingEntries.poll(calculateIdlePollTimeoutInMs(), TimeUnit.MILLISECONDS);
             if (request != null) {
-              final IoTConsensusConfig currentConfig = config;
-              final boolean shouldWaitForBatchAccumulation =
-                  pendingEntries.size()
-                          <= currentConfig.getReplication().getMaxLogEntriesNumPerBatch()
-                      && bufferedEntries.isEmpty();
               bufferedEntries.add(request);
               // If write pressure is low, we simply sleep a little to reduce the number of RPC
-              if (shouldWaitForBatchAccumulation) {
-                waitForBatchAccumulation(
-                    currentConfig.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
+              if (pendingEntries.size() <= config.getReplication().getMaxLogEntriesNumPerBatch()
+                  && bufferedEntries.isEmpty()) {
+                Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
               }
             } else {
               maybeSendIdleWriterSafeTimeBarrier();
@@ -426,38 +418,6 @@ public class LogDispatcher {
       logger.info(IoTConsensusMessages.DISPATCHER_EXITS, impl.getThisNode(), peer);
     }
 
-    void waitForBatchAccumulation(long waitingTimeInMs) throws InterruptedException {
-      if (waitingTimeInMs <= 0) {
-        return;
-      }
-
-      final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(waitingTimeInMs);
-      final IoTConsensusConfig currentConfig = config;
-      int accumulatedEntries = bufferedEntries.size();
-      long accumulatedMemorySize =
-          bufferedEntries.stream().mapToLong(IndexedConsensusRequest::getMemorySize).sum();
-
-      // Keep collecting while the batch is below both its entry and memory limits. A plain sleep,
-      // or checking only the entry limit, makes the dispatcher wait for the full accumulation
-      // interval after a batch has already reached its memory limit. This unnecessarily throttles
-      // IoTConsensus when each request contains a large tablet.
-      while (Batch.canAccumulate(currentConfig, accumulatedEntries, accumulatedMemorySize)) {
-        final long remainingNanos = deadlineNanos - System.nanoTime();
-        if (remainingNanos <= 0) {
-          return;
-        }
-
-        final IndexedConsensusRequest request =
-            pendingEntries.poll(remainingNanos, TimeUnit.NANOSECONDS);
-        if (request == null) {
-          return;
-        }
-        bufferedEntries.add(request);
-        accumulatedEntries++;
-        accumulatedMemorySize += request.getMemorySize();
-      }
-    }
-
     public void updateSafelyDeletedSearchIndex() {
       // update safely deleted search index to delete outdated info,
       // indicating that insert nodes whose search index are before this value can be deleted
@@ -474,7 +434,6 @@ public class LogDispatcher {
 
     public Batch getBatch() {
 
-      final IoTConsensusConfig currentConfig = config;
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex;
       synchronized (impl.getIndexObject()) {
@@ -489,7 +448,7 @@ public class LogDispatcher {
         // Use drainTo instead of poll to reduce lock overhead
         pendingEntries.drainTo(
             bufferedEntries,
-            currentConfig.getReplication().getMaxLogEntriesNumPerBatch() - bufferedEntries.size());
+            config.getReplication().getMaxLogEntriesNumPerBatch() - bufferedEntries.size());
       }
       // remove all request that searchIndex < startIndex
       Iterator<IndexedConsensusRequest> iterator = bufferedEntries.iterator();
@@ -503,7 +462,7 @@ public class LogDispatcher {
         }
       }
 
-      Batch batches = new Batch(currentConfig);
+      Batch batches = new Batch(config);
       // This condition will be executed in several scenarios:
       // 1. restart
       // 2. The getBatch() is invoked immediately at the moment the PendingEntries are consumed
@@ -701,6 +660,9 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
+      // A request that deferred its serialization keeps only its source objects while it is queued,
+      // so its bytes are materialized here, when the batch that carries them is built.
+      request.buildSerializedRequests();
       TLogEntry logEntry =
           new TLogEntry(
               request.getSerializedRequests(),

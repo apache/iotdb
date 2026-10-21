@@ -148,7 +148,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     try {
       if (!env.getConfigManager()
           .getClusterSchemaManager()
-          .getTableIfExists(database, tableName)
+          .getTableWithUsingStatusIfExists(database, tableName)
           .isPresent()) {
         setFailure(
             new ProcedureException(

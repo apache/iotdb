@@ -386,7 +386,8 @@ etc. directly.
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
 | `THRIFT_VERSION`      | `0.24.0`                         | Apache Thrift version to build from source.                                                              |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
-| `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install when `WITH_SSL=ON`.                                                             |
+| `IOTDB_OPENSSL_FROM_SOURCE` | `ON`                       | Build the checksum-pinned OpenSSL source release; set `OFF` to opt into system OpenSSL.                  |
+| `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install used only when `IOTDB_OPENSSL_FROM_SOURCE=OFF`.                                 |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
 | `CMAKE_BUILD_TYPE`    | `Release`                        | Single-config generator build type. Use `Debug` to produce a debug library.                              |
 
@@ -427,9 +428,9 @@ cmake --build build --config Release --target install
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-3.5.0.tar.gz` only when `WITH_SSL=ON` and no system OpenSSL is present) |
-   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz` (newer Boost for Xcode/Clang; Apple ships m4/flex/bison; `openssl-3.5.0.tar.gz` optional)                               |
-   | `windows/` | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`)                                                      |
+   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `openssl-3.5.8.tar.gz` |
+   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz`, `openssl-3.5.8.tar.gz` |
+   | `windows/` | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `openssl-3.5.8.tar.gz` |
 
    Reference URLs (the configure step uses the same):
    - Apache Thrift 0.24.0: <https://archive.apache.org/dist/thrift/0.24.0/thrift-0.24.0.tar.gz>
@@ -437,7 +438,7 @@ cmake --build build --config Release --target install
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
-   - OpenSSL 3.5.0:       <https://www.openssl.org/source/openssl-3.5.0.tar.gz>
+   - OpenSSL 3.5.8:       <https://github.com/openssl/openssl/releases/download/openssl-3.5.8/openssl-3.5.8.tar.gz>
 
 2. Run the build with offline mode enabled:
 
@@ -492,11 +493,9 @@ Prerequisites:
 2. **flex / bison.** Install <https://sourceforge.net/projects/winflexbison/>
    and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
    `PATH`.
-3. **OpenSSL** *(`WITH_SSL=ON` is the default)*: install OpenSSL — e.g.
-   `choco install openssl`, or a Win64 OpenSSL installer from
-   <https://slproweb.com/products/Win32OpenSSL.html> — then pass
-   `-DOPENSSL_ROOT_DIR=...` to CMake if it is not auto-detected. Pass
-   `-DWITH_SSL=OFF` to build without SSL.
+3. **Perl** *(`WITH_SSL=ON` is the default)*: install Strawberry Perl so the
+   pinned OpenSSL source release can be built (`choco install strawberryperl`).
+   Pass `-DWITH_SSL=OFF` to build without SSL.
 
 On Windows the SDK ships as **`iotdb_session.dll`** plus an import library
 **`iotdb_session.lib`**, built with **`/MD`** (dynamic CRT, same as a
@@ -516,20 +515,30 @@ OpenSSL **3.x** is used (Apache-2.0 licensed). Note that **OpenSSL 4.0 removed**
 the legacy TLS-method APIs (`TLSv1_method`, `SSLv3_method`, …) that Apache
 Thrift's `TSSLSocket` still calls, so install/point at a 3.x build, not 4.0.
 
-CMake calls `find_package(OpenSSL)` and uses the system OpenSSL it finds. Its
-shared libraries are **bundled into the package `lib/` directory** (next to
-`iotdb_session`, which records an `$ORIGIN`/`@loader_path` runtime path) so the
-published SDK is self-contained.
+By default CMake downloads OpenSSL 3.5.8, verifies its SHA-256 checksum, and
+builds shared libraries from source on Linux, macOS, and Windows. The runtime
+libraries are bundled into the package `lib/` directory so the published SDK is
+self-contained. Set `-DIOTDB_OPENSSL_FROM_SOURCE=OFF` to opt into a compatible
+system OpenSSL 3.x instead.
 
-Fallbacks:
+Enable authenticated TLS by configuring a PEM CA certificate. Add a PEM client
+certificate chain and an unencrypted PEM private key for mutual TLS:
 
-- **Linux / macOS** – when no system OpenSSL is found (or
-  `-DIOTDB_OPENSSL_FROM_SOURCE=ON`, which the Linux packaging build uses so the
-  AlmaLinux 8 baseline's OpenSSL 1.1.1 is never redistributed), build
-  `openssl-3.5.0.tar.gz` from source as **shared** libraries and bundle them.
-- **Windows** – fail with a friendly message; install a prebuilt OpenSSL 3.x
-  (e.g. the FireDaemon or slproweb 3.5.x zip) and set `-DOPENSSL_ROOT_DIR=...`.
-  Building OpenSSL from source via MSVC is out of scope.
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->trustCertFilePath("ca.crt")
+                   ->clientCertificateFilePath("client.crt")
+                   ->clientPrivateKeyFilePath("client.key")
+                   ->build();
+```
+
+The client certificate and private key must either both be configured or both
+be omitted. The same methods are available on `TableSessionBuilder` and
+`SessionPoolBuilder`; the C API provides `ts_session_set_ssl_config()` and
+`ts_table_session_new_with_ssl()`.
 
 ## Tests
 

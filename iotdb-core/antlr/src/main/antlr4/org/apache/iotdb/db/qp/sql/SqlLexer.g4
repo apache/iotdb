@@ -523,6 +523,10 @@ LOCK
     : L O C K
     ;
 
+MEMORY
+    : M E M O R Y
+    ;
+
 MERGE
     : M E R G E
     ;
@@ -721,6 +725,10 @@ QUERYID
 
 QUOTA
     : Q U O T A
+    ;
+
+RECEIVERS
+    : R E C E I V E R S
     ;
 
 RANGE

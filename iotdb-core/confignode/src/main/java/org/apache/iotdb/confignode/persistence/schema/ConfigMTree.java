@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.ColumnNotExistsException;
 import org.apache.iotdb.commons.exception.table.TableAlreadyExistsException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -796,7 +797,7 @@ public class ConfigMTree {
       final String comment,
       final boolean isView)
       throws MetadataException {
-    final TsTable table = getTable(database, tableName);
+    final TsTable table = getTableWithUsingStatus(database, tableName).getTable();
     final Optional<Pair<TSStatus, TsTable>> check =
         ClusterSchemaManager.checkTable4View(database.getTailNode(), table, isView);
     if (check.isPresent()) {
@@ -816,9 +817,8 @@ public class ConfigMTree {
       final @Nonnull String columnName,
       final @Nullable String comment)
       throws MetadataException {
-    final TsTable table = getTable(database, tableName);
-
-    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    final TsTableColumnSchema columnSchema =
+        getTableWithUsingStatus(database, tableName).getTable().getColumnSchema(columnName);
 
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
@@ -980,6 +980,28 @@ public class ConfigMTree {
         });
   }
 
+  public void setTableColumnProperties(
+      final PartialPath database,
+      final String tableName,
+      final String columnName,
+      final Map<String, String> properties)
+      throws MetadataException {
+    final TsTable table = getTableNode(database, tableName).getTable();
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.isNull(columnSchema)) {
+      throw new ColumnNotExistsException(
+          PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
+    }
+    properties.forEach(
+        (key, value) -> {
+          if (Objects.nonNull(value)) {
+            columnSchema.getProps().put(key, value);
+          } else {
+            columnSchema.getProps().remove(key);
+          }
+        });
+  }
+
   // Return true if removed column is an attribute column
   // false if measurement column
   public boolean preDeleteColumn(
@@ -988,14 +1010,13 @@ public class ConfigMTree {
       final String columnName,
       final boolean isView)
       throws MetadataException, SemanticException {
-    final ConfigTableNode node = getTableNode(database, tableName);
+    final ConfigTableNode node = getTableWithUsingStatus(database, tableName);
     final Optional<Pair<TSStatus, TsTable>> check =
         ClusterSchemaManager.checkTable4View(database.getTailNode(), node.getTable(), isView);
     if (check.isPresent()) {
       throw new SemanticException(
           check.get().getLeft().getMessage(), check.get().getLeft().getCode());
     }
-
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
@@ -1024,7 +1045,7 @@ public class ConfigMTree {
   public void preAlterColumnDataType(
       PartialPath database, String tableName, String columnName, TSDataType dataType)
       throws MetadataException {
-    final ConfigTableNode node = getTableNode(database, tableName);
+    final ConfigTableNode node = getTableWithUsingStatus(database, tableName);
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
 
     if (Objects.isNull(columnSchema)) {
@@ -1089,6 +1110,36 @@ public class ConfigMTree {
     return newTable;
   }
 
+  /**
+   * The schema to report in DESC. Unlike {@link #getUsingTableSchema}, a column whose deletion is
+   * still pending is kept, so that the user can see which columns exist and are only waiting for
+   * the pending procedure. A pending data type change is applied on top.
+   */
+  public TsTable getTableSchemaForDesc(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    if (node.getPreAlteredColumns().isEmpty()) {
+      return node.getTable();
+    }
+    final TsTable table = new TsTable(node.getTable());
+    node.getPreAlteredColumns()
+        .forEach(
+            (columnName, dataType) -> {
+              final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+              if (columnSchema == null) {
+                return;
+              }
+              columnSchema.setDataType(dataType);
+              if (columnSchema instanceof FieldColumnSchema) {
+                final FieldColumnSchema fieldColumnSchema = (FieldColumnSchema) columnSchema;
+                fieldColumnSchema.setEncoding(
+                    SchemaUtils.getDataTypeCompatibleEncoding(
+                        dataType, fieldColumnSchema.getEncoding()));
+              }
+            });
+    return table;
+  }
+
   public TableSchemaDetails getTableSchemaDetails(
       final PartialPath database, final String tableName) throws MetadataException {
     final ConfigTableNode node = getTableNode(database, tableName);
@@ -1128,6 +1179,19 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     return ((ConfigTableNode) databaseNode.getChild(tableName));
+  }
+
+  /**
+   * A table in the pre-delete status is about to be dropped, pre-create status is a temporary
+   * status, ignore it.
+   */
+  private ConfigTableNode getTableWithUsingStatus(
+      final PartialPath database, final String tableName) throws MetadataException {
+    final ConfigTableNode tableNode = getTableNode(database, tableName);
+    if (tableNode.getStatus() == TableNodeStatus.PRE_DELETE) {
+      throw new TableInDeletionException(database.getFullPath(), tableName);
+    }
+    return tableNode;
   }
 
   // endregion

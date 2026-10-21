@@ -236,18 +236,12 @@ public class PipeHeartbeatParser {
         }
 
         // Update progress index
-        if (!(runtimeMetaFromCoordinator
-                .getValue()
-                .getProgressIndex()
-                .isAfter(runtimeMetaFromAgent.getProgressIndex())
-            || runtimeMetaFromCoordinator
-                .getValue()
-                .getProgressIndex()
-                .equals(runtimeMetaFromAgent.getProgressIndex()))) {
+        final ProgressIndex coordinatorProgressIndex =
+            runtimeMetaFromCoordinator.getValue().getProgressIndex();
+        final ProgressIndex agentProgressIndex = runtimeMetaFromAgent.getProgressIndex();
+        if (!coordinatorProgressIndex.isEqualOrAfter(agentProgressIndex)) {
           final ProgressIndex updatedProgressIndex =
-              runtimeMetaFromCoordinator
-                  .getValue()
-                  .updateProgressIndex(runtimeMetaFromAgent.getProgressIndex());
+              runtimeMetaFromCoordinator.getValue().updateProgressIndex(agentProgressIndex);
           PipeConfigNodeResourceManager.log()
               .schedule(
                   PipeHeartbeatParser.class,
@@ -263,8 +257,8 @@ public class PipeHeartbeatParser {
                                   .LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5,
                           pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
                           runtimeMetaFromCoordinator.getKey(),
-                          runtimeMetaFromCoordinator.getValue().getProgressIndex(),
-                          runtimeMetaFromAgent.getProgressIndex(),
+                          coordinatorProgressIndex,
+                          agentProgressIndex,
                           updatedProgressIndex));
 
           needWriteConsensusOnConfigNodes.set(true);

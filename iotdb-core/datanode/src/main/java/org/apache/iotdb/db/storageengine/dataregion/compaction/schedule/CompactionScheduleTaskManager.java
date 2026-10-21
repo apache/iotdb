@@ -245,12 +245,18 @@ public class CompactionScheduleTaskManager implements IService {
   }
 
   public void registerDataRegion(DataRegion dataRegion) {
-    dataRegionList.add(dataRegion);
+    synchronized (dataRegionList) {
+      if (!dataRegionList.contains(dataRegion)) {
+        dataRegionList.add(dataRegion);
+      }
+    }
   }
 
   public void unregisterDataRegion(DataRegion dataRegion) {
     dataRegion.setAllowCompaction(false);
-    dataRegionList.remove(dataRegion);
+    synchronized (dataRegionList) {
+      dataRegionList.removeIf(region -> region == dataRegion);
+    }
   }
 
   public class RepairDataTaskManager {

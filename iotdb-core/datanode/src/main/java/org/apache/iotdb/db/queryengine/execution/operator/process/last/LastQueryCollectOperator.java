@@ -24,7 +24,6 @@ import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -42,6 +41,8 @@ public class LastQueryCollectOperator implements ProcessOperator {
 
   private final int inputOperatorsCount;
 
+  private boolean inited = false;
+
   private int currentIndex;
 
   public LastQueryCollectOperator(OperatorContext operatorContext, List<Operator> children) {
@@ -58,10 +59,17 @@ public class LastQueryCollectOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    if (!inited) {
+      inited = true;
+      // Unblock all local upstream fragment instances before consuming children one by one.
+      for (Operator child : children) {
+        child.isBlocked();
+      }
+    }
     if (currentIndex < inputOperatorsCount) {
       return children.get(currentIndex).isBlocked();
     } else {
-      return Futures.immediateVoidFuture();
+      return NOT_BLOCKED;
     }
   }
 
