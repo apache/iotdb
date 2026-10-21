@@ -20,11 +20,15 @@
 package org.apache.iotdb.calc.transformation.dag.column;
 
 import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.CoalesceColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.junit.Test;
@@ -32,9 +36,12 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Optional;
 
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class ColumnTransformerTest {
 
@@ -86,6 +93,24 @@ public class ColumnTransformerTest {
     Column result = common.getColumn();
     assertEquals(2, result.getPositionCount());
     assertEquals(2.0, result.getDouble(1), 0.0);
+  }
+
+  @Test
+  public void testSelectionEvaluationCapabilityPropagation() {
+    IdentityColumnTransformer input = new IdentityColumnTransformer(DOUBLE, 0);
+    ColumnTransformer flag =
+        new ConstantColumnTransformer(
+            BOOLEAN, new BooleanColumn(1, Optional.empty(), new boolean[] {true}));
+    ColumnTransformer diff = new DiffColumnTransformer(DOUBLE, input, flag);
+    ColumnTransformer root = new ArithmeticAdditionColumnTransformer(DOUBLE, diff, input);
+
+    assertFalse(diff.canEvaluateWithSelection());
+    assertFalse(root.canEvaluateWithSelection());
+    assertTrue(
+        new ArithmeticAdditionColumnTransformer(DOUBLE, input, input).canEvaluateWithSelection());
+    // The unary diff stays selection-capable: it forces an all-true child mask internally, so a
+    // masked evaluation is equivalent to a full one.
+    assertTrue(new DiffFunctionColumnTransformer(DOUBLE, input, false).canEvaluateWithSelection());
   }
 
   private static Column column(double value) {

@@ -50,6 +50,13 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   }
 
   @Override
+  public boolean canEvaluateWithSelection() {
+    // The full-width transform reads the masked children at unselected rows as nulls, which
+    // corrupts the running state and the values of the selected rows that follow them.
+    return false;
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }

@@ -828,6 +828,8 @@ public class IoTDBCaseWhenThenTableIT {
           "null,200.0,5.0,"
         },
         DATABASE);
+    // The expected values preserve master's masked WHEN evaluation of the binary diff: a full
+    // evaluation of the same predicate would also select the 7.0 and the trailing 5.0 rows.
     tableResultSetEqualTest(
         "SELECT "
             + diff
@@ -853,6 +855,8 @@ public class IoTDBCaseWhenThenTableIT {
               + "(1, 'd0', 'n/a'), (2, 'd0', '5'), (3, 'd0', '8')"
         });
     for (String diff : new String[] {"diff(x)", "diff(x, ignore_null)"}) {
+      // The binary variant's nulls at the CASE's ELSE rows preserve master's masked branch
+      // evaluation; a full evaluation of the same expression would produce -3.0 and -7.0 there.
       tableResultSetEqualTest(
           "SELECT CASE WHEN x > 0 THEN x ELSE "
               + diff
@@ -896,6 +900,8 @@ public class IoTDBCaseWhenThenTableIT {
               + "(4, 'd0', 'n/a', true), (5, 'd0', '10', true), (6, 'd0', '14', true)",
           "FLUSH"
         });
+    // The second block's first value is null on master: the first block's trailing masked row
+    // flips the binary diff's carried null flag, which a full evaluation would not do.
     tableResultSetEqualTest(
         "SELECT CASE WHEN src <> 'n/a' THEN diff(CAST(src AS DOUBLE), ignore_null) END AS d "
             + "FROM case_binary_guard ORDER BY time",

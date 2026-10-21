@@ -160,7 +160,14 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
       }
       // CASE may clear a common expression. Recompute only rows whose filter guard passed.
       for (ColumnTransformer transformer : commonTransformerList) {
-        transformer.tryEvaluateWithSelection(selection);
+        if (transformer.canEvaluateWithSelection()) {
+          transformer.tryEvaluateWithSelection(selection);
+        } else {
+          // Stateful transformers must be re-evaluated over every row: a masked evaluation
+          // would read the masked rows as nulls and corrupt their running state. The snapshot
+          // taken at the input boundary makes the full re-evaluation idempotent.
+          transformer.tryEvaluate();
+        }
         filterResultColumns.add(transformer.getColumn());
       }
     }

@@ -152,6 +152,30 @@ public class IoTDBCaseDeviceCacheIT {
     }
   }
 
+  @Test
+  public void testAttributeCommonDiffClearedByCase() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      statement.execute(
+          "CREATE TABLE diff_cache "
+              + "(id STRING TAG, src STRING ATTRIBUTE, a STRING ATTRIBUTE, v DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO diff_cache(time, id, src, a, v) VALUES "
+              + "(1, 'd1', '10', 'seed', 1), (2, 'd2', '20', 'seed', 1)");
+      // The shared binary diff is stateful, so the guarded recompute must re-evaluate every row
+      // instead of only the filter-passing rows, which would read the masked rows as nulls.
+      statement.execute(
+          "UPDATE diff_cache SET a = CAST(diff(CAST(src AS DOUBLE), src = 'x') AS STRING) "
+              + "WHERE CASE WHEN src = 'x' THEN true ELSE "
+              + "diff(CAST(src AS DOUBLE), src = 'x') > 5.0 END");
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM diff_cache"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d1,10,seed,", "d2,20,10.0,")));
+    }
+  }
+
   private static void createTable(Statement statement, String table) throws SQLException {
     statement.execute("USE " + DATABASE);
     statement.execute(

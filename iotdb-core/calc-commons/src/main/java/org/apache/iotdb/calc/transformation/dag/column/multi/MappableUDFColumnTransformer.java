@@ -81,6 +81,13 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     // do nothing
   }
 
+  @Override
+  public boolean canEvaluateWithSelection() {
+    // User code has no purity contract: a masked evaluation feeds the executor null-padded
+    // columns, which a stateful UDTF would process differently from a full evaluation.
+    return false;
+  }
+
   public ColumnTransformer[] getInputColumnTransformers() {
     return inputColumnTransformers;
   }

@@ -61,6 +61,23 @@ public abstract class ColumnTransformer {
     }
   }
 
+  /**
+   * Whether evaluating with a row-selection mask yields the same values at the selected rows
+   * (unselected rows are nulled by design) and the same cross-block running state as a full
+   * evaluation, for this node and its whole subtree. Stateful transformers override this to return
+   * {@code false} so that callers re-evaluate them over every row.
+   */
+  public boolean canEvaluateWithSelection() {
+    boolean[] result = {true};
+    forEachChild(
+        child -> {
+          if (result[0] && !child.canEvaluateWithSelection()) {
+            result[0] = false;
+          }
+        });
+    return result[0];
+  }
+
   public Column getColumn() {
     return columnCache.getColumn();
   }
