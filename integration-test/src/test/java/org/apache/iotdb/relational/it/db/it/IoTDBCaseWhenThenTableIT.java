@@ -72,6 +72,7 @@ public class IoTDBCaseWhenThenTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockLineNumber(1);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(SQLs);
     List<String> moreSQLs = new ArrayList<>();
@@ -694,5 +695,214 @@ public class IoTDBCaseWhenThenTableIT {
     String[] expectedHeader = new String[] {"result"};
     String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
+  }
+
+  @Test
+  public void testCaseWhenReusesAggregationAcrossBlocks() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_aggregation_cache (dev STRING TAG, c DOUBLE FIELD, q INT32 FIELD)",
+          "INSERT INTO case_aggregation_cache(time, dev, c, q) VALUES "
+              + "(0, 'd0', 1.0, 0), (0, 'd1', 1.0, 0), (3600000, 'd1', 1.0, 0)"
+        });
+
+    // The non-pushdown predicate and the different device/window shapes make the aggregation
+    // produce multiple blocks. CASE clears the shared aggregate before the next output uses it.
+    String suffix = " FROM case_aggregation_cache WHERE q % 2 < 1 GROUP BY dev, date_bin(1h, time)";
+    for (String projection :
+        new String[] {
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, CAST(sum(c) AS DOUBLE) AS total",
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, sum(c) + 0 AS total",
+          "CASE WHEN sum(c) > 0 THEN CAST(sum(c) AS DOUBLE) / CAST(sum(c) AS DOUBLE) END "
+              + "AS case_result, CAST(sum(c) AS DOUBLE) AS total"
+        }) {
+      tableResultSetEqualTest(
+          "SELECT " + projection + suffix,
+          new String[] {"case_result", "total"},
+          new String[] {"1.0,1.0,", "1.0,1.0,", "1.0,1.0,"},
+          DATABASE);
+    }
+  }
+
+  @Test
+  public void testCaseOperandsAndMultiArgumentFunctions() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_operands (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_operands(time, dev, x) VALUES (0, 'd0', 1.0), (1, 'd0', -2.0)"
+        });
+    String caseWhen = "CASE WHEN x > 0 THEN 2.0 ELSE 3.0 END";
+    String[] expressions = {
+      "x + " + caseWhen,
+      "CASE WHEN x > -100 THEN coalesce(x, 0.0) END",
+      "greatest(x, " + caseWhen + ")",
+      "CASE WHEN x BETWEEN -5.0 AND " + caseWhen + " THEN 1.0 ELSE 0.0 END",
+      "CASE WHEN x > -100 THEN CASE WHEN x BETWEEN -5.0 AND "
+          + caseWhen
+          + " THEN 1.0 ELSE 0.0 END END",
+      "coalesce(x, " + caseWhen + ")",
+      "CASE WHEN x > -100 THEN coalesce(x, " + caseWhen + ") END"
+    };
+    String[][] results = {
+      {"3.0,", "1.0,"},
+      {"1.0,", "-2.0,"},
+      {"2.0,", "3.0,"},
+      {"1.0,", "1.0,"},
+      {"1.0,", "1.0,"},
+      {"1.0,", "-2.0,"},
+      {"1.0,", "-2.0,"}
+    };
+    for (int i = 0; i < expressions.length; i++) {
+      tableResultSetEqualTest(
+          "SELECT " + expressions[i] + " AS result FROM case_operands ORDER BY time",
+          new String[] {"result"},
+          results[i],
+          DATABASE);
+    }
+    tableResultSetEqualTest(
+        "SELECT coalesce(x, 0.0) AS result FROM case_operands "
+            + "WHERE CASE WHEN coalesce(x, 0.0) > 0 THEN 1.0 ELSE 0.0 END > 0",
+        new String[] {"result"},
+        new String[] {"1.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testCommonCastRespectsCaseFilter() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE guarded_common_cast (dev STRING TAG, src STRING FIELD)",
+          "INSERT INTO guarded_common_cast(time, dev, src) VALUES "
+              + "(0, 'd0', 'n/a'), (1, 'd0', '5')"
+        });
+    String query =
+        "SELECT CAST(src AS INT32) + 1 AS result FROM guarded_common_cast "
+            + "WHERE CASE WHEN src <> 'n/a' THEN CAST(src AS INT32) > 10 ELSE false END";
+    tableResultSetEqualTest(query, new String[] {"result"}, new String[0], DATABASE);
+
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "INSERT INTO guarded_common_cast(time, dev, src) VALUES (2, 'd0', '50')"
+        });
+    tableResultSetEqualTest(query, new String[] {"result"}, new String[] {"51,"}, DATABASE);
+  }
+
+  @Test
+  public void testReusingCasePreservesPendingSiblingColumn() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_sibling_cache (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_sibling_cache(time, dev, x) VALUES "
+              + "(0, 'd0', -3.0), (1, 'd0', 0.0), (2, 'd0', 2.0)"
+        });
+
+    String sharedCase = "CASE WHEN x > 0 THEN 1.0 ELSE 0.0 END";
+    tableResultSetEqualTest(
+        "SELECT "
+            + sharedCase
+            + " AS a, x + CASE WHEN ("
+            + sharedCase
+            + ") > 0 THEN 2.0 ELSE 3.0 END AS b FROM case_sibling_cache ORDER BY time",
+        new String[] {"a", "b"},
+        new String[] {"0.0,0.0,", "0.0,3.0,", "1.0,4.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testSharedDiffAcrossCaseFilterAndProjection() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_shared_diff (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES "
+              + "(1, 'd0', 1.0), (2, 'd0', 3.0), (3, 'd0', 6.0)",
+          "FLUSH",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES (4, 'd0', 10.0), (5, 'd0', 11.0)",
+          "FLUSH"
+        });
+    tableResultSetEqualTest(
+        "SELECT time, diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN 1.0 ELSE 0.0 END > 0.0",
+        new String[] {"time", "d"},
+        new String[] {
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.004Z,4.0,"
+        },
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN true ELSE true END",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "3.0,", "4.0,", "1.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 5 THEN diff(x) ELSE 100.0 END AS a, "
+            + "CASE WHEN x > 5 THEN 200.0 ELSE diff(x) END AS b, diff(x) AS d "
+            + "FROM case_shared_diff",
+        new String[] {"a", "b", "d"},
+        new String[] {
+          "100.0,null,null,", "100.0,2.0,2.0,", "3.0,200.0,3.0,", "4.0,200.0,4.0,", "1.0,200.0,1.0,"
+        },
+        DATABASE);
+  }
+
+  @Test
+  public void testDynamicIgnoreNullDiffAcrossCaseFilterAndProjection() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_dynamic_diff "
+              + "(dev STRING TAG, x DOUBLE FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(1, 'd0', 1.0, true), (2, 'd0', 3.0, false), (3, 'd0', null, true), "
+              + "(4, 'd0', 10.0, null), (5, 'd0', null, false)",
+          "FLUSH",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(6, 'd0', 20.0, true), (7, 'd0', 25.0, false), "
+              + "(8, 'd0', null, true), (9, 'd0', 30.0, true)",
+          "FLUSH"
+        });
+    String diff = "diff(x, ignore_null)";
+    tableResultSetEqualTest(
+        "SELECT " + diff + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "null,", "7.0,", "null,", "null,", "5.0,", "null,", "5.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 5 THEN "
+            + diff
+            + " ELSE 100.0 END AS a, CASE WHEN x > 5 THEN 200.0 ELSE "
+            + diff
+            + " END AS b, "
+            + diff
+            + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"a", "b", "d"},
+        new String[] {
+          "100.0,null,null,",
+          "100.0,2.0,2.0,",
+          "100.0,null,null,",
+          "7.0,200.0,7.0,",
+          "100.0,null,null,",
+          "null,200.0,null,",
+          "5.0,200.0,5.0,",
+          "100.0,null,null,",
+          "5.0,200.0,5.0,"
+        },
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT "
+            + diff
+            + " AS d FROM case_dynamic_diff WHERE CASE WHEN x IS NULL THEN false WHEN "
+            + diff
+            + " > 1.0 THEN true ELSE false END ORDER BY time",
+        new String[] {"d"},
+        new String[] {"2.0,", "7.0,", "5.0,", "5.0,"},
+        DATABASE);
   }
 }

@@ -35,6 +35,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.T
 public abstract class DevicePredicateHandler implements AutoCloseable {
   private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
   protected final ColumnTransformer filterOutputTransformer;
+  private final ColumnTransformer[] filterCacheTransformers;
   private final List<TSDataType> inputDataTypes;
   private final List<TsTableColumnSchema> columnSchemaList;
   private final int tagIndex;
@@ -59,14 +61,36 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected TsBlock curBlock;
   protected Column curFilterColumn;
 
+  // Retain the original constructor descriptor for precompiled subclasses without common roots.
   protected DevicePredicateHandler(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
       final List<TsTableColumnSchema> columnSchemaList,
       final String database,
       final TsTable table) {
+    this(
+        filterLeafColumnTransformerList,
+        filterOutputTransformer,
+        Collections.emptyList(),
+        columnSchemaList,
+        database,
+        table);
+  }
+
+  protected DevicePredicateHandler(
+      final List<LeafColumnTransformer> filterLeafColumnTransformerList,
+      final ColumnTransformer filterOutputTransformer,
+      final List<ColumnTransformer> commonTransformerList,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final String database,
+      final TsTable table) {
     this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
     this.filterOutputTransformer = filterOutputTransformer;
+    List<ColumnTransformer> filterRoots = new ArrayList<>(commonTransformerList);
+    if (filterOutputTransformer != null) {
+      filterRoots.add(filterOutputTransformer);
+    }
+    this.filterCacheTransformers = ColumnTransformer.collectTransformers(filterRoots);
     this.columnSchemaList = columnSchemaList;
     this.inputDataTypes =
         columnSchemaList.stream()
@@ -106,6 +130,10 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
       return;
     }
 
+    // A CASE can leave shared expressions cached after the previous batch was consumed.
+    for (ColumnTransformer transformer : filterCacheTransformers) {
+      transformer.clearCacheForNewInput();
+    }
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     filterLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(curBlock));

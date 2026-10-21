@@ -39,7 +39,7 @@ public class ConstantColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
+  protected Column evaluateSelection(boolean[] selection) {
     int positionCount = input.getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     for (int i = 0; i < positionCount; i++) {
@@ -49,6 +49,6 @@ public class ConstantColumnTransformer extends LeafColumnTransformer {
         builder.write(value, 0);
       }
     }
-    initializeColumnCache(builder.build());
+    return builder.build();
   }
 }

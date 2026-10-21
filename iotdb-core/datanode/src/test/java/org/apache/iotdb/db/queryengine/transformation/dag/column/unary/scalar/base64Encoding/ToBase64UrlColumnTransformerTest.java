@@ -45,7 +45,8 @@ public class ToBase64UrlColumnTransformerTest {
     Mockito.when(mockColumnTransformer.getColumn()).thenReturn(column);
     Mockito.doNothing().when(mockColumnTransformer).tryEvaluate();
     Mockito.doNothing().when(mockColumnTransformer).clearCache();
-    Mockito.doNothing().when(mockColumnTransformer).evaluateWithSelection(Mockito.any());
+    Mockito.when(mockColumnTransformer.getColumnWithSelection(Mockito.any()))
+        .thenAnswer(invocation -> mockColumnTransformer.getColumn());
     return mockColumnTransformer;
   }
 

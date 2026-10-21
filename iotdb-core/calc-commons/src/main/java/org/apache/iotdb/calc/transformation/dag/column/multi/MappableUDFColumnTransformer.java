@@ -26,6 +26,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   private final ColumnTransformer[] inputColumnTransformers;
@@ -42,36 +44,67 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluate() {
     // pull columns from previous transformers
-    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
-      inputColumnTransformer.tryEvaluate();
+    Column[] columns = new Column[inputColumnTransformers.length];
+    for (int i = 0; i < inputColumnTransformers.length; i++) {
+      inputColumnTransformers[i].tryEvaluate();
+      // Retain each input column before evaluating the next sibling.
+      columns[i] = inputColumnTransformers[i].getColumn();
     }
-    doTransform();
+    initializeColumnCache(doTransform(columns));
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
-    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
-      inputColumnTransformer.evaluateWithSelection(selection);
+  protected Column evaluateSelection(boolean[] selection) {
+    int[] positions = new int[selection.length];
+    int selectedCount = 0;
+    for (int i = 0; i < selection.length; i++) {
+      if (selection[i]) {
+        positions[selectedCount++] = i;
+      }
     }
-    doTransform();
-    // clear cache
-    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
-      inputColumnTransformer.clearCache();
+    Column[] columns = new Column[inputColumnTransformers.length];
+    for (int i = 0; i < inputColumnTransformers.length; i++) {
+      ColumnTransformer inputTransformer = inputColumnTransformers[i];
+      Column inputColumn = inputTransformer.getColumnWithSelection(selection);
+      // UDFs can read backing arrays directly. Materialize selected positions instead of passing
+      // dictionary or offset views whose arrays do not match their logical positions.
+      ColumnBuilder inputBuilder = inputTransformer.getType().createColumnBuilder(selectedCount);
+      for (int j = 0; j < selectedCount; j++) {
+        int position = positions[j];
+        if (inputColumn.isNull(position)) {
+          inputBuilder.appendNull();
+        } else {
+          inputBuilder.write(inputColumn, position);
+        }
+      }
+      columns[i] = inputBuilder.build();
     }
+    ColumnBuilder builder = returnType.createColumnBuilder(selection.length);
+    // A mappable UDF only sees selected rows, even when its inputs reuse full cached columns.
+    Column result = selectedCount == 0 ? null : doTransform(columns);
+    int resultIndex = 0;
+    for (boolean selected : selection) {
+      if (selected) {
+        if (result.isNull(resultIndex)) {
+          builder.appendNull();
+        } else {
+          builder.write(result, resultIndex);
+        }
+        resultIndex++;
+      } else {
+        builder.appendNull();
+      }
+    }
+    return builder.build();
   }
 
-  private void doTransform() {
-    int size = inputColumnTransformers.length;
-    Column[] columns = new Column[size];
-    for (int i = 0; i < size; i++) {
-      columns[i] = inputColumnTransformers[i].getColumn();
-    }
+  private Column doTransform(Column[] columns) {
     // construct input TsBlock with columns
     int positionCount = columns[0].getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     // executor UDF and cache result
     executor.execute(columns, builder);
-    initializeColumnCache(builder.build());
+    return builder.build();
   }
 
   @Override
@@ -94,10 +127,9 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void clearCache() {
-    super.clearCache();
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
     for (ColumnTransformer columnTransformer : inputColumnTransformers) {
-      columnTransformer.clearCache();
+      action.accept(columnTransformer);
     }
   }
 }

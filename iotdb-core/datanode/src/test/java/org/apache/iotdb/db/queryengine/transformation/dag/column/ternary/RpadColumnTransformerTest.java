@@ -44,7 +44,8 @@ public class RpadColumnTransformerTest {
     // Common mocking for evaluation methods
     Mockito.doNothing().when(mockTransformer).tryEvaluate();
     Mockito.doNothing().when(mockTransformer).clearCache();
-    Mockito.doNothing().when(mockTransformer).evaluateWithSelection(Mockito.any());
+    Mockito.when(mockTransformer.getColumnWithSelection(Mockito.any()))
+        .thenAnswer(invocation -> mockTransformer.getColumn());
     Mockito.when(mockTransformer.getColumnCachePositionCount())
         .thenReturn(column.getPositionCount());
     return mockTransformer;

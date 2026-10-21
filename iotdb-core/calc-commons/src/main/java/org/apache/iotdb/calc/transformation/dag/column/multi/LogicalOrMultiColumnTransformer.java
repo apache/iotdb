@@ -36,14 +36,13 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
+  protected Column evaluateSelection(boolean[] selection) {
     boolean[] selectionCopy = selection.clone();
     boolean[] hasNull = new boolean[selection.length];
 
     List<Column> childColumns = new ArrayList<>(columnTransformerList.size());
     for (ColumnTransformer child : columnTransformerList) {
-      child.evaluateWithSelection(selectionCopy);
-      Column childColumn = child.getColumn();
+      Column childColumn = child.getColumnWithSelection(selectionCopy);
       childColumns.add(childColumn);
 
       for (int i = 0; i < childColumn.getPositionCount(); i++) {
@@ -77,11 +76,7 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
       }
     }
 
-    initializeColumnCache(builder.build());
-
-    for (ColumnTransformer child : columnTransformerList) {
-      child.clearCache();
-    }
+    return builder.build();
   }
 
   @Override

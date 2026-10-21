@@ -43,7 +43,7 @@ public class IdentityColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
+  protected Column evaluateSelection(boolean[] selection) {
     ColumnBuilder builder = returnType.createColumnBuilder(selection.length);
     Column inputColumn = input.getColumn(inputIndex);
     for (int i = 0; i < selection.length; i++) {
@@ -53,6 +53,6 @@ public class IdentityColumnTransformer extends LeafColumnTransformer {
         builder.write(inputColumn, i);
       }
     }
-    initializeColumnCache(builder.build());
+    return builder.build();
   }
 }

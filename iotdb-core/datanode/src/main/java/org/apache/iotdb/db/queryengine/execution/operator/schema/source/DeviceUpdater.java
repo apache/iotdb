@@ -31,6 +31,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDev
 
 import org.apache.tsfile.utils.Binary;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -38,6 +39,7 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
 
   private final BiFunction<Integer, String, Binary> attributeProvider;
 
+  // Retain the original constructor descriptor for precompiled subclasses without common roots.
   protected DeviceUpdater(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
@@ -45,9 +47,28 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
       final BiFunction<Integer, String, Binary> attributeProvider,
       final String database,
       final TsTable table) {
+    this(
+        filterLeafColumnTransformerList,
+        filterOutputTransformer,
+        Collections.emptyList(),
+        columnSchemaList,
+        attributeProvider,
+        database,
+        table);
+  }
+
+  protected DeviceUpdater(
+      final List<LeafColumnTransformer> filterLeafColumnTransformerList,
+      final ColumnTransformer filterOutputTransformer,
+      final List<ColumnTransformer> commonTransformerList,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final BiFunction<Integer, String, Binary> attributeProvider,
+      final String database,
+      final TsTable table) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        commonTransformerList,
         columnSchemaList,
         database,
         table);

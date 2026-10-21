@@ -32,6 +32,8 @@ import org.apache.iotdb.calc.transformation.dag.column.multi.MappableUDFColumnTr
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -41,19 +43,29 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.Set;
+
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfBooleanArray;
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfDoubleArray;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(FilterAndProjectOperator.class);
+
+  private static final long DIFF_COLUMN_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DoubleColumn.class);
 
   private final Operator inputOperator;
 
@@ -66,6 +78,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
 
   private final List<ColumnTransformer> projectOutputTransformerList;
+
+  private final ColumnTransformer[] filterCacheTransformers;
+
+  private final ColumnTransformer[] projectCacheTransformers;
+
+  private final int retainedInputColumnCount;
 
   private final TsBlockBuilder filterTsBlockBuilder;
 
@@ -100,6 +118,15 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.hasNonMappableUDF = hasNonMappableUDF;
     this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
     this.hasFilter = hasFilter;
+    List<ColumnTransformer> filterRoots = new ArrayList<>(commonTransformerList);
+    if (filterOutputTransformer != null) {
+      filterRoots.add(filterOutputTransformer);
+    }
+    this.filterCacheTransformers = ColumnTransformer.collectTransformers(filterRoots);
+    this.projectCacheTransformers =
+        ColumnTransformer.collectTransformers(projectOutputTransformerList);
+    this.retainedInputColumnCount =
+        countRetainedInputColumns(filterCacheTransformers, projectCacheTransformers);
   }
 
   public FilterAndProjectOperator(
@@ -111,10 +138,26 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.projectLeafColumnTransformerList =
         filterAndProjectOperator.projectLeafColumnTransformerList;
     this.projectOutputTransformerList = filterAndProjectOperator.projectOutputTransformerList;
+    this.filterCacheTransformers = filterAndProjectOperator.filterCacheTransformers;
+    this.projectCacheTransformers = filterAndProjectOperator.projectCacheTransformers;
+    this.retainedInputColumnCount = filterAndProjectOperator.retainedInputColumnCount;
     this.hasNonMappableUDF = filterAndProjectOperator.hasNonMappableUDF;
     this.hasFilter = filterAndProjectOperator.hasFilter;
     this.filterTsBlockBuilder = filterAndProjectOperator.filterTsBlockBuilder;
     this.inputOperator = inputOperator;
+  }
+
+  private static int countRetainedInputColumns(ColumnTransformer[]... phases) {
+    Set<ColumnTransformer> retained = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (ColumnTransformer[] transformers : phases) {
+      for (ColumnTransformer transformer : transformers) {
+        if (transformer instanceof DiffFunctionColumnTransformer
+            || transformer instanceof DiffColumnTransformer) {
+          retained.add(transformer);
+        }
+      }
+    }
+    return retained.size();
   }
 
   @Override
@@ -134,7 +177,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
 
     long inputRowCount = input.getPositionCount();
-    TsBlock filterResult = getFilterTsBlock(input);
+    TsBlock filterResult;
+    try {
+      filterResult = getFilterTsBlock(input);
+    } finally {
+      // Materialization and compaction have consumed every filter result before projection starts.
+      clearColumnCaches(filterCacheTransformers);
+    }
     filteredRowCount += inputRowCount - filterResult.getPositionCount();
     operatorContext.recordSpecifiedInfo("Filtered Rows", Long.toString(filteredRowCount));
 
@@ -145,6 +194,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return getTransformedTsBlock(filterResult);
   }
 
+  private static void clearColumnCaches(ColumnTransformer[] transformers) {
+    for (ColumnTransformer transformer : transformers) {
+      transformer.clearColumnCache();
+    }
+  }
+
   /**
    * Return the TsBlock that contains both initial input columns and columns of common
    * subexpressions after filtering.
@@ -152,6 +207,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getFilterTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
+    // A selected consumer does not consume full-cache references. Release all results from the
+    // preceding input, including stateful transformers' per-input results, before feeding this
+    // block.
+    for (ColumnTransformer columnTransformer : filterCacheTransformers) {
+      columnTransformer.clearCacheForNewInput();
+    }
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
       leafColumnTransformer.initFromTsBlock(input);
@@ -172,13 +233,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
 
     if (!hasNonMappableUDF) {
-      // get result of calculated common sub expressions
-      for (ColumnTransformer columnTransformer : commonTransformerList) {
-        // CASE WHEN clause would clear all its cache
-        // evaluate again to acquire cache
-        columnTransformer.tryEvaluate();
-        resultColumns.add(columnTransformer.getColumn());
-      }
+      appendCommonExpressionColumns(
+          resultColumns, commonTransformerList, filterColumn, positionCount);
     }
 
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
@@ -202,6 +258,24 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
       filterTsBlockBuilder.declarePositions(rowCount);
       return filterTsBlockBuilder.build();
+    }
+  }
+
+  // Selected results belong to this materialization, not the shared full-column caches.
+  private static void appendCommonExpressionColumns(
+      List<Column> resultColumns,
+      List<ColumnTransformer> commonTransformers,
+      Column filterColumn,
+      int positionCount) {
+    if (commonTransformers.isEmpty()) {
+      return;
+    }
+    boolean[] selection = new boolean[positionCount];
+    for (int i = 0; i < positionCount; i++) {
+      selection[i] = satisfy(filterColumn, i);
+    }
+    for (ColumnTransformer transformer : commonTransformers) {
+      resultColumns.add(transformer.getColumnWithSelection(selection));
     }
   }
 
@@ -265,18 +339,28 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getTransformedTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
+    // The flat array was deduplicated at construction; clear each node before evaluating any
+    // output.
+    for (ColumnTransformer columnTransformer : projectCacheTransformers) {
+      columnTransformer.clearCacheForNewInput();
+    }
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {
       leafColumnTransformer.initFromTsBlock(input);
     }
 
-    List<Column> resultColumns = new ArrayList<>(projectOutputTransformerList.size());
-    for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
-      columnTransformer.tryEvaluate();
-      resultColumns.add(columnTransformer.getColumn());
+    try {
+      List<Column> resultColumns = new ArrayList<>(projectOutputTransformerList.size());
+      for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
+        columnTransformer.tryEvaluate();
+        resultColumns.add(columnTransformer.getColumn());
+      }
+      return TsBlock.wrapBlocksWithoutCopy(
+          positionCount, originTimeColumn, resultColumns.toArray(new Column[0]));
+    } finally {
+      // Returned columns are retained by the TsBlock, not by ordinary transformer caches.
+      clearColumnCaches(projectCacheTransformers);
     }
-    return TsBlock.wrapBlocksWithoutCopy(
-        positionCount, originTimeColumn, resultColumns.toArray(new Column[0]));
   }
 
   @Override
@@ -319,7 +403,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
               maxPeekMemory,
               (long) maxCachedColumn
                   * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte())
-          + inputOperator.calculateRetainedSizeAfterCallingNext();
+          + calculateRetainedSizeAfterCallingNext();
     }
 
     // has Filter
@@ -336,7 +420,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return Math.max(
             maxPeekMemory,
             (long) maxCachedColumn * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte())
-        + inputOperator.calculateRetainedSizeAfterCallingNext();
+        + calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
@@ -353,7 +437,20 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext();
+    // DIFF retains a complete result until the next input even after its ordinary cache is
+    // consumed.
+    // Filter and projection results can coexist, so count distinct nodes across both phases.
+    return inputOperator.calculateRetainedSizeAfterCallingNext()
+        + (long) retainedInputColumnCount * getMaxRetainedDiffColumnSize();
+  }
+
+  private static long getMaxRetainedDiffColumnSize() {
+    int maxRows = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    // DIFF always builds a DoubleColumn. A larger TsBlock can exceed a storage page, so account
+    // for the value array, NULL flags, and object/array headers using the column's sizing rules.
+    return Math.max(
+        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+        DIFF_COLUMN_INSTANCE_SIZE + sizeOfBooleanArray(maxRows) + sizeOfDoubleArray(maxRows));
   }
 
   private int getMaxLevelOfColumnTransformerTree(ColumnTransformer columnTransformer) {
@@ -438,9 +535,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public long ramBytesUsed() {
+    // Shallow array sizes include the header and every reference slot. This estimate does not
+    // include the transformer objects referenced by the arrays.
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.shallowSizeOf(filterCacheTransformers)
+        + RamUsageEstimator.shallowSizeOf(projectCacheTransformers)
         + filterTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

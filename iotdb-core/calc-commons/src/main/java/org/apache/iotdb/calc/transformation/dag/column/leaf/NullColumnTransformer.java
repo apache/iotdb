@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.leaf;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.NullColumn;
 
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
@@ -35,7 +36,7 @@ public class NullColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
-    initializeColumnCache(new NullColumn(input.getPositionCount()));
+  protected Column evaluateSelection(boolean[] selection) {
+    return new NullColumn(input.getPositionCount());
   }
 }

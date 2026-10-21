@@ -26,8 +26,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
-import java.util.Arrays;
-
 public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
 
   // default is true
@@ -39,6 +37,9 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
   // indicate whether lastValue is null
   private boolean lastValueIsNull = true;
 
+  // DIFF must advance its state once per input, even when several masks/consumers request it.
+  private Column currentInputResult;
+
   public DiffFunctionColumnTransformer(
       Type returnType, ColumnTransformer childColumnTransformer, boolean ignoreNull) {
     super(returnType, childColumnTransformer);
@@ -46,16 +47,36 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {
-    // The DIFF function depends on forward and backward rows and cannot be short-circuited.
-    boolean[] selectionCopy = new boolean[selection.length];
-    Arrays.fill(selectionCopy, true);
-    childColumnTransformer.evaluateWithSelection(selectionCopy);
-    Column column = childColumnTransformer.getColumn();
-    ColumnBuilder columnBuilder = returnType.createColumnBuilder(column.getPositionCount());
-    doTransform(column, columnBuilder, selection);
-    initializeColumnCache(columnBuilder.build());
-    childColumnTransformer.clearCache();
+  public void evaluate() {
+    initializeColumnCache(evaluateCurrentInput());
+  }
+
+  @Override
+  protected Column evaluateSelection(boolean[] selection) {
+    // DIFF depends on all preceding rows, including rows rejected by a CASE/filter mask.
+    return evaluateCurrentInput();
+  }
+
+  private Column evaluateCurrentInput() {
+    if (currentInputResult == null) {
+      childColumnTransformer.tryEvaluate();
+      Column column = childColumnTransformer.getColumn();
+      ColumnBuilder builder = returnType.createColumnBuilder(column.getPositionCount());
+      doTransform(column, builder);
+      currentInputResult = builder.build();
+    }
+    return currentInputResult;
+  }
+
+  @Override
+  protected void resetForNewInput() {
+    currentInputResult = null;
+  }
+
+  @Override
+  public void close() {
+    currentInputResult = null;
+    super.close();
   }
 
   @Override
