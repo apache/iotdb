@@ -186,6 +186,10 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-${{ runner.arch }}-m2-
+      - name: Test Boost include resolution
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cmake -DTEST_BINARY_DIR="$RUNNER_TEMP/boost-include-test" -P iotdb-client/client-cpp/test/cmake/FetchBoostTest.cmake
       - name: Check C++ format (Spotless)
         shell: bash
         run: |

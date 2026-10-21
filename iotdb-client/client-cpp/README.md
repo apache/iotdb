@@ -300,7 +300,7 @@ so they require glibc 2.28 or newer on the deployment host.
 | ppc64le | `quay.io/pypa/manylinux_2_28_ppc64le` |
 | s390x | `quay.io/pypa/manylinux_2_28_s390x` |
 
-Thrift **0.24.0** is compiled from source during the CMake configure step (see
+Thrift **0.25.0** is compiled from source during the CMake configure step (see
 `cmake/FetchThrift.cmake`). Older releases that used pre-built
 `iotdb-tools-thrift` Maven artifacts and `-Diotdb-tools-thrift.version=...`
 for glibc/MSVC compatibility apply only to the **legacy** client-cpp build;
@@ -384,7 +384,7 @@ etc. directly.
 | `IOTDB_OFFLINE`       | `OFF`                            | Disallow any network access during configure.                                                            |
 | `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
-| `THRIFT_VERSION`      | `0.24.0`                         | Apache Thrift version to build from source.                                                              |
+| `THRIFT_VERSION`      | `0.25.0`                         | Apache Thrift version to build from source.                                                              |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
 | `IOTDB_OPENSSL_FROM_SOURCE` | `ON`                       | Build the checksum-pinned OpenSSL source release; set `OFF` to opt into system OpenSSL.                  |
 | `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install used only when `IOTDB_OPENSSL_FROM_SOURCE=OFF`.                                 |
@@ -428,12 +428,12 @@ cmake --build build --config Release --target install
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `openssl-3.5.8.tar.gz` |
-   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz`, `openssl-3.5.8.tar.gz` |
-   | `windows/` | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `openssl-3.5.8.tar.gz` |
+   | `linux/`   | `thrift-0.25.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `openssl-3.5.8.tar.gz` |
+   | `mac/`     | `thrift-0.25.0.tar.gz`, `boost_1_84_0.tar.gz`, `openssl-3.5.8.tar.gz` |
+   | `windows/` | `thrift-0.25.0.tar.gz`, `boost_1_60_0.tar.gz`, `openssl-3.5.8.tar.gz` |
 
    Reference URLs (the configure step uses the same):
-   - Apache Thrift 0.24.0: <https://archive.apache.org/dist/thrift/0.24.0/thrift-0.24.0.tar.gz>
+   - Apache Thrift 0.25.0: <https://archive.apache.org/dist/thrift/0.25.0/thrift-0.25.0.tar.gz>
    - Boost 1.60.0:        <https://archives.boost.io/release/1.60.0/source/boost_1_60_0.tar.gz>
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
@@ -462,7 +462,7 @@ CI environments can share a single cache by setting
 ### Linux
 
 - Tested with GCC 7+ and Clang 9+. Anything that can compile Apache Thrift
-  0.24.0 works.
+  0.25.0 works.
 - Build deps that must already exist on the host (only required when
   CMake auto-builds m4/flex/bison from tarball): `make`, `autoconf`,
   `gcc`, plus the standard C/C++ toolchain. `sudo` is **not** required;

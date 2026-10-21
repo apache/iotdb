@@ -97,7 +97,7 @@ else()
 endif()
 set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
-set(THRIFT_VERSION "0.24.0"
+set(THRIFT_VERSION "0.25.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
 
 if(WIN32)
