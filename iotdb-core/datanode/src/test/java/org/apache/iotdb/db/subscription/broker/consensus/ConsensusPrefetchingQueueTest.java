@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -38,6 +39,9 @@ import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionRea
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALTestUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
@@ -51,6 +55,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutor;
 import org.apache.iotdb.db.subscription.task.subtask.ConsensusPrefetchSubtask;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
@@ -64,6 +69,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Rule;
@@ -1910,6 +1916,182 @@ public class ConsensusPrefetchingQueueTest {
         queue.close();
       }
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testPausedRoundsReleaseWalReadBuffers() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File dir = temporaryFolder.newFolder("paused-wal-buffers");
+    final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
+    when(server.getConsensusReqReader()).thenReturn(new FakeConsensusReqReader());
+    when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+    final ConsensusPrefetchingQueue queue =
+        new ConsensusPrefetchingQueue(
+            "consumerGroup",
+            "topic",
+            TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+            new DataRegionId(12),
+            server,
+            new SubscriptionWalRetentionPolicy(
+                "topic",
+                SubscriptionWalRetentionPolicy.UNBOUNDED,
+                SubscriptionWalRetentionPolicy.UNBOUNDED),
+            mock(ConsensusLogToTabletConverter.class),
+            newCommitManager(dir),
+            new RegionProgress(Collections.emptyMap()),
+            1L,
+            1L,
+            true);
+    try {
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(0));
+      final Field initialized =
+          ConsensusPrefetchingQueue.class.getDeclaredField("prefetchInitialized");
+      initialized.setAccessible(true);
+      initialized.setBoolean(queue, true);
+      final Field blockedEntryBytes =
+          ConsensusPrefetchingQueue.class.getDeclaredField("memoryBlockedEntryBytes");
+      blockedEntryBytes.setAccessible(true);
+      blockedEntryBytes.setLong(queue, 1L);
+      final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
+      setSubscriptionWalIterator(queue, iterator);
+
+      assertEquals(PrefetchRoundResult.Type.RESCHEDULE_LATER, queue.drivePrefetchOnce().getType());
+      verify(iterator).releaseReadBuffers();
+      verify(iterator, never()).hasNext(any(ProgressWALIterator.ScanBudget.class));
+
+      initialized.setBoolean(queue, false);
+      assertEquals(PrefetchRoundResult.Type.DORMANT, queue.drivePrefetchOnce().getType());
+      verify(iterator, times(2)).releaseReadBuffers();
+    } finally {
+      queue.close();
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testWalScanSlicesDoNotReloadSegment() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxWalEntries =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxWalEntries();
+    final CompressionType originalCompression =
+        IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
+    final long originalMinCompressionSize = WALTestUtils.getMinCompressionSize();
+    final WritingMetrics metrics = WritingMetrics.getInstance();
+    final Field readSizeField = WritingMetrics.class.getDeclaredField("readWALBufferSizeHistogram");
+    final Field uncompressField =
+        WritingMetrics.class.getDeclaredField("walUncompressCostHistogram");
+    readSizeField.setAccessible(true);
+    uncompressField.setAccessible(true);
+    final Object originalReadSize = readSizeField.get(metrics);
+    final Object originalUncompress = uncompressField.get(metrics);
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxWalEntries(1);
+      WALTestUtils.setMinCompressionSize(0);
+      for (final CompressionType compression :
+          new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.LZ4}) {
+        IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(compression);
+        final File dir = temporaryFolder.newFolder("scan-slices-" + compression);
+        final File walFile =
+            new File(dir, WALFileUtils.getLogFileName(0, 1, WALFileStatus.CONTAINS_SEARCH_INDEX));
+        final int entryCount = 128;
+        final int entrySize = 1024;
+        final ByteBuffer segment = ByteBuffer.allocate(entryCount * entrySize);
+        final WALMetaData metadata = new WALMetaData();
+        for (int index = 1; index <= entryCount; index++) {
+          segment.put(WALEntryType.INSERT_ROW_NODE.getCode());
+          segment.putLong(1L);
+          segment.putShort(PlanNodeType.INSERT_ROW.getNodeType());
+          segment.putLong(index);
+          segment.position(index * entrySize);
+          metadata.add(entrySize, index, 1L, 1000L + index, 7, index);
+        }
+        try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
+          writer.setCompressedByteBuffer(ByteBuffer.allocate(segment.capacity() * 2));
+          writer.write(segment, metadata);
+        }
+
+        final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+        reader.currentSearchIndex = entryCount;
+        final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
+        when(server.getConsensusReqReader()).thenReturn(reader);
+        when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+        final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+        when(converter.convert(any())).thenReturn(Collections.emptyList());
+        when(converter.getDatabaseName()).thenReturn("db");
+        final AtomicLong bytesRead = new AtomicLong();
+        final Histogram readSizes = mock(Histogram.class);
+        doAnswer(
+                invocation -> {
+                  bytesRead.addAndGet(invocation.getArgument(0));
+                  return null;
+                })
+            .when(readSizes)
+            .update(anyLong());
+        final Histogram uncompressCosts = mock(Histogram.class);
+        readSizeField.set(metrics, readSizes);
+        uncompressField.set(metrics, uncompressCosts);
+        final ConsensusPrefetchingQueue queue =
+            new ConsensusPrefetchingQueue(
+                "consumerGroup",
+                "topic",
+                TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+                new DataRegionId(12),
+                server,
+                new SubscriptionWalRetentionPolicy(
+                    "topic",
+                    SubscriptionWalRetentionPolicy.UNBOUNDED,
+                    SubscriptionWalRetentionPolicy.UNBOUNDED),
+                converter,
+                newCommitManager(
+                    dir,
+                    (group, topic, region) ->
+                        ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                            new RegionProgress(Collections.emptyMap()))),
+                new RegionProgress(Collections.emptyMap()),
+                1L,
+                1L,
+                true) {
+              @Override
+              protected ProgressWALIterator createSubscriptionWALIterator(
+                  final long startSearchIndex) {
+                return new ProgressWALIterator(dir, startSearchIndex);
+              }
+            };
+        queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+        try {
+          assertNull(queue.poll("consumer"));
+          long firstReadSize = 0;
+          int rounds = 0;
+          while (queue.getCurrentReadSearchIndex() <= entryCount && rounds++ < entryCount + 5) {
+            queue.drivePrefetchOnce();
+            if (firstReadSize == 0) {
+              firstReadSize = bytesRead.get();
+            } else {
+              // The segment contains 128 entries, but a round can read only one physical entry.
+              // The body must be read/decompressed once, rather than once per prefetch round.
+              assertEquals(firstReadSize, bytesRead.get());
+            }
+          }
+          assertTrue(firstReadSize > 0);
+          assertTrue(rounds >= entryCount);
+          assertEquals(entryCount + 1L, queue.getCurrentReadSearchIndex());
+          verify(uncompressCosts, times(compression == CompressionType.LZ4 ? 1 : 0))
+              .update(anyLong());
+          verify(converter, times(entryCount)).convert(any());
+        } finally {
+          queue.close();
+        }
+      }
+    } finally {
+      readSizeField.set(metrics, originalReadSize);
+      uncompressField.set(metrics, originalUncompress);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxWalEntries(originalBatchMaxWalEntries);
+      IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(originalCompression);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+      WALTestUtils.setMinCompressionSize(originalMinCompressionSize);
     }
   }
 
