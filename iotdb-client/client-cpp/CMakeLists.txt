@@ -140,6 +140,9 @@ add_library(iotdb_session SHARED
 set_target_properties(iotdb_session PROPERTIES CXX_STANDARD 17)
 
 if(WIN32)
+    # Exclude unused Windows RPC/COM headers: their byte typedef conflicts with
+    # std::byte when included after the SDK's public using-directives.
+    target_compile_definitions(iotdb_session PRIVATE WIN32_LEAN_AND_MEAN)
     set_target_properties(iotdb_session PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
