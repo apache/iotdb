@@ -196,8 +196,8 @@ public class SessionSeedNodeFallbackIT {
     return NodesSupplier.createNodeSupplier(
         seeds,
         executor,
-        "root",
-        "root",
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
         ZoneId.of("UTC"),
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,

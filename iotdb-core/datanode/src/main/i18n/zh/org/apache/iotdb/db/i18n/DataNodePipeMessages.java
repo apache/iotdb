@@ -2112,6 +2112,12 @@ public final class DataNodePipeMessages {
           "订阅 WAL 重放累计跳过了 %d 个无法读取的保留 WAL 文件，队列 %s，region %s。历史数据可能丢失。详情（近期文件；完整信息见服务端日志）：%s";
   public static final String MESSAGE_UNKNOWN_AD921D60 = "未知";
   public static final String
+      MESSAGE_WAL_METADATA_SNAPSHOT_FOR_FILE_ARG_VERSIONID_ARG_IS_UNAVAILABLE_AFTER_ROTATION_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_D99C12A0 =
+          "WAL 文件 %s（versionId=%d）在轮转后无法获取对应的元数据快照；回放将重试，不跳过该文件";
+  public static final String
+      EXCEPTION_WAL_FILE_ARG_VERSIONID_ARG_IS_MISSING_FROM_TWO_SUCCESSIVE_DIRECTORY_SCANS_AFTER_A_NEWER_WAL_FILE_BECAME_VISIBLE_1E170B4B =
+          "后继 WAL 文件可见后，WAL 文件 %s（versionId=%d）在连续两次目录扫描中均不存在";
+  public static final String
       MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
           "WAL 文件 %s（versionId=%d，entryOffset=%d）暂不可读；重放将重试而不跳过：%s";
   public static final String
