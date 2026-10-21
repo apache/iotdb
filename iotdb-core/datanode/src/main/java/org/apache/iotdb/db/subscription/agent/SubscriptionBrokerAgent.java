@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
@@ -42,10 +44,12 @@ import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSe
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterMatcher;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -77,6 +81,7 @@ public class SubscriptionBrokerAgent {
 
   private static final ColumnFilterMatcher EMPTY_COLUMN_FILTER_MATCHER =
       ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet());
+  private static final int TAG_FILTER_SCHEMA_SNAPSHOT_MAX_RETRIES = 3;
 
   /** Subscription brokers grouped by consumer group. */
   private final Map<String, List<ISubscriptionBroker>> consumerGroupIdToBrokers =
@@ -87,6 +92,9 @@ public class SubscriptionBrokerAgent {
 
   private final Map<String, ColumnFilterMatcher> topicNameToColumnFilterMatcher =
       new ConcurrentHashMap<>();
+  private final Map<String, TagFilterMatcher> topicNameToTagFilterMatcher =
+      new ConcurrentHashMap<>();
+  private final Map<String, Long> topicNameToTagFilterMatcherVersion = new ConcurrentHashMap<>();
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
@@ -785,6 +793,157 @@ public class SubscriptionBrokerAgent {
   public void dropColumnFilter(final String topicName) {
     topicNameToColumnFilterMatcher.remove(topicName);
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_COLUMN_FILTER, topicName);
+  }
+
+  public void refreshTagFilter(final String topicName, final TopicConfig topicConfig) {
+    final ITableCache tableCache = DataNodeTableCache.getInstance();
+    if (Objects.isNull(topicConfig)
+        || !topicConfig.isTableTopic()
+        || topicConfig.isTagFilterTrivial()) {
+      cacheTagFilterMatcher(
+          topicName, TagFilterMatcher.matchAll(), tableCache.getInstanceVersion());
+      return;
+    }
+
+    for (int attempt = 0; attempt < TAG_FILTER_SCHEMA_SNAPSHOT_MAX_RETRIES; attempt++) {
+      final long versionBeforeBinding = tableCache.getInstanceVersion();
+      final TagFilterMatcher matcher;
+      try {
+        final Map<String, Map<String, TsTable>> bindingTables =
+            getTagFilterBindingTables(topicConfig);
+        matcher = TagFilterMatcher.fromTopicConfig(topicConfig, bindingTables);
+      } catch (final Exception e) {
+        if (versionBeforeBinding != tableCache.getInstanceVersion()) {
+          continue;
+        }
+        LOGGER.warn(
+            DataNodeMiscMessages
+                .LOG_SUBSCRIPTION_FAILED_TO_REFRESH_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_USE_EMPTY_MATCHER_TO_FAIL_CLOSED_3CB76D70,
+            topicName,
+            e);
+        cacheTagFilterMatcher(topicName, TagFilterMatcher.failure(e), versionBeforeBinding);
+        return;
+      }
+
+      if (versionBeforeBinding != tableCache.getInstanceVersion()) {
+        continue;
+      }
+      cacheTagFilterMatcher(topicName, matcher, versionBeforeBinding);
+      LOGGER.info(
+          DataNodeMiscMessages.LOG_SUBSCRIPTION_REFRESHED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_71598849,
+          topicName);
+      return;
+    }
+
+    // Leave the matcher uncached after repeated schema changes. The caller fails closed for this
+    // attempt and retries against a fresh schema snapshot on the next access.
+    topicNameToTagFilterMatcher.remove(topicName);
+    topicNameToTagFilterMatcherVersion.remove(topicName);
+  }
+
+  private void cacheTagFilterMatcher(
+      final String topicName, final TagFilterMatcher matcher, final long tableCacheVersion) {
+    topicNameToTagFilterMatcher.put(topicName, matcher);
+    topicNameToTagFilterMatcherVersion.put(topicName, tableCacheVersion);
+  }
+
+  public TagFilterMatcher getTagFilterMatcher(final String topicName) {
+    return getTagFilterMatcher(topicName, true);
+  }
+
+  public TagFilterMatcher getTagFilterMatcher(final String topicName, final boolean isTableModel) {
+    if (!isTableModel) {
+      return TagFilterMatcher.matchAll();
+    }
+
+    final TagFilterMatcher matcher = topicNameToTagFilterMatcher.get(topicName);
+    final long tableCacheVersion = DataNodeTableCache.getInstance().getInstanceVersion();
+    if (Objects.nonNull(matcher)
+        && Objects.equals(topicNameToTagFilterMatcherVersion.get(topicName), tableCacheVersion)) {
+      return matcher;
+    }
+    if (Objects.nonNull(matcher)) {
+      topicNameToTagFilterMatcher.remove(topicName, matcher);
+      topicNameToTagFilterMatcherVersion.remove(topicName);
+    }
+
+    final TopicConfig topicConfig = SubscriptionAgent.topic().getTopicConfig(topicName, true);
+    if (Objects.isNull(topicConfig)) {
+      return TagFilterMatcher.failure(
+          new SubscriptionException(
+              DataNodeMiscMessages
+                  .EXCEPTION_TOPIC_CONFIGURATION_IS_NOT_AVAILABLE_FOR_TAG_FILTER_1E023E3A));
+    }
+
+    refreshTagFilter(topicName, topicConfig);
+    return topicNameToTagFilterMatcher.getOrDefault(
+        topicName, getDefaultTagFilterMatcher(topicConfig));
+  }
+
+  private static TagFilterMatcher getDefaultTagFilterMatcher(final TopicConfig topicConfig) {
+    return Objects.nonNull(topicConfig)
+            && topicConfig.isTableTopic()
+            && !topicConfig.isTagFilterTrivial()
+        ? TagFilterMatcher.failure(
+            new SubscriptionException(
+                String.format(
+                    DataNodeMiscMessages
+                        .EXCEPTION_TABLE_SCHEMA_KEPT_CHANGING_WHILE_BINDING_TAG_FILTER_FOR_DATABASE_PATTERN_ARG_AND_TABLE_PATTERN_ARG_RETRY_AFTER_SCHEMA_SYNCHRONIZATION_77A005E9,
+                    topicConfig.getStringOrDefault(
+                        TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE),
+                    topicConfig.getStringOrDefault(
+                        TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE))))
+        : TagFilterMatcher.matchAll();
+  }
+
+  private static Map<String, Map<String, TsTable>> getTagFilterBindingTables(
+      final TopicConfig topicConfig) {
+    if (Objects.isNull(topicConfig)
+        || !topicConfig.isTableTopic()
+        || topicConfig.isTagFilterTrivial()) {
+      return Collections.emptyMap();
+    }
+
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String tableName =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
+        || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
+        || !isLiteralTopicPattern(database)
+        || !isLiteralTopicPattern(tableName)) {
+      return DataNodeTableCache.getInstance().getTableSnapshot();
+    }
+
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
+    if (Objects.isNull(table)) {
+      throw new SubscriptionException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_TABLE_SCHEMA_ARG_ARG_IS_ABSENT_FROM_THIS_DATANODE_S_TABLE_CACHE_THE_TABLE_MAY_NOT_EXIST_OR_ITS_SCHEMA_HAS_NOT_BEEN_SYNCHRONIZED_YET_23975BDF,
+              database,
+              tableName));
+    }
+    return Collections.singletonMap(database, Collections.singletonMap(tableName, table));
+  }
+
+  private static boolean isLiteralTopicPattern(final String pattern) {
+    final String regexMetaCharacters = ".*+?[](){}\\|^$";
+    return Objects.nonNull(pattern)
+        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
+  }
+
+  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
+    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
+  }
+
+  public void dropTagFilter(final String topicName) {
+    topicNameToTagFilterMatcher.remove(topicName);
+    topicNameToTagFilterMatcherVersion.remove(topicName);
+    LOGGER.info(
+        DataNodeMiscMessages.LOG_SUBSCRIPTION_DROPPED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_9EA52458,
+        topicName);
   }
 
   public void unbindConsensusPrefetchingQueue(
