@@ -37,6 +37,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 import org.apache.tsfile.utils.Pair;
 import org.junit.After;
@@ -717,15 +718,32 @@ public class IoTDBNodeStatusFailoverIT {
   private Path submit(int node, String command) throws Exception {
     Path output =
         temporary.getRoot().toPath().resolve("control-" + System.nanoTime() + ".properties");
-    VirtualMachine vm =
-        VirtualMachine.attach(
-            Long.toString(EnvFactory.getEnv().getConfigNodeWrapper(node).getInstance().pid()));
+    VirtualMachine vm = attach(EnvFactory.getEnv().getConfigNodeWrapper(node).getInstance());
     try {
       vm.loadAgent(agentJar.toString(), command + "|" + output);
     } finally {
       vm.detach();
     }
     return output;
+  }
+
+  private VirtualMachine attach(Process process) throws IOException, AttachNotSupportedException {
+    String pid = Long.toString(process.pid());
+    try {
+      return VirtualMachine.attach(pid);
+    } catch (AttachNotSupportedException firstFailure) {
+      if (!process.isAlive()) {
+        throw firstFailure;
+      }
+      // A paused JVM may miss the first attach handshake. No command has been submitted yet.
+      IoTDBTestLogger.logger.warn(firstFailure.toString(), firstFailure);
+      try {
+        return VirtualMachine.attach(pid);
+      } catch (IOException | AttachNotSupportedException retryFailure) {
+        retryFailure.addSuppressed(firstFailure);
+        throw retryFailure;
+      }
+    }
   }
 
   private Properties control(int node, String command) throws Exception {
