@@ -21,7 +21,10 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
@@ -61,8 +64,46 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TsFileSplitterTest {
+
+  @Test
+  public void testRejectedDeletionStopsSplitting() throws Exception {
+    final File source = Files.createTempFile("rejected-load-deletion", ".tsfile").toFile();
+    final File mods = ModificationFile.getExclusiveMods(source);
+    try {
+      try (final TsFileIOWriter writer = new TsFileIOWriter(source)) {
+        writer.startChunkGroup(new StringArrayDeviceID("root", "sg", "d1"));
+        final ChunkWriterImpl chunkWriter =
+            new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
+        chunkWriter.write(1L, 1);
+        chunkWriter.writeToFileWriter(writer);
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+      try (final ModificationFile modificationFile = new ModificationFile(mods, false)) {
+        modificationFile.write(new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 0L, 1L));
+        modificationFile.write(new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 2L, 3L));
+      }
+      final AtomicInteger consumedDeletions = new AtomicInteger();
+      final TsFileSplitter splitter =
+          new TsFileSplitter(
+              source,
+              data -> {
+                if (data instanceof DeletionData) {
+                  consumedDeletions.incrementAndGet();
+                  return false;
+                }
+                return true;
+              });
+      Assert.assertThrows(IllegalStateException.class, splitter::splitTsFileByDataPartition);
+      Assert.assertEquals(1, consumedDeletions.get());
+    } finally {
+      Files.deleteIfExists(mods.toPath());
+      Files.deleteIfExists(source.toPath());
+    }
+  }
 
   // Verify the splitter initializes the v3 deserialize configuration for a valid v3 TsFile.
   @Test

@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -113,6 +114,7 @@ public class LoadFallbackHandler {
   private void convertAndRetry() {
     final LoadTsFileDataTypeConverter converter =
         new LoadTsFileDataTypeConverter(queryContext, isGeneratedByPipe);
+    final List<String> failureDetails = new ArrayList<>();
 
     final Iterator<Integer> iterator = failedTsFileNodeIndexes.iterator();
     while (iterator.hasNext()) {
@@ -141,21 +143,34 @@ public class LoadFallbackHandler {
                   .LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED,
               filePath);
         } else {
-          LOGGER.warn(
-              DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_TSFILE_ARG_STATUS_ARG,
-              filePath,
-              status);
+          final String message =
+              status == null
+                  ? String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                      filePath,
+                      DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3)
+                  : String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                      filePath,
+                      status);
+          failureDetails.add(message);
+          LOGGER.warn(message);
         }
       } catch (final Exception e) {
-        LOGGER.warn(
-            DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_TSFILE_ARG_EXCEPTION_ARG,
-            filePath,
-            e.getMessage(),
-            e);
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                filePath,
+                e);
+        failureDetails.add(message);
+        LOGGER.warn(message, e);
       }
     }
 
-    resolveFinalState();
+    resolveFinalState(failureDetails);
   }
 
   private TSStatus executeTableModelConversion(
@@ -185,25 +200,20 @@ public class LoadFallbackHandler {
     return converter.convertForTreeModel(statement).orElse(null);
   }
 
-  private void resolveFinalState() {
+  private void resolveFinalState(final List<String> failureDetails) {
     if (failedTsFileNodeIndexes.isEmpty()) {
       LOGGER.info(DataNodeQueryMessages.LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS);
       stateMachine.transitionToFinished();
       return;
     }
 
-    final String remainingFailedFiles = getFailedFilePathsString();
-    LOGGER.warn(
-        DataNodeQueryMessages
-            .LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3,
-        remainingFailedFiles);
-
-    stateMachine.transitionToFailed(
-        new LoadFileException(
-            String.format(
-                DataNodeQueryMessages
-                    .LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3,
-                remainingFailedFiles)));
+    final String message =
+        String.format(
+            DataNodeQueryMessages
+                .EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5,
+            String.join("; ", failureDetails));
+    LOGGER.warn(message);
+    stateMachine.transitionToFailed(new LoadFileException(message));
   }
 
   // -------------------------------------------------------------------------

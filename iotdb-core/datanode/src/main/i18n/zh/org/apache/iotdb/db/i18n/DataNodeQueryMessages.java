@@ -20,6 +20,23 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "将 TsFile %s 转换为 tablet 失败。状态：%s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "将 TsFile %s 转换为 tablet 失败：%s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "tablet 转换未返回状态";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "执行语句 %s 时，在转换为 tablet 前读取 TsFile 模型信息失败：%s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "将 TsFile 转换为 tablet 后加载仍失败。详情：%s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD 被拒绝：uuid={}，region={}，endpoint={}，status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "目标节点拒绝 LOAD，且未返回状态或消息";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "分发 LOAD %s（region %s）到节点 %s 失败：%s";
+
   public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
       "SchemaRegion 不可用，请稍后重试。";
 
@@ -268,6 +285,9 @@ public final class DataNodeQueryMessages {
       "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "指定的 TIME 列 %s 在查询结果中不存在";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "查询数据集中存在重复的列名。";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -1223,6 +1243,7 @@ public final class DataNodeQueryMessages {
       "异步分发读取操作时被中断";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "异步分发写入操作时被中断";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "中断错误：%s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "反序列化 ConsensusGroupId 失败。";
   public static final String CAN_T_CONNECT_TO_NODE =
@@ -4107,6 +4128,7 @@ public final class DataNodeQueryMessages {
       "已经在取消中";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "内部错误调度";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "调度器关闭";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "内存不足，无法执行查询任务。";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
@@ -4788,10 +4810,24 @@ public final class DataNodeQueryMessages {
           "没有可用于执行 DeviceEntry 内存限制的 materializer";
   public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
       "没有更多可用的 DeviceEntry 记录";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c\u4e0d\u5141\u8bb8\u91cd\u590d\u7684 %s \u5c5e\u6027";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c%s \u4ec5\u652f\u6301\u8868\u6a21\u578b Topic";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
+
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "目标文件：%s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "格式：%s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "目标表：%s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "时间列：%s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TAG 列：%s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "内存阈值：%s";
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData 中不包含任何物理 chunk";

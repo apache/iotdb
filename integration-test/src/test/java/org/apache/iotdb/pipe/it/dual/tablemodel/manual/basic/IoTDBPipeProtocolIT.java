@@ -344,7 +344,13 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
 
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
+      // A stopped pipe must keep the receiver data unchanged.
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          TableModelUtils.getQuerySql("test"),
+          TableModelUtils.generateHeaderResults(),
+          TableModelUtils.generateExpectedResults(0, 200),
+          "test");
     }
   }
 

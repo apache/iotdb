@@ -52,6 +52,10 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private final ByteBuffer compressedSizeBuffer = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
   private ByteBuffer compressedBuffer = null;
+  private long currentSegmentOffset = -1;
+  private long suspendedSegmentOffset = -1;
+  private int suspendedSegmentPosition;
+  private int suspendedSegmentRemaining;
   private final long fileSize;
   File logFile;
   /*
@@ -205,7 +209,26 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    channel.close();
+    try {
+      channel.close();
+    } finally {
+      releaseReadBuffers();
+      suspendedSegmentOffset = -1;
+      suspendedSegmentRemaining = 0;
+    }
+  }
+
+  /**
+   * Releases segment scratch buffers while preserving the unread position. A paused reader must not
+   * pin a complete WAL segment for each subscription queue. The next read reloads only the current
+   * segment, without reopening the file or rescanning entry metadata.
+   */
+  public void releaseReadBuffers() {
+    if (dataBuffer != null && dataBuffer.hasRemaining()) {
+      suspendedSegmentOffset = currentSegmentOffset;
+      suspendedSegmentPosition = dataBuffer.position();
+      suspendedSegmentRemaining = dataBuffer.remaining();
+    }
     MmapUtil.clean(dataBuffer);
     MmapUtil.clean(compressedBuffer);
     dataBuffer = null;
@@ -217,11 +240,16 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     long size = (endOffset - channel.position());
     if (!Objects.isNull(dataBuffer)) {
       size += dataBuffer.limit() - dataBuffer.position();
+    } else {
+      size += suspendedSegmentRemaining;
     }
     return (int) size;
   }
 
   private void loadNextSegment() throws IOException {
+    if (suspendedSegmentOffset >= 0) {
+      channel.position(suspendedSegmentOffset);
+    }
     if (channel.position() >= endOffset) {
       throw new EOFException(StorageEngineMessages.REACH_END_OFFSET_OF_WAL_FILE);
     }
@@ -233,6 +261,15 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       loadNextSegmentV1();
     } else {
       tryLoadSegment();
+    }
+    currentSegmentOffset = startPosition;
+    if (suspendedSegmentOffset >= 0) {
+      if (suspendedSegmentPosition >= dataBuffer.limit()) {
+        throw new EOFException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
+      }
+      dataBuffer.position(suspendedSegmentPosition);
+      suspendedSegmentOffset = -1;
+      suspendedSegmentRemaining = 0;
     }
     WritingMetrics.getInstance()
         .recordWALRead(channel.position() - startPosition, System.nanoTime() - startTime);
@@ -349,6 +386,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    * @throws IOException If the file is broken or the given position is invalid
    */
   public void skipToGivenLogicalPosition(long pos) throws IOException {
+    releaseReadBuffers();
+    suspendedSegmentOffset = -1;
+    suspendedSegmentRemaining = 0;
     if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
       channel.position(version.getVersionBytes().length);
       long posRemain = pos;
@@ -360,6 +400,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
           posRemain -= segmentInfo.uncompressedSize;
           channel.position(currentPos + segmentInfo.dataInDiskSize + segmentInfo.headerSize());
         } else {
+          currentSegmentOffset = currentPos;
           break;
         }
       } while (posRemain >= 0);
@@ -389,7 +430,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   public void read(ByteBuffer buffer) throws IOException {
     int totalBytesToBeRead = buffer.remaining();
     while (totalBytesToBeRead > 0) {
-      if (dataBuffer.remaining() == 0) {
+      if (dataBuffer == null || dataBuffer.remaining() == 0) {
         loadNextSegment();
       }
       int currReadBytes = Math.min(dataBuffer.remaining(), totalBytesToBeRead);

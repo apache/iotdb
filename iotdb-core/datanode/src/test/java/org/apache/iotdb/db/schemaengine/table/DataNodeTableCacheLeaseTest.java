@@ -69,6 +69,7 @@ public class DataNodeTableCacheLeaseTest {
   public void fencedLeaseFailsClosedForReadApis() {
     nowNanos.addAndGet((T_FENCE_MS + 1) * 1_000_000L);
     assertLeaseFenced(() -> tableCache.getTableSnapshot());
+    assertLeaseFenced(() -> tableCache.getTableInCache("root.db", "t"));
     assertLeaseFenced(() -> tableCache.getTableInWrite("root.db", "t"));
     assertLeaseFenced(() -> tableCache.getTable("root.db", "t", false));
     assertLeaseFenced(() -> tableCache.isDatabaseExist("root.db"));

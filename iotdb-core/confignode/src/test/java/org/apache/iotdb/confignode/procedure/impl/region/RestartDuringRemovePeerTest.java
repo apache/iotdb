@@ -66,6 +66,7 @@ import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -117,8 +118,10 @@ public class RestartDuringRemovePeerTest {
     loadManager = Mockito.mock(LoadManager.class, Mockito.RETURNS_DEEP_STUBS);
     when(configManager.getPartitionManager()).thenReturn(partitionManager);
     when(configManager.getLoadManager()).thenReturn(loadManager);
-    when(partitionManager.getAllReplicaSets())
-        .thenAnswer(ignored -> partitionInfo.getAllReplicaSets());
+    when(partitionManager.getRegionDatabase(regionId))
+        .thenAnswer(call -> partitionInfo.getRegionDatabase(call.getArgument(0)));
+    when(partitionManager.getReplicaSets("root.restart", Collections.singletonList(regionId)))
+        .thenAnswer(call -> partitionInfo.getReplicaSets(call.getArgument(0), call.getArgument(1)));
     when(partitionManager.removeRegionLocation(any()))
         .thenAnswer(call -> partitionInfo.removeRegionLocation(call.getArgument(0)));
     handler = Mockito.spy(new RegionMaintainHandler(configManager));
@@ -286,7 +289,7 @@ public class RestartDuringRemovePeerTest {
   }
 
   @Test
-  public void offlineReplicaFailsAfterThreeRetriesInsteadOfWaitingForever() throws Exception {
+  public void offlineReplicaCompletesRemovalAfterThreeRetries() throws Exception {
     AccessibleRemoveProcedure procedure = beforePeerListReset();
     doReturn(Collections.singletonMap(coordinator.getDataNodeId(), success()))
         .when(handler)
@@ -297,8 +300,27 @@ public class RestartDuringRemovePeerTest {
       assertFalse(procedure.isFailed());
     }
     assertEquals(0, procedure.doExecute(env).length);
-    assertTrue(procedure.isFailed());
-    assertTrue(procedure.getException().getMessage().contains("4"));
+    assertFalse(procedure.isFailed());
+    assertNull(procedure.getException());
+    assertEquals(finalPeers, partitionInfo.getAllReplicaSets().get(0).getDataNodeLocations());
+    verify(handler, times(4)).resetPeerList(eq(regionId), eq(finalPeers), anyMap());
+    verify(handler).removeRegionLocation(regionId, removedNode);
+  }
+
+  @Test
+  public void repeatedCorrectionExceptionsAlsoCompleteRemovalAfterThreeRetries() throws Exception {
+    AccessibleRemoveProcedure procedure = beforePeerListReset();
+    doThrow(new IllegalStateException("injected RPC failure"))
+        .when(handler)
+        .resetPeerList(any(), anyList(), anyMap());
+    for (int retry = 0; retry < 3; retry++) {
+      assertEquals(1, procedure.doExecute(env).length);
+      assertFalse(procedure.isFailed());
+    }
+    assertEquals(0, procedure.doExecute(env).length);
+    assertFalse(procedure.isFailed());
+    assertNull(procedure.getException());
+    assertEquals(finalPeers, partitionInfo.getAllReplicaSets().get(0).getDataNodeLocations());
     verify(handler, times(4)).resetPeerList(eq(regionId), eq(finalPeers), anyMap());
     verify(handler).removeRegionLocation(regionId, removedNode);
   }
@@ -313,6 +335,24 @@ public class RestartDuringRemovePeerTest {
     }
     assertEquals(0, procedure.doExecute(env).length);
     assertTrue(procedure.isFailed());
+    verify(handler, times(4)).removeRegionLocation(regionId, removedNode);
+    verify(handler, never()).resetPeerList(any(), anyList(), anyMap());
+  }
+
+  @Test
+  public void metadataExceptionsStillFailAtRetryLimitWithoutResettingPeers() throws Exception {
+    AccessibleRemoveProcedure procedure = beforeMetadataRemoval();
+    IllegalStateException failure = new IllegalStateException("injected metadata failure");
+    doThrow(failure).when(partitionManager).removeRegionLocation(any());
+    for (int retry = 0; retry < 3; retry++) {
+      assertEquals(1, procedure.doExecute(env).length);
+      assertFalse(procedure.isFailed());
+    }
+    assertEquals(0, procedure.doExecute(env).length);
+    assertTrue(procedure.isFailed());
+    assertEquals(failure, procedure.getException().getCause());
+    assertTrue(
+        partitionInfo.getAllReplicaSets().get(0).getDataNodeLocations().contains(removedNode));
     verify(handler, times(4)).removeRegionLocation(regionId, removedNode);
     verify(handler, never()).resetPeerList(any(), anyList(), anyMap());
   }
@@ -342,7 +382,7 @@ public class RestartDuringRemovePeerTest {
     partitionInfo.removeRegionLocation(new RemoveRegionLocationPlan(regionId, removedNode));
     doReturn(null).when(handler).resetPeerList(any(), anyList(), anyMap());
     assertFalse(handler.resetPeerListAfterRemoveForIoTConsensusV1(regionId, removedNode));
-    when(partitionManager.getAllReplicaSets()).thenReturn(Collections.emptyList());
+    when(partitionManager.getRegionDatabase(regionId)).thenReturn(null);
     assertTrue(handler.resetPeerListAfterRemoveForIoTConsensusV1(regionId, removedNode));
   }
 

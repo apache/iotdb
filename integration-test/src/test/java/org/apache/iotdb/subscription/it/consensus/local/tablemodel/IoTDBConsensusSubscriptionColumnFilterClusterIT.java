@@ -77,6 +77,64 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
   }
 
   @Test
+  public void testStreamingColumnFilterIncludesNewTagsAndFieldsOnThreeDataNodes() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("streaming_columns");
+    final String database = ids.getDatabase();
+    final String table = "t1";
+    SubscriptionTablePullConsumer consumer = null;
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(
+          database, table, "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD");
+      ConsensusSubscriptionTableITSupport.insertRows(database, table, 0L, 1, true, true, true);
+      createOwnedConsensusTopic(ids.getTopic(), database, table, "column_name IN (\"s1\", \"s4\")");
+      consumer = createOwnerConsumer(ids.consumer("owner1"), ids.consumerGroup("owner"), 1L);
+      consumer.subscribe(ids.getTopic());
+      final Set<String> initialRows =
+          ConsensusSubscriptionTableITSupport.insertRows(
+              database, table, 100L, 3, true, true, true);
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords initial =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilContains(consumer, initialRows, 60);
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(initialRows, initial);
+      Assert.assertEquals(
+          Collections.singleton(
+              ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s1")),
+          initial.getSeenColumnSignatures());
+
+      addColumn(database, table, "tag2 STRING TAG");
+      addColumn(database, table, "s4 INT32 FIELD");
+      final Set<String> changedRows = new LinkedHashSet<>();
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        for (long timestamp = 200; timestamp < 203; timestamp++) {
+          session.executeNonQueryStatement(
+              String.format(
+                  Locale.ROOT,
+                  "insert into %s(tag1, tag2, s1, s2, s3, s4, time) "
+                      + "values ('tag_%d', 'new_tag', %d, 1.0, true, %d, %d)",
+                  table,
+                  timestamp,
+                  timestamp,
+                  timestamp,
+                  timestamp));
+          changedRows.add(ConsensusSubscriptionTableITSupport.rowKey(database, table, timestamp));
+        }
+        session.executeNonQueryStatement("flush");
+      }
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords changed =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilContains(consumer, changedRows, 80);
+      Assert.assertTrue(changed.getRowKeys().containsAll(changedRows));
+      Assert.assertEquals(
+          Collections.singleton(
+              ConsensusSubscriptionTableITSupport.normalizeColumnSignature(
+                  "tag1", "tag2", "s1", "s4")),
+          changed.getSeenColumnSignatures());
+    } finally {
+      ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
+    }
+  }
+
+  @Test
   public void testAlterColumnFilterRebindsAfterOwnerTransferOnThreeDataNodes() throws Exception {
     final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
         ConsensusSubscriptionTableITSupport.newIdentifiers("cluster_owner_rebind");

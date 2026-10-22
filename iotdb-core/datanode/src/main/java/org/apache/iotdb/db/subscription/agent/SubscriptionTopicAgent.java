@@ -119,6 +119,9 @@ public class SubscriptionTopicAgent {
     final boolean isTableModel = metaFromCoordinator.visibleUnderTableModel();
     final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
     TopicMeta.validateOwnerProgression(oldMeta, metaFromCoordinator);
+    metaFromCoordinator
+        .getConfig()
+        .inheritFilterVersion(Objects.isNull(oldMeta) ? null : oldMeta.getConfig());
     final Long recycleIntervalMs =
         metaFromCoordinator.getConfig().getRecycleUncommittedEventIntervalMs();
     topicMetaKeeper.removeTopicMeta(topicName, isTableModel);
@@ -133,11 +136,16 @@ public class SubscriptionTopicAgent {
     }
     if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
-    } else if (!metaFromCoordinator.getConfig().isTableTopic()
+    }
+    if (shouldRefreshTagFilter(oldMeta, metaFromCoordinator)) {
+      SubscriptionAgent.broker().refreshTagFilter(topicName, metaFromCoordinator.getConfig());
+    }
+    if (!metaFromCoordinator.getConfig().isTableTopic()
         && !topicMetaKeeper.containsTopicMeta(topicName, true)) {
       // ConfigNode rejects column-filter on tree topics. Drop defensively in case stale or replayed
       // topic metadata reaches this DataNode after a table-topic to tree-topic transition.
       SubscriptionAgent.broker().dropColumnFilter(topicName);
+      SubscriptionAgent.broker().dropTagFilter(topicName);
     }
     SubscriptionAgent.broker()
         .refreshConsensusQueueOrderMode(
@@ -175,6 +183,35 @@ public class SubscriptionTopicAgent {
                     newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
   }
 
+  static boolean shouldRefreshTagFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
+    if (Objects.isNull(newMeta) || !newMeta.getConfig().isTableTopic()) {
+      return false;
+    }
+    if (Objects.isNull(oldMeta) || !oldMeta.getConfig().isTableTopic()) {
+      return true;
+    }
+
+    final TopicConfig oldConfig = oldMeta.getConfig();
+    final TopicConfig newConfig = newMeta.getConfig();
+    return !Objects.equals(
+            trimFilterBindingValue(oldConfig.getTagFilter()),
+            trimFilterBindingValue(newConfig.getTagFilter()))
+        || !Objects.equals(
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)),
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)))
+        || !Objects.equals(
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)),
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
+  }
+
   private static String getAttributeIgnoreCase(
       final TopicConfig topicConfig, final String key, final String defaultValue) {
     return topicConfig.getAttribute().entrySet().stream()
@@ -187,6 +224,10 @@ public class SubscriptionTopicAgent {
 
   private static String normalizeColumnFilterBindingValue(final String value) {
     return Objects.nonNull(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
+  }
+
+  private static String trimFilterBindingValue(final String value) {
+    return Objects.nonNull(value) ? value.trim() : "";
   }
 
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
@@ -271,6 +312,7 @@ public class SubscriptionTopicAgent {
     }
     if (Objects.nonNull(topicMeta) && topicMeta.visibleUnderTableModel()) {
       SubscriptionAgent.broker().dropColumnFilter(topicName);
+      SubscriptionAgent.broker().dropTagFilter(topicName);
     }
     if (Objects.nonNull(topicMeta) || Objects.nonNull(isTableModel)) {
       topicRecycleIntervalsMs.remove(
@@ -344,6 +386,16 @@ public class SubscriptionTopicAgent {
 
   public Map<String, TopicConfig> getTopicConfigs(final Set<String> topicNames) {
     return getTopicConfigs(topicNames, false);
+  }
+
+  public TopicConfig getTopicConfig(final String topicName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+      return Objects.isNull(topicMeta) ? null : topicMeta.getConfig();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public Map<String, TopicConfig> getTopicConfigs(

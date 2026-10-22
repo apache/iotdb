@@ -853,8 +853,6 @@ public final class ProcedureMessages {
   public static final String
       LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4 =
           "Failed to reset peer list for {} on DataNode {} to {}: {}";
-  public static final String LOG_PIDARG_REMOVEREGION_STATE_ARG_FAILED_RETRY_ARG_ARG_IN_ARG_MS_41B8ECB5 =
-      "[pid{}][RemoveRegion] state {} failed, retry {}/{} in {} ms.";
   public static final String
       EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168 =
           "Failed to finalize Region peer removal for %s at state %s after %d attempts.";
@@ -1441,4 +1439,11 @@ public final class ProcedureMessages {
       "DataNode setSystemStatus RPC failed: %s: %s: %s; ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
       "ConfigNode trySetNodeStatus failed: %s: %s: %s; ";
+  public static final String
+      LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9 =
+          "Procedure {} is past its commit point; keeping every state it executed.";
+  public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 =
+      "finish procedure without rollback";
+  public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
+      "delete child procedures without rollback";
 }

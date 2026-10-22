@@ -107,7 +107,8 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitCopyTo(CopyToNode node, Void context) {
-      visitPlan(node.getChild(), context);
+      node.getChild().accept(this, context);
+      addOutputSymbolsToTypeProvider(node);
       return null;
     }
 
