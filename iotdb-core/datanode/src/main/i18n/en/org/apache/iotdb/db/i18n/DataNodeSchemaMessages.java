@@ -567,6 +567,7 @@ public final class DataNodeSchemaMessages {
   // ======================== DataNodeTableCache ========================
 
   public static final String INIT_TABLE_CACHE_SUCCESS = "Init DataNodeTableCache successfully";
+  public static final String LOG_FAILED_TO_REGISTER_THE_TREE_TO_TABLE_VIEW_ARG_ARG_DURING_INIT_ILLEGAL_PATH_359A451E = "Failed to register the tree to table view {}.{} during init: illegal path";
   public static final String PRE_UPDATE_TABLE_SUCCESS = "Pre-update table {}.{} successfully";
   public static final String PRE_RENAME_OLD_TABLE_SUCCESS =
       "Pre-rename old table {}.{} successfully";
@@ -743,5 +744,25 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "Skip rollback renaming old table {}.{} because it has been handled.";
   public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "Skip commit-update table {}.{} because it has been handled.";
+  public static final String LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC = "Failed to add columns to the tree to table views for operation {}, ConfigNode returned {}.";
+  public static final String LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144 = "Failed to add a column to the view {}.{} for operation {}, ConfigNode returned {}.";
+  public static final String LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26 = "Failed to add columns to the tree to table views for operation {}, ConfigNode returned an empty response.";
+  public static final String LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652 = "Failed to add columns to the tree to table views for operation {}, because ConfigNode is not reachable.";
+  public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "Failed to trigger the view column addition of the tree to table views for plan node {}, the schema write is not affected.";
+  public static final String LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_BBD78902 = "Tree to table view {}.{} is not registered";
+  public static final String LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE = "Failed to update the tree-to-table view index of view {}.{}";
+  public static final String
+      LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2 =
+          "Registered the tree to table view {}.{} at {} with restrict {} and num of tags {}";
+  public static final String LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A =
+      "Unregistered the tree to table view {}.{}";
+  public static final String LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41 =
+      "Renamed the tree to table view {}.{} from {}";
+  public static final String
+      LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984 =
+          "Updated the properties of the tree to table view {}.{} to {}";
+  public static final String
+      LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
+          "The metadata lease is fenced while adding view columns, giving up this round; the measurements are {}";
 
 }

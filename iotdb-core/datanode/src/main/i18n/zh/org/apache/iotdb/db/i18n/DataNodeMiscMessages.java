@@ -1524,8 +1524,8 @@ public final class DataNodeMiscMessages {
       "[ChangeRegionLeader] 成功切换 RegionGroup 的 leader：";
   public static final String MESSAGE_MESSAGE_3501C7E6 = " 到 ";
   public static final String MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5 = "\"executeFastLastDataQueryForOnePrefixPath\" 不支持通配符。";
-  public static final String MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779 =
-      "尝试激活模板时模板为空，可能正在取消设置该模板。";
+  public static final String MESSAGE_THE_TEMPLATE_IS_NULL_WHEN_TRYING_TO_ACTIVATE_TEMPLATE_MAY_BE_THE_TEMPLATE_IS_BEING_UNSET_THE_TEMPLATE_IDS_ARE_ARG_7B5F4F72 =
+      "尝试激活模板时模板为空，可能正在取消设置该模板。模板 ID 为 %s。";
   public static final String MESSAGE_DOT_9D9B854A = ".";
   public static final String MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59 =
       "将 SQL 解析为物理计划时发生错误：";
@@ -1580,5 +1580,11 @@ public final class DataNodeMiscMessages {
   public static final String
       LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
           "mpp_data_exchange_max_payload_size_in_bytes（%d）低于允许的最小值 %d，将使用 %d";
+
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB =
+      "自动检测测点 %s 的类型时遇到多种类型，请检查";
+
+  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
+      "收集使用扩展模板 {} 的设备失败";
 
 }

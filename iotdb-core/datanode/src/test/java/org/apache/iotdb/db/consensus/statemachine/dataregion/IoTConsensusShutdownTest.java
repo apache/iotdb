@@ -595,7 +595,7 @@ public class IoTConsensusShutdownTest {
     DataNodeTableCache.getInstance()
         .preUpdateTable(DATABASE, StatementTestUtils.genTsTable(), null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(DATABASE, StatementTestUtils.tableName(), null);
+        .commitUpdateTable(DATABASE, StatementTestUtils.tableName(), null, null);
     assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         stateMachine

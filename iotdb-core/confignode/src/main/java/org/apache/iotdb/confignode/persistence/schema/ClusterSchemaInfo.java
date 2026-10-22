@@ -1550,12 +1550,23 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * The table and its status, or empty when the table does not exist. The table is a copy, which
+   * the caller owns: the stored table is only written by the plans, under the write lock, and never
+   * through a reference handed out here.
+   */
   public Optional<Pair<TsTable, TableNodeStatus>> getTsTableIfExists(
       final String database, final String tableName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getTableAndStatusIfExists(
-          getQualifiedDatabasePartialPath(database), tableName);
+      final Optional<Pair<TsTable, TableNodeStatus>> storedTable =
+          tableModelMTree.getTableAndStatusIfExists(
+              getQualifiedDatabasePartialPath(database), tableName);
+      if (storedTable.isEmpty()) {
+        return Optional.empty();
+      }
+      return Optional.of(
+          new Pair<>(new TsTable(storedTable.get().getLeft()), storedTable.get().getRight()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

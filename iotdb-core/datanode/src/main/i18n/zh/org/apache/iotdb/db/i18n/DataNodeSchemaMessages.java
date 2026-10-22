@@ -568,6 +568,7 @@ public final class DataNodeSchemaMessages {
   // ======================== DataNodeTableCache 相关消息 ========================
 
   public static final String INIT_TABLE_CACHE_SUCCESS = "DataNodeTableCache 初始化成功";
+  public static final String LOG_FAILED_TO_REGISTER_THE_TREE_TO_TABLE_VIEW_ARG_ARG_DURING_INIT_ILLEGAL_PATH_359A451E = "初始化时注册树转表视图 {}.{} 失败：路径非法";
   public static final String PRE_UPDATE_TABLE_SUCCESS = "预更新表 {}.{} 成功";
   public static final String PRE_RENAME_OLD_TABLE_SUCCESS = "预重命名旧表 {}.{} 成功";
   public static final String ROLLBACK_UPDATE_TABLE_SUCCESS = "回滚更新表 {}.{} 成功";
@@ -731,5 +732,25 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "跳过回滚重命名旧表 {}.{}，因为该操作已被处理。";
   public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "跳过提交更新表 {}.{}，因为该操作已被处理。";
+  public static final String LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC = "为操作 {} 的树转表视图加列失败，ConfigNode 返回 {}。";
+  public static final String LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144 = "为视图 {}.{} 加列失败（操作 {}），ConfigNode 返回 {}。";
+  public static final String LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26 = "为操作 {} 的树转表视图加列失败，ConfigNode 返回了空响应。";
+  public static final String LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652 = "为操作 {} 的树转表视图加列失败，因为无法访问 ConfigNode。";
+  public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "计划节点 {} 触发树转表视图加列失败，本次 schema 写入不受影响。";
+  public static final String LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_BBD78902 = "树转表视图 {}.{} 未注册";
+  public static final String LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE = "更新树转表视图 {}.{} 的索引失败";
+  public static final String
+      LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2 =
+          "注册树转表视图 {}.{}，路径 {}，restrict {}，tag 数 {}";
+  public static final String LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A =
+      "注销树转表视图 {}.{}";
+  public static final String LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41 =
+      "树转表视图 {}.{} 由 {} 重命名而来";
+  public static final String
+      LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984 =
+          "树转表视图 {}.{} 的属性更新为 {}";
+  public static final String
+      LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
+          "自动扩列时元数据租约已隔离，本次放弃；涉及的测点为 {}";
 
 }

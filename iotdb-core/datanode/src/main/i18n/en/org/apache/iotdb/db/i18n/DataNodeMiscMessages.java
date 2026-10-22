@@ -1544,7 +1544,8 @@ public final class DataNodeMiscMessages {
   public static final String MESSAGE_CHANGEREGIONLEADER_SUCCESSFULLY_CHANGE_LEADER_REGIONGROUP_462797B4 = "[ChangeRegionLeader] Successfully change the leader of RegionGroup: ";
   public static final String MESSAGE_MESSAGE_3501C7E6 = " to ";
   public static final String MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5 = "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards.";
-  public static final String MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779 = "The template is null when trying to activate template, may be the template is being unset.";
+  public static final String MESSAGE_THE_TEMPLATE_IS_NULL_WHEN_TRYING_TO_ACTIVATE_TEMPLATE_MAY_BE_THE_TEMPLATE_IS_BEING_UNSET_THE_TEMPLATE_IDS_ARE_ARG_7B5F4F72 =
+      "The template is null when trying to activate template, may be the template is being unset. The template ids are %s.";
   public static final String MESSAGE_DOT_9D9B854A = ".";
   public static final String MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59 = "Error occurred while parsing SQL to physical plan: ";
   public static final String MESSAGE_ERROR_OCCURRED_IN_READ_PROCESS_COLON_CD184195 = "Error occurred in read process: ";
@@ -1597,5 +1598,11 @@ public final class DataNodeMiscMessages {
   public static final String
       LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
           "mpp_data_exchange_max_payload_size_in_bytes (%d) is below the minimum allowed value %d, using %d";
+
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB =
+      "Multiple types encountered when auto detecting type of measurement '%s', please check";
+
+  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
+      "Failed to collect the devices using the extended template {}";
 
 }
