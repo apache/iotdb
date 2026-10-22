@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tool.common;
 
-import org.apache.iotdb.cli.i18n.CliMessages;
-
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
@@ -244,25 +242,19 @@ public class OptionsUtil extends Constants {
             .longOpt(EXPORT_DATA_LOG_NAME)
             .hasArg()
             .argName(EXPORT_DATA_LOG_NAME)
-            .desc(
-                CliMessages
-                    .MESSAGE_EXPORT_LOG_FILE_DEFAULT_TARGET_LOG_EXPORT_DATA_YYYYMMDDHHMMSS_LOG_B29FC35F)
+            .desc(EXPORT_DATA_LOG_DESC)
             .build());
     options.addOption(
         Option.builder(START_TIME_ARGS)
             .longOpt(START_TIME_ARGS)
             .hasArg()
-            .desc(
-                CliMessages
-                    .MESSAGE_INCLUSIVE_START_TIME_FOR_MEASUREMENT_FILE_OR_AUTOMATIC_TABLE_EXPORT_69FE75CF)
+            .desc(EXPORT_START_TIME_DESC)
             .build());
     options.addOption(
         Option.builder(END_TIME_ARGS)
             .longOpt(END_TIME_ARGS)
             .hasArg()
-            .desc(
-                CliMessages
-                    .MESSAGE_INCLUSIVE_END_TIME_FOR_MEASUREMENT_FILE_OR_AUTOMATIC_TABLE_EXPORT_D9C24D95)
+            .desc(EXPORT_END_TIME_DESC)
             .build());
     options.addOption(
         Option.builder(TIME_ZONE_ARGS)
@@ -281,9 +273,7 @@ public class OptionsUtil extends Constants {
             .longOpt(MEASUREMENT_FILE_NAME)
             .hasArg()
             .argName(MEASUREMENT_FILE_NAME)
-            .desc(
-                CliMessages
-                    .MESSAGE_UTF_8_IOTDB_PATH_PATTERN_FILE_FOR_TREE_EXPORT_MUTUALLY_EXCLUSIVE_WITH_Q_DD1F2CDA)
+            .desc(MEASUREMENT_FILE_DESC)
             .build());
     return options;
   }
@@ -297,9 +287,7 @@ public class OptionsUtil extends Constants {
             .argName(DB_ARGS)
             .hasArg()
             .required()
-            .desc(
-                CliMessages
-                    .MESSAGE_DATABASE_TO_EXPORT_REQUIRED_EXPORTS_ALL_OF_ITS_TABLES_UNLESS_TABLE_OR_Q_IS_GIVEN_F125EEA1)
+            .desc(EXPORT_DB_DESC)
             .build();
     options.addOption(opDatabase);
 
@@ -308,7 +296,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(CliMessages.MESSAGE_TABLE_TO_EXPORT_OPTIONAL_IGNORED_WHEN_Q_IS_GIVEN_4F37C0B5)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
 
@@ -323,7 +311,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(CliMessages.MESSAGE_TABLE_TO_EXPORT_OPTIONAL_IGNORED_WHEN_Q_IS_GIVEN_4F37C0B5)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
 
@@ -341,7 +329,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(CliMessages.MESSAGE_MAXIMUM_DATA_ROWS_PER_CSV_OR_SQL_FILE_DEFAULT_10000_000CEFB9)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 
@@ -374,7 +362,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(CliMessages.MESSAGE_TABLE_TO_EXPORT_OPTIONAL_IGNORED_WHEN_Q_IS_GIVEN_4F37C0B5)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
 
@@ -416,7 +404,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(CliMessages.MESSAGE_TABLE_TO_EXPORT_OPTIONAL_IGNORED_WHEN_Q_IS_GIVEN_4F37C0B5)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
 
@@ -434,7 +422,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(CliMessages.MESSAGE_MAXIMUM_DATA_ROWS_PER_CSV_OR_SQL_FILE_DEFAULT_10000_000CEFB9)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 
@@ -476,7 +464,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(CliMessages.MESSAGE_MAXIMUM_DATA_ROWS_PER_CSV_OR_SQL_FILE_DEFAULT_10000_000CEFB9)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 
@@ -518,7 +506,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(CliMessages.MESSAGE_MAXIMUM_DATA_ROWS_PER_CSV_OR_SQL_FILE_DEFAULT_10000_000CEFB9)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 

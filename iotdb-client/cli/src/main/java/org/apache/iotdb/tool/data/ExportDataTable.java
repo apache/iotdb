@@ -21,7 +21,6 @@ package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.CaseInsensitiveStream;
-import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -39,6 +38,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.Trees;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ColumnSchema;
@@ -53,10 +54,12 @@ import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class ExportDataTable extends AbstractExportData {
   private ITableSession session;
@@ -123,28 +126,87 @@ public class ExportDataTable extends AbstractExportData {
     return tasks;
   }
 
-  /** SQL and TsFile output are written to the table each query reads; -table does not apply. */
+  /**
+   * SQL and TsFile output are written to the table each query reads; -table does not apply.
+   *
+   * @throws Exception if a query cannot be written back to its table or a statement fails
+   */
   List<ExportTask> planQueries(List<ExportTask> tasks) throws Exception {
     if ("csv".equals(config.format)) {
       return tasks;
     }
     // Every query is checked before the first one runs, so a rejected query writes no files.
     List<String> tables = names("show tables");
-    List<ExportTask> planned = new ArrayList<>(tasks.size());
+    List<TableQuery> queries = new ArrayList<>(tasks.size());
     for (ExportTask task : tasks) {
-      planned.add(
-          new ExportTask(task.sql(), task.outputBase(), null, queryTable(task.sql(), tables)));
+      queries.add(tableQuery(task.sql(), tables));
+    }
+    // Columns are checked against each table only once every query has parsed.
+    List<ExportTask> planned = new ArrayList<>(tasks.size());
+    for (int i = 0; i < tasks.size(); i++) {
+      TableQuery query = queries.get(i);
+      Map<String, ColumnSchema> schemas = describe(query.table());
+      checkColumns(query.table(), query.resolve(schemas), schemas);
+      ExportTask task = tasks.get(i);
+      planned.add(new ExportTask(task.sql(), task.outputBase(), null, query.table()));
     }
     return planned;
   }
 
-  private String queryTable(String sql, List<String> tables) throws ArgsErrorException {
+  /**
+   * Accepts a query whose rows can be written back to the table it reads: a SELECT of * or column
+   * names from one table of the database. An expression or an alias would store computed values
+   * under a column's name, and FILL would store values the table does not hold.
+   *
+   * @throws ArgsErrorException if the query reads or selects anything else
+   */
+  private TableQuery tableQuery(String sql, List<String> tables) throws ArgsErrorException {
     ArgsErrorException invalid =
         new ArgsErrorException(
             String.format(
                 CliMessages
                     .EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768,
                 config.database));
+    RelationalSqlParser.QueryStatementContext statement;
+    try {
+      statement = parse(sql).statement().queryStatement();
+    } catch (ParseCancellationException e) {
+      throw invalid;
+    }
+    RelationalSqlParser.QuerySpecificationContext select = select(statement);
+    if (select == null) {
+      throw invalid;
+    }
+    RelationalSqlParser.QualifiedNameContext source = source(select);
+    if (source == null) {
+      throw invalid;
+    }
+    List<RelationalSqlParser.IdentifierContext> parts = source.identifier();
+    if (parts.size() > 2
+        || (parts.size() == 2 && !identifierValue(parts.get(0)).equals(config.database))) {
+      throw invalid;
+    }
+    String table = identifierValue(parts.get(parts.size() - 1));
+    if (!tables.contains(table)) {
+      throw invalid;
+    }
+    if (!Trees.findAllRuleNodes(statement, RelationalSqlParser.RULE_fillClause).isEmpty()) {
+      throw computedColumns();
+    }
+    List<String> columns = new ArrayList<>();
+    for (RelationalSqlParser.SelectItemContext item : select.selectItem()) {
+      String column = column(item);
+      if (column == null
+          && !(item instanceof RelationalSqlParser.SelectAllContext all
+              && all.primaryExpression() == null)) {
+        throw computedColumns();
+      }
+      columns.add(column);
+    }
+    return new TableQuery(table, columns);
+  }
+
+  private static RelationalSqlParser.SingleStatementContext parse(String sql) {
     RelationalSqlLexer lexer =
         new RelationalSqlLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
     lexer.removeErrorListeners();
@@ -164,32 +226,57 @@ public class ExportDataTable extends AbstractExportData {
     RelationalSqlParser parser = new RelationalSqlParser(new CommonTokenStream(lexer));
     parser.removeErrorListeners();
     parser.setErrorHandler(new BailErrorStrategy());
-    List<RelationalSqlParser.QualifiedNameContext> sources = new ArrayList<>();
-    try {
-      new RelationalSqlBaseVisitor<Void>() {
-        @Override
-        public Void visitTableName(RelationalSqlParser.TableNameContext context) {
-          sources.add(context.qualifiedName());
-          return null;
-        }
-      }.visit(parser.singleStatement());
-    } catch (ParseCancellationException e) {
-      throw invalid;
+    return parser.singleStatement();
+  }
+
+  /** The only query block of a statement, or null for EXPLAIN, set operations and nesting. */
+  private static RelationalSqlParser.QuerySpecificationContext select(
+      RelationalSqlParser.QueryStatementContext statement) {
+    // CTEs, subqueries and EXISTS each add a nested query.
+    if (statement instanceof RelationalSqlParser.StatementDefaultContext plain
+        && Trees.findAllRuleNodes(plain, RelationalSqlParser.RULE_query).size() == 1
+        && plain.query().queryNoWith().queryTerm()
+            instanceof RelationalSqlParser.QueryTermDefaultContext term
+        && term.queryPrimary() instanceof RelationalSqlParser.QueryPrimaryDefaultContext primary) {
+      return primary.querySpecification();
     }
-    // A query reading several relations has no single destination table.
-    if (sources.size() != 1) {
-      throw invalid;
+    return null;
+  }
+
+  /** The table a query block reads, or null for joins, table functions and column aliases. */
+  private static RelationalSqlParser.QualifiedNameContext source(
+      RelationalSqlParser.QuerySpecificationContext select) {
+    if (select.relation().size() == 1
+        && select.relation(0) instanceof RelationalSqlParser.RelationDefaultContext relation
+        && relation.aliasedRelation().columnAliases() == null
+        && relation.aliasedRelation().relationPrimary()
+            instanceof RelationalSqlParser.TableNameContext table) {
+      return table.qualifiedName();
     }
-    List<RelationalSqlParser.IdentifierContext> parts = sources.get(0).identifier();
-    if (parts.size() > 2
-        || (parts.size() == 2 && !identifierValue(parts.get(0)).equals(config.database))) {
-      throw invalid;
+    return null;
+  }
+
+  /** The column a select item names without an alias, or null for anything else. */
+  private static String column(RelationalSqlParser.SelectItemContext item) {
+    if (!(item instanceof RelationalSqlParser.SelectSingleContext single)
+        || single.identifier() != null) {
+      return null;
     }
-    String table = identifierValue(parts.get(parts.size() - 1));
-    if (!tables.contains(table)) {
-      throw invalid;
+    // A bare name reaches the column reference through rules with a single child.
+    ParseTree node = single.expression();
+    while (!(node instanceof RelationalSqlParser.ColumnReferenceContext)
+        && node.getChildCount() == 1) {
+      node = node.getChild(0);
     }
-    return table;
+    return node instanceof RelationalSqlParser.ColumnReferenceContext reference
+        ? identifierValue(reference.identifier())
+        : null;
+  }
+
+  private static ArgsErrorException computedColumns() {
+    return new ArgsErrorException(
+        CliMessages
+            .EXCEPTION_SQL_TSFILE_EXPORT_CAN_ONLY_SELECT_OR_COLUMN_NAMES_WITHOUT_FILL_EC83126D);
   }
 
   private static String identifierValue(RelationalSqlParser.IdentifierContext context) {
@@ -298,6 +385,25 @@ public class ExportDataTable extends AbstractExportData {
 
   private Map<String, ColumnSchema> validateColumns(SessionDataSet data, String table)
       throws Exception {
+    Map<String, ColumnSchema> schemas = describe(table);
+    List<String> columns = data.getColumnNames();
+    List<String> types = data.getColumnTypes();
+    checkColumns(table, columns, schemas);
+    for (int i = 0; i < columns.size(); i++) {
+      ColumnSchema schema = schemas.get(columns.get(i));
+      if (schema != null && schema.getDataType() != TSDataType.valueOf(types.get(i))) {
+        throw invalidColumns(table);
+      }
+    }
+    return schemas;
+  }
+
+  /**
+   * The columns of a table other than time, in table order.
+   *
+   * @throws Exception if DESCRIBE fails or the export is stopped
+   */
+  private Map<String, ColumnSchema> describe(String table) throws Exception {
     Map<String, ColumnSchema> schemas = new LinkedHashMap<>();
     try (Resource<SessionDataSet> result =
         own(session.executeQueryStatement("DESCRIBE " + identifier(table), config.timeout))) {
@@ -316,30 +422,55 @@ public class ExportDataTable extends AbstractExportData {
         }
       }
     }
-    List<String> columns = data.getColumnNames();
-    List<String> types = data.getColumnTypes();
-    if (!columns.contains("time")) {
-      throw new ArgsErrorException(
-          String.format(
-              CliMessages
-                  .EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_UNALIASED_COLUMNS_FROM_TABLE_ARG_C5E77CD3,
-              table));
+    return schemas;
+  }
+
+  /**
+   * Rows written back to a table need the time column and a FIELD, and each column once and from
+   * the table; TsFile output also needs every TAG to preserve device identity.
+   *
+   * @throws ArgsErrorException if the rows cannot be written back to the table
+   */
+  private void checkColumns(String table, List<String> columns, Map<String, ColumnSchema> schemas)
+      throws ArgsErrorException {
+    Set<String> selected = new HashSet<>(columns);
+    if (selected.size() != columns.size()
+        || !selected.remove("time")
+        || !schemas.keySet().containsAll(selected)) {
+      throw invalidColumns(table);
     }
-    for (int i = 0; i < columns.size(); i++) {
-      String column = columns.get(i);
-      if ("time".equals(column)) {
-        continue;
-      }
-      ColumnSchema schema = schemas.get(column);
-      if (schema == null || schema.getDataType() != TSDataType.valueOf(types.get(i))) {
+    boolean hasField = false;
+    boolean selectsField = false;
+    for (ColumnSchema schema : schemas.values()) {
+      boolean isSelected = selected.contains(schema.getColumnName());
+      if (schema.getColumnCategory() == ColumnCategory.FIELD) {
+        hasField = true;
+        selectsField |= isSelected;
+      } else if (schema.getColumnCategory() == ColumnCategory.TAG
+          && !isSelected
+          && "tsfile".equals(config.format)) {
         throw new ArgsErrorException(
             String.format(
                 CliMessages
-                    .EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_UNALIASED_COLUMNS_FROM_TABLE_ARG_C5E77CD3,
+                    .EXCEPTION_TSFILE_OUTPUT_REQUIRES_EVERY_TAG_COLUMN_FROM_TABLE_ARG_901F420F,
                 table));
       }
     }
-    return schemas;
+    // A table without FIELD columns holds no rows, so it needs none to be exported.
+    if (hasField && !selectsField) {
+      throw new ArgsErrorException(
+          String.format(
+              CliMessages
+                  .EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_A_FIELD_COLUMN_FROM_TABLE_ARG_1C08B044,
+              table));
+    }
+  }
+
+  private static ArgsErrorException invalidColumns(String table) {
+    String message =
+        CliMessages
+            .EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_COLUMNS_OF_TABLE_ARG_14B7FB67;
+    return new ArgsErrorException(String.format(message, table));
   }
 
   private void exportTsFile(SessionDataSet data, ExportTask task) throws Exception {
@@ -361,17 +492,6 @@ public class ExportDataTable extends AbstractExportData {
       types.add(schema.getDataType());
       categories.add(schema.getColumnCategory());
       indices.add(i + 1);
-    }
-    // All tags are needed to preserve device identity in a TsFile.
-    for (ColumnSchema schema : available.values()) {
-      if (schema.getColumnCategory() == ColumnCategory.TAG
-          && !names.contains(schema.getColumnName())) {
-        throw new ArgsErrorException(
-            String.format(
-                CliMessages
-                    .EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_UNALIASED_COLUMNS_FROM_TABLE_ARG_C5E77CD3,
-                task.table()));
-      }
     }
     Path file = Path.of(task.outputBase() + ".tsfile");
     ExportFileNames.checkOutputCollision(file, config);
@@ -433,5 +553,21 @@ public class ExportDataTable extends AbstractExportData {
 
   private static String identifier(String name) {
     return "\"" + name.replace("\"", "\"\"") + "\"";
+  }
+
+  /** A SQL/TsFile query's table and the columns it selects, where null stands for *. */
+  private record TableQuery(String table, List<String> columns) {
+    List<String> resolve(Map<String, ColumnSchema> schemas) {
+      List<String> resolved = new ArrayList<>();
+      for (String column : columns) {
+        if (column == null) {
+          resolved.add("time");
+          resolved.addAll(schemas.keySet());
+        } else {
+          resolved.add(column);
+        }
+      }
+      return resolved;
+    }
   }
 }

@@ -85,8 +85,8 @@ public final class CliMessages {
       EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768 =
           "SQL/TsFile 导出要求查询仅来自数据库 %s 中的一张表。";
   public static final String
-      MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400 =
-          "导出查询。表模型 SQL/TsFile 查询要求仅包含一张表，不支持联接、子查询或 CTE。指定后忽略 -table、-start_time 和 -end_time。（可选）";
+      MESSAGE_QUERY_TO_EXPORT_OPTIONAL_TABLE_SQL_TSFILE_STORED_COLUMNS_OF_ONE_TABLE_6D79406B =
+          "导出查询（可选）。表模型 SQL/TsFile 导出只能查询一张表的原始列。";
   public static final String
       MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
           "多个 CSV 表头映射到同一目标列。";
@@ -124,7 +124,7 @@ public final class CliMessages {
   public static final String MESSAGE_TABLE_TO_EXPORT_OPTIONAL_IGNORED_WHEN_Q_IS_GIVEN_4F37C0B5 =
       "要导出的表（可选）。指定 -q 时忽略。";
   public static final String
-      MESSAGE_DATABASE_TO_EXPORT_REQUIRED_EXPORTS_ALL_OF_ITS_TABLES_UNLESS_TABLE_OR_Q_IS_GIVEN_F125EEA1 =
+      MESSAGE_DATABASE_TO_EXPORT_REQUIRED_WITHOUT_TABLE_OR_Q_EXPORTS_ALL_ITS_TABLES_704F6B55 =
           "要导出的数据库（必填）。不带 -table 或 -q 时导出其中所有表。";
   public static final String MESSAGE_MAXIMUM_DATA_ROWS_PER_CSV_OR_SQL_FILE_DEFAULT_10000_000CEFB9 =
       "每个 CSV 或 SQL 文件的最大数据行数（默认 10000）。";
@@ -240,8 +240,18 @@ public final class CliMessages {
       "导出失败：%s";
   public static final String EXCEPTION_CANNOT_OBTAIN_SCHEMA_FOR_MEASUREMENT_ARG_D3F1DAF3 =
       "无法获取测点 %s 的 schema。";
-  public static final String EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_UNALIASED_COLUMNS_FROM_TABLE_ARG_C5E77CD3 =
-      "SQL/TsFile 输出需要 time 列及表 %s 的原始列（不能使用别名）。";
+  public static final String
+      EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_COLUMNS_OF_TABLE_ARG_14B7FB67 =
+          "SQL/TsFile 输出需要 time 列以及表 %s 中的列。";
+  public static final String
+      EXCEPTION_SQL_TSFILE_EXPORT_CAN_ONLY_SELECT_OR_COLUMN_NAMES_WITHOUT_FILL_EC83126D =
+          "SQL/TsFile 导出只能选择 * 或列名，且不能使用 FILL。";
+  public static final String
+      EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_A_FIELD_COLUMN_FROM_TABLE_ARG_1C08B044 =
+          "SQL/TsFile 输出需要表 %s 的至少一个 FIELD 列。";
+  public static final String
+      EXCEPTION_TSFILE_OUTPUT_REQUIRES_EVERY_TAG_COLUMN_FROM_TABLE_ARG_901F420F =
+          "TsFile 输出需要表 %s 的全部 TAG 列。";
   public static final String EXCEPTION_SQL_OUTPUT_REQUIRES_ORIGINAL_MEASUREMENT_PATHS_OR_AN_ALIGN_BY_DEVICE_QUERY_ADA72EA8 =
       "SQL 输出需要原始测点路径或 ALIGN BY DEVICE 查询。";
 

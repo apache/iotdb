@@ -85,8 +85,8 @@ public final class CliMessages {
       EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768 =
           "SQL/TsFile export requires a query from a single table in database %s.";
   public static final String
-      MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400 =
-          "Query to export. Table SQL/TsFile queries require a single table without joins, subqueries or CTEs. Overrides -table, -start_time and -end_time. (optional)";
+      MESSAGE_QUERY_TO_EXPORT_OPTIONAL_TABLE_SQL_TSFILE_STORED_COLUMNS_OF_ONE_TABLE_6D79406B =
+          "Query to export (optional). Table SQL/TsFile: stored columns of one table.";
   public static final String
       MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
           "Multiple CSV headers resolve to the same target column.";
@@ -128,8 +128,8 @@ public final class CliMessages {
   public static final String MESSAGE_TABLE_TO_EXPORT_OPTIONAL_IGNORED_WHEN_Q_IS_GIVEN_4F37C0B5 =
       "Table to export (optional). Ignored when -q is given.";
   public static final String
-      MESSAGE_DATABASE_TO_EXPORT_REQUIRED_EXPORTS_ALL_OF_ITS_TABLES_UNLESS_TABLE_OR_Q_IS_GIVEN_F125EEA1 =
-          "Database to export (required). Exports all of its tables unless -table or -q is given.";
+      MESSAGE_DATABASE_TO_EXPORT_REQUIRED_WITHOUT_TABLE_OR_Q_EXPORTS_ALL_ITS_TABLES_704F6B55 =
+          "Database to export (required). Without -table or -q, exports all its tables.";
   public static final String MESSAGE_MAXIMUM_DATA_ROWS_PER_CSV_OR_SQL_FILE_DEFAULT_10000_000CEFB9 =
       "Maximum data rows per CSV or SQL file (default 10000).";
   public static final String EXCEPTION_FILE_PREFIX_MUST_NOT_CONTAIN_PATH_SEPARATORS_ARG_C89823EE =
@@ -244,8 +244,18 @@ public final class CliMessages {
       "Export failed: %s";
   public static final String EXCEPTION_CANNOT_OBTAIN_SCHEMA_FOR_MEASUREMENT_ARG_D3F1DAF3 =
       "Cannot obtain schema for measurement %s.";
-  public static final String EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_UNALIASED_COLUMNS_FROM_TABLE_ARG_C5E77CD3 =
-      "SQL/TsFile output requires the time column and unaliased columns from table %s.";
+  public static final String
+      EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_COLUMNS_OF_TABLE_ARG_14B7FB67 =
+          "SQL/TsFile output requires the time column and columns of table %s.";
+  public static final String
+      EXCEPTION_SQL_TSFILE_EXPORT_CAN_ONLY_SELECT_OR_COLUMN_NAMES_WITHOUT_FILL_EC83126D =
+          "SQL/TsFile export can only select * or column names, without FILL.";
+  public static final String
+      EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_A_FIELD_COLUMN_FROM_TABLE_ARG_1C08B044 =
+          "SQL/TsFile output requires a FIELD column from table %s.";
+  public static final String
+      EXCEPTION_TSFILE_OUTPUT_REQUIRES_EVERY_TAG_COLUMN_FROM_TABLE_ARG_901F420F =
+          "TsFile output requires every TAG column from table %s.";
   public static final String EXCEPTION_SQL_OUTPUT_REQUIRES_ORIGINAL_MEASUREMENT_PATHS_OR_AN_ALIGN_BY_DEVICE_QUERY_ADA72EA8 =
       "SQL output requires original measurement paths or an ALIGN BY DEVICE query.";
 

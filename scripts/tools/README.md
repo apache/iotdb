@@ -222,11 +222,13 @@ tools/export-data.sh -sql_dialect table -db factory \
 
 Tree mode prompts for a query when neither `-mf` nor `-q` is supplied. Table mode automatically
 exports the selected table or all tables in `-db`. Each query in `-q` writes its own files
-(`dump0_0.csv`, `dump1_0.csv`, ...). A Table query exported as SQL or TsFile is written to the table
-it reads: it must read a single table of `-db` without joins, subqueries or CTEs, and return the
-time column and original column names; TsFile queries must include all tags to preserve device
-identity. All queries are checked before the first one runs. Like the time bounds, `-table` does
-not apply to queries and is reported as a `WARNING`.
+(`dump0_0.csv`, `dump1_0.csv`, ...). A Table query exported as SQL or TsFile is written back to the
+table it reads, so it must select `*` or column names from a single table of `-db`: aliases,
+expressions, `FILL`, joins, subqueries and CTEs would write values that the table does not hold.
+The query must return the time column and at least one FIELD column, and TsFile queries must
+include every TAG column to preserve device identity. All queries are checked against their tables
+before the first one runs. Like the time bounds, `-table` does not apply to queries and is reported
+as a `WARNING`.
 
 SQL output quotes strings and dates in single quotes, doubling a quote inside them. A Tree query
 row that spans several devices becomes one SQL INSERT per device that has values in the row, and

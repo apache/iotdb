@@ -306,6 +306,21 @@ public class ExportDataMeasurementIT {
               "SELECT * FROM metrics WHERE time=100"));
       assertTrue(log(custom).contains(member("exported_data_rows", 1)));
     }
+    // SQL and TsFile rows are written back to the table, so neither computed values nor rows
+    // without a FIELD column are exported.
+    for (String format : Arrays.asList("sql", "tsfile")) {
+      for (String sql :
+          Arrays.asList(
+              "SELECT time, id, v + 1 AS v, stamp, day, blob FROM metrics",
+              "SELECT time, id FROM metrics")) {
+        Path rejected = folder.newFolder().toPath();
+        Result result =
+            export(
+                rejected, "-sql_dialect", "table", "-db", "export_table", "-ft", format, "-q", sql);
+        assertNotEquals(result.text, 0, result.code);
+        assertTrue(result.text, outputs(rejected, "." + format).isEmpty());
+      }
+    }
     assertNotEquals(
         0,
         export(

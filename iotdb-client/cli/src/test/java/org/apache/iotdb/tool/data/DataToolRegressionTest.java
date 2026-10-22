@@ -78,6 +78,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -218,6 +219,12 @@ public class DataToolRegressionTest extends AbstractDataTool {
             "select * from other_db.table_b",
             "select * from",
             "select * from table_b #invalid_character",
+            "explain select * from table_a",
+            "with a as (select * from table_a) select * from a",
+            "select * from table_a where v > (select 1)",
+            "select * from table_a union all select * from table_a",
+            // Column aliases rename the columns the rows are written to.
+            "select * from table_a as a(time, w)",
             // All queries are checked before the first one runs.
             "select * from table_a; select * from table_a, table_b")) {
       ArgsErrorException e =
@@ -228,6 +235,124 @@ public class DataToolRegressionTest extends AbstractDataTool {
       assertEquals(query, message, e.getMessage());
     }
     verify(session, never()).executeQueryStatement(not(eq("show tables")), anyLong());
+    assertFalse(Files.exists(directory.resolve("dump0_0.sql")));
+  }
+
+  @Test
+  public void testTableQueriesCannotWriteComputedValuesBack() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD", "w", "INT32", "FIELD");
+    for (String query :
+        List.of(
+            // Aliases, expressions and FILL can store values that the table does not hold.
+            "select time, tag, v + 1 as v from t",
+            "select time, tag, w as v, v as w from t",
+            "select time as time, tag, v from t",
+            "select time, tag, abs(v) from t",
+            "select time, tag, v from t fill method previous")) {
+      for (String format : List.of("sql", "tsfile")) {
+        ArgsErrorException e =
+            assertThrows(
+                query,
+                ArgsErrorException.class,
+                () -> exportTable(session, query, 0, "-ft", format));
+        assertEquals(
+            query,
+            CliMessages
+                .EXCEPTION_SQL_TSFILE_EXPORT_CAN_ONLY_SELECT_OR_COLUMN_NAMES_WITHOUT_FILL_EC83126D,
+            e.getMessage());
+      }
+    }
+    verify(session, never()).executeQueryStatement(not(eq("show tables")), anyLong());
+  }
+
+  @Test
+  public void testTableQuerySelectingColumnsIsExported() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD", "w", "INT32", "FIELD");
+    String query = "SELECT \"TIME\", Tag, v FROM t AS x WHERE x.w > 1 ORDER BY time LIMIT 5";
+    SessionDataSet result =
+        dataSet(
+            List.of("time", "tag", "v"),
+            List.of("TIMESTAMP", "STRING", "INT32"),
+            new Object[] {2L, "d1", 5});
+    when(session.executeQueryStatement(eq(query), anyLong())).thenReturn(result);
+    exportTable(session, query, 0, "-ft", "sql");
+    assertEquals(
+        "insert into \"t\"(\"time\",\"tag\",\"v\") values(2,'d1',5);\n", read("dump0_0.sql"));
+  }
+
+  @Test
+  public void testTableQueriesNeedAFieldColumnBeforeAnyQueryRuns() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD");
+    // IoTDB rejects an INSERT without a FIELD column, so this SQL could not be imported.
+    ArgsErrorException e =
+        assertThrows(
+            ArgsErrorException.class,
+            () ->
+                exportTable(
+                    session,
+                    null,
+                    0,
+                    "-ft",
+                    "sql",
+                    "-q",
+                    "select * from t; select time, tag from t"));
+    assertEquals(
+        String.format(
+            CliMessages.EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_A_FIELD_COLUMN_FROM_TABLE_ARG_1C08B044,
+            "t"),
+        e.getMessage());
+    verify(session, never()).executeQueryStatement(startsWith("select"), anyLong());
+    assertFalse(Files.exists(directory.resolve("dump0_0.sql")));
+  }
+
+  @Test
+  public void testTableQueryColumnsAreCheckedAgainstTheTable() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD");
+    String message =
+        CliMessages
+            .EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_COLUMNS_OF_TABLE_ARG_14B7FB67;
+    String invalid = String.format(message, "t");
+    for (String query :
+        List.of("select tag, v from t", "select *, v from t", "select time, tag, missing from t")) {
+      ArgsErrorException e =
+          assertThrows(
+              query, ArgsErrorException.class, () -> exportTable(session, query, 0, "-ft", "sql"));
+      assertEquals(query, invalid, e.getMessage());
+    }
+    // Without its TAG columns, a TsFile would merge the rows of every device.
+    ArgsErrorException e =
+        assertThrows(
+            ArgsErrorException.class,
+            () -> exportTable(session, "select time, v from t", 0, "-ft", "tsfile"));
+    assertEquals(
+        String.format(
+            CliMessages.EXCEPTION_TSFILE_OUTPUT_REQUIRES_EVERY_TAG_COLUMN_FROM_TABLE_ARG_901F420F,
+            "t"),
+        e.getMessage());
+    verify(session, never()).executeQueryStatement(startsWith("select"), anyLong());
+  }
+
+  @Test
+  public void testExportChecksTheColumnsTheQueryReturns() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD");
+    // The table can change between planning and the query, so the returned columns are checked.
+    SessionDataSet result =
+        dataSet(List.of("time", "tag"), List.of("TIMESTAMP", "STRING"), new Object[] {1L, "d1"});
+    when(session.executeQueryStatement(eq("select * from t"), anyLong())).thenReturn(result);
+    ArgsErrorException e =
+        assertThrows(
+            ArgsErrorException.class,
+            () -> exportTable(session, "select * from t", 0, "-ft", "sql"));
+    assertEquals(
+        String.format(
+            CliMessages.EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_A_FIELD_COLUMN_FROM_TABLE_ARG_1C08B044,
+            "t"),
+        e.getMessage());
     assertFalse(Files.exists(directory.resolve("dump0_0.sql")));
   }
 
