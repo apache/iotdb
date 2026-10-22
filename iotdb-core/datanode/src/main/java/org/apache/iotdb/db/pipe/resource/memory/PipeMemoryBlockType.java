@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 public enum PipeMemoryBlockType {
   NORMAL,
   TABLET,
+  TS_FILE_PARSER,
   TS_FILE,
   BATCH,
   WAL
