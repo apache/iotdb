@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -44,12 +45,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
@@ -142,9 +145,83 @@ public class IoTDBTimePartitionIT {
       }
       timestatmps.forEach(
           t -> {
-            long timePartitionId = TimePartitionUtils.getTimePartitionId(t);
+            long timePartitionId = TimePartitionUtils.getTimePartitionId(t, "root.sg1");
             assertTrue(timePartitions.contains(timePartitionId));
           });
+    }
+  }
+
+  @Test
+  public void testDefaultTimePartitionConfigAfterClusterRestart() throws Exception {
+    final String database = "root.default_time_partition";
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + database);
+
+      final SQLException originException =
+          assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "ALTER DATABASE " + database + " WITH TIME_PARTITION_ORIGIN=0"));
+      assertTrue(
+          originException.getMessage(),
+          originException.getMessage().contains("Doesn't support ALTER TimePartitionOrigin yet."));
+
+      final SQLException intervalException =
+          assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "ALTER DATABASE " + database + " WITH TIME_PARTITION_INTERVAL=1"));
+      assertTrue(
+          intervalException.getMessage(),
+          intervalException
+              .getMessage()
+              .contains("Doesn't support ALTER TimePartitionInterval yet."));
+    }
+
+    assertDefaultTimePartitionConfig(database);
+    TestUtils.restartCluster(EnvFactory.getEnv());
+    assertDefaultTimePartitionConfig(database);
+
+    final long[] timestamps = {0L, 3601000L, 7201000L};
+    for (int i = 0; i < timestamps.length; i++) {
+      try (final Connection connection =
+              EnvFactory.getEnv().getConnection(EnvFactory.getEnv().getDataNodeWrapper(i));
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            "INSERT INTO " + database + ".d1(timestamp, s1) values(" + timestamps[i] + ", 1)");
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      final List<Long> timePartitions = new ArrayList<>();
+      try (final ResultSet result =
+          statement.executeQuery("SHOW TIMEPARTITION WHERE DATABASE = " + database)) {
+        while (result.next()) {
+          timePartitions.add(result.getLong(ColumnHeaderConstant.TIME_PARTITION));
+        }
+      }
+      assertTrue(timePartitions.contains(-1L));
+      assertTrue(timePartitions.contains(1L));
+      assertTrue(timePartitions.contains(2L));
+    }
+  }
+
+  private void assertDefaultTimePartitionConfig(final String database) throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      final TShowDatabaseResp response = client.showDatabase(showAllDatabasesReq);
+      assertTrue(response.databaseInfoMap.containsKey(database));
+      assertEquals(
+          TEST_TIME_PARTITION_ORIGIN,
+          response.databaseInfoMap.get(database).getTimePartitionOrigin());
+      assertEquals(
+          TEST_TIME_PARTITION_INTERVAL,
+          response.databaseInfoMap.get(database).getTimePartitionInterval());
     }
   }
 }

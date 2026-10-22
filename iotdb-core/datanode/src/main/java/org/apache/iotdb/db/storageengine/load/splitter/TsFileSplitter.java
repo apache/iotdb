@@ -71,6 +71,7 @@ public class TsFileSplitter {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final File tsFile;
+  private String database;
   private final TsFileDataConsumer consumer;
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
   private List<ModEntry> deletions = new ArrayList<>();
@@ -101,12 +102,18 @@ public class TsFileSplitter {
       final IDeviceID device,
       final ChunkHeader header,
       final TTimePartitionSlot timePartitionSlot) {
-    return ChunkData.createChunkData(aligned, device, header, timePartitionSlot);
+    return ChunkData.createChunkData(aligned, device, header, timePartitionSlot, database);
+  }
+
+  public void splitTsFileByDataPartition()
+      throws IOException, LoadFileException, IllegalStateException {
+    splitTsFileByDataPartition(null);
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
-  public void splitTsFileByDataPartition()
+  public void splitTsFileByDataPartition(String database)
       throws IOException, LoadFileException, IllegalStateException {
+    this.database = database;
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(new BufferedTsFileInput(tsFile.toPath()), true, false, null)) {
       getAllModification(deletions);
@@ -199,7 +206,7 @@ public class TsFileSplitter {
       return;
     }
     TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
+        TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime(), database);
     ChunkData chunkData = createChunkData(isAligned, curDevice, header, timePartitionSlot);
 
     if (!needDecodeChunk(chunkMetadata)) {
@@ -251,7 +258,7 @@ public class TsFileSplitter {
                 ? chunkMetadata.getStartTime()
                 : pageHeader.getStartTime();
         TTimePartitionSlot pageTimePartitionSlot =
-            TimePartitionUtils.getTimePartitionSlot(startTime);
+            TimePartitionUtils.getTimePartitionSlot(startTime, database);
         if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
           if (!isAligned) {
             chunkData.endChunk();
@@ -284,10 +291,11 @@ public class TsFileSplitter {
         // partition, whose upper bound is Long.MAX_VALUE itself, so the helper is used: it keeps
         // the point that equals Long.MAX_VALUE inside its own partition.
         long endTime =
-            TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
+            TimePartitionUtils.getTimePartitionUpperBound(
+                timePartitionSlot.getStartTime(), database);
         for (int i = 0; i < times.length; i++) {
           if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
-              times[i], timePartitionSlot.getStartTime(), endTime)) {
+              times[i], timePartitionSlot.getStartTime(), endTime, database)) {
             chunkData.writeDecodePage(times, values, satisfiedLength);
             if (isAligned) {
               chunkData.endChunk();
@@ -299,10 +307,11 @@ public class TsFileSplitter {
               consumeChunkData(measurementId, chunkOffset, chunkData);
             }
 
-            timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
+            timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i], database);
             satisfiedLength = 0;
             endTime =
-                TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
+                TimePartitionUtils.getTimePartitionUpperBound(
+                    timePartitionSlot.getStartTime(), database);
             chunkData = createChunkData(isAligned, curDevice, header, timePartitionSlot);
           }
           satisfiedLength += 1;
@@ -531,17 +540,17 @@ public class TsFileSplitter {
   }
 
   private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
-    return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
-        .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
+    return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime(), database)
+        .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime(), database));
   }
 
   private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
     if (pageHeader.getStatistics() == null) {
-      return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
-          .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
+      return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime(), database)
+          .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime(), database));
     }
-    return !TimePartitionUtils.getTimePartitionSlot(pageHeader.getStartTime())
-        .equals(TimePartitionUtils.getTimePartitionSlot(pageHeader.getEndTime()));
+    return !TimePartitionUtils.getTimePartitionSlot(pageHeader.getStartTime(), database)
+        .equals(TimePartitionUtils.getTimePartitionSlot(pageHeader.getEndTime(), database));
   }
 
   private Pair<long[], Object[]> decodePage(

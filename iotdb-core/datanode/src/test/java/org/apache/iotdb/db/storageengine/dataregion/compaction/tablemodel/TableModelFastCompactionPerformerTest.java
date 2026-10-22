@@ -128,12 +128,12 @@ public class TableModelFastCompactionPerformerTest extends AbstractTableModelCom
             0,
             0);
     Assert.assertTrue(task.start());
-    TsFileResource targetResource0 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource0 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource0.getTsFile().getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
-    TsFileResource targetResource1 = tsFileManager.getTsFileList(true).get(1);
+    TsFileResource targetResource1 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource1.getTsFile().getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
@@ -173,7 +173,11 @@ public class TableModelFastCompactionPerformerTest extends AbstractTableModelCom
     Assert.assertTrue(task.start());
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(
-            tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
+            tsFileManager
+                .getTsFileList(true, COMPACTION_TEST_SG)
+                .get(0)
+                .getTsFile()
+                .getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
   }
@@ -234,7 +238,7 @@ public class TableModelFastCompactionPerformerTest extends AbstractTableModelCom
             0,
             0);
     Assert.assertTrue(task.start());
-    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(1, targetResource.getDevices().size());
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {

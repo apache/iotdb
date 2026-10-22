@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** Retained only for replaying consensus logs written before the interval became immutable. */
 public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
   private String storageGroup;

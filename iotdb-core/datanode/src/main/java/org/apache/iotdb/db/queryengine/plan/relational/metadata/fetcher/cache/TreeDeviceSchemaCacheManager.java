@@ -367,6 +367,10 @@ public class TreeDeviceSchemaCacheManager {
       final LastCacheUpdateSource updateSource,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
     tableDeviceSchemaCache.updateLastCache(
         database, deviceID, measurements, updateSource, isAligned, measurementSchemas);
   }

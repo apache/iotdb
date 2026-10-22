@@ -101,7 +101,7 @@ public class TableModelCompactionWithTTLTest extends AbstractTableModelCompactio
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -130,7 +130,7 @@ public class TableModelCompactionWithTTLTest extends AbstractTableModelCompactio
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertTrue(target.getFileStartTime() > startTime && target.getFileEndTime() == endTime);
   }
 
@@ -159,7 +159,7 @@ public class TableModelCompactionWithTTLTest extends AbstractTableModelCompactio
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertTrue(target.getFileStartTime() == startTime && target.getFileEndTime() == endTime);
   }
 

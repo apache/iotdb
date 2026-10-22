@@ -61,6 +61,7 @@ public class NonAlignedChunkData implements ChunkData {
   private List<ChunkPayloadRef> chunkPayloadRefs = new ArrayList<>();
 
   private final TTimePartitionSlot timePartitionSlot;
+  protected long timePartitionEndTime;
   private final IDeviceID device;
   private final ChunkHeader chunkHeader;
   private final EncryptParameter encryptParameter;
@@ -117,6 +118,8 @@ public class NonAlignedChunkData implements ChunkData {
     this.device = device;
     this.chunkHeader = chunkHeader;
     this.timePartitionSlot = timePartitionSlot;
+    this.timePartitionEndTime =
+        TimePartitionUtils.getTimePartitionEndTime(timePartitionSlot.getStartTime());
     this.encryptParameter = encryptParameter;
     this.needDecodeChunk = true;
     addAttrDataSize();
@@ -132,6 +135,11 @@ public class NonAlignedChunkData implements ChunkData {
   @Override
   public IDeviceID getDevice() {
     return device;
+  }
+
+  @Override
+  public void setTimePartitionEndTime(long endTime) {
+    this.timePartitionEndTime = endTime;
   }
 
   @Override
@@ -227,7 +235,7 @@ public class NonAlignedChunkData implements ChunkData {
     for (PageBuffer page : pageBuffers) {
       if (page.needDecode) {
         final long partitionStart = timePartitionSlot.getStartTime();
-        final long partitionEnd = getTimePartitionEnd(partitionStart);
+        final long partitionEnd = timePartitionEndTime;
         // Resolved once per page; the service has no bulk entry point, so the loop stays here.
         final TypeServices.ObjectValueChunkWriter valueChunkWriter =
             TypeServices.StorageEngine.OBJECT_VALUE_CHUNK_WRITER_SERVICE.call(
@@ -270,12 +278,6 @@ public class NonAlignedChunkData implements ChunkData {
 
     // Update global data size
     this.dataSize += chunkData.remaining() + statistics.getSerializedSize();
-  }
-
-  private static long getTimePartitionEnd(final long partitionStart) {
-    // Delegate to the overflow-safe helper: a naive "start + interval - 1" wraps around for the
-    // last representable partition and collapses to the start itself when interval == 1.
-    return TimePartitionUtils.getTimePartitionEndTime(partitionStart);
   }
 
   // ----------------------- Serialization / Deserialization -----------------------
@@ -361,7 +363,7 @@ public class NonAlignedChunkData implements ChunkData {
   public static NonAlignedChunkData deserialize(final InputStream stream)
       throws IOException, PageException {
     final TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
+        new TTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
     final boolean isStringArrayDeviceID = ReadWriteIOUtils.readBool(stream);
     final IDeviceID device =
         isStringArrayDeviceID

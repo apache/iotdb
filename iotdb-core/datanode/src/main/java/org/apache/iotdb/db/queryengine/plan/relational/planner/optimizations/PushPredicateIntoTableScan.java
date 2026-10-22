@@ -1379,7 +1379,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final DeviceEntryDataSet deviceEntryDataSet,
         final Filter globalTimeFilter) {
       final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(globalTimeFilter, queryContext);
+          getTimePartitionSlotList(globalTimeFilter, queryContext, database);
 
       // there is no satisfied time range
       if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {

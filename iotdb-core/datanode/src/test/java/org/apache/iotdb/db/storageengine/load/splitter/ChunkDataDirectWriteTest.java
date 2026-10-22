@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData.ChunkLayout;
 
@@ -203,6 +204,56 @@ public class ChunkDataDirectWriteTest {
   // -------------------------------------------------------------------------
   // Time Partition Filtering Tests
   // -------------------------------------------------------------------------
+
+  // Points outside the current time partition are dropped from a non-aligned chunk
+  @Test
+  public void testDatabasePartitionBoundsSurviveChunkEncodingAndSerialization() throws Exception {
+    String database = "root.custom_partition";
+    TimePartitionUtils.updateDatabaseTimePartitionConfig(
+        database, new TDatabaseSchema().setTimePartitionOrigin(50).setTimePartitionInterval(100));
+    try {
+      long[] times = {150, 249, 250};
+      for (boolean aligned : new boolean[] {false, true}) {
+        ChunkData chunkData =
+            ChunkData.createChunkData(
+                aligned,
+                DEFAULT_DEVICE,
+                aligned ? createTimeChunkHeader() : createChunkHeader("s1", TSDataType.INT32),
+                new TTimePartitionSlot(150),
+                database);
+        chunkData.writeDecodePage(times, aligned ? new Object[3] : new Object[] {1, 2, 3}, 2);
+        chunkData.endChunk();
+        assertEquals(2, chunkData.getChunks().get(0).getChunkStatistic().getCount());
+        assertEquals(249, chunkData.getChunks().get(0).getChunkStatistic().getEndTime());
+
+        if (aligned) {
+          BatchedAlignedValueChunkData values =
+              new BatchedAlignedValueChunkData((AlignedChunkData) chunkData);
+          values.addValueChunk(createChunkHeader("s1", TSDataType.INT32));
+          values.writeDecodeValuePage(
+              times,
+              new TsPrimitiveType[] {
+                TsPrimitiveType.getByType(TSDataType.INT32, 1),
+                TsPrimitiveType.getByType(TSDataType.INT32, 2),
+                TsPrimitiveType.getByType(TSDataType.INT32, 3)
+              },
+              TSDataType.INT32);
+          values.endChunk();
+          assertEquals(2, values.getChunks().get(0).getChunkStatistic().getCount());
+          assertEquals(249, values.getChunks().get(0).getChunkStatistic().getEndTime());
+        }
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        chunkData.serialize(new DataOutputStream(bytes));
+        ChunkData deserialized =
+            (ChunkData) TsFileData.deserialize(new ByteArrayInputStream(bytes.toByteArray()));
+        assertEquals(new TTimePartitionSlot(150), deserialized.getTimePartitionSlot());
+        assertEquals(2, deserialized.getChunks().get(0).getChunkStatistic().getCount());
+      }
+    } finally {
+      TimePartitionUtils.removeDatabaseTimePartitionConfig(database);
+    }
+  }
 
   // Points outside the current time partition are dropped from a non-aligned chunk
   @Test

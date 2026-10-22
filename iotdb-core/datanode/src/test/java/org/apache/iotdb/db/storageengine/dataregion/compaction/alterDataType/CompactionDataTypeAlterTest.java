@@ -94,12 +94,21 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionAlterDataType
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    TsFileResourceUtils.validateTsFileDataCorrectness(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0));
     Assert.assertEquals(
-        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+        1,
+        ((long)
+            tsFileManager
+                .getTsFileList(true, COMPACTION_TEST_SG)
+                .get(0)
+                .getStartTime(device)
+                .get()));
     Assert.assertEquals(
-        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
-    TsFileResource tsFileResource = tsFileManager.getTsFileList(true).get(0);
+        2,
+        ((long)
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0).getEndTime(device).get()));
+    TsFileResource tsFileResource = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
             new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath());
         TsFileReader readTsFile = new TsFileReader(reader)) {
@@ -123,12 +132,21 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionAlterDataType
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    TsFileResourceUtils.validateTsFileDataCorrectness(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0));
     Assert.assertEquals(
-        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+        1,
+        ((long)
+            tsFileManager
+                .getTsFileList(true, COMPACTION_TEST_SG)
+                .get(0)
+                .getStartTime(device)
+                .get()));
     Assert.assertEquals(
-        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
-    TsFileResource tsFileResource = tsFileManager.getTsFileList(true).get(0);
+        2,
+        ((long)
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0).getEndTime(device).get()));
+    TsFileResource tsFileResource = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
             new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath());
         TsFileReader readTsFile = new TsFileReader(reader)) {
@@ -223,7 +241,7 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionAlterDataType
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(41L, (long) target.getStartTime(device).get());
     Assert.assertEquals(200L, (long) target.getEndTime(device).get());
   }

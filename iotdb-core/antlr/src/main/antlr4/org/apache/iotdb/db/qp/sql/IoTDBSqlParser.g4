@@ -122,6 +122,7 @@ databaseAttributeClause
 databaseAttributeKey
     : TTL
     | TIME_PARTITION_INTERVAL
+    | TIME_PARTITION_ORIGIN
     | MAX_SCHEMA_REGION_GROUP_NUM
     | MAX_DATA_REGION_GROUP_NUM
     ;

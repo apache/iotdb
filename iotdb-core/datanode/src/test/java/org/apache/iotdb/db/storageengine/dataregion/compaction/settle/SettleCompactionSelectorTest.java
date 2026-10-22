@@ -94,11 +94,13 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(0).start());
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
-    Assert.assertFalse(tsFileManager.getTsFileList(true).get(0).anyModFileExists());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).anyModFileExists());
+    Assert.assertFalse(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0).anyModFileExists());
+    Assert.assertFalse(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0).anyModFileExists());
 
     // select second time
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -110,11 +112,13 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(0).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).anyModFileExists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(i).anyModFileExists());
     }
 
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -164,8 +168,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
       Assert.assertTrue(seqTasks.get(0).start());
       Assert.assertTrue(unseqTasks.get(0).start());
-      Assert.assertEquals(--num, tsFileManager.getTsFileList(true).size());
-      Assert.assertEquals(num, tsFileManager.getTsFileList(false).size());
+      Assert.assertEquals(--num, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+      Assert.assertEquals(num, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     }
 
     List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -232,7 +236,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getPartiallyDirtyFiles().size());
 
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(4, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
     // select second time
     settleSelector =
@@ -243,7 +247,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getFullyDirtyFiles().size());
     Assert.assertEquals(3, seqTasks.get(0).getPartiallyDirtyFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
     // select third time
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -251,10 +255,11 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getFullyDirtyFiles().size());
     Assert.assertEquals(1, seqTasks.get(0).getPartiallyDirtyFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(i).anyModFileExists());
     }
   }
 
@@ -301,8 +306,9 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, unseqTasks.get(0).getFullyDirtyFiles().size());
 
     Assert.assertTrue(unseqTasks.get(0).start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).anyModFileExists());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    Assert.assertFalse(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0).anyModFileExists());
 
     // select third time
     // all seq files is partial_deleted
@@ -321,7 +327,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getFullyDirtyFiles().size());
 
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   // base on outdated too long
@@ -369,12 +375,14 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertTrue(seqTasks.get(1).start());
     Assert.assertTrue(unseqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(1).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).anyModFileExists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(i).anyModFileExists());
     }
 
     // select third time
@@ -461,7 +469,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, seqTasks.get(1).getPartiallyDirtyFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(seqTasks.get(1).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   /**
@@ -528,7 +536,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertTrue(seqTasks.get(1).start());
     Assert.assertTrue(seqTasks.get(2).start());
     Assert.assertTrue(seqTasks.get(3).start());
-    Assert.assertEquals(8, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(8, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   /**
@@ -594,7 +602,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(seqTasks.get(1).start());
     Assert.assertTrue(seqTasks.get(2).start());
-    Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(6, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   // endregion
@@ -630,11 +638,13 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(0).start());
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
-    Assert.assertFalse(tsFileManager.getTsFileList(true).get(0).anyModFileExists());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).anyModFileExists());
+    Assert.assertFalse(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0).anyModFileExists());
+    Assert.assertFalse(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0).anyModFileExists());
 
     // select second time
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -646,11 +656,13 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(0).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).anyModFileExists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(i).anyModFileExists());
     }
 
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -701,8 +713,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
       Assert.assertTrue(seqTasks.get(0).start());
       Assert.assertTrue(unseqTasks.get(0).start());
-      Assert.assertEquals(--num, tsFileManager.getTsFileList(true).size());
-      Assert.assertEquals(num, tsFileManager.getTsFileList(false).size());
+      Assert.assertEquals(--num, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+      Assert.assertEquals(num, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     }
 
     List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -769,7 +781,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getPartiallyDirtyFiles().size());
 
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(4, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
     // select second time
     settleSelector =
@@ -780,7 +792,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getFullyDirtyFiles().size());
     Assert.assertEquals(3, seqTasks.get(0).getPartiallyDirtyFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
     // select third time
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -788,10 +800,11 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getFullyDirtyFiles().size());
     Assert.assertEquals(1, seqTasks.get(0).getPartiallyDirtyFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(i).anyModFileExists());
     }
   }
 
@@ -838,8 +851,9 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, unseqTasks.get(0).getFullyDirtyFiles().size());
 
     Assert.assertTrue(unseqTasks.get(0).start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).anyModFileExists());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    Assert.assertFalse(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0).anyModFileExists());
 
     // select third time
     // all seq files is partial_deleted
@@ -858,7 +872,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(0, seqTasks.get(0).getFullyDirtyFiles().size());
 
     Assert.assertTrue(seqTasks.get(0).start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   // base on outdated too long
@@ -906,12 +920,14 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertTrue(seqTasks.get(1).start());
     Assert.assertTrue(unseqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(1).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).anyModFileExists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(i).anyModFileExists());
+      Assert.assertFalse(
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(i).anyModFileExists());
     }
 
     // select third time
@@ -998,7 +1014,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, seqTasks.get(1).getPartiallyDirtyFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(seqTasks.get(1).start());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   /**
@@ -1066,7 +1082,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertTrue(seqTasks.get(1).start());
     Assert.assertTrue(seqTasks.get(2).start());
     Assert.assertTrue(seqTasks.get(3).start());
-    Assert.assertEquals(8, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(8, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   /**
@@ -1133,7 +1149,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(seqTasks.get(1).start());
     Assert.assertTrue(seqTasks.get(2).start());
-    Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(6, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   // endregion

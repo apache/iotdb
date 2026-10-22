@@ -62,6 +62,12 @@ class DataPartitionBatchFetcher {
     this.database = database;
   }
 
+  void ensureDatabaseTimePartitionConfig() {
+    if (database != null) {
+      fetcher.ensureDatabaseTimePartitionConfig(Collections.singleton(database));
+    }
+  }
+
   String getDatabase() {
     return database;
   }

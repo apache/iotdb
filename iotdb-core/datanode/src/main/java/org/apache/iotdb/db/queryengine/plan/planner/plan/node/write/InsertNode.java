@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
@@ -248,6 +250,16 @@ public abstract class InsertNode extends SearchNode {
       deviceID = deviceIDFactory.getDeviceID(targetPath);
     }
     return deviceID;
+  }
+
+  protected String getDatabaseName(final IAnalysis analysis, final IDeviceID deviceID) {
+    final String databaseName = analysis.getDatabaseName();
+    final DataPartition dataPartitionInfo = analysis.getDataPartitionInfo();
+    final String databaseNameInPartition =
+        dataPartitionInfo == null || dataPartitionInfo.isEmpty()
+            ? null
+            : dataPartitionInfo.getDatabaseNameByDevice(deviceID);
+    return databaseNameInPartition != null ? databaseNameInPartition : databaseName;
   }
 
   public void setDeviceID(IDeviceID deviceID) {

@@ -35,6 +35,7 @@ import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface IPartitionFetcher {
 
@@ -115,6 +116,10 @@ public interface IPartitionFetcher {
 
   /** Invalid all partition cache */
   void invalidAllCache();
+
+  default void ensureDatabaseTimePartitionConfig(Set<String> databases) {
+    // No-op for standalone and test implementations.
+  }
 
   // ======================== Table Model Schema Partition Interface ========================
 

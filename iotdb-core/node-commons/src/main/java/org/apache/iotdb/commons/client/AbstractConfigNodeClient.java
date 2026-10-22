@@ -153,7 +153,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -590,11 +589,6 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
 
   @Override
   public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
-    return null;
-  }
-
-  @Override
-  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
     return null;
   }
 

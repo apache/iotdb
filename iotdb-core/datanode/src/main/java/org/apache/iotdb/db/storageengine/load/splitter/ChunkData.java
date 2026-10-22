@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
@@ -55,6 +56,8 @@ public interface ChunkData extends TsFileData {
   TTimePartitionSlot getTimePartitionSlot();
 
   boolean isAligned();
+
+  void setTimePartitionEndTime(long endTime);
 
   boolean isEntireChunk();
 
@@ -126,6 +129,18 @@ public interface ChunkData extends TsFileData {
     return isAligned
         ? new AlignedChunkData(device, chunkHeader, timePartitionSlot)
         : new NonAlignedChunkData(device, chunkHeader, timePartitionSlot);
+  }
+
+  static ChunkData createChunkData(
+      boolean isAligned,
+      IDeviceID device,
+      ChunkHeader chunkHeader,
+      TTimePartitionSlot timePartitionSlot,
+      String database) {
+    ChunkData chunkData = createChunkData(isAligned, device, chunkHeader, timePartitionSlot);
+    chunkData.setTimePartitionEndTime(
+        TimePartitionUtils.getTimePartitionEndTime(timePartitionSlot.getStartTime(), database));
+    return chunkData;
   }
 
   static ChunkData deserialize(InputStream stream) throws PageException, IOException {

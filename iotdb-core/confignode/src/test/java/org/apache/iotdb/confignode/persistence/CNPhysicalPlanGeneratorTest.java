@@ -355,7 +355,7 @@ public class CNPhysicalPlanGeneratorTest {
       tDatabaseSchema.setTTL(i + 1);
       tDatabaseSchema.setDataReplicationFactor(i);
       tDatabaseSchema.setSchemaReplicationFactor(i);
-      tDatabaseSchema.setTimePartitionInterval(i);
+      tDatabaseSchema.setTimePartitionInterval(i + 1);
       DatabaseSchemaPlan databaseSchemaPlan =
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema);
       clusterSchemaInfo.createDatabase(databaseSchemaPlan);
@@ -473,7 +473,7 @@ public class CNPhysicalPlanGeneratorTest {
       tDatabaseSchema.setTTL(i + 1);
       tDatabaseSchema.setDataReplicationFactor(i);
       tDatabaseSchema.setSchemaReplicationFactor(i);
-      tDatabaseSchema.setTimePartitionInterval(i);
+      tDatabaseSchema.setTimePartitionInterval(i + 1);
       final DatabaseSchemaPlan databaseSchemaPlan =
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema);
       clusterSchemaInfo.createDatabase(databaseSchemaPlan);

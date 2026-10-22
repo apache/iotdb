@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.junit.After;
@@ -29,6 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class TimePartitionUtilsTest {
 
@@ -40,6 +42,7 @@ public class TimePartitionUtilsTest {
 
   @Before
   public void setUp() {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
     previousTimePartitionOrigin =
         CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
     previousTimePartitionInterval =
@@ -48,12 +51,15 @@ public class TimePartitionUtilsTest {
     CommonDescriptor.getInstance()
         .getConfig()
         .setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL);
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     TimePartitionUtils.setTimePartitionOrigin(TEST_TIME_PARTITION_ORIGIN);
     TimePartitionUtils.setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL);
   }
 
   @After
   public void tearDown() {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(previousTimePartitionOrigin);
     CommonDescriptor.getInstance()
         .getConfig()
@@ -68,7 +74,7 @@ public class TimePartitionUtilsTest {
     TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
     expectedSlot.setStartTime(TEST_TIME_PARTITION_ORIGIN);
 
-    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "global");
     assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
   }
 
@@ -78,7 +84,7 @@ public class TimePartitionUtilsTest {
     TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
     expectedSlot.setStartTime(TEST_TIME_PARTITION_ORIGIN);
 
-    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "global");
     assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
   }
 
@@ -88,7 +94,7 @@ public class TimePartitionUtilsTest {
     TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
     expectedSlot.setStartTime(TEST_TIME_PARTITION_ORIGIN);
 
-    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "global");
     assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
   }
 
@@ -98,7 +104,7 @@ public class TimePartitionUtilsTest {
     TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
     expectedSlot.setStartTime(TEST_TIME_PARTITION_ORIGIN - TEST_TIME_PARTITION_INTERVAL);
 
-    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "global");
     assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
   }
 
@@ -108,23 +114,208 @@ public class TimePartitionUtilsTest {
     TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
     expectedSlot.setStartTime(TEST_TIME_PARTITION_ORIGIN - TEST_TIME_PARTITION_INTERVAL);
 
-    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "global");
     assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
   }
 
   @Test
   public void testOverflow() {
     long testTime = Long.MIN_VALUE;
-    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "global");
     Assert.assertTrue(actualSlot.getStartTime() < 0);
     testTime += 1;
-    long lowerBound = TimePartitionUtils.getTimePartitionLowerBound(testTime);
+    long lowerBound = TimePartitionUtils.getTimePartitionLowerBound(testTime, "global");
     assertEquals(Long.MIN_VALUE, lowerBound);
     testTime = Long.MAX_VALUE;
-    actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "global");
     Assert.assertTrue(actualSlot.getStartTime() > 0);
-    long upperBound = TimePartitionUtils.getTimePartitionUpperBound(testTime);
+    long upperBound = TimePartitionUtils.getTimePartitionUpperBound(testTime, "global");
     assertEquals(Long.MAX_VALUE, upperBound);
+  }
+
+  @Test
+  public void testDatabasePartitionBoundsAtTimestampLimits() {
+    String database = "boundary.db";
+    TDatabaseSchema schema =
+        new TDatabaseSchema().setTimePartitionOrigin(1).setTimePartitionInterval(1);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig(database, schema);
+
+    assertEquals(Long.MIN_VALUE, TimePartitionUtils.getTimePartitionId(Long.MIN_VALUE, database));
+    assertEquals(
+        Long.MIN_VALUE,
+        TimePartitionUtils.getTimePartitionSlot(Long.MIN_VALUE + 1, database).getStartTime());
+    assertEquals(
+        Long.MIN_VALUE + 2,
+        TimePartitionUtils.getTimePartitionUpperBound(Long.MIN_VALUE, database));
+    assertEquals(
+        Long.MIN_VALUE + 1, TimePartitionUtils.getTimePartitionEndTime(Long.MIN_VALUE, database));
+    assertFalse(
+        TimePartitionUtils.satisfyTimePartition(
+            TimeFilterApi.eq(Long.MIN_VALUE + 2), Long.MIN_VALUE, database));
+
+    schema.setTimePartitionOrigin(0);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig(database, schema);
+    assertEquals(
+        Long.MAX_VALUE - 1,
+        TimePartitionUtils.getTimePartitionEndTime(Long.MAX_VALUE - 1, database));
+    assertEquals(
+        Long.MAX_VALUE, TimePartitionUtils.getTimePartitionEndTime(Long.MAX_VALUE, database));
+    Assert.assertTrue(
+        TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+            Long.MAX_VALUE, Long.MAX_VALUE - 1, Long.MAX_VALUE, database));
+    assertFalse(
+        TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+            Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, database));
+    assertEquals(
+        Long.MAX_VALUE,
+        TimePartitionUtils.getEstimateTimePartitionSize(Long.MIN_VALUE, Long.MAX_VALUE, database));
+    assertEquals(TEST_TIME_PARTITION_INTERVAL, TimePartitionUtils.getTimePartitionInterval());
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionIdDoesNotOverflow() {
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("overflow.db");
+    schema.setTimePartitionOrigin(1000L);
+    schema.setTimePartitionInterval(100L);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("overflow.db", schema);
+
+    assertEquals(
+        -92233720368547769L, TimePartitionUtils.getTimePartitionId(Long.MIN_VALUE, "overflow.db"));
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionFilterPruning() {
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("filter.db");
+    schema.setTimePartitionOrigin(1000L);
+    schema.setTimePartitionInterval(100L);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("filter.db", schema);
+
+    assertFalse(TimePartitionUtils.satisfyTimePartition(TimeFilterApi.eq(1200L), 1L, "filter.db"));
+    assertFalse(
+        TimePartitionUtils.satisfyTimePartition(
+            TimeFilterApi.eq(TEST_TIME_PARTITION_ORIGIN + TEST_TIME_PARTITION_INTERVAL), 0L));
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartition() {
+    // Create a database schema with custom time partition settings
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+    schema.setTimePartitionInterval(7200000L); // 2 hours
+    schema.setTimePartitionOrigin(2000L);
+
+    // Update database configuration
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+
+    // Test with custom database settings
+    long testTime = 2000L;
+    TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
+    expectedSlot.setStartTime(2000L);
+
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "test.db");
+    assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
+
+    // Test with different time in the same partition
+    testTime = 2000L + 3600000L; // 1 hour later
+    actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "test.db");
+    assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
+
+    // Test with time in next partition
+    testTime = 2000L + 7200000L; // 2 hours later
+    expectedSlot.setStartTime(2000L + 7200000L);
+    actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "test.db");
+    assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionUsesTimestampPrecision() {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+    schema.setTimePartitionInterval(7200000L);
+    schema.setTimePartitionOrigin(2000L);
+
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+
+    assertEquals(7200000_000_000L, TimePartitionUtils.getTimePartitionInterval("test.db"));
+    assertEquals(2000_000_000L, TimePartitionUtils.getTimePartitionOrigin("test.db"));
+    assertEquals(
+        2000_000_000L,
+        TimePartitionUtils.getTimePartitionSlot(2000_000_000L + 1, "test.db").getStartTime());
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionDefaultUsesTimestampPrecision() {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("us");
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+
+    assertEquals(
+        TEST_TIME_PARTITION_INTERVAL * 1000L,
+        TimePartitionUtils.getTimePartitionInterval("test.db"));
+    assertEquals(
+        TEST_TIME_PARTITION_ORIGIN * 1000L, TimePartitionUtils.getTimePartitionOrigin("test.db"));
+    assertEquals(
+        TEST_TIME_PARTITION_ORIGIN * 1000L,
+        TimePartitionUtils.getTimePartitionSlot(TEST_TIME_PARTITION_ORIGIN * 1000L + 1, "test.db")
+            .getStartTime());
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionFallbackToGlobal() {
+    // Test with database that doesn't have custom settings
+    long testTime = TEST_TIME_PARTITION_ORIGIN;
+    TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
+    expectedSlot.setStartTime(TEST_TIME_PARTITION_ORIGIN);
+
+    TTimePartitionSlot actualSlot =
+        TimePartitionUtils.getTimePartitionSlot(testTime, "nonexistent.db");
+    assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
+  }
+
+  @Test
+  public void testHasDatabaseTimePartitionConfig() {
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+    schema.setTimePartitionInterval(7200000L);
+    schema.setTimePartitionOrigin(2000L);
+
+    Assert.assertFalse(TimePartitionUtils.hasDatabaseTimePartitionConfig(null));
+    Assert.assertFalse(TimePartitionUtils.hasDatabaseTimePartitionConfig("test.db"));
+
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+    Assert.assertTrue(TimePartitionUtils.hasDatabaseTimePartitionConfig("test.db"));
+
+    TimePartitionUtils.removeDatabaseTimePartitionConfig("test.db");
+    Assert.assertFalse(TimePartitionUtils.hasDatabaseTimePartitionConfig("test.db"));
+  }
+
+  @Test
+  public void testRemoveDatabaseTimePartitionConfig() {
+    // Create and update database configuration
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+    schema.setTimePartitionInterval(7200000L);
+    schema.setTimePartitionOrigin(2000L);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+
+    // Verify custom configuration is used
+    long testTime = 2000L;
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "test.db");
+    assertEquals(2000L, actualSlot.getStartTime());
+
+    // Remove database configuration
+    TimePartitionUtils.removeDatabaseTimePartitionConfig("test.db");
+
+    // Verify fallback to global settings
+    TTimePartitionSlot expectedSlot = new TTimePartitionSlot();
+    expectedSlot.setStartTime(TEST_TIME_PARTITION_ORIGIN);
+    actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "test.db");
+    assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
   }
 
   @Test

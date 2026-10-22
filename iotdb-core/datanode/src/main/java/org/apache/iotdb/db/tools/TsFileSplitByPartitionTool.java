@@ -119,7 +119,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       throws IOException, WriteProcessException, IllegalPathException {
     try (TsFileSplitByPartitionTool rewriteTool =
         new TsFileSplitByPartitionTool(resourceToBeRewritten)) {
-      rewriteTool.parseAndRewriteFile(rewrittenResources);
+      rewriteTool.parseAndRewriteFile(rewrittenResources, resourceToBeRewritten.getDatabaseName());
     }
   }
 
@@ -134,7 +134,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
    * @throws IOException WriteProcessException
    */
   @SuppressWarnings({"squid:S3776", "deprecation"}) // Suppress high Cognitive Complexity warning
-  public void parseAndRewriteFile(List<TsFileResource> rewrittenResources)
+  public void parseAndRewriteFile(List<TsFileResource> rewrittenResources, String database)
       throws IOException, WriteProcessException, IllegalPathException {
     // check if the TsFile has correct header
     if (!fileCheck()) {
@@ -182,7 +182,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode = checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
+              boolean needToDecode =
+                  checkIfNeedToDecode(measurementSchema, deviceId, pageHeader, database);
               needToDecodeInfo.add(needToDecode);
               ByteBuffer pageData =
                   !needToDecode
@@ -199,7 +200,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
                 pageHeadersInChunk,
                 dataInChunk,
                 needToDecodeInfo,
-                chunkHeaderOffset);
+                chunkHeaderOffset,
+                database);
             firstChunkInChunkGroup = false;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
@@ -250,7 +252,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
    * false.
    */
   protected boolean checkIfNeedToDecode(
-      MeasurementSchema schema, IDeviceID deviceId, PageHeader pageHeader) {
+      MeasurementSchema schema, IDeviceID deviceId, PageHeader pageHeader, String database) {
     if (pageHeader.getStatistics() == null) {
       return true;
     }
@@ -269,8 +271,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         }
       }
     }
-    return TimePartitionUtils.getTimePartitionId(pageHeader.getStartTime())
-        != TimePartitionUtils.getTimePartitionId(pageHeader.getEndTime());
+    return TimePartitionUtils.getTimePartitionId(pageHeader.getStartTime(), database)
+        != TimePartitionUtils.getTimePartitionId(pageHeader.getEndTime(), database);
   }
 
   /**
@@ -285,17 +287,27 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       List<PageHeader> pageHeadersInChunk,
       List<ByteBuffer> pageDataInChunk,
       List<Boolean> needToDecodeInfoInChunk,
-      long chunkHeaderOffset)
+      long chunkHeaderOffset,
+      String database)
       throws IOException, PageException, IllegalPathException {
     valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
     Map<Long, ChunkWriterImpl> partitionChunkWriterMap = new HashMap<>();
     for (int i = 0; i < pageDataInChunk.size(); i++) {
       if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
         decodeAndWritePage(
-            deviceId, schema, pageDataInChunk.get(i), partitionChunkWriterMap, chunkHeaderOffset);
+            deviceId,
+            schema,
+            pageDataInChunk.get(i),
+            partitionChunkWriterMap,
+            chunkHeaderOffset,
+            database);
       } else {
         writePage(
-            schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), partitionChunkWriterMap);
+            schema,
+            pageHeadersInChunk.get(i),
+            pageDataInChunk.get(i),
+            partitionChunkWriterMap,
+            database);
       }
     }
     for (Entry<Long, ChunkWriterImpl> entry : partitionChunkWriterMap.entrySet()) {
@@ -354,9 +366,10 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       MeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
-      Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap,
+      String database)
       throws PageException {
-    long partitionId = TimePartitionUtils.getTimePartitionId(pageHeader.getStartTime());
+    long partitionId = TimePartitionUtils.getTimePartitionId(pageHeader.getStartTime(), database);
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
     ChunkWriterImpl chunkWriter =
         partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
@@ -368,7 +381,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       MeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap,
-      long chunkHeaderOffset)
+      long chunkHeaderOffset,
+      String database)
       throws IOException, IllegalPathException {
     valueDecoder.reset();
     PageReader pageReader =
@@ -377,7 +391,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     List<TimeRange> deleteIntervalList = getOldSortedDeleteIntervals(deviceId, schema);
     pageReader.setDeleteIntervalList(deleteIntervalList);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
-    rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
+    rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap, database);
   }
 
   private List<TimeRange> getOldSortedDeleteIntervals(
@@ -402,13 +416,14 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
   protected void rewritePageIntoFiles(
       BatchData batchData,
       MeasurementSchema schema,
-      Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap,
+      String database) {
     final Type type = Type.fromTsDataType(schema.getType());
     long previousPartitionId = 0;
     ChunkWriterImpl chunkWriter = null;
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
-      long partitionId = TimePartitionUtils.getTimePartitionId(time);
+      long partitionId = TimePartitionUtils.getTimePartitionId(time, database);
 
       if (chunkWriter == null || partitionId != previousPartitionId) {
         previousPartitionId = partitionId;

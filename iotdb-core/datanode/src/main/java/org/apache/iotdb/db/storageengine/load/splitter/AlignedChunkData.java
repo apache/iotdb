@@ -66,6 +66,7 @@ public class AlignedChunkData implements ChunkData {
   // ---------------- Permanent state: describes this ChunkData and its final result
   // ----------------
   protected final TTimePartitionSlot timePartitionSlot;
+  protected long timePartitionEndTime;
   protected final IDeviceID device;
   protected final EncryptParameter encryptParameter;
   protected List<ChunkHeader> chunkHeaderList;
@@ -159,6 +160,7 @@ public class AlignedChunkData implements ChunkData {
         alignedChunkData.device,
         alignedChunkData.timePartitionSlot,
         alignedChunkData.encryptParameter);
+    this.timePartitionEndTime = alignedChunkData.timePartitionEndTime;
     this.satisfiedLengthQueue = new LinkedList<>(alignedChunkData.satisfiedLengthQueue);
     this.needDecodeChunk = alignedChunkData.needDecodeChunk;
     addAttrDataSize();
@@ -178,6 +180,8 @@ public class AlignedChunkData implements ChunkData {
     this.encryptParameter = encryptParameter;
     this.chunkHeaderList = new ArrayList<>();
     this.timePartitionSlot = timePartitionSlot;
+    this.timePartitionEndTime =
+        TimePartitionUtils.getTimePartitionEndTime(timePartitionSlot.getStartTime());
     this.needDecodeChunk = true;
     this.pageNumbers = new ArrayList<>();
     this.satisfiedLengthQueue = new LinkedList<>();
@@ -196,6 +200,11 @@ public class AlignedChunkData implements ChunkData {
   @Override
   public IDeviceID getDevice() {
     return device;
+  }
+
+  @Override
+  public void setTimePartitionEndTime(long endTime) {
+    this.timePartitionEndTime = endTime;
   }
 
   @Override
@@ -448,7 +457,7 @@ public class AlignedChunkData implements ChunkData {
     // Use the overflow-safe end time. A naive "start + interval - 1" wraps around for the last
     // representable partition (and equals the start when interval == 1), which would either drop
     // the upper bound or exclude points that belong to the current partition.
-    final long partitionEnd = TimePartitionUtils.getTimePartitionEndTime(partitionStart);
+    final long partitionEnd = timePartitionEndTime;
     return time >= partitionStart && time <= partitionEnd;
   }
 
@@ -566,7 +575,7 @@ public class AlignedChunkData implements ChunkData {
   public static AlignedChunkData deserialize(final InputStream stream)
       throws IOException, PageException {
     final TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
+        new TTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
     final boolean isStringArrayDeviceID = ReadWriteIOUtils.readBool(stream);
     final IDeviceID device =
         isStringArrayDeviceID

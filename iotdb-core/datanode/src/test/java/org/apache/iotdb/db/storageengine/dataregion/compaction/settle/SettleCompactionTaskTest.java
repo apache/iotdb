@@ -186,8 +186,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
 
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
@@ -225,8 +225,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
 
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
@@ -258,8 +258,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             0, tsFileManager, allDeletedFiles, partialDeletedFiles, false, getPerformer(), 0);
     Assert.assertTrue(task.start());
 
-    Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(6, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
 
@@ -270,8 +270,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             0, tsFileManager, allDeletedFiles, partialDeletedFiles, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
 
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     for (TsFileResource tsFileResource : seqResources) {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
@@ -312,8 +312,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
 
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
@@ -354,8 +354,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
 
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
@@ -401,8 +401,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
 
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
@@ -427,7 +427,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             getPerformer(),
             0);
     Assert.assertTrue(task.start());
-    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
+    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
     for (TsFileResource resource : tsFileList) {
       Assert.assertTrue(
           resource
@@ -475,8 +475,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
 
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());

@@ -360,6 +360,7 @@ public class LoadTsFileScheduler implements IScheduler {
         final String userName = queryContext.getSession().getUserName();
 
         partitionFetcher.setDatabase(getPartitionQueryDatabase(node, isGeneratedByPipe));
+        partitionFetcher.ensureDatabaseTimePartitionConfig();
 
         if (!processSingleNode(node, i, totalFiles, userName)) {
           allFilesSucceeded = false;

@@ -184,7 +184,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             this::dispatchOnePieceNode);
     try {
       new TsFileSplitter(node.getTsFileResource().getTsFile(), pipeline)
-          .splitTsFileByDataPartition();
+          .splitTsFileByDataPartition(node.getDatabase());
       return pipeline.sendAllTsFileData();
     } catch (IllegalStateException e) {
       LOGGER.warn(

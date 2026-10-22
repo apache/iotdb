@@ -25,10 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -149,6 +151,7 @@ public class PartitionCacheTest {
 
   @Before
   public void setUp() throws Exception {
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     partitionCache = new PartitionCache();
     partitionCache.updateDatabaseCache(databases);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
@@ -159,6 +162,7 @@ public class PartitionCacheTest {
   @After
   public void tearDown() throws Exception {
     partitionCache.invalidAllCache();
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
   }
 
   @Test
@@ -266,6 +270,28 @@ public class PartitionCacheTest {
     assertTrue(partitionCache.isNeedLastCache("root.enabled"));
     assertFalse(partitionCache.isNeedLastCache("root.disabled"));
     assertTrue(partitionCache.isNeedLastCache("root.missing"));
+  }
+
+  @Test
+  public void testTimePartitionConfigCache() {
+    final TDatabaseSchema databaseSchema = new TDatabaseSchema(getDatabaseName(0));
+    databaseSchema.setTimePartitionOrigin(123L);
+    databaseSchema.setTimePartitionInterval(456L);
+
+    partitionCache.updateDatabaseCache(
+        Collections.singletonMap(databaseSchema.getName(), databaseSchema));
+
+    assertEquals(123L, TimePartitionUtils.getTimePartitionOrigin(databaseSchema.getName()));
+    assertEquals(456L, TimePartitionUtils.getTimePartitionInterval(databaseSchema.getName()));
+
+    partitionCache.removeFromDatabaseCache();
+
+    assertEquals(
+        CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin(),
+        TimePartitionUtils.getTimePartitionOrigin(databaseSchema.getName()));
+    assertEquals(
+        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval(),
+        TimePartitionUtils.getTimePartitionInterval(databaseSchema.getName()));
   }
 
   @Test

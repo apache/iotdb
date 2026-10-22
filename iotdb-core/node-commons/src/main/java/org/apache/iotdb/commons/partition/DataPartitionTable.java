@@ -273,12 +273,12 @@ public class DataPartitionTable {
    * @param currentTimeSlot The current TimeSlot
    */
   public Set<TTimePartitionSlot> autoCleanPartitionTable(
-      long TTL, TTimePartitionSlot currentTimeSlot) {
+      long TTL, TTimePartitionSlot currentTimeSlot, String database) {
     Set<TTimePartitionSlot> removedTimePartitionSlots = new HashSet<>();
     dataPartitionMap.forEach(
         (seriesPartitionSlot, seriesPartitionTable) ->
             removedTimePartitionSlots.addAll(
-                seriesPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot)));
+                seriesPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot, database)));
     return removedTimePartitionSlots;
   }
 

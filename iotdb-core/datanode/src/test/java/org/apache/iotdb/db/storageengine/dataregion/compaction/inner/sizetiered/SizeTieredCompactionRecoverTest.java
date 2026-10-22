@@ -109,7 +109,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -197,7 +197,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     count = 0;
@@ -229,7 +229,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -305,7 +305,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     count = 0;
@@ -337,7 +337,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -415,7 +415,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     count = 0;
@@ -445,7 +445,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -518,7 +518,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true).subList(3, 6),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).subList(3, 6),
             new ArrayList<>(),
             true);
     count = 0;
@@ -772,7 +772,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -838,7 +838,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true).subList(0, 5),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).subList(0, 5),
             new ArrayList<>(),
             true);
     count = 0;
@@ -870,7 +870,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -929,7 +929,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     count = 0;
@@ -962,7 +962,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -1017,13 +1017,13 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementName());
-    logger.warn("TsFiles in list is {}", tsFileManager.getTsFileList(true));
+    logger.warn("TsFiles in list is {}", tsFileManager.getTsFileList(true, COMPACTION_TEST_SG));
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     count = 0;
@@ -1066,7 +1066,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -1107,7 +1107,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;
@@ -1162,7 +1162,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
     int count = 0;

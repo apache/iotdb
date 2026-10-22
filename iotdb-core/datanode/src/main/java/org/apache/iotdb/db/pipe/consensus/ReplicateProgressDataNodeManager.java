@@ -102,13 +102,15 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
               final TsFileManager tsFileManager =
                   StorageEngine.getInstance().getDataRegion(dataRegionId).getTsFileManager();
 
+              final String database =
+                  StorageEngine.getInstance().getDataRegion(dataRegionId).getDatabaseName();
               final List<ProgressIndex> allProgressIndex = new ArrayList<>();
               allProgressIndex.addAll(
-                  tsFileManager.getTsFileList(true).stream()
+                  tsFileManager.getTsFileList(true, database).stream()
                       .map(TsFileResource::getMaxProgressIndex)
                       .collect(Collectors.toList()));
               allProgressIndex.addAll(
-                  tsFileManager.getTsFileList(false).stream()
+                  tsFileManager.getTsFileList(false, database).stream()
                       .map(TsFileResource::getMaxProgressIndex)
                       .collect(Collectors.toList()));
 

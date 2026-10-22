@@ -152,12 +152,12 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractTableMod
             0);
     Assert.assertTrue(task.start());
     // Assert can not pass for now
-    TsFileResource targetResource0 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource0 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource0.getTsFile().getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
-    TsFileResource targetResource1 = tsFileManager.getTsFileList(true).get(1);
+    TsFileResource targetResource1 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource1.getTsFile().getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
@@ -197,7 +197,11 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractTableMod
     Assert.assertTrue(task.start());
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(
-            tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
+            tsFileManager
+                .getTsFileList(true, COMPACTION_TEST_SG)
+                .get(0)
+                .getTsFile()
+                .getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
   }

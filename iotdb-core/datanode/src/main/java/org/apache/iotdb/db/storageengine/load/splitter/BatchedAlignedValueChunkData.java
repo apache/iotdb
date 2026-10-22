@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.exception.write.PageException;
@@ -67,7 +66,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
     final long startTime = timePartitionSlot.getStartTime();
     // Overflow-safe partition end: "start + interval - 1" wraps around for the last representable
     // partition and equals the start when interval == 1.
-    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
+    final long endTime = timePartitionEndTime;
 
     // Process each standalone value chunk
     for (int i = 0; i < chunkHeaderList.size(); i++) {

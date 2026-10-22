@@ -263,10 +263,22 @@ public class SeriesPartitionTable {
    */
   public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot) {
-    final long timePartitionInterval =
+    return cleanExpiredPartitions(
+        TTL,
+        currentTimeSlot,
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             TimePartitionUtils.getTimePartitionInterval(),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+  }
+
+  public List<TTimePartitionSlot> autoCleanPartitionTable(
+      long TTL, TTimePartitionSlot currentTimeSlot, String database) {
+    return cleanExpiredPartitions(
+        TTL, currentTimeSlot, TimePartitionUtils.getTimePartitionInterval(database));
+  }
+
+  private List<TTimePartitionSlot> cleanExpiredPartitions(
+      long TTL, TTimePartitionSlot currentTimeSlot, long timePartitionInterval) {
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
     Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
         seriesPartitionMap.entrySet().iterator();

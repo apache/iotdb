@@ -447,7 +447,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -473,7 +473,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -531,7 +531,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -580,7 +580,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -629,7 +629,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -687,7 +687,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -715,7 +715,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -885,8 +885,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
             })
         .start();
     Assert.assertTrue(task.start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    tsFileManager.getTsFileList(true).get(0).getExclusiveModFile();
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0).getExclusiveModFile();
     Assert.assertEquals(1, FileMetrics.getInstance().getModFileNum());
   }
 

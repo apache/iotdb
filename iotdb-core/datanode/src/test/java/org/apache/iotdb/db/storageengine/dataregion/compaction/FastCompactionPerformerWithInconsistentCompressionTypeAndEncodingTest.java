@@ -124,7 +124,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             0);
 
     Assert.assertTrue(task.start());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getTsFilePath());
     validateSingleTsFileWithNonAlignedSeries(reader);
   }
@@ -202,7 +202,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             0);
 
     Assert.assertTrue(task.start());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getTsFilePath());
     validateSingleTsFileWithNonAlignedSeries(reader);
   }
@@ -276,7 +276,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             0);
 
     Assert.assertTrue(task.start());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getTsFilePath());
     //    validateSingleTsFileWithNonAlignedSeries(reader);
   }
@@ -327,7 +327,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             0);
 
     Assert.assertTrue(task.start());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getTsFilePath());
     //    validateSingleTsFileWithNonAlignedSeries(reader);
   }
@@ -405,7 +405,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             0);
 
     Assert.assertTrue(task.start());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getTsFilePath());
     //    validateSingleTsFileWithNonAlignedSeries(reader);
   }
@@ -479,7 +479,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             0);
 
     Assert.assertTrue(task.start());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getTsFilePath());
     validateSingleTsFileWithAlignedSeries(reader);
   }
