@@ -158,6 +158,23 @@ public class AlignedChunkData implements ChunkData {
     addAttrDataSize();
   }
 
+  /**
+   * Detaches a consumed chunk data from the splitter: the copy is stored back into the map the
+   * splitter keeps draining, so the pages that follow land in a fresh object instead of the object
+   * that was just handed to the consumer. Without the copy the same object would be consumed again
+   * with every later flush and would re-emit the chunks it already emitted, which leaves the split
+   * TsFile with more time chunks than each value column has chunks.
+   */
+  protected AlignedChunkData(final AlignedChunkData alignedChunkData) {
+    this(
+        alignedChunkData.device,
+        alignedChunkData.timePartitionSlot,
+        alignedChunkData.encryptParameter);
+    this.satisfiedLengthQueue = new LinkedList<>(alignedChunkData.satisfiedLengthQueue);
+    this.needDecodeChunk = alignedChunkData.needDecodeChunk;
+    addAttrDataSize();
+  }
+
   protected AlignedChunkData(
       @Nonnull final IDeviceID device, final TTimePartitionSlot timePartitionSlot) {
     this(device, timePartitionSlot, EncryptUtils.getEncryptParameter());
