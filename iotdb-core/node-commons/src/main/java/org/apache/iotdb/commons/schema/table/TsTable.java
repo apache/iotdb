@@ -68,6 +68,7 @@ public class TsTable {
   // No column property key is supported yet.
   public static final Set<String> COLUMN_ALLOWED_PROPERTIES = Collections.emptySet();
   public static final String NEED_LAST_CACHE_PROPERTY = "need_last_cache";
+  public static final String AUTO_SYNC_SCHEMA = "auto_sync_schema";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES =
       Collections.unmodifiableSet(
           new HashSet<>(Arrays.asList(TTL_PROPERTY, NEED_LAST_CACHE_PROPERTY)));

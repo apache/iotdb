@@ -177,7 +177,8 @@ public class DataRegionTest {
     DataNodeTableCache.getInstance()
         .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(), null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null);
+        .commitUpdateTable(
+            dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null, null);
   }
 
   @After

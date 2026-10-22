@@ -94,7 +94,7 @@ public class RenameTableColumnProcedure
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_RENAMING_COLUMN,
               database,
               tableName);
-          commitRelease(env);
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(

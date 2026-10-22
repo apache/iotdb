@@ -4064,6 +4064,8 @@ public final class DataNodeQueryMessages {
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema is only supported by tree to table views";
 
   public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
   public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "TargetFile: %s";

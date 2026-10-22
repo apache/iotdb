@@ -254,7 +254,9 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
               ProcedureMessages.COMMIT_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE,
               database,
               tableName);
-          commitRelease(env);
+          // A DataNode that misses this commit keeps the table in its pre-delete state, which only
+          // a later read of that table repairs. Retry until every reachable DataNode acks.
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_DROPTABLESTATE + state));
