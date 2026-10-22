@@ -1083,20 +1083,50 @@ public class IoTDBWindowTVFIT {
 
   @Test
   public void testPatternMatchEmptyRepetitionGroups() throws SQLException {
+    assertInvalidPatternMatchPatterns(
+        new String[] {
+          "1,{,}+,1",
+          "1,{}+,1",
+          "1,{ , , }*,1",
+          "{,}+,1,2",
+          "1,2,{,}+",
+          "1,{2,{,}+,3}+,1",
+          "1,{{,}*}+,1"
+        },
+        "Repetition groups must contain at least one numeric data point.");
+  }
+
+  @Test
+  public void testPatternMatchMisplacedRepetitionSigns() throws SQLException {
+    assertInvalidPatternMatchPatterns(
+        new String[] {
+          "1,+,2",
+          "1,*,2",
+          "1, + ,2",
+          "1, * ,2",
+          "+,1,2",
+          "*,1,2",
+          "1,2,+",
+          "1,2,*",
+          "1+,2",
+          "1*,2",
+          "1,{2,+,3}+,1",
+          "1,{2,*,3}*,1",
+          "1,{2,3}++,1",
+          "1,{2,3}+*,1",
+          "1,{2,3}*+,1",
+          "1,{2,3}**,1"
+        },
+        "Repetition signs '+' and '*' must immediately follow '}'.");
+  }
+
+  private void assertInvalidPatternMatchPatterns(String[] patterns, String expectedMessage)
+      throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       for (String data : new String[] {"t1", "(SELECT * FROM t1 WHERE time < 0)"}) {
-        for (String pattern :
-            new String[] {
-              "1,{,}+,1",
-              "1,{}+,1",
-              "1,{ , , }*,1",
-              "{,}+,1,2",
-              "1,2,{,}+",
-              "1,{2,{,}+,3}+,1",
-              "1,{{,}*}+,1"
-            }) {
+        for (String pattern : patterns) {
           SQLException exception =
               assertThrows(
                   SQLException.class,
@@ -1115,10 +1145,7 @@ public class IoTDBWindowTVFIT {
               exception.getMessage(),
               exception
                   .getMessage()
-                  .contains(
-                      "Invalid pattern: '"
-                          + pattern
-                          + "'. Repetition groups must contain at least one numeric data point."));
+                  .contains("Invalid pattern: '" + pattern + "'. " + expectedMessage));
         }
       }
     }

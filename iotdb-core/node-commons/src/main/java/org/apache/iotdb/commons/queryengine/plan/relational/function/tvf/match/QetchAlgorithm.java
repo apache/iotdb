@@ -106,6 +106,13 @@ public class QetchAlgorithm {
             throw new IllegalArgumentException(
                 String.format(QueryMessages.INVALID_PATTERN_MISSING_REPEAT_SIGN, pattern));
           }
+        } else if (c == '+' || c == '*') {
+          // Valid repetition signs are consumed together with the preceding '}'.
+          throw new IllegalArgumentException(
+              String.format(
+                  QueryMessages
+                      .EXCEPTION_INVALID_PATTERN_ARG_REPETITION_SIGNS_AND_MUST_IMMEDIATELY_FOLLOW_30FC3998,
+                  pattern));
         } else if (Character.isDigit(c) || c == '.' || c == '-') {
           // scan the number, and push it to the list
           StringBuilder numBuilder = new StringBuilder();

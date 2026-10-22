@@ -79,6 +79,41 @@ public class PatternMatchTableFunctionTest {
   }
 
   @Test
+  public void testRejectMisplacedRepetitionSigns() {
+    for (String pattern :
+        new String[] {
+          "1,+,2",
+          "1,*,2",
+          "1, + ,2",
+          "1, * ,2",
+          "+,1,2",
+          "*,1,2",
+          "1,2,+",
+          "1,2,*",
+          "1+,2",
+          "1*,2",
+          "1,{2,+,3}+,1",
+          "1,{2,*,3}*,1",
+          "1,{2,3}++,1",
+          "1,{2,3}+*,1",
+          "1,{2,3}*+,1",
+          "1,{2,3}**,1"
+        }) {
+      String expectedMessage =
+          String.format(
+              QueryMessages
+                  .EXCEPTION_INVALID_PATTERN_ARG_REPETITION_SIGNS_AND_MUST_IMMEDIATELY_FOLLOW_30FC3998,
+              pattern);
+      assertInvalidPattern(pattern, expectedMessage);
+      IllegalArgumentException exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> new QetchAlgorithm().parsePattern2Automaton(pattern));
+      assertEquals(expectedMessage, exception.getMessage());
+    }
+  }
+
+  @Test
   public void testRejectMalformedPatternsDuringAnalysis() {
     for (String pattern : new String[] {null, "", "1", "abc,def,ghi"}) {
       assertInvalidPattern(
@@ -103,7 +138,15 @@ public class PatternMatchTableFunctionTest {
   @Test
   public void testAcceptNonEmptyRepetitionGroups() {
     for (String pattern :
-        new String[] {"1,{2,3,2}+,1", "1,{,2,3,2,}*,1", "1,{{2,3,2}+}+,1", "1,{2,{3,2}+,1}+,1"}) {
+        new String[] {
+          "1,{2,3,2}+,1",
+          "1,{2,3,2}*,1",
+          "1,{,2,3,2,}*,1",
+          "1,{{2,3,2}+}+,1",
+          "1,{{2,3,2}*}+,1",
+          "1,{2,{3,2}+,1}+,1",
+          "1,{2,{3,2}*,1}+,1"
+        }) {
       assertNotNull(createProvider(pattern).getDataProcessor());
     }
   }
