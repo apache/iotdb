@@ -234,7 +234,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       }
       return firstStatus;
     } catch (SemanticException | TableLostRuntimeException e) {
-      LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage(), e);
+      LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (MetadataLeaseFencedException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -345,8 +345,11 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
+    } catch (IllegalPathException e) {
+      LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage());
       return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
     } finally {
       dataRegion.writeUnlock();
