@@ -84,6 +84,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
@@ -95,7 +96,13 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.TSRecord;
@@ -226,6 +233,143 @@ public class DataRegionTest {
             false);
     insertRowNode.setMeasurementSchemas(measurementSchemas);
     return insertRowNode;
+  }
+
+  @Test
+  public void testRejectedRowFlushesOnlySelectedOtherMemtable() throws Exception {
+    assertRejectedInsertionFlushesOnlySelectedOtherMemtable(false);
+  }
+
+  @Test
+  public void testRejectedTabletFlushesOnlySelectedOtherMemtable() throws Exception {
+    assertRejectedInsertionFlushesOnlySelectedOtherMemtable(true);
+  }
+
+  private void assertRejectedInsertionFlushesOnlySelectedOtherMemtable(boolean tablet)
+      throws Exception {
+    final SystemInfo systemInfo = SystemInfo.getInstance();
+    final int originalWait = config.getMaxWaitingTimeWhenInsertBlocked();
+    final int originalPeriod = config.getCheckPeriodWhenInsertBlocked();
+    final boolean originalSeparateData = config.isEnableSeparateData();
+    final long partitionInterval = TimePartitionUtils.getTimePartitionInterval();
+    try {
+      config.setEnableSeparateData(true);
+      for (int i = 1; i <= 384; i++) {
+        insertMemoryAdmissionTestRow(i, i);
+      }
+      final TsFileProcessor selected =
+          dataRegion.getWorkSequenceTsFileProcessors().stream()
+              .max(
+                  (left, right) ->
+                      Long.compare(left.getWorkMemTableRamCost(), right.getWorkMemTableRamCost()))
+              .get();
+      // Fill the first primitive arrays so that the rejected write owns a new reservation.
+      for (int i = 1; i <= 128; i++) {
+        insertMemoryAdmissionTestRow(partitionInterval + i, i);
+      }
+      final TsFileProcessor current =
+          dataRegion.getWorkSequenceTsFileProcessors().stream()
+              .filter(processor -> processor != selected)
+              .findFirst()
+              .get();
+      insertMemoryAdmissionTestRow(2 * partitionInterval + 1, 1);
+      final TsFileProcessor unselected =
+          dataRegion.getWorkSequenceTsFileProcessors().stream()
+              .filter(processor -> processor != selected && processor != current)
+              .findFirst()
+              .get();
+      final IMemTable currentMemTable = current.getWorkMemTable();
+      final IMemTable unselectedMemTable = unselected.getWorkMemTable();
+      final IMemTable selectedMemTable = selected.getWorkMemTable();
+
+      final Field regionInfoField = DataRegion.class.getDeclaredField("dataRegionInfo");
+      regionInfoField.setAccessible(true);
+      final DataRegionInfo regionInfo = (DataRegionInfo) regionInfoField.get(dataRegion);
+      final long memoryBefore = regionInfo.getMemCost();
+      setMemoryAdmissionTestThreshold("memorySizeForMemtable", 2 * memoryBefore);
+      setMemoryAdmissionTestThreshold(
+          "FLUSH_THRESHOLD", (double) memoryBefore - selected.getWorkMemTableRamCost() / 2);
+      setMemoryAdmissionTestThreshold("REJECT_THRESHOLD", (double) memoryBefore - 1);
+      config.setMaxWaitingTimeWhenInsertBlocked(5_000);
+      config.setCheckPeriodWhenInsertBlocked(10);
+      regionInfo.setNeedToReportToSystem(true);
+
+      // Keep the region lock held until the write succeeds. The asynchronous flush submitter
+      // cannot acquire it, so the insertion must submit the selected processor itself.
+      dataRegion.writeLock("testMemoryAdmission");
+      try {
+        if (tablet) {
+          dataRegion.insertTablet(
+              new InsertTabletNode(
+                  new PlanNodeId("memoryAdmission"),
+                  new PartialPath(deviceId),
+                  false,
+                  new String[] {measurementId},
+                  new TSDataType[] {TSDataType.INT32},
+                  new MeasurementSchema[] {new MeasurementSchema(measurementId, TSDataType.INT32)},
+                  new long[] {partitionInterval + 129},
+                  null,
+                  new Object[] {new int[] {129}},
+                  1));
+        } else {
+          insertMemoryAdmissionTestRow(partitionInterval + 129, 129);
+        }
+        Assert.assertTrue(selectedMemTable.shouldFlush());
+        Assert.assertNull(selected.getWorkMemTable());
+        Assert.assertSame(currentMemTable, current.getWorkMemTable());
+        Assert.assertSame(unselectedMemTable, unselected.getWorkMemTable());
+        Assert.assertFalse(currentMemTable.shouldFlush());
+        Assert.assertFalse(unselectedMemTable.shouldFlush());
+        Assert.assertEquals(129, currentMemTable.getTotalPointsNum());
+        for (WriteMemoryBlock block : regionInfo.getWriteMemoryManager().getMemoryBlocks()) {
+          Assert.assertEquals(0, block.getReservedMemoryInBytes());
+        }
+        Assert.assertFalse(systemInfo.isRejected());
+      } finally {
+        dataRegion.writeUnlock();
+      }
+
+      // A later write still reuses the small current MemTable instead of creating another file.
+      insertMemoryAdmissionTestRow(partitionInterval + 130, 130);
+      Assert.assertSame(currentMemTable, current.getWorkMemTable());
+      Assert.assertEquals(3, dataRegion.getTsFileManager().getTsFileList(true).size());
+      dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+      int points = 0;
+      for (TsFileResource resource : dataRegion.getTsFileManager().getTsFileList(true)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath());
+            TsFileReader tsFileReader = new TsFileReader(reader)) {
+          final QueryDataSet dataSet =
+              tsFileReader.query(
+                  QueryExpression.create(
+                      Collections.singletonList(new Path(deviceId, measurementId, false)), null));
+          while (dataSet.hasNext()) {
+            final RowRecord row = dataSet.next();
+            Assert.assertEquals(
+                row.getTimestamp() % partitionInterval, row.getFields().get(0).getIntV());
+            points++;
+          }
+        }
+      }
+      Assert.assertEquals(515, points);
+    } finally {
+      systemInfo.loadWriteMemory();
+      config.setMaxWaitingTimeWhenInsertBlocked(originalWait);
+      config.setCheckPeriodWhenInsertBlocked(originalPeriod);
+      config.setEnableSeparateData(originalSeparateData);
+    }
+  }
+
+  private void insertMemoryAdmissionTestRow(long time, int value) throws Exception {
+    final TSRecord record = new TSRecord(deviceId, time);
+    record.addTuple(
+        DataPoint.getDataPoint(TSDataType.INT32, measurementId, Integer.toString(value)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+  }
+
+  private void setMemoryAdmissionTestThreshold(String name, Object value) throws Exception {
+    final Field field = SystemInfo.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(SystemInfo.getInstance(), value);
   }
 
   @Test
