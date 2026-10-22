@@ -43,6 +43,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -341,6 +342,22 @@ public class IoTDBTablePreparedStatementTest {
     // Nanosecond precision can only represent instants up to the year 2262.
     Timestamp farFuture = Timestamp.valueOf("2300-01-01 00:00:00");
     assertThrows(SQLException.class, () -> ps.setTimestamp(1, farFuture));
+
+    // ...and down to 1677-09-21T00:12:43.145224192Z, which is Long.MIN_VALUE nanoseconds.
+    Timestamp beforeLowerBound = Timestamp.from(Instant.parse("1677-09-21T00:12:43.145224191Z"));
+    assertThrows(SQLException.class, () -> ps.setTimestamp(1, beforeLowerBound));
+  }
+
+  @Test
+  public void testSetTimestampAcceptsNanosecondLowerBound() throws Exception {
+    assertEquals(
+        Long.MIN_VALUE + 1,
+        preparedTimestampValue(
+            1_000_000_000, Timestamp.from(Instant.parse("1677-09-21T00:12:43.145224193Z"))));
+    assertEquals(
+        Long.MIN_VALUE,
+        preparedTimestampValue(
+            1_000_000_000, Timestamp.from(Instant.parse("1677-09-21T00:12:43.145224192Z"))));
   }
 
   @SuppressWarnings("resource")
@@ -425,6 +442,17 @@ public class IoTDBTablePreparedStatementTest {
     assertEquals(
         "INSERT /* ? */ INTO t(time, s1) VALUES(1, 'a')",
         clientCompletedSql("INSERT /* ? */ INTO t(time, s1) VALUES(?, ?)", this::bindRow));
+  }
+
+  @Test
+  public void testLineCommentEndsAtCarriageReturnOrLineFeed() throws Exception {
+    // As in the lexer's SIMPLE_COMMENT rule, a lone CR ends the comment just like LF or CRLF
+    assertEquals(
+        "INSERT -- comment\rINTO t(time, s1) VALUES(1, 'a')\n",
+        clientCompletedSql("INSERT -- comment\rINTO t(time, s1) VALUES(?, ?)\n", this::bindRow));
+    assertEquals(
+        "INSERT -- comment\r\nINTO t(time, s1) VALUES(1, 'a')",
+        clientCompletedSql("INSERT -- comment\r\nINTO t(time, s1) VALUES(?, ?)", this::bindRow));
   }
 
   @Test

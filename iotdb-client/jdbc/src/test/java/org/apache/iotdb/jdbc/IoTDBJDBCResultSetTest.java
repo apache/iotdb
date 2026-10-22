@@ -399,6 +399,20 @@ public class IoTDBJDBCResultSetTest {
 
   @SuppressWarnings("resource")
   @Test
+  public void testGetTimestampKeepsPreEpochValues() throws Exception {
+    Object[] row = allTypesRow();
+    // 1.5 seconds before the epoch, in milliseconds
+    row[7] = -1_500L;
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000, row)) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getTimestamp("ts"));
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getTimestamp(8));
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getObject(8, Timestamp.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
   public void testGetTimestampReturnsNullForSqlNull() throws Exception {
     try (ResultSet resultSet =
         executeTableModelQueryWithAllTypes(1_000, new Object[ALL_TYPES.size()])) {

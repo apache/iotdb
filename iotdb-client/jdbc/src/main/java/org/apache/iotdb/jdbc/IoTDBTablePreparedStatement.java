@@ -482,9 +482,14 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     int timeFactor = getTimeFactor();
     // getTime() carries the milliseconds of getNanos(), so only its whole seconds are used
     long seconds = Math.floorDiv(x.getTime(), 1_000L);
+    long fraction = x.getNanos() / (1_000_000_000 / timeFactor);
     try {
-      return Math.addExact(
-          Math.multiplyExact(seconds, timeFactor), x.getNanos() / (1_000_000_000 / timeFactor));
+      if (seconds < 0 && fraction > 0) {
+        // Borrow a second, as Instant.toEpochMilli() does, so that the product cannot underflow
+        // for a value whose positive fraction brings it back into range
+        return Math.addExact(Math.multiplyExact(seconds + 1, timeFactor), fraction - timeFactor);
+      }
+      return Math.addExact(Math.multiplyExact(seconds, timeFactor), fraction);
     } catch (ArithmeticException e) {
       throw new SQLException(
           String.format(
@@ -762,8 +767,11 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       if (c == '\'' || c == '"' || c == '`') {
         i = skipQuoted(sql, i, c);
       } else if (sql.startsWith("--", i)) {
-        int end = sql.indexOf('\n', i);
-        i = end < 0 ? sql.length() : end + 1;
+        // Like the lexer's SIMPLE_COMMENT, the comment ends at the first CR or LF
+        i += 2;
+        while (i < sql.length() && sql.charAt(i) != '\r' && sql.charAt(i) != '\n') {
+          i++;
+        }
       } else if (sql.startsWith("/*", i)) {
         int end = sql.indexOf("*/", i + 2);
         i = end < 0 ? sql.length() : end + 2;
