@@ -26,6 +26,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.TableSessionBuilder;
@@ -45,6 +46,9 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ColumnSchema;
 import org.apache.tsfile.file.metadata.ColumnSchemaBuilder;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
@@ -62,6 +66,22 @@ import java.util.Map;
 import java.util.Set;
 
 public class ExportDataTable extends AbstractExportData {
+  /** Reads a value in the Java type that a TsFile tablet stores for its column. */
+  private static final TypeService<TabletValueReader> TABLET_VALUE_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case TIMESTAMP -> SessionDataSet.DataIterator::getLong;
+            case DATE -> SessionDataSet.DataIterator::getDate;
+            case BLOB -> SessionDataSet.DataIterator::getBlob;
+            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, OBJECT ->
+                SessionDataSet.DataIterator::getObject;
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                    String.format(
+                        CliMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                        type.getTypeEnum()));
+          };
+
   private ITableSession session;
 
   ExportDataTable(ExportConfig config, ExportProgressReporter progress) {
@@ -481,6 +501,7 @@ public class ExportDataTable extends AbstractExportData {
     List<TSDataType> types = new ArrayList<>();
     List<ColumnCategory> categories = new ArrayList<>();
     List<Integer> indices = new ArrayList<>();
+    List<TabletValueReader> readers = new ArrayList<>();
     for (int i = 0; i < columns.size(); i++) {
       String column = columns.get(i);
       if ("time".equals(column)) {
@@ -492,6 +513,7 @@ public class ExportDataTable extends AbstractExportData {
       types.add(schema.getDataType());
       categories.add(schema.getColumnCategory());
       indices.add(i + 1);
+      readers.add(TABLET_VALUE_READER_SERVICE.call(Type.fromTsDataType(schema.getDataType())));
     }
     Path file = Path.of(task.outputBase() + ".tsfile");
     ExportFileNames.checkOutputCollision(file, config);
@@ -515,22 +537,7 @@ public class ExportDataTable extends AbstractExportData {
         tablet.addTimestamp(row, iterator.getLong(time));
         for (int i = 0; i < names.size(); i++) {
           int column = indices.get(i);
-          Object value = null;
-          if (!iterator.isNull(column)) {
-            switch (types.get(i)) {
-              case TIMESTAMP:
-                value = iterator.getLong(column);
-                break;
-              case DATE:
-                value = iterator.getDate(column);
-                break;
-              case BLOB:
-                value = iterator.getBlob(column);
-                break;
-              default:
-                value = iterator.getObject(column);
-            }
-          }
+          Object value = iterator.isNull(column) ? null : readers.get(i).read(iterator, column);
           tablet.addValue(names.get(i), row, value);
         }
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -553,6 +560,12 @@ public class ExportDataTable extends AbstractExportData {
 
   private static String identifier(String name) {
     return "\"" + name.replace("\"", "\"\"") + "\"";
+  }
+
+  @FunctionalInterface
+  private interface TabletValueReader {
+    Object read(SessionDataSet.DataIterator iterator, int column)
+        throws StatementExecutionException;
   }
 
   /** A SQL/TsFile query's table and the columns it selects, where null stands for *. */
