@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.expression.predicate;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -42,6 +48,7 @@ import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.notIn;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 
 public class PredicateRemoveNotTest {
 
@@ -91,5 +98,37 @@ public class PredicateRemoveNotTest {
     Assert.assertEquals(
         and(gt(time(), longValue(1)), lte(time(), longValue(1))),
         predicateRemoveNot(and(not(lte(time(), longValue(1))), not(gt(time(), longValue(1))))));
+  }
+
+  @Test
+  public void testRemoveNotKeepsUnsupportedNot() throws IllegalPathException {
+    Expression booleanSeries = timeSeries("root.sg.d.s1");
+    Expression predicate = not(booleanSeries);
+
+    Assert.assertEquals(predicate, predicateRemoveNot(predicate));
+  }
+
+  @Test
+  public void testRemoveNotHandlesNestedNot() {
+    Expression predicate = not(not(not(and(gt(time(), longValue(1)), lt(time(), longValue(10))))));
+    Expression expected = or(lte(time(), longValue(1)), gte(time(), longValue(10)));
+
+    Assert.assertEquals(expected, predicateRemoveNot(predicate));
+  }
+
+  @Test
+  public void testRemoveNotUsesTypeToPreserveNaNSemantics() throws IllegalPathException {
+    Expression series = timeSeries("root.sg.d.s1");
+    Expression predicate = not(gt(series, new ConstantOperand(TSDataType.DOUBLE, "5.0")));
+
+    Expression result =
+        predicateRemoveNot(
+            predicate,
+            expression ->
+                expression instanceof TimeSeriesOperand
+                    ? TSDataType.DOUBLE
+                    : ((ConstantOperand) expression).getDataType());
+
+    Assert.assertEquals(predicate, result);
   }
 }

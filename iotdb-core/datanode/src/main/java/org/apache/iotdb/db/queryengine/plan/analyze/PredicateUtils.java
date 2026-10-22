@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PredicateUtils {
@@ -251,33 +252,51 @@ public class PredicateUtils {
    *
    * <p>eg: not(and(eq(), not(eq(y))) -&gt; or(notEq(), eq(y))
    *
-   * <p>The returned predicate should have the same meaning as the original, but without the use of
-   * the not() operator.
+   * <p>The returned predicate has the same meaning as the original. A {@code not()} is retained
+   * when the operand cannot be inverted safely, for example for non-comparison expressions or
+   * ordered comparisons on FLOAT/DOUBLE values where NaN semantics differ.
    *
    * <p>See also {@link PredicateUtils#reversePredicate(Expression)}, which is used to do the
    * inversion.
    *
    * @param predicate the predicate to remove not() from
-   * @return the predicate with all not() operators removed
+   * @return the predicate with safely invertible not() operators removed
    */
   public static Expression predicateRemoveNot(Expression predicate) {
+    return predicateRemoveNot(predicate, null);
+  }
+
+  public static Expression predicateRemoveNot(
+      Expression predicate, Function<Expression, TSDataType> typeProvider) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      return ExpressionFactory.and(
-          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
-          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+      Expression leftExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression(), typeProvider);
+      Expression rightExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression(), typeProvider);
+      if (leftExpression == ((BinaryExpression) predicate).getLeftExpression()
+          && rightExpression == ((BinaryExpression) predicate).getRightExpression()) {
+        return predicate;
+      }
+      return ExpressionFactory.and(leftExpression, rightExpression);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      return ExpressionFactory.or(
-          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
-          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+      Expression leftExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression(), typeProvider);
+      Expression rightExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression(), typeProvider);
+      if (leftExpression == ((BinaryExpression) predicate).getLeftExpression()
+          && rightExpression == ((BinaryExpression) predicate).getRightExpression()) {
+        return predicate;
+      }
+      return ExpressionFactory.or(leftExpression, rightExpression);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
-      return reversePredicate(((LogicNotExpression) predicate).getExpression());
+      return reversePredicate(((LogicNotExpression) predicate).getExpression(), typeProvider);
     }
     return predicate;
   }
 
   /**
    * Converts a predicate to its logical inverse. The returned predicate should be equivalent to
-   * not(p), but without the use of a not() operator.
+   * not(p). A {@code not()} is retained when the inverse cannot be represented safely.
    *
    * <p>See also {@link PredicateUtils#predicateRemoveNot(Expression)}, which can remove the use of
    * all not() operators without inverting the overall predicate.
@@ -286,7 +305,12 @@ public class PredicateUtils {
    * @return the predicate after reversing
    */
   public static Expression reversePredicate(Expression predicate) {
-    return new ReversePredicateVisitor().process(predicate, null);
+    return reversePredicate(predicate, null);
+  }
+
+  public static Expression reversePredicate(
+      Expression predicate, Function<Expression, TSDataType> typeProvider) {
+    return new ReversePredicateVisitor(typeProvider).process(predicate, null);
   }
 
   /**

@@ -31,12 +31,16 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -45,6 +49,7 @@ public class IoTDBPredicateConversionTreeIT {
 
   private static final String DATABASE_NAME = "root.test_pred";
   private static final String DEVICE_ID = DATABASE_NAME + ".d1";
+  private static final String NOT_DATABASE_NAME = "root.test_not_regression";
   private static final String TEMPLATE_DATABASE_NAME = "root.test_not_template";
 
   private static final String[] SQLs =
@@ -62,14 +67,30 @@ public class IoTDBPredicateConversionTreeIT {
         "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(8, 1000, 1000)",
         "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(9, -29, -29)",
         "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(10, -30, -30)",
+        "CREATE DATABASE " + NOT_DATABASE_NAME,
+        "CREATE TIMESERIES " + NOT_DATABASE_NAME + ".d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES " + NOT_DATABASE_NAME + ".d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES " + NOT_DATABASE_NAME + ".d1.b WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d1(time, s1, s2, b) VALUES(1, 1, 10, true)",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d1(time, s1, s2, b) VALUES(2, 6, 20, false)",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d1(time, s1, s2, b) VALUES(3, 3, 30, true)",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d1(time, s1, s2, b) VALUES(4, 8, 40, false)",
+        "CREATE TIMESERIES " + NOT_DATABASE_NAME + ".d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d2(time, s1) VALUES(1, 2)",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d2(time, s1) VALUES(2, 7)",
+        "CREATE TIMESERIES " + NOT_DATABASE_NAME + ".d3.x WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES " + NOT_DATABASE_NAME + ".d3.y WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d3(time, x, y) VALUES(1, NaN, 1)",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d3(time, x, y) VALUES(2, 3.0, 2)",
+        "INSERT INTO " + NOT_DATABASE_NAME + ".d3(time, x, y) VALUES(3, 10.0, 3)",
         "CREATE DATABASE " + TEMPLATE_DATABASE_NAME,
-        "CREATE DEVICE TEMPLATE not_predicate_template (s1 INT64)",
+        "CREATE DEVICE TEMPLATE not_predicate_template ALIGNED (s1 INT64, b BOOLEAN)",
         "SET DEVICE TEMPLATE not_predicate_template TO " + TEMPLATE_DATABASE_NAME + ".d1",
         "SET DEVICE TEMPLATE not_predicate_template TO " + TEMPLATE_DATABASE_NAME + ".d2",
-        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d1(time, s1) VALUES(1, 3)",
-        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d1(time, s1) VALUES(2, 8)",
-        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d2(time, s1) VALUES(1, 4)",
-        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d2(time, s1) VALUES(2, 9)"
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d1(time, s1, b) ALIGNED VALUES(1, 3, true)",
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d1(time, s1, b) ALIGNED VALUES(2, 8, false)",
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d2(time, s1, b) ALIGNED VALUES(1, 4, false)",
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d2(time, s1, b) ALIGNED VALUES(2, 9, true)"
       };
 
   @BeforeClass
@@ -351,5 +372,104 @@ public class IoTDBPredicateConversionTreeIT {
         new String[] {
           "1,root.test_not_template.d1,3,", "1,root.test_not_template.d2,4,",
         });
+
+    String[] expectedBooleanHeader = new String[] {TIMESTAMP_STR, DEVICE, "s1", "b"};
+    resultSetEqualTest(
+        "SELECT s1, b FROM " + TEMPLATE_DATABASE_NAME + ".* WHERE NOT b ALIGN BY DEVICE",
+        expectedBooleanHeader,
+        new String[] {
+          "2,root.test_not_template.d1,8,false,", "1,root.test_not_template.d2,4,false,",
+        });
+  }
+
+  @Test
+  public void testUnsupportedNotPredicate() {
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, NOT_DATABASE_NAME + ".d1.s1", NOT_DATABASE_NAME + ".d1.b"};
+    resultSetEqualTest(
+        "SELECT s1, b FROM " + NOT_DATABASE_NAME + ".d1 WHERE NOT b OR s1 > 5",
+        expectedHeader,
+        new String[] {"2,6,false,", "4,8,false,"});
+    resultSetEqualTest(
+        "SELECT s1, b FROM " + NOT_DATABASE_NAME + ".d1 WHERE NOT b",
+        expectedHeader,
+        new String[] {"2,6,false,", "4,8,false,"});
+    resultSetEqualTest(
+        "SELECT s1, b FROM "
+            + NOT_DATABASE_NAME
+            + ".d1 WHERE NOT (CASE WHEN s1 > 5 THEN true ELSE false END) OR s2 > 35",
+        expectedHeader,
+        new String[] {"1,1,true,", "3,3,true,", "4,8,false,"});
+  }
+
+  @Test
+  public void testNestedNotPredicate() {
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, NOT_DATABASE_NAME + ".d1.s1", NOT_DATABASE_NAME + ".d1.s2"};
+    resultSetEqualTest(
+        "SELECT s1, s2 FROM "
+            + NOT_DATABASE_NAME
+            + ".d1 WHERE NOT (NOT (NOT (s1 > 5 AND s2 > 25)))",
+        expectedHeader,
+        new String[] {"1,1,10,", "2,6,20,", "3,3,30,"});
+  }
+
+  @Test
+  public void testNotPredicateWithNaN() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT x, y FROM " + NOT_DATABASE_NAME + ".d3 WHERE NOT (x > 5 OR y > 2)")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertTrue(Double.isNaN(resultSet.getDouble(2)));
+        assertEquals(1, resultSet.getInt(3));
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong(1));
+        assertEquals(3.0, resultSet.getDouble(2), 0.0);
+        assertEquals(2, resultSet.getInt(3));
+        assertFalse(resultSet.next());
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT x, y FROM " + NOT_DATABASE_NAME + ".d3 WHERE NOT (x + y > 5)")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertTrue(Double.isNaN(resultSet.getDouble(2)));
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong(1));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testCompositeHavingNot() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT count(s1), sum(s2) FROM "
+                  + NOT_DATABASE_NAME
+                  + ".d1 HAVING NOT (count(s1) > 5 AND sum(s2) > 50)")) {
+        assertTrue(resultSet.next());
+        assertEquals(4, resultSet.getLong(1));
+        assertEquals(100.0, resultSet.getDouble(2), 0.0);
+        assertFalse(resultSet.next());
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT count(s1) FROM "
+                  + NOT_DATABASE_NAME
+                  + ".* GROUP BY ([1,5),10ms), LEVEL=1 "
+                  + "HAVING NOT (count(s1) > 0 AND sum(s2) > 150)")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertFalse(resultSet.next());
+      }
+    }
   }
 }

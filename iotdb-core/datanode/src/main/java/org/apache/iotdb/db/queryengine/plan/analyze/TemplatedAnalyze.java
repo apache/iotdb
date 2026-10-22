@@ -265,19 +265,24 @@ public class TemplatedAnalyze {
     }
 
     analysis.setNoWhereAndAggregation(false);
-    Expression whereCondition =
-        PredicateUtils.predicateRemoveNot(queryStatement.getWhereCondition().getPredicate());
     Expression wherePredicate =
         new TemplatedConcatRemoveUnExistentMeasurementVisitor()
-            .process(whereCondition, analysis.getDeviceTemplate().getSchemaMap());
+            .process(
+                queryStatement.getWhereCondition().getPredicate(),
+                analysis.getDeviceTemplate().getSchemaMap());
     wherePredicate = PredicateUtils.simplifyPredicate(wherePredicate);
     if (!wherePredicate.equals(ConstantOperand.TRUE)) {
-      analysis.setWhereExpression(wherePredicate);
-
       TSDataType outputType = analyzeExpressionForTemplatedQuery(analysis, wherePredicate);
       if (outputType != TSDataType.BOOLEAN) {
         throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
       }
+      Expression predicateWithoutNot =
+          PredicateUtils.predicateRemoveNot(wherePredicate, analysis::getType);
+      if (predicateWithoutNot != wherePredicate) {
+        predicateWithoutNot = PredicateUtils.simplifyPredicate(predicateWithoutNot);
+        analyzeExpressionForTemplatedQuery(analysis, predicateWithoutNot);
+      }
+      analysis.setWhereExpression(predicateWithoutNot);
     }
   }
 
