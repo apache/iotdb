@@ -57,5 +57,21 @@ done
 
 MAIN_CLASS=org.apache.iotdb.tool.data.ExportData
 
-"$JAVA" $JVM_OPTS -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+# Library logs would interleave with the progress line; the tool config keeps errors only.
+LOG_CONFIG="${IOTDB_HOME}/conf/logback-tool.xml"
+if [ ! -f "$LOG_CONFIG" ]; then
+    LOG_CONFIG=
+fi
+
+# Shells do not export COLUMNS. The tool redraws the progress line in place only while it fits.
+if [ -t 1 ]; then
+    if [ -z "${COLUMNS:-}" ]; then
+        COLUMNS=$(stty size </dev/tty 2>/dev/null | awk '{print $2}')
+    fi
+    if [ -n "${COLUMNS:-}" ]; then
+        export COLUMNS
+    fi
+fi
+
+"$JAVA" $JVM_OPTS -DIOTDB_HOME=${IOTDB_HOME} ${LOG_CONFIG:+"-Dlogback.configurationFile=$LOG_CONFIG"} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

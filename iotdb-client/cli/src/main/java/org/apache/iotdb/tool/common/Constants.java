@@ -231,6 +231,11 @@ public class Constants {
   public static final String TARGET_FILE_NAME = "prefix_file_name";
   public static final String TARGET_FILE_DESC = "Export file name .(optional)";
 
+  public static final String MEASUREMENT_FILE_ARGS = "mf";
+  public static final String MEASUREMENT_FILE_NAME = "measurement_file";
+  public static final String EXPORT_DATA_LOG_ARGS = "l";
+  public static final String EXPORT_DATA_LOG_NAME = "export_data_log";
+
   public static final String RPC_MAX_FRAME_SIZE_ARGS = "mfs";
   public static final String RPC_MAX_FRAME_SIZE_NAME = "rpc_max_frame_size";
   public static final String RPC_MAX_FRAME_SIZE_DESC =
