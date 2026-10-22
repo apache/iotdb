@@ -49,8 +49,13 @@ public class IoTDBCaseDeviceCacheIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    // Keep devices in one schema region and exercise both mixed-row and repeated batches.
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultSchemaRegionGroupNumPerDatabase(1);
+    // CUSTOM fixes the region count; PROACTIVE treats the default count as a minimum.
+    // Keep devices in one schema region to exercise mixed-row and repeated batches.
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultSchemaRegionGroupNumPerDatabase(1);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockLineNumber(2);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(new String[] {"CREATE DATABASE " + DATABASE});
