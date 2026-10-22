@@ -121,8 +121,9 @@ public class PredicateUtils {
       }
       return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
+      Expression negatedExpression = ((UnaryExpression) predicate).getExpression();
       GlobalTimePredicateExtractionResult childResult =
-          extractGlobalTimePredicate(((UnaryExpression) predicate).getExpression());
+          extractGlobalTimePredicate(negatedExpression);
       if (childResult.getGlobalTimePredicate() != null && !childResult.hasValueFilter()) {
         return new GlobalTimePredicateExtractionResult(
             ExpressionFactory.not(childResult.getGlobalTimePredicate()),
@@ -132,6 +133,14 @@ public class PredicateUtils {
       // NOT(G AND R) cannot in general be represented as NOT(G) AND NOT(R). Do
       // not extract a time predicate when the negated subtree contains a value
       // filter.
+      //
+      // NOT(A OR B) is NOT(A) AND NOT(B) though, so every disjunct that is a pure
+      // time predicate still bounds the time range of the whole negation, e.g.
+      // NOT (time > 2 OR s1 > 5) implies time <= 2.
+      Expression negatedTimePredicate = extractNegatedTimePredicateFromDisjuncts(negatedExpression);
+      if (negatedTimePredicate != null) {
+        return new GlobalTimePredicateExtractionResult(negatedTimePredicate, predicate, true);
+      }
       return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.isCompareBinaryExpression()) {
       Expression leftExpression = ((BinaryExpression) predicate).getLeftExpression();
@@ -193,6 +202,27 @@ public class PredicateUtils {
       return leftExpression;
     }
     return ExpressionFactory.and(leftExpression, rightExpression);
+  }
+
+  /**
+   * Collects the negation of every disjunct that is a pure time predicate. It is only called for
+   * the subtree negated by a {@code not()}, where De Morgan's law turns the disjunction into a
+   * conjunction, so each collected term is a sound time bound for the whole predicate.
+   */
+  private static Expression extractNegatedTimePredicateFromDisjuncts(Expression predicate) {
+    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
+      return combineConjuncts(
+          extractNegatedTimePredicateFromDisjuncts(
+              ((BinaryExpression) predicate).getLeftExpression()),
+          extractNegatedTimePredicateFromDisjuncts(
+              ((BinaryExpression) predicate).getRightExpression()),
+          null);
+    }
+    GlobalTimePredicateExtractionResult result = extractGlobalTimePredicate(predicate);
+    if (result.getGlobalTimePredicate() != null && !result.hasValueFilter()) {
+      return ExpressionFactory.not(result.getGlobalTimePredicate());
+    }
+    return null;
   }
 
   public static final class GlobalTimePredicateExtractionResult {
