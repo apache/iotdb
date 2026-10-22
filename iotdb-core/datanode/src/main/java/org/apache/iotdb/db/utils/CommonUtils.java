@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -399,6 +400,30 @@ public class CommonUtils {
     } catch (SemanticException e) {
       throw new IllegalArgumentException(e.getMessage());
     }
+  }
+
+  /**
+   * Check whether the time falls in TTL.
+   *
+   * @return whether the given time falls in ttl
+   */
+  public static boolean isAlive(long time, long dataTTL) {
+    return dataTTL == Long.MAX_VALUE || time >= getTTLLowerBound(dataTTL);
+  }
+
+  public static long getTTLLowerBound(long dataTTL) {
+    if (dataTTL == Long.MAX_VALUE) {
+      return Long.MIN_VALUE;
+    }
+
+    long currentTime = CommonDateTimeUtils.currentTime();
+    if (dataTTL >= 0 && currentTime < Long.MIN_VALUE + dataTTL) {
+      return Long.MIN_VALUE;
+    }
+    if (dataTTL < 0 && currentTime > Long.MAX_VALUE + dataTTL) {
+      return Long.MAX_VALUE;
+    }
+    return currentTime - dataTTL;
   }
 
   private static void badUse(Exception e) {
