@@ -520,8 +520,7 @@ public abstract class AbstractDataTool {
           }
           if (!measurements.isEmpty()) {
             long timestamp = parseTimestamp(recordObj.get(timeColumn));
-            batchContext.recordBatch(
-                recordObj, deviceName.get(), timestamp, types, values, measurements);
+            batchContext.recordBatch(recordObj);
             times.add(timestamp);
             typesList.add(types);
             valuesList.add(values);
@@ -560,95 +559,71 @@ public abstract class AbstractDataTool {
 
   private static final class BatchContext {
     private final Map<Long, List<Object>> failedRecords = new LinkedHashMap<>();
-    private final List<PendingGroup> batchGroups = new ArrayList<>();
+    private final List<CSVRecord> batchRecords = new ArrayList<>();
 
     private void recordFailure(CSVRecord record) {
-      failedRecords.putIfAbsent(
-          record.getRecordNumber(), record.stream().collect(Collectors.toList()));
+      failedRecords.computeIfAbsent(
+          record.getRecordNumber(), ignored -> record.stream().collect(Collectors.toList()));
     }
 
-    private void recordBatch(
-        CSVRecord record,
-        String device,
-        long timestamp,
-        List<TSDataType> types,
-        List<Object> values,
-        List<String> measurements) {
-      batchGroups.add(
-          new PendingGroup(
-              record.getRecordNumber(),
-              record.stream().collect(Collectors.toList()),
-              device,
-              timestamp,
-              types,
-              values,
-              measurements));
+    private void recordBatch(CSVRecord record) {
+      batchRecords.add(record);
     }
 
     private void finishBatch(
         BatchResult result, GroupInsert groupInsert, Session reconnectableSession, int retryTime) {
       if (result == BatchResult.CONNECTION_FAILURE) {
-        for (PendingGroup group : batchGroups) {
-          failedRecords.putIfAbsent(group.recordNumber, group.record);
-        }
-        markCurrentImportFailed();
+        recordRemainingFailures(0);
       } else if (result == BatchResult.STATEMENT_FAILURE) {
-        for (PendingGroup group : batchGroups) {
-          boolean groupSucceeded =
-              executeBatchWithRetry(
-                      () -> groupInsert.insert(group), reconnectableSession, retryTime)
-                  == BatchResult.SUCCESS;
-          if (!groupSucceeded) {
-            failedRecords.putIfAbsent(group.recordNumber, group.record);
-            markCurrentImportFailed();
-          }
+        retryGroups(groupInsert, reconnectableSession, retryTime);
+      }
+      batchRecords.clear();
+    }
+
+    private void retryGroups(GroupInsert groupInsert, Session reconnectableSession, int retryTime) {
+      for (int index = 0; index < batchRecords.size(); index++) {
+        final int groupIndex = index;
+        BatchResult result =
+            executeBatchWithRetry(
+                () -> groupInsert.insert(groupIndex), reconnectableSession, retryTime, false);
+        if (result == BatchResult.CONNECTION_FAILURE) {
+          recordRemainingFailures(index);
+          return;
+        }
+        if (result == BatchResult.STATEMENT_FAILURE) {
+          recordFailure(batchRecords.get(index));
+          markCurrentImportFailed();
         }
       }
-      batchGroups.clear();
+    }
+
+    private void recordRemainingFailures(int from) {
+      for (int index = from; index < batchRecords.size(); index++) {
+        recordFailure(batchRecords.get(index));
+      }
+      markCurrentImportFailed();
     }
   }
 
   @FunctionalInterface
   private interface GroupInsert {
-    void insert(PendingGroup group) throws IoTDBConnectionException, StatementExecutionException;
-  }
-
-  private static final class PendingGroup {
-    private final long recordNumber;
-    private final List<Object> record;
-    private final String device;
-    private final long timestamp;
-    private final List<TSDataType> types;
-    private final List<Object> values;
-    private final List<String> measurements;
-
-    private PendingGroup(
-        long recordNumber,
-        List<Object> record,
-        String device,
-        long timestamp,
-        List<TSDataType> types,
-        List<Object> values,
-        List<String> measurements) {
-      this.recordNumber = recordNumber;
-      this.record = record;
-      this.device = device;
-      this.timestamp = timestamp;
-      this.types = types;
-      this.values = values;
-      this.measurements = measurements;
-    }
+    void insert(int index) throws IoTDBConnectionException, StatementExecutionException;
   }
 
   private static BatchResult executeBatchWithRetry(
       BatchInsert batchInsert, Session reconnectableSession, int retryTime) {
+    return executeBatchWithRetry(batchInsert, reconnectableSession, retryTime, true);
+  }
+
+  private static BatchResult executeBatchWithRetry(
+      BatchInsert batchInsert, Session reconnectableSession, int retryTime, boolean reportFailure) {
     for (int attempt = 0; ; attempt++) {
       try {
         batchInsert.insert();
         return BatchResult.SUCCESS;
       } catch (IoTDBConnectionException e) {
         if (attempt >= retryTime) {
-          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+          reportInsertFailure(e, reportFailure);
           return BatchResult.CONNECTION_FAILURE;
         }
         if (reconnectableSession != null) {
@@ -656,15 +631,21 @@ public abstract class AbstractDataTool {
             reconnectableSession.open();
           } catch (IoTDBConnectionException reconnectException) {
             if (attempt + 1 >= retryTime) {
-              ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + reconnectException.getMessage());
+              reportInsertFailure(reconnectException, reportFailure);
               return BatchResult.CONNECTION_FAILURE;
             }
           }
         }
       } catch (StatementExecutionException e) {
-        ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+        reportInsertFailure(e, reportFailure);
         return BatchResult.STATEMENT_FAILURE;
       }
+    }
+  }
+
+  private static void reportInsertFailure(Exception e, boolean reportFailure) {
+    if (reportFailure) {
+      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
     }
   }
 
@@ -713,21 +694,21 @@ public abstract class AbstractDataTool {
             retryTime);
     batchContext.finishBatch(
         result,
-        group -> {
+        index -> {
           if (Boolean.FALSE.equals(aligned)) {
             sessionPool.insertRecordsOfOneDevice(
-                group.device,
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           } else {
             sessionPool.insertAlignedRecordsOfOneDevice(
-                group.device,
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           }
         },
         null,
@@ -761,21 +742,21 @@ public abstract class AbstractDataTool {
             retryTime);
     batchContext.finishBatch(
         result,
-        group -> {
+        index -> {
           if (Boolean.FALSE.equals(aligned)) {
             session.insertRecords(
-                Arrays.asList(group.device),
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           } else {
             session.insertAlignedRecords(
-                Arrays.asList(group.device),
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           }
         },
         session,
@@ -811,21 +792,21 @@ public abstract class AbstractDataTool {
             retryTime);
     batchContext.finishBatch(
         result,
-        group -> {
+        index -> {
           if (Boolean.FALSE.equals(aligned)) {
             session.insertRecordsOfOneDevice(
-                group.device,
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           } else {
             session.insertAlignedRecordsOfOneDevice(
-                group.device,
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           }
         },
         session,
@@ -850,21 +831,21 @@ public abstract class AbstractDataTool {
             sessionPool, deviceIds, times, typesList, valuesList, measurementsList, retryTime);
     batchContext.finishBatch(
         result,
-        group -> {
+        index -> {
           if (Boolean.FALSE.equals(aligned)) {
             sessionPool.insertRecords(
-                Arrays.asList(group.device),
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           } else {
             sessionPool.insertAlignedRecords(
-                Arrays.asList(group.device),
-                Arrays.asList(group.timestamp),
-                Arrays.asList(group.measurements),
-                Arrays.asList(group.types),
-                Arrays.asList(group.values));
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
           }
         },
         null,
@@ -1275,7 +1256,7 @@ public abstract class AbstractDataTool {
             }
             if (!measurements.isEmpty()) {
               long timestamp = parseTimestamp(recordObj.get(timeColumn));
-              batchContext.recordBatch(recordObj, deviceId, timestamp, types, values, measurements);
+              batchContext.recordBatch(recordObj);
               times.add(timestamp);
               deviceIds.add(deviceId);
               typesList.add(types);
@@ -1446,8 +1427,7 @@ public abstract class AbstractDataTool {
           }
           if (!measurements.isEmpty()) {
             long timestamp = parseTimestamp(recordObj.get(timeColumn));
-            batchContext.recordBatch(
-                recordObj, deviceName.get(), timestamp, types, values, measurements);
+            batchContext.recordBatch(recordObj);
             times.add(timestamp);
             typesList.add(types);
             valuesList.add(values);
@@ -1567,7 +1547,7 @@ public abstract class AbstractDataTool {
             }
             if (!measurements.isEmpty()) {
               long timestamp = parseTimestamp(recordObj.get(timeColumn));
-              batchContext.recordBatch(recordObj, deviceId, timestamp, types, values, measurements);
+              batchContext.recordBatch(recordObj);
               times.add(timestamp);
               deviceIds.add(deviceId);
               typesList.add(types);

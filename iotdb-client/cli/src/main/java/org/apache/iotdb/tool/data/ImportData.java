@@ -586,12 +586,15 @@ public class ImportData extends AbstractDataTool {
             ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
           }
         });
-    if (!AsyncImportData.hasImportFailed()) {
+    if (!AsyncImportData.hasImportFailed()
+        && ImportDataScanTool.getTsFileQueueSize() == 0
+        && !Thread.currentThread().isInterrupted()) {
       ioTPrinter.println("Import completely!");
     }
   }
 
   private static int importFromTargetPathAsync() {
+    AsyncImportData.resetImportStatus();
     try {
       sessionPool =
           new SessionPool.Builder()
@@ -608,12 +611,11 @@ public class ImportData extends AbstractDataTool {
       AsyncImportData.setAligned(aligned);
       AsyncImportData.setSessionPool(sessionPool);
       AsyncImportData.setTimeZone();
-      AsyncImportData.resetImportStatus();
       ImportDataScanTool.setSourceFullPath(targetPath);
       final File file = new File(targetPath);
       if (!file.isFile() && !file.isDirectory()) {
         ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
-        System.exit(CODE_ERROR);
+        return CODE_ERROR;
       }
       ImportDataScanTool.traverseAndCollectFiles();
       asyncImportDataFiles();
@@ -629,6 +631,10 @@ public class ImportData extends AbstractDataTool {
     } catch (Exception e) {
       ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
       return CODE_ERROR;
+    } finally {
+      if (sessionPool != null) {
+        sessionPool.close();
+      }
     }
   }
 
@@ -654,34 +660,7 @@ public class ImportData extends AbstractDataTool {
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
-      resetCurrentImportFailed();
-
-      File file = new File(targetPath);
-      if (file.isFile()) {
-        if (file.getName().endsWith(SQL_SUFFIXS)) {
-          importFromSqlFile(session, file);
-        } else {
-          importFromSingleFile(session, file);
-        }
-      } else if (file.isDirectory()) {
-        File[] files = file.listFiles();
-        if (files == null) {
-          return CODE_OK;
-        }
-
-        for (File subFile : files) {
-          if (subFile.isFile()) {
-            if (subFile.getName().endsWith(SQL_SUFFIXS)) {
-              importFromSqlFile(session, subFile);
-            } else {
-              importFromSingleFile(session, subFile);
-            }
-          }
-        }
-      } else {
-        ioTPrinter.println("File not found!");
-        return CODE_ERROR;
-      }
+      return importFromTargetPath(session, new File(targetPath));
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       ioTPrinter.println("Encounter an error when connecting to server, because " + e.getMessage());
       return CODE_ERROR;
@@ -690,7 +669,35 @@ public class ImportData extends AbstractDataTool {
         session.close();
       }
     }
+  }
+
+  static int importFromTargetPath(Session session, File file) {
+    resetCurrentImportFailed();
+    if (file.isFile()) {
+      importFile(session, file);
+    } else if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files == null) {
+        return CODE_ERROR;
+      }
+      for (File subFile : files) {
+        if (subFile.isFile()) {
+          importFile(session, subFile);
+        }
+      }
+    } else {
+      ioTPrinter.println("File not found!");
+      return CODE_ERROR;
+    }
     return isCurrentImportFailed() ? CODE_ERROR : CODE_OK;
+  }
+
+  private static void importFile(Session session, File file) {
+    if (file.getName().endsWith(SQL_SUFFIXS)) {
+      importFromSqlFile(session, file);
+    } else {
+      importFromSingleFile(session, file);
+    }
   }
 
   /**
