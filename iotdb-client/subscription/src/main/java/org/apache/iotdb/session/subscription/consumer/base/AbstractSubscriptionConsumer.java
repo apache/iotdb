@@ -1410,6 +1410,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private List<SubscriptionPollResponse> pollInternal(
       final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
     checkIfFenced();
+    boolean syncIfUnavailable = false;
     providers.acquireReadLock();
     try {
       final AbstractSubscriptionProvider provider = providers.getNextAvailableProvider();
@@ -1417,22 +1418,23 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         if (isClosed()) {
           return Collections.emptyList();
         }
-        throw new SubscriptionConnectionException(
-            String.format(
-                SubscriptionMessages
-                    .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_POLL_TOPIC_ARG_FABF7A4E,
-                this,
-                topicNames));
-      }
-      // ignore SubscriptionConnectionException to improve poll auto retry
-      try {
-        return provider.poll(topicNames, timeoutMs, buildCurrentProgressByTopic(topicNames));
-      } catch (final SubscriptionConnectionException ignored) {
-        return Collections.emptyList();
+        syncIfUnavailable = true;
+      } else {
+        // ignore SubscriptionConnectionException to improve poll auto retry
+        try {
+          return provider.poll(topicNames, timeoutMs, buildCurrentProgressByTopic(topicNames));
+        } catch (final SubscriptionConnectionException ignored) {
+          syncIfUnavailable = true;
+        }
       }
     } finally {
       providers.releaseReadLock();
     }
+
+    if (syncIfUnavailable) {
+      providers.syncIfUnavailable(this);
+    }
+    return Collections.emptyList();
   }
 
   private List<SubscriptionPollResponse> pollFileInternal(
