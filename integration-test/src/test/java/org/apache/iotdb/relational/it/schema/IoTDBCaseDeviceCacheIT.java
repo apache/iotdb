@@ -176,6 +176,42 @@ public class IoTDBCaseDeviceCacheIT {
     }
   }
 
+  @Test
+  public void testGuardedCommonDiffWithoutMatchingDevices() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      statement.execute(
+          "CREATE TABLE guarded_diff_no_match "
+              + "(id STRING TAG, src STRING ATTRIBUTE, a STRING ATTRIBUTE, v DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO guarded_diff_no_match(time, id, src, a, v) VALUES "
+              + "(1, 'd0', 'n/a', 'seed', 1), (2, 'd1', '5', 'seed', 1), "
+              + "(3, 'd2', 'n/a', 'seed', 1)");
+      String update =
+          "UPDATE guarded_diff_no_match "
+              + "SET a = CAST(diff(CAST(src AS DOUBLE), src = 'x') AS STRING) "
+              + "WHERE CASE WHEN src = 'n/a' THEN false ELSE "
+              + "diff(CAST(src AS DOUBLE), src = 'x') > 0 END";
+
+      // Cover both a full batch and the final partial batch flushed when the updater closes.
+      // No device matches, so neither batch may retry the guarded CAST on 'n/a'.
+      statement.execute(update);
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM guarded_diff_no_match"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d0,n/a,seed,", "d1,5,seed,", "d2,n/a,seed,")));
+
+      statement.execute(
+          "UPDATE guarded_diff_no_match SET src = CASE id WHEN 'd0' THEN '10' ELSE '20' END");
+      statement.execute(update);
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM guarded_diff_no_match"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d0,10,seed,", "d1,20,10.0,", "d2,20,seed,")));
+    }
+  }
+
   private static void createTable(Statement statement, String table) throws SQLException {
     statement.execute("USE " + DATABASE);
     statement.execute(

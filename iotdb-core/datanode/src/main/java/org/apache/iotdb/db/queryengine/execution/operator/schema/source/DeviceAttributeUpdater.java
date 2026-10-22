@@ -100,6 +100,13 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   }
 
   protected void update() throws MetadataException {
+    if (!withoutFilter() && indexes.isEmpty()) {
+      // No device needs an update. Do not retry expressions excluded by the filter's CASE guard.
+      attributePointers.clear();
+      super.clear();
+      return;
+    }
+
     final TsBlock block = getFilterTsBlock();
 
     for (ColumnTransformer transformer : projectCacheTransformers) {

@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.TableCaseWhenThenColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.CompareEqualToColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.UpperColumnTransformer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
@@ -40,9 +44,11 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,8 +56,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -188,6 +197,91 @@ public class DevicePredicateHandlerTest {
     }
   }
 
+  @Test
+  public void testAttributeUpdaterSkipsGuardedCommonDiffWhenNoDevicesMatch() throws Exception {
+    Graph filter = new Graph();
+    ColumnTransformer input = filter.input(0);
+    ColumnTransformer value =
+        new CastFunctionColumnTransformer(DOUBLE, reference(input), ZoneId.of("UTC"));
+    ColumnTransformer diff =
+        new DiffColumnTransformer(
+            DOUBLE, reference(value), reference(filter.equal(input, filter.constant("x"))));
+    ColumnTransformer zero =
+        filter.leaf(
+            new ConstantColumnTransformer(
+                DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {0})));
+    ColumnTransformer predicate =
+        filter.caseWhen(
+            filter.equal(input, filter.constant("n/a")),
+            filter.constant(false),
+            new CompareGreaterThanColumnTransformer(BOOLEAN, reference(diff), reference(zero)));
+    Graph projection = new Graph();
+    ColumnTransformer commonInput = projection.leaf(new IdentityColumnTransformer(DOUBLE, 1));
+    ColumnTransformer output =
+        new CastFunctionColumnTransformer(STRING, reference(commonInput), ZoneId.of("UTC"));
+    List<List<String>> updates = new ArrayList<>();
+    List<Integer> updatedPointers = new ArrayList<>();
+    try (DeviceAttributeUpdater updater =
+        new DeviceAttributeUpdater(
+            Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE),
+            filter.leaves,
+            reference(predicate),
+            Collections.singletonList(reference(diff)),
+            COLUMNS,
+            projection.leaves,
+            Collections.singletonList(reference(output)),
+            (pointer, name) -> null,
+            (deviceId, pointer, values) -> {
+              updates.add(
+                  Arrays.asList(
+                      deviceId[0],
+                      ((Binary) values[0]).getStringValue(TSFileConfig.STRING_CHARSET)));
+              updatedPointers.add(pointer);
+            },
+            Collections.singletonList("a"),
+            "test",
+            new TsTable("table"))) {
+      // The CASE guard excludes the invalid CAST, and the first numeric DIFF is null.
+      updateBatch(updater, 10, "n/a", "5");
+      assertTrue(updates.isEmpty());
+      assertFalse(updater.hasComputedResult());
+      assertTrue(updater.deviceSchemaBatch.isEmpty());
+
+      // Retain the filter's DIFF state, but not the skipped batch's attribute pointers.
+      updateBatch(updater, 20, "10", "20");
+      assertEquals(Arrays.asList(Arrays.asList("10", "5.0"), Arrays.asList("20", "10.0")), updates);
+      assertEquals(Arrays.asList(20, 21), updatedPointers);
+
+      updateBatch(updater, 30, "n/a");
+      updateBatch(updater, 40, "30", "40");
+      assertEquals(
+          Arrays.asList(
+              Arrays.asList("10", "5.0"), Arrays.asList("20", "10.0"), Arrays.asList("40", "10.0")),
+          updates);
+      assertEquals(Arrays.asList(20, 21, 41), updatedPointers);
+    }
+  }
+
+  @Test
+  public void testAttributeUpdaterSkipsProjectionWhenNoDevicesMatch() throws Exception {
+    Graph filter = new Graph();
+    ColumnTransformer predicate = filter.equal(filter.input(0), filter.constant("match"));
+    List<List<String>> updates = new ArrayList<>();
+    try (DeviceAttributeUpdater updater =
+        attributeUpdater(
+            filter,
+            predicate,
+            Collections.emptyList(),
+            new Graph(),
+            updates,
+            new FailFunctionColumnTransformer(
+                STRING, "Empty batches must not evaluate projections"))) {
+      updateBatch(updater, "skip");
+      assertTrue(updates.isEmpty());
+      assertFalse(updater.hasComputedResult());
+    }
+  }
+
   private static DevicePredicateFilter predicateFilter(Graph graph, ColumnTransformer predicate) {
     return new DevicePredicateFilter(
         graph.leaves, reference(predicate), COLUMNS, "test", new TsTable("table"));
@@ -245,8 +339,13 @@ public class DevicePredicateHandlerTest {
 
   private static void updateBatch(DeviceAttributeUpdater updater, String... values)
       throws Exception {
+    updateBatch(updater, 0, values);
+  }
+
+  private static void updateBatch(
+      DeviceAttributeUpdater updater, int firstPointer, String... values) throws Exception {
     for (int i = 0; i < values.length; i++) {
-      updater.handleDeviceNode(node(values[i], i));
+      updater.handleDeviceNode(node(values[i], firstPointer + i));
     }
     updater.prepareBatchResult();
     updater.update();
