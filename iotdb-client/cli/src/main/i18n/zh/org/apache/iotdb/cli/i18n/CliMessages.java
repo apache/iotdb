@@ -87,6 +87,9 @@ public final class CliMessages {
   public static final String
       MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400 =
           "导出查询。表模型 SQL/TsFile 查询要求仅包含一张表，不支持联接、子查询或 CTE。指定后忽略 -table、-start_time 和 -end_time。（可选）";
+  public static final String
+      MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
+          "多个 CSV 表头映射到同一目标列。";
 
   private CliMessages() {}
 

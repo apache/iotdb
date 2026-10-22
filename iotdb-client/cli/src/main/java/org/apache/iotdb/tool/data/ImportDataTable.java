@@ -286,8 +286,9 @@ public class ImportDataTable extends AbstractImportData {
         } else {
           failedFilePath = failedFileDirectory + file.getName() + ".failed";
         }
-        writeData(headerNames, records.collect(Collectors.toList()), failedFilePath);
-        processSuccessFile();
+        if (writeData(headerNames, records.collect(Collectors.toList()), failedFilePath)) {
+          processSuccessFile();
+        }
       } catch (IOException e) {
         markFileFailed();
         ioTPrinter.println("CSV file read exception because: " + e.getMessage());
@@ -298,11 +299,16 @@ public class ImportDataTable extends AbstractImportData {
     }
   }
 
-  protected void writeData(
+  protected boolean writeData(
       List<String> headerNames, List<CSVRecord> records, String failedFilePath) {
     Map<String, TSDataType> headerTypeMap = new HashMap<>();
     Map<String, String> headerNameMap = new HashMap<>();
-    parseHeaders(headerNames, headerTypeMap, headerNameMap);
+    if (!parseHeaders(headerNames, headerTypeMap, headerNameMap)) {
+      markFileFailed();
+      ioTPrinter.println(
+          CliMessages.MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563);
+      return false;
+    }
     queryType(headerTypeMap);
     List<List<Object>> failedRecords = new ArrayList<>();
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -380,6 +386,7 @@ public class ImportDataTable extends AbstractImportData {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
+    return true;
   }
 
   private static void writeAndEmptyDataSet(Tablet tablet, int retryTime) {
@@ -392,32 +399,47 @@ public class ImportDataTable extends AbstractImportData {
         retryTime);
   }
 
-  private void parseHeaders(
+  private boolean parseHeaders(
       List<String> headerNames,
       Map<String, TSDataType> headerTypeMap,
       Map<String, String> headerNameMap) {
     String regex = "\\(([^()]+)\\)$";
     Pattern pattern = Pattern.compile(regex);
+    List<String> unmatchedHeaders = new ArrayList<>();
     for (String headerName : headerNames) {
       String normalizedHeaderName = headerName.toLowerCase(Locale.ROOT);
       // A complete table column name takes precedence over a possible type suffix.
       if (dataTypes.containsKey(normalizedHeaderName)) {
+        if (headerNameMap.containsKey(normalizedHeaderName)) {
+          return false;
+        }
         headerNameMap.put(normalizedHeaderName, headerName);
         headerTypeMap.put(normalizedHeaderName, dataTypes.get(normalizedHeaderName));
-        continue;
+      } else {
+        unmatchedHeaders.add(headerName);
       }
+    }
+    for (String headerName : unmatchedHeaders) {
+      String normalizedHeaderName = headerName.toLowerCase(Locale.ROOT);
       Matcher matcher = pattern.matcher(headerName);
       String type;
       String headerNameWithoutType;
       if (matcher.find()) {
         type = matcher.group(1);
         headerNameWithoutType = headerName.substring(0, matcher.start()).toLowerCase(Locale.ROOT);
+        if (headerNameMap.containsKey(headerNameWithoutType)) {
+          return false;
+        }
         headerNameMap.put(headerNameWithoutType, headerName);
         headerTypeMap.put(headerNameWithoutType, getType(type.toUpperCase(Locale.ROOT)));
       } else {
+        if (headerNameMap.containsKey(normalizedHeaderName)) {
+          return false;
+        }
         headerNameMap.put(normalizedHeaderName, headerName);
       }
     }
+    return true;
   }
 
   private void queryType(Map<String, TSDataType> dataType) {

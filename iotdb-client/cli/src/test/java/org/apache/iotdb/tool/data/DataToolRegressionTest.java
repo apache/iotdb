@@ -156,6 +156,34 @@ public class DataToolRegressionTest extends AbstractDataTool {
   }
 
   @Test
+  public void testCustomTableQueryOverridesTableFilter() throws Exception {
+    ITableSession session = mockTable("table_a", "table_b");
+    table = "table_a";
+    set(ExportDataTable.class, "tables", new ArrayList<>(List.of("table_a")));
+    SessionDataSet result =
+        dataSet(List.of("time", "v"), List.of("TIMESTAMP", "INT32"), new Object[] {1L, 11});
+    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
+
+    assertTrue(new ExportDataTable().exportBySql("select * from table_b", 0));
+    assertEquals("insert into \"table_b\"(\"time\",\"v\") values(1,11);\n", read("dump0_0.sql"));
+  }
+
+  @Test
+  public void testDefaultTableExportStillUsesTableFilter() throws Exception {
+    ITableSession session = mockTable("table_a", "table_b");
+    table = "table_a";
+    set(ExportDataTable.class, "tables", new ArrayList<>(List.of("table_a")));
+    SessionDataSet result =
+        dataSet(List.of("time", "v"), List.of("TIMESTAMP", "INT32"), new Object[] {1L, 11});
+    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
+
+    assertTrue(new ExportDataTable().exportBySql(null, 0));
+    verify(session).executeQueryStatement("select * from \"table_a\"", timeout);
+    assertEquals("insert into \"table_a\"(\"time\",\"v\") values(1,11);\n", read("dump0_0.sql"));
+    assertFalse(Files.exists(directory.resolve("dump1_0.sql")));
+  }
+
+  @Test
   public void testQuotedTableAndColumnNames() throws Exception {
     ITableSession session = mockTable("odd\"name");
     SessionDataSet result =
@@ -644,6 +672,65 @@ public class DataToolRegressionTest extends AbstractDataTool {
     assertFalse(Files.exists(directory.resolve("parentheses.failed")));
   }
 
+  @Test
+  public void testTypedTableCsvRejectsAmbiguousTwoColumnRoundTrip() throws Exception {
+    assertTableCsvTwoColumnRoundTrip(true);
+  }
+
+  @Test
+  public void testUntypedTableCsvPreservesTwoColumnRoundTrip() throws Exception {
+    assertTableCsvTwoColumnRoundTrip(false);
+  }
+
+  private void assertTableCsvTwoColumnRoundTrip(boolean typed) throws Exception {
+    Map<String, TSDataType> types = new LinkedHashMap<>();
+    types.put("value", TSDataType.DOUBLE);
+    types.put("value(double)", TSDataType.DOUBLE);
+    Map<String, ColumnCategory> categories = new LinkedHashMap<>();
+    categories.put("value", ColumnCategory.FIELD);
+    categories.put("value(double)", ColumnCategory.FIELD);
+    set(ImportDataTable.class, "dataTypes", types);
+    set(ImportDataTable.class, "columnCategory", categories);
+    ITableSessionPool pool = mock(ITableSessionPool.class);
+    ITableSession session = mockTable("t");
+    when(pool.getSession()).thenReturn(session);
+    set(ImportDataTable.class, "sessionPool", pool);
+    doAnswer(
+            invocation -> {
+              Tablet tablet = invocation.getArgument(0);
+              assertEquals(2, tablet.getSchemas().size());
+              assertEquals("value", tablet.getSchemas().get(0).getMeasurementName());
+              assertEquals("value(double)", tablet.getSchemas().get(1).getMeasurementName());
+              assertEquals(1, tablet.getRowSize());
+              assertEquals(1L, tablet.getTimestamps()[0]);
+              assertEquals(1.5, ((double[]) tablet.getValues()[0])[0], 0);
+              assertEquals(2.5, ((double[]) tablet.getValues()[1])[0], 0);
+              return null;
+            })
+        .when(session)
+        .insert(any(Tablet.class));
+    exportType = "csv";
+    needDataTypePrinted = typed;
+    for (int i = 0; i < 2; i++) {
+      List<String> columns =
+          i == 0
+              ? List.of("time", "value", "value(double)")
+              : List.of("time", "value(double)", "value");
+      Object[] row = i == 0 ? new Object[] {1L, 1.5, 2.5} : new Object[] {1L, 2.5, 1.5};
+      SessionDataSet result = dataSet(columns, List.of("TIMESTAMP", "DOUBLE", "DOUBLE"), row);
+      when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
+      assertTrue(new ExportDataTable().exportBySql("select * from t", i));
+      long failedFiles = loadFileFailedNum.sum();
+      long successfulFiles = loadFileSuccessfulNum.sum();
+      ImportDataScanTool.putToQueue(directory.resolve("dump" + i + "_0.csv").toString());
+      assertEquals(!typed, AbstractImportData.init(new ImportDataTable()));
+      assertEquals(failedFiles + (typed ? 1 : 0), loadFileFailedNum.sum());
+      assertEquals(successfulFiles + (typed ? 0 : 1), loadFileSuccessfulNum.sum());
+      assertNull(ImportDataScanTool.pollFromQueue());
+    }
+    verify(session, times(typed ? 0 : 2)).insert(any(Tablet.class));
+  }
+
   private void assertTableCsvRoundTrip(String column) throws Exception {
     set(ImportDataTable.class, "dataTypes", Map.of(column, TSDataType.DOUBLE));
     set(ImportDataTable.class, "columnCategory", Map.of(column, ColumnCategory.FIELD));
@@ -924,6 +1011,7 @@ public class DataToolRegressionTest extends AbstractDataTool {
     ITableSession session = mock(ITableSession.class);
     set(ExportDataTable.class, "tableSession", session);
     set(ExportDataTable.class, "tables", new ArrayList<>(Arrays.asList(names)));
+    set(ExportDataTable.class, "allTables", new ArrayList<>(Arrays.asList(names)));
     return session;
   }
 

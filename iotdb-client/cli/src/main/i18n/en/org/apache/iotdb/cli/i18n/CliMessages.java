@@ -87,6 +87,9 @@ public final class CliMessages {
   public static final String
       MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400 =
           "Query to export. Table SQL/TsFile queries require a single table without joins, subqueries or CTEs. Overrides -table, -start_time and -end_time. (optional)";
+  public static final String
+      MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
+          "Multiple CSV headers resolve to the same target column.";
 
   private CliMessages() {}
 

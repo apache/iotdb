@@ -72,6 +72,7 @@ public class ExportDataTable extends AbstractExportData {
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static ITableSession tableSession;
   private static List<String> tables = new ArrayList<>();
+  private static List<String> allTables = new ArrayList<>();
   private static long processedRows;
   private static long lastPrintTime;
 
@@ -98,18 +99,20 @@ public class ExportDataTable extends AbstractExportData {
       System.exit(1);
     }
     sessionDataSet = tableSession.executeQueryStatement("show tables", timeout);
-    tables.clear();
+    allTables.clear();
     while (sessionDataSet.hasNext()) {
-      tables.add(sessionDataSet.next().getField(0).getStringValue());
+      allTables.add(sessionDataSet.next().getField(0).getStringValue());
     }
-    if (CollectionUtils.isEmpty(tables)
-        || (ObjectUtils.isNotEmpty(table) && !tables.contains(table))) {
+    boolean filterByTable = StringUtils.isBlank(queryCommand) && ObjectUtils.isNotEmpty(table);
+    if (CollectionUtils.isEmpty(allTables) || (filterByTable && !allTables.contains(table))) {
       ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
       System.exit(1);
     }
-    if (ObjectUtils.isNotEmpty(table)) {
-      tables.clear();
+    tables.clear();
+    if (filterByTable) {
       tables.add(table);
+    } else {
+      tables.addAll(allTables);
     }
     if (ObjectUtils.isNotEmpty(sessionDataSet)) {
       sessionDataSet.close();
@@ -231,7 +234,7 @@ public class ExportDataTable extends AbstractExportData {
       throw new StatementExecutionException(message);
     }
     String name = identifierValue(names.get(names.size() - 1));
-    if (!tables.contains(name)) {
+    if (!allTables.contains(name)) {
       throw new StatementExecutionException(message);
     }
     return name;
