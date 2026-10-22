@@ -122,7 +122,7 @@ public class PageCacheDeletionBufferTest {
 
   @Test(timeout = 30000)
   public void testOversizedFirstDeletionFailsWithoutAffectingNextDeletion() throws Exception {
-    final DeletionResource oversizedDeletion = createDeletion(1, 32);
+    final DeletionResource oversizedDeletion = spy(createDeletion(1, 32));
     final DeletionResource nextDeletion = createDeletion(2, 1);
     PageCacheDeletionBuffer.setDalBufferSize(1024);
     Assert.assertTrue(
@@ -137,12 +137,14 @@ public class PageCacheDeletionBufferTest {
       deletionBuffer.registerDeletionResource(oversizedDeletion);
       Assert.assertSame(DeletionResource.Status.FAILURE, oversizedDeletion.waitForResult());
       Assert.assertTrue(oversizedDeletion.getCause() instanceof IOException);
+      verify(oversizedDeletion).onPersistFailed(any(IOException.class));
       Awaitility.await().atMost(10, TimeUnit.SECONDS).until(deletionBuffer::isAllDeletionFlushed);
 
       deletionBuffer.registerDeletionResource(nextDeletion);
       Assert.assertSame(DeletionResource.Status.SUCCESS, nextDeletion.waitForResult());
       Awaitility.await().atMost(10, TimeUnit.SECONDS).until(deletionBuffer::isAllDeletionFlushed);
       Assert.assertSame(DeletionResource.Status.FAILURE, oversizedDeletion.waitForResult());
+      verify(oversizedDeletion, never()).onPersistSucceed();
     } finally {
       deletionBuffer.close();
     }
