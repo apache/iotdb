@@ -33,6 +33,8 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
@@ -471,5 +473,35 @@ public class IoTDBPredicateConversionTreeIT {
         assertFalse(resultSet.next());
       }
     }
+  }
+
+  @Test
+  public void testHavingNotWithBooleanAggregation() {
+    resultSetEqualTest(
+        "SELECT count(s1) FROM "
+            + NOT_DATABASE_NAME
+            + ".d1 GROUP BY ([1,5),1ms) HAVING NOT last_value(b)",
+        new String[] {TIMESTAMP_STR, count(NOT_DATABASE_NAME + ".d1.s1")},
+        new String[] {"2,1,", "4,1,"});
+
+    resultSetEqualTest(
+        "SELECT count(s1) FROM "
+            + NOT_DATABASE_NAME
+            + ".d1 GROUP BY ([1,5),1ms) HAVING NOT last_value(b) ALIGN BY DEVICE",
+        new String[] {TIMESTAMP_STR, DEVICE, count("s1")},
+        new String[] {"2," + NOT_DATABASE_NAME + ".d1,1,", "4," + NOT_DATABASE_NAME + ".d1,1,"});
+  }
+
+  @Test
+  public void testTemplatedHavingNotWithBooleanAggregation() {
+    Set<String> expectedRows = new HashSet<>();
+    expectedRows.add("1," + TEMPLATE_DATABASE_NAME + ".d2,1,");
+    expectedRows.add("2," + TEMPLATE_DATABASE_NAME + ".d1,1,");
+    resultSetEqualTest(
+        "SELECT count(s1) FROM "
+            + TEMPLATE_DATABASE_NAME
+            + ".* GROUP BY ([1,3),1ms) HAVING NOT last_value(b) ALIGN BY DEVICE",
+        TIMESTAMP_STR + "," + DEVICE + "," + count("s1") + ",",
+        expectedRows);
   }
 }
