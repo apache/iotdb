@@ -2630,6 +2630,7 @@ public class ConsensusPrefetchingQueueTest {
               }
             };
         queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1024L * 1024L));
+        assertNull(queue.poll("consumer"));
         assertTrue(pendingEntries(queue).offer(createRequest(1L)));
         assertTrue(pendingEntries(queue).offer(createRequest(2L)));
         queue.drivePrefetchOnce();
