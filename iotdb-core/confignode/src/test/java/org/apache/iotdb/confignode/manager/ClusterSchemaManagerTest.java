@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
 import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
 import org.apache.iotdb.commons.exception.table.TableInDeletionException;
@@ -25,13 +27,20 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -47,6 +56,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -68,6 +78,86 @@ public class ClusterSchemaManagerTest {
 
     // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
     Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  }
+
+  @Test
+  public void testAdjustMaxRegionGroupNumWithMixedModels() throws Exception {
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    final int originalSchemaQuota = conf.getSchemaRegionPerDataNode();
+    final int originalDataQuota = conf.getDataRegionPerDataNode();
+    final RegionGroupExtensionPolicy originalSchemaPolicy =
+        conf.getSchemaRegionGroupExtensionPolicy();
+    final RegionGroupExtensionPolicy originalDataPolicy = conf.getDataRegionGroupExtensionPolicy();
+    try {
+      conf.setSchemaRegionPerDataNode(12);
+      conf.setDataRegionPerDataNode(12);
+      conf.setSchemaRegionGroupExtensionPolicy(RegionGroupExtensionPolicy.PROACTIVE);
+      conf.setDataRegionGroupExtensionPolicy(RegionGroupExtensionPolicy.PROACTIVE);
+
+      final ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
+      final IManager configManager = Mockito.mock(IManager.class);
+      final NodeManager nodeManager = Mockito.mock(NodeManager.class);
+      final PartitionManager partitionManager = Mockito.mock(PartitionManager.class);
+      final ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+      Mockito.when(configManager.getNodeManager()).thenReturn(nodeManager);
+      Mockito.when(configManager.getPartitionManager()).thenReturn(partitionManager);
+      Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+      Mockito.when(nodeManager.getRegisteredDataNodeCount()).thenReturn(1);
+      Mockito.when(nodeManager.getDataNodeCpuCoreCount()).thenReturn(1);
+      Mockito.when(
+              partitionManager.getRegionGroupCount(
+                  Mockito.anyString(), Mockito.any(TConsensusGroupType.class)))
+          .thenReturn(0);
+      Mockito.when(consensusManager.write(Mockito.any(AdjustMaxRegionGroupNumPlan.class)))
+          .thenAnswer(
+              invocation -> {
+                final TSStatus status =
+                    clusterSchemaInfo.adjustMaxRegionGroupCount(invocation.getArgument(0));
+                Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+                return status;
+              });
+      final ClusterSchemaManager clusterSchemaManager =
+          new ClusterSchemaManager(
+              configManager, clusterSchemaInfo, Mockito.mock(ClusterSchemaQuotaStatistics.class));
+
+      final List<String> databases = Arrays.asList("pg", "root.pg", "root.control");
+      final int[] expectedLimits = {12, 6, 4};
+      for (int i = 0; i < databases.size(); i++) {
+        final String database = databases.get(i);
+        final TDatabaseSchema databaseSchema =
+            new TDatabaseSchema(database)
+                .setIsTableModel(i == 0)
+                .setSchemaReplicationFactor(1)
+                .setDataReplicationFactor(1)
+                .setMinSchemaRegionGroupNum(1)
+                .setMaxSchemaRegionGroupNum(1)
+                .setMinDataRegionGroupNum(2)
+                .setMaxDataRegionGroupNum(2);
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            clusterSchemaInfo
+                .createDatabase(
+                    new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema))
+                .getCode());
+        Mockito.when(partitionManager.isDatabaseExist(database)).thenReturn(true);
+
+        clusterSchemaManager.adjustMaxRegionGroupNum();
+
+        for (final String createdDatabase : databases.subList(0, i + 1)) {
+          final TDatabaseSchema adjustedSchema =
+              clusterSchemaInfo.getMatchedDatabaseSchemaByName(createdDatabase);
+          Assert.assertEquals(
+              createdDatabase, expectedLimits[i], adjustedSchema.getMaxSchemaRegionGroupNum());
+          Assert.assertEquals(
+              createdDatabase, expectedLimits[i], adjustedSchema.getMaxDataRegionGroupNum());
+        }
+      }
+    } finally {
+      conf.setSchemaRegionPerDataNode(originalSchemaQuota);
+      conf.setDataRegionPerDataNode(originalDataQuota);
+      conf.setSchemaRegionGroupExtensionPolicy(originalSchemaPolicy);
+      conf.setDataRegionGroupExtensionPolicy(originalDataPolicy);
+    }
   }
 
   @Test

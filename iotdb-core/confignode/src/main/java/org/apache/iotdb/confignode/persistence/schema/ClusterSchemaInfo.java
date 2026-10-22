@@ -607,7 +607,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Only leader use this interface. Get the matched DatabaseSchemas.
    *
    * @param rawPathList Databases' path patterns or full paths
-   * @return All DatabaseSchemas that matches to the specific Database patterns
+   * @return All matching DatabaseSchemas keyed by their database names
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
       final List<String> rawPathList, final Boolean isTableModel) {
@@ -638,8 +638,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final List<PartialPath> matchedPaths =
           mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
       for (final PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+        final TDatabaseSchema schema =
+            mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema();
+        // Table database "pg" and tree database "root.pg" share the same internal path.
+        schemaMap.put(schema.getName(), schema);
       }
     }
   }
