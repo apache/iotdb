@@ -351,6 +351,8 @@ public class ConsensusPrefetchingQueue {
   private long lastReplayProgressNanos;
   private boolean replayStallWarningLogged;
   private long lastReplayStallWarningNanos;
+  private WriterFrontier lastBlockedWriterFrontier;
+  private boolean lastWriterBarrierInOrderedReplay;
 
   private volatile String lastConsumerId = "";
 
@@ -1687,6 +1689,7 @@ public class ConsensusPrefetchingQueue {
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
   private static final long REPLAY_STALL_WARNING_THRESHOLD_NANOS = TimeUnit.SECONDS.toNanos(60L);
   private static final long REPLAY_STALL_WARNING_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(30L);
+  private static final int MAX_REPLAY_DIAGNOSTIC_WRITERS = 4;
 
   private static final long SLOW_PREFETCH_ROUND_THRESHOLD_MS = 10_000L;
 
@@ -1800,6 +1803,8 @@ public class ConsensusPrefetchingQueue {
             getPrefetchDurationMs());
       }
       logPeriodicStatsIfNecessary();
+      // Preserve the previous round's actual ordering decision until the stall reporter sees it.
+      lastBlockedWriterFrontier = null;
 
       final long currentSeekGeneration = seekGeneration.get();
       if (currentSeekGeneration != observedSeekGeneration) {
@@ -2067,6 +2072,8 @@ public class ConsensusPrefetchingQueue {
       }
       final WriterFrontier next = frontiers.peek();
       if (Objects.isNull(next) || next.isBarrier) {
+        lastBlockedWriterFrontier = next;
+        lastWriterBarrierInOrderedReplay = true;
         break;
       }
       final PreparedEntry buffered = peekRealtimeEntry(next.writerNodeId);
@@ -2393,19 +2400,138 @@ public class ConsensusPrefetchingQueue {
     final long stalledNanos = nowNanos - lastReplayProgressNanos;
     if (stalledNanos >= REPLAY_STALL_WARNING_THRESHOLD_NANOS
         && (!replayStallWarningLogged
-            || nowNanos - lastReplayStallWarningNanos >= REPLAY_STALL_WARNING_INTERVAL_NANOS)) {
+            || nowNanos - lastReplayStallWarningNanos >= REPLAY_STALL_WARNING_INTERVAL_NANOS)
+        && LOGGER.isWarnEnabled()) {
       LOGGER.warn(
           DataNodePipeMessages
-              .LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B,
+              .LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98,
           TimeUnit.NANOSECONDS.toMillis(stalledNanos),
-          this);
+          this,
+          getReplayStallDiagnostics());
       lastReplayStallWarningNanos = nowNanos;
       replayStallWarningLogged = true;
     }
   }
 
+  private Map<String, Object> getReplayStallDiagnostics() {
+    // Only called for the throttled stall warning, on the serialized prefetch worker. Do not
+    // refresh frontiers, probe WAL readers, or dump requests/Tablets while taking this snapshot.
+    final Map<String, Object> result = new LinkedHashMap<>();
+    result.put("runtimeVersion", runtimeVersion);
+    result.put("admissionBlockReason", realtimeAdmissionBlockReason);
+    result.put("memoryBlockReason", memoryBlockReason);
+    result.put("prefetchLimitReached", hasReachedPrefetchLimit());
+    result.put("lingerEntryCount", lingerBatch.entryCount);
+    result.put("lastBlockedFrontier", lastBlockedWriterFrontier);
+    result.put(
+        "lastBarrierInOrderedReplay",
+        Objects.nonNull(lastBlockedWriterFrontier) ? lastWriterBarrierInOrderedReplay : null);
+    final Map<Integer, SafeFrontier> safeFrontiers =
+        serverImpl.getWriterSafeFrontierTracker().snapshotSafeFrontiers();
+    result.put("activeWriterCount", activeWriterNodeIds.size());
+    result.put("activeWriters", sampleWriterDiagnostics(activeWriterNodeIds, safeFrontiers));
+    result.put("realtimeWriterCount", realtimeEntriesByWriter.size());
+    result.put(
+        "realtimeWriters",
+        sampleWriterDiagnostics(realtimeEntriesByWriter.keySet(), safeFrontiers));
+    result.put("orderedWriterCount", orderedWriterReplay.size());
+    result.put(
+        "orderedWriters", sampleWriterDiagnostics(orderedWriterReplay.keySet(), safeFrontiers));
+    final RegionProgress committed =
+        commitManager.getCommittedRegionProgress(consumerGroupId, topicName, consensusGroupId);
+    result.put("committedWriterCount", committed.getWriterPositions().size());
+    final List<String> committedSamples = new ArrayList<>();
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        committed.getWriterPositions().entrySet()) {
+      if (committedSamples.size() >= MAX_REPLAY_DIAGNOSTIC_WRITERS) {
+        break;
+      }
+      committedSamples.add(entry.toString());
+    }
+    result.put("committedWriters", committedSamples);
+    result.put("committedRetainedMinVersionId", committedRetainedMinVersionId);
+    final WalFileCommitRequirement requirement =
+        walFileCommitRequirements.get(committedRetainedMinVersionId);
+    result.put(
+        "retentionContainsUnsupportedProgress",
+        Objects.nonNull(requirement) ? requirement.containsUnsupportedProgress : null);
+    if (consensusReqReader instanceof WALNode) {
+      result.put("walDirectory", ((WALNode) consensusReqReader).getLogDirectory());
+    }
+    result.put(
+        "walScanState",
+        Objects.nonNull(subscriptionWALIterator)
+            ? subscriptionWALIterator.getDiagnosticState()
+            : null);
+    return result;
+  }
+
+  private List<Map<String, Object>> sampleWriterDiagnostics(
+      final Set<Integer> writerNodeIds, final Map<Integer, SafeFrontier> safeFrontiers) {
+    final List<Map<String, Object>> samples = new ArrayList<>();
+    final Set<Integer> sampledWriterNodeIds = new LinkedHashSet<>();
+    // Keep unknown progress and the actual blocker visible even when other writers fill the cap.
+    if (writerNodeIds.contains(-1)) {
+      sampledWriterNodeIds.add(-1);
+    }
+    if (Objects.nonNull(lastBlockedWriterFrontier)
+        && writerNodeIds.contains(lastBlockedWriterFrontier.writerNodeId)) {
+      sampledWriterNodeIds.add(lastBlockedWriterFrontier.writerNodeId);
+    }
+    for (final int writerNodeId : writerNodeIds) {
+      if (sampledWriterNodeIds.size() >= MAX_REPLAY_DIAGNOSTIC_WRITERS) {
+        break;
+      }
+      sampledWriterNodeIds.add(writerNodeId);
+    }
+    for (final int writerNodeId : sampledWriterNodeIds) {
+      final Map<String, Object> sample = new LinkedHashMap<>();
+      sample.put("writerNodeId", writerNodeId);
+      final WriterState state = writerStates.get(writerNodeId);
+      sample.put("effectiveSafePt", Objects.nonNull(state) ? state.effectiveSafePt : null);
+      sample.put("closed", Objects.nonNull(state) ? state.closed : null);
+      final SafeFrontier safeFrontier = safeFrontiers.get(writerNodeId);
+      if (Objects.nonNull(safeFrontier)) {
+        sample.put("trackerSafePt", safeFrontier.getPhysicalTime());
+        sample.put("trackerAppliedLocalSeq", safeFrontier.getLocalSeq());
+      }
+      final PreparedEntry buffered = peekRealtimeEntry(writerNodeId);
+      if (Objects.nonNull(buffered)) {
+        sample.put("bufferedHead", buffered.getOrderingKey());
+        sample.put("bufferedSearchIndex", buffered.searchIndex);
+        sample.put("bufferedEntryCount", realtimeEntriesByWriter.get(writerNodeId).size());
+      }
+      sample.put("materializedProgress", materializedProgressByWriter.get(writerNodeId));
+      sample.put(
+          "recoveryProgress",
+          recoveryWriterProgressByWriter.get(
+              new WriterId(consensusGroupId.toString(), writerNodeId)));
+      final WriterReplayState replay = orderedWriterReplay.get(writerNodeId);
+      if (Objects.nonNull(replay)) {
+        sample.put("consumedLocalSeq", replay.consumedLocalSeq);
+        sample.put("caughtUp", replay.caughtUp);
+        sample.put("fromPending", replay.fromPending);
+        if (Objects.nonNull(replay.head)) {
+          sample.put(
+              "rawHead",
+              new OrderingKey(
+                  replay.head.getPhysicalTime(),
+                  replay.head.getNodeId(),
+                  replay.head.getProgressLocalSeq()));
+          sample.put("rawSearchIndex", replay.head.getSearchIndex());
+        }
+        sample.put(
+            "walScanState",
+            Objects.nonNull(replay.iterator) ? replay.iterator.getDiagnosticState() : null);
+      }
+      samples.add(sample);
+    }
+    return samples;
+  }
+
   private void resetRoundStateForSeek(final long newSeekGeneration) {
     replayProgressObserved = false;
+    lastBlockedWriterFrontier = null;
     restorePendingSubscriptionWalCursor(newSeekGeneration);
     discardRealtimeEntries();
     discardBatch(lingerBatch);
@@ -3734,6 +3860,8 @@ public class ConsensusPrefetchingQueue {
       }
       final WriterFrontier frontier = frontiers.peek();
       if (Objects.isNull(frontier) || frontier.isBarrier) {
+        lastBlockedWriterFrontier = frontier;
+        lastWriterBarrierInOrderedReplay = false;
         return true;
       }
       final T writerHead = headSupplier.apply(frontier.writerNodeId);
@@ -6241,6 +6369,17 @@ public class ConsensusPrefetchingQueue {
     private static WriterFrontier forBarrier(final int writerNodeId, final long effectiveSafePt) {
       return new WriterFrontier(
           writerNodeId, new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE), true);
+    }
+
+    @Override
+    public String toString() {
+      return "WriterFrontier{writerNodeId="
+          + writerNodeId
+          + ", orderingKey="
+          + orderingKey
+          + ", barrier="
+          + isBarrier
+          + '}';
     }
 
     @Override

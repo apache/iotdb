@@ -88,6 +88,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -146,7 +148,7 @@ public class ConsensusPrefetchingQueueTest {
           new ConsensusPrefetchingQueue(
               "consumerGroup",
               "topic",
-              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
               new DataRegionId(1),
               server,
               new SubscriptionWalRetentionPolicy(
@@ -163,6 +165,7 @@ public class ConsensusPrefetchingQueueTest {
           ConsensusPrefetchingQueue.class.getDeclaredField("prefetchInitialized");
       initialized.setAccessible(true);
       initialized.setBoolean(queue, true);
+      queue.setActiveWriterNodeIds(Set.of(1, 2, 3, 4, 5, 6, 7, 8));
       final Method report =
           ConsensusPrefetchingQueue.class.getDeclaredMethod(
               "reportReplayStallIfNecessary", long.class);
@@ -176,7 +179,7 @@ public class ConsensusPrefetchingQueueTest {
                               .getMessage()
                               .equals(
                                   DataNodePipeMessages
-                                      .LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B))
+                                      .LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98))
                   .count();
       report.invoke(queue, 0L);
       report.invoke(queue, TimeUnit.SECONDS.toNanos(59L));
@@ -184,6 +187,23 @@ public class ConsensusPrefetchingQueueTest {
       report.invoke(queue, TimeUnit.SECONDS.toNanos(60L));
       report.invoke(queue, TimeUnit.SECONDS.toNanos(89L));
       assertEquals(Long.valueOf(1L), warningCount.get());
+      final Map<?, ?> diagnostics =
+          (Map<?, ?>)
+              appender.list.stream()
+                  .filter(
+                      event ->
+                          event
+                              .getMessage()
+                              .equals(
+                                  DataNodePipeMessages
+                                      .LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98))
+                  .findFirst()
+                  .get()
+                  .getArgumentArray()[2];
+      assertEquals(8, diagnostics.get("activeWriterCount"));
+      assertEquals(4, ((List<?>) diagnostics.get("activeWriters")).size());
+      assertTrue(((List<?>) diagnostics.get("realtimeWriters")).isEmpty());
+      assertTrue(((List<?>) diagnostics.get("orderedWriters")).isEmpty());
       report.invoke(queue, TimeUnit.SECONDS.toNanos(90L));
       assertEquals(Long.valueOf(2L), warningCount.get());
 

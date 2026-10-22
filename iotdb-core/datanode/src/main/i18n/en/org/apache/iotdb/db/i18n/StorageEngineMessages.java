@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+  public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
+      "Rebuilt unreadable WAL footer: file={}, version={}, originalFileBytes={}, writerProgress={}.";
+
   public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
       "Load TsFile slice body is null or empty";
   public static final String MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8 =
