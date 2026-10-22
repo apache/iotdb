@@ -586,7 +586,9 @@ public class ImportData extends AbstractDataTool {
             ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
           }
         });
-    ioTPrinter.println("Import completely!");
+    if (!AsyncImportData.hasImportFailed()) {
+      ioTPrinter.println("Import completely!");
+    }
   }
 
   private static int importFromTargetPathAsync() {
@@ -652,6 +654,7 @@ public class ImportData extends AbstractDataTool {
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
+      resetCurrentImportFailed();
 
       File file = new File(targetPath);
       if (file.isFile()) {
@@ -687,7 +690,7 @@ public class ImportData extends AbstractDataTool {
         session.close();
       }
     }
-    return CODE_OK;
+    return isCurrentImportFailed() ? CODE_ERROR : CODE_OK;
   }
 
   /**
@@ -697,15 +700,16 @@ public class ImportData extends AbstractDataTool {
    */
   private static void importFromSingleFile(Session session, File file) {
     if (file.getName().endsWith(CSV_SUFFIXS) || file.getName().endsWith(TXT_SUFFIXS)) {
-      try {
-        CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
+      try (CSVParser csvRecords = readCsvFile(file.getAbsolutePath())) {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
+          markCurrentImportFailed();
           ioTPrinter.println("Empty file!");
           return;
         }
         if (!timeColumn.equalsIgnoreCase(filterBomHeader(headerNames.get(0)))) {
+          markCurrentImportFailed();
           ioTPrinter.println("The first field of header must be `Time`!");
           return;
         }
@@ -721,9 +725,11 @@ public class ImportData extends AbstractDataTool {
           writeDataAlignedByDevice(session, headerNames, records, failedFilePath);
         }
       } catch (IOException | IllegalPathException e) {
+        markCurrentImportFailed();
         ioTPrinter.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
+      markCurrentImportFailed();
       ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
     }
   }
@@ -731,6 +737,7 @@ public class ImportData extends AbstractDataTool {
   @SuppressWarnings("java:S2259")
   private static void importFromSqlFile(Session session, File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    boolean fileFailed = false;
     String failedFilePath = null;
     if (failedFileDirectory == null) {
       failedFilePath = file.getAbsolutePath() + ".failed";
@@ -743,12 +750,18 @@ public class ImportData extends AbstractDataTool {
         try {
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
+          fileFailed = true;
           failedRecords.add(Arrays.asList(sql));
         }
       }
-      ioTPrinter.println(file.getName() + " Import completely!");
     } catch (IOException e) {
+      fileFailed = true;
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+    }
+    if (fileFailed) {
+      markCurrentImportFailed();
+    } else {
+      ioTPrinter.println(file.getName() + " Import completely!");
     }
     if (!failedRecords.isEmpty()) {
       FileWriter writer = null;
@@ -758,6 +771,7 @@ public class ImportData extends AbstractDataTool {
           writer.write(failedRecord.get(0).toString() + "\n");
         }
       } catch (IOException e) {
+        markCurrentImportFailed();
         ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
       } finally {
         if (ObjectUtils.isNotEmpty(writer)) {

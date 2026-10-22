@@ -552,6 +552,12 @@ public abstract class AbstractDataTool {
     void insert() throws IoTDBConnectionException, StatementExecutionException;
   }
 
+  private enum BatchResult {
+    SUCCESS,
+    STATEMENT_FAILURE,
+    CONNECTION_FAILURE
+  }
+
   private static final class BatchContext {
     private final Map<Long, List<Object>> failedRecords = new LinkedHashMap<>();
     private final List<PendingGroup> batchGroups = new ArrayList<>();
@@ -559,7 +565,6 @@ public abstract class AbstractDataTool {
     private void recordFailure(CSVRecord record) {
       failedRecords.putIfAbsent(
           record.getRecordNumber(), record.stream().collect(Collectors.toList()));
-      markCurrentImportFailed();
     }
 
     private void recordBatch(
@@ -575,18 +580,24 @@ public abstract class AbstractDataTool {
               record.stream().collect(Collectors.toList()),
               device,
               timestamp,
-              new ArrayList<>(types),
-              new ArrayList<>(values),
-              new ArrayList<>(measurements)));
+              types,
+              values,
+              measurements));
     }
 
     private void finishBatch(
-        boolean succeeded, GroupInsert groupInsert, Session reconnectableSession, int retryTime) {
-      if (!succeeded) {
+        BatchResult result, GroupInsert groupInsert, Session reconnectableSession, int retryTime) {
+      if (result == BatchResult.CONNECTION_FAILURE) {
+        for (PendingGroup group : batchGroups) {
+          failedRecords.putIfAbsent(group.recordNumber, group.record);
+        }
+        markCurrentImportFailed();
+      } else if (result == BatchResult.STATEMENT_FAILURE) {
         for (PendingGroup group : batchGroups) {
           boolean groupSucceeded =
               executeBatchWithRetry(
-                  () -> groupInsert.insert(group), reconnectableSession, retryTime);
+                      () -> groupInsert.insert(group), reconnectableSession, retryTime)
+                  == BatchResult.SUCCESS;
           if (!groupSucceeded) {
             failedRecords.putIfAbsent(group.recordNumber, group.record);
             markCurrentImportFailed();
@@ -629,16 +640,16 @@ public abstract class AbstractDataTool {
     }
   }
 
-  private static boolean executeBatchWithRetry(
+  private static BatchResult executeBatchWithRetry(
       BatchInsert batchInsert, Session reconnectableSession, int retryTime) {
     for (int attempt = 0; ; attempt++) {
       try {
         batchInsert.insert();
-        return true;
+        return BatchResult.SUCCESS;
       } catch (IoTDBConnectionException e) {
         if (attempt >= retryTime) {
           ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-          return false;
+          return BatchResult.CONNECTION_FAILURE;
         }
         if (reconnectableSession != null) {
           try {
@@ -646,18 +657,18 @@ public abstract class AbstractDataTool {
           } catch (IoTDBConnectionException reconnectException) {
             if (attempt + 1 >= retryTime) {
               ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + reconnectException.getMessage());
-              return false;
+              return BatchResult.CONNECTION_FAILURE;
             }
           }
         }
       } catch (StatementExecutionException e) {
         ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-        return false;
+        return BatchResult.STATEMENT_FAILURE;
       }
     }
   }
 
-  private static boolean insertBatch(
+  private static BatchResult insertBatch(
       SessionPool sessionPool,
       List<String> deviceIds,
       List<Long> times,
@@ -687,7 +698,7 @@ public abstract class AbstractDataTool {
       List<List<String>> measurementsList,
       BatchContext batchContext,
       int retryTime) {
-    boolean succeeded =
+    BatchResult result =
         executeBatchWithRetry(
             () -> {
               if (Boolean.FALSE.equals(aligned)) {
@@ -701,7 +712,7 @@ public abstract class AbstractDataTool {
             null,
             retryTime);
     batchContext.finishBatch(
-        succeeded,
+        result,
         group -> {
           if (Boolean.FALSE.equals(aligned)) {
             sessionPool.insertRecordsOfOneDevice(
@@ -736,7 +747,7 @@ public abstract class AbstractDataTool {
       List<List<String>> measurementsList,
       BatchContext batchContext,
       int retryTime) {
-    boolean succeeded =
+    BatchResult result =
         executeBatchWithRetry(
             () -> {
               if (Boolean.FALSE.equals(aligned)) {
@@ -749,7 +760,7 @@ public abstract class AbstractDataTool {
             session,
             retryTime);
     batchContext.finishBatch(
-        succeeded,
+        result,
         group -> {
           if (Boolean.FALSE.equals(aligned)) {
             session.insertRecords(
@@ -785,7 +796,7 @@ public abstract class AbstractDataTool {
       List<List<String>> measurementsList,
       BatchContext batchContext,
       int retryTime) {
-    boolean succeeded =
+    BatchResult result =
         executeBatchWithRetry(
             () -> {
               if (Boolean.FALSE.equals(aligned)) {
@@ -799,7 +810,7 @@ public abstract class AbstractDataTool {
             session,
             retryTime);
     batchContext.finishBatch(
-        succeeded,
+        result,
         group -> {
           if (Boolean.FALSE.equals(aligned)) {
             session.insertRecordsOfOneDevice(
@@ -834,11 +845,11 @@ public abstract class AbstractDataTool {
       List<List<String>> measurementsList,
       BatchContext batchContext,
       int retryTime) {
-    boolean succeeded =
+    BatchResult result =
         insertBatch(
             sessionPool, deviceIds, times, typesList, valuesList, measurementsList, retryTime);
     batchContext.finishBatch(
-        succeeded,
+        result,
         group -> {
           if (Boolean.FALSE.equals(aligned)) {
             sessionPool.insertRecords(
@@ -1459,7 +1470,9 @@ public abstract class AbstractDataTool {
       writeFailedLinesFile(
           headerNames, failedFilePath, new ArrayList<>(batchContext.failedRecords.values()));
     }
-    ioTPrinter.println("Import completely!");
+    if (!isCurrentImportFailed()) {
+      ioTPrinter.println("Import completely!");
+    }
   }
 
   /**
@@ -1576,9 +1589,9 @@ public abstract class AbstractDataTool {
       writeFailedLinesFile(
           headerNames, failedFilePath, new ArrayList<>(batchContext.failedRecords.values()));
     }
-    if (Boolean.TRUE.equals(hasStarted.get())) {
+    if (Boolean.TRUE.equals(hasStarted.get()) && !isCurrentImportFailed()) {
       ioTPrinter.println("Import completely!");
-    } else {
+    } else if (Boolean.FALSE.equals(hasStarted.get())) {
       ioTPrinter.println("No records!");
     }
   }

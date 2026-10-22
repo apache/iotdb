@@ -33,7 +33,10 @@ import org.apache.commons.cli.ParseException;
 import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -441,6 +444,82 @@ public class ImportTsFile extends AbstractTsFileTool {
     CP,
     DELETE,
     ;
+
+    /**
+     * Process a TsFile and its optional sidecar files without replacing a destination member.
+     *
+     * @param source the source TsFile
+     * @param target the destination TsFile
+     * @throws FileAlreadyExistsException when a destination member already exists
+     * @throws IOException when a file operation fails
+     */
+    public void processFileGroup(Path source, Path target) throws IOException {
+      List<String> suffixes = existingSuffixes(source);
+      if (requiresDestinationCheck()) {
+        checkDestinations(target, suffixes);
+        Path parent = target.getParent();
+        if (parent != null) {
+          Files.createDirectories(parent);
+        }
+      }
+
+      for (String suffix : suffixes) {
+        Path sourceFile = Paths.get(source + suffix);
+        Path targetFile = Paths.get(target + suffix);
+        Operation operation = this == HARDLINK && !suffix.isEmpty() ? CP : this;
+        operation.processFile(sourceFile, targetFile);
+      }
+    }
+
+    private List<String> existingSuffixes(Path source) {
+      List<String> suffixes = new ArrayList<>();
+      suffixes.add("");
+      for (String suffix : new String[] {".resource", ".mods"}) {
+        if (Files.exists(Paths.get(source + suffix))) {
+          suffixes.add(suffix);
+        }
+      }
+      return suffixes;
+    }
+
+    private boolean requiresDestinationCheck() {
+      return this == CP || this == HARDLINK || this == MV;
+    }
+
+    private static void checkDestinations(Path target, List<String> suffixes)
+        throws FileAlreadyExistsException {
+      for (String suffix : suffixes) {
+        Path destination = Paths.get(target + suffix);
+        if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
+          throw new FileAlreadyExistsException(destination.toString());
+        }
+      }
+    }
+
+    private void processFile(Path source, Path target) throws IOException {
+      switch (this) {
+        case DELETE:
+          Files.deleteIfExists(source);
+          break;
+        case CP:
+          Files.copy(source, target);
+          break;
+        case HARDLINK:
+          try {
+            Files.createLink(target, source);
+          } catch (FileAlreadyExistsException e) {
+            throw e;
+          } catch (IOException | UnsupportedOperationException e) {
+            Files.copy(source, target);
+          }
+          break;
+        case MV:
+          Files.move(source, target);
+          break;
+        default:
+          break;
+      }
+    }
 
     public static boolean isValidOperation(String operation) {
       return "none".equalsIgnoreCase(operation)

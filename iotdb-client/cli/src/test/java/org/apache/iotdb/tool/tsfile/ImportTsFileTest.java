@@ -21,7 +21,6 @@ package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
 import org.junit.After;
 import org.junit.Before;
@@ -79,7 +78,10 @@ public class ImportTsFileTest extends AbstractTsFileTool {
     archive = Files.createDirectories(temporaryFolder.getRoot().toPath().resolve("archive"));
     ImportTsFileScanTool.setSourceFullPath(input.toString());
     ImportTsFileBase.setSuccessAndFailDirAndOperation(
-        archive.toString(), ImportTsFileOperation.CP, archive.toString(), ImportTsFileOperation.CP);
+        archive.toString(),
+        ImportTsFile.Operation.CP,
+        archive.toString(),
+        ImportTsFile.Operation.CP);
   }
 
   @After
@@ -105,9 +107,11 @@ public class ImportTsFileTest extends AbstractTsFileTool {
 
   @Test
   public void testArchiveConflictsReturnErrorAndContinueImport() throws Exception {
-    for (ImportTsFileOperation operation :
+    for (ImportTsFile.Operation operation :
         List.of(
-            ImportTsFileOperation.CP, ImportTsFileOperation.HARDLINK, ImportTsFileOperation.MV)) {
+            ImportTsFile.Operation.CP,
+            ImportTsFile.Operation.HARDLINK,
+            ImportTsFile.Operation.MV)) {
       ImportTsFileBase.setSuccessAndFailDirAndOperation(
           archive.toString(), operation, archive.toString(), operation);
       for (String conflict : List.of("", ".resource", ".mods")) {

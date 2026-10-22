@@ -20,7 +20,6 @@
 package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
-import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -38,9 +37,9 @@ public abstract class ImportTsFileBase implements Runnable {
   private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
   private static String timePrecision = "ms";
   private static String successDir;
-  private static ImportTsFileOperation successOperation;
+  private static ImportTsFile.Operation successOperation;
   private static String failDir;
-  private static ImportTsFileOperation failOperation;
+  private static ImportTsFile.Operation failOperation;
 
   @Override
   public void run() {
@@ -102,7 +101,7 @@ public abstract class ImportTsFileBase implements Runnable {
       throws IOException {
     final String relativePath = ImportTsFileScanTool.getRelativePath(filePath);
     final Path target = Paths.get(isSuccess ? successDir : failDir).resolve(relativePath);
-    final ImportTsFileOperation operation = isSuccess ? successOperation : failOperation;
+    final ImportTsFile.Operation operation = isSuccess ? successOperation : failOperation;
     operation.processFileGroup(Paths.get(filePath), target);
   }
 
@@ -149,25 +148,13 @@ public abstract class ImportTsFileBase implements Runnable {
 
   public static void setSuccessAndFailDirAndOperation(
       final String successDir,
-      final ImportTsFileOperation successOperation,
+      final ImportTsFile.Operation successOperation,
       final String failDir,
-      final ImportTsFileOperation failOperation) {
+      final ImportTsFile.Operation failOperation) {
     ImportTsFileBase.successDir = successDir;
     ImportTsFileBase.successOperation = successOperation;
     ImportTsFileBase.failDir = failDir;
     ImportTsFileBase.failOperation = failOperation;
-  }
-
-  public static void setSuccessAndFailDirAndOperation(
-      final String successDir,
-      final ImportTsFile.Operation successOperation,
-      final String failDir,
-      final ImportTsFile.Operation failOperation) {
-    setSuccessAndFailDirAndOperation(
-        successDir,
-        successOperation == null ? null : ImportTsFileOperation.valueOf(successOperation.name()),
-        failDir,
-        failOperation == null ? null : ImportTsFileOperation.valueOf(failOperation.name()));
   }
 
   protected void setTimePrecision(String timePrecision) {
