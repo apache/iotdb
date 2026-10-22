@@ -541,6 +541,18 @@ final class TsFileWriterManager {
           }
         }
       }
+      // Rebuild from the staged devices so recovered writers also retain the table schemas that
+      // Pipe needs to enumerate table data in the sealed file.
+      if (PathUtils.isTableModelDatabase(dataRegion.getDatabaseName())) {
+        for (final String tableName : writer.getTableNames()) {
+          final TsTable table =
+              DataNodeTableCache.getInstance()
+                  .getTable(dataRegion.getDatabaseName(), tableName, false);
+          if (table != null) {
+            writer.registerTableSchema(TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table));
+          }
+        }
+      }
       writer.close();
 
       final TsFileResource tsFileResource = timePartition2Resource.get(entry.getKey());
