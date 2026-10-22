@@ -61,7 +61,8 @@ public class ColumnFilterParser {
   private static final Pattern SINGLE_FIELD_PATTERN =
       Pattern.compile("\\s*(?:[A-Za-z_][A-Za-z_0-9]*|\"(?:\"\"|[^\"])*\")\\s*");
   private static final Pattern FUNCTION_CALL_START_PATTERN =
-      Pattern.compile("\\s*(?:[A-Za-z_][A-Za-z_0-9]*|\"(?:\"\"|[^\"])*\")\\s*\\(.*");
+      // NOT (...) is a logical expression supported by the grammar.
+      Pattern.compile("\\s*(?!(?i:NOT)\\b)(?:[A-Za-z_][A-Za-z_0-9]*|\"(?:\"\"|[^\"])*\")\\s*\\(.*");
   private static final Pattern UNQUOTED_COMPARISON_RIGHT_PATTERN =
       Pattern.compile("(?is).*(?:!=|<>|=)\\s*[A-Za-z_][A-Za-z_0-9]*\\s*");
 
@@ -90,7 +91,7 @@ public class ColumnFilterParser {
     }
   }
 
-  Expression parse(final String rawColumnFilter) {
+  public Expression parse(final String rawColumnFilter) {
     if (rawColumnFilter == null || rawColumnFilter.trim().isEmpty()) {
       throw new ParsingException(
           DataNodeMiscMessages.COLUMN_FILTER_SHOULD_NOT_BE_EMPTY, null, 1, 1);

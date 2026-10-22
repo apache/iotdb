@@ -445,7 +445,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
                 receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())),
         BaseEnv.TABLE_SQL_DIALECT);
 
-    TestUtils.assertDataAlwaysOnEnv(
+    // Schema snapshots and device attribute caches are updated asynchronously after pipe creation.
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "show devices from table1",
         "a,b,c,",

@@ -1263,6 +1263,7 @@ public final class DataNodeQueryMessages {
       "Interrupted when dispatching read async";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "Interrupted when dispatching write async";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "Interrupted errors: %s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "Deserialize ConsensusGroupId failed. ";
   public static final String CAN_T_CONNECT_TO_NODE =
@@ -3476,6 +3477,7 @@ public final class DataNodeQueryMessages {
       "already being cancelled";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "internal error scheduled";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "scheduler shutdown";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "Memory is not enough to execute the query task.";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
@@ -4052,6 +4054,12 @@ public final class DataNodeQueryMessages {
           "No materializer is available to enforce the DeviceEntry memory limit";
   public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
       "No more DeviceEntry records are available";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "Failed to create or alter topic, duplicate %s attributes are not allowed";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "Failed to create or alter topic, %s is only supported for table topics";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =

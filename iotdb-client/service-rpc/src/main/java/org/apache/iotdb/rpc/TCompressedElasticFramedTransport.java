@@ -100,12 +100,10 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    if (thriftDefaultBufferSize < length) {
-      try {
-        writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
-      } catch (IOException e) {
-        throw new TTransportException(e);
-      }
+    try {
+      writeBuffer.resizeIfNecessary(length);
+    } catch (IOException e) {
+      throw new TTransportException(e);
     }
     underlying.flush();
   }

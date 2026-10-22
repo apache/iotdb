@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -53,13 +54,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class MemTableFlushTaskTest {
 
@@ -84,6 +95,95 @@ public class MemTableFlushTaskTest {
     writer.close();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
+  }
+
+  @Test(timeout = 20000)
+  public void testIoFailureReleasesTemporaryReservation() throws Exception {
+    MemTableTestUtils.produceVectorData(memTable);
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    RestorableTsFileIOWriter failing = mock(RestorableTsFileIOWriter.class);
+    when(failing.getFile()).thenReturn(new File(filePath));
+    IOException error = new IOException("injected IO failure");
+    doThrow(error).when(failing).startChunkGroup(any(IDeviceID.class));
+    try {
+      system.setEncodingFasterThanIo(true);
+      ExecutionException actual =
+          assertThrows(
+              ExecutionException.class,
+              () ->
+                  new MemTableFlushTask(memTable, failing, storageGroup, dataRegionId, true)
+                      .syncFlushMemTable());
+      assertSame(error, actual.getCause());
+      assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+    } finally {
+      system.setEncodingFasterThanIo(old);
+    }
+  }
+
+  @Test(timeout = 20000)
+  public void testInterruptedFlushWaitsForIoExitBeforeRelease() throws Exception {
+    MemTableTestUtils.produceVectorData(memTable);
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch interrupted = new CountDownLatch(1);
+    CountDownLatch mayExit = new CountDownLatch(1);
+    RestorableTsFileIOWriter slow = mock(RestorableTsFileIOWriter.class);
+    when(slow.getFile()).thenReturn(new File(filePath));
+    doAnswer(
+            invocation -> {
+              entered.countDown();
+              while (true) {
+                try {
+                  mayExit.await();
+                  break;
+                } catch (InterruptedException e) {
+                  interrupted.countDown();
+                }
+              }
+              return null;
+            })
+        .when(slow)
+        .startChunkGroup(any(IDeviceID.class));
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+    Thread caller =
+        new Thread(
+            () -> {
+              try {
+                new MemTableFlushTask(memTable, slow, storageGroup, dataRegionId, true)
+                    .syncFlushMemTable();
+                failure.set(new AssertionError("flush should be interrupted"));
+              } catch (InterruptedException expected) {
+                if (!Thread.currentThread().isInterrupted())
+                  failure.set(new AssertionError("interrupt flag lost"));
+              } catch (Throwable e) {
+                failure.set(e);
+              }
+            });
+    try {
+      system.setEncodingFasterThanIo(true);
+      caller.start();
+      assertTrue(entered.await(5, TimeUnit.SECONDS));
+      caller.interrupt();
+      assertTrue(interrupted.await(5, TimeUnit.SECONDS));
+      // Another interruption during cancellation must not let cleanup release live worker memory.
+      caller.interrupt();
+      assertTrue(caller.isAlive());
+      assertTrue(system.getFlushMemoryManager().getMemoryUsageInBytes() > before);
+      mayExit.countDown();
+      caller.join(5000);
+      assertFalse(caller.isAlive());
+      if (failure.get() != null) throw new AssertionError(failure.get());
+      assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+    } finally {
+      mayExit.countDown();
+      caller.interrupt();
+      caller.join(5000);
+      system.setEncodingFasterThanIo(old);
+    }
   }
 
   @Test

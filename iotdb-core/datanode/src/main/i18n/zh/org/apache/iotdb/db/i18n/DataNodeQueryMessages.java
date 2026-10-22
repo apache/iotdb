@@ -1243,6 +1243,7 @@ public final class DataNodeQueryMessages {
       "异步分发读取操作时被中断";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "异步分发写入操作时被中断";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "中断错误：%s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "反序列化 ConsensusGroupId 失败。";
   public static final String CAN_T_CONNECT_TO_NODE =
@@ -4127,6 +4128,7 @@ public final class DataNodeQueryMessages {
       "已经在取消中";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "内部错误调度";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "调度器关闭";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "内存不足，无法执行查询任务。";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
@@ -4808,6 +4810,12 @@ public final class DataNodeQueryMessages {
           "没有可用于执行 DeviceEntry 内存限制的 materializer";
   public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
       "没有更多可用的 DeviceEntry 记录";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c\u4e0d\u5141\u8bb8\u91cd\u590d\u7684 %s \u5c5e\u6027";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c%s \u4ec5\u652f\u6301\u8868\u6a21\u578b Topic";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =

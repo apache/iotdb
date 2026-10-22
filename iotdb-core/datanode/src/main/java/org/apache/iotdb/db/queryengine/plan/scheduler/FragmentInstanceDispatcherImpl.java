@@ -330,7 +330,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
+                  TSStatusCode.INTERNAL_SERVER_ERROR,
+                  String.format(
+                      DataNodeQueryMessages.MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B,
+                      e.getMessage())),
+              true));
     }
 
     if (dispatchFailures.isEmpty()) {

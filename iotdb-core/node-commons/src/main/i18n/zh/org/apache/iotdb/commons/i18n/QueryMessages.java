@@ -165,6 +165,12 @@ public final class QueryMessages {
       "无效的模式：%s，'}' 后缺少重复符号";
   public static final String INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS =
       "无效的模式：'%s'。模式必须包含至少两个以逗号分隔的数值数据点，例如 '1,2,3'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB =
+      "无效的模式：'%s'。重复组必须包含至少一个数值数据点。";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4 =
+      "无效的模式：'%s'。'{' 或 '}' 不匹配。";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323 =
+      "无效的模式：'%s'。无效的数值数据点：'%s'。";
 
   // ======================== Forecast / Classify TVF ========================
 

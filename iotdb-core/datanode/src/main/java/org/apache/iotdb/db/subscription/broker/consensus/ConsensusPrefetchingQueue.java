@@ -1758,6 +1758,34 @@ public class ConsensusPrefetchingQueue {
     }
 
     acquireReadLock();
+    PrefetchRoundResult result = null;
+    try {
+      result = drivePrefetchOnceUnderReadLock();
+      return result;
+    } finally {
+      try {
+        final ProgressWALIterator iterator = subscriptionWALIterator;
+        walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
+        // Keep unread segments across immediately rescheduled scan slices. Releasing them here
+        // would reload and decompress the same segment after every entry/time budget yield.
+        // Paused queues still return their direct memory while retaining cursors and fragments.
+        if (Objects.isNull(result) || result.getType() != PrefetchRoundResult.Type.RESCHEDULE_NOW) {
+          if (Objects.nonNull(iterator)) {
+            iterator.releaseReadBuffers();
+          }
+          for (final WriterReplayState state : orderedWriterReplay.values()) {
+            if (Objects.nonNull(state.iterator)) {
+              state.iterator.releaseReadBuffers();
+            }
+          }
+        }
+      } finally {
+        releaseReadLock();
+      }
+    }
+  }
+
+  private PrefetchRoundResult drivePrefetchOnceUnderReadLock() {
     try {
       final ProgressWALIterator.ScanBudget walScanBudget = newWalScanBudget();
       if (isClosed || closeRequested || !prefetchInitialized) {
@@ -1945,10 +1973,6 @@ public class ConsensusPrefetchingQueue {
         return PrefetchRoundResult.dormant();
       }
       return PrefetchRoundResult.rescheduleAfter(100L);
-    } finally {
-      final ProgressWALIterator iterator = subscriptionWALIterator;
-      walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
-      releaseReadLock();
     }
   }
 
@@ -3963,8 +3987,7 @@ public class ConsensusPrefetchingQueue {
             return null;
           }
 
-          final boolean committed =
-              commitAndRefreshWalRetention(commitWriterId, commitWriterProgress);
+          final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
           if (!committed) {
             if (!silent) {
               LOGGER.warn(
@@ -3982,6 +4005,12 @@ public class ConsensusPrefetchingQueue {
           cleanUpEvent(ev, false);
           return null;
         });
+    if (acked.get()) {
+      // Retention refresh can read metadata from every newly relevant WAL file. Keep that I/O out
+      // of ConcurrentHashMap.compute so recycling and requeueing other in-flight events can
+      // proceed while an ACK advances committed progress.
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
     return !found.get()
         ? InFlightAckResult.MISSING
         : acked.get() ? InFlightAckResult.ACKED : InFlightAckResult.REJECTED;
@@ -4502,12 +4531,20 @@ public class ConsensusPrefetchingQueue {
 
   private boolean commitAndRefreshWalRetention(
       final WriterId writerId, final WriterProgress writerProgress) {
+    final boolean committed = commitWriterProgress(writerId, writerProgress);
+    if (committed) {
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
+    return committed;
+  }
+
+  private boolean commitWriterProgress(
+      final WriterId writerId, final WriterProgress writerProgress) {
     final boolean committed =
         commitManager.commit(
             consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
     if (committed) {
       lastProgressTimeMs = System.currentTimeMillis();
-      refreshCommittedWalRetentionBoundAndNotify();
     }
     return committed;
   }
@@ -4560,13 +4597,29 @@ public class ConsensusPrefetchingQueue {
     return true;
   }
 
-  private boolean canReuseCommittedWalRetentionBound(final RegionProgress committedRegionProgress) {
+  private boolean canSkipCoveredWalPrefix(final RegionProgress committedRegionProgress) {
     if (!isProgressAtLeast(committedRegionProgress, lastCommittedProgressForRetention)
         || Objects.isNull(lastRetainedWalFileForRetention)
         || !lastRetainedWalFileForRetention.exists()
         || WALFileUtils.parseVersionId(lastRetainedWalFileForRetention.getName())
             != committedRetainedMinVersionId) {
       return false;
+    }
+
+    return true;
+  }
+
+  private boolean canReuseCommittedWalRetentionBound(final RegionProgress committedRegionProgress) {
+    if (!canSkipCoveredWalPrefix(committedRegionProgress)) {
+      return false;
+    }
+
+    // The live WAL file must be retained regardless of committed progress. Its metadata is not
+    // sealed yet, so there is no cached requirement to check until the WAL rolls.
+    if (consensusReqReader instanceof WALNode
+        && committedRetainedMinVersionId
+            == ((WALNode) consensusReqReader).getCurrentWALFileVersion()) {
+      return true;
     }
 
     final WalFileCommitRequirement requirement =
@@ -4616,8 +4669,8 @@ public class ConsensusPrefetchingQueue {
         return false;
       }
 
-      // The previous boundary file remains the first uncommitted file while its cached
-      // requirement is still uncovered by monotonically advancing committed progress.
+      // The previous boundary still applies while its sealed requirement is uncovered, or while
+      // it is the current live WAL file. Both cases require monotonically advancing progress.
       if (canReuseCommittedWalRetentionBound(committedRegionProgress)) {
         lastCommittedProgressForRetention = committedRegionProgress;
         return false;
@@ -4649,8 +4702,18 @@ public class ConsensusPrefetchingQueue {
     }
 
     WALFileUtils.ascSortByVersionId(walFiles);
+    // Sealed WAL files before the previous boundary were already covered by committed progress.
+    // They may remain on disk because of the replay cursor or topic retention; rescanning their
+    // metadata on every later commit makes sparse topics spend most of their time in retention.
+    final long firstVersionToCheck =
+        canSkipCoveredWalPrefix(committedRegionProgress)
+            ? committedRetainedMinVersionId
+            : Long.MIN_VALUE;
     for (final File walFile : walFiles) {
       final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+      if (versionId < firstVersionToCheck) {
+        continue;
+      }
       if (versionId >= currentWalVersion) {
         return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), walFile);
       }
