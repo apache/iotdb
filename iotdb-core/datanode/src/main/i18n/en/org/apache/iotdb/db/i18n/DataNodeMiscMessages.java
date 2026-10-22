@@ -1605,4 +1605,10 @@ public final class DataNodeMiscMessages {
   public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
       "Failed to collect the devices using the extended template {}";
 
+  public static final String
+      MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936 =
+          "loadTsFileWriteBufferSize should be greater than 0";
+  public static final String EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4 =
+      "bufferSize should be greater than 0";
+
 }

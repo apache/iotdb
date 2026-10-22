@@ -21,12 +21,14 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData.ChunkLayout;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -53,6 +55,7 @@ import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -68,6 +71,8 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_MASK;
 import static org.apache.tsfile.common.constant.TsFileConstant.VALUE_COLUMN_MASK;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -78,12 +83,57 @@ public class ChunkDataDirectWriteTest {
   private static final int DEFAULT_POINT_COUNT = 100;
   private static final IDeviceID DEFAULT_DEVICE = new StringArrayDeviceID("root", "sg", "d1");
 
+  @Test
+  public void testInlineChunkPayloadIsDeserializedAsSlice() throws Exception {
+    final byte[] payload = new byte[] {1, 2, 3, 4, 5};
+    final ByteBuffer serialized = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + payload.length);
+    serialized.put((byte) 0); // not a reference
+    serialized.putInt(payload.length);
+    serialized.put(payload);
+    serialized.flip();
+
+    final List<ChunkPayloadRef> refs = new ArrayList<>();
+    final ByteBuffer deserialized =
+        ChunkData.deserializeChunkPayload(
+            new LoadTsFilePieceNode.ByteBufferInputStream(serialized), refs);
+
+    assertTrue(refs.isEmpty());
+    assertEquals(payload.length, deserialized.remaining());
+    // The payload stays inside the assembled piece body instead of being copied into a new array.
+    assertSame(serialized.array(), deserialized.array());
+    for (int i = 0; i < payload.length; i++) {
+      assertEquals(payload[i], deserialized.get(i));
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Direct Write (Bypass SerDe) Tests
   // -------------------------------------------------------------------------
 
   // An entire non-aligned chunk reaches the writer untouched, with no serialize/deserialize round
   // trip in between
+  @Test
+  public void testNonArrayChunkPayloadUsesBlockCopyPath() throws Exception {
+    final ByteBuffer payload = ByteBuffer.allocateDirect(10_000);
+    for (int i = 0; i < payload.capacity(); i++) {
+      payload.put((byte) i);
+    }
+    payload.flip();
+
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (final DataOutputStream output = new DataOutputStream(bytes)) {
+      ChunkData.serializeChunkPayload(output, payload, null, true);
+    }
+
+    final ByteBuffer deserialized =
+        ChunkData.deserializeChunkPayload(
+            new DataInputStream(new ByteArrayInputStream(bytes.toByteArray())), new ArrayList<>());
+    assertEquals(payload.remaining(), deserialized.remaining());
+    for (int i = 0; i < payload.remaining(); i++) {
+      assertEquals(payload.get(i), deserialized.get(i));
+    }
+  }
+
   @Test
   public void testNonAlignedChunkDataCanWriteWithoutSerdeRoundTrip() throws Exception {
     final NonAlignedChunkData chunkData = createNonAlignedChunkData(DEFAULT_DEVICE, "s1");
@@ -198,6 +248,47 @@ public class ChunkDataDirectWriteTest {
     final Chunk valueChunk = chunks.get(1);
     assertEquals(valueChunk.getData().remaining(), valueChunk.getHeader().getDataSize());
     assertEquals(VALUE_COLUMN_MASK, valueChunk.getHeader().getChunkType() & VALUE_COLUMN_MASK);
+  }
+
+  // An empty page of an undecoded chunk (an all-null column) carries no statistics, but it still
+  // occupies a page slot: the aligned reader pairs the pages of a value chunk with the pages of its
+  // time chunk by position, so the page has to be copied as the single byte it serializes to
+  // instead of forcing the whole chunk through the re-encoding path
+  @Test
+  public void testEmptyUndecodedPageKeepsItsPageSlot() throws Exception {
+    final Statistics<?> pageStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
+    pageStatistics.update(1L);
+    pageStatistics.update(2L);
+    final PageHeader pageHeader = new PageHeader(8, 4, pageStatistics);
+
+    final List<AlignedChunkData.PageBuffer> pages = new ArrayList<>();
+    pages.add(
+        new AlignedChunkData.PageBuffer(0, new PageHeader(0, 0, null), ByteBuffer.allocate(0)));
+    pages.add(new AlignedChunkData.PageBuffer(0, pageHeader, ByteBuffer.wrap(new byte[4])));
+
+    final Chunk chunk =
+        createAlignedTimeChunkData(DEFAULT_DEVICE)
+            .buildChunkFromUndecodedPages(createTimeChunkHeader(), TIME_COLUMN_MASK, pages);
+
+    assertNotNull("an empty page must not force the chunk to be re-encoded", chunk);
+    assertEquals(2, chunk.getChunkStatistic().getCount());
+    // One byte for the kept empty page plus the page that was read from the source file.
+    assertEquals(1 + pageHeader.getSerializedPageSize(), chunk.getData().remaining());
+  }
+
+  // A chunk whose pages are all empty keeps the zero-page layout of an all-null column
+  @Test
+  public void testAllEmptyUndecodedPagesStayAnEmptyChunk() throws Exception {
+    final List<AlignedChunkData.PageBuffer> pages = new ArrayList<>();
+    pages.add(
+        new AlignedChunkData.PageBuffer(0, new PageHeader(0, 0, null), ByteBuffer.allocate(0)));
+    pages.add(
+        new AlignedChunkData.PageBuffer(0, new PageHeader(0, 0, null), ByteBuffer.allocate(0)));
+
+    assertNull(
+        "an all-null chunk has to keep the zero-page layout",
+        createAlignedTimeChunkData(DEFAULT_DEVICE)
+            .buildChunkFromUndecodedPages(createTimeChunkHeader(), TIME_COLUMN_MASK, pages));
   }
 
   // -------------------------------------------------------------------------

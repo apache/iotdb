@@ -84,8 +84,10 @@ public final class StorageEngineMessages {
       "The LOAD snapshot progress file {} cannot be read back: {}";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
-  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
-      "Unexpected end of file when reading staged piece %s at offset %s.";
+  public static final String
+      EXCEPTION_UNEXPECTED_END_OF_FILE_WHEN_READING_THE_STAGED_PIECE_ARG_ARG_BYTES_WERE_REQUESTED_FROM_OFFSET_ARG_BUT_THE_FILE_ENDED_AT_POSITION_ARG_3F9CA32B =
+          "Unexpected end of file when reading the staged piece %s: %d bytes were requested from "
+              + "offset %d, but the file ended at position %d.";
   public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
       "Staged piece file %s is missing and cannot be read back.";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =

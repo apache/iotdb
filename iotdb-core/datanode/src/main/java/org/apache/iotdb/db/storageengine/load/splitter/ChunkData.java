@@ -44,7 +44,14 @@ import java.util.List;
 public interface ChunkData extends TsFileData {
 
   ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
-  byte[] EMPTY_BYTES = new byte[0];
+
+  /**
+   * An input stream over a {@link ByteBuffer} that can expose the next bytes as a slice instead of
+   * copying them into a new array.
+   */
+  interface ByteBufferSliceSource {
+    ByteBuffer readSlice(int length);
+  }
 
   // -------------------------------------------------------------------------
   // Metadata & Status
@@ -168,9 +175,28 @@ public interface ChunkData extends TsFileData {
 
     // 2. Write inline payload bytes
     ReadWriteIOUtils.write(false, stream); // isRef = false
-    byte[] payload = extractPayloadBytes(data, ref);
-    ReadWriteIOUtils.write(payload.length, stream);
-    stream.write(payload);
+    final int payloadLength = (int) inlinePayloadSize(data, ref);
+    ReadWriteIOUtils.write(payloadLength, stream);
+    if (data != null && data.hasRemaining()) {
+      writeByteBuffer(stream, data);
+    } else if (ref != null) {
+      ref.writePayloadTo(stream);
+    }
+  }
+
+  private static void writeByteBuffer(final DataOutputStream stream, final ByteBuffer data)
+      throws IOException {
+    if (data.hasArray() && !data.isReadOnly()) {
+      stream.write(data.array(), data.arrayOffset() + data.position(), data.remaining());
+      return;
+    }
+    final ByteBuffer duplicate = data.duplicate();
+    final byte[] buffer = new byte[Math.min(duplicate.remaining(), 8192)];
+    while (duplicate.hasRemaining()) {
+      final int length = Math.min(duplicate.remaining(), buffer.length);
+      duplicate.get(buffer, 0, length);
+      stream.write(buffer, 0, length);
+    }
   }
 
   /** Deserializes payload, appending to {@code refs} if referenced externally. */
@@ -193,18 +219,13 @@ public interface ChunkData extends TsFileData {
               maxLength));
     }
 
+    if (stream instanceof ByteBufferSliceSource source) {
+      // Zero-copy slice over the piece body; the chunk keeps the body reachable until it is
+      // written.
+      return source.readSlice(length);
+    }
     byte[] payload = new byte[length];
     (stream instanceof DataInputStream dis ? dis : new DataInputStream(stream)).readFully(payload);
     return ByteBuffer.wrap(payload);
-  }
-
-  private static byte[] extractPayloadBytes(ByteBuffer data, ChunkPayloadRef ref)
-      throws IOException {
-    if (data != null && data.hasRemaining()) {
-      byte[] bytes = new byte[data.remaining()];
-      data.duplicate().get(bytes);
-      return bytes;
-    }
-    return ref != null ? ref.readPayload() : EMPTY_BYTES;
   }
 }
