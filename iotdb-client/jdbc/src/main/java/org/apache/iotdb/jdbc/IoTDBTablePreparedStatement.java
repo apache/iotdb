@@ -229,7 +229,12 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
               resp.tracingInfo,
               (long) queryTimeout * 1000,
               resp.isSetMoreData() && resp.isMoreData(),
-              zoneId);
+              zoneId,
+              charset,
+              resp.isSetTableModel() && resp.isTableModel(),
+              resp.getColumnIndex2TsBlockColumnIndexList() == null
+                  ? null
+                  : new ArrayList<>(resp.getColumnIndex2TsBlockColumnIndexList()));
       return resultSet;
     }
     return null;

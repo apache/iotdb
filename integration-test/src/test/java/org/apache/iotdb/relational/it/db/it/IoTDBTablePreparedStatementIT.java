@@ -382,4 +382,39 @@ public class IoTDBTablePreparedStatementIT {
       fail("testPrepareAndExecuteWithStringParameter failed: " + e.getMessage());
     }
   }
+
+  @Test
+  public void testPrepareAndExecuteWithReorderedProjection() {
+    String[] expectedHeader = new String[] {"value", "name"};
+    String[] retArray = new String[] {"200.3,Bob,"};
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      // Projection order differs from the table's column order
+      statement.execute("PREPARE stmt9 FROM SELECT value, name FROM test_table WHERE id = ?");
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt9 USING 2", expectedHeader, retArray);
+      statement.execute("DEALLOCATE PREPARE stmt9");
+    } catch (SQLException e) {
+      fail("testPrepareAndExecuteWithReorderedProjection failed: " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testPrepareAndExecuteWithRepeatedProjection() {
+    String[] expectedHeader = new String[] {"x", "y"};
+    String[] retArray = new String[] {"Bob,Bob,"};
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      // The same physical column is projected twice under different aliases
+      statement.execute(
+          "PREPARE stmt10 FROM SELECT name AS x, name AS y FROM test_table WHERE id = ?");
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt10 USING 2", expectedHeader, retArray);
+      statement.execute("DEALLOCATE PREPARE stmt10");
+    } catch (SQLException e) {
+      fail("testPrepareAndExecuteWithRepeatedProjection failed: " + e.getMessage());
+    }
+  }
 }
