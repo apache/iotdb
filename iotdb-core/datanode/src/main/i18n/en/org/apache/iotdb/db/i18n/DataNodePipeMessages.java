@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
-  public static final String LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B =
-      "Subscription replay has made no cursor progress for {} ms: {}. Inspect prefetch worker stacks and WAL I/O.";
+  public static final String LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98 =
+      "Subscription replay stalled for {} ms: {}; diagnostics={}. Inspect prefetch worker stacks and WAL I/O.";
 
   public static final String
       LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =

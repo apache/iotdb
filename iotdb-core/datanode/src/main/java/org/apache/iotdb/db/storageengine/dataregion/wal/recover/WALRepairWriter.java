@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +42,7 @@ import java.nio.file.StandardOpenOption;
 
 /** Check whether the wal file is broken and repair it. */
 public class WALRepairWriter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WALRepairWriter.class);
   private final File logFile;
 
   public WALRepairWriter(File logFile) {
@@ -63,6 +68,7 @@ public class WALRepairWriter {
       quarantine();
       return false;
     }
+    final long originalFileBytes = logFile.length();
     // A channel offset may include a partially read entry in the same compressed segment. Rebuild
     // complete entries in a temporary file instead of truncating at a read-ahead offset. Publish
     // only after every entry and the new footer have been written and forced successfully.
@@ -110,6 +116,15 @@ public class WALRepairWriter {
       }
     } finally {
       Files.deleteIfExists(repaired);
+    }
+    if (LOGGER.isWarnEnabled()) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E,
+          logFile,
+          version,
+          originalFileBytes,
+          metaData.getWriterProgressDiagnostics());
     }
     return true;
   }

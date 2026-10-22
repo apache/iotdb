@@ -39,6 +39,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -310,6 +311,41 @@ public class WALMetaData implements SerializedSize {
 
   public List<Long> getLocalSeqs() {
     return localSeqs;
+  }
+
+  /** Diagnostic summary for an abnormal footer recovery, never for the normal write path. */
+  public Map<String, Object> getWriterProgressDiagnostics() {
+    final Map<String, Object> result = new LinkedHashMap<>();
+    final int entries = buffersSize.size();
+    final int progressEntries =
+        Math.min(
+            entries, Math.min(physicalTimes.size(), Math.min(nodeIds.size(), localSeqs.size())));
+    int attributedEntries = 0;
+    int defaultLocalProgressEntries = 0;
+    final List<String> unattributedSamples = new ArrayList<>();
+    for (int i = 0; i < progressEntries; i++) {
+      final long physicalTime = physicalTimes.get(i);
+      final int nodeId = nodeIds.get(i);
+      final long localSeq = localSeqs.get(i);
+      if (nodeId >= 0 && physicalTime >= 0 && localSeq >= 0) {
+        attributedEntries++;
+      } else {
+        if (unattributedSamples.size() < 4) {
+          unattributedSamples.add(i + ":(" + physicalTime + "," + nodeId + "," + localSeq + ")");
+        }
+        if (nodeId < 0 && physicalTime == 0 && localSeq >= 0) {
+          defaultLocalProgressEntries++;
+        }
+      }
+    }
+    result.put("entryCount", entries);
+    result.put("firstSearchIndex", firstSearchIndex);
+    result.put("attributedProgressEntries", attributedEntries);
+    result.put("unattributedProgressEntries", progressEntries - attributedEntries);
+    result.put("missingProgressEntries", entries - progressEntries);
+    result.put("defaultLocalProgressEntries", defaultLocalProgressEntries);
+    result.put("unattributedSamples", unattributedSamples);
+    return result;
   }
 
   private int getNodeIdOverrideCount() {

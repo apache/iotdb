@@ -527,6 +527,28 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         + "]";
   }
 
+  String getDiagnosticState() {
+    // Called only by the throttled queue stall warning; never read entry bodies or advance here.
+    return this
+        + "[file="
+        + currentReaderFile
+        + ", liveSnapshot="
+        + currentReaderUsesLiveSnapshot
+        + ", metadataRecoveredFromEntries="
+        + (currentReader != null && currentReader.getMetaData().isRecoveredFromEntries())
+        + ", pendingProgress=("
+        + pendingPhysicalTime
+        + ","
+        + pendingNodeId
+        + ","
+        + pendingLocalSeq
+        + "), pendingSearchIndex="
+        + pendingSearchIndex
+        + ", pendingFragments="
+        + pendingRequests.size()
+        + "]";
+  }
+
   String getSkippedBrokenWalFileDetails(final int firstFileIndex) {
     final int firstAvailableIndex =
         getSkippedBrokenWalFileCount() - skippedBrokenWalFileDetails.size();
