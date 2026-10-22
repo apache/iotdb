@@ -293,7 +293,8 @@ public class TemplatedAggregationAnalyze {
 
     Set<String> measurementSet = new HashSet<>(analysis.getMeasurementList());
     Set<Expression> aggregationExpressions = analysis.getAggregationExpressions();
-    Expression havingExpression = queryStatement.getHavingCondition().getPredicate();
+    Expression havingExpression =
+        PredicateUtils.predicateRemoveNot(queryStatement.getHavingCondition().getPredicate());
     for (Expression aggregationExpression : searchAggregationExpressions(havingExpression)) {
       Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
 

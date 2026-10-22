@@ -34,6 +34,9 @@ import java.sql.Connection;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -42,6 +45,7 @@ public class IoTDBPredicateConversionTreeIT {
 
   private static final String DATABASE_NAME = "root.test_pred";
   private static final String DEVICE_ID = DATABASE_NAME + ".d1";
+  private static final String TEMPLATE_DATABASE_NAME = "root.test_not_template";
 
   private static final String[] SQLs =
       new String[] {
@@ -57,7 +61,15 @@ public class IoTDBPredicateConversionTreeIT {
         "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(7, null, null)",
         "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(8, 1000, 1000)",
         "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(9, -29, -29)",
-        "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(10, -30, -30)"
+        "INSERT INTO " + DEVICE_ID + "(time, int32_col, int64_col) VALUES(10, -30, -30)",
+        "CREATE DATABASE " + TEMPLATE_DATABASE_NAME,
+        "CREATE DEVICE TEMPLATE not_predicate_template (s1 INT64)",
+        "SET DEVICE TEMPLATE not_predicate_template TO " + TEMPLATE_DATABASE_NAME + ".d1",
+        "SET DEVICE TEMPLATE not_predicate_template TO " + TEMPLATE_DATABASE_NAME + ".d2",
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d1(time, s1) VALUES(1, 3)",
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d1(time, s1) VALUES(2, 8)",
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d2(time, s1) VALUES(1, 4)",
+        "INSERT INTO " + TEMPLATE_DATABASE_NAME + ".d2(time, s1) VALUES(2, 9)"
       };
 
   @BeforeClass
@@ -289,5 +301,55 @@ public class IoTDBPredicateConversionTreeIT {
         "SELECT int64_col FROM " + DEVICE_ID + " WHERE int64_col <= 1.0E19",
         expectedHeaderInt64,
         allInt64Rows);
+  }
+
+  @Test
+  public void testWhereAndHavingWithNot() {
+    String[] expectedWhereHeader = new String[] {TIMESTAMP_STR, DEVICE_ID + ".int32_col"};
+    resultSetEqualTest(
+        "SELECT int32_col FROM " + DEVICE_ID + " WHERE NOT (int32_col > 20)",
+        expectedWhereHeader,
+        new String[] {"1,20,", "9,-29,", "10,-30,"});
+    resultSetEqualTest(
+        "SELECT int32_col FROM " + DEVICE_ID + " WHERE NOT (int32_col > 20 AND int32_col < 40)",
+        expectedWhereHeader,
+        new String[] {"1,20,", "8,1000,", "9,-29,", "10,-30,"});
+
+    String[] expectedHavingHeader = new String[] {TIMESTAMP_STR, count(DEVICE_ID + ".int32_col")};
+    resultSetEqualTest(
+        "SELECT count(int32_col) FROM "
+            + DEVICE_ID
+            + " GROUP BY ([1,11),2ms) HAVING NOT (count(int32_col) > 1)",
+        expectedHavingHeader,
+        new String[] {"5,1,", "7,1,"});
+
+    String[] expectedWhereAlignByDeviceHeader = new String[] {TIMESTAMP_STR, DEVICE, "int32_col"};
+    resultSetEqualTest(
+        "SELECT int32_col FROM root.test_pred.* WHERE NOT (int32_col > 20 AND int32_col < 40) ALIGN BY DEVICE",
+        expectedWhereAlignByDeviceHeader,
+        new String[] {
+          "1,root.test_pred.d1,20,",
+          "8,root.test_pred.d1,1000,",
+          "9,root.test_pred.d1,-29,",
+          "10,root.test_pred.d1,-30,",
+        });
+
+    String[] expectedHavingAlignByDeviceHeader =
+        new String[] {TIMESTAMP_STR, DEVICE, count("int32_col")};
+    resultSetEqualTest(
+        "SELECT count(int32_col) FROM root.test_pred.* GROUP BY ([1,11),2ms) HAVING NOT (count(int32_col) > 1) ALIGN BY DEVICE",
+        expectedHavingAlignByDeviceHeader,
+        new String[] {"5,root.test_pred.d1,1,", "7,root.test_pred.d1,1,"});
+  }
+
+  @Test
+  public void testTemplatedWhereWithNot() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, DEVICE, "s1"};
+    resultSetEqualTest(
+        "SELECT s1 FROM " + TEMPLATE_DATABASE_NAME + ".* WHERE NOT (s1 > 5) ALIGN BY DEVICE",
+        expectedHeader,
+        new String[] {
+          "1,root.test_not_template.d1,3,", "1,root.test_not_template.d2,4,",
+        });
   }
 }

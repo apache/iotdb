@@ -169,4 +169,11 @@ public class PredicateUtilsTest {
 
     assertSame(predicate, PredicateUtils.simplifyPredicate(predicate));
   }
+
+  @Test
+  public void testLogicNotCannotPushDownToSource() throws IllegalPathException {
+    Expression predicate = not(gt(timeSeries("root.sg.d.s1"), intValue("1")));
+
+    assertFalse(PredicateUtils.predicateCanPushDownToSource(predicate));
+  }
 }

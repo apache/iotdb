@@ -265,11 +265,11 @@ public class TemplatedAnalyze {
     }
 
     analysis.setNoWhereAndAggregation(false);
+    Expression whereCondition =
+        PredicateUtils.predicateRemoveNot(queryStatement.getWhereCondition().getPredicate());
     Expression wherePredicate =
         new TemplatedConcatRemoveUnExistentMeasurementVisitor()
-            .process(
-                queryStatement.getWhereCondition().getPredicate(),
-                analysis.getDeviceTemplate().getSchemaMap());
+            .process(whereCondition, analysis.getDeviceTemplate().getSchemaMap());
     wherePredicate = PredicateUtils.simplifyPredicate(wherePredicate);
     if (!wherePredicate.equals(ConstantOperand.TRUE)) {
       analysis.setWhereExpression(wherePredicate);
