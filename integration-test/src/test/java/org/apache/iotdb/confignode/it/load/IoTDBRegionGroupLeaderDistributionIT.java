@@ -39,6 +39,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,7 +53,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -67,6 +67,8 @@ public class IoTDBRegionGroupLeaderDistributionIT {
 
   private static final String DATABASE = "root.db";
   private static final int TEST_DATA_NODE_NUM = 3;
+
+  private static final int RETRY_NUM = 50;
 
   @Before
   public void setUp() {
@@ -114,32 +116,15 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             dataPartitionTableResp.getStatus().getCode());
       }
 
-      // Check the number of RegionGroup-leader in each DataNode.
-      Map<Integer, Integer> leaderCounter = new TreeMap<>();
-      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      showRegionResp
-          .getRegionInfoList()
-          .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
-      showRegionResp
-          .getRegionInfoList()
-          .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                  leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
-                }
-              });
-      // The number of Region-leader in each DataNode should be exactly 1
-      Assert.assertEquals(TEST_DATA_NODE_NUM, leaderCounter.size());
-      leaderCounter.forEach((dataNodeId, leaderCount) -> Assert.assertEquals(1, (int) leaderCount));
+      // The RegionGroup leaders should be spread evenly across the DataNodes. This must poll:
+      // the RegionGroups have just been created, so their leaders are still being elected and the
+      // leader balancer is still migrating them while this method samples.
+      awaitBalancedLeaderDistribution(client, TEST_DATA_NODE_NUM);
     }
   }
 
   @Test
   public void testCFDWithUnknownStatus() throws Exception {
-    final int retryNum = 50;
     TSStatus status;
     final int databaseNum = 6;
     try (SyncConfigNodeIServiceClient client =
@@ -164,45 +149,8 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             dataPartitionTableResp.getStatus().getCode());
       }
 
-      // Check leader distribution
-      Map<Integer, Integer> leaderCounter = new TreeMap<>();
-      TShowRegionResp showRegionResp;
-      boolean isDistributionBalanced = false;
-      for (int retry = 0; retry < retryNum; retry++) {
-        leaderCounter.clear();
-        showRegionResp = client.showRegion(new TShowRegionReq());
-        showRegionResp
-            .getRegionInfoList()
-            .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
-        showRegionResp
-            .getRegionInfoList()
-            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
-        showRegionResp
-            .getRegionInfoList()
-            .forEach(
-                regionInfo -> {
-                  if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                    leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
-                  }
-                });
-
-        // All DataNodes have Region-leader
-        isDistributionBalanced = leaderCounter.size() == TEST_DATA_NODE_NUM;
-        // Each DataNode has exactly 2 Region-leader
-        for (Integer leaderCount : leaderCounter.values()) {
-          if (leaderCount != databaseNum / TEST_DATA_NODE_NUM) {
-            isDistributionBalanced = false;
-            break;
-          }
-        }
-
-        if (isDistributionBalanced) {
-          break;
-        } else {
-          TimeUnit.SECONDS.sleep(1);
-        }
-      }
-      Assert.assertTrue(isDistributionBalanced);
+      // All DataNodes should share the RegionGroup leaders evenly.
+      awaitBalancedLeaderDistribution(client, TEST_DATA_NODE_NUM);
 
       // Shutdown a DataNode
       EnvFactory.getEnv().shutdownDataNode(0);
@@ -211,43 +159,8 @@ public class IoTDBRegionGroupLeaderDistributionIT {
               Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
               Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
 
-      // Check leader distribution
-      isDistributionBalanced = false;
-      for (int retry = 0; retry < retryNum; retry++) {
-        leaderCounter.clear();
-        showRegionResp = client.showRegion(new TShowRegionReq());
-        showRegionResp
-            .getRegionInfoList()
-            .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
-        showRegionResp
-            .getRegionInfoList()
-            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
-        showRegionResp
-            .getRegionInfoList()
-            .forEach(
-                regionInfo -> {
-                  if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                    leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
-                  }
-                });
-
-        // Only Running DataNodes have Region-leader
-        isDistributionBalanced = leaderCounter.size() == TEST_DATA_NODE_NUM - 1;
-        // Each Running DataNode has exactly 3 Region-leader
-        for (Integer leaderCount : leaderCounter.values()) {
-          if (leaderCount != databaseNum / (TEST_DATA_NODE_NUM - 1)) {
-            isDistributionBalanced = false;
-            break;
-          }
-        }
-
-        if (isDistributionBalanced) {
-          break;
-        } else {
-          TimeUnit.SECONDS.sleep(1);
-        }
-      }
-      Assert.assertTrue(isDistributionBalanced);
+      // Only the two Running DataNodes keep RegionGroup leaders, and they share them evenly.
+      awaitBalancedLeaderDistribution(client, TEST_DATA_NODE_NUM - 1);
     }
   }
 
@@ -280,45 +193,8 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             dataPartitionTableResp.getStatus().getCode());
       }
 
-      // Check leader distribution
-      Map<Integer, Integer> leaderCounter = new ConcurrentHashMap<>();
-      TShowRegionResp showRegionResp;
-      boolean isDistributionBalanced = false;
-      for (int retry = 0; retry < retryNum; retry++) {
-        leaderCounter.clear();
-        showRegionResp = client.showRegion(new TShowRegionReq());
-        showRegionResp
-            .getRegionInfoList()
-            .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
-        showRegionResp
-            .getRegionInfoList()
-            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
-        showRegionResp
-            .getRegionInfoList()
-            .forEach(
-                regionInfo -> {
-                  if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                    leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
-                  }
-                });
-
-        // All DataNodes have Region-leader
-        isDistributionBalanced = leaderCounter.size() == TEST_DATA_NODE_NUM;
-        // Each DataNode has exactly 1 Region-leader
-        for (Integer leaderCount : leaderCounter.values()) {
-          if (leaderCount != databaseNum / TEST_DATA_NODE_NUM) {
-            isDistributionBalanced = false;
-            break;
-          }
-        }
-
-        if (isDistributionBalanced) {
-          break;
-        } else {
-          TimeUnit.SECONDS.sleep(1);
-        }
-      }
-      Assert.assertTrue(isDistributionBalanced);
+      // All DataNodes should share the RegionGroup leaders evenly.
+      awaitBalancedLeaderDistribution(client, TEST_DATA_NODE_NUM);
     }
 
     try (Connection connection =
@@ -368,5 +244,76 @@ public class IoTDBRegionGroupLeaderDistributionIT {
       }
       Assert.assertTrue(isDistributionBalanced.get());
     }
+  }
+
+  /**
+   * Counts the RegionGroup leaders held by each DataNode, ignoring the system and audit databases.
+   */
+  private static Map<Integer, Integer> countRegionLeaders(final SyncConfigNodeIServiceClient client)
+      throws TException {
+    final Map<Integer, Integer> leaderCounter = new TreeMap<>();
+    final TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+    showRegionResp
+        .getRegionInfoList()
+        .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+    showRegionResp
+        .getRegionInfoList()
+        .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+    showRegionResp
+        .getRegionInfoList()
+        .forEach(
+            regionInfo -> {
+              if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+                leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
+              }
+            });
+    return leaderCounter;
+  }
+
+  /**
+   * Returns whether every expected DataNode holds at least one RegionGroup leader and no two
+   * DataNodes hold a different number of leaders by more than one.
+   *
+   * <p>A fixed per-DataNode leader count cannot be asserted: the number of RegionGroups is not
+   * necessarily divisible by the number of DataNodes, and the leader balancer also balances the
+   * RegionGroups of the system and audit databases, which are not counted here.
+   */
+  private static boolean isLeaderDistributionBalanced(
+      final Map<Integer, Integer> leaderCounter, final int expectedDataNodeNum) {
+    if (leaderCounter.size() != expectedDataNodeNum) {
+      return false;
+    }
+    int minLeaderCount = Integer.MAX_VALUE;
+    int maxLeaderCount = Integer.MIN_VALUE;
+    for (final int leaderCount : leaderCounter.values()) {
+      minLeaderCount = Math.min(minLeaderCount, leaderCount);
+      maxLeaderCount = Math.max(maxLeaderCount, leaderCount);
+    }
+    return maxLeaderCount - minLeaderCount <= 1;
+  }
+
+  /**
+   * Waits until the leader balancer has converged and fails with the observed distribution
+   * otherwise. Polling is required because a RegionGroup only reports its leader once the election
+   * finishes, and leaders keep being migrated while the RegionGroups are being created.
+   */
+  private static void awaitBalancedLeaderDistribution(
+      final SyncConfigNodeIServiceClient client, final int expectedDataNodeNum)
+      throws TException, InterruptedException {
+    Map<Integer, Integer> leaderCounter = new TreeMap<>();
+    for (int retry = 0; retry < RETRY_NUM; retry++) {
+      leaderCounter = countRegionLeaders(client);
+      if (isLeaderDistributionBalanced(leaderCounter, expectedDataNodeNum)) {
+        return;
+      }
+      TimeUnit.SECONDS.sleep(1);
+    }
+    Assert.fail(
+        "The RegionGroup leaders were not balanced after "
+            + RETRY_NUM
+            + " retries: expected "
+            + expectedDataNodeNum
+            + " DataNodes holding leaders within one of each other, but got "
+            + leaderCounter);
   }
 }
