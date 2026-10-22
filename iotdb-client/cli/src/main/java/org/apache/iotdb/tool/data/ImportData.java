@@ -567,12 +567,7 @@ public class ImportData extends AbstractDataTool {
       ioTPrinter.println("Encounter an error, because: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
-    final int resultCode = importFromTargetPathAsync();
-    if (ImportDataScanTool.getTsFileQueueSize() <= 0) {
-      System.exit(CODE_OK);
-    }
-    asyncImportDataFiles();
-    System.exit(resultCode);
+    System.exit(importFromTargetPathAsync());
   }
 
   private static void asyncImportDataFiles() {
@@ -611,6 +606,7 @@ public class ImportData extends AbstractDataTool {
       AsyncImportData.setAligned(aligned);
       AsyncImportData.setSessionPool(sessionPool);
       AsyncImportData.setTimeZone();
+      AsyncImportData.resetImportStatus();
       ImportDataScanTool.setSourceFullPath(targetPath);
       final File file = new File(targetPath);
       if (!file.isFile() && !file.isDirectory()) {
@@ -619,7 +615,11 @@ public class ImportData extends AbstractDataTool {
       }
       ImportDataScanTool.traverseAndCollectFiles();
       asyncImportDataFiles();
-      return CODE_OK;
+      return AsyncImportData.hasImportFailed()
+              || ImportDataScanTool.getTsFileQueueSize() > 0
+              || Thread.currentThread().isInterrupted()
+          ? CODE_ERROR
+          : CODE_OK;
     } catch (InterruptedException e) {
       ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
       Thread.currentThread().interrupt();
