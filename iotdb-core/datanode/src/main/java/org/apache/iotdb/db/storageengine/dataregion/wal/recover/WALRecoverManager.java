@@ -31,6 +31,8 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormatException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormats;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 
@@ -108,12 +110,17 @@ public class WALRecoverManager {
         recoverThreadPool =
             IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.WAL_RECOVER.getName());
         CountDownLatch allNodesRecoveredLatch = new CountDownLatch(walNodeDirs.size());
+        List<Future<?>> recoveries = new ArrayList<>();
         for (File walNodeDir : walNodeDirs) {
-          recoverThreadPool.submit(new WALNodeRecoverTask(walNodeDir, allNodesRecoveredLatch));
+          recoveries.add(
+              recoverThreadPool.submit(new WALNodeRecoverTask(walNodeDir, allNodesRecoveredLatch)));
         }
 
         try {
           allNodesRecoveredLatch.await();
+          for (Future<?> recovery : recoveries) {
+            recovery.get();
+          }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new WALRecoverException(StorageEngineMessages.FAIL_TO_RECOVER_WAL, e);
@@ -127,6 +134,10 @@ public class WALRecoverManager {
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
           absolutePath2RecoverPerformer.values()) {
         recoverPerformer.getRecoverListener().fail(e);
+      }
+      if (WALFormatException.isFatal(e)) {
+        WALFormats.onRecoveryFailure(e);
+        throw new WALRecoverException(StorageEngineMessages.FAIL_TO_RECOVER_WAL, e);
       }
     } finally {
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
@@ -169,25 +180,31 @@ public class WALRecoverManager {
                   recoverPerformer.getTsFileAbsolutePath(),
                   e);
               recoverPerformer.getRecoverListener().fail(e);
+              if (WALFormatException.isFatal(e)) {
+                throw e;
+              }
             }
             return null;
           };
       futures.add(recoverTsFilesThreadPool.submit(recoverTsFileTask));
     }
     // wait until all tasks done
-    for (Future<Void> future : futures) {
-      try {
-        future.get();
-      } catch (ExecutionException e) {
-        throw new StorageEngineFailureException(
-            StorageEngineMessages.STORAGE_ENGINE_FAILED_TO_RECOVER, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException(
-            StorageEngineMessages.STORAGE_ENGINE_FAILED_TO_RECOVER, e);
+    try {
+      for (Future<Void> future : futures) {
+        try {
+          future.get();
+        } catch (ExecutionException e) {
+          throw new StorageEngineFailureException(
+              StorageEngineMessages.STORAGE_ENGINE_FAILED_TO_RECOVER, e);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new StorageEngineFailureException(
+              StorageEngineMessages.STORAGE_ENGINE_FAILED_TO_RECOVER, e);
+        }
       }
+    } finally {
+      recoverTsFilesThreadPool.shutdownNow();
     }
-    recoverTsFilesThreadPool.shutdown();
   }
 
   public WALRecoverListener addRecoverPerformer(UnsealedTsFileRecoverPerformer recoverPerformer) {
